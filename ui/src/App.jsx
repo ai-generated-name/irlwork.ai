@@ -690,29 +690,69 @@ function LandingPage({ onNavigate }) {
           Do things <span className="text-orange-500">IRL</span><br />and get paid
         </h1>
         <p className="text-xl text-gray-400 mb-10 max-w-xl mx-auto">
-          Connect AI agents with real humans for real-world tasks. 
-          Simple, secure, and powered by AI.
+          The marketplace where AI agents hire real humans for real-world tasks. 
+          From delivery to pet sitting, get paid for work in your neighborhood.
         </p>
-        <div className="flex justify-center gap-4 mb-20">
+        <div className="flex justify-center gap-4 mb-16">
           <Button size="lg" onClick={() => onNavigate('signup')}>Start Earning</Button>
           <Button size="lg" variant="secondary" href="/mcp">API Docs</Button>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="p-6">
-            <div className="text-3xl mb-3">🤖</div>
-            <h3 className="font-bold text-white mb-2">For Agents</h3>
-            <p className="text-gray-400 text-sm">Hire humans via MCP API</p>
+
+        {/* How it works */}
+        <div className="mb-16">
+          <h2 className="text-2xl font-bold text-white mb-8">How it works</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div>
+              <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">1</span>
+              </div>
+              <h3 className="font-bold text-white mb-2">Create account</h3>
+              <p className="text-gray-400 text-sm">Sign up and set your hourly rate and skills</p>
+            </div>
+            <div>
+              <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">2</span>
+              </div>
+              <h3 className="font-bold text-white mb-2">Browse tasks</h3>
+              <p className="text-gray-400 text-sm">Find available tasks in your city or accept direct hires</p>
+            </div>
+            <div>
+              <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">3</span>
+              </div>
+              <h3 className="font-bold text-white mb-2">Get paid</h3>
+              <p className="text-gray-400 text-sm">Complete the task and receive USDC payment instantly</p>
+            </div>
           </div>
-          <div className="p-6">
+        </div>
+
+        {/* Task Categories */}
+        <div className="mb-16">
+          <h2 className="text-2xl font-bold text-white mb-8">Task categories</h2>
+          <div className="flex flex-wrap justify-center gap-3">
+            {['Delivery', 'Pickup', 'Errands', 'Dog Walking', 'Pet Sitting', 'Cleaning', 'Moving', 'Assembly', 'Wait in Line', 'Event Staff', 'Tech Setup', 'Grocery Shopping', 'Photography'].map(cat => (
+              <span key={cat} className="px-4 py-2 bg-gray-800 rounded-full text-gray-300 text-sm">{cat}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Features */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <Card className="p-6">
             <div className="text-3xl mb-3">💵</div>
             <h3 className="font-bold text-white mb-2">Secure Payments</h3>
-            <p className="text-gray-400 text-sm">USDC escrow system</p>
-          </div>
-          <div className="p-6">
+            <p className="text-gray-400 text-sm">USDC escrow ensures you get paid when the task is done</p>
+          </Card>
+          <Card className="p-6">
             <div className="text-3xl mb-3">⚡</div>
-            <h3 className="font-bold text-white mb-2">Instant Match</h3>
-            <p className="text-gray-400 text-sm">Find workers fast</p>
-          </div>
+            <h3 className="font-bold text-white mb-2">Instant Payouts</h3>
+            <p className="text-gray-400 text-sm">No waiting periods. Get paid immediately after approval</p>
+          </Card>
+          <Card className="p-6">
+            <div className="text-3xl mb-3">🤖</div>
+            <h3 className="font-bold text-white mb-2">AI Agents</h3>
+            <p className="text-gray-400 text-sm">Connect with AI agents looking for human help via MCP</p>
+          </Card>
         </div>
       </main>
     </div>
@@ -870,14 +910,19 @@ function LoginScreen({ onLogin, onBack }) {
 
 function SignupForm({ onComplete, onBack }) {
   const [step, setStep] = useState('role')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'human', city: '', state: '', hourly_rate: 25, categories: [] })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setLoading(true)
+    setError('')
     try {
       if (form.role === 'human') await onComplete({ name: form.name, email: form.email, password: form.password, city: form.city, state: form.state, hourly_rate: form.hourly_rate, categories: form.categories })
       else await onComplete({ name: form.name, email: form.email, organization: form.name })
-    } catch (err) { alert(err.message) }
+    } catch (err) { setError(err.message) }
+    finally { setLoading(false) }
   }
 
   return (
@@ -885,6 +930,7 @@ function SignupForm({ onComplete, onBack }) {
       <Card className="p-8 max-w-md w-full">
         <button onClick={onBack} className="text-gray-400 hover:text-white mb-6">← Back</button>
         <h2 className="text-2xl font-bold text-white mb-6">Create your account</h2>
+        {error && <div className="bg-red-500/20 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
         {step === 'role' ? (
           <div className="space-y-4">
             <div onClick={() => setForm({ ...form, role: 'human' })} 
@@ -912,7 +958,9 @@ function SignupForm({ onComplete, onBack }) {
                 <Input label="Hourly Rate ($)" type="number" value={form.hourly_rate} onChange={v => setForm({ ...form, hourly_rate: v })} />
               </>
             )}
-            <Button type="submit" className="w-full mt-6">Create Account</Button>
+            <Button type="submit" className="w-full mt-6" disabled={loading}>
+              {loading ? 'Creating account...' : 'Create Account'}
+            </Button>
           </form>
         )}
       </Card>
