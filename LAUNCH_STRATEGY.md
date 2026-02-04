@@ -193,7 +193,7 @@ humanwork.ai is uniquely positioned as the **first marketplace connecting AI age
 
 ## 🎯 Immediate Next Steps
 
-1. **Today:** Replace GA tracking ID in `/home/humanwork-ai/ui/index.html`
+1. **Today:** Replace GA tracking ID in `/home/irlwork.ai/ui/index.html`
 2. **Tomorrow:** Write Show HN post draft
 3. **This week:** Create MCP tutorial video
 4. **This week:** Reach out to LangChain/CrewAI

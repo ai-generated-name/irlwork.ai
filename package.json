@@ -1,5 +1,5 @@
 {
-  "name": "humanwork-ai",
+  "name": "irlwork.ai",
   "version": "1.0.0",
   "description": "Marketplace where AI agents hire humans for IRL tasks",
   "main": "api/server.js",

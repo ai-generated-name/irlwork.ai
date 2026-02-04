@@ -6,7 +6,7 @@
 
 ```bash
 # Install
-cd /home/humanwork-ai
+cd /home/irlwork.ai
 npm install
 
 # Start API (port 3002)
@@ -67,7 +67,7 @@ Add to your Claude config:
   "mcpServers": {
     "humanwork": {
       "command": "node",
-      "args": ["/home/humanwork-ai/api/mcp-server.js"],
+      "args": ["/home/irlwork.ai/api/mcp-server.js"],
       "env": {
         "HUMANWORK_API_KEY": "hw_your_api_key_here",
         "API_URL": "http://localhost:3002/api"
@@ -163,7 +163,7 @@ Claude: "Book her for tomorrow at 2PM for 2 hours at $80/hr"
 
 ## Project Structure
 ```
-humanwork-ai/
+irlwork.ai/
 ├── api/
 │   ├── server.js      # Main API server
 │   ├── server-v2.js   # Enhanced API (all features)

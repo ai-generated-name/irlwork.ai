@@ -223,7 +223,7 @@ const server = http.createServer((req, res) => {
   // Health check
   if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ status: 'ok', mcp: 'humanwork-ai' }))
+    res.end(JSON.stringify({ status: 'ok', mcp: 'irlwork.ai' }))
     return
   }
 
