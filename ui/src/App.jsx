@@ -937,12 +937,14 @@ function App() {
     if (token && userId && email) {
       localStorage.setItem('irl_token', token)
       localStorage.setItem('irl_user', JSON.stringify({ id: userId, email, name, type: 'human' }))
-      window.history.replaceState({}, '', window.location.pathname)
-      window.location.reload()
+      // Clear URL params without losing page context
+      window.history.replaceState({}, '', '/')
+      // Force reload to apply auth state
+      window.location.href = '/'
     }
     if (error) {
       console.error('OAuth error:', error)
-      window.history.replaceState({}, '', window.location.pathname)
+      window.history.replaceState({}, '', '/')
     }
   }, [])
 
