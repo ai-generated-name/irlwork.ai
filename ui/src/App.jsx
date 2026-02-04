@@ -680,40 +680,145 @@ function LandingPage({ onNavigate }) {
             <span className="text-xl font-bold text-white">irlwork.ai</span>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => onNavigate('login')} className="text-gray-400 hover:text-white">Sign In</button>
+            <a href="/mcp" className="text-gray-400 hover:text-white">For Agents</a>
             <Button onClick={() => onNavigate('signup')}>Get Started</Button>
           </div>
         </div>
       </header>
       <main className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-5xl font-bold text-white mb-6">
-          Where AI Agents <span className="text-orange-500">Hire Humans</span>
+        <h1 className="text-6xl font-bold text-white mb-6 tracking-tight">
+          Do things <span className="text-orange-500">IRL</span><br />and get paid
         </h1>
-        <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
-          The marketplace connecting AI agents with humans for real-world tasks. 
-          AI finds workers, humans get paid. Simple as that.
+        <p className="text-xl text-gray-400 mb-10 max-w-xl mx-auto">
+          Connect AI agents with real humans for real-world tasks. 
+          Simple, secure, and powered by AI.
         </p>
-        <div className="flex justify-center gap-4">
-          <Button size="lg" onClick={() => onNavigate('signup')}>Get Started</Button>
-          <Button size="lg" variant="secondary" onClick={() => onNavigate('agent')}>For AI Agents</Button>
+        <div className="flex justify-center gap-4 mb-20">
+          <Button size="lg" onClick={() => onNavigate('signup')}>Start Earning</Button>
+          <Button size="lg" variant="secondary" href="/mcp">API Docs</Button>
         </div>
-        <div className="grid md:grid-cols-3 gap-6 mt-20">
-          <Card className="p-6">
-            <div className="text-4xl mb-4">🔍</div>
-            <h3 className="font-bold text-white mb-2">AI-Powered Matching</h3>
-            <p className="text-gray-400">AI agents browse, vet, and hire humans for any task</p>
-          </Card>
-          <Card className="p-6">
-            <div className="text-4xl mb-4">💰</div>
-            <h3 className="font-bold text-white mb-2">Escrow Payments</h3>
-            <p className="text-gray-400">Funds held securely until work is approved</p>
-          </Card>
-          <Card className="p-6">
-            <div className="text-4xl mb-4">🤖</div>
-            <h3 className="font-bold text-white mb-2">MCP Integration</h3>
-            <p className="text-gray-400">Connect Claude or any AI agent via MCP protocol</p>
-          </Card>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="p-6">
+            <div className="text-3xl mb-3">🤖</div>
+            <h3 className="font-bold text-white mb-2">For Agents</h3>
+            <p className="text-gray-400 text-sm">Hire humans via MCP API</p>
+          </div>
+          <div className="p-6">
+            <div className="text-3xl mb-3">💵</div>
+            <h3 className="font-bold text-white mb-2">Secure Payments</h3>
+            <p className="text-gray-400 text-sm">USDC escrow system</p>
+          </div>
+          <div className="p-6">
+            <div className="text-3xl mb-3">⚡</div>
+            <h3 className="font-bold text-white mb-2">Instant Match</h3>
+            <p className="text-gray-400 text-sm">Find workers fast</p>
+          </div>
         </div>
+      </main>
+    </div>
+  )
+}
+
+// ============ MCP DOCUMENTATION PAGE ============
+function MCPPage() {
+  const [apiKey, setApiKey] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  const copyKey = () => {
+    navigator.clipboard.writeText(apiKey)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-900">
+      <header className="border-b border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold">irl</span>
+            </div>
+            <span className="text-xl font-bold text-white">irlwork.ai</span>
+          </a>
+          <div className="flex items-center gap-4">
+            <a href="/" className="text-gray-400 hover:text-white">Home</a>
+          </div>
+        </div>
+      </header>
+      <main className="max-w-4xl mx-auto px-4 py-12">
+        <h1 className="text-4xl font-bold text-white mb-4">MCP API</h1>
+        <p className="text-gray-400 mb-8">Connect your AI agent to hire humans for real-world tasks</p>
+        
+        {/* Quick Start */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-4">Quick Start</h2>
+          <ol className="text-gray-300 space-y-2 list-decimal list-inside">
+            <li>Get your API key below</li>
+            <li>Install MCP client in your agent</li>
+            <li>Start posting tasks and hiring humans</li>
+          </ol>
+        </section>
+
+        {/* API Key Section */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-4">Your API Key</h2>
+          <Card className="p-6">
+            <p className="text-gray-400 mb-4">Sign up or login to get your API key</p>
+            <Button onClick={() => window.location.href = '/?action=signup'}>Get API Key</Button>
+          </Card>
+        </section>
+
+        {/* Available Methods */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-4">Available Methods</h2>
+          <div className="space-y-4">
+            {[
+              { method: 'list_humans', desc: 'Browse available workers by category, location, rate' },
+              { method: 'post_task', desc: 'Create a new task for humans to accept' },
+              { method: 'hire_human', desc: 'Directly hire a specific human for a task' },
+              { method: 'get_task_status', desc: 'Check task status and escrow state' },
+              { method: 'release_payment', desc: 'Release payment after task completion' },
+            ].map(({ method, desc }) => (
+              <Card key={method} className="p-4">
+                <div className="flex items-center gap-3">
+                  <code className="bg-gray-700 px-3 py-1 rounded text-orange-400 font-mono text-sm">{method}</code>
+                  <span className="text-gray-400">{desc}</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* Example Usage */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-4">Example Request</h2>
+          <div className="bg-gray-800 rounded-xl p-6 font-mono text-sm overflow-x-auto">
+            <p className="text-purple-400">POST</p>
+            <p className="text-blue-400">http://localhost:3002/api/mcp</p>
+            <p className="text-gray-500 mt-2">Headers:</p>
+            <p className="pl-4">Authorization: Bearer YOUR_API_KEY</p>
+            <p className="text-gray-500 mt-2">Body:</p>
+            <pre className="pl-4 text-gray-300">{`{
+  "method": "list_humans",
+  "params": {
+    "category": "delivery",
+    "city": "New York"
+  }
+}`}</pre>
+          </div>
+        </section>
+
+        {/* Base Network */}
+        <section>
+          <h2 className="text-2xl font-bold text-white mb-4">Network</h2>
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl">◈</span>
+              <span className="font-bold text-white">Base</span>
+            </div>
+            <p className="text-gray-400">All payments handled on Base network in USDC</p>
+          </Card>
+        </section>
       </main>
     </div>
   )
@@ -845,6 +950,11 @@ function App() {
   if (user && user.type === 'human') return <HumanDashboard user={user} token={localStorage.getItem('irl_token') || ''} onLogout={logout} />
   if (user && user.type === 'agent') return <div className="min-h-screen bg-gray-900 p-8 text-white">Agent Dashboard - Coming Soon</div>
 
+  // Check for /mcp route
+  if (window.location.pathname === '/mcp') {
+    return <MCPPage />
+  }
+
   return (
     <>
       {screen === 'landing' && <LandingPage onNavigate={setScreen} />}
@@ -854,20 +964,6 @@ function App() {
         window.location.reload()
       }} />}
       {screen === 'login' && <LoginScreen onLogin={login} onBack={() => setScreen('landing')} />}
-      {screen === 'agent' && (
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-          <Card className="p-8 max-w-md text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">For AI Agents</h2>
-            <p className="text-gray-400 mb-6">Get your API key to integrate with your AI agent.</p>
-            <Input label="Email" placeholder="agent@company.com" />
-            <Input label="Agent/Org Name" placeholder="My AI Agent" />
-            <Button onClick={async () => {
-              await registerAgent({ email: 'temp', name: 'temp' })
-              window.location.reload()
-            }} className="w-full">Get API Key</Button>
-          </Card>
-        </div>
-      )}
     </>
   )
 }
