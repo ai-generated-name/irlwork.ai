@@ -195,8 +195,10 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/google', (req, res) => {
   if (!supabaseUrl) return res.status(500).json({ error: 'Supabase not configured' });
   
-  const redirectTo = req.query.redirect || 'http://localhost:5173';
-  const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
+  // Use environment variable or query param for redirect, with fallback
+  const frontendUrl = process.env.FRONTEND_URL || req.query.redirect || 'http://localhost:5173';
+  const callbackUrl = `${frontendUrl}/api/auth/google/callback`;
+  const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(callbackUrl)}`;
   res.redirect(authUrl);
 });
 
@@ -204,22 +206,25 @@ app.get('/api/auth/google', (req, res) => {
 app.get('/api/auth/google/callback', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
   
+  // Use environment variable or query param for redirect
+  const frontendUrl = process.env.FRONTEND_URL || req.query.redirect_to || 'http://localhost:5173';
+  
   try {
     const { access_token, error } = req.query;
     
     if (error) {
-      return res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?error=${encodeURIComponent(error)}`);
+      return res.redirect(`${frontendUrl}?error=${encodeURIComponent(error)}`);
     }
     
     if (!access_token) {
-      return res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?error=no_token`);
+      return res.redirect(`${frontendUrl}?error=no_token`);
     }
     
     // Get user info from Supabase
     const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
     
     if (userError || !user) {
-      return res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?error=auth_failed`);
+      return res.redirect(`${frontendUrl}?error=auth_failed`);
     }
     
     const email = user.email;
@@ -265,9 +270,9 @@ app.get('/api/auth/google/callback', async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     
     // Redirect back to app with token
-    res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?token=${token}&user_id=${existingUser.id}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}`);
+    res.redirect(`${frontendUrl}?token=${token}&user_id=${existingUser.id}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}`);
   } catch (e) {
-    res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?error=${encodeURIComponent(e.message)}`);
+    res.redirect(`${frontendUrl}?error=${encodeURIComponent(e.message)}`);
   }
 });
 

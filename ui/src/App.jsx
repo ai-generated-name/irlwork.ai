@@ -1,7 +1,7 @@
 // irlwork.ai - Complete Dashboard with Chat
 import React, { useState, useEffect, useRef } from 'react'
 
-const API_URL = 'http://localhost:3002/api'
+const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'http://localhost:3002/api'
 
 // ============ AUTH ============
 function useAuth() {
@@ -732,7 +732,8 @@ function LoginScreen({ onLogin, onBack }) {
   }
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:3002/api/auth/google?redirect=' + encodeURIComponent(window.location.origin)
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002'
+    window.location.href = `${apiUrl}/api/auth/google?redirect=${encodeURIComponent(window.location.origin)}`
   }
 
   return (
