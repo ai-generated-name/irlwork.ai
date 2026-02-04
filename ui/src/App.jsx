@@ -828,7 +828,7 @@ function MCPPage() {
 function LoginScreen({ onLogin, onBack }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, set  const [error, setError] = useState('')
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
