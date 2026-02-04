@@ -996,9 +996,72 @@ function App() {
     }
   }, [])
 
-  if (loading) return <Loading />
+  return null
+}
+
+// OAuth Callback Handler Component
+function OAuthCallback() {
+  const [status, setStatus] = useState('processing')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    const userId = params.get('user_id')
+    const email = params.get('email')
+    const name = params.get('name')
+    const error = params.get('error')
+
+    if (error) {
+      setStatus('error')
+      setTimeout(() => { window.location.href = '/?error=' + error }, 2000)
+      return
+    }
+
+    if (token && userId && email) {
+      localStorage.setItem('irl_token', token)
+      localStorage.setItem('irl_user', JSON.stringify({ id: userId, email, name, type: 'human' }))
+      setStatus('success')
+      setTimeout(() => { window.location.href = '/' }, 1000)
+    } else {
+      setStatus('error')
+      setTimeout(() => { window.location.href = '/' }, 2000)
+    }
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="text-center">
+        {status === 'processing' && (
+          <>
+            <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-white">Logging you in...</p>
+          </>
+        )}
+        {status === 'success' && (
+          <>
+            <div className="text-4xl mb-4">✓</div>
+            <p className="text-white">Login successful! Redirecting...</p>
+          </>
+        )}
+        {status === 'error' && (
+          <>
+            <div className="text-4xl mb-4 text-red-500">✕</div>
+            <p className="text-white">Login failed. Redirecting...</p>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+if (loading) return <Loading />
   if (user && user.type === 'human') return <HumanDashboard user={user} token={localStorage.getItem('irl_token') || ''} onLogout={logout} />
   if (user && user.type === 'agent') return <div className="min-h-screen bg-gray-900 p-8 text-white">Agent Dashboard - Coming Soon</div>
+
+  // Check for OAuth callback route
+  if (window.location.pathname.includes('/auth/google/callback')) {
+    return <OAuthCallback />
+  }
 
   // Check for /mcp route
   if (window.location.pathname === '/mcp') {
