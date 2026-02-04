@@ -191,34 +191,50 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ============ GOOGLE OAUTH ============
+// Redirect to Supabase Google OAuth
 app.get('/api/auth/google', (req, res) => {
   if (!supabaseUrl) return res.status(500).json({ error: 'Supabase not configured' });
   
-  const redirectUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(req.query.redirect || 'http://localhost:5173')}`;
-  res.json({ url: redirectUrl });
+  const redirectTo = req.query.redirect || 'http://localhost:5173';
+  const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
+  res.redirect(authUrl);
 });
 
-app.post('/api/auth/google/callback', async (req, res) => {
+// Google OAuth callback - Supabase redirects here after auth
+app.get('/api/auth/google/callback', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
   
   try {
-    const { access_token } = req.body;
+    const { access_token, error } = req.query;
     
-    // Get user info from Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(access_token);
-    
-    if (error || !user) {
-      return res.status(401).json({ error: 'Google auth failed' });
+    if (error) {
+      return res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?error=${encodeURIComponent(error)}`);
     }
     
-    const { email, name, picture } = user.user_metadata;
+    if (!access_token) {
+      return res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?error=no_token`);
+    }
+    
+    // Get user info from Supabase
+    const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
+    
+    if (userError || !user) {
+      return res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?error=auth_failed`);
+    }
+    
+    const email = user.email;
+    const name = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0];
     
     // Check if user exists
-    let { data: existingUser } = await supabase
+    let { data: existingUser, error: selectError } = await supabase
       .from('users')
       .select('*')
       .eq('email', email)
       .single();
+    
+    if (selectError && selectError.code !== 'PGRST116') {
+      throw selectError;
+    }
     
     if (!existingUser) {
       // Create new user
@@ -228,7 +244,7 @@ app.post('/api/auth/google/callback', async (req, res) => {
         .insert({
           id,
           email,
-          name: name || email.split('@')[0],
+          name,
           type: 'human',
           account_type: 'human',
           verified: true,
@@ -245,12 +261,13 @@ app.post('/api/auth/google/callback', async (req, res) => {
       existingUser = newUser;
     }
     
-    res.json({ 
-      user: { id: existingUser.id, email: existingUser.email, name: existingUser.name, type: existingUser.type }, 
-      token: crypto.randomBytes(32).toString('hex') 
-    });
+    // Generate session token
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Redirect back to app with token
+    res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?token=${token}&user_id=${existingUser.id}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}`);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.redirect(`${req.query.redirect_to || 'http://localhost:5173'}?error=${encodeURIComponent(e.message)}`);
   }
 });
 

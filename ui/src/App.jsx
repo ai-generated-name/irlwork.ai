@@ -30,6 +30,18 @@ function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Check for stored user first (OAuth login)
+    const storedUser = localStorage.getItem('irl_user')
+    if (storedUser && token) {
+      try {
+        setUser(JSON.parse(storedUser))
+        setLoading(false)
+        return
+      } catch (e) {
+        localStorage.removeItem('irl_user')
+      }
+    }
+    
     if (token) verifyToken()
     else setLoading(false)
   }, [token])
@@ -722,6 +734,31 @@ function LoginScreen({ onLogin, onBack }) {
 function App() {
   const { user, loading, login, registerHuman, registerAgent, logout } = useAuth()
   const [screen, setScreen] = useState('landing')
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    const userId = params.get('user_id')
+    const email = params.get('email')
+    const name = params.get('name')
+    const error = params.get('error')
+    
+    if (token && userId && email) {
+      // Store OAuth token and user info
+      localStorage.setItem('irl_token', token)
+      localStorage.setItem('irl_user', JSON.stringify({ id: userId, email, name, type: 'human' }))
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname)
+      // Reload to apply auth state
+      window.location.reload()
+    }
+    
+    if (error) {
+      console.error('OAuth error:', error)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   if (loading) {
     return <div className="min-h-screen bg-gray-900 flex items-center justify-center">
