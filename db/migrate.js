@@ -53,7 +53,7 @@ async function migrate() {
 
 // Check connection
 async function checkConnection() {
-  const { error } = await supabase.from('humans').select('id').limit(1);
+  const { error } = await supabase.from('users').select('id').limit(1);
   if (error && error.message.includes('relation') === false) {
     console.error('❌ Supabase connection failed:', error.message);
     process.exit(1);

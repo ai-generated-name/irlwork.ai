@@ -40,7 +40,7 @@ async function getUserByToken(token) {
   if (!token || !supabase) return null;
   
   const { data } = await supabase
-    .from('humans')
+    .from('users')
     .select('*')
     .eq('id', token)
     .single();
@@ -49,7 +49,7 @@ async function getUserByToken(token) {
   
   // Check API key
   const { data: apiUser } = await supabase
-    .from('humans')
+    .from('users')
     .select('*')
     .eq('api_key', token)
     .single();
@@ -85,7 +85,7 @@ app.post('/api/auth/register/human', async (req, res) => {
     const profile_completeness = 0.2 + (hourly_rate ? 0.1 : 0) + (categories.length > 0 ? 0.2 : 0) + (bio ? 0.1 : 0) + (phone ? 0.1 : 0);
     
     const { data: user, error } = await supabase
-      .from('humans')
+      .from('users')
       .insert({
         id,
         email,
@@ -145,7 +145,7 @@ app.post('/api/auth/register/agent', async (req, res) => {
     const api_key = 'irl_' + crypto.randomBytes(24).toString('hex');
     
     const { data: user, error } = await supabase
-      .from('humans')
+      .from('users')
       .insert({
         id,
         email,
@@ -174,7 +174,7 @@ app.post('/api/auth/login', async (req, res) => {
   const password_hash = crypto.createHash('sha256').update(password).digest('hex');
   
   const { data: user, error } = await supabase
-    .from('humans')
+    .from('users')
     .select('*')
     .eq('email', email)
     .eq('password_hash', password_hash)
@@ -188,6 +188,70 @@ app.post('/api/auth/login', async (req, res) => {
     user: { id: user.id, email: user.email, name: user.name, type: user.type }, 
     token: crypto.randomBytes(32).toString('hex') 
   });
+});
+
+// ============ GOOGLE OAUTH ============
+app.get('/api/auth/google', (req, res) => {
+  if (!supabaseUrl) return res.status(500).json({ error: 'Supabase not configured' });
+  
+  const redirectUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(req.query.redirect || 'http://localhost:5173')}`;
+  res.json({ url: redirectUrl });
+});
+
+app.post('/api/auth/google/callback', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  try {
+    const { access_token } = req.body;
+    
+    // Get user info from Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(access_token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Google auth failed' });
+    }
+    
+    const { email, name, picture } = user.user_metadata;
+    
+    // Check if user exists
+    let { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+    
+    if (!existingUser) {
+      // Create new user
+      const id = uuidv4();
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          id,
+          email,
+          name: name || email.split('@')[0],
+          type: 'human',
+          account_type: 'human',
+          verified: true,
+          profile_completeness: 0.5,
+          availability: 'available',
+          rating: 0,
+          jobs_completed: 0,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (createError) throw createError;
+      existingUser = newUser;
+    }
+    
+    res.json({ 
+      user: { id: existingUser.id, email: existingUser.email, name: existingUser.name, type: existingUser.type }, 
+      token: crypto.randomBytes(32).toString('hex') 
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/auth/verify', async (req, res) => {
@@ -215,7 +279,7 @@ app.get('/api/humans', async (req, res) => {
   const { category, city, min_rate, max_rate } = req.query;
   
   let query = supabase
-    .from('humans')
+    .from('users')
     .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, wallet_address')
     .eq('type', 'human')
     .eq('verified', true);
@@ -236,7 +300,7 @@ app.get('/api/humans/:id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
   
   const { data: user, error } = await supabase
-    .from('humans')
+    .from('users')
     .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, wallet_address')
     .eq('id', req.params.id)
     .eq('type', 'human')
@@ -263,7 +327,7 @@ app.put('/api/humans/profile', async (req, res) => {
   if (categories) updates.skills = JSON.stringify(categories);
   
   const { data, error } = await supabase
-    .from('humans')
+    .from('users')
     .update(updates)
     .eq('id', user.id)
     .select()
@@ -489,7 +553,7 @@ app.post('/api/mcp', async (req, res) => {
     switch (method) {
       case 'list_humans': {
         let query = supabase
-          .from('humans')
+          .from('users')
           .select('id, name, city, hourly_rate, skills, rating, jobs_completed, wallet_address')
           .eq('type', 'human')
           .eq('verified', true)
@@ -507,7 +571,7 @@ app.post('/api/mcp', async (req, res) => {
       
       case 'get_human': {
         const { data: human, error } = await supabase
-          .from('humans')
+          .from('users')
           .select('*, certifications(*)')
           .eq('id', params.human_id)
           .single();
@@ -616,7 +680,7 @@ app.post('/api/mcp', async (req, res) => {
         
         // Get human's wallet
         const { data: human, error: humanError } = await supabase
-          .from('humans')
+          .from('users')
           .select('wallet_address')
           .eq('id', human_id)
           .single();
@@ -682,7 +746,7 @@ app.post('/api/mcp', async (req, res) => {
         
         // Update human stats
         await supabase
-          .from('humans')
+          .from('users')
           .update({
             jobs_completed: supabase.raw('jobs_completed + 1'),
             updated_at: new Date().toISOString()
@@ -770,7 +834,7 @@ app.get('/api/health', async (req, res) => {
   let dbStatus = 'not_configured';
   if (supabase) {
     try {
-      await supabase.from('humans').select('id').limit(1);
+      await supabase.from('users').select('id').limit(1);
       dbStatus = 'ok';
     } catch (e) {
       dbStatus = 'error';
