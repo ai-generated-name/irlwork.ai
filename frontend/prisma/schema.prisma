@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  avatarUrl     String?
+  role          String    @default("human") // "human" or "agent"
+  isVerified    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Human-specific fields
+  bio           String?
+  hourlyRate    Float?
+  skills        String?   // JSON array stored as string
+  availability  String?   // JSON object stored as string
+  location      String?
+  timezone      String?
+
+  // Agent-specific fields (for AI agents)
+  agentConfig   String?   // JSON config for agents
+  apiKey        String?   @unique
+  apiKeyLabel   String?
+
+  // Relations
+  profile       Profile?
+  jobsCreated   Job[]     @relation("JobCreator")
+  jobsAccepted  Job[]     @relation("JobWorker")
+  bookingsAsWorker Booking[] @relation("BookingWorker")
+  bookingsAsClient Booking[] @relation("BookingClient")
+  messagesSent    Message[] @relation("MessageSender")
+  messagesReceived Message[] @relation("MessageReceiver")
+  reviewsGiven   Review[] @relation("ReviewAuthor")
+  reviewsReceived Review[] @relation("ReviewSubject")
+  paymentsMade   Payment[] @relation("PaymentPayer")
+  paymentsReceived Payment[] @relation("PaymentPayee")
+  wallet        Wallet?
+}
+
+model Profile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String?
+  description String?
+  portfolioUrls String? // JSON array stored as string
+  languages   String?  // JSON array stored as string
+  responseTime Int?    // Average response time in minutes
+  completedJobs Int    @default(0)
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Job {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  category    String
+  subcategory String?
+  status      String    @default("open") // "open", "in_progress", "completed", "cancelled"
+  budget      Float
+  budgetType  String    @default("fixed") // "fixed" or "hourly"
+  estimatedHours Float?
+
+  // Ad hoc task types: "standard", "delivery", "pickup", "errand", "assembly"
+  taskType    String    @default("standard")
+
+  // Type-specific metadata stored as JSON
+  pickupAddress   String?
+  deliveryAddress String?
+  itemDescription String?
+  itemWeight      Float?     // in kg
+  itemDimensions  String?     // JSON: {length, width, height}
+  assemblyItems   String?     // JSON array of items to assemble
+  errandDetails   String?     // JSON object with errand specifics
+  priority        String    @default("normal") // "low", "normal", "high", "urgent"
+  vehicleType     String?     // "car", "truck", "van", "none"
+
+  creatorId   String
+  creator     User      @relation("JobCreator", fields: [creatorId], references: [id])
+
+  workerId     String?
+  worker      User?     @relation("JobWorker", fields: [workerId], references: [id])
+
+  requiredSkills String? // JSON array stored as string
+  deadline    DateTime?
+  attachments String?   // JSON array of URLs
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  bookings    Booking[]
+  messages    Message[]
+  payments    Payment[]
+}
+
+model Booking {
+  id          String    @id @default(uuid())
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id])
+  clientId    String
+  client      User      @relation("BookingClient", fields: [clientId], references: [id])
+  workerId    String
+  worker      User      @relation("BookingWorker", fields: [workerId], references: [id])
+  
+  scheduledAt DateTime
+  duration    Int       // in minutes
+  status      String    @default("pending") // "pending", "confirmed", "in_progress", "completed", "cancelled"
+  notes       String?
+  
+  // Video verification fields
+  videoUrl            String?   // Video proof of work
+  videoThumbnailUrl   String?   // Thumbnail image
+  videoDuration       Int?      // Duration in seconds
+  videoUploadedAt     DateTime?
+  videoVerified       Boolean   @default(false)
+  videoVerifiedAt     DateTime?
+  videoVerifiedBy     String?   // User ID who verified
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Message {
+  id          String    @id @default(uuid())
+  content     String
+  jobId       String?
+  job         Job?      @relation(fields: [jobId], references: [id])
+  senderId    String
+  sender      User      @relation("MessageSender", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User     @relation("MessageReceiver", fields: [receiverId], references: [id])
+  read        Boolean   @default(false)
+  
+  createdAt   DateTime  @default(now())
+}
+
+model Payment {
+  id          String    @id @default(uuid())
+  amount      Float
+  currency    String    @default("USD")
+  status      String    @default("pending") // "pending", "held", "released", "refunded"
+  type        String    @default("escrow") // "escrow", "direct"
+  
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id])
+  payerId     String
+  payer       User      @relation("PaymentPayer", fields: [payerId], references: [id])
+  payeeId     String
+  payee       User      @relation("PaymentPayee", fields: [payeeId], references: [id])
+  
+  escrowId    String?   // External escrow service ID
+  releasedAt  DateTime?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Wallet {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance     Float     @default(0)
+  currency    String    @default("USD")
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String    @id @default(uuid())
+  walletId    String
+  wallet      Wallet    @relation(fields: [walletId], references: [id])
+  
+  amount      Float
+  type        String    // "deposit", "withdrawal", "payment", "payout", "refund"
+  description String?
+  
+  createdAt   DateTime  @default(now())
+}
+
+model Review {
+  id          String    @id @default(uuid())
+  rating      Int       // 1-5
+  comment     String?
+  
+  jobId       String
+  
+  authorId    String
+  author      User      @relation("ReviewAuthor", fields: [authorId], references: [id])
+  subjectId   String
+  subject     User      @relation("ReviewSubject", fields: [subjectId], references: [id])
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
