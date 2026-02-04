@@ -825,6 +825,467 @@ app.get('/api/notifications', async (req, res) => {
   res.json(notifications || []);
 });
 
+// ============ CONVERSATIONS ============
+app.get('/api/conversations', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { data: conversations, error } = await supabase
+    .from('conversations')
+    .select(`
+      *,
+      task:tasks(id, title, category, budget),
+      user:users!conversations_user_id_fkey(id, name, type, rating),
+      agent:users!conversations_agent_id_fkey(id, name, type, organization),
+      last_message:messages(created_at, content, sender_id)[0]
+    `)
+    .or(`user_id.eq.${user.id},agent_id.eq.${user.id}`)
+    .order('updated_at', { ascending: false });
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(conversations || []);
+});
+
+app.post('/api/conversations', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { agent_id, task_id, title } = req.body;
+  const id = uuidv4();
+  
+  // Check if conversation already exists
+  let query = supabase
+    .from('conversations')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('agent_id', agent_id || null);
+  
+  if (task_id) query = query.eq('task_id', task_id);
+  
+  const { data: existing } = await query.single();
+  
+  if (existing) {
+    return res.json(existing);
+  }
+  
+  const { data: conversation, error } = await supabase
+    .from('conversations')
+    .insert({
+      id,
+      user_id: user.id,
+      agent_id,
+      task_id,
+      title: title || 'New Conversation',
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  res.json(conversation);
+});
+
+app.get('/api/conversations/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { data: conversation, error } = await supabase
+    .from('conversations')
+    .select(`
+      *,
+      task:tasks(*),
+      user:users!conversations_user_id_fkey(*),
+      agent:users!conversations_agent_id_fkey(*)
+    `)
+    .eq('id', req.params.id)
+    .single();
+  
+  if (error || !conversation) return res.status(404).json({ error: 'Not found' });
+  
+  // Verify user has access
+  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  res.json(conversation);
+});
+
+// ============ MESSAGES ============
+app.get('/api/messages/:conversation_id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  // Verify user has access to conversation
+  const { data: conversation, error: convError } = await supabase
+    .from('conversations')
+    .select('id, user_id, agent_id')
+    .eq('id', req.params.conversation_id)
+    .single();
+  
+  if (convError || !conversation) {
+    return res.status(404).json({ error: 'Conversation not found' });
+  }
+  
+  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  const { data: messages, error } = await supabase
+    .from('messages')
+    .select(`
+      *,
+      sender:users!messages_sender_id_fkey(id, name, type, avatar_url)
+    `)
+    .eq('conversation_id', req.params.conversation_id)
+    .order('created_at', { ascending: true });
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  res.json(messages || []);
+});
+
+app.post('/api/messages', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { conversation_id, content, message_type = 'text', metadata = {} } = req.body;
+  
+  // Verify user has access to conversation
+  const { data: conversation, error: convError } = await supabase
+    .from('conversations')
+    .select('id, user_id, agent_id')
+    .eq('id', conversation_id)
+    .single();
+  
+  if (convError || !conversation) {
+    return res.status(404).json({ error: 'Conversation not found' });
+  }
+  
+  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  const id = uuidv4();
+  const { data: message, error } = await supabase
+    .from('messages')
+    .insert({
+      id,
+      conversation_id,
+      sender_id: user.id,
+      content,
+      message_type,
+      metadata,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  // Update conversation's updated_at
+  await supabase
+    .from('conversations')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', conversation_id);
+  
+  res.json(message);
+});
+
+app.put('/api/messages/:id/read', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { error } = await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', req.params.id)
+    .eq('sender_id', user.id); // Only sender can mark as read
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+// Get unread message count
+app.get('/api/messages/unread/count', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  // Count unread messages where user is not the sender
+  const { data: conversations } = await supabase
+    .from('conversations')
+    .select('id')
+    .or(`user_id.eq.${user.id},agent_id.eq.${user.id}`);
+  
+  if (!conversations || conversations.length === 0) {
+    return res.json({ count: 0 });
+  }
+  
+  const conversationIds = conversations.map(c => c.id);
+  
+  const { data: unreadMessages, error } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact' })
+    .in('conversation_id', conversationIds)
+    .neq('sender_id', user.id)
+    .is('read_at', null);
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  res.json({ count: unreadMessages?.length || 0 });
+});
+
+// ============ USER TASKS ============
+app.get('/api/tasks/my-tasks', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  let query = supabase
+    .from('tasks')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (user.type === 'human') {
+    // For humans, show tasks they've applied to or been assigned
+    query = query.eq('human_id', user.id);
+  } else {
+    // For agents, show tasks they created
+    query = query.eq('agent_id', user.id);
+  }
+  
+  const { data: tasks, error } = await query.limit(100);
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(tasks || []);
+});
+
+app.get('/api/tasks/available', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const { category, city, urgency, limit = 50 } = req.query;
+  
+  let query = supabase
+    .from('tasks')
+    .select(`
+      *,
+      agent:users!tasks_agent_id_fkey(id, name, organization)
+    `)
+    .eq('status', 'open')
+    .order('created_at', { ascending: false })
+    .limit(parseInt(limit));
+  
+  if (category) query = query.eq('category', category);
+  if (city) query = query.like('location', `%${city}%`);
+  if (urgency) query = query.eq('urgency', urgency);
+  
+  const { data: tasks, error } = await query;
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(tasks || []);
+});
+
+// ============ HUMANS DIRECTORY ============
+app.get('/api/humans/directory', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const { category, city, min_rate, max_rate, limit = 50 } = req.query;
+  
+  let query = supabase
+    .from('users')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at')
+    .eq('type', 'human')
+    .eq('verified', true)
+    .order('rating', { ascending: false })
+    .limit(parseInt(limit));
+  
+  if (category) query = query.like('skills', `%${category}%`);
+  if (city) query = query.like('city', `%${city}%`);
+  if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
+  if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
+  
+  const { data: humans, error } = await query;
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  res.json(humans?.map(h => ({
+    ...h,
+    skills: JSON.parse(h.skills || '[]')
+  })) || []);
+});
+
+app.get('/api/humans/:id/profile', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const { data: user, error } = await supabase
+    .from('users')
+    .select(`
+      id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, 
+      verified, availability, wallet_address, created_at, profile_completeness
+    `)
+    .eq('id', req.params.id)
+    .eq('type', 'human')
+    .single();
+  
+  if (error || !user) return res.status(404).json({ error: 'Human not found' });
+  
+  // Get reviews
+  const { data: reviews } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('human_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  
+  res.json({
+    ...user,
+    skills: JSON.parse(user.skills || '[]'),
+    reviews: reviews || []
+  });
+});
+
+// ============ TASK CREATION (Agents only) ============
+app.post('/api/tasks/create', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user || user.type !== 'agent') {
+    return res.status(401).json({ error: 'Agents only' });
+  }
+  
+  const { 
+    title, description, category, location, 
+    budget_type, budget_min, budget_max, budget,
+    duration_hours, urgency, insurance_option 
+  } = req.body;
+  
+  const id = uuidv4();
+  const budgetAmount = budget || budget_max || budget_min || 50;
+  const randomCents = (Math.random() * 99 + 1) / 100;
+  const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
+  
+  const { data: task, error } = await supabase
+    .from('tasks')
+    .insert({
+      id,
+      agent_id: user.id,
+      human_id: null,
+      title,
+      description,
+      category,
+      location,
+      budget_type: budget_type || 'hourly',
+      budget_min,
+      budget_max,
+      budget: budgetAmount,
+      duration_hours,
+      urgency: urgency || 'scheduled',
+      insurance_option,
+      status: 'open',
+      escrow_status: 'pending',
+      escrow_amount: budgetAmount,
+      unique_deposit_amount: uniqueDepositAmount,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  res.json({ 
+    ...task, 
+    deposit_instructions: {
+      platform_wallet: process.env.PLATFORM_WALLET_ADDRESS,
+      amount: uniqueDepositAmount,
+      currency: 'USDC',
+      network: 'base',
+      deadline: '24h'
+    }
+  });
+});
+
+// ============ USER PROFILE ============
+app.get('/api/profile', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  // Get full profile data
+  const { data: profile, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+  
+  if (error || !profile) return res.status(404).json({ error: 'Profile not found' });
+  
+  res.json({
+    id: profile.id,
+    email: profile.email,
+    name: profile.name,
+    type: profile.type,
+    city: profile.city,
+    state: profile.state,
+    bio: profile.bio,
+    hourly_rate: profile.hourly_rate,
+    wallet_address: profile.wallet_address,
+    skills: JSON.parse(profile.skills || '[]'),
+    rating: profile.rating,
+    jobs_completed: profile.jobs_completed,
+    verified: profile.verified,
+    availability: profile.availability,
+    profile_completeness: profile.profile_completeness,
+    created_at: profile.created_at
+  });
+});
+
+app.put('/api/profile', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address } = req.body;
+  
+  const updates = { updated_at: new Date().toISOString() };
+  
+  if (name) updates.name = name;
+  if (bio !== undefined) updates.bio = bio;
+  if (city) updates.city = city;
+  if (state) updates.state = state;
+  if (hourly_rate) updates.hourly_rate = hourly_rate;
+  if (availability) updates.availability = availability;
+  if (wallet_address) updates.wallet_address = wallet_address;
+  if (skills) updates.skills = JSON.stringify(skills);
+  
+  const { data: profile, error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', user.id)
+    .select()
+    .single();
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  res.json({ success: true, profile });
+});
+
 // ============ WALLET STATUS ============
 app.get('/api/wallet/status', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
@@ -884,3 +1345,368 @@ async function start() {
 }
 
 start();
+
+// ============ CONVERSATIONS (Chat) ============
+app.get('/api/conversations', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  // Get conversations where user is participant
+  const { data: conversations, error } = await supabase
+    .from('conversations')
+    .select(`
+      *,
+      human:users!human_id(id, name, email, hourly_rate, rating),
+      agent:users!agent_id(id, name, email, api_key),
+      last_message:messages(content, created_at, sender_id)
+    `)
+    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
+    .order('updated_at', { ascending: false });
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(conversations || []);
+});
+
+app.post('/api/conversations', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { human_id, agent_id, initial_message } = req.body;
+  const otherId = user.type === 'human' ? agent_id : human_id;
+  
+  // Check if conversation already exists
+  const { data: existing } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('human_id', user.type === 'human' ? user.id : human_id)
+    .eq('agent_id', user.type === 'agent' ? user.id : agent_id)
+    .single();
+  
+  if (existing) {
+    return res.json(existing);
+  }
+  
+  // Create new conversation
+  const { data: conversation, error } = await supabase
+    .from('conversations')
+    .insert({
+      id: uuidv4(),
+      human_id: user.type === 'human' ? user.id : human_id,
+      agent_id: user.type === 'agent' ? user.id : agent_id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  // Send initial message if provided
+  if (initial_message) {
+    await supabase.from('messages').insert({
+      id: uuidv4(),
+      conversation_id: conversation.id,
+      sender_id: user.id,
+      content: initial_message,
+      created_at: new Date().toISOString()
+    });
+  }
+  
+  res.json(conversation);
+});
+
+// ============ MESSAGES ============
+app.get('/api/messages/:conversation_id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { conversation_id } = req.params;
+  
+  // Verify user is participant
+  const { data: conversation } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('id', conversation_id)
+    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
+    .single();
+  
+  if (!conversation) return res.status(403).json({ error: 'Access denied' });
+  
+  const { data: messages, error } = await supabase
+    .from('messages')
+    .select('*, sender:users!sender_id(id, name, email)')
+    .eq('conversation_id', conversation_id)
+    .order('created_at', { ascending: true });
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(messages || []);
+});
+
+app.post('/api/messages', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { conversation_id, content } = req.body;
+  
+  // Verify user is participant
+  const { data: conversation } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('id', conversation_id)
+    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
+    .single();
+  
+  if (!conversation) return res.status(403).json({ error: 'Access denied' });
+  
+  // Create message
+  const { data: message, error } = await supabase
+    .from('messages')
+    .insert({
+      id: uuidv4(),
+      conversation_id,
+      sender_id: user.id,
+      content,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  // Update conversation timestamp
+  await supabase
+    .from('conversations')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', conversation_id);
+  
+  res.json(message);
+});
+
+// ============ MY TASKS ============
+app.get('/api/my-tasks', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  let query = supabase
+    .from('tasks')
+    .select(`
+      *,
+      creator:users!creator_id(id, name, email),
+      assignee:users!assignee_id(id, name, email)
+    `)
+    .order('created_at', { ascending: false });
+  
+  if (user.type === 'human') {
+    // Humans see tasks they created OR tasks assigned to them
+    query = query.or(`creator_id.eq.${user.id},assignee_id.eq.${user.id}`);
+  } else {
+    // Agents see tasks they created
+    query = query.eq('creator_id', user.id);
+  }
+  
+  const { data: tasks, error } = await query;
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(tasks || []);
+});
+
+app.get('/api/tasks/available', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const { category, city, min_budget, max_budget } = req.query;
+  
+  let query = supabase
+    .from('tasks')
+    .select(`
+      *,
+      creator:users!creator_id(id, name, email, rating)
+    `)
+    .eq('status', 'open')
+    .order('created_at', { ascending: false });
+  
+  if (category) query = query.eq('category', category);
+  if (city) query = query.like('city', `%${city}%`);
+  if (min_budget) query = query.gte('budget', parseFloat(min_budget));
+  if (max_budget) query = query.lte('budget', parseFloat(max_budget));
+  
+  const { data: tasks, error } = await query;
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(tasks || []);
+});
+
+// ============ TASKS CRUD ============
+app.post('/api/tasks', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { title, description, category, budget, city, state, deadline, requirements } = req.body;
+  
+  const { data: task, error } = await supabase
+    .from('tasks')
+    .insert({
+      id: uuidv4(),
+      title,
+      description,
+      category,
+      budget: parseFloat(budget),
+      city,
+      state,
+      status: 'open',
+      creator_id: user.id,
+      deadline,
+      requirements: requirements || null,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(task);
+});
+
+app.patch('/api/tasks/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id } = req.params;
+  const updates = req.body;
+  
+  // Verify ownership
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('creator_id')
+    .eq('id', id)
+    .single();
+  
+  if (!task || task.creator_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  const { error } = await supabase
+    .from('tasks')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+app.post('/api/tasks/:id/accept', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  if (user.type !== 'human') {
+    return res.status(403).json({ error: 'Only humans can accept tasks' });
+  }
+  
+  const { id } = req.params;
+  
+  const { error } = await supabase
+    .from('tasks')
+    .update({ 
+      status: 'in_progress',
+      assignee_id: user.id,
+      started_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .eq('status', 'open');
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+app.post('/api/tasks/:id/complete', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id } = req.params;
+  const { proof_description, proof_images } = req.body;
+  
+  const { error } = await supabase
+    .from('tasks')
+    .update({ 
+      status: 'pending_review',
+      proof_description,
+      proof_images: proof_images || null,
+      completed_at: new Date().toISOString()
+    })
+    .eq('id', id);
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+app.post('/api/tasks/:id/approve', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id } = req.params;
+  
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', id)
+    .single();
+  
+  if (!task || task.creator_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  await supabase
+    .from('tasks')
+    .update({ 
+      status: 'completed',
+      completed_at: new Date().toISOString()
+    })
+    .eq('id', id);
+  
+  res.json({ success: true });
+});
+
+app.post('/api/tasks/:id/cancel', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id } = req.params;
+  
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('creator_id')
+    .eq('id', id)
+    .single();
+  
+  if (!task || task.creator_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  await supabase
+    .from('tasks')
+    .update({ status: 'cancelled' })
+    .eq('id', id);
+  
+  res.json({ success: true });
+});
+
