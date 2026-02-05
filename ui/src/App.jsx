@@ -796,8 +796,7 @@ function App() {
   if (path === '/auth') return <AuthPage />
   if (path === '/mcp') return <MCPPage />
   
-  return <LandingPage />
-}
+  return <LandingPage onNavigate={(p) => { window.location.href = p }} />}
 
 export default function AppWrapper() {
   return <App />
