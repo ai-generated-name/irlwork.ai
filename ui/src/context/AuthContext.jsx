@@ -50,18 +50,12 @@ export function AuthProvider({ children }) {
   const fetchUserProfile = async (userId) => {
     console.log('[Auth] Fetching profile for user:', userId)
 
-    // Add timeout to prevent indefinite hangs
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
-
     try {
       console.log('[Auth] Calling API:', API_URL + '/auth/verify')
 
       const res = await fetch(API_URL + '/auth/verify', {
-        headers: { Authorization: userId },
-        signal: controller.signal
+        headers: { Authorization: userId }
       })
-      clearTimeout(timeoutId)
 
       console.log('[Auth] API response status:', res.status)
       if (res.ok) {
@@ -84,8 +78,6 @@ export function AuthProvider({ children }) {
         }
       }
     } catch (e) {
-      // Clear timeout on error
-      clearTimeout(timeoutId)
       // API unreachable - fall back to Supabase session data
       console.warn('[Auth] API unreachable, using session data:', e.message)
       const { data: { session } } = await supabase.auth.getSession()
