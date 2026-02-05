@@ -127,46 +127,50 @@ function LandingPage({ onNavigate }) {
         </div>
       </main>
 
-      {/* How It Works - SIMPLIFIED */}
+      {/* How It Works - 4 STEP FLOW */}
       <section className="py-24">
         <div className={`${styles.container}`}>
-          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-4">
             How It <span className="text-orange-500">Works</span>
           </h2>
+          <p className="text-xl text-gray-400 text-center mb-16 max-w-2xl mx-auto">
+            Simple 4-step process from task to payment
+          </p>
 
-          {/* 3-Step Flow */}
+          {/* 4-Step Flow */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'stretch', 
             justifyContent: 'center',
             gap: 0,
             flexWrap: 'wrap',
-            maxWidth: 1000,
+            maxWidth: 1200,
             margin: '0 auto'
           }}>
             {[
-              { title: '1. Post', icon: '📝', desc: 'Agent posts a task with details and budget' },
-              { title: '2. Complete', icon: '✨', desc: 'Human does the work and submits proof' },
-              { title: '3. Paid', icon: '💸', desc: 'Agent verifies and releases payment' }
+              { title: '1. Post Task', icon: '📝', desc: 'Agent posts task with details, budget, and deadline' },
+              { title: '2. Complete & Proof', icon: '✨', desc: 'Human does the work and submits photo/video proof' },
+              { title: '3. Agent Verifies', icon: '✅', desc: 'Agent reviews proof and approves completion' },
+              { title: '4. Get Paid', icon: '💸', desc: 'USDC released instantly to human wallet' }
             ].map((step, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 280 }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 240 }}>
                 <div style={{
                   background: 'rgba(255,255,255,0.03)',
                   border: '1px solid rgba(255,255,255,0.1)',
                   borderRadius: 24,
-                  padding: '40px 32px',
+                  padding: '32px 24px',
                   textAlign: 'center',
                   flex: 1,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center'
                 }}>
-                  <div className="text-5xl mb-4">{step.icon}</div>
-                  <div className="font-bold text-white text-xl mb-2">{step.title}</div>
-                  <div className="text-gray-400">{step.desc}</div>
+                  <div className="text-4xl mb-4">{step.icon}</div>
+                  <div className="font-bold text-white text-lg mb-2">{step.title}</div>
+                  <div className="text-gray-400 text-sm">{step.desc}</div>
                 </div>
-                {i < 2 && (
-                  <div style={{ color: '#fb923c', fontSize: 32, padding: '0 16px', display: 'flex', alignItems: 'center' }}>→</div>
+                {i < 3 && (
+                  <div style={{ color: '#fb923c', fontSize: 28, padding: '0 12px', display: 'flex', alignItems: 'center' }}>→</div>
                 )}
               </div>
             ))}
