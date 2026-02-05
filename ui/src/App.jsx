@@ -320,74 +320,27 @@ function MCPPage() {
   )
 }
 
-function LoginScreen({ onLogin, onBack }) {
-  const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [error, setError] = useState(''), [loading, setLoading] = useState(false)
-  const { supabase } = useAuth()
-  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); setError(''); try { await onLogin(email, password) } catch (err) { setError(err.message) } finally { setLoading(false) } }
-  const handleGoogleLogin = async () => { const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/dashboard' } }); if (error) console.error('Login error:', error) }
-  return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <Card className="p-8 max-w-md w-full">
-        <button onClick={onBack} className="text-gray-400 hover:text-white mb-6">← Back</button>
-        <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
-        <p className="text-gray-400 mb-6">Sign in</p>
-        {error && <div className="bg-red-500/20 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
-        <form onSubmit={handleSubmit}>
-          <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" />
-          <Input label="Password" type="password" value={password} onChange={setPassword} placeholder="••••••••" />
-          <Button type="submit" className="w-full py-3 mt-4" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</Button>
-        </form>
-        <div className="relative my-6"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-700"></div></div><div className="relative flex justify-center text-sm"><span className="px-4 bg-gray-900 text-gray-500">or</span></div></div>
-        <button onClick={handleGoogleLogin} className="w-full py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 flex items-center justify-center gap-2">
-          <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          Continue with Google
-        </button>
-      </Card>
-    </div>
-  )
-}
-
-function SignupForm({ onComplete, onBack }) {
-  const [step, setStep] = useState('account')
+function AuthPage() {
+  const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { supabase } = useAuth()
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'human', city: '', hourly_rate: 25, skills: [], wallet_address: '' })
-
-  const handleGoogleSignup = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const { error } = await supabase.auth.signUp({
-        email: form.email || 'placeholder@example.com',
-        password: form.password || Math.random().toString(36).slice(2),
-        options: {
-          data: {
-            name: form.name,
-            role: form.role,
-            city: form.city,
-            hourly_rate: form.hourly_rate,
-            skills: [],
-            wallet_address: form.wallet_address
-          }
-        }
-      })
-      if (error) throw error
-      // Create user in backend
-      await onComplete({ name: form.name, email: form.email, password: form.password, role: form.role, city: form.city, hourly_rate: form.hourly_rate, skills: [], wallet_address: form.wallet_address })
-      window.location.href = '/dashboard'
-    } catch (err) {
-      setError(err.message)
-      setLoading(false)
-    }
-  }
+  const { supabase, login, registerHuman, registerAgent } = useAuth()
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'human', city: '', hourly_rate: 25 })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError('')
     try {
-      await onComplete({ name: form.name, email: form.email, password: form.password, role: form.role, city: form.city, hourly_rate: form.hourly_rate, skills: [], wallet_address: form.wallet_address })
+      if (isLogin) {
+        await login(form.email, form.password)
+      } else {
+        if (form.role === 'human') {
+          await registerHuman({ name: form.name, email: form.email, password: form.password, city: form.city, hourly_rate: form.hourly_rate })
+        } else {
+          await registerAgent({ name: form.name, email: form.email, organization: form.name })
+        }
+      }
       window.location.href = '/dashboard'
     } catch (err) {
       setError(err.message)
@@ -396,60 +349,84 @@ function SignupForm({ onComplete, onBack }) {
     }
   }
 
+  const handleGoogle = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + '/dashboard' }
+      })
+      if (error) throw error
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <Card className="p-8 max-w-md w-full">
-        <button onClick={onBack} className="text-gray-400 hover:text-white mb-6">← Back</button>
-        <h2 className="text-2xl font-bold text-white mb-6">
-          {step === 'account' ? 'Create account' : 'Complete your profile'}
+        <h2 className="text-2xl font-bold text-white mb-2">
+          {isLogin ? 'Welcome back' : 'Create account'}
         </h2>
+        <p className="text-gray-400 mb-6">
+          {isLogin ? 'Sign in to your account' : 'Get started with irlwork.ai'}
+        </p>
+
         {error && <div className="bg-red-500/20 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
 
-        {step === 'account' ? (
-          <div className="space-y-4">
-            {/* Google OAuth */}
-            <button onClick={handleGoogleSignup} disabled={loading} className="w-full py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 flex items-center justify-center gap-2 disabled:opacity-50">
-              <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-              Continue with Google
-            </button>
-            
-            <div className="text-center text-gray-500 my-4">or sign up with email</div>
+        {/* Google OAuth */}
+        <button onClick={handleGoogle} disabled={loading}
+          className="w-full py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 flex items-center justify-center gap-2 disabled:opacity-50">
+          <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continue with Google
+        </button>
 
-            {/* Role Selection */}
-            <div className="grid grid-cols-2 gap-3">
-              <div onClick={() => setForm({ ...form, role: 'human' })} className={`p-4 border-2 rounded-xl cursor-pointer text-center ${form.role === 'human' ? 'border-orange-500 bg-orange-500/10' : 'border-gray-700 hover:border-gray-600'}`}>
-                <div className="text-2xl mb-1">🤝</div>
-                <p className="text-sm text-white">Human</p>
-              </div>
-              <div onClick={() => setForm({ ...form, role: 'agent' })} className={`p-4 border-2 rounded-xl cursor-pointer text-center ${form.role === 'agent' ? 'border-orange-500 bg-orange-500/10' : 'border-gray-700 hover:border-gray-600'}`}>
-                <div className="text-2xl mb-1">🤖</div>
-                <p className="text-sm text-white">Agent</p>
-              </div>
-            </div>
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-700"></div></div>
+          <div className="relative flex justify-center text-sm"><span className="px-4 bg-gray-900 text-gray-500">or</span></div>
+        </div>
 
-            {/* Account Form */}
-            <form onSubmit={handleSubmit}>
-              <Input label="Full Name" value={form.name} onChange={v => setForm({ ...form, name: v })} required />
-              <Input label="Email" type="email" value={form.email} onChange={v => setForm({ ...form, email: v })} required />
-              <Input label="Password" type="password" value={form.password} onChange={v => setForm({ ...form, password: v })} required />
-              <Button type="submit" className="w-full mt-4" disabled={loading}>{loading ? 'Creating...' : 'Create Account'}</Button>
-            </form>
-          </div>
-        ) : (
-          /* Onboarding Form */
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input label="City" value={form.city} onChange={v => setForm({ ...form, city: v })} required placeholder="Where do you live?" />
-            <Input label="Hourly Rate ($)" type="number" value={form.hourly_rate} onChange={v => setForm({ ...form, hourly_rate: v })} required placeholder="25" />
-            <Input label="Wallet Address (USDC)" value={form.wallet_address} onChange={v => setForm({ ...form, wallet_address: v })} placeholder="0x..." />
-            <Button type="submit" className="w-full mt-4" disabled={loading}>{loading ? 'Saving...' : 'Complete Profile'}</Button>
-          </form>
-        )}
+        {/* Email/Password Form */}
+        <form onSubmit={handleSubmit}>
+          {!isLogin && (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div onClick={() => setForm({ ...form, role: 'human' })}
+                  className={`p-3 border-2 rounded-lg cursor-pointer text-center ${form.role === 'human' ? 'border-orange-500 bg-orange-500/10' : 'border-gray-700 hover:border-gray-600'}`}>
+                  <span className="text-lg">🤝</span>
+                  <p className="text-xs text-white mt-1">Human</p>
+                </div>
+                <div onClick={() => setForm({ ...form, role: 'agent' })}
+                  className={`p-3 border-2 rounded-lg cursor-pointer text-center ${form.role === 'agent' ? 'border-orange-500 bg-orange-500/10' : 'border-gray-700 hover:border-gray-600'}`}>
+                  <span className="text-lg">🤖</span>
+                  <p className="text-xs text-white mt-1">Agent</p>
+                </div>
+              </div>
+              <Input label="Full Name" value={form.name} onChange={v => setForm({ ...form, name: v })} required={!isLogin} placeholder={isLogin ? undefined : "Your name"} />
+            </>
+          )}
+          <Input label="Email" type="email" value={form.email} onChange={v => setForm({ ...form, email: v })} required placeholder="you@example.com" />
+          <Input label="Password" type="password" value={form.password} onChange={v => setForm({ ...form, password: v })} required placeholder="••••••••" />
+          
+          <Button type="submit" className="w-full py-3 mt-4" disabled={loading}>
+            {loading ? (isLogin ? 'Signing in...' : 'Creating...') : (isLogin ? 'Sign In' : 'Create Account')}
+          </Button>
+        </form>
+
+        {/* Toggle */}
+        <p className="text-center text-gray-400 mt-6 text-sm">
+          {isLogin ? (
+            <>Need an account? <button onClick={() => setIsLogin(false)} className="text-orange-400 hover:underline">Sign up</button></>
+          ) : (
+            <>Already have an account? <button onClick={() => setIsLogin(true)} className="text-orange-400 hover:underline">Sign in</button></>
+          )}
+        </p>
       </Card>
     </div>
   )
-}
-
-function App() {
+}function App() {
   const { user, loading, login, registerHuman, registerAgent, logout } = useAuth()
 
   if (loading) return <Loading />
@@ -464,17 +441,10 @@ function App() {
       )}
       {window.location.pathname !== '/dashboard' && (
         <>
-          {(!window.location.pathname || window.location.pathname === '/') && <LandingPage onNavigate={(s) => { if (s === 'signup') {
-          window.location.href = '/signup'
-        } else if (s === 'login') {
-          window.location.href = '/login'
+          {(!window.location.pathname || window.location.pathname === '/') && <LandingPage onNavigate={(s) => { if (s === 'signup' || s === 'login') {
+          window.location.href = '/auth'
         } }} />}
-          {window.location.pathname === '/signup' && <SignupForm onBack={() => window.location.href = '/'} onComplete={async (form) => { if (form.role === 'human') {
-          await registerHuman(form)
-        } else {
-          await registerAgent(form)
-        } window.location.href = '/dashboard' }} />}
-          {window.location.pathname === '/login' && <LoginScreen onBack={() => window.location.href = '/'} onLogin={async (email, password) => { await login(email, password); window.location.href = '/dashboard' }} />}
+          {window.location.pathname === '/auth' && <AuthPage onBack={() => window.location.href = '/'} onLogin={async (email, password) => { await login(email, password); window.location.href = '/dashboard' }} />}
         </>
       )}
     </>
