@@ -349,7 +349,11 @@ function LoginScreen({ onLogin, onBack }) {
 
 function SignupForm({ onComplete, onBack }) {
   const [step, setStep] = useState('role'), [loading, setLoading] = useState(false), [error, setError] = useState(''), [form, setForm] = useState({ name: '', email: '', password: '', role: 'human', city: '', hourly_rate: 25 })
-  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); setError(''); try { if (form.role === 'human') await onComplete({ name: form.name, email: form.email, password: form.password, city: form.city, hourly_rate: form.hourly_rate }) else await onComplete({ name: form.name, email: form.email, organization: form.name }) } catch (err) { setError(err.message) } finally { setLoading(false) } }
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); setError(''); try { if (form.role === 'human') {
+        await onComplete({ name: form.name, email: form.email, password: form.password, city: form.city, hourly_rate: form.hourly_rate });
+      } else {
+        await onComplete({ name: form.name, email: form.email, organization: form.name });
+      } } catch (err) { setError(err.message) } finally { setLoading(false) } }
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <Card className="p-8 max-w-md w-full">
