@@ -28,7 +28,22 @@ function useAuth() {
   const fetchUserProfile = async (userId) => {
     try {
       const res = await fetch(API_URL + '/auth/verify', { headers: { Authorization: userId } })
-      if (res.ok) { const data = await res.json(); setUser({ ...data.user, supabase_user: true }) }
+      if (res.ok) {
+        const data = await res.json()
+        setUser({ ...data.user, supabase_user: true })
+      } else {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email,
+            name: session.user.user_metadata?.full_name || '',
+            avatar_url: session.user.user_metadata?.avatar_url || '',
+            supabase_user: true,
+            needs_onboarding: true
+          })
+        }
+      }
     } catch (e) { console.error('Failed:', e) }
     finally { setLoading(false) }
   }
@@ -320,6 +335,31 @@ function MCPPage() {
   )
 }
 
+function OnboardingForm({ user, onComplete }) {
+  const [form, setForm] = useState({ city: '', hourly_rate: '', skills: '' })
+  const [submitting, setSubmitting] = useState(false)
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0a', color: '#fff' }}>
+      <div style={{ maxWidth: 440, width: '100%', padding: 32, background: '#111', borderRadius: 12, border: '1px solid #222' }}>
+        <h2 style={{ marginBottom: 4 }}>Welcome, {user.name || 'there'}!</h2>
+        <p style={{ color: '#888', marginBottom: 24 }}>Complete your profile to start accepting tasks.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <input placeholder="City (e.g. Ho Chi Minh City)" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} style={{ padding: 12, borderRadius: 8, border: '1px solid #333', background: '#1a1a1a', color: '#fff' }} />
+          <input placeholder="Hourly rate (USD)" type="number" value={form.hourly_rate} onChange={e => setForm({ ...form, hourly_rate: e.target.value })} style={{ padding: 12, borderRadius: 8, border: '1px solid #333', background: '#1a1a1a', color: '#fff' }} />
+          <input placeholder="Skills (comma separated)" value={form.skills} onChange={e => setForm({ ...form, skills: e.target.value })} style={{ padding: 12, borderRadius: 8, border: '1px solid #333', background: '#1a1a1a', color: '#fff' }} />
+          <button disabled={submitting || !form.city} onClick={async () => {
+            setSubmitting(true)
+            await onComplete({ city: form.city, hourly_rate: parseFloat(form.hourly_rate) || 0, skills: form.skills, role: 'human' })
+            setSubmitting(false)
+          }} style={{ padding: 14, borderRadius: 8, background: '#22c55e', color: '#000', fontWeight: 600, border: 'none', cursor: 'pointer', opacity: submitting ? 0.6 : 1 }}>
+            {submitting ? 'Setting up...' : 'Start Working'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
@@ -430,6 +470,26 @@ function AuthPage() {
   const { user, loading, login, registerHuman, registerAgent, logout } = useAuth()
 
   if (loading) return <Loading />
+
+  if (user?.needs_onboarding) {
+    return (
+      <OnboardingForm
+        user={user}
+        onComplete={async (profile) => {
+          const res = await fetch(API_URL + '/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...profile, id: user.id, email: user.email, name: user.name })
+          })
+          if (res.ok) {
+            const data = await res.json()
+            setUser({ ...data.user, supabase_user: true })
+          }
+        }}
+      />
+    )
+  }
+
   if (user?.supabase_user || user) return <HumanDashboard user={user} token={user.id} onLogout={logout} />
 
   if (window.location.pathname === '/mcp') return <MCPPage />
