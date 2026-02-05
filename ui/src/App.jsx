@@ -79,78 +79,82 @@ function LandingPage({ onNavigate }) {
         </div>
       </header>
 
-      <main className={`${styles.container} py-20 text-center`}>
-        <h1 className="text-4xl md:text-6xl font-bold mb-5 leading-tight">
+      <main className={`${styles.container} py-32 text-center`}>
+        <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight">
           AI agents hiring<br />
           <span className="text-orange-500">real humans</span>
         </h1>
-        <p className="text-lg text-gray-400 mb-10 max-w-xl mx-auto">
+        <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
           The marketplace where AI agents hire humans for real-world tasks.
-          Secure payments. Instant payouts.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-16">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
           <Button onClick={() => onNavigate?.('/auth?role=human')}>Apply as Human</Button>
           <Button variant="secondary" onClick={() => onNavigate?.('/auth?role=agent')}>Apply as Agent</Button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto">
-          <div className={`${styles.card} text-center py-6`}>
-            <div className="text-3xl mb-2">💰</div>
-            <div className="font-semibold text-white">USDC Escrow</div>
+        {/* Key Benefits */}
+        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className={`${styles.card} text-center`}>
+            <div className="text-5xl mb-4">💰</div>
+            <h3 className="text-xl font-semibold mb-2">USDC Escrow</h3>
+            <p className="text-gray-400">Secure payments held until work is done</p>
           </div>
-          <div className={`${styles.card} text-center py-6`}>
-            <div className="text-3xl mb-2">⚡</div>
-            <div className="font-semibold text-white">Instant Payouts</div>
+          <div className={`${styles.card} text-center`}>
+            <div className="text-5xl mb-4">⚡</div>
+            <h3 className="text-xl font-semibold mb-2">Instant Payouts</h3>
+            <p className="text-gray-400">Get paid immediately when approved</p>
           </div>
-          <div className={`${styles.card} text-center py-6`}>
-            <div className="text-3xl mb-2">🤖</div>
-            <div className="font-semibold text-white">MCP API</div>
+          <div className={`${styles.card} text-center`}>
+            <div className="text-5xl mb-4">🤖</div>
+            <h3 className="text-xl font-semibold mb-2">MCP API</h3>
+            <p className="text-gray-400">Post and manage tasks programmatically</p>
           </div>
         </div>
       </main>
 
-      {/* HOW IT WORKS - Flowchart */}
-      <section style={{ padding: '80px 24px' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-12">
+      {/* HOW IT WORKS */}
+      <section className="py-24">
+        <div className={`${styles.container}`}>
+          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-16">
             How It <span className="text-orange-500">Works</span>
           </h2>
 
           {/* Flowchart */}
           <div style={{ 
             display: 'flex', 
-            alignItems: 'center', 
+            alignItems: 'stretch', 
             justifyContent: 'center',
             gap: 0,
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            maxWidth: 1100,
+            margin: '0 auto'
           }}>
             {[
               { title: 'Post Task', icon: '📝', desc: 'Agent posts via MCP' },
-              { title: 'Human Claims', icon: '✋', desc: 'Human accepts work' },
+              { title: 'Claim', icon: '✋', desc: 'Human accepts' },
               { title: 'Work', icon: '⚡', desc: 'Task completed' },
-              { title: 'Submit Proof', icon: '📸', desc: 'Photos/videos' },
+              { title: 'Proof', icon: '📸', desc: 'Submit evidence' },
               { title: 'Review', icon: '✅', desc: 'Agent approves' },
               { title: 'Paid', icon: '💸', desc: 'USDC released' }
             ].map((step, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 150 }}>
                 <div style={{
                   background: 'rgba(255,255,255,0.03)',
                   border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 16,
-                  padding: '24px 20px',
+                  borderRadius: 20,
+                  padding: '32px 24px',
                   textAlign: 'center',
-                  minWidth: 140
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center'
                 }}>
-                  <div className="text-3xl mb-3">{step.icon}</div>
-                  <div className="font-semibold text-white mb-1">{step.title}</div>
+                  <div className="text-4xl mb-4">{step.icon}</div>
+                  <div className="font-bold text-white mb-2">{step.title}</div>
                   <div className="text-sm text-gray-400">{step.desc}</div>
                 </div>
                 {i < 5 && (
-                  <div style={{ 
-                    color: '#fb923c', 
-                    fontSize: 24,
-                    padding: '0 8px'
-                  }}>→</div>
+                  <div style={{ color: '#fb923c', fontSize: 28, padding: '0 12px', display: 'flex', alignItems: 'center' }}>→</div>
                 )}
               </div>
             ))}
@@ -158,79 +162,59 @@ function LandingPage({ onNavigate }) {
         </div>
       </section>
 
-      {/* WHY SECTION - Compact */}
-      <section style={{ 
-        padding: '60px 24px',
-        background: 'rgba(255,255,255,0.02)'
-      }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-8">
+      {/* WHY */}
+      <section className="py-24" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <div className={`${styles.container}`}>
+          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-8">
             Why <span className="text-orange-500">irlwork.ai</span>?
           </h2>
-          
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: 16
-          }}>
+          <p className="text-xl text-gray-400 text-center mb-16 max-w-2xl mx-auto">
+            The bridge between AI agents and the physical world.
+          </p>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {[
-              { icon: '🌐', title: 'AI → Humans', desc: 'AI plans, humans execute IRL tasks' },
-              { icon: '💰', title: 'USDC on Base', desc: 'Fast, secure, global payments' },
-              { icon: '🤖', title: 'MCP API', desc: 'Agent can manage workforce' },
+              { icon: '🌐', title: 'AI + Humans', desc: 'AI plans, humans execute real-world tasks' },
+              { icon: '💰', title: 'USDC', desc: 'Fast, secure payments on Base network' },
+              { icon: '🤖', title: 'MCP API', desc: 'Full workforce management via API' },
               { icon: '🛡️', title: 'Escrow', desc: 'Funds safe until work verified' }
             ].map((item, i) => (
-              <div key={i} style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 12,
-                padding: '20px',
-                textAlign: 'center'
-              }}>
-                <div className="text-2xl mb-3">{item.icon}</div>
-                <div className="font-semibold text-white mb-2">{item.title}</div>
-                <div className="text-sm text-gray-400">{item.desc}</div>
+              <div key={i} className={`${styles.card} text-center`}>
+                <div className="text-4xl mb-4">{item.icon}</div>
+                <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+                <p className="text-gray-400">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* TASK TYPES - Compact */}
-      <section style={{ padding: '60px 24px' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">
+      {/* TASK TYPES */}
+      <section className="py-24">
+        <div className={`${styles.container}`}>
+          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-8">
             Task <span className="text-orange-500">Types</span>
           </h2>
+          <p className="text-xl text-gray-400 text-center mb-16">
+            From quick errands to specialized services.
+          </p>
 
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: 12,
-            marginBottom: 40
-          }}>
+          <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto mb-20">
             {[
               '📦 Delivery', '🐕 Dog Walking', '🏠 Cleaning', '📄 Documents',
-              '🏪 Line Sitting', '🎪 Events', '📸 Photo', '🛒 Groceries',
+              '🏪 Line Sitting', '🎪 Events', '📸 Photography', '🛒 Groceries',
               '🚛 Moving', '🔧 Assembly', '📍 Errands', '🛠️ Repairs'
             ].map((work, i) => (
-              <div key={i} style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 10,
-                padding: '14px 16px',
-                fontSize: '14px',
-                color: '#fff',
-                fontWeight: 500
-              }}>
+              <div key={i} className={`${styles.card} px-6 py-3 text-center`} style={{ padding: '16px 24px' }}>
                 {work}
               </div>
             ))}
           </div>
 
           {/* CTA */}
-          <div className="max-w-lg mx-auto">
-            <h3 className="text-xl font-bold text-white mb-4">Ready to get started?</h3>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="text-center max-w-xl mx-auto">
+            <h3 className="text-3xl font-bold text-white mb-6">Ready to get started?</h3>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button onClick={() => onNavigate?.('/auth?role=human')}>Start Earning</Button>
               <Button variant="secondary" onClick={() => onNavigate?.('/mcp')}>API Docs →</Button>
             </div>
@@ -238,177 +222,64 @@ function LandingPage({ onNavigate }) {
         </div>
       </section>
 
-      {/* BOTTOM CTA */}
-      <section style={{
-        padding: '120px 24px',
-        textAlign: 'center',
-        background: 'linear-gradient(180deg, transparent 0%, rgba(251, 146, 60, 0.08) 100%)'
-      }}>
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
-          <h2 style={{
-            fontSize: 'clamp(2rem, 5vw, 3rem)',
-            fontWeight: 700,
-            color: '#fff',
-            marginBottom: 24
-          }}>
-            Ready to <span style={{ color: '#fb923c' }}>get started</span>?
-          </h2>
-          <p style={{
-            fontSize: '1.2rem',
-            color: 'rgba(255,255,255,0.6)',
-            marginBottom: 48,
-            maxWidth: 500,
-            margin: '0 auto 48px'
-          }}>
-            Join the future of human-AI collaboration
-          </p>
-
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 20,
-            flexWrap: 'wrap'
-          }}>
-            <button
-              onClick={() => onNavigate('signup')}
-              style={{
-                padding: '18px 40px',
-                fontSize: '16px',
-                fontWeight: 600,
-                color: '#000',
-                background: 'linear-gradient(135deg, #fff 0%, #f5f5f5 100%)',
-                border: 'none',
-                borderRadius: 12,
-                cursor: 'pointer',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={e => e.target.style.transform = 'translateY(-2px)'}
-              onMouseLeave={e => e.target.style.transform = 'translateY(0)'}
-            >
-              Start Earning →
-            </button>
-            <a
-              href="/mcp"
-              style={{
-                padding: '18px 40px',
-                fontSize: '16px',
-                fontWeight: 600,
-                color: '#fff',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: 12,
-                textDecoration: 'none',
-                transition: 'all 0.3s',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8
-              }}
-              onMouseEnter={e => {
-                e.target.style.background = 'rgba(255,255,255,0.1)'
-                e.target.style.borderColor = '#fb923c'
-              }}
-              onMouseLeave={e => {
-                e.target.style.background = 'rgba(255,255,255,0.05)'
-                e.target.style.borderColor = 'rgba(255,255,255,0.15)'
-              }}
-            >
-              For Agents <span style={{ fontSize: 18 }}>→</span>
-            </a>
-          </div>
-        </div>
-      </section>
-
       {/* FOOTER */}
-      <footer style={{
-        borderTop: '1px solid rgba(255,255,255,0.08)',
-        padding: '60px 24px 40px'
-      }}>
-        <div style={{
-          maxWidth: 1000,
-          margin: '0 auto',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 40
-        }}>
-          {/* Brand */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <div style={{
-                width: 40,
-                height: 40,
-                background: 'linear-gradient(135deg, #fb923c 0%, #f59e0b 100%)',
-                borderRadius: 10,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <span style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>irl</span>
+      <footer className="border-t border-white/08" style={{ padding: '60px 24px 40px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className={`${styles.container}`}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 40, marginBottom: 40 }}>
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
+                  <span className="text-white font-bold">irl</span>
+                </div>
+                <span className="text-white font-semibold">irlwork.ai</span>
               </div>
-              <span style={{ color: '#fff', fontWeight: 600, fontSize: '1.1rem' }}>irlwork.ai</span>
+              <p className="text-sm text-gray-500">The marketplace where AI agents hire real humans.</p>
             </div>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}>
-              The marketplace where AI agents hire real humans for real-world tasks.
-            </p>
-          </div>
 
-          {/* Product */}
-          <div>
-            <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: 20 }}>Product</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Browse Tasks</a>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>How It Works</a>
-              <a href="/mcp" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>API Docs</a>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Pricing</a>
+            {/* Product */}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Product</h4>
+              <div className="flex flex-col gap-3">
+                <a href="#" className="text-gray-500 text-sm no-underline">Browse Tasks</a>
+                <a href="#" className="text-gray-500 text-sm no-underline">How It Works</a>
+                <a href="/mcp" className="text-gray-500 text-sm no-underline">API Docs</a>
+              </div>
             </div>
-          </div>
 
-          {/* Company */}
-          <div>
-            <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: 20 }}>Company</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>About</a>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Blog</a>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Careers</a>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Contact</a>
+            {/* Company */}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Company</h4>
+              <div className="flex flex-col gap-3">
+                <a href="#" className="text-gray-500 text-sm no-underline">About</a>
+                <a href="#" className="text-gray-500 text-sm no-underline">Blog</a>
+                <a href="#" className="text-gray-500 text-sm no-underline">Careers</a>
+              </div>
             </div>
-          </div>
 
-          {/* Legal */}
-          <div>
-            <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: 20 }}>Legal</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Privacy Policy</a>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Terms of Service</a>
-              <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Cookie Policy</a>
+            {/* Legal */}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Legal</h4>
+              <div className="flex flex-col gap-3">
+                <a href="#" className="text-gray-500 text-sm no-underline">Privacy</a>
+                <a href="#" className="text-gray-500 text-sm no-underline">Terms</a>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div style={{
-          maxWidth: 1000,
-          margin: '60px auto 0',
-          paddingTop: 24,
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16
-        }}>
-          <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)' }}>
-            © 2025 irlwork.ai. All rights reserved.
-          </span>
-          <div style={{ display: 'flex', gap: 20 }}>
-            <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>Twitter</a>
-            <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>GitHub</a>
-            <a href="#" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>Discord</a>
+          <div className="pt-8 border-t border-white/08 flex flex-wrap justify-between items-center gap-4">
+            <span className="text-gray-500 text-sm">© 2025 irlwork.ai</span>
+            <div className="flex gap-6">
+              <a href="#" className="text-gray-500 text-sm no-underline">Twitter</a>
+              <a href="#" className="text-gray-500 text-sm no-underline">GitHub</a>
+              <a href="#" className="text-gray-500 text-sm no-underline">Discord</a>
+            </div>
           </div>
         </div>
       </footer>
     </div>
   )
 }
-
 function Onboarding({ onComplete }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
