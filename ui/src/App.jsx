@@ -124,12 +124,14 @@ function Onboarding({ onComplete }) {
     hourly_rate: 25
   })
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const totalSteps = 4
   const progress = (step / totalSteps) * 100
 
   const handleSubmit = async () => {
     setLoading(true)
+    setError('')
     try {
       await onComplete({
         city: form.city,
@@ -137,6 +139,8 @@ function Onboarding({ onComplete }) {
         travel_radius: form.travel_radius,
         hourly_rate: form.hourly_rate
       })
+    } catch (err) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -239,6 +243,11 @@ function Onboarding({ onComplete }) {
               className={styles.input}
               autoFocus
             />
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
+                {error}
+              </div>
+            )}
             <div className="flex gap-4">
               <Button variant="secondary" className="flex-1" onClick={() => setStep(3)}>Back</Button>
               <Button className="flex-1" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
@@ -774,11 +783,11 @@ function App() {
         window.location.href = '/dashboard'
       } else {
         const err = await res.json()
-        alert('Failed to save: ' + (err.error || 'Unknown error'))
+        throw new Error(err.error || 'Failed to save profile')
       }
     } catch (e) {
       console.error('Failed to save profile:', e)
-      alert('Failed to save profile. Please try again.')
+      throw e
     }
   }
 
