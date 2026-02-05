@@ -14,20 +14,49 @@ function useAuth() {
 
   useEffect(() => {
     console.log('[Auth] Initializing auth, API_URL:', API_URL)
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        console.log('[Auth] Got session:', session ? 'exists' : 'none')
-        if (session?.user) {
-          console.log('[Auth] User ID:', session.user.id)
-          fetchUserProfile(session.user.id)
-        } else {
-          setLoading(false)
+    
+    async function initAuth() {
+      // Check for OAuth callback tokens in URL hash first
+      const hash = window.location.hash
+      if (hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.slice(1))
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
+        
+        if (accessToken && refreshToken) {
+          console.log('[Auth] Found OAuth tokens in URL hash')
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          })
+          if (error) {
+            console.error('[Auth] Failed to set session from OAuth:', error.message)
+          } else {
+            console.log('[Auth] Session set from OAuth tokens')
+          }
+          // Clear the hash to clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname)
         }
-      })
-      .catch(err => {
-        console.error('[Auth] Failed to get session:', err.message)
-        setLoading(false)
-      })
+      }
+      
+      // Now get the session
+      supabase.auth.getSession()
+        .then(({ data: { session } }) => {
+          console.log('[Auth] Got session:', session ? 'exists' : 'none')
+          if (session?.user) {
+            console.log('[Auth] User ID:', session.user.id)
+            fetchUserProfile(session.user.id)
+          } else {
+            setLoading(false)
+          }
+        })
+        .catch(err => {
+          console.error('[Auth] Failed to get session:', err.message)
+          setLoading(false)
+        })
+    }
+    
+    initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) await fetchUserProfile(session.user.id)
