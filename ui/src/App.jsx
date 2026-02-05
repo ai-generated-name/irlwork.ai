@@ -398,7 +398,7 @@ function App() {
 
   return (
     <>
-      {window.location.pathname === '/dashboard' && user ? <HumanDashboard
+      {window.location.pathname === '/dashboard' && user && ( <HumanDashboard
         user={user} token={user.id} onLogout={logout} />
       )}
       {window.location.pathname !== '/dashboard' && (
