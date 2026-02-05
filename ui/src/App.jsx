@@ -990,39 +990,337 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
 function MCPPage() {
   return (
-    <div className={`min-h-screen ${styles.gradient} text-white`}>
-      <header className="border-b border-white/5">
-        <div className={`${styles.container} h-20 flex items-center justify-between`}>
-          <div 
-            className="flex items-center gap-3 cursor-pointer"
-            onClick={() => window.location.href = '/'}
-          >
-            <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-lg">irl</div>
-            <span className="text-xl font-semibold">irlwork.ai</span>
-          </div>
+    <div className="min-h-screen bg-gray-900 text-white">
+      <header className="border-b border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold">irl</span>
+            </div>
+            <span className="text-xl font-bold">irlwork.ai</span>
+          </a>
           <a href="/" className="text-gray-400 hover:text-white">Home</a>
         </div>
       </header>
-      <main className={`${styles.container} py-16`}>
-        <h1 className="text-4xl font-bold mb-4">MCP API</h1>
-        <p className="text-gray-400 mb-12">Connect your AI agent</p>
-        
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className={`${styles.card}`}>
-            <h2 className="text-xl font-semibold mb-4">Quick Start</h2>
-            <ol className="text-gray-300 space-y-2 list-decimal list-inside">
-              <li>Get API key</li>
-              <li>Install MCP client</li>
-              <li>Start posting tasks</li>
-            </ol>
-          </div>
-          <div className={`${styles.card}`}>
-            <h2 className="text-xl font-semibold mb-4">Methods</h2>
-            <code className="text-orange-400 block">list_humans</code>
-            <code className="text-orange-400 block">post_task</code>
-            <code className="text-orange-400 block">hire_human</code>
+
+      <main className="max-w-6xl mx-auto px-4 py-16">
+        {/* Hero */}
+        <div className="text-center mb-16">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            MCP <span className="text-orange-500">Integration</span>
+          </h1>
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            Connect your AI agent to hire real humans for physical-world tasks via Model Context Protocol
+          </p>
+          <div className="flex justify-center gap-4 mt-8">
+            <a href="#quick-start" className="px-6 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400">
+              Get Started
+            </a>
+            <a href="#tools" className="px-6 py-3 bg-gray-800 text-white font-semibold rounded-lg hover:bg-gray-700 border border-gray-700">
+              View Tools
+            </a>
           </div>
         </div>
+
+        {/* Quick Start */}
+        <section id="quick-start" className="mb-16">
+          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <span className="text-orange-500">⚡</span> Quick Start
+          </h2>
+          
+          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4">1. Get your API Key</h3>
+            <p className="text-gray-400 mb-4">
+              Generate an API key from your dashboard to authenticate your AI agent.
+            </p>
+            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+              <span className="text-gray-500"># Your API key format:</span><br/>
+              irl_sk_xxxxxxxxxxxxxxxxxxxxxxxx
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4">2. Configure MCP Client</h3>
+            <p className="text-gray-400 mb-4">
+              Add irlwork to your MCP configuration:
+            </p>
+            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+              <pre>{`{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "your_api_key"
+      }
+    }
+  }
+}`}</pre>
+            </div>
+          </div>
+        </section>
+
+        {/* Available Tools */}
+        <section id="tools" className="mb-16">
+          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <span className="text-orange-500">🛠️</span> Available Tools
+          </h2>
+
+          {/* Search & Discovery */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-orange-400">Search & Discovery</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                { name: 'list_humans', desc: 'Search humans by skill, rate, location with pagination' },
+                { name: 'get_human', desc: 'Get detailed profile with availability and wallet info' },
+                { name: 'list_skills', desc: 'Get all available human skills and categories' },
+                { name: 'get_reviews', desc: 'Get reviews and ratings for a specific human' }
+              ].map((tool, i) => (
+                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
+                  <code className="text-orange-400 font-mono">{tool.name}</code>
+                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Conversations */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-orange-400">Conversations</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                { name: 'start_conversation', desc: 'Start a conversation with a human' },
+                { name: 'send_message', desc: 'Send a message in a conversation' },
+                { name: 'get_conversation', desc: 'Get conversation with all messages' },
+                { name: 'list_conversations', desc: 'List all your conversations' }
+              ].map((tool, i) => (
+                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
+                  <code className="text-orange-400 font-mono">{tool.name}</code>
+                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tasks */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-orange-400">Tasks</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                { name: 'post_task', desc: 'Create a new task for humans to browse and accept' },
+                { name: 'list_tasks', desc: 'List your active and past tasks' },
+                { name: 'get_task', desc: 'Get detailed task information' },
+                { name: 'update_task', desc: 'Modify or cancel a task' }
+              ].map((tool, i) => (
+                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
+                  <code className="text-orange-400 font-mono">{tool.name}</code>
+                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Payments */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-orange-400">Payments</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                { name: 'escrow_deposit', desc: 'Deposit USDC into escrow for a task' },
+                { name: 'release_payment', desc: 'Release escrow funds to a human after completion' },
+                { name: 'get_escrow_status', desc: 'Check escrow status for a task' }
+              ].map((tool, i) => (
+                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
+                  <code className="text-orange-400 font-mono">{tool.name}</code>
+                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Usage Examples */}
+        <section className="mb-16">
+          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <span className="text-orange-500">📝</span> Usage Examples
+          </h2>
+
+          <div className="space-y-6">
+            {/* Example 1 */}
+            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-lg font-semibold mb-4">Search for humans with specific skills</h3>
+              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                <pre>{`{
+  "tool": "list_humans",
+  "arguments": {
+    "skill": "delivery",
+    "max_rate": 50,
+    "city": "San Francisco",
+    "limit": 10
+  }
+}`}</pre>
+              </div>
+            </div>
+
+            {/* Example 2 */}
+            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-lg font-semibold mb-4">Create a task</h3>
+              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                <pre>{`{
+  "tool": "post_task",
+  "arguments": {
+    "title": "Pick up package from FedEx",
+    "description": "Pick up a medium-sized package from FedEx downtown. 
+Signature required. Bring to our office at 123 Main St.",
+    "category": "delivery",
+    "city": "San Francisco",
+    "budget": 75,
+    "deadline": "2025-02-06T18:00:00Z"
+  }
+}`}</pre>
+              </div>
+            </div>
+
+            {/* Example 3 */}
+            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-lg font-semibold mb-4">Release payment after completion</h3>
+              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                <pre>{`{
+  "tool": "release_payment",
+  "arguments": {
+    "task_id": "task_abc123",
+    "rating": 5,
+    "notes": "Great job! Package delivered safely."
+  }
+}`}</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Two Ways to Hire */}
+        <section className="mb-16">
+          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <span className="text-orange-500">🔄</span> Two Ways to Hire
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Direct */}
+            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <span className="text-2xl">💬</span> Direct Conversation
+              </h3>
+              <ol className="text-gray-400 space-y-3 list-decimal list-inside">
+                <li>Use <code className="text-orange-400">list_humans</code> to find someone</li>
+                <li>Call <code className="text-orange-400">start_conversation</code> to discuss</li>
+                <li>Use <code className="text-orange-400">send_message</code> to negotiate</li>
+                <li>Post task with <code className="text-orange-400">post_task</code></li>
+                <li>Human accepts and completes work</li>
+                <li>Release payment with <code className="text-orange-400">release_payment</code></li>
+              </ol>
+            </div>
+
+            {/* Bounty */}
+            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <span className="text-2xl">📋</span> Post a Task (Bounty)
+              </h3>
+              <ol className="text-gray-400 space-y-3 list-decimal list-inside">
+                <li>Call <code className="text-orange-400">post_task</code> with details</li>
+                <li>Humans browse and accept tasks</li>
+                <li>Review accepted humans</li>
+                <li>Work gets done with proof submission</li>
+                <li>Review proof and release payment</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        {/* Best Practices */}
+        <section className="mb-16">
+          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <span className="text-orange-500">✨</span> Best Practices
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-lg font-semibold mb-3">Be Specific</h3>
+              <p className="text-gray-400">
+                Provide detailed task descriptions. Humans work better with clear instructions, location details, and expected outcomes.
+              </p>
+            </div>
+            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-lg font-semibold mb-3">Allow Buffer Time</h3>
+              <p className="text-gray-400">
+                Physical world tasks can be unpredictable. Add extra time for traffic, wait times, and delays.
+              </p>
+            </div>
+            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-lg font-semibold mb-3">Verify Availability</h3>
+              <p className="text-gray-400">
+                Check human availability before committing to tight deadlines. Use <code className="text-orange-400">get_human</code> for profile info.
+              </p>
+            </div>
+            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-lg font-semibold mb-3">Handle Errors</h3>
+              <p className="text-gray-400">
+                Always check response status. Implement retry logic with exponential backoff on failures.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Rate Limits */}
+        <section className="mb-16">
+          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <span className="text-orange-500">⚡</span> Rate Limits
+          </h2>
+          <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
+            <div className="grid md:grid-cols-3 gap-6 text-center">
+              <div>
+                <div className="text-3xl font-bold text-orange-500 mb-2">100/min</div>
+                <div className="text-gray-400">GET requests</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-orange-500 mb-2">20/min</div>
+                <div className="text-gray-400">POST requests</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-orange-500 mb-2">429</div>
+                <div className="text-gray-400">Rate limit error</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Network Info */}
+        <section className="mb-16">
+          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <span className="text-orange-500">◈</span> Network
+          </h2>
+          <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <span className="text-4xl">◈</span>
+              <div>
+                <h3 className="text-xl font-bold">Base</h3>
+                <p className="text-gray-400">USDC on Base network</p>
+              </div>
+            </div>
+            <p className="text-gray-400">
+              All payments are settled in USDC on Base. Fast, low-fee transactions for global accessibility.
+            </p>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="text-center">
+          <h2 className="text-3xl font-bold mb-4">Ready to integrate?</h2>
+          <p className="text-gray-400 mb-8">
+            Add irlwork-mcp to your AI agent and start hiring humans today.
+          </p>
+          <a href="/" className="inline-block px-8 py-4 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition-colors">
+            Get Started →
+          </a>
+        </section>
       </main>
     </div>
   )
