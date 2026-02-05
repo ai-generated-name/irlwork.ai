@@ -1345,8 +1345,20 @@ function App() {
       if (res.ok) {
         const data = await res.json()
         console.log('[Auth] User found in DB:', data.user?.email)
+        // Save to localStorage for persistence
+        localStorage.setItem('user', JSON.stringify({ ...data.user, supabase_user: true }))
         setUser({ ...data.user, supabase_user: true })
       } else if (res.status === 404) {
+        // Check localStorage first
+        const cachedUser = localStorage.getItem('user')
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser)
+          if (parsed.id === supabaseUser.id && !parsed.needs_onboarding) {
+            console.log('[Auth] Using cached user (onboarding completed)')
+            setUser(parsed)
+            return
+          }
+        }
         // New user - create profile
         console.log('[Auth] New user, needs onboarding')
         setUser({
@@ -1358,7 +1370,16 @@ function App() {
           needs_onboarding: true
         })
       } else {
-        // Backend error but we have session - treat as new user
+        // Check localStorage
+        const cachedUser = localStorage.getItem('user')
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser)
+          if (parsed.id === supabaseUser.id) {
+            console.log('[Auth] Backend error, using cached user')
+            setUser(parsed)
+            return
+          }
+        }
         console.log('[Auth] Backend error, treating as new user')
         setUser({
           id: supabaseUser.id,
@@ -1369,7 +1390,16 @@ function App() {
         })
       }
     } catch (e) {
-      // Backend down - use Supabase session directly
+      // Check localStorage
+      const cachedUser = localStorage.getItem('user')
+      if (cachedUser) {
+        const parsed = JSON.parse(cachedUser)
+        if (parsed.id === supabaseUser.id) {
+          console.log('[Auth] Backend down, using cached user')
+          setUser(parsed)
+          return
+        }
+      }
       console.log('[Auth] Backend unavailable, using Supabase session')
       setUser({
         id: supabaseUser.id,
@@ -1392,6 +1422,14 @@ function App() {
 
   const handleOnboardingComplete = async (profile) => {
     console.log('[Onboarding] Completing with profile:', profile)
+    
+    // Optimistically update user state
+    const updatedUser = {
+      ...user,
+      ...profile,
+      needs_onboarding: false
+    }
+    
     try {
       // First try to register the user in our backend
       try {
@@ -1411,7 +1449,10 @@ function App() {
         
         if (registerRes.ok) {
           const data = await registerRes.json()
-          setUser({ ...data.user, supabase_user: true })
+          const finalUser = { ...data.user, supabase_user: true }
+          // Save to localStorage
+          localStorage.setItem('user', JSON.stringify(finalUser))
+          setUser(finalUser)
           window.location.href = '/dashboard'
           return
         }
@@ -1435,22 +1476,18 @@ function App() {
       
       if (res.ok) {
         const data = await res.json()
-        setUser({ ...data.user, supabase_user: true })
+        const finalUser = { ...data.user, supabase_user: true }
+        localStorage.setItem('user', JSON.stringify(finalUser))
+        setUser(finalUser)
         window.location.href = '/dashboard'
       } else {
         throw new Error('Failed to save profile')
       }
     } catch (e) {
       console.error('[Onboarding] Failed:', e)
-      // Even if backend fails, redirect to dashboard
-      // The user can try again later
-      setUser({ 
-        ...user, 
-        city: profile.city,
-        hourly_rate: profile.hourly_rate,
-        skills: profile.skills,
-        needs_onboarding: false
-      })
+      // Even if backend fails, save to localStorage and redirect
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+      setUser(updatedUser)
       window.location.href = '/dashboard'
     }
   }
