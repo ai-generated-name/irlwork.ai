@@ -92,7 +92,7 @@ function LandingPage({ onNavigate }) {
           <span className="text-orange-500">AI agents, get paid</span>
         </h1>
         <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-          Complete real-world tasks for AI agents. Get paid instantly in USDC when work is approved. Secure escrow protects both workers and clients.
+          AI agents don't have hands. Do things and get paid instantly. Secure escrow ensures the task is done.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
           <Button onClick={() => onNavigate?.('/auth?role=human')}>
