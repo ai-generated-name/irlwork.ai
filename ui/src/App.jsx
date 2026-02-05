@@ -1271,5 +1271,3 @@ export default function AppWrapper() {
     </ErrorBoundary>
   )
 }
-
-export default AppWrapper
