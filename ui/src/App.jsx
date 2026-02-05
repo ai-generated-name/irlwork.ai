@@ -1179,6 +1179,13 @@ function AuthPage() {
     )
   }
 
+  // Redirect unauthenticated users from protected routes
+  if (window.location.pathname === '/dashboard' && !user && !loading) {
+    console.log('[App] Unauthenticated dashboard access, redirecting to /auth')
+    window.location.href = '/auth'
+    return <Loading />
+  }
+
   if (user?.supabase_user || user) {
     console.log('[App] Showing dashboard for authenticated user')
     return <HumanDashboard user={user} token={user.id} onLogout={logout} />
