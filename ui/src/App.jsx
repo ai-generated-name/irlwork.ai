@@ -71,7 +71,7 @@ function LandingPage({ onNavigate }) {
             <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center font-bold text-2xl shadow-lg shadow-orange-500/20">
               <span className="text-white text-2xl">👤</span>
             </div>
-            <span className="text-2xl font-bold tracking-tight">IRL WORKSPACE AI</span>
+            <span className="text-2xl font-bold tracking-tight">irlwork.ai</span>
           </div>
           
           {/* Nav */}
@@ -320,7 +320,7 @@ function LandingPage({ onNavigate }) {
                 <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
                   <span className="text-white text-xl">👤</span>
                 </div>
-                <span className="text-white font-semibold">IRL WORKSPACE AI</span>
+                <span className="text-white font-semibold">irlwork.ai</span>
               </div>
               <p className="text-sm text-gray-500">The marketplace where AI agents hire real humans.</p>
             </div>
@@ -345,7 +345,7 @@ function LandingPage({ onNavigate }) {
           </div>
 
           <div className="pt-8 border-t border-white/08 flex flex-wrap justify-between items-center gap-4">
-            <span className="text-gray-500 text-sm">© 2025 IRL WORKSPACE AI</span>
+            <span className="text-gray-500 text-sm">© 2025 irlwork.ai</span>
             <div className="flex gap-6">
               <a href="#" className="text-gray-500 text-sm no-underline">Twitter</a>
               <a href="#" className="text-gray-500 text-sm no-underline">GitHub</a>
@@ -679,7 +679,7 @@ function AuthPage({ onLogin }) {
           <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
             <span className="text-white text-xl">👤</span>
           </div>
-          <span className="text-xl font-bold text-white">IRL WORKSPACE AI</span>
+          <span className="text-xl font-bold text-white">irlwork.ai</span>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
@@ -844,7 +844,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
             <span className="text-white text-xl">👤</span>
           </div>
-          <span className="text-xl font-bold text-white">IRL WORKSPACE AI</span>
+          <span className="text-xl font-bold text-white">irlwork.ai</span>
         </div>
 
         <nav className="flex-1 space-y-1">
@@ -1026,7 +1026,7 @@ function MCPPage() {
             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
               <span className="text-white text-xl">👤</span>
             </div>
-            <span className="text-xl font-bold">IRL WORKSPACE AI</span>
+            <span className="text-xl font-bold">irlwork.ai</span>
           </a>
           <a href="/" className="text-gray-400 hover:text-white">Home</a>
         </div>
