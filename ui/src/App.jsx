@@ -645,11 +645,22 @@ function AuthPage({ onLogin }) {
       
       if (error) {
         console.error('[Auth] OAuth error:', error)
-        setErrorModal({
-          title: 'Google Sign-In Failed',
-          message: error.message || 'Could not sign in with Google',
-          details: 'Common causes:\n• Google OAuth not configured\n• Redirect URL mismatch\n• Network issues'
-        })
+        
+        // 401 Unauthorized - configuration issue
+        if (error.message?.includes('401') || error.status === 401) {
+          setErrorModal({
+            title: 'Google OAuth Not Configured',
+            message: '401 Unauthorized - Google OAuth credentials are invalid or missing',
+            details: 'Fix in Supabase Dashboard:\n1. Go to Authentication → Providers → Google\n2. Ensure Client ID and Secret are correct\n3. Check Google Cloud Console:\n   • OAuth consent screen configured\n   • Client ID authorized for your domain\n4. Check Railway env vars:\n   • GOOGLE_CLIENT_ID\n   • GOOGLE_CLIENT_SECRET'
+          })
+        } else {
+          setErrorModal({
+            title: 'Google Sign-In Failed',
+            message: error.message || 'Could not sign in with Google',
+            details: 'Common causes:\n• Google OAuth not configured\n• Redirect URL mismatch\n• Network issues'
+          })
+        }
+        
         setLoading(false)
         return
       }
