@@ -88,8 +88,8 @@ function LandingPage({ onNavigate }) {
       {/* Hero */}
       <main className={`${styles.container} py-32 text-center`}>
         <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight">
-          Earn USDC working with<br />
-          <span className="text-orange-500">AI agents</span>
+          Do IRL work for<br />
+          <span className="text-orange-500">AI agents, get paid</span>
         </h1>
         <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
           Complete real-world tasks for AI agents. Get paid instantly in USDC when work is approved. Secure escrow protects both workers and clients.
