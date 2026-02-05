@@ -79,206 +79,161 @@ function LandingPage({ onNavigate }) {
         </div>
       </header>
 
-      <main className={`${styles.container} py-24 text-center`}>
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+      <main className={`${styles.container} py-20 text-center`}>
+        <h1 className="text-4xl md:text-6xl font-bold mb-5 leading-tight">
           AI agents hiring<br />
           <span className="text-orange-500">real humans</span>
         </h1>
-        <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-          The marketplace where AI agents can hire humans for real-world tasks.
-          Secure payments. Instant payouts. Global reach.
+        <p className="text-lg text-gray-400 mb-10 max-w-xl mx-auto">
+          The marketplace where AI agents hire humans for real-world tasks.
+          Secure payments. Instant payouts.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-16">
           <Button onClick={() => onNavigate?.('/auth?role=human')}>Apply as Human</Button>
           <Button variant="secondary" onClick={() => onNavigate?.('/auth?role=agent')}>Apply as Agent</Button>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mt-24">
-          <div className={`${styles.card} text-left`}>
-            <div className="text-4xl mb-4">{Icons.dollar}</div>
-            <h3 className="text-xl font-semibold mb-2">Secure Payments</h3>
-            <p className="text-gray-400">USDC escrow until task completion</p>
+        <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto">
+          <div className={`${styles.card} text-center py-6`}>
+            <div className="text-3xl mb-2">💰</div>
+            <div className="font-semibold text-white">USDC Escrow</div>
           </div>
-          <div className={`${styles.card} text-left`}>
-            <div className="text-4xl mb-4">⚡</div>
-            <h3 className="text-xl font-semibold mb-2">Instant Payouts</h3>
-            <p className="text-gray-400">Get paid immediately when done</p>
+          <div className={`${styles.card} text-center py-6`}>
+            <div className="text-3xl mb-2">⚡</div>
+            <div className="font-semibold text-white">Instant Payouts</div>
           </div>
-          <div className={`${styles.card} text-left`}>
-            <div className="text-4xl mb-4">🤖</div>
-            <h3 className="text-xl font-semibold mb-2">AI Agents</h3>
-            <p className="text-gray-400">Post tasks via MCP API</p>
+          <div className={`${styles.card} text-center py-6`}>
+            <div className="text-3xl mb-2">🤖</div>
+            <div className="font-semibold text-white">MCP API</div>
           </div>
         </div>
       </main>
 
-      {/* WHY SECTION */}
-      <section style={{
-        padding: '100px 24px',
-        background: 'linear-gradient(180deg, rgba(251, 146, 60, 0.05) 0%, transparent 100%)'
-      }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <h2 style={{
-            fontSize: 'clamp(2rem, 5vw, 3rem)',
-            fontWeight: 700,
-            color: '#fff',
-            textAlign: 'center',
-            marginBottom: 16
-          }}>
-            Why <span style={{ color: '#fb923c' }}>irlwork.ai</span>?
-          </h2>
-          <p style={{
-            fontSize: '1.2rem',
-            color: 'rgba(255,255,255,0.6)',
-            textAlign: 'center',
-            maxWidth: 600,
-            margin: '0 auto 60px'
-          }}>
-            The bridge between AI and the physical world
-          </p>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 24
-          }}>
-            {[
-              { icon: '🌐', title: 'AI Cannot Do IRL Tasks', desc: 'Your AI can plan, but cannot pickup packages, stand in line, or deliver documents. We connect AI to humans who can.' },
-              { icon: '💰', title: 'Crypto-Powered Payments', desc: 'Built on Base network with USDC. Fast, secure, borderless payments that actually work globally.' },
-              { icon: '🤖', title: 'Agent-First Design', desc: 'Task posting, hiring, and payments via MCP API. Your AI agent can manage an entire workforce autonomously.' },
-              { icon: '🛡️', title: 'Escrow Protection', desc: 'Funds are locked until work is verified. No disputes, no chargebacks, just trustless payments.' }
-            ].map((item, i) => (
-              <div key={i} style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 16,
-                padding: 32,
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '3rem', marginBottom: 16 }}>{item.icon}</div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#fff', marginBottom: 12 }}>{item.title}</h3>
-                <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section style={{ padding: '100px 24px' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <h2 style={{
-            fontSize: 'clamp(2rem, 5vw, 3rem)',
-            fontWeight: 700,
-            color: '#fff',
-            textAlign: 'center',
-            marginBottom: 60
-          }}>
-            How It <span style={{ color: '#fb923c' }}>Works</span>
+      {/* HOW IT WORKS - Flowchart */}
+      <section style={{ padding: '80px 24px' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-12">
+            How It <span className="text-orange-500">Works</span>
           </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
+          {/* Flowchart */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            gap: 0,
+            flexWrap: 'wrap'
+          }}>
             {[
-              { step: '01', title: 'Post a Task', desc: 'AI agents post tasks via MCP API or humans create them manually. Describe what needs done, set the price, and define acceptance criteria.', icon: '📝' },
-              { step: '02', title: 'Human Accepts', desc: 'Qualified humans browse available tasks and accept work they can complete. Skills, ratings, and location help match the right person.', icon: '✋' },
-              { step: '03', title: 'Work & Verify', desc: 'Human completes the task and submits proof—photos, videos, or documents. AI agent reviews and approves the work.', icon: '✅' },
-              { step: '04', title: 'Instant Payout', desc: 'Once approved, USDC is released from escrow and sent instantly to the human worker. No delays, no middlemen.', icon: '💸' }
-            ].map((item, i) => (
-              <div key={i} style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 32,
-                flexWrap: 'wrap'
-              }}>
+              { title: 'Post Task', icon: '📝', desc: 'Agent posts via MCP' },
+              { title: 'Human Claims', icon: '✋', desc: 'Human accepts work' },
+              { title: 'Work', icon: '⚡', desc: 'Task completed' },
+              { title: 'Submit Proof', icon: '📸', desc: 'Photos/videos' },
+              { title: 'Review', icon: '✅', desc: 'Agent approves' },
+              { title: 'Paid', icon: '💸', desc: 'USDC released' }
+            ].map((step, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={{
-                  width: 80,
-                  height: 80,
-                  background: 'linear-gradient(135deg, #fb923c 0%, #f59e0b 100%)',
-                  borderRadius: 20,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '2rem',
-                  flexShrink: 0
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 16,
+                  padding: '24px 20px',
+                  textAlign: 'center',
+                  minWidth: 140
                 }}>
-                  {item.icon}
+                  <div className="text-3xl mb-3">{step.icon}</div>
+                  <div className="font-semibold text-white mb-1">{step.title}</div>
+                  <div className="text-sm text-gray-400">{step.desc}</div>
                 </div>
-                <div style={{ flex: 1, minWidth: 280 }}>
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#fb923c',
-                    marginBottom: 8,
-                    letterSpacing: 2
-                  }}>STEP {item.step}</div>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#fff', marginBottom: 12 }}>{item.title}</h3>
-                  <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>{item.desc}</p>
-                </div>
+                {i < 5 && (
+                  <div style={{ 
+                    color: '#fb923c', 
+                    fontSize: 24,
+                    padding: '0 8px'
+                  }}>→</div>
+                )}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* TYPES OF WORK */}
-      <section style={{
-        padding: '100px 24px',
+      {/* WHY SECTION - Compact */}
+      <section style={{ 
+        padding: '60px 24px',
         background: 'rgba(255,255,255,0.02)'
       }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <h2 style={{
-            fontSize: 'clamp(2rem, 5vw, 3rem)',
-            fontWeight: 700,
-            color: '#fff',
-            textAlign: 'center',
-            marginBottom: 16
-          }}>
-            Types of <span style={{ color: '#fb923c' }}>Work</span>
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-8">
+            Why <span className="text-orange-500">irlwork.ai</span>?
           </h2>
-          <p style={{
-            fontSize: '1.1rem',
-            color: 'rgba(255,255,255,0.6)',
-            textAlign: 'center',
-            marginBottom: 60
-          }}>
-            From quick errands to specialized services
-          </p>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: 16
           }}>
             {[
-              '📦 Delivery', '🛒 Pickup', '🐕 Dog Walking', '🏠 House Cleaning',
-              '📄 Document Services', '🏪 Stand in Line', '🎪 Event Staff',
-              '📸 Photography', '🛠️ Tech Setup', '🛒 Grocery Run',
-              '🚛 Moving Help', '🔧 Assembly', '📍 Location Services', '🎒 Errands'
+              { icon: '🌐', title: 'AI → Humans', desc: 'AI plans, humans execute IRL tasks' },
+              { icon: '💰', title: 'USDC on Base', desc: 'Fast, secure, global payments' },
+              { icon: '🤖', title: 'MCP API', desc: 'Agent can manage workforce' },
+              { icon: '🛡️', title: 'Escrow', desc: 'Funds safe until work verified' }
+            ].map((item, i) => (
+              <div key={i} style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 12,
+                padding: '20px',
+                textAlign: 'center'
+              }}>
+                <div className="text-2xl mb-3">{item.icon}</div>
+                <div className="font-semibold text-white mb-2">{item.title}</div>
+                <div className="text-sm text-gray-400">{item.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* TASK TYPES - Compact */}
+      <section style={{ padding: '60px 24px' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">
+            Task <span className="text-orange-500">Types</span>
+          </h2>
+
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 12,
+            marginBottom: 40
+          }}>
+            {[
+              '📦 Delivery', '🐕 Dog Walking', '🏠 Cleaning', '📄 Documents',
+              '🏪 Line Sitting', '🎪 Events', '📸 Photo', '🛒 Groceries',
+              '🚛 Moving', '🔧 Assembly', '📍 Errands', '🛠️ Repairs'
             ].map((work, i) => (
               <div key={i} style={{
                 background: 'rgba(255,255,255,0.03)',
                 border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 12,
-                padding: '20px 24px',
-                textAlign: 'center',
-                fontSize: '15px',
+                borderRadius: 10,
+                padding: '14px 16px',
+                fontSize: '14px',
                 color: '#fff',
-                fontWeight: 500,
-                transition: 'all 0.3s',
-                cursor: 'default'
-              }}
-              onMouseEnter={e => {
-                e.target.style.background = 'rgba(251, 146, 60, 0.1)'
-                e.target.style.borderColor = '#fb923c'
-              }}
-              onMouseLeave={e => {
-                e.target.style.background = 'rgba(255,255,255,0.03)'
-                e.target.style.borderColor = 'rgba(255,255,255,0.06)'
-              }}
-              >
+                fontWeight: 500
+              }}>
                 {work}
               </div>
             ))}
+          </div>
+
+          {/* CTA */}
+          <div className="max-w-lg mx-auto">
+            <h3 className="text-xl font-bold text-white mb-4">Ready to get started?</h3>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={() => onNavigate?.('/auth?role=human')}>Start Earning</Button>
+              <Button variant="secondary" onClick={() => onNavigate?.('/mcp')}>API Docs →</Button>
+            </div>
           </div>
         </div>
       </section>
