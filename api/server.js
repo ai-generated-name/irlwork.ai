@@ -1366,7 +1366,7 @@ async function start() {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
   
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`   API: http://localhost:${PORT}/api`);
     console.log(`   MCP: POST http://localhost:${PORT}/api/mcp`);
