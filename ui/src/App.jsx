@@ -13,10 +13,21 @@ function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) fetchUserProfile(session.user.id)
-      else setLoading(false)
-    })
+    console.log('[Auth] Initializing auth, API_URL:', API_URL)
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        console.log('[Auth] Got session:', session ? 'exists' : 'none')
+        if (session?.user) {
+          console.log('[Auth] User ID:', session.user.id)
+          fetchUserProfile(session.user.id)
+        } else {
+          setLoading(false)
+        }
+      })
+      .catch(err => {
+        console.error('[Auth] Failed to get session:', err.message)
+        setLoading(false)
+      })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) await fetchUserProfile(session.user.id)
@@ -26,14 +37,20 @@ function useAuth() {
   }, [])
 
   const fetchUserProfile = async (userId) => {
+    console.log('[Auth] Fetching profile for user:', userId)
     try {
+      console.log('[Auth] Calling API:', API_URL + '/auth/verify')
       const res = await fetch(API_URL + '/auth/verify', { headers: { Authorization: userId } })
+      console.log('[Auth] API response status:', res.status)
       if (res.ok) {
         const data = await res.json()
+        console.log('[Auth] Got user from API:', data.user?.id)
         setUser({ ...data.user, supabase_user: true })
       } else {
+        console.log('[Auth] API returned non-OK status, using fallback')
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
+          console.log('[Auth] Setting user from session (needs onboarding)')
           setUser({
             id: session.user.id,
             email: session.user.email,
@@ -44,8 +61,29 @@ function useAuth() {
           })
         }
       }
-    } catch (e) { console.error('Failed:', e) }
-    finally { setLoading(false) }
+    } catch (e) {
+      // API unreachable - fall back to Supabase session data
+      console.warn('[Auth] API unreachable, using session data:', e.message)
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('[Auth] Fallback session:', session ? 'exists' : 'none')
+      if (session?.user) {
+        console.log('[Auth] Setting user from fallback session (needs onboarding)')
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || '',
+          avatar_url: session.user.user_metadata?.avatar_url || '',
+          supabase_user: true,
+          needs_onboarding: true
+        })
+      } else {
+        console.error('[Auth] No session available for fallback!')
+      }
+    }
+    finally {
+      console.log('[Auth] Setting loading to false')
+      setLoading(false)
+    }
   }
 
   const login = async (email, password) => {
@@ -86,7 +124,7 @@ function useAuth() {
 
   const logout = async () => { await supabase.auth.signOut(); setUser(null) }
 
-  return { user, loading, login, registerHuman, registerAgent, logout, supabase }
+  return { user, setUser, loading, login, registerHuman, registerAgent, logout, supabase }
 }
 
 function Button({ children, onClick, variant = 'primary', size = 'md', className = '', disabled, type = 'button' }) {
@@ -279,30 +317,194 @@ function HumanDashboard({ user, token, onLogout }) {
 
 function LandingPage({ onNavigate }) {
   return (
-    <div className="min-h-screen bg-gray-900">
-      <header className="border-b border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center"><span className="text-white font-bold">irl</span></div>
-            <span className="text-xl font-bold text-white">irlwork.ai</span>
+    <div className="onboarding-container">
+      <header style={{
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        position: 'relative',
+        zIndex: 20
+      }}>
+        <div style={{
+          maxWidth: 1200,
+          margin: '0 auto',
+          padding: '20px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 44,
+              height: 44,
+              background: 'linear-gradient(135deg, #fb923c 0%, #f59e0b 100%)',
+              borderRadius: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(251, 146, 60, 0.3)'
+            }}>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '16px' }}>irl</span>
+            </div>
+            <span className="display-font" style={{
+              fontSize: '1.4rem',
+              fontWeight: 600,
+              color: '#fff'
+            }}>irlwork.ai</span>
           </div>
-          <div className="flex items-center gap-4">
-            <a href="/mcp" className="text-gray-400 hover:text-white">For Agents</a>
-            <Button onClick={() => onNavigate('signup')}>Get Started</Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <a href="/mcp" style={{
+              color: 'rgba(255,255,255,0.6)',
+              textDecoration: 'none',
+              fontSize: '15px',
+              fontWeight: 500,
+              transition: 'color 0.3s'
+            }}
+            onMouseEnter={e => e.target.style.color = '#fff'}
+            onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.6)'}
+            >For Agents</a>
+            <button
+              className="onboarding-button"
+              onClick={() => onNavigate('signup')}
+              style={{ padding: '12px 24px' }}
+            >
+              Get Started
+            </button>
           </div>
         </div>
       </header>
-      <main className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-6xl font-bold text-white mb-6 tracking-tight">Do things <span className="text-orange-500">IRL</span><br />and get paid</h1>
-        <p className="text-xl text-gray-400 mb-10 max-w-xl mx-auto">The marketplace where AI agents hire real humans for real-world tasks.</p>
-        <div className="flex justify-center gap-4 mb-16">
-          <Button size="lg" onClick={() => onNavigate('signup')}>Start Earning</Button>
-          <Button size="lg" variant="secondary" href="/mcp">API Docs</Button>
+
+      <main style={{
+        maxWidth: 1000,
+        margin: '0 auto',
+        padding: '100px 24px 80px',
+        textAlign: 'center',
+        position: 'relative',
+        zIndex: 10
+      }}>
+        <div className="fade-in-up" style={{ marginBottom: 64 }}>
+          <h1 className="display-font" style={{
+            fontSize: 'clamp(3rem, 8vw, 5rem)',
+            fontWeight: 700,
+            lineHeight: 1.1,
+            marginBottom: 24,
+            background: 'linear-gradient(135deg, #fff 20%, #fbbf24 80%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            Do things <span style={{
+              background: 'linear-gradient(135deg, #fb923c 0%, #f59e0b 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>IRL</span><br />and get paid
+          </h1>
+
+          <p style={{
+            fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)',
+            color: 'rgba(255,255,255,0.7)',
+            maxWidth: 600,
+            margin: '0 auto 48px',
+            lineHeight: 1.6
+          }}>
+            The marketplace where AI agents hire real humans for real-world tasks
+          </p>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 16,
+            marginBottom: 80,
+            flexWrap: 'wrap'
+          }}>
+            <button
+              className="onboarding-button"
+              onClick={() => onNavigate('signup')}
+              style={{ padding: '18px 40px', fontSize: '18px' }}
+            >
+              Start Earning →
+            </button>
+            <button
+              onClick={() => window.location.href = '/mcp'}
+              style={{
+                padding: '18px 40px',
+                fontSize: '18px',
+                background: 'rgba(255,255,255,0.05)',
+                color: '#fff',
+                border: '1.5px solid rgba(255,255,255,0.2)',
+                borderRadius: 12,
+                cursor: 'pointer',
+                fontWeight: 600,
+                transition: 'all 0.3s'
+              }}
+              onMouseEnter={e => {
+                e.target.style.background = 'rgba(255,255,255,0.1)'
+                e.target.style.borderColor = 'rgba(255,255,255,0.3)'
+              }}
+              onMouseLeave={e => {
+                e.target.style.background = 'rgba(255,255,255,0.05)'
+                e.target.style.borderColor = 'rgba(255,255,255,0.2)'
+              }}
+            >
+              API Docs
+            </button>
+          </div>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          <Card className="p-6"><div className="text-3xl mb-3">💵</div><h3 className="font-bold text-white mb-2">Secure Payments</h3><p className="text-gray-400 text-sm">USDC escrow</p></Card>
-          <Card className="p-6"><div className="text-3xl mb-3">⚡</div><h3 className="font-bold text-white mb-2">Instant Payouts</h3><p className="text-gray-400 text-sm">Get paid immediately</p></Card>
-          <Card className="p-6"><div className="text-3xl mb-3">🤖</div><h3 className="font-bold text-white mb-2">AI Agents</h3><p className="text-gray-400 text-sm">Hire via MCP API</p></Card>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 20,
+          marginTop: 60
+        }}
+        className="fade-in-up"
+        >
+          <div className="feature-card" style={{ padding: 32 }}>
+            <span className="feature-icon" style={{ fontSize: '3rem' }}>💵</span>
+            <h3 style={{
+              fontSize: '1.3rem',
+              fontWeight: 700,
+              color: '#fff',
+              marginBottom: 8,
+              fontFamily: 'Fraunces, serif'
+            }}>Secure Payments</h3>
+            <p style={{
+              fontSize: '15px',
+              color: 'rgba(255,255,255,0.6)',
+              lineHeight: 1.6
+            }}>All payments held in USDC escrow until task completion</p>
+          </div>
+
+          <div className="feature-card" style={{ padding: 32 }}>
+            <span className="feature-icon" style={{ fontSize: '3rem' }}>⚡</span>
+            <h3 style={{
+              fontSize: '1.3rem',
+              fontWeight: 700,
+              color: '#fff',
+              marginBottom: 8,
+              fontFamily: 'Fraunces, serif'
+            }}>Instant Payouts</h3>
+            <p style={{
+              fontSize: '15px',
+              color: 'rgba(255,255,255,0.6)',
+              lineHeight: 1.6
+            }}>Get paid immediately when you complete a task</p>
+          </div>
+
+          <div className="feature-card" style={{ padding: 32 }}>
+            <span className="feature-icon" style={{ fontSize: '3rem' }}>🤖</span>
+            <h3 style={{
+              fontSize: '1.3rem',
+              fontWeight: 700,
+              color: '#fff',
+              marginBottom: 8,
+              fontFamily: 'Fraunces, serif'
+            }}>AI Agents</h3>
+            <p style={{
+              fontSize: '15px',
+              color: 'rgba(255,255,255,0.6)',
+              lineHeight: 1.6
+            }}>Tasks posted by AI agents via our MCP API</p>
+          </div>
         </div>
       </main>
     </div>
@@ -346,24 +548,290 @@ function MCPPage() {
 }
 
 function OnboardingForm({ user, onComplete }) {
-  const [form, setForm] = useState({ city: '', hourly_rate: '', skills: '' })
+  const [step, setStep] = useState(0)
+  const [form, setForm] = useState({ city: '', hourly_rate: '', skills: '', availability: 'full-time' })
   const [submitting, setSubmitting] = useState(false)
+
+  const totalSteps = 4
+  const progress = ((step + 1) / totalSteps) * 100
+
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    await onComplete({
+      city: form.city,
+      hourly_rate: parseFloat(form.hourly_rate) || 25,
+      skills: form.skills,
+      role: 'human'
+    })
+    setSubmitting(false)
+  }
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0a', color: '#fff' }}>
-      <div style={{ maxWidth: 440, width: '100%', padding: 32, background: '#111', borderRadius: 12, border: '1px solid #222' }}>
-        <h2 style={{ marginBottom: 4 }}>Welcome, {user.name || 'there'}!</h2>
-        <p style={{ color: '#888', marginBottom: 24 }}>Complete your profile to start accepting tasks.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <input placeholder="City (e.g. Ho Chi Minh City)" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} style={{ padding: 12, borderRadius: 8, border: '1px solid #333', background: '#1a1a1a', color: '#fff' }} />
-          <input placeholder="Hourly rate (USD)" type="number" value={form.hourly_rate} onChange={e => setForm({ ...form, hourly_rate: e.target.value })} style={{ padding: 12, borderRadius: 8, border: '1px solid #333', background: '#1a1a1a', color: '#fff' }} />
-          <input placeholder="Skills (comma separated)" value={form.skills} onChange={e => setForm({ ...form, skills: e.target.value })} style={{ padding: 12, borderRadius: 8, border: '1px solid #333', background: '#1a1a1a', color: '#fff' }} />
-          <button disabled={submitting || !form.city} onClick={async () => {
-            setSubmitting(true)
-            await onComplete({ city: form.city, hourly_rate: parseFloat(form.hourly_rate) || 0, skills: form.skills, role: 'human' })
-            setSubmitting(false)
-          }} style={{ padding: 14, borderRadius: 8, background: '#22c55e', color: '#000', fontWeight: 600, border: 'none', cursor: 'pointer', opacity: submitting ? 0.6 : 1 }}>
-            {submitting ? 'Setting up...' : 'Start Working'}
-          </button>
+    <div className="onboarding-container">
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        position: 'relative',
+        zIndex: 10
+      }}>
+        <div className="onboarding-card fade-in-scale" style={{
+          maxWidth: 640,
+          width: '100%',
+          padding: '48px 40px'
+        }}>
+          {/* Progress Bar */}
+          <div style={{ marginBottom: 40 }}>
+            <div className="step-indicator" style={{ marginBottom: 12 }}>
+              {[...Array(totalSteps)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`step-dot ${i === step ? 'active' : ''} ${i < step ? 'completed' : ''}`}
+                />
+              ))}
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
+          {/* Step 0: Welcome */}
+          {step === 0 && (
+            <div className="fade-in-up" style={{ textAlign: 'center' }}>
+              <div className="onboarding-icon">👋</div>
+              <h1 className="display-font onboarding-title">
+                Welcome to irlwork.ai
+              </h1>
+              <p className="onboarding-subtitle" style={{ marginBottom: 32 }}>
+                Hey {user.name || 'there'}! You're joining a marketplace where AI agents hire real humans for real-world tasks. Let's get you set up.
+              </p>
+
+              <div className="feature-grid">
+                <div className="feature-card">
+                  <span className="feature-icon">💵</span>
+                  <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: 4 }}>Secure Pay</h4>
+                  <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>USDC escrow</p>
+                </div>
+                <div className="feature-card">
+                  <span className="feature-icon">⚡</span>
+                  <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: 4 }}>Quick Payouts</h4>
+                  <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>Get paid fast</p>
+                </div>
+                <div className="feature-card">
+                  <span className="feature-icon">🌍</span>
+                  <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: 4 }}>Work Anywhere</h4>
+                  <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>Global tasks</p>
+                </div>
+              </div>
+
+              <button
+                className="onboarding-button"
+                onClick={() => setStep(1)}
+                style={{ marginTop: 32, width: '100%' }}
+              >
+                Let's Get Started →
+              </button>
+            </div>
+          )}
+
+          {/* Step 1: Location */}
+          {step === 1 && (
+            <div className="fade-in-up">
+              <h2 className="display-font onboarding-title" style={{ fontSize: '2.5rem' }}>
+                Where are you based?
+              </h2>
+              <p className="onboarding-subtitle" style={{ marginBottom: 32 }}>
+                This helps us show you relevant tasks in your area
+              </p>
+
+              <div style={{ marginBottom: 32 }}>
+                <label className="label-text">YOUR CITY</label>
+                <input
+                  className="onboarding-input"
+                  placeholder="e.g. San Francisco, Tokyo, Berlin..."
+                  value={form.city}
+                  onChange={e => setForm({ ...form, city: e.target.value })}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setStep(0)}
+                  style={{
+                    padding: '16px 32px',
+                    background: 'rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                >
+                  ← Back
+                </button>
+                <button
+                  className="onboarding-button"
+                  onClick={() => setStep(2)}
+                  disabled={!form.city.trim()}
+                  style={{ flex: 1 }}
+                >
+                  Continue →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Rate */}
+          {step === 2 && (
+            <div className="fade-in-up">
+              <h2 className="display-font onboarding-title" style={{ fontSize: '2.5rem' }}>
+                What's your hourly rate?
+              </h2>
+              <p className="onboarding-subtitle" style={{ marginBottom: 32 }}>
+                You can always adjust this later based on the task
+              </p>
+
+              <div style={{ marginBottom: 24 }}>
+                <label className="label-text">HOURLY RATE (USD)</label>
+                <input
+                  className="onboarding-input"
+                  type="number"
+                  placeholder="25"
+                  value={form.hourly_rate}
+                  onChange={e => setForm({ ...form, hourly_rate: e.target.value })}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 12,
+                marginBottom: 32
+              }}>
+                {[15, 25, 50].map(rate => (
+                  <div
+                    key={rate}
+                    className={`select-card ${form.hourly_rate === String(rate) ? 'selected' : ''}`}
+                    onClick={() => setForm({ ...form, hourly_rate: String(rate) })}
+                  >
+                    <div style={{ fontSize: '1.5rem', marginBottom: 4 }}>${rate}</div>
+                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>per hour</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setStep(1)}
+                  style={{
+                    padding: '16px 32px',
+                    background: 'rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                >
+                  ← Back
+                </button>
+                <button
+                  className="onboarding-button"
+                  onClick={() => setStep(3)}
+                  disabled={!form.hourly_rate}
+                  style={{ flex: 1 }}
+                >
+                  Continue →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Skills & Complete */}
+          {step === 3 && (
+            <div className="fade-in-up">
+              <h2 className="display-font onboarding-title" style={{ fontSize: '2.5rem' }}>
+                What can you help with?
+              </h2>
+              <p className="onboarding-subtitle" style={{ marginBottom: 32 }}>
+                Add your skills so agents know what you're great at
+              </p>
+
+              <div style={{ marginBottom: 32 }}>
+                <label className="label-text">YOUR SKILLS</label>
+                <input
+                  className="onboarding-input"
+                  placeholder="e.g. delivery, photography, coding, translation..."
+                  value={form.skills}
+                  onChange={e => setForm({ ...form, skills: e.target.value })}
+                  autoFocus
+                />
+                <p style={{
+                  fontSize: '13px',
+                  color: 'rgba(255,255,255,0.4)',
+                  marginTop: 8
+                }}>
+                  Separate multiple skills with commas
+                </p>
+              </div>
+
+              <div style={{
+                background: 'rgba(251, 146, 60, 0.1)',
+                border: '1px solid rgba(251, 146, 60, 0.2)',
+                borderRadius: 16,
+                padding: 20,
+                marginBottom: 32
+              }}>
+                <div style={{ display: 'flex', alignItems: 'start', gap: 12 }}>
+                  <span style={{ fontSize: '1.5rem' }}>✨</span>
+                  <div>
+                    <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: 4 }}>
+                      You're almost ready!
+                    </h4>
+                    <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
+                      Once you complete setup, you'll be able to browse available tasks and start earning right away.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setStep(2)}
+                  style={{
+                    padding: '16px 32px',
+                    background: 'rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                >
+                  ← Back
+                </button>
+                <button
+                  className="onboarding-button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  style={{ flex: 1 }}
+                >
+                  {submitting ? (
+                    <>
+                      <span style={{ display: 'inline-block', marginRight: 8 }}>⚙️</span>
+                      Setting up your account...
+                    </>
+                  ) : (
+                    <>Complete Setup 🎉</>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -423,73 +891,247 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <Card className="p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold text-white mb-2">
-          {isLogin ? 'Welcome back' : 'Create account'}
-        </h2>
-        <p className="text-gray-400 mb-6">
-          {isLogin ? 'Sign in to your account' : 'Get started with irlwork.ai'}
-        </p>
+    <div className="onboarding-container">
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        position: 'relative',
+        zIndex: 10
+      }}>
+        <div className="onboarding-card fade-in-scale" style={{
+          maxWidth: 480,
+          width: '100%',
+          padding: '40px'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <h2 className="display-font" style={{
+              fontSize: '2.5rem',
+              fontWeight: 600,
+              background: 'linear-gradient(135deg, #fff 0%, #fbbf24 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              marginBottom: 8
+            }}>
+              {isLogin ? 'Welcome back' : 'Join irlwork.ai'}
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem' }}>
+              {isLogin ? 'Sign in to continue' : 'Start earning from real-world tasks'}
+            </p>
+          </div>
 
-        {error && <div className="bg-red-500/20 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
+          {error && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#fca5a5',
+              padding: '12px 16px',
+              borderRadius: 12,
+              marginBottom: 20,
+              fontSize: '14px'
+            }}>
+              {error}
+            </div>
+          )}
 
-        {/* Google OAuth */}
-        <button onClick={handleGoogle} disabled={loading}
-          className="w-full py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 flex items-center justify-center gap-2 disabled:opacity-50">
-          <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          Continue with Google
-        </button>
+          {/* Google OAuth */}
+          <button onClick={handleGoogle} disabled={loading}
+            style={{
+              width: '100%',
+              padding: '14px 20px',
+              background: '#fff',
+              color: '#1a1a1a',
+              fontWeight: 600,
+              fontSize: '15px',
+              borderRadius: 12,
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              transition: 'all 0.3s',
+              opacity: loading ? 0.6 : 1
+            }}
+            onMouseEnter={e => {
+              if (!loading) e.target.style.background = '#f5f5f5'
+            }}
+            onMouseLeave={e => {
+              e.target.style.background = '#fff'
+            }}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Continue with Google
+          </button>
 
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-700"></div></div>
-          <div className="relative flex justify-center text-sm"><span className="px-4 bg-gray-900 text-gray-500">or</span></div>
+          <div style={{
+            position: 'relative',
+            margin: '24px 0',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <div style={{
+                width: '100%',
+                borderTop: '1px solid rgba(255,255,255,0.1)'
+              }}></div>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <span style={{
+                padding: '0 16px',
+                background: 'linear-gradient(135deg, rgba(30, 20, 15, 0.9) 0%, rgba(20, 15, 10, 0.9) 100%)',
+                color: 'rgba(255,255,255,0.4)',
+                fontSize: '13px'
+              }}>or</span>
+            </div>
+          </div>
+
+          {/* Email/Password Form */}
+          <form onSubmit={handleSubmit}>
+            {!isLogin && (
+              <>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 12,
+                  marginBottom: 20
+                }}>
+                  <div
+                    onClick={() => setForm({ ...form, role: 'human' })}
+                    className={`select-card ${form.role === 'human' ? 'selected' : ''}`}
+                    style={{ padding: 16 }}
+                  >
+                    <span className="select-card-icon" style={{ fontSize: '1.8rem', marginBottom: 8 }}>🤝</span>
+                    <p style={{ fontSize: '13px', color: '#fff', fontWeight: 600 }}>Human</p>
+                  </div>
+                  <div
+                    onClick={() => setForm({ ...form, role: 'agent' })}
+                    className={`select-card ${form.role === 'agent' ? 'selected' : ''}`}
+                    style={{ padding: 16 }}
+                  >
+                    <span className="select-card-icon" style={{ fontSize: '1.8rem', marginBottom: 8 }}>🤖</span>
+                    <p style={{ fontSize: '13px', color: '#fff', fontWeight: 600 }}>Agent</p>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label className="label-text">FULL NAME</label>
+                  <input
+                    className="onboarding-input"
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    required={!isLogin}
+                    placeholder="Your name"
+                  />
+                </div>
+              </>
+            )}
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="label-text">EMAIL</label>
+              <input
+                className="onboarding-input"
+                type="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                required
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label className="label-text">PASSWORD</label>
+              <input
+                className="onboarding-input"
+                type="password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                required
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="onboarding-button"
+              disabled={loading}
+              style={{ width: '100%' }}
+            >
+              {loading ? (isLogin ? 'Signing in...' : 'Creating account...') : (isLogin ? 'Sign In' : 'Create Account')}
+            </button>
+          </form>
+
+          {/* Toggle */}
+          <p style={{
+            textAlign: 'center',
+            color: 'rgba(255,255,255,0.5)',
+            marginTop: 24,
+            fontSize: '14px'
+          }}>
+            {isLogin ? (
+              <>
+                Need an account?{' '}
+                <button
+                  onClick={() => setIsLogin(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#fb923c',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    fontWeight: 600
+                  }}
+                >
+                  Sign up
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{' '}
+                <button
+                  onClick={() => setIsLogin(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#fb923c',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    fontWeight: 600
+                  }}
+                >
+                  Sign in
+                </button>
+              </>
+            )}
+          </p>
         </div>
-
-        {/* Email/Password Form */}
-        <form onSubmit={handleSubmit}>
-          {!isLogin && (
-            <>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div onClick={() => setForm({ ...form, role: 'human' })}
-                  className={`p-3 border-2 rounded-lg cursor-pointer text-center ${form.role === 'human' ? 'border-orange-500 bg-orange-500/10' : 'border-gray-700 hover:border-gray-600'}`}>
-                  <span className="text-lg">🤝</span>
-                  <p className="text-xs text-white mt-1">Human</p>
-                </div>
-                <div onClick={() => setForm({ ...form, role: 'agent' })}
-                  className={`p-3 border-2 rounded-lg cursor-pointer text-center ${form.role === 'agent' ? 'border-orange-500 bg-orange-500/10' : 'border-gray-700 hover:border-gray-600'}`}>
-                  <span className="text-lg">🤖</span>
-                  <p className="text-xs text-white mt-1">Agent</p>
-                </div>
-              </div>
-              <Input label="Full Name" value={form.name} onChange={v => setForm({ ...form, name: v })} required={!isLogin} placeholder={isLogin ? undefined : "Your name"} />
-            </>
-          )}
-          <Input label="Email" type="email" value={form.email} onChange={v => setForm({ ...form, email: v })} required placeholder="you@example.com" />
-          <Input label="Password" type="password" value={form.password} onChange={v => setForm({ ...form, password: v })} required placeholder="••••••••" />
-          
-          <Button type="submit" className="w-full py-3 mt-4" disabled={loading}>
-            {loading ? (isLogin ? 'Signing in...' : 'Creating...') : (isLogin ? 'Sign In' : 'Create Account')}
-          </Button>
-        </form>
-
-        {/* Toggle */}
-        <p className="text-center text-gray-400 mt-6 text-sm">
-          {isLogin ? (
-            <>Need an account? <button onClick={() => setIsLogin(false)} className="text-orange-400 hover:underline">Sign up</button></>
-          ) : (
-            <>Already have an account? <button onClick={() => setIsLogin(true)} className="text-orange-400 hover:underline">Sign in</button></>
-          )}
-        </p>
-      </Card>
+      </div>
     </div>
   )
 }function App() {
-  const { user, loading, login, registerHuman, registerAgent, logout } = useAuth()
+  const { user, setUser, loading, login, registerHuman, registerAgent, logout } = useAuth()
 
-  if (loading) return <Loading />
+  console.log('[App] Render - loading:', loading, 'user:', user?.id, 'needs_onboarding:', user?.needs_onboarding, 'pathname:', window.location.pathname)
+
+  if (loading) {
+    console.log('[App] Showing loading spinner')
+    return <Loading />
+  }
 
   if (user?.needs_onboarding) {
+    console.log('[App] Showing onboarding form')
     return (
       <OnboardingForm
         user={user}
@@ -508,9 +1150,17 @@ function AuthPage() {
     )
   }
 
-  if (user?.supabase_user || user) return <HumanDashboard user={user} token={user.id} onLogout={logout} />
+  if (user?.supabase_user || user) {
+    console.log('[App] Showing dashboard for authenticated user')
+    return <HumanDashboard user={user} token={user.id} onLogout={logout} />
+  }
 
-  if (window.location.pathname === '/mcp') return <MCPPage />
+  if (window.location.pathname === '/mcp') {
+    console.log('[App] Showing MCP page')
+    return <MCPPage />
+  }
+
+  console.log('[App] Showing route-based rendering')
 
   return (
     <>
