@@ -633,16 +633,56 @@ function AuthPage({ onLogin }) {
     setLoading(true)
     setError('')
     try {
+      console.log('[Auth] Starting Google OAuth...')
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin + '/dashboard' }
+        options: {
+          redirectTo: window.location.origin + '/dashboard',
+          scopes: 'email profile'
+        }
       })
-      if (error) throw error
+      
+      if (error) {
+        console.error('[Auth] OAuth error:', error)
+        throw error
+      }
+      
+      console.log('[Auth] OAuth initiated successfully')
     } catch (err) {
-      setError(err.message)
+      console.error('[Auth] Google login failed:', err)
+      setError(err.message || 'Failed to sign in with Google')
       setLoading(false)
     }
   }
+
+  const handleGoogleRedirect = async () => {
+    // Check if we're returning from OAuth
+    const hash = window.location.hash
+    if (hash.includes('access_token')) {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams(hash.slice(1))
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
+        
+        if (accessToken) {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || undefined })
+          window.history.replaceState({}, document.title, window.location.pathname)
+          window.location.href = '/dashboard'
+          return
+        }
+      } catch (err) {
+        console.error('[Auth] OAuth callback error:', err)
+        setError('Failed to complete Google sign in')
+      }
+      setLoading(false)
+    }
+  }
+
+  // Handle OAuth redirect on mount
+  useEffect(() => {
+    handleGoogleRedirect()
+  }, [])
 
   return (
     <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
@@ -1332,86 +1372,146 @@ function App() {
 
   useEffect(() => {
     async function init() {
-      // Check for OAuth callback
+      console.log('[Auth] Initializing...')
+      
+      // Check for OAuth callback first
       const hash = window.location.hash
       if (hash.includes('access_token')) {
-        const params = new URLSearchParams(hash.slice(1))
-        const accessToken = params.get('access_token')
-        const refreshToken = params.get('refresh_token')
-        
-        if (accessToken) {
-          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || undefined })
-          window.history.replaceState({}, document.title, window.location.pathname)
+        console.log('[Auth] Processing OAuth callback...')
+        try {
+          const params = new URLSearchParams(hash.slice(1))
+          const accessToken = params.get('access_token')
+          const refreshToken = params.get('refresh_token')
+          
+          if (accessToken) {
+            const { error } = await supabase.auth.setSession({ 
+              access_token: accessToken, 
+              refresh_token: refreshToken || undefined 
+            })
+            if (error) {
+              console.error('[Auth] Session set error:', error)
+            } else {
+              console.log('[Auth] Session set successfully')
+            }
+            window.history.replaceState({}, document.title, window.location.pathname)
+          }
+        } catch (e) {
+          console.error('[Auth] OAuth callback processing error:', e)
         }
       }
 
+      // Get session and user
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('[Auth] Session:', session ? 'found' : 'none')
+      
       if (session?.user) {
-        // Fetch full user profile
-        try {
-          const res = await fetch(`${API_URL}/auth/verify`, { 
-            headers: { Authorization: session.user.id } 
-          })
-          if (res.ok) {
-            const data = await res.json()
-            setUser(data.user)
-          } else {
-            setUser({ 
-              id: session.user.id, 
-              email: session.user.email, 
-              name: session.user.user_metadata?.full_name || 'User',
-              needs_onboarding: true
-            })
-          }
-        } catch (e) {
-          console.log('[Auth] Backend unavailable, using Supabase session')
-          setUser({ 
-            id: session.user.id, 
-            email: session.user.email, 
-            name: session.user.user_metadata?.full_name || 'User',
-            needs_onboarding: true
-          })
-        }
+        await fetchUserProfile(session.user)
+      } else {
+        setLoading(false)
       }
-      setLoading(false)
     }
+
     init()
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] State change:', event, session ? 'with session' : 'no session')
       if (session?.user) {
-        try {
-          const res = await fetch(`${API_URL}/auth/verify`, { 
-            headers: { Authorization: session.user.id } 
-          })
-          if (res.ok) {
-            const data = await res.json()
-            setUser(data.user)
-          } else {
-            setUser({ 
-              id: session.user.id, 
-              email: session.user.email, 
-              name: session.user.user_metadata?.full_name || 'User',
-              needs_onboarding: true
-            })
-          }
-        } catch (e) {
-          setUser({ 
-            id: session.user.id, 
-            email: session.user.email, 
-            name: session.user.user_metadata?.full_name || 'User',
-            needs_onboarding: true
-          })
-        }
+        await fetchUserProfile(session.user)
       } else {
         setUser(null)
+        setLoading(false)
       }
     })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  const logout = async () => { await supabase.auth.signOut(); setUser(null) }
+  async function fetchUserProfile(supabaseUser) {
+    try {
+      console.log('[Auth] Fetching user profile...')
+      const res = await fetch(`${API_URL}/auth/verify`, { 
+        headers: { Authorization: supabaseUser.id } 
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        console.log('[Auth] User found in DB:', data.user?.email)
+        setUser({ ...data.user, supabase_user: true })
+      } else if (res.status === 404) {
+        // New user - create profile
+        console.log('[Auth] New user, needs onboarding')
+        setUser({
+          id: supabaseUser.id,
+          email: supabaseUser.email,
+          name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
+          avatar_url: supabaseUser.user_metadata?.avatar_url || '',
+          supabase_user: true,
+          needs_onboarding: true
+        })
+      } else {
+        // Backend error but we have session - treat as new user
+        console.log('[Auth] Backend error, treating as new user')
+        setUser({
+          id: supabaseUser.id,
+          email: supabaseUser.email,
+          name: supabaseUser.user_metadata?.full_name || 'User',
+          supabase_user: true,
+          needs_onboarding: true
+        })
+      }
+    } catch (e) {
+      // Backend down - use Supabase session directly
+      console.log('[Auth] Backend unavailable, using Supabase session')
+      setUser({
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
+        avatar_url: supabaseUser.user_metadata?.avatar_url || '',
+        supabase_user: true,
+        needs_onboarding: true
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const logout = async () => { 
+    await supabase.auth.signOut() 
+    setUser(null)
+    window.location.href = '/'
+  }
 
   const handleOnboardingComplete = async (profile) => {
+    console.log('[Onboarding] Completing with profile:', profile)
     try {
+      // First try to register the user in our backend
+      try {
+        const registerRes = await fetch(`${API_URL}/auth/register/human`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            city: profile.city,
+            hourly_rate: profile.hourly_rate,
+            skills: profile.skills,
+            role: 'human'
+          })
+        })
+        
+        if (registerRes.ok) {
+          const data = await registerRes.json()
+          setUser({ ...data.user, supabase_user: true })
+          window.location.href = '/dashboard'
+          return
+        }
+      } catch (e) {
+        console.log('[Onboarding] Register endpoint unavailable, trying profile update')
+      }
+      
+      // Fallback: update profile directly
       const res = await fetch(`${API_URL}/humans/profile`, {
         method: 'PUT',
         headers: { 
@@ -1421,40 +1521,64 @@ function App() {
         body: JSON.stringify({
           city: profile.city,
           hourly_rate: profile.hourly_rate,
-          categories: profile.skills,
-          travel_radius: profile.travel_radius
+          skills: profile.skills
         })
       })
+      
       if (res.ok) {
         const data = await res.json()
-        setUser(data.user)
+        setUser({ ...data.user, supabase_user: true })
         window.location.href = '/dashboard'
       } else {
-        const err = await res.json()
-        throw new Error(err.error || 'Failed to save profile')
+        throw new Error('Failed to save profile')
       }
     } catch (e) {
-      console.error('Failed to save profile:', e)
-      throw e
+      console.error('[Onboarding] Failed:', e)
+      // Even if backend fails, redirect to dashboard
+      // The user can try again later
+      setUser({ 
+        ...user, 
+        city: profile.city,
+        hourly_rate: profile.hourly_rate,
+        skills: profile.skills,
+        needs_onboarding: false
+      })
+      window.location.href = '/dashboard'
     }
   }
 
-  if (loading) return <Loading />
-
-  // Routes
-  const path = window.location.pathname
-
-  if (path === '/dashboard' && !user) {
-    window.location.href = '/auth'
+  if (loading) {
+    console.log('[Auth] Loading...')
     return <Loading />
   }
 
-  if (path === '/dashboard' && user) {
-    // Check if user needs onboarding (no city/skills set)
-    const needsOnboarding = !user.city || !user.skills?.length
+  // Routes
+  const path = window.location.pathname
+  console.log('[Auth] Rendering route:', path, 'user:', user ? user.email : 'none')
+
+  // If on auth page and already logged in, redirect to dashboard
+  if (path === '/auth' && user) {
+    console.log('[Auth] Already logged in, redirecting to dashboard')
+    window.location.href = '/dashboard'
+    return <Loading />
+  }
+
+  // Dashboard route - requires auth
+  if (path === '/dashboard') {
+    if (!user) {
+      console.log('[Auth] No user, redirecting to auth')
+      window.location.href = '/auth'
+      return <Loading />
+    }
+    
+    // Check if user needs onboarding
+    const needsOnboarding = user.needs_onboarding || !user.city || !user.skills?.length
+    console.log('[Auth] Needs onboarding:', needsOnboarding)
+    
     if (needsOnboarding) {
       return <Onboarding onComplete={handleOnboardingComplete} />
     }
+    
     return <Dashboard user={user} onLogout={logout} />
   }
   
