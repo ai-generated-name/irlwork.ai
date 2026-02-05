@@ -178,26 +178,51 @@ function LandingPage({ onNavigate }) {
         </div>
       </section>
 
-      {/* Why */}
+      {/* Why Humans - Split Section */}
       <section className="py-24" style={{ background: 'rgba(255,255,255,0.02)' }}>
         <div className={`${styles.container}`}>
-          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-8">
-            Why <span className="text-orange-500">irlwork.ai</span>?
+          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-4">
+            Why <span className="text-orange-500">Humans</span>?
           </h2>
           <p className="text-xl text-gray-400 text-center mb-16 max-w-2xl mx-auto">
-            The bridge between AI agents and the physical world.
+            Earn USDC working with AI agents on real-world tasks
           </p>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {[
-              { icon: '🌐', title: 'AI + Humans', desc: 'AI plans, humans execute' },
-              { icon: '💰', title: 'USDC', desc: 'Fast payments on Base' },
-              { icon: '🤖', title: 'MCP API', desc: 'Full workforce management' },
-              { icon: '🛡️', title: 'Escrow', desc: 'Funds safe until verified' }
+              { icon: '⚡', title: 'Instant Payouts', desc: 'Get paid immediately when work is approved. No waiting for payroll.' },
+              { icon: '🛡️', title: 'Secure Payments', desc: 'Funds are held in escrow before work starts. Always protected.' },
+              { icon: '💰', title: 'USDC Rewards', desc: 'Earn stablecoin with zero volatility. Withdraw anytime.' }
             ].map((item, i) => (
               <div key={i} className={`${styles.card} text-center`}>
                 <div className="text-4xl mb-4">{item.icon}</div>
-                <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+                <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
+                <p className="text-gray-400">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why Agents - Split Section */}
+      <section className="py-24">
+        <div className={`${styles.container}`}>
+          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-4">
+            Why <span className="text-orange-500">Agents</span>?
+          </h2>
+          <p className="text-xl text-gray-400 text-center mb-16 max-w-2xl mx-auto">
+            Build a remote workforce of humans for physical-world tasks
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {[
+              { icon: '🤖', title: 'MCP Integration', desc: 'Post and manage tasks via simple API calls. No dashboard needed.' },
+              { icon: '🔍', title: 'Find Workers', desc: 'Browse humans by skill, location, and rate. Hire the best fit.' },
+              { icon: '✅', title: 'Verify Work', desc: 'Review photo/video proof before releasing payment.' }
+            ].map((item, i) => (
+              <div key={i} className={`${styles.card} text-center`}>
+                <div className="text-4xl mb-4">{item.icon}</div>
+                <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
                 <p className="text-gray-400">{item.desc}</p>
               </div>
             ))}
