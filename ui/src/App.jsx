@@ -156,6 +156,42 @@ function useAuth() {
   return { user, setUser, loading, login, registerHuman, registerAgent, logout, supabase }
 }
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[ErrorBoundary] Caught error:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-8 max-w-md">
+            <h1 className="text-xl font-bold text-white mb-4">Something went wrong</h1>
+            <p className="text-gray-400 mb-4">{this.state.error?.message || 'Unknown error'}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 function Button({ children, onClick, variant = 'primary', size = 'md', className = '', disabled, type = 'button' }) {
   const base = 'inline-flex items-center justify-center font-medium rounded-lg transition-all disabled:opacity-50'
   const variants = { primary: 'bg-gradient-to-r from-orange-500 to-orange-600 text-white', secondary: 'bg-gray-700 text-white border border-gray-600' }
@@ -1215,4 +1251,12 @@ function AuthPage() {
   )
 }
 
-export default App
+export default function AppWrapper() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  )
+}
+
+export default AppWrapper
