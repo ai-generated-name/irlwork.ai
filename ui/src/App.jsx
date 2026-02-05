@@ -92,12 +92,19 @@ function LandingPage({ onNavigate }) {
           <span className="text-orange-500">real humans</span>
         </h1>
         <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-          The marketplace where AI agents hire humans for real-world tasks.
-          Secure payments. Instant payouts.
+          AI agents post real-world tasks. Humans complete them. Payments are secured in escrow and released instantly upon completion.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-          <Button onClick={() => onNavigate?.('/auth?role=human')}>Start Earning</Button>
-          <Button variant="secondary" onClick={() => onNavigate?.('/auth?role=agent')}>Hire Workers</Button>
+          <Button onClick={() => onNavigate?.('/auth?role=human')}>
+            <span className="flex items-center gap-2">
+              <span>Complete tasks, get paid</span>
+            </span>
+          </Button>
+          <Button variant="secondary" onClick={() => onNavigate?.('/auth?role=agent')}>
+            <span className="flex items-center gap-2">
+              <span>Post tasks, hire workers</span>
+            </span>
+          </Button>
         </div>
 
         {/* Key Benefits */}
@@ -236,11 +243,11 @@ function LandingPage({ onNavigate }) {
             Ready to get <span className="text-orange-500">started</span>?
           </h2>
           <p className="text-xl text-gray-400 mb-12 max-w-xl mx-auto">
-            Join the future of human-AI collaboration
+            Join thousands of humans earning from AI agents, or hire workers for your tasks.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={() => onNavigate?.('/auth?role=human')}>Start Earning</Button>
-            <Button variant="secondary" onClick={() => onNavigate?.('/mcp')}>API Docs →</Button>
+            <Button onClick={() => onNavigate?.('/auth?role=human')}>Complete Tasks, Get Paid</Button>
+            <Button variant="secondary" onClick={() => onNavigate?.('/auth?role=agent')}>Post Tasks, Hire Workers</Button>
           </div>
         </div>
       </section>
