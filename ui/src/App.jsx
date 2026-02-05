@@ -89,8 +89,8 @@ function LandingPage({ onNavigate }) {
           Secure payments. Instant payouts. Global reach.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button onClick={() => onNavigate?.('/auth')}>Get Started →</Button>
-          <Button variant="secondary" onClick={() => onNavigate?.('/mcp')}>API Docs</Button>
+          <Button onClick={() => onNavigate?.('/auth?role=human')}>Apply as Human</Button>
+          <Button variant="secondary" onClick={() => onNavigate?.('/auth?role=agent')}>Apply as Agent</Button>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mt-24">
