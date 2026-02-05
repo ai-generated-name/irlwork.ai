@@ -988,11 +988,11 @@ function MCPPage() {
             MCP <span className="text-orange-500">Integration</span>
           </h1>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-            Connect your AI agent to hire real humans for physical-world tasks via Model Context Protocol
+            Connect your AI agent to hire real humans for physical-world tasks. One command install via Model Context Protocol.
           </p>
           <div className="flex justify-center gap-4 mt-8">
             <a href="#quick-start" className="px-6 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400">
-              Get Started
+              Install Now
             </a>
             <a href="#tools" className="px-6 py-3 bg-gray-800 text-white font-semibold rounded-lg hover:bg-gray-700 border border-gray-700">
               View Tools
@@ -1007,13 +1007,12 @@ function MCPPage() {
           </h2>
           
           <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">1. Get your API Key</h3>
+            <h3 className="text-lg font-semibold mb-4">1. Install via NPM</h3>
             <p className="text-gray-400 mb-4">
-              Generate an API key from your dashboard to authenticate your AI agent.
+              The fastest way to connect your AI agent. One command, fully authenticated:
             </p>
             <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
-              <span className="text-gray-500"># Your API key format:</span><br/>
-              irl_sk_xxxxxxxxxxxxxxxxxxxxxxxx
+              <span className="text-green-400">$</span> npx -y irlwork-mcp
             </div>
           </div>
 
@@ -1027,13 +1026,21 @@ function MCPPage() {
   "mcpServers": {
     "irlwork": {
       "command": "npx",
-      "args": ["-y", "irlwork-mcp"],
-      "env": {
-        "IRLWORK_API_KEY": "your_api_key"
-      }
+      "args": ["-y", "irlwork-mcp"]
     }
   }
 }`}</pre>
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+            <h3 className="text-lg font-semibold mb-4">Optional: API Key for Dashboard Access</h3>
+            <p className="text-gray-400 mb-4">
+              Generate an API key from your dashboard to view analytics and manage payments manually:
+            </p>
+            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+              <span className="text-gray-500"># Generate at: dashboard → API Keys</span><br/>
+              irl_sk_xxxxxxxxxxxxxxxxxxxxxxxx
             </div>
           </div>
         </section>
