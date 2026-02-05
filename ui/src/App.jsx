@@ -11,10 +11,18 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 function useAuth() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     console.log('[Auth] Initializing auth, API_URL:', API_URL)
-    
+
+    // Timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.log('[Auth] Auth initialization timeout, forcing loading=false')
+      setLoading(false)
+      setError('Authentication timeout - using offline mode')
+    }, 10000)
+
     async function initAuth() {
       // Check for OAuth callback tokens in URL hash first
       const hash = window.location.hash
@@ -153,7 +161,7 @@ function useAuth() {
 
   const logout = async () => { await supabase.auth.signOut(); setUser(null) }
 
-  return { user, setUser, loading, login, registerHuman, registerAgent, logout, supabase }
+  return { user, setUser, loading, error, login, registerHuman, registerAgent, logout, supabase }
 }
 
 // Error Boundary Component
@@ -1186,13 +1194,18 @@ function AuthPage() {
     </div>
   )
 }function App() {
-  const { user, setUser, loading, login, registerHuman, registerAgent, logout } = useAuth()
+  const { user, setUser, loading, error, login, registerHuman, registerAgent, logout } = useAuth()
 
-  console.log('[App] Render - loading:', loading, 'user:', user?.id, 'needs_onboarding:', user?.needs_onboarding, 'pathname:', window.location.pathname)
+  console.log('[App] Render - loading:', loading, 'user:', user?.id, 'error:', error, 'pathname:', window.location.pathname)
 
   if (loading) {
     console.log('[App] Showing loading spinner')
     return <Loading />
+  }
+
+  if (error) {
+    console.log('[App] Auth error:', error)
+    // Continue anyway - show landing page
   }
 
   if (user?.needs_onboarding) {
