@@ -403,8 +403,16 @@ function App() {
       )}
       {window.location.pathname !== '/dashboard' && (
         <>
-          {(!window.location.pathname || window.location.pathname === '/') && <LandingPage onNavigate={(s) => { if (s === 'signup') window.location.href = '/signup' else if (s === 'login') window.location.href = '/login' }} />}
-          {window.location.pathname === '/signup' && <SignupForm onBack={() => window.location.href = '/'} onComplete={async (form) => { if (form.role === 'human') await registerHuman(form) else await registerAgent(form); window.location.href = '/dashboard' }} />}
+          {(!window.location.pathname || window.location.pathname === '/') && <LandingPage onNavigate={(s) => { if (s === 'signup') {
+          window.location.href = '/signup'
+        } else if (s === 'login') {
+          window.location.href = '/login'
+        } }} />}
+          {window.location.pathname === '/signup' && <SignupForm onBack={() => window.location.href = '/'} onComplete={async (form) => { if (form.role === 'human') {
+          await registerHuman(form)
+        } else {
+          await registerAgent(form)
+        } window.location.href = '/dashboard' }} />}
           {window.location.pathname === '/login' && <LoginScreen onBack={() => window.location.href = '/'} onLogin={async (email, password) => { await login(email, password); window.location.href = '/dashboard' }} />}
         </>
       )}
