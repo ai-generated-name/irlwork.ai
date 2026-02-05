@@ -6,17 +6,32 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwx
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0Y4h6x1a2fO7YLyjrGOt3e_Scrb5YjDdsyVzo0DdvgRtc_5yfLmGqmsJ81HM5qcHqJvX0Ve_AQlwSbgGi2-zjOCg-KM1yLwAA'
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'http://localhost:3002/api'
+const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
 // === Styles ===
 const styles = {
-  btn: `px-6 py-3 rounded-xl font-semibold transition-all duration-200 cursor-pointer border-0`,
-  btnPrimary: `bg-orange-500 text-white hover:bg-orange-600 hover:scale-[1.02]`,
+  btn: `px-5 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer border-0`,
+  btnPrimary: `bg-orange-500 text-white hover:bg-orange-600`,
   btnSecondary: `bg-white/10 text-white hover:bg-white/20`,
+  btnSmall: `px-3 py-1.5 text-sm rounded-lg`,
   input: `w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none transition-colors`,
   card: `bg-white/5 border border-white/10 rounded-2xl p-6`,
   container: `max-w-6xl mx-auto px-6`,
   gradient: `bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800`,
+}
+
+// === Icons ===
+const Icons = {
+  task: '📋',
+  create: '➕',
+  humans: '👥',
+  messages: '💬',
+  wallet: '💳',
+  profile: '👤',
+  check: '✓',
+  clock: '⏱️',
+  location: '📍',
+  dollar: '💰',
 }
 
 // === Components ===
@@ -36,24 +51,21 @@ function Loading() {
   return (
     <div className={`min-h-screen ${styles.gradient} flex items-center justify-center`}>
       <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-400">Loading...</p>
       </div>
     </div>
   )
 }
 
-function LandingPage() {
-  const navigate = (path) => { window.location.href = path }
-
+function LandingPage({ onNavigate }) {
   return (
     <div className={`min-h-screen ${styles.gradient} text-white`}>
-      {/* Header */}
       <header className="border-b border-white/5">
         <div className={`${styles.container} h-20 flex items-center justify-between`}>
           <div 
             className="flex items-center gap-3 cursor-pointer" 
-            onClick={() => navigate('/')}
+            onClick={() => onNavigate?.('/')}
           >
             <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-lg">
               irl
@@ -62,12 +74,11 @@ function LandingPage() {
           </div>
           <nav className="flex items-center gap-6">
             <a href="/mcp" className="text-gray-400 hover:text-white transition-colors">For Agents</a>
-            <Button variant="secondary" onClick={() => navigate('/auth')}>Sign In</Button>
+            <Button variant="secondary" onClick={() => onNavigate?.('/auth')}>Sign In</Button>
           </nav>
         </div>
       </header>
 
-      {/* Hero */}
       <main className={`${styles.container} py-24 text-center`}>
         <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
           AI agents hiring<br />
@@ -78,14 +89,13 @@ function LandingPage() {
           Secure payments. Instant payouts. Global reach.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button onClick={() => navigate('/auth')}>Get Started →</Button>
-          <Button variant="secondary" onClick={() => navigate('/mcp')}>API Docs</Button>
+          <Button onClick={() => onNavigate?.('/auth')}>Get Started →</Button>
+          <Button variant="secondary" onClick={() => onNavigate?.('/mcp')}>API Docs</Button>
         </div>
 
-        {/* Features */}
         <div className="grid md:grid-cols-3 gap-6 mt-24">
           <div className={`${styles.card} text-left`}>
-            <div className="text-4xl mb-4">💵</div>
+            <div className="text-4xl mb-4">{Icons.dollar}</div>
             <h3 className="text-xl font-semibold mb-2">Secure Payments</h3>
             <p className="text-gray-400">USDC escrow until task completion</p>
           </div>
@@ -101,18 +111,148 @@ function LandingPage() {
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-white/5 py-8 mt-24">
-        <div className={`${styles.container} text-center text-gray-500 text-sm`}>
-          © 2026 irlwork.ai — AI meets IRL
-        </div>
-      </footer>
     </div>
   )
 }
 
-function AuthPage() {
+function Onboarding({ onComplete }) {
+  const [step, setStep] = useState(1)
+  const [form, setForm] = useState({
+    city: '',
+    skills: '',
+    travel_radius: 10,
+    hourly_rate: 25
+  })
+  const [loading, setLoading] = useState(false)
+
+  const totalSteps = 4
+  const progress = (step / totalSteps) * 100
+
+  const handleSubmit = async () => {
+    setLoading(true)
+    try {
+      await onComplete({
+        city: form.city,
+        skills: form.skills.split(',').map(s => s.trim()).filter(Boolean),
+        travel_radius: form.travel_radius,
+        hourly_rate: form.hourly_rate
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
+      <div className="w-full max-w-lg">
+        {/* Progress */}
+        <div className="mb-8">
+          <div className="flex justify-between text-sm text-gray-400 mb-2">
+            <span>Step {step} of {totalSteps}</span>
+            <span>{Math.round(progress)}%</span>
+          </div>
+          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-orange-500 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Step 1: City */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold text-white">Where are you based?</h1>
+            <p className="text-gray-400">This helps show you relevant tasks in your area</p>
+            <input
+              type="text"
+              placeholder="City (e.g. San Francisco)"
+              value={form.city}
+              onChange={e => setForm({ ...form, city: e.target.value })}
+              className={styles.input}
+              autoFocus
+            />
+            <Button 
+              className="w-full" 
+              onClick={() => setStep(2)}
+              disabled={!form.city.trim()}
+            >
+              Continue
+            </Button>
+          </div>
+        )}
+
+        {/* Step 2: Skills */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold text-white">What can you help with?</h1>
+            <p className="text-gray-400">Add your skills so agents know what you're great at</p>
+            <input
+              type="text"
+              placeholder="Skills (comma separated)"
+              value={form.skills}
+              onChange={e => setForm({ ...form, skills: e.target.value })}
+              className={styles.input}
+              autoFocus
+            />
+            <p className="text-sm text-gray-500">e.g. delivery, photography, coding, translation</p>
+            <div className="flex gap-4">
+              <Button variant="secondary" className="flex-1" onClick={() => setStep(1)}>Back</Button>
+              <Button className="flex-1" onClick={() => setStep(3)}>Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Travel Radius */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold text-white">How far can you travel?</h1>
+            <p className="text-gray-400">Maximum distance you're willing to travel for tasks</p>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              value={form.travel_radius}
+              onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
+              className="w-full"
+            />
+            <p className="text-center text-orange-400 text-xl font-semibold">
+              {form.travel_radius} miles
+            </p>
+            <div className="flex gap-4">
+              <Button variant="secondary" className="flex-1" onClick={() => setStep(2)}>Back</Button>
+              <Button className="flex-1" onClick={() => setStep(4)}>Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Hourly Rate */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold text-white">What's your rate?</h1>
+            <p className="text-gray-400">Minimum hourly rate for your work</p>
+            <input
+              type="number"
+              placeholder="Hourly rate"
+              value={form.hourly_rate}
+              onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
+              className={styles.input}
+              autoFocus
+            />
+            <div className="flex gap-4">
+              <Button variant="secondary" className="flex-1" onClick={() => setStep(3)}>Back</Button>
+              <Button className="flex-1" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
+                {loading ? 'Setting up...' : 'Complete Setup'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AuthPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -159,18 +299,14 @@ function AuthPage() {
   return (
     <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div 
           className="flex items-center gap-3 justify-center mb-8 cursor-pointer"
           onClick={() => window.location.href = '/'}
         >
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-lg">
-            irl
-          </div>
+          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-lg">irl</div>
           <span className="text-xl font-semibold text-white">irlwork.ai</span>
         </div>
 
-        {/* Form Card */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
           <h1 className="text-2xl font-bold text-white text-center mb-2">
             {isLogin ? 'Welcome back' : 'Create account'}
@@ -185,7 +321,6 @@ function AuthPage() {
             </div>
           )}
 
-          {/* Google OAuth */}
           <button
             onClick={handleGoogle}
             disabled={loading}
@@ -206,7 +341,6 @@ function AuthPage() {
             <div className="flex-1 border-t border-white/10" />
           </div>
 
-          {/* Email Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <input
@@ -240,19 +374,14 @@ function AuthPage() {
             </Button>
           </form>
 
-          {/* Toggle */}
           <p className="text-center text-gray-400 mt-6 text-sm">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-orange-500 hover:text-orange-400"
-            >
+            <button onClick={() => setIsLogin(!isLogin)} className="text-orange-500 hover:text-orange-400">
               {isLogin ? 'Sign up' : 'Sign in'}
             </button>
           </p>
         </div>
 
-        {/* Back */}
         <button
           onClick={() => window.location.href = '/'}
           className="block w-full text-center text-gray-400 hover:text-white mt-6 text-sm"
@@ -264,16 +393,70 @@ function AuthPage() {
   )
 }
 
-function Dashboard({ user, onLogout }) {
+function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [activeTab, setActiveTab] = useState('tasks')
-  const [stats] = useState({ available: 5, progress: 2, completed: 12, earnings: 340 })
+  const [tasks, setTasks] = useState([])
+  const [humans, setHumans] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const navItems = [
-    { id: 'tasks', label: 'Tasks', icon: '📋' },
-    { id: 'create', label: 'Create', icon: '➕' },
-    { id: 'humans', label: 'Humans', icon: '👥' },
-    { id: 'messages', label: 'Messages', icon: '💬' },
+    { id: 'tasks', label: 'Tasks', icon: Icons.task },
+    { id: 'humans', label: 'Browse Humans', icon: Icons.humans },
+    { id: 'payments', label: 'Payments', icon: Icons.wallet },
+    { id: 'profile', label: 'Profile', icon: Icons.profile },
   ]
+
+  useEffect(() => {
+    fetchTasks()
+    fetchHumans()
+  }, [])
+
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.id } })
+      if (res.ok) {
+        const data = await res.json()
+        setTasks(data || [])
+      }
+    } catch (e) {
+      console.log('Could not fetch tasks')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchHumans = async () => {
+    try {
+      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.id } })
+      if (res.ok) {
+        const data = await res.json()
+        setHumans(data || [])
+      }
+    } catch (e) {
+      console.log('Could not fetch humans')
+    }
+  }
+
+  const acceptTask = async (taskId) => {
+    try {
+      await fetch(`${API_URL}/tasks/${taskId}/accept`, { 
+        method: 'POST',
+        headers: { Authorization: user.id }
+      })
+      fetchTasks()
+    } catch (e) {
+      console.log('Could not accept task')
+    }
+  }
+
+  const getTaskStatus = (status) => {
+    const colors = {
+      open: 'bg-blue-500/20 text-blue-400',
+      in_progress: 'bg-yellow-500/20 text-yellow-400',
+      completed: 'bg-green-500/20 text-green-400',
+    }
+    return colors[status] || 'bg-gray-500/20 text-gray-400'
+  }
 
   return (
     <div className={`min-h-screen ${styles.gradient} flex`}>
@@ -283,13 +466,11 @@ function Dashboard({ user, onLogout }) {
           className="flex items-center gap-3 mb-8 cursor-pointer"
           onClick={() => window.location.href = '/'}
         >
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-lg">
-            irl
-          </div>
+          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-lg">irl</div>
           <span className="text-xl font-semibold text-white">irlwork.ai</span>
         </div>
 
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-1">
           {navItems.map(item => (
             <button
               key={item.id}
@@ -306,7 +487,6 @@ function Dashboard({ user, onLogout }) {
           ))}
         </nav>
 
-        {/* User */}
         <div className="border-t border-white/5 pt-6 mt-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold">
@@ -314,7 +494,7 @@ function Dashboard({ user, onLogout }) {
             </div>
             <div>
               <p className="text-white font-medium text-sm">{user?.name || 'User'}</p>
-              <p className="text-gray-500 text-xs capitalize">{user?.type || 'human'}</p>
+              <p className="text-gray-500 text-xs">{user?.city || 'Set location'}</p>
             </div>
           </div>
           <button
@@ -328,69 +508,130 @@ function Dashboard({ user, onLogout }) {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-8 overflow-auto">
+        {/* Tasks Tab */}
         {activeTab === 'tasks' && (
           <div>
             <h1 className="text-3xl font-bold text-white mb-8">Your Tasks</h1>
             
-            {/* Stats */}
-            <div className="grid grid-cols-4 gap-4 mb-8">
-              <div className={`${styles.card}`}>
-                <p className="text-gray-500 text-sm mb-1">Available</p>
-                <p className="text-3xl font-bold text-green-400">{stats.available}</p>
+            {loading ? (
+              <p className="text-gray-400">Loading...</p>
+            ) : tasks.length === 0 ? (
+              <div className={`${styles.card} text-center py-12`}>
+                <p className="text-gray-400 mb-4">No tasks yet</p>
+                <p className="text-sm text-gray-500">Tasks posted by AI agents will appear here</p>
               </div>
-              <div className={`${styles.card}`}>
-                <p className="text-gray-500 text-sm mb-1">In Progress</p>
-                <p className="text-3xl font-bold text-yellow-400">{stats.progress}</p>
+            ) : (
+              <div className="space-y-4">
+                {tasks.map(task => (
+                  <div key={task.id} className={`${styles.card}`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className={`text-xs px-2 py-1 rounded ${getTaskStatus(task.status)}`}>
+                          {(task.status || 'open').toUpperCase()}
+                        </span>
+                        <h3 className="text-lg font-semibold text-white mt-2">{task.title}</h3>
+                        <p className="text-gray-400 text-sm">{task.category} • {task.city || 'Remote'}</p>
+                      </div>
+                      <p className="text-green-400 font-bold">${task.budget || 0}</p>
+                    </div>
+                    {task.status === 'open' && (
+                      <Button className="mt-4" onClick={() => acceptTask(task.id)}>
+                        Accept Task
+                      </Button>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className={`${styles.card}`}>
-                <p className="text-gray-500 text-sm mb-1">Completed</p>
-                <p className="text-3xl font-bold text-white">{stats.completed}</p>
-              </div>
-              <div className={`${styles.card}`}>
-                <p className="text-gray-500 text-sm mb-1">Earnings</p>
-                <p className="text-3xl font-bold text-orange-400">${stats.earnings}</p>
-              </div>
-            </div>
-
-            {/* Task List Placeholder */}
-            <div className={`${styles.card}`}>
-              <p className="text-gray-400 text-center py-12">Tasks will appear here</p>
-            </div>
+            )}
           </div>
         )}
 
-        {activeTab === 'create' && (
-          <div className="max-w-2xl">
-            <h1 className="text-3xl font-bold text-white mb-8">Create Task</h1>
-            <div className={`${styles.card}`}>
-              <form className="space-y-4">
-                <input type="text" placeholder="Task title" className={styles.input} />
-                <textarea placeholder="Description" rows={4} className={styles.input} />
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="number" placeholder="Budget ($)" className={styles.input} />
-                  <input type="text" placeholder="City" className={styles.input} />
-                </div>
-                <Button className="w-full">Create Task</Button>
-              </form>
-            </div>
-          </div>
-        )}
-
+        {/* Humans Tab */}
         {activeTab === 'humans' && (
           <div>
             <h1 className="text-3xl font-bold text-white mb-8">Browse Humans</h1>
-            <div className={`${styles.card}`}>
-              <p className="text-gray-400 text-center py-12">Humans will appear here</p>
+            
+            {humans.length === 0 ? (
+              <div className={`${styles.card} text-center py-12`}>
+                <p className="text-gray-400">No humans available</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {humans.map(human => (
+                  <div key={human.id} className={`${styles.card}`}>
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold">
+                        {human.name?.charAt(0) || '?'}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-white">{human.name}</h3>
+                        <p className="text-gray-400 text-sm">{Icons.location} {human.city || 'Remote'}</p>
+                        <p className="text-green-400 font-semibold mt-1">${human.hourly_rate || 25}/hr</p>
+                        {human.skills && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {human.skills.slice(0, 3).map((skill, i) => (
+                              <span key={i} className="text-xs bg-white/10 text-gray-300 px-2 py-0.5 rounded">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Payments Tab */}
+        {activeTab === 'payments' && (
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-8">Payments</h1>
+            
+            <div className={`${styles.card} text-center py-12`}>
+              <p className="text-gray-400">No payments yet</p>
+              <p className="text-sm text-gray-500 mt-2">Complete tasks to earn USDC</p>
             </div>
           </div>
         )}
 
-        {activeTab === 'messages' && (
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Messages</h1>
-            <div className={`${styles.card}`}>
-              <p className="text-gray-400 text-center py-12">Your conversations</p>
+            <h1 className="text-3xl font-bold text-white mb-8">Profile</h1>
+            
+            <div className={`${styles.card} max-w-xl`}>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold text-xl">
+                  {user?.name?.charAt(0) || '?'}
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-white">{user?.name}</h2>
+                  <p className="text-gray-400">{user?.email}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between py-3 border-b border-white/10">
+                  <span className="text-gray-400">Location</span>
+                  <span className="text-white">{user?.city || 'Not set'}</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-white/10">
+                  <span className="text-gray-400">Hourly Rate</span>
+                  <span className="text-white">${user?.hourly_rate || 0}/hr</span>
+                </div>
+                <div className="flex justify-between py-3 border-b border-white/10">
+                  <span className="text-gray-400">Travel Radius</span>
+                  <span className="text-white">{user?.travel_radius || 0} miles</span>
+                </div>
+                <div className="flex justify-between py-3">
+                  <span className="text-gray-400">Skills</span>
+                  <span className="text-white">{user?.skills?.join(', ') || 'None'}</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -460,15 +701,50 @@ function App() {
 
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email, name: session.user.user_metadata?.full_name || 'User' })
+        // Fetch full user profile
+        try {
+          const res = await fetch(`${API_URL}/auth/verify`, { 
+            headers: { Authorization: session.user.id } 
+          })
+          if (res.ok) {
+            const data = await res.json()
+            setUser(data.user)
+          } else {
+            setUser({ 
+              id: session.user.id, 
+              email: session.user.email, 
+              name: session.user.user_metadata?.full_name || 'User' 
+            })
+          }
+        } catch (e) {
+          setUser({ 
+            id: session.user.id, 
+            email: session.user.email, 
+            name: session.user.user_metadata?.full_name || 'User' 
+          })
+        }
       }
       setLoading(false)
     }
     init()
 
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email, name: session.user.user_metadata?.full_name || 'User' })
+        try {
+          const res = await fetch(`${API_URL}/auth/verify`, { 
+            headers: { Authorization: session.user.id } 
+          })
+          if (res.ok) {
+            const data = await res.json()
+            setUser(data.user)
+          }
+        } catch (e) {
+          setUser({ 
+            id: session.user.id, 
+            email: session.user.email, 
+            name: session.user.user_metadata?.full_name || 'User' 
+          })
+        }
       } else {
         setUser(null)
       }
@@ -476,6 +752,27 @@ function App() {
   }, [])
 
   const logout = async () => { await supabase.auth.signOut(); setUser(null) }
+
+  const handleOnboardingComplete = async (profile) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          ...profile
+        })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data.user)
+      }
+    } catch (e) {
+      console.error('Failed to save profile:', e)
+    }
+  }
 
   if (loading) return <Loading />
 
@@ -487,7 +784,15 @@ function App() {
     return <Loading />
   }
 
-  if (path === '/dashboard' && user) return <Dashboard user={user} onLogout={logout} />
+  if (path === '/dashboard' && user) {
+    // Check if user needs onboarding (no city/skills set)
+    const needsOnboarding = !user.city || !user.skills?.length
+    if (needsOnboarding) {
+      return <Onboarding onComplete={handleOnboardingComplete} />
+    }
+    return <Dashboard user={user} onLogout={logout} />
+  }
+  
   if (path === '/auth') return <AuthPage />
   if (path === '/mcp') return <MCPPage />
   
