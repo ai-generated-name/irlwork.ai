@@ -335,23 +335,12 @@ function LandingPage({ onNavigate }) {
               </div>
             </div>
 
-            {/* Company */}
+            {/* Contact */}
             <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
-              <div className="flex flex-col gap-3">
-                <a href="#" className="text-gray-500 text-sm no-underline">About</a>
-                <a href="#" className="text-gray-500 text-sm no-underline">Blog</a>
-                <a href="#" className="text-gray-500 text-sm no-underline">Careers</a>
-              </div>
-            </div>
-
-            {/* Legal */}
-            <div>
-              <h4 className="text-white font-semibold mb-4">Legal</h4>
-              <div className="flex flex-col gap-3">
-                <a href="#" className="text-gray-500 text-sm no-underline">Privacy</a>
-                <a href="#" className="text-gray-500 text-sm no-underline">Terms</a>
-              </div>
+              <h4 className="text-white font-semibold mb-4">Contact</h4>
+              <a href="mailto:hello@irlworkspace.ai" className="text-gray-500 text-sm no-underline hover:text-orange-400 transition-colors">
+                hello@irlworkspace.ai
+              </a>
             </div>
           </div>
 
