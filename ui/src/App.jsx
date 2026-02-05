@@ -44,7 +44,21 @@ function useAuth() {
           })
         }
       }
-    } catch (e) { console.error('Failed:', e) }
+    } catch (e) {
+      // Network error - API unreachable, fall back to session data
+      console.warn('API unreachable, using session data')
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || '',
+          avatar_url: session.user.user_metadata?.avatar_url || '',
+          supabase_user: true,
+          needs_onboarding: true
+        })
+      }
+    }
     finally { setLoading(false) }
   }
 
