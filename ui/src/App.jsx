@@ -22,12 +22,12 @@ function useAuth() {
         const params = new URLSearchParams(hash.slice(1))
         const accessToken = params.get('access_token')
         const refreshToken = params.get('refresh_token')
-        
-        if (accessToken && refreshToken) {
-          console.log('[Auth] Found OAuth tokens in URL hash')
+
+        if (accessToken) {
+          console.log('[Auth] Found OAuth access token in URL hash')
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
-            refresh_token: refreshToken
+            refresh_token: refreshToken || undefined
           })
           if (error) {
             console.error('[Auth] Failed to set session from OAuth:', error.message)
