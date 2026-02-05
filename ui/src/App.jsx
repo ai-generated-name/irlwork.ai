@@ -604,6 +604,7 @@ function AuthPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [errorModal, setErrorModal] = useState(null)
   const [form, setForm] = useState({ email: '', password: '', name: '' })
 
   const handleSubmit = async (e) => {
@@ -644,20 +645,49 @@ function AuthPage({ onLogin }) {
       
       if (error) {
         console.error('[Auth] OAuth error:', error)
-        throw error
+        setErrorModal({
+          title: 'Google Sign-In Failed',
+          message: error.message || 'Could not sign in with Google',
+          details: 'Common causes:\n• Google OAuth not configured\n• Redirect URL mismatch\n• Network issues'
+        })
+        setLoading(false)
+        return
       }
       
       console.log('[Auth] OAuth initiated successfully')
     } catch (err) {
       console.error('[Auth] Google login failed:', err)
-      setError(err.message || 'Failed to sign in with Google')
+      setErrorModal({
+        title: 'Sign-In Error',
+        message: err.message || 'An unexpected error occurred',
+        details: 'Please try again or use email sign-in instead.'
+      })
       setLoading(false)
     }
   }
 
   const handleGoogleRedirect = async () => {
-    // Check if we're returning from OAuth
     const hash = window.location.hash
+    const search = window.location.search
+    
+    // Check for OAuth errors in hash or search params
+    const errorCode = new URLSearchParams(hash.slice(1)).get('error_code') || 
+                     new URLSearchParams(search).get('error_code')
+    const errorDesc = new URLSearchParams(hash.slice(1)).get('error_description') ||
+                      new URLSearchParams(search).get('error_description')
+    
+    if (errorCode || (hash.includes('error') && !hash.includes('access_token'))) {
+      console.error('[Auth] OAuth error in redirect:', errorCode, errorDesc)
+      setErrorModal({
+        title: 'Google Sign-In Failed',
+        message: errorDesc || errorCode || 'Authentication was cancelled or failed',
+        details: 'Please try again or use email sign-in instead.'
+      })
+      window.history.replaceState({}, document.title, window.location.pathname)
+      return
+    }
+    
+    // Check for successful OAuth
     if (hash.includes('access_token')) {
       setLoading(true)
       try {
@@ -666,23 +696,64 @@ function AuthPage({ onLogin }) {
         const refreshToken = params.get('refresh_token')
         
         if (accessToken) {
-          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || undefined })
+          const { error } = await supabase.auth.setSession({ 
+            access_token: accessToken, 
+            refresh_token: refreshToken || undefined 
+          })
+          if (error) throw error
+          
+          console.log('[Auth] Session set successfully')
           window.history.replaceState({}, document.title, window.location.pathname)
           window.location.href = '/dashboard'
           return
         }
       } catch (err) {
         console.error('[Auth] OAuth callback error:', err)
-        setError('Failed to complete Google sign in')
+        setErrorModal({
+          title: 'Session Error',
+          message: err.message || 'Could not complete sign-in',
+          details: 'Please try again.'
+        })
       }
       setLoading(false)
     }
   }
 
-  // Handle OAuth redirect on mount
   useEffect(() => {
     handleGoogleRedirect()
   }, [])
+
+  // Error Modal
+  if (errorModal) {
+    return (
+      <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
+        <div className="w-full max-w-md">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">⚠️</span>
+              </div>
+              <h2 className="text-xl font-bold text-white">{errorModal.title}</h2>
+            </div>
+            <p className="text-gray-300 mb-4 text-center">{errorModal.message}</p>
+            {errorModal.details && (
+              <div className="bg-gray-800/50 rounded-lg p-4 mb-6 text-left">
+                <p className="text-gray-400 text-sm whitespace-pre-line">{errorModal.details}</p>
+              </div>
+            )}
+            <div className="flex gap-4">
+              <Button variant="secondary" className="flex-1" onClick={() => { setErrorModal(null); window.history.replaceState({}, document.title, window.location.pathname) }}>
+                Try Again
+              </Button>
+              <Button className="flex-1" onClick={() => window.location.href = '/'}>
+                Go Home
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
