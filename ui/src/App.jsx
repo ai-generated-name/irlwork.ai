@@ -60,7 +60,12 @@ function useAuth() {
       options: { data: { name: form.name, city: form.city, hourly_rate: form.hourly_rate || 25, account_type: 'human' } }
     })
     if (error) throw new Error(error.message)
-    await fetch(API_URL + '/auth/register/human', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+    try {
+      const res = await fetch(API_URL + '/auth/register/human', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      if (!res.ok) throw new Error('Failed to complete registration')
+    } catch (e) {
+      console.warn('Backend registration failed, continuing:', e.message)
+    }
     return data.user
   }
 
@@ -70,7 +75,12 @@ function useAuth() {
       options: { data: { name: form.name || form.organization, account_type: 'agent' } }
     })
     if (error) throw new Error(error.message)
-    await fetch(API_URL + '/auth/register/agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+    try {
+      const res = await fetch(API_URL + '/auth/register/agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      if (!res.ok) throw new Error('Failed to complete registration')
+    } catch (e) {
+      console.warn('Backend registration failed, continuing:', e.message)
+    }
     return data.user
   }
 
@@ -383,7 +393,11 @@ function AuthPage() {
       }
       window.location.href = '/dashboard'
     } catch (err) {
-      setError(err.message)
+      if (err.message === 'Failed to fetch') {
+        setError('Cannot reach the server. Please check your internet connection or try again later.')
+      } else {
+        setError(err.message)
+      }
     } finally {
       setLoading(false)
     }
@@ -399,7 +413,11 @@ function AuthPage() {
       })
       if (error) throw error
     } catch (err) {
-      setError(err.message)
+      if (err.message === 'Failed to fetch') {
+        setError('Cannot reach authentication service. Please try again.')
+      } else {
+        setError(err.message)
+      }
       setLoading(false)
     }
   }
