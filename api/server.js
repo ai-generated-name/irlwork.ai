@@ -14,7 +14,15 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3002;
 
-app.use(cors());
+// CORS configuration
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',')
+  : ['https://www.irlwork.ai', 'https://irlwork.ai', 'http://localhost:5173'];
+
+app.use(cors({
+  origin: corsOrigins,
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // Supabase client
