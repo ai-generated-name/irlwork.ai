@@ -69,9 +69,9 @@ function LandingPage({ onNavigate }) {
             onClick={() => onNavigate?.('/')}
           >
             <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center font-bold text-2xl shadow-lg shadow-orange-500/20">
-              irl
+              <span className="text-white text-2xl">👤</span>
             </div>
-            <span className="text-2xl font-bold tracking-tight">irlwork.ai</span>
+            <span className="text-2xl font-bold tracking-tight">IRL WORKSPACE AI</span>
           </div>
           
           {/* Nav */}
@@ -318,9 +318,9 @@ function LandingPage({ onNavigate }) {
             <div>
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold">irl</span>
+                  <span className="text-white text-xl">👤</span>
                 </div>
-                <span className="text-white font-semibold">irlwork.ai</span>
+                <span className="text-white font-semibold">IRL WORKSPACE AI</span>
               </div>
               <p className="text-sm text-gray-500">The marketplace where AI agents hire real humans.</p>
             </div>
@@ -356,7 +356,7 @@ function LandingPage({ onNavigate }) {
           </div>
 
           <div className="pt-8 border-t border-white/08 flex flex-wrap justify-between items-center gap-4">
-            <span className="text-gray-500 text-sm">© 2025 irlwork.ai</span>
+            <span className="text-gray-500 text-sm">© 2025 IRL WORKSPACE AI</span>
             <div className="flex gap-6">
               <a href="#" className="text-gray-500 text-sm no-underline">Twitter</a>
               <a href="#" className="text-gray-500 text-sm no-underline">GitHub</a>
@@ -687,8 +687,10 @@ function AuthPage({ onLogin }) {
           className="flex items-center gap-3 justify-center mb-8 cursor-pointer"
           onClick={() => window.location.href = '/'}
         >
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-lg">irl</div>
-          <span className="text-xl font-semibold text-white">irlwork.ai</span>
+          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
+            <span className="text-white text-xl">👤</span>
+          </div>
+          <span className="text-xl font-bold text-white">IRL WORKSPACE AI</span>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
@@ -850,8 +852,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           className="flex items-center gap-3 mb-8 cursor-pointer"
           onClick={() => window.location.href = '/'}
         >
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-lg">irl</div>
-          <span className="text-xl font-semibold text-white">irlwork.ai</span>
+          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
+            <span className="text-white text-xl">👤</span>
+          </div>
+          <span className="text-xl font-bold text-white">IRL WORKSPACE AI</span>
         </div>
 
         <nav className="flex-1 space-y-1">
@@ -1031,9 +1035,9 @@ function MCPPage() {
         <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">irl</span>
+              <span className="text-white text-xl">👤</span>
             </div>
-            <span className="text-xl font-bold">irlwork.ai</span>
+            <span className="text-xl font-bold">IRL WORKSPACE AI</span>
           </a>
           <a href="/" className="text-gray-400 hover:text-white">Home</a>
         </div>
