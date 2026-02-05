@@ -361,7 +361,7 @@ app.put('/api/humans/profile', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { wallet_address, hourly_rate, bio, categories } = req.body;
+  const { wallet_address, hourly_rate, bio, categories, city, travel_radius } = req.body;
   
   const updates = { updated_at: new Date().toISOString() };
   
@@ -369,6 +369,8 @@ app.put('/api/humans/profile', async (req, res) => {
   if (hourly_rate) updates.hourly_rate = hourly_rate;
   if (bio) updates.bio = bio;
   if (categories) updates.skills = JSON.stringify(categories);
+  if (city) updates.city = city;
+  if (travel_radius) updates.service_radius = travel_radius;
   
   const { data, error } = await supabase
     .from('users')

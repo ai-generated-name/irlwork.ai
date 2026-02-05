@@ -755,22 +755,30 @@ function App() {
 
   const handleOnboardingComplete = async (profile) => {
     try {
-      const res = await fetch(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`${API_URL}/humans/profile`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
         body: JSON.stringify({
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          ...profile
+          city: profile.city,
+          hourly_rate: profile.hourly_rate,
+          categories: profile.skills,
+          travel_radius: profile.travel_radius
         })
       })
       if (res.ok) {
         const data = await res.json()
         setUser(data.user)
+        window.location.href = '/dashboard'
+      } else {
+        const err = await res.json()
+        alert('Failed to save: ' + (err.error || 'Unknown error'))
       }
     } catch (e) {
       console.error('Failed to save profile:', e)
+      alert('Failed to save profile. Please try again.')
     }
   }
 
