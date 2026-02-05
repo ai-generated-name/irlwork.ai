@@ -14,15 +14,29 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3002;
 
-// CORS configuration
+// CORS configuration - be permissive for development
 const corsOrigins = process.env.CORS_ORIGINS 
   ? process.env.CORS_ORIGINS.split(',')
-  : ['https://www.irlwork.ai', 'https://irlwork.ai', 'http://localhost:5173'];
+  : [
+      'https://www.irlwork.ai', 
+      'https://irlwork.ai', 
+      'https://api.irlwork.ai',
+      'http://localhost:5173',
+      'http://localhost:3002'
+    ];
 
 app.use(cors({
   origin: corsOrigins,
   credentials: true
 }));
+
+// Debug CORS in development
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    console.log(`[CORS] Request from origin: ${req.headers.origin}, Allowed: ${corsOrigins.includes(req.headers.origin)}`)
+    next()
+  })
+}
 app.use(express.json({ limit: '10mb' }));
 
 // Supabase client
