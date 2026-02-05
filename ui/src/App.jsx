@@ -722,14 +722,17 @@ function App() {
             setUser({ 
               id: session.user.id, 
               email: session.user.email, 
-              name: session.user.user_metadata?.full_name || 'User' 
+              name: session.user.user_metadata?.full_name || 'User',
+              needs_onboarding: true
             })
           }
         } catch (e) {
+          console.log('[Auth] Backend unavailable, using Supabase session')
           setUser({ 
             id: session.user.id, 
             email: session.user.email, 
-            name: session.user.user_metadata?.full_name || 'User' 
+            name: session.user.user_metadata?.full_name || 'User',
+            needs_onboarding: true
           })
         }
       }
@@ -746,12 +749,20 @@ function App() {
           if (res.ok) {
             const data = await res.json()
             setUser(data.user)
+          } else {
+            setUser({ 
+              id: session.user.id, 
+              email: session.user.email, 
+              name: session.user.user_metadata?.full_name || 'User',
+              needs_onboarding: true
+            })
           }
         } catch (e) {
           setUser({ 
             id: session.user.id, 
             email: session.user.email, 
-            name: session.user.user_metadata?.full_name || 'User' 
+            name: session.user.user_metadata?.full_name || 'User',
+            needs_onboarding: true
           })
         }
       } else {
