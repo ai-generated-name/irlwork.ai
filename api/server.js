@@ -542,6 +542,131 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
   res.json({ id: application.id, status: 'pending' });
 });
 
+// ============ AGENT TASKS ============
+app.get('/api/agent/tasks', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  if (user.type !== 'agent') {
+    return res.status(403).json({ error: 'Only agents can access this endpoint' });
+  }
+  
+  const { status, limit = 50 } = req.query;
+  
+  let query = supabase
+    .from('tasks')
+    .select(`
+      *,
+      assignee:users!assignee_id(id, name, email, hourly_rate, rating)
+    `)
+    .eq('creator_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(parseInt(limit));
+  
+  if (status) {
+    query = query.eq('status', status);
+  }
+  
+  const { data: tasks, error } = await query;
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(tasks || []);
+});
+
+// Release payment for a task
+app.post('/api/tasks/:id/release', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id } = req.params;
+  
+  // Get task details
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('*, assignee:users!assignee_id(*)')
+    .eq('id', id)
+    .single();
+  
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  // Only task creator (agent) can release payment
+  if (task.creator_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  // Task must be completed or approved
+  if (task.status !== 'completed' && task.status !== 'approved') {
+    return res.status(400).json({ error: 'Task must be completed before releasing payment' });
+  }
+  
+  // Check if escrow was deposited
+  if (task.escrow_status !== 'deposited' && task.escrow_status !== 'held') {
+    return res.status(400).json({ error: 'No escrow deposit found for this task' });
+  }
+  
+  // Calculate payment
+  const budget = parseFloat(task.budget) || 0;
+  const platformFee = budget * (PLATFORM_FEE_PERCENT / 100);
+  const netAmount = budget - platformFee;
+  
+  // Generate simulated transaction
+  const txHash = '0x' + crypto.randomBytes(32).toString('hex');
+  
+  // Update task
+  const { error: updateError } = await supabase
+    .from('tasks')
+    .update({
+      escrow_status: 'released',
+      escrow_released_at: new Date().toISOString(),
+      status: 'paid',
+      release_tx: txHash
+    })
+    .eq('id', id);
+  
+  if (updateError) {
+    return res.status(500).json({ error: updateError.message });
+  }
+  
+  // Create transaction record
+  await supabase.from('transactions').insert({
+    id: uuidv4(),
+    task_id: id,
+    human_id: task.assignee_id,
+    agent_id: user.id,
+    amount: budget,
+    platform_fee: platformFee,
+    net_amount: netAmount,
+    type: 'payment',
+    status: 'completed',
+    tx_hash: txHash,
+    created_at: new Date().toISOString()
+  });
+  
+  // Create notification for human
+  await createNotification(
+    task.assignee_id,
+    'payment_released',
+    'Payment Released',
+    `Your payment of ${netAmount.toFixed(2)} USDC has been sent to your wallet.`,
+    `/dashboard`
+  );
+  
+  res.json({
+    success: true,
+    txHash,
+    amount: budget,
+    platformFee,
+    netAmount,
+    assignee: task.assignee
+  });
+});
+
 // ============ TRANSACTIONS ============
 app.get('/api/transactions', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
