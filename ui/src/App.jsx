@@ -947,6 +947,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [loading, setLoading] = useState(true)
   const [postedTasks, setPostedTasks] = useState([])
   const [wallet, setWallet] = useState({ balance: 0, transactions: [] })
+  const [notifications, setNotifications] = useState([])
+  const [showNotifications, setShowNotifications] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [showProofSubmit, setShowProofSubmit] = useState(null)
@@ -960,6 +962,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Browse', icon: Icons.humans },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
     { id: 'profile', label: 'Profile', icon: Icons.profile },
   ]
 
@@ -967,6 +970,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'create', label: 'Create Task', icon: Icons.create },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
     { id: 'hired', label: 'Hired', icon: Icons.humans },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
     { id: 'profile', label: 'Profile', icon: Icons.profile },
   ]
 
@@ -980,10 +984,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   useEffect(() => {
     if (hiringMode) {
       fetchPostedTasks()
+      fetchNotifications()
     } else {
       fetchTasks()
       fetchHumans()
       fetchWallet()
+      fetchNotifications()
     }
   }, [hiringMode])
 
@@ -1037,6 +1043,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     } catch (e) {
       console.log('Could not fetch wallet')
     }
+  }
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.id } })
+      if (res.ok) {
+        const data = await res.json()
+        setNotifications(data || [])
+      }
+    } catch (e) {
+      console.log('Could not fetch notifications')
+    }
+  }
+
+  const markNotificationRead = async (id) => {
+    try {
+      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } })
+      fetchNotifications()
+    } catch (e) {}
   }
 
   const acceptTask = async (taskId) => {
@@ -1180,6 +1205,45 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               <p className="text-gray-500 text-xs">{hiringMode ? 'Hiring Mode' : 'Working Mode'}</p>
             </div>
           </div>
+          
+          {/* Notifications Bell */}
+          <div className="relative mb-4">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all"
+            >
+              <span className="relative">
+                <span>🔔</span>
+                {notifications.filter(n => !n.read_at).length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
+                    {notifications.filter(n => !n.read_at).length}
+                  </span>
+                )}
+              </span>
+              <span>Notifications</span>
+            </button>
+            
+            {showNotifications && (
+              <div className="absolute bottom-full left-0 w-full mb-2 bg-gray-800 border border-white/10 rounded-xl max-h-80 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-gray-400 text-sm text-center">No notifications</div>
+                ) : (
+                  notifications.slice(0, 10).map(n => (
+                    <div
+                      key={n.id}
+                      className={`p-3 border-b border-white/10 cursor-pointer hover:bg-white/5 ${!n.read_at ? 'bg-orange-500/10' : ''}`}
+                      onClick={() => markNotificationRead(n.id)}
+                    >
+                      <p className="text-white text-sm font-medium">{n.title}</p>
+                      <p className="text-gray-400 text-xs">{n.message}</p>
+                      <p className="text-gray-500 text-xs mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+          
           <button
             onClick={onLogout}
             className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all"
@@ -1558,6 +1622,124 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
               <div className="mt-6 pt-6 border-t border-white/10">
                 <Button variant="secondary" className="w-full">Edit Profile</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
+            
+            <div className={`${styles.card} max-w-2xl mb-6`}>
+              <h2 className="text-xl font-semibold text-white mb-6">Profile Settings</h2>
+              
+              <form className="space-y-4" onSubmit={async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                try {
+                  const res = await fetch(`${API_URL}/humans/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    body: JSON.stringify({
+                      name: formData.get('name'),
+                      city: formData.get('city'),
+                      hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
+                      bio: formData.get('bio'),
+                      travel_radius: parseInt(formData.get('travel_radius')) || 25
+                    })
+                  })
+                  if (res.ok) {
+                    alert('Profile updated!')
+                    window.location.reload()
+                  } else {
+                    const err = await res.json()
+                    alert('Error: ' + (err.error || 'Unknown error'))
+                  }
+                } catch (err) {
+                  alert('Error saving profile')
+                }
+              }}>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Full Name</label>
+                    <input type="text" name="name" defaultValue={user?.name} className={styles.input} />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">City</label>
+                    <input type="text" name="city" defaultValue={user?.city} className={styles.input} placeholder="San Francisco" />
+                  </div>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Hourly Rate ($)</label>
+                    <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className={styles.input} />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Travel Radius (miles)</label>
+                    <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className={styles.input} />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Bio</label>
+                  <textarea name="bio" rows={3} defaultValue={user?.bio || ''} className={`${styles.input} resize-none`} placeholder="Tell agents about yourself..." />
+                </div>
+                
+                <Button type="submit" className="w-full">Save Changes</Button>
+              </form>
+            </div>
+            
+            <div className={`${styles.card} max-w-2xl mb-6`}>
+              <h2 className="text-xl font-semibold text-white mb-6">Skills</h2>
+              <form className="space-y-4" onSubmit={async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const skills = formData.get('skills').split(',').map(s => s.trim()).filter(Boolean)
+                try {
+                  const res = await fetch(`${API_URL}/humans/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    body: JSON.stringify({ skills })
+                  })
+                  if (res.ok) {
+                    alert('Skills updated!')
+                    window.location.reload()
+                  } else {
+                    const err = await res.json()
+                    alert('Error: ' + (err.error || 'Unknown error'))
+                  }
+                } catch (err) {
+                  alert('Error saving skills')
+                }
+              }}>
+                <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className={styles.input} placeholder="delivery, photography, moving, cleaning" />
+                <p className="text-xs text-gray-500">Separate skills with commas</p>
+                <Button type="submit" className="w-full">Update Skills</Button>
+              </form>
+            </div>
+            
+            <div className={`${styles.card} max-w-2xl`}>
+              <h2 className="text-xl font-semibold text-white mb-6">Notification Preferences</h2>
+              <div className="space-y-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-white/10 border-white/20" />
+                  <span className="text-white">Task assignments</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-white/10 border-white/20" />
+                  <span className="text-white">Payment notifications</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-white/10 border-white/20" />
+                  <span className="text-white">Messages from agents</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" className="w-5 h-5 rounded bg-white/10 border-white/20" />
+                  <span className="text-white">Marketing & updates</span>
+                </label>
               </div>
             </div>
           </div>
