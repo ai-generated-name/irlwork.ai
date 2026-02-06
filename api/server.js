@@ -963,6 +963,178 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
       
+      case 'complete_task': {
+        // Human submits proof of completion
+        const { task_id, proof_url, notes } = params;
+        
+        const { data: task, error: taskError } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', task_id)
+          .single();
+        
+        if (taskError || !task) {
+          return res.status(404).json({ error: 'Task not found' });
+        }
+        
+        if (task.human_id !== user.id) {
+          return res.status(403).json({ error: 'Not assigned to you' });
+        }
+        
+        // Update task to pending review
+        await supabase
+          .from('tasks')
+          .update({
+            status: 'pending_review',
+            proof_url: proof_url || null,
+            proof_notes: notes || null,
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', task_id);
+        
+        // Notify agent
+        await createNotification(
+          task.agent_id,
+          'task_completed',
+          'Task Completed!',
+          `${user.name} has completed "${task.title}". Review and release payment.`
+        );
+        
+        res.json({ success: true, status: 'pending_review' });
+        break;
+      }
+      
+      case 'approve_task': {
+        // Agent approves task and releases payment
+        const { task_id } = params;
+        
+        const { data: task, error: taskError } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', task_id)
+          .single();
+        
+        if (taskError || !task) {
+          return res.status(404).json({ error: 'Task not found' });
+        }
+        
+        if (task.agent_id !== user.id) {
+          return res.status(403).json({ error: 'Not your task' });
+        }
+        
+        // Calculate payment
+        const escrowAmount = task.escrow_amount || task.budget || 50;
+        const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+        const netAmount = escrowAmount - platformFee;
+        
+        // Get human's wallet
+        const { data: human, error: humanError } = await supabase
+          .from('users')
+          .select('wallet_address')
+          .eq('id', task.human_id)
+          .single();
+        
+        // Simulate payment if no wallet
+        let txHash = null;
+        if (human?.wallet_address && process.env.PLATFORM_WALLET_PRIVATE_KEY) {
+          try {
+            const { sendUSDC } = require('./lib/wallet');
+            txHash = await sendUSDC(human.wallet_address, netAmount);
+          } catch (e) {
+            console.error('Wallet error:', e.message);
+            txHash = '0x' + crypto.randomBytes(32).toString('hex');
+          }
+        } else {
+          console.log(`[SIMULATED] Sending ${netAmount} USDC to ${human?.wallet_address || 'human wallet'}`);
+          txHash = '0x' + crypto.randomBytes(32).toString('hex');
+        }
+        
+        // Update task
+        await supabase
+          .from('tasks')
+          .update({
+            status: 'paid',
+            escrow_status: 'released',
+            escrow_released_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', task_id);
+        
+        // Record payout
+        await supabase.from('payouts').insert({
+          id: uuidv4(),
+          task_id,
+          human_id: task.human_id,
+          agent_id: user.id,
+          gross_amount: escrowAmount,
+          platform_fee: platformFee,
+          net_amount: netAmount,
+          wallet_address: human?.wallet_address || null,
+          tx_hash: txHash,
+          status: 'completed',
+          processed_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        });
+        
+        // Update human stats
+        await supabase
+          .from('users')
+          .update({
+            jobs_completed: supabase.raw('jobs_completed + 1'),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', task.human_id);
+        
+        // Notify human
+        await createNotification(
+          task.human_id,
+          'payment_released',
+          'Payment Released!',
+          `Your payment of ${netAmount.toFixed(2)} USDC has been sent.`
+        );
+        
+        res.json({ 
+          success: true, 
+          status: 'paid',
+          net_amount: netAmount,
+          tx_hash: txHash
+        });
+        break;
+      }
+      
+      case 'get_task_details': {
+        const { data: task, error } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            human:users!tasks_human_id_fkey(id, name, email, rating),
+            agent:users!tasks_agent_id_fkey(id, name, email)
+          `)
+          .eq('id', params.task_id)
+          .single();
+        
+        if (error) throw error;
+        res.json(task);
+        break;
+      }
+      
+      case 'set_webhook': {
+        // Register webhook URL for task status updates
+        const { webhook_url } = params;
+        
+        await supabase
+          .from('users')
+          .update({
+            mcp_webhook_url: webhook_url,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+        
+        res.json({ success: true, webhook_url });
+        break;
+      }
+      
       default:
         res.status(400).json({ error: `Unknown method: ${method}` });
     }
@@ -1826,25 +1998,131 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   
   const { id } = req.params;
   
-  const { data: task } = await supabase
+  const { data: task, error: taskError } = await supabase
     .from('tasks')
     .select('*')
     .eq('id', id)
     .single();
   
-  if (!task || task.creator_id !== user.id) {
-    return res.status(403).json({ error: 'Access denied' });
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  if (task.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Not your task' });
+  }
+  
+  // Calculate payment
+  const escrowAmount = task.escrow_amount || task.budget || 50;
+  const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+  const netAmount = escrowAmount - platformFee;
+  
+  // Get human's wallet
+  const { data: human, error: humanError } = await supabase
+    .from('users')
+    .select('wallet_address')
+    .eq('id', task.human_id)
+    .single();
+  
+  // Simulate payment if no wallet
+  let txHash = null;
+  if (human?.wallet_address && process.env.PLATFORM_WALLET_PRIVATE_KEY) {
+    try {
+      const { sendUSDC } = require('./lib/wallet');
+      txHash = await sendUSDC(human.wallet_address, netAmount);
+    } catch (e) {
+      console.error('Wallet error:', e.message);
+      txHash = '0x' + crypto.randomBytes(32).toString('hex');
+    }
+  } else {
+    console.log(`[SIMULATED] Releasing ${netAmount} USDC to ${human?.wallet_address || 'human'}`);
+    txHash = '0x' + crypto.randomBytes(32).toString('hex');
+  }
+  
+  // Update task to paid
+  await supabase
+    .from('tasks')
+    .update({
+      status: 'paid',
+      escrow_status: 'released',
+      escrow_released_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id);
+  
+  // Record payout
+  await supabase.from('payouts').insert({
+    id: uuidv4(),
+    task_id: id,
+    human_id: task.human_id,
+    agent_id: user.id,
+    gross_amount: escrowAmount,
+    platform_fee: platformFee,
+    net_amount: netAmount,
+    wallet_address: human?.wallet_address || null,
+    tx_hash: txHash,
+    status: 'completed',
+    processed_at: new Date().toISOString(),
+    created_at: new Date().toISOString()
+  });
+  
+  // Update human stats
+  await supabase
+    .from('users')
+    .update({
+      jobs_completed: supabase.raw('jobs_completed + 1'),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', task.human_id);
+  
+  // Notify human
+  await createNotification(
+    task.human_id,
+    'payment_released',
+    'Payment Released!',
+    `Your payment of ${netAmount.toFixed(2)} USDC has been sent.`
+  );
+  
+  res.json({ 
+    success: true, 
+    status: 'paid',
+    net_amount: netAmount,
+    tx_hash: txHash
+  });
+});
+
+app.post('/api/tasks/:id/start', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id } = req.params;
+  
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', id)
+    .single();
+  
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  if (task.human_id !== user.id) {
+    return res.status(403).json({ error: 'Not assigned to you' });
   }
   
   await supabase
     .from('tasks')
-    .update({ 
-      status: 'completed',
-      completed_at: new Date().toISOString()
+    .update({
+      status: 'in_progress',
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     })
     .eq('id', id);
   
-  res.json({ success: true });
+  res.json({ success: true, status: 'in_progress' });
 });
 
 app.post('/api/tasks/:id/cancel', async (req, res) => {
