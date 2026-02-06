@@ -945,8 +945,82 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
       {/* Main */}
       <main className="flex-1 p-8 overflow-auto">
+        {/* Agent: Posted Tasks Tab */}
+        {isAgent && activeTab === 'posted' && (
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-8">Posted Tasks</h1>
+            
+            {loading ? (
+              <p className="text-gray-400">Loading...</p>
+            ) : postedTasks.length === 0 ? (
+              <div className={`${styles.card} text-center py-12`}>
+                <p className="text-gray-400 mb-4">No tasks posted yet</p>
+                <p className="text-sm text-gray-500">Create a task to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {postedTasks.map(task => {
+                  const statusBadge = getTaskStatus(task.status)
+                  const needsAction = task.status === 'pending_review'
+                  return (
+                    <div key={task.id} className={`${styles.card}`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className={`text-xs px-2 py-1 rounded ${statusBadge}`}>
+                            {(task.status || 'open').toUpperCase()}
+                          </span>
+                          <h3 className="text-lg font-semibold text-white mt-2">{task.title}</h3>
+                          <p className="text-gray-400 text-sm">{task.category} • {task.city || 'Remote'} • Budget: ${task.budget}</p>
+                          {task.assignee && (
+                            <p className="text-gray-400 text-sm mt-1">Assigned to: {task.assignee.name}</p>
+                          )}
+                        </div>
+                        <p className="text-green-400 font-bold">${task.budget || 0}</p>
+                      </div>
+                      {needsAction && (
+                        <div className="flex gap-3 mt-4">
+                          <Button onClick={() => approveTask(task.id)}>
+                            Approve & Release Payment
+                          </Button>
+                        </div>
+                      )}
+                      {task.status === 'paid' && (
+                        <p className="text-green-400 text-sm mt-2">💸 Payment released</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Agent: Create Task Tab */}
+        {isAgent && activeTab === 'create' && (
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-8">Create Task</h1>
+            <div className={`${styles.card} max-w-2xl`}>
+              <form className="space-y-4">
+                <input type="text" placeholder="Task title" className={styles.input} />
+                <textarea placeholder="Description" rows={4} className={styles.input} />
+                <div className="grid grid-cols-2 gap-4">
+                  <select className={styles.input}>
+                    <option value="">Category</option>
+                    {['delivery', 'pickup', 'errands', 'cleaning', 'moving', 'general'].map(c => (
+                      <option key={c} value={c}>{c.replace('_', ' ')}</option>
+                    ))}
+                  </select>
+                  <input type="number" placeholder="Budget ($)" className={styles.input} />
+                </div>
+                <input type="text" placeholder="City" className={styles.input} />
+                <Button className="w-full">Create Task</Button>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* Tasks Tab */}
-        {activeTab === 'tasks' && (
+        {!isAgent && activeTab === 'tasks' && (
           <div>
             <h1 className="text-3xl font-bold text-white mb-8">Your Tasks</h1>
             
