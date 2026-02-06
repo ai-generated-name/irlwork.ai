@@ -760,16 +760,6 @@ app.post('/api/upload/proof', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-    
-    res.json({ 
-      url: publicUrl,
-      filename: uniqueFilename,
-      success: true
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
 
 // ============ TASK PROOFS ============
 app.get('/api/tasks/:id/proofs', async (req, res) => {
