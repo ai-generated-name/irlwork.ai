@@ -39,6 +39,15 @@ if (process.env.NODE_ENV !== 'production') {
 }
 app.use(express.json({ limit: '10mb' }));
 
+// Health check endpoint (first, before any other middleware)
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+});
+
+app.get('/ready', (req, res) => {
+  res.json({ status: 'ready', supabase: !!supabase })
+});
+
 // Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
