@@ -769,21 +769,36 @@ function AuthPage({ onLogin }) {
 }
 
 function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
-  const [activeTab, setActiveTab] = useState('tasks')
+  const isAgent = user?.type === 'agent'
+  const [activeTab, setActiveTab] = useState(isAgent ? 'posted' : 'tasks')
   const [tasks, setTasks] = useState([])
   const [humans, setHumans] = useState([])
   const [loading, setLoading] = useState(true)
+  const [postedTasks, setPostedTasks] = useState([])
 
-  const navItems = [
+  const humanNav = [
     { id: 'tasks', label: 'Tasks', icon: Icons.task },
     { id: 'humans', label: 'Browse Humans', icon: Icons.humans },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
     { id: 'profile', label: 'Profile', icon: Icons.profile },
   ]
 
+  const agentNav = [
+    { id: 'posted', label: 'Posted Tasks', icon: Icons.task },
+    { id: 'create', label: 'Create Task', icon: Icons.create },
+    { id: 'humans', label: 'Hired', icon: Icons.humans },
+    { id: 'profile', label: 'Profile', icon: Icons.profile },
+  ]
+
+  const navItems = isAgent ? agentNav : humanNav
+
   useEffect(() => {
-    fetchTasks()
-    fetchHumans()
+    if (isAgent) {
+      fetchPostedTasks()
+    } else {
+      fetchTasks()
+      fetchHumans()
+    }
   }, [])
 
   const fetchTasks = async () => {
@@ -812,6 +827,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     }
   }
 
+  const fetchPostedTasks = async () => {
+    try {
+      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.id } })
+      if (res.ok) {
+        const data = await res.json()
+        setPostedTasks(data || [])
+      }
+    } catch (e) {
+      console.log('Could not fetch posted tasks')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const acceptTask = async (taskId) => {
     try {
       await fetch(`${API_URL}/tasks/${taskId}/accept`, { 
@@ -821,6 +850,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       fetchTasks()
     } catch (e) {
       console.log('Could not accept task')
+    }
+  }
+
+  const approveTask = async (taskId) => {
+    try {
+      await fetch(`${API_URL}/tasks/${taskId}/approve`, { 
+        method: 'POST',
+        headers: { Authorization: user.id }
+      })
+      fetchPostedTasks()
+    } catch (e) {
+      console.log('Could not approve task')
+    }
+  }
+
+  const releasePayment = async (taskId) => {
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}/release`, { 
+        method: 'POST',
+        headers: { Authorization: user.id }
+      })
+      if (res.ok) {
+        alert('Payment released successfully!')
+        fetchPostedTasks()
+      } else {
+        const err = await res.json()
+        alert('Error: ' + (err.error || 'Unknown error'))
+      }
+    } catch (e) {
+      console.log('Could not release payment')
     }
   }
 
