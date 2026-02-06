@@ -930,7 +930,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             </div>
             <div>
               <p className="text-white font-medium text-sm">{user?.name || 'User'}</p>
-              <p className="text-gray-500 text-xs">{user?.city || 'Set location'}</p>
+              <p className="text-gray-500 text-xs">{isAgent ? 'Agent' : user?.type || 'Human'}</p>
             </div>
           </div>
           <button
@@ -1015,6 +1015,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <input type="text" placeholder="City" className={styles.input} />
                 <Button className="w-full">Create Task</Button>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Agent: Hired Tab */}
+        {isAgent && activeTab === 'humans' && (
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-8">Hired Humans</h1>
+            <div className={`${styles.card} text-center py-12`}>
+              <p className="text-gray-400">No humans hired yet</p>
+              <p className="text-sm text-gray-500 mt-2">Hire someone for a task</p>
             </div>
           </div>
         )}
