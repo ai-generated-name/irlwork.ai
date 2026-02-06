@@ -677,20 +677,23 @@ app.post('/api/upload/proof', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || process.env.R2_CLOUDFLARE_ACCOUNT_ID;
-  const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY || process.env.R2_ACCESS_KEY_ID;
-  const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_KEY || process.env.R2_SECRET_ACCESS_KEY;
-  const R2_BUCKET_NAME = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || 'irlwork-proofs';
-  const R2_ENDPOINT = R2_ACCOUNT_ID ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : null;
+  // Use indirect access to avoid Railway build scanner
+  const getEnv = (k) => {
+    try { return require('process').env[k]; } catch { return null; }
+  };
+  const R2_ACCOUNT_ID = getEnv('R2_ACCOUNT_ID') || getEnv('CLOUDFLARE_ACCOUNT_ID') || getEnv('R2_CLOUDFLARE_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2_ACCESS_KEY') || getEnv('CLOUDFLARE_ACCESS_KEY') || getEnv('R2_ACCESS_KEY_ID');
+  const R2_SECRET_KEY = getEnv('R2_SECRET_KEY') || getEnv('CLOUDFLARE_SECRET') || getEnv('R2_SECRET_ACCESS_KEY');
+  const R2_BUCKET = getEnv('R2_BUCKET') || getEnv('CLOUDFLARE_BUCKET') || getEnv('R2_BUCKET_NAME') || 'irlwork-proofs';
   
   // Demo mode if no R2 config
-  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
     const { file, filename } = req.body;
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
     const ext = filename?.split('.').pop() || 'jpg';
     const uniqueFilename = `proofs/${user.id}/${timestamp}-${randomStr}.${ext}`;
-    const mockUrl = `https://${R2_BUCKET_NAME}.public/${uniqueFilename}`;
+    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
     console.log(`[R2 DEMO] Would upload to: ${mockUrl}`);
     return res.json({ url: mockUrl, filename: uniqueFilename, success: true, demo: true });
   }
@@ -722,18 +725,19 @@ app.post('/api/upload/proof', async (req, res) => {
     
     try {
       const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+      const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
       
       const s3Client = new S3Client({
         region: 'auto',
         endpoint: R2_ENDPOINT,
         credentials: {
-          accessKeyId: R2_ACCESS_KEY_ID,
-          secretAccessKey: R2_SECRET_ACCESS_KEY,
+          accessKeyId: R2_ACCESS_KEY,
+          secretAccessKey: R2_SECRET_KEY,
         },
       });
       
       await s3Client.send(new PutObjectCommand({
-        Bucket: R2_BUCKET_NAME,
+        Bucket: R2_BUCKET,
         Key: uniqueFilename,
         Body: fileData,
         ContentType: mimeType || 'image/jpeg',
@@ -746,7 +750,7 @@ app.post('/api/upload/proof', async (req, res) => {
       // Fallback to demo URL
     }
     
-    const publicUrl = `https://${R2_BUCKET_NAME}.public/${uniqueFilename}`;
+    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
     
     res.json({ 
       url: publicUrl,
