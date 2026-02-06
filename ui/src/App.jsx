@@ -28,10 +28,16 @@ const Icons = {
   messages: '💬',
   wallet: '💳',
   profile: '👤',
+  settings: '⚙️',
   check: '✓',
   clock: '⏱️',
   location: '📍',
   dollar: '💰',
+  star: '⭐',
+  calendar: '📅',
+  search: '🔍',
+  filter: '🔽',
+  upload: '📤',
 }
 
 // === Components ===
@@ -778,6 +784,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [humans, setHumans] = useState([])
   const [loading, setLoading] = useState(true)
   const [postedTasks, setPostedTasks] = useState([])
+  const [wallet, setWallet] = useState({ balance: 0, transactions: [] })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterCategory, setFilterCategory] = useState('')
 
   useEffect(() => {
     localStorage.setItem('irlwork_hiringMode', hiringMode)
@@ -810,6 +819,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     } else {
       fetchTasks()
       fetchHumans()
+      fetchWallet()
     }
   }, [hiringMode])
 
@@ -850,6 +860,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       console.log('Could not fetch posted tasks')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchWallet = async () => {
+    try {
+      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.id } })
+      if (res.ok) {
+        const data = await res.json()
+        setWallet(data || { balance: 0, transactions: [] })
+      }
+    } catch (e) {
+      console.log('Could not fetch wallet')
     }
   }
 
@@ -898,10 +920,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const getTaskStatus = (status) => {
     const colors = {
       open: 'bg-blue-500/20 text-blue-400',
+      accepted: 'bg-purple-500/20 text-purple-400',
       in_progress: 'bg-yellow-500/20 text-yellow-400',
+      pending_review: 'bg-orange-500/20 text-orange-400',
       completed: 'bg-green-500/20 text-green-400',
+      paid: 'bg-gray-500/20 text-gray-400',
     }
     return colors[status] || 'bg-gray-500/20 text-gray-400'
+  }
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      open: 'Open',
+      accepted: 'Accepted',
+      in_progress: 'In Progress',
+      pending_review: 'Pending Review',
+      completed: 'Completed',
+      paid: 'Paid',
+    }
+    return labels[status] || status
   }
 
   return (
@@ -1045,34 +1082,96 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">My Tasks</h1>
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-3xl font-bold text-white">My Tasks</h1>
+              <span className="text-gray-400">{tasks.filter(t => t.status === 'in_progress').length} active</span>
+            </div>
             
             {loading ? (
               <p className="text-gray-400">Loading...</p>
             ) : tasks.length === 0 ? (
-              <div className={`${styles.card} text-center py-12`}>
-                <p className="text-gray-400 mb-4">No tasks yet</p>
-                <p className="text-sm text-gray-500">Tasks posted by AI agents will appear here</p>
+              <div className={`${styles.card} text-center py-16`}>
+                <div className="text-6xl mb-4">{Icons.task}</div>
+                <p className="text-gray-400 mb-2">No tasks yet</p>
+                <p className="text-sm text-gray-500">Switch to Hiring Mode to create tasks, or browse available tasks from agents</p>
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Task Stats */}
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                  <div className={`${styles.card} text-center`}>
+                    <p className="text-2xl font-bold text-white">{tasks.filter(t => t.status === 'open').length}</p>
+                    <p className="text-xs text-gray-400">Open</p>
+                  </div>
+                  <div className={`${styles.card} text-center`}>
+                    <p className="text-2xl font-bold text-yellow-400">{tasks.filter(t => t.status === 'in_progress').length}</p>
+                    <p className="text-xs text-gray-400">Active</p>
+                  </div>
+                  <div className={`${styles.card} text-center`}>
+                    <p className="text-2xl font-bold text-green-400">{tasks.filter(t => t.status === 'completed').length}</p>
+                    <p className="text-xs text-gray-400">Completed</p>
+                  </div>
+                  <div className={`${styles.card} text-center`}>
+                    <p className="text-2xl font-bold text-white">${tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}</p>
+                    <p className="text-xs text-gray-400">Earned</p>
+                  </div>
+                </div>
+
                 {tasks.map(task => (
                   <div key={task.id} className={`${styles.card}`}>
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start mb-4">
                       <div>
-                        <span className={`text-xs px-2 py-1 rounded ${getTaskStatus(task.status)}`}>
-                          {(task.status || 'open').toUpperCase()}
+                        <span className={`inline-block text-xs px-2 py-1 rounded ${getTaskStatus(task.status)}`}>
+                          {getStatusLabel(task.status)}
                         </span>
                         <h3 className="text-lg font-semibold text-white mt-2">{task.title}</h3>
-                        <p className="text-gray-400 text-sm">{task.category} • {task.city || 'Remote'}</p>
+                        <p className="text-gray-400 text-sm mt-1">{task.category} • {task.city || 'Remote'}</p>
                       </div>
-                      <p className="text-green-400 font-bold">${task.budget || 0}</p>
+                      <p className="text-green-400 font-bold text-xl">${task.budget || 0}</p>
                     </div>
-                    {task.status === 'open' && (
-                      <Button className="mt-4" onClick={() => acceptTask(task.id)}>
-                        Accept Task
-                      </Button>
+                    
+                    {task.description && (
+                      <p className="text-gray-300 text-sm mb-4">{task.description}</p>
                     )}
+                    
+                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                      <span>{Icons.calendar} Posted: {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+                      {task.deadline && <span>📅 Due: {new Date(task.deadline).toLocaleDateString()}</span>}
+                      {task.agent_name && <span>👤 Agent: {task.agent_name}</span>}
+                    </div>
+                    
+                    <div className="flex gap-3">
+                      {task.status === 'open' && (
+                        <Button onClick={() => acceptTask(task.id)}>{Icons.check} Accept Task</Button>
+                      )}
+                      {task.status === 'accepted' && (
+                        <Button onClick={() => {
+                          fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
+                            .then(() => fetchTasks())
+                        }}>▶️ Start Work</Button>
+                      )}
+                      {task.status === 'in_progress' && (
+                        <Button onClick={() => {
+                          const proof = prompt('Describe the work completed:')
+                          if (proof) {
+                            fetch(`${API_URL}/tasks/${task.id}/complete`, { 
+                              method: 'POST', 
+                              headers: { Authorization: user.id, 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ proof })
+                            }).then(() => fetchTasks())
+                          }
+                        }}>✓ Mark Complete</Button>
+                      )}
+                      {task.status === 'pending_review' && (
+                        <Button variant="secondary">Waiting for approval...</Button>
+                      )}
+                      {task.status === 'completed' && (
+                        <span className="text-green-400 flex items-center gap-2">{Icons.check} Payment pending</span>
+                      )}
+                      {task.status === 'paid' && (
+                        <span className="text-white flex items-center gap-2">{Icons.dollar} Paid!</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1080,37 +1179,82 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Humans Tab */}
         {/* Working Mode: Browse Tab */}
         {!hiringMode && activeTab === 'humans' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Browse</h1>
+            <h1 className="text-3xl font-bold text-white mb-8">Browse Workers</h1>
+            
+            {/* Search & Filter */}
+            <div className="flex gap-4 mb-6">
+              <div className="flex-1 relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">{Icons.search}</span>
+                <input 
+                  type="text" 
+                  placeholder="Search by name or skill..." 
+                  className={`${styles.input} pl-12`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <select 
+                className={styles.input}
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+              >
+                <option value="">All Categories</option>
+                {['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general'].map(c => (
+                  <option key={c} value={c}>{c.replace('_', ' ')}</option>
+                ))}
+              </select>
+            </div>
             
             {humans.length === 0 ? (
-              <div className={`${styles.card} text-center py-12`}>
-                <p className="text-gray-400">No humans available</p>
+              <div className={`${styles.card} text-center py-16`}>
+                <div className="text-6xl mb-4">{Icons.humans}</div>
+                <p className="text-gray-400">No workers available</p>
+                <p className="text-sm text-gray-500 mt-2">Check back later for available humans</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
-                {humans.map(human => (
+                {humans
+                  .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
+                  .filter(h => !filterCategory || h.skills?.includes(filterCategory))
+                  .map(human => (
                   <div key={human.id} className={`${styles.card}`}>
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold">
+                      <div className="w-14 h-14 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold text-xl">
                         {human.name?.charAt(0) || '?'}
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-white">{human.name}</h3>
-                        <p className="text-gray-400 text-sm">{Icons.location} {human.city || 'Remote'}</p>
-                        <p className="text-green-400 font-semibold mt-1">${human.hourly_rate || 25}/hr</p>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-white">{human.name}</h3>
+                            <p className="text-gray-400 text-sm">{Icons.location} {human.city || 'Remote'}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-green-400 font-bold text-lg">${human.hourly_rate || 25}/hr</p>
+                            {human.rating > 0 && (
+                              <p className="text-yellow-400 text-sm">{Icons.star} {human.rating.toFixed(1)}</p>
+                            )}
+                          </div>
+                        </div>
+                        {human.bio && <p className="text-gray-400 text-sm mt-2 line-clamp-2">{human.bio}</p>}
                         {human.skills && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {human.skills.slice(0, 3).map((skill, i) => (
-                              <span key={i} className="text-xs bg-white/10 text-gray-300 px-2 py-0.5 rounded">
+                          <div className="flex flex-wrap gap-1 mt-3">
+                            {human.skills.slice(0, 5).map((skill, i) => (
+                              <span key={i} className="text-xs bg-orange-500/20 text-orange-300 px-2 py-0.5 rounded-full">
                                 {skill}
                               </span>
                             ))}
                           </div>
                         )}
+                        <div className="flex items-center justify-between mt-4">
+                          <span className="text-xs text-gray-500">{human.jobs_completed || 0} jobs completed</span>
+                          <Button variant="secondary" className="text-sm" onClick={() => {
+                            setHiringMode(true)
+                            setActiveTab('create')
+                          }}>Hire</Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1120,26 +1264,58 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Payments Tab */}
-        {activeTab === 'payments' && (
+        {/* Working Mode: Payments Tab */}
+        {!hiringMode && activeTab === 'payments' && (
           <div>
             <h1 className="text-3xl font-bold text-white mb-8">Payments</h1>
             
-            <div className={`${styles.card} text-center py-12`}>
-              <p className="text-gray-400">No payments yet</p>
-              <p className="text-sm text-gray-500 mt-2">Complete tasks to earn USDC</p>
+            {/* Wallet Balance */}
+            <div className={`${styles.card} mb-6`}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-gray-400 text-sm">Available Balance</p>
+                  <p className="text-4xl font-bold text-white mt-1">${wallet.balance.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500 mt-1">USDC</p>
+                </div>
+                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center text-green-400 text-2xl">
+                  {Icons.wallet}
+                </div>
+              </div>
+              <Button className="mt-6 w-full">Withdraw Funds</Button>
             </div>
+            
+            <h2 className="text-xl font-bold text-white mb-4">Recent Transactions</h2>
+            {wallet.transactions?.length > 0 ? (
+              <div className="space-y-3">
+                {wallet.transactions.map(tx => (
+                  <div key={tx.id} className={`${styles.card} flex justify-between items-center`}>
+                    <div>
+                      <p className="text-white">{tx.description || 'Task Payment'}</p>
+                      <p className="text-xs text-gray-500">{new Date(tx.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <p className={`font-bold ${tx.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {tx.amount > 0 ? '+' : ''}${tx.amount}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={`${styles.card} text-center py-12`}>
+                <p className="text-gray-400">No transactions yet</p>
+                <p className="text-sm text-gray-500 mt-2">Complete tasks to earn USDC</p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Profile Tab */}
+        {/* Profile Tab - Updated with Settings */}
         {activeTab === 'profile' && (
           <div>
             <h1 className="text-3xl font-bold text-white mb-8">Profile</h1>
             
             <div className={`${styles.card} max-w-xl`}>
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold text-xl">
+                <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold text-2xl">
                   {user?.name?.charAt(0) || '?'}
                 </div>
                 <div className="flex-1">
@@ -1148,10 +1324,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Mode</span>
-                  <span className={`font-medium ${hiringMode ? 'text-green-400' : 'text-blue-400'}`}>
+              {/* Mode Toggle */}
+              <div className="mb-6 p-4 bg-white/5 rounded-xl">
+                <div className="flex justify-between items-center mb-3">
+                  <div>
+                    <p className="text-white font-medium">Mode</p>
+                    <p className="text-xs text-gray-500">Switch between working and hiring</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm ${hiringMode ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
                     {hiringMode ? 'Hiring' : 'Working'}
                   </span>
                 </div>
@@ -1162,22 +1342,33 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 >
                   {hiringMode ? '← Switch to Working Mode' : 'Switch to Hiring Mode →'}
                 </Button>
+              </div>
+
+              <div className="space-y-4">
                 <div className="flex justify-between py-3 border-b border-white/10">
                   <span className="text-gray-400">Location</span>
                   <span className="text-white">{user?.city || 'Not set'}</span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-white/10">
                   <span className="text-gray-400">Hourly Rate</span>
-                  <span className="text-white">${user?.hourly_rate || 0}/hr</span>
+                  <span className="text-white">${user?.hourly_rate || 25}/hr</span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-white/10">
                   <span className="text-gray-400">Travel Radius</span>
-                  <span className="text-white">{user?.travel_radius || 0} miles</span>
+                  <span className="text-white">{user?.travel_radius || 25} miles</span>
                 </div>
-                <div className="flex justify-between py-3">
+                <div className="flex justify-between py-3 border-b border-white/10">
                   <span className="text-gray-400">Skills</span>
                   <span className="text-white">{user?.skills?.join(', ') || 'None'}</span>
                 </div>
+                <div className="flex justify-between py-3">
+                  <span className="text-gray-400">Jobs Completed</span>
+                  <span className="text-white">{user?.jobs_completed || 0}</span>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <Button variant="secondary" className="w-full">Edit Profile</Button>
               </div>
             </div>
           </div>
