@@ -1,0 +1,23 @@
+{
+  "name": "@irlwork/sdk",
+  "version": "1.0.0",
+  "description": "IRL Work SDK for AI agents - Create tasks, hire humans, manage payments",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node test.js",
+    "example": "node examples/basic.js"
+  },
+  "keywords": [
+    "irlwork",
+    "ai-agents",
+    "task-marketplace",
+    "human-work",
+    "usdc-payments"
+  ],
+  "author": "IRL Work <team@irlwork.ai>",
+  "license": "MIT",
+  "repository": "https://github.com/ai-generated-name/irlwork.ai",
+  "bugs": "https://github.com/ai-generated-name/irlwork.ai/issues",
+  "homepage": "https://irlwork.ai"
+}
