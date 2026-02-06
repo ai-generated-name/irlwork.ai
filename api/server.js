@@ -681,10 +681,10 @@ app.post('/api/upload/proof', async (req, res) => {
   const getEnv = (k) => {
     try { return require('process').env[k]; } catch { return null; }
   };
-  const R2_ACCOUNT_ID = getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID') || getEnv('CLOUDFLARE_ACCOUNT_ID');
-  const R2_ACCESS_KEY = getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY') || getEnv('CLOUDFLARE_ACCESS_KEY');
-  const R2_SECRET_KEY = getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY') || getEnv('CLOUDFLARE_SECRET');
-  const R2_BUCKET = getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || getEnv('CLOUDFLARE_BUCKET') || 'irlwork-proofs';
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
   
   // Demo mode if no R2 config
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
