@@ -1,11 +1,12 @@
 -- irlwork.ai Supabase Database Schema
 -- Run this in Supabase SQL Editor
+-- Note: Tables that already exist will be skipped
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users table (both agents and humans)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
@@ -26,7 +27,7 @@ CREATE TABLE users (
 );
 
 -- Tasks table
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   agent_id UUID REFERENCES users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -46,7 +47,7 @@ CREATE TABLE tasks (
 );
 
 -- Task assignments (humans assigned to tasks)
-CREATE TABLE task_assignments (
+CREATE TABLE IF NOT EXISTS task_assignments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
   human_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -58,7 +59,7 @@ CREATE TABLE task_assignments (
 );
 
 -- Task proofs (human submits proof of work)
-CREATE TABLE task_proofs (
+CREATE TABLE IF NOT EXISTS task_proofs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   assignment_id UUID REFERENCES task_assignments(id) ON DELETE CASCADE,
   task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
@@ -72,7 +73,7 @@ CREATE TABLE task_proofs (
 );
 
 -- Conversations (human ↔ agent)
-CREATE TABLE conversations (
+CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   agent_id UUID REFERENCES users(id) ON DELETE CASCADE,
   human_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -84,7 +85,7 @@ CREATE TABLE conversations (
 );
 
 -- Messages
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
   sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -94,7 +95,7 @@ CREATE TABLE messages (
 );
 
 -- Notifications
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -106,7 +107,7 @@ CREATE TABLE notifications (
 );
 
 -- Wallet transactions
-CREATE TABLE wallet_transactions (
+CREATE TABLE IF NOT EXISTS wallet_transactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
@@ -119,7 +120,7 @@ CREATE TABLE wallet_transactions (
 );
 
 -- API Keys (for agent access)
-CREATE TABLE api_keys (
+CREATE TABLE IF NOT EXISTS api_keys (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   key TEXT UNIQUE NOT NULL,
@@ -130,7 +131,7 @@ CREATE TABLE api_keys (
 );
 
 -- Disputes
-CREATE TABLE disputes (
+CREATE TABLE IF NOT EXISTS disputes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
   human_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -143,20 +144,47 @@ CREATE TABLE disputes (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add missing columns to existing tables (if they don't exist)
+DO $$ BEGIN
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS city TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS hourly_rate INTEGER DEFAULT 25;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS travel_radius INTEGER DEFAULT 25;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT[] DEFAULT '{}';
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS is_agent BOOLEAN DEFAULT FALSE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS is_human BOOLEAN DEFAULT FALSE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS jobs_completed INTEGER DEFAULT 0;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS rating DECIMAL(3,2) DEFAULT 5.0;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS needs_onboarding BOOLEAN DEFAULT TRUE;
+EXCEPTION
+  WHEN duplicate_column THEN RAISE NOTICE 'Column already exists';
+END $$;
+
+-- Add missing columns to tasks
+DO $$ BEGIN
+  ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_type TEXT DEFAULT 'direct' CHECK (task_type IN ('direct', 'apply', 'fcfs'));
+  ALTER TABLE tasks ADD COLUMN IF NOT EXISTS quantity INTEGER DEFAULT 1;
+  ALTER TABLE tasks ADD COLUMN IF NOT EXISTS human_ids UUID[] DEFAULT '{}';
+  ALTER TABLE tasks ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,8);
+  ALTER TABLE tasks ADD COLUMN IF NOT EXISTS longitude DECIMAL(11,8);
+EXCEPTION
+  WHEN duplicate_column THEN RAISE NOTICE 'Column already exists';
+END $$;
+
 -- Indexes for performance
-CREATE INDEX idx_tasks_agent ON tasks(agent_id);
-CREATE INDEX idx_tasks_status ON tasks(status);
-CREATE INDEX idx_tasks_category ON tasks(category);
-CREATE INDEX idx_task_assignments_task ON task_assignments(task_id);
-CREATE INDEX idx_task_assignments_human ON task_assignments(human_id);
-CREATE INDEX idx_task_proofs_task ON task_proofs(task_id);
-CREATE INDEX idx_task_proofs_human ON task_proofs(human_id);
-CREATE INDEX idx_conversations_agent ON conversations(agent_id);
-CREATE INDEX idx_conversations_human ON conversations(human_id);
-CREATE INDEX idx_messages_conversation ON messages(conversation_id);
-CREATE INDEX idx_notifications_user ON notifications(user_id);
-CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read) WHERE is_read = FALSE;
-CREATE INDEX idx_wallet_transactions_user ON wallet_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category);
+CREATE INDEX IF NOT EXISTS idx_task_assignments_task ON task_assignments(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_assignments_human ON task_assignments(human_id);
+CREATE INDEX IF NOT EXISTS idx_task_proofs_task ON task_proofs(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_proofs_human ON task_proofs(human_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_agent ON conversations(agent_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_human ON conversations(human_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, is_read) WHERE is_read = FALSE;
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user ON wallet_transactions(user_id);
 
 -- Row Level Security (RLS)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
@@ -170,63 +198,168 @@ ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE disputes ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
-CREATE POLICY "Users can view own data" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid() = id);
+-- RLS Policies (skip if already exist)
+DO $$ BEGIN
+  CREATE POLICY "Users can view own data" ON users FOR SELECT USING (auth.uid() = id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
-CREATE POLICY "Agents can view own tasks" ON tasks FOR SELECT USING (
-  auth.uid() = agent_id OR EXISTS (
-    SELECT 1 FROM task_assignments WHERE task_id = tasks.id AND human_id = auth.uid()
-  )
-);
-CREATE POLICY "Agents can create tasks" ON tasks FOR INSERT WITH CHECK (auth.uid() = agent_id);
-CREATE POLICY "Agents can update own tasks" ON tasks FOR UPDATE USING (auth.uid() = agent_id);
+DO $$ BEGIN
+  CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid() = id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
-CREATE POLICY "Users can view own assignments" ON task_assignments FOR SELECT USING (
-  auth.uid() = human_id OR EXISTS (SELECT 1 FROM tasks WHERE id = task_assignments.task_id AND agent_id = auth.uid())
-);
-CREATE POLICY "Humans can create assignments" ON task_assignments FOR INSERT WITH CHECK (auth.uid() = human_id);
-CREATE POLICY "Users can update assignments" ON task_assignments FOR UPDATE USING (
-  auth.uid() = human_id OR EXISTS (SELECT 1 FROM tasks WHERE id = task_assignments.task_id AND agent_id = auth.uid())
-);
+DO $$ BEGIN
+  CREATE POLICY "Agents can view own tasks" ON tasks FOR SELECT USING (
+    auth.uid() = agent_id OR EXISTS (
+      SELECT 1 FROM task_assignments WHERE task_id = tasks.id AND human_id = auth.uid()
+    )
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
-CREATE POLICY "Users can view related proofs" ON task_proofs FOR SELECT USING (
-  auth.uid() = human_id OR EXISTS (SELECT 1 FROM tasks WHERE id = task_proofs.task_id AND agent_id = auth.uid())
-);
-CREATE POLICY "Humans can submit proofs" ON task_proofs FOR INSERT WITH CHECK (auth.uid() = human_id);
-CREATE POLICY "Agents can review proofs" ON task_proofs FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM tasks WHERE id = task_proofs.task_id AND agent_id = auth.uid())
-);
+DO $$ BEGIN
+  CREATE POLICY "Agents can create tasks" ON tasks FOR INSERT WITH CHECK (auth.uid() = agent_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
-CREATE POLICY "Users can view own conversations" ON conversations FOR SELECT USING (
-  auth.uid() = agent_id OR auth.uid() = human_id
-);
-CREATE POLICY "Users can create conversations" ON conversations FOR INSERT WITH CHECK (
-  auth.uid() = agent_id OR auth.uid() = human_id
-);
+DO $$ BEGIN
+  CREATE POLICY "Agents can update own tasks" ON tasks FOR UPDATE USING (auth.uid() = agent_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
-CREATE POLICY "Users can view own messages" ON messages FOR SELECT USING (
-  EXISTS (SELECT 1 FROM conversations WHERE id = messages.conversation_id AND (agent_id = auth.uid() OR human_id = auth.uid()))
-);
-CREATE POLICY "Users can send messages" ON messages FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM conversations WHERE id = messages.conversation_id AND (agent_id = auth.uid() OR human_id = auth.uid()))
-);
+DO $$ BEGIN
+  CREATE POLICY "Users can view own assignments" ON task_assignments FOR SELECT USING (
+    auth.uid() = human_id OR EXISTS (SELECT 1 FROM tasks WHERE id = task_assignments.task_id AND agent_id = auth.uid())
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
-CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Humans can create assignments" ON task_assignments FOR INSERT WITH CHECK (auth.uid() = human_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
-CREATE POLICY "Users can view own wallet transactions" ON wallet_transactions FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can create wallet transactions" ON wallet_transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Users can update assignments" ON task_assignments FOR UPDATE USING (
+    auth.uid() = human_id OR EXISTS (SELECT 1 FROM tasks WHERE id = task_assignments.task_id AND agent_id = auth.uid())
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
-CREATE POLICY "Users can view own api keys" ON api_keys FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own api keys" ON api_keys FOR ALL USING (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Users can view related proofs" ON task_proofs FOR SELECT USING (
+    auth.uid() = human_id OR EXISTS (SELECT 1 FROM tasks WHERE id = task_proofs.task_id AND agent_id = auth.uid())
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
-CREATE POLICY "Users can view related disputes" ON disputes FOR SELECT USING (
-  auth.uid() = human_id OR auth.uid() = agent_id
-);
-CREATE POLICY "Users can create disputes" ON disputes FOR INSERT WITH CHECK (
-  auth.uid() = human_id OR auth.uid() = agent_id
-);
+DO $$ BEGIN
+  CREATE POLICY "Humans can submit proofs" ON task_proofs FOR INSERT WITH CHECK (auth.uid() = human_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Agents can review proofs" ON task_proofs FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM tasks WHERE id = task_proofs.task_id AND agent_id = auth.uid())
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can view own conversations" ON conversations FOR SELECT USING (
+    auth.uid() = agent_id OR auth.uid() = human_id
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can create conversations" ON conversations FOR INSERT WITH CHECK (
+    auth.uid() = agent_id OR auth.uid() = human_id
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can view own messages" ON messages FOR SELECT USING (
+    EXISTS (SELECT 1 FROM conversations WHERE id = messages.conversation_id AND (agent_id = auth.uid() OR human_id = auth.uid()))
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can send messages" ON messages FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM conversations WHERE id = messages.conversation_id AND (agent_id = auth.uid() OR human_id = auth.uid()))
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can view own wallet transactions" ON wallet_transactions FOR SELECT USING (auth.uid() = user_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can create wallet transactions" ON wallet_transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can view own api keys" ON api_keys FOR SELECT USING (auth.uid() = user_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can manage own api keys" ON api_keys FOR ALL USING (auth.uid() = user_id);
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can view related disputes" ON disputes FOR SELECT USING (
+    auth.uid() = human_id OR auth.uid() = agent_id
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can create disputes" ON disputes FOR INSERT WITH CHECK (
+    auth.uid() = human_id OR auth.uid() = agent_id
+  );
+EXCEPTION
+  WHEN duplicate_object THEN RAISE NOTICE 'Policy already exists';
+END $$;
 
 -- Triggers for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -237,6 +370,11 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_tasks_updated_at ON tasks;
 CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
 CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
