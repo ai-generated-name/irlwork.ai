@@ -769,37 +769,49 @@ function AuthPage({ onLogin }) {
 }
 
 function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
-  const isAgent = user?.type === 'agent'
-  const [activeTab, setActiveTab] = useState(isAgent ? 'posted' : 'tasks')
+  const [hiringMode, setHiringMode] = useState(() => {
+    const saved = localStorage.getItem('irlwork_hiringMode')
+    return saved === 'true'
+  })
+  const [activeTab, setActiveTab] = useState(hiringMode ? 'create' : 'tasks')
   const [tasks, setTasks] = useState([])
   const [humans, setHumans] = useState([])
   const [loading, setLoading] = useState(true)
   const [postedTasks, setPostedTasks] = useState([])
 
+  useEffect(() => {
+    localStorage.setItem('irlwork_hiringMode', hiringMode)
+  }, [hiringMode])
+
   const humanNav = [
-    { id: 'tasks', label: 'Tasks', icon: Icons.task },
-    { id: 'humans', label: 'Browse Humans', icon: Icons.humans },
+    { id: 'tasks', label: 'My Tasks', icon: Icons.task },
+    { id: 'browse', label: 'Browse', icon: Icons.humans },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
     { id: 'profile', label: 'Profile', icon: Icons.profile },
   ]
 
-  const agentNav = [
-    { id: 'posted', label: 'Posted Tasks', icon: Icons.task },
+  const hiringNav = [
     { id: 'create', label: 'Create Task', icon: Icons.create },
-    { id: 'humans', label: 'Hired', icon: Icons.humans },
+    { id: 'posted', label: 'My Tasks', icon: Icons.task },
+    { id: 'hired', label: 'Hired', icon: Icons.humans },
     { id: 'profile', label: 'Profile', icon: Icons.profile },
   ]
 
-  const navItems = isAgent ? agentNav : humanNav
+  const navItems = hiringMode ? hiringNav : humanNav
+
+  const toggleHiringMode = () => {
+    setHiringMode(!hiringMode)
+    setActiveTab(!hiringMode ? 'create' : 'tasks')
+  }
 
   useEffect(() => {
-    if (isAgent) {
+    if (hiringMode) {
       fetchPostedTasks()
     } else {
       fetchTasks()
       fetchHumans()
     }
-  }, [])
+  }, [hiringMode])
 
   const fetchTasks = async () => {
     try {
@@ -930,7 +942,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             </div>
             <div>
               <p className="text-white font-medium text-sm">{user?.name || 'User'}</p>
-              <p className="text-gray-500 text-xs">{isAgent ? 'Agent' : user?.type || 'Human'}</p>
+              <p className="text-gray-500 text-xs">{hiringMode ? 'Hiring Mode' : 'Working Mode'}</p>
             </div>
           </div>
           <button
@@ -945,10 +957,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
       {/* Main */}
       <main className="flex-1 p-8 overflow-auto">
-        {/* Agent: Posted Tasks Tab */}
-        {isAgent && activeTab === 'posted' && (
+        {/* Hiring Mode: My Tasks Tab */}
+        {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Posted Tasks</h1>
+            <h1 className="text-3xl font-bold text-white mb-8">My Tasks</h1>
             
             {loading ? (
               <p className="text-gray-400">Loading...</p>
@@ -995,8 +1007,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Agent: Create Task Tab */}
-        {isAgent && activeTab === 'create' && (
+        {/* Hiring Mode: Create Task Tab */}
+        {hiringMode && activeTab === 'create' && (
           <div>
             <h1 className="text-3xl font-bold text-white mb-8">Create Task</h1>
             <div className={`${styles.card} max-w-2xl`}>
@@ -1019,10 +1031,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Agent: Hired Tab */}
-        {isAgent && activeTab === 'humans' && (
+        {/* Hiring Mode: Hired Tab */}
+        {hiringMode && activeTab === 'humans' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Hired Humans</h1>
+            <h1 className="text-3xl font-bold text-white mb-8">Hired</h1>
             <div className={`${styles.card} text-center py-12`}>
               <p className="text-gray-400">No humans hired yet</p>
               <p className="text-sm text-gray-500 mt-2">Hire someone for a task</p>
@@ -1030,10 +1042,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Tasks Tab */}
-        {!isAgent && activeTab === 'tasks' && (
+        {/* Working Mode: My Tasks Tab */}
+        {!hiringMode && activeTab === 'tasks' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Your Tasks</h1>
+            <h1 className="text-3xl font-bold text-white mb-8">My Tasks</h1>
             
             {loading ? (
               <p className="text-gray-400">Loading...</p>
@@ -1069,9 +1081,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         )}
 
         {/* Humans Tab */}
-        {activeTab === 'humans' && (
+        {/* Working Mode: Browse Tab */}
+        {!hiringMode && activeTab === 'humans' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Browse Humans</h1>
+            <h1 className="text-3xl font-bold text-white mb-8">Browse</h1>
             
             {humans.length === 0 ? (
               <div className={`${styles.card} text-center py-12`}>
@@ -1129,13 +1142,26 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold text-xl">
                   {user?.name?.charAt(0) || '?'}
                 </div>
-                <div>
+                <div className="flex-1">
                   <h2 className="text-xl font-semibold text-white">{user?.name}</h2>
                   <p className="text-gray-400">{user?.email}</p>
                 </div>
               </div>
 
               <div className="space-y-4">
+                <div className="flex justify-between py-3 border-b border-white/10">
+                  <span className="text-gray-400">Mode</span>
+                  <span className={`font-medium ${hiringMode ? 'text-green-400' : 'text-blue-400'}`}>
+                    {hiringMode ? 'Hiring' : 'Working'}
+                  </span>
+                </div>
+                <Button 
+                  variant={hiringMode ? 'secondary' : 'primary'} 
+                  className="w-full"
+                  onClick={toggleHiringMode}
+                >
+                  {hiringMode ? '← Switch to Working Mode' : 'Switch to Hiring Mode →'}
+                </Button>
                 <div className="flex justify-between py-3 border-b border-white/10">
                   <span className="text-gray-400">Location</span>
                   <span className="text-white">{user?.city || 'Not set'}</span>
