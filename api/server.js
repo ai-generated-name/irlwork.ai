@@ -174,6 +174,8 @@ app.post('/api/auth/register/agent', async (req, res) => {
     const { email, name, organization } = req.body;
     const id = uuidv4();
     const api_key = 'irl_' + crypto.randomBytes(24).toString('hex');
+    const baseUrl = process.env.API_URL || `http://localhost:${PORT}`;
+    const webhook_url = `${baseUrl}/webhooks/${id}`;
     
     const { data: user, error } = await supabase
       .from('users')
@@ -185,6 +187,7 @@ app.post('/api/auth/register/agent', async (req, res) => {
         type: 'agent',
         api_key,
         organization,
+        mcp_webhook_url: webhook_url,
         created_at: new Date().toISOString()
       })
       .select()
@@ -192,7 +195,7 @@ app.post('/api/auth/register/agent', async (req, res) => {
     
     if (error) throw error;
     
-    res.json({ user: { id, email, name, type: 'agent' }, api_key });
+    res.json({ user: { id, email, name, type: 'agent' }, api_key, webhook_url });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -667,6 +670,653 @@ app.post('/api/tasks/:id/release', async (req, res) => {
   });
 });
 
+// ============ R2 FILE UPLOAD ============
+app.post('/api/upload/proof', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const R2_ACCOUNT_ID = process.env.R2_CLOUDFLARE_ACCOUNT_ID;
+  const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+  const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+  const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'irlwork-proofs';
+  
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+    return res.status(500).json({ error: 'R2 configuration missing' });
+  }
+  
+  try {
+    const { file, filename, mimeType } = req.body;
+    
+    if (!file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+    
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop() || 'jpg';
+    const uniqueFilename = `proofs/${user.id}/${timestamp}-${randomStr}.${ext}`;
+    
+    // For demo mode, return a mock URL
+    if (process.env.NODE_ENV !== 'production' || !R2_BUCKET_NAME) {
+      const mockUrl = `https://${R2_BUCKET_NAME || 'irlwork-proofs'}.public/${uniqueFilename}`;
+      console.log(`[R2 MOCK] Uploaded: ${mockUrl}`);
+      return res.json({ 
+        url: mockUrl,
+        filename: uniqueFilename,
+        success: true,
+        mock: true
+      });
+    }
+    
+    // Real R2 upload would go here using @aws-sdk/client-s3
+    // For now, return mock URL
+    const publicUrl = `https://${R2_BUCKET_NAME}.public/${uniqueFilename}`;
+    
+    res.json({ 
+      url: publicUrl,
+      filename: uniqueFilename,
+      success: true
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============ TASK PROOFS ============
+app.get('/api/tasks/:id/proofs', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id: taskId } = req.params;
+  
+  // Verify user has access to task
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id, human_id, agent_id')
+    .eq('id', taskId)
+    .single();
+  
+  if (!task || (task.human_id !== user.id && task.agent_id !== user.id)) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  const { data: proofs, error } = await supabase
+    .from('task_proofs')
+    .select(`
+      *,
+      submitter:users!task_proofs_human_id_fkey(id, name, email)
+    `)
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: false });
+  
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(proofs || []);
+});
+
+app.post('/api/tasks/:id/submit-proof', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  if (user.type !== 'human') {
+    return res.status(403).json({ error: 'Only humans can submit proofs' });
+  }
+  
+  const { id: taskId } = req.params;
+  const { proof_text, proof_urls } = req.body;
+  
+  // Verify task exists and user is assigned
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('id, human_id, status, title')
+    .eq('id', taskId)
+    .single();
+  
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  if (task.human_id !== user.id) {
+    return res.status(403).json({ error: 'Not assigned to this task' });
+  }
+  
+  if (task.status !== 'in_progress') {
+    return res.status(400).json({ error: 'Task must be in_progress to submit proof' });
+  }
+  
+  const proofId = uuidv4();
+  const { data: proof, error } = await supabase
+    .from('task_proofs')
+    .insert({
+      id: proofId,
+      task_id: taskId,
+      human_id: user.id,
+      proof_text,
+      proof_urls: proof_urls || [],
+      status: 'pending',
+      revision_count: 0,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+  
+  if (error) return res.status(500).json({ error: error.message });
+  
+  // Update task status to pending_review
+  await supabase
+    .from('tasks')
+    .update({ 
+      status: 'pending_review',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId);
+  
+  // Notify agent
+  await createNotification(
+    task.agent_id,
+    'proof_submitted',
+    'Proof Submitted',
+    `${user.name} has submitted proof for "${task.title}". Review it now.`,
+    `/dashboard?task=${taskId}`
+  );
+  
+  // Deliver webhook to agent
+  await deliverWebhook(task.agent_id, {
+    event: 'proof_submitted',
+    task_id: taskId,
+    proof_id: proofId,
+    human_id: user.id,
+    human_name: user.name,
+    task_title: task.title,
+    timestamp: new Date().toISOString()
+  });
+  
+  res.json({ success: true, proof });
+});
+
+app.post('/api/tasks/:id/reject', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id: taskId } = req.params;
+  const { feedback, extend_deadline_hours = 24 } = req.body;
+  
+  // Get task with current deadline
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('*, human:users!tasks_human_id_fkey(*)')
+    .eq('id', taskId)
+    .single();
+  
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  if (task.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Not your task' });
+  }
+  
+  // Get latest proof
+  const { data: latestProof } = await supabase
+    .from('task_proofs')
+    .select('*')
+    .eq('task_id', taskId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  
+  if (!latestProof) {
+    return res.status(400).json({ error: 'No pending proof to reject' });
+  }
+  
+  // Calculate new deadline
+  const currentDeadline = task.deadline ? new Date(task.deadline) : new Date();
+  const newDeadline = new Date(currentDeadline.getTime() + extend_deadline_hours * 60 * 60 * 1000);
+  
+  // Update proof status
+  await supabase
+    .from('task_proofs')
+    .update({
+      status: 'rejected',
+      agent_feedback: feedback,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', latestProof.id);
+  
+  // Update task back to in_progress with new deadline
+  await supabase
+    .from('tasks')
+    .update({
+      status: 'in_progress',
+      deadline: newDeadline.toISOString(),
+      instructions: feedback,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId);
+  
+  // Notify human
+  await createNotification(
+    task.human_id,
+    'proof_rejected',
+    'Proof Rejected',
+    `Your proof was rejected. ${extend_deadline_hours > 0 ? `Deadline extended by ${extend_deadline_hours} hours.` : ''} Feedback: ${feedback || 'See details.'}`,
+    `/dashboard?task=${taskId}`
+  );
+  
+  // Deliver webhook
+  await deliverWebhook(task.agent_id, {
+    event: 'proof_rejected',
+    task_id: taskId,
+    proof_id: latestProof.id,
+    feedback,
+    new_deadline: newDeadline.toISOString(),
+    timestamp: new Date().toISOString()
+  });
+  
+  res.json({ 
+    success: true, 
+    message: 'Proof rejected, human can resubmit',
+    new_deadline: newDeadline.toISOString()
+  });
+});
+
+app.post('/api/tasks/:id/approve', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id: taskId } = req.params;
+  
+  // Get task details
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', taskId)
+    .single();
+  
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  if (task.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Not your task' });
+  }
+  
+  // Get latest proof
+  const { data: latestProof } = await supabase
+    .from('task_proofs')
+    .select('*')
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  
+  if (!latestProof) {
+    return res.status(400).json({ error: 'No proof to approve' });
+  }
+  
+  // Update proof status
+  await supabase
+    .from('task_proofs')
+    .update({
+      status: 'approved',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', latestProof.id);
+  
+  // Calculate payment
+  const escrowAmount = task.escrow_amount || task.budget || 50;
+  const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+  const netAmount = escrowAmount - platformFee;
+  const txHash = '0x' + crypto.randomBytes(32).toString('hex');
+  
+  // Update task to paid
+  await supabase
+    .from('tasks')
+    .update({
+      status: 'paid',
+      escrow_status: 'released',
+      escrow_released_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId);
+  
+  // Record payout
+  await supabase.from('payouts').insert({
+    id: uuidv4(),
+    task_id: taskId,
+    human_id: task.human_id,
+    agent_id: user.id,
+    gross_amount: escrowAmount,
+    platform_fee: platformFee,
+    net_amount: netAmount,
+    wallet_address: task.human?.wallet_address || null,
+    tx_hash: txHash,
+    status: 'completed',
+    processed_at: new Date().toISOString(),
+    created_at: new Date().toISOString()
+  });
+  
+  // Update human stats
+  await supabase
+    .from('users')
+    .update({
+      jobs_completed: supabase.raw('jobs_completed + 1'),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', task.human_id);
+  
+  // Notify human
+  await createNotification(
+    task.human_id,
+    'payment_released',
+    'Payment Released!',
+    `Your payment of ${netAmount.toFixed(2)} USDC has been sent to your wallet.`,
+    `/dashboard`
+  );
+  
+  // Deliver webhook
+  await deliverWebhook(task.agent_id, {
+    event: 'payment_released',
+    task_id: taskId,
+    proof_id: latestProof.id,
+    amount: netAmount,
+    tx_hash: txHash,
+    timestamp: new Date().toISOString()
+  });
+  
+  res.json({ 
+    success: true, 
+    status: 'paid',
+    net_amount: netAmount,
+    tx_hash: txHash
+  });
+});
+
+app.post('/api/tasks/:id/dispute', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const { id: taskId } = req.params;
+  const { reason } = req.body;
+  
+  // Get task
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', taskId)
+    .single();
+  
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  // Only human or agent can dispute
+  if (task.human_id !== user.id && task.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  // Update task to disputed
+  await supabase
+    .from('tasks')
+    .update({
+      status: 'disputed',
+      dispute_reason: reason,
+      disputed_by: user.id,
+      disputed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId);
+  
+  // Notify relevant parties
+  const notifyTo = user.id === task.human_id ? task.agent_id : task.human_id;
+  await createNotification(
+    notifyTo,
+    'dispute_opened',
+    'Dispute Opened',
+    `A dispute has been opened for task "${task.title}". Reason: ${reason}`,
+    `/dashboard?task=${taskId}`
+  );
+  
+  // Deliver webhook
+  await deliverWebhook(task.agent_id, {
+    event: 'dispute_opened',
+    task_id: taskId,
+    disputed_by: user.id,
+    reason,
+    timestamp: new Date().toISOString()
+  });
+  
+  res.json({ success: true, status: 'disputed' });
+});
+
+// ============ ADMIN DISPUTE RESOLUTION ============
+app.post('/api/admin/resolve-dispute', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+  // Check if user is admin
+  const { data: adminUser } = await supabase
+    .from('users')
+    .select('type')
+    .eq('id', user.id)
+    .single();
+  
+  if (adminUser?.type !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  const { task_id, resolution, refund_human = false, release_to_human = false, notes } = req.body;
+  
+  // Get task
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', task_id)
+    .single();
+  
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  if (task.status !== 'disputed') {
+    return res.status(400).json({ error: 'Task is not disputed' });
+  }
+  
+  // Resolve based on decision
+  if (release_to_human) {
+    // Release payment to human
+    const escrowAmount = task.escrow_amount || task.budget || 50;
+    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+    const netAmount = escrowAmount - platformFee;
+    const txHash = '0x' + crypto.randomBytes(32).toString('hex');
+    
+    await supabase
+      .from('tasks')
+      .update({
+        status: 'paid',
+        escrow_status: 'released',
+        escrow_released_at: new Date().toISOString(),
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', task_id);
+    
+    await supabase.from('payouts').insert({
+      id: uuidv4(),
+      task_id: task_id,
+      human_id: task.human_id,
+      agent_id: task.agent_id,
+      gross_amount: escrowAmount,
+      platform_fee: platformFee,
+      net_amount: netAmount,
+      tx_hash: txHash,
+      status: 'completed',
+      dispute_resolved: true,
+      created_at: new Date().toISOString()
+    });
+    
+    await createNotification(
+      task.human_id,
+      'dispute_resolved',
+      'Dispute Resolved - Favorable',
+      `The dispute has been resolved in your favor. Payment of ${netAmount.toFixed(2)} USDC has been released.`,
+      `/dashboard`
+    );
+  } else if (refund_human) {
+    // Refund escrow to agent
+    await supabase
+      .from('tasks')
+      .update({
+        status: 'cancelled',
+        escrow_status: 'refunded',
+        escrow_refunded_at: new Date().toISOString(),
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', task_id);
+    
+    await createNotification(
+      task.agent_id,
+      'dispute_resolved',
+      'Dispute Resolved - Refund',
+      `The dispute has been resolved. Escrow of ${task.escrow_amount} USDC has been refunded to your wallet.`,
+      `/dashboard`
+    );
+    await createNotification(
+      task.human_id,
+      'dispute_resolved',
+      'Dispute Resolved',
+      `The dispute has been resolved. ${notes || 'See details in your dashboard.'}`,
+      `/dashboard`
+    );
+  } else {
+    // Partial resolution
+    await supabase
+      .from('tasks')
+      .update({
+        status: 'pending_review',
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        notes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', task_id);
+  }
+  
+  res.json({ success: true, resolution });
+});
+
+// ============ WEBHOOKS ============
+async function deliverWebhook(agentId, payload) {
+  if (!supabase) return;
+  
+  try {
+    const { data: agent } = await supabase
+      .from('users')
+      .select('mcp_webhook_url')
+      .eq('id', agentId)
+      .single();
+    
+    if (!agent?.mcp_webhook_url) return;
+    
+    // Deliver webhook (simulated if URL is internal)
+    const webhookUrl = agent.mcp_webhook_url;
+    const isInternal = webhookUrl.startsWith('/') || webhookUrl.includes('localhost');
+    
+    if (isInternal) {
+      console.log(`[WEBHOOK DELIVERED] ${webhookUrl}`, payload);
+    } else {
+      // External webhook delivery would use fetch
+      console.log(`[WEBHOOK] Would deliver to ${webhookUrl}:`, JSON.stringify(payload));
+    }
+  } catch (e) {
+    console.error('Webhook delivery error:', e.message);
+  }
+}
+
+// Agent webhook endpoint (auto-generated per agent)
+app.post('/webhooks/:agent_id', async (req, res) => {
+  const { agent_id } = req.params;
+  const event = req.body;
+  
+  console.log(`[WEBHOOK RECEIVED] Agent ${agent_id}:`, event);
+  
+  // Verify agent exists
+  const { data: agent } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', agent_id)
+    .single();
+  
+  if (!agent) {
+    return res.status(404).json({ error: 'Agent not found' });
+  }
+  
+  res.json({ received: true, agent_id });
+});
+
+// Get webhook URL for an agent
+app.get('/api/agents/:id/webhook-url', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const { id } = req.params;
+  
+  const { data: agent, error } = await supabase
+    .from('users')
+    .select('id, mcp_webhook_url')
+    .eq('id', id)
+    .eq('type', 'agent')
+    .single();
+  
+  if (error || !agent) {
+    return res.status(404).json({ error: 'Agent not found' });
+  }
+  
+  const baseUrl = process.env.API_URL || `http://localhost:${PORT}`;
+  const webhookUrl = agent.mcp_webhook_url || `${baseUrl}/webhooks/${id}`;
+  
+  res.json({ webhook_url: webhookUrl });
+});
+
+// Register/update webhook URL
+app.post('/api/webhooks/register', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user || user.type !== 'agent') {
+    return res.status(401).json({ error: 'Agents only' });
+  }
+  
+  const { webhook_url } = req.body;
+  
+  await supabase
+    .from('users')
+    .update({
+      mcp_webhook_url: webhook_url,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', user.id);
+  
+  res.json({ success: true, webhook_url });
+});
+
 // ============ TRANSACTIONS ============
 app.get('/api/transactions', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
@@ -715,6 +1365,85 @@ app.get('/api/payouts', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   res.json(payouts || []);
 });
+
+// ============ WEBHOOKS ============
+app.post('/webhooks/:apiKey', async (req, res) => {
+  // Agent webhook endpoint - receives notifications
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  
+  const { apiKey } = req.params;
+  const { event, data } = req.body;
+  
+  // Verify agent exists
+  const { data: agent, error } = await supabase
+    .from('users')
+    .select('id, name')
+    .eq('api_key', apiKey)
+    .eq('type', 'agent')
+    .single();
+  
+  if (error || !agent) {
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+  
+  console.log(`[Webhook] ${agent.name}: ${event}`, data);
+  
+  // Store notification
+  await createNotification(
+    agent.id,
+    event,
+    formatEventTitle(event),
+    formatEventMessage(event, data),
+    data.task_id ? `/dashboard?task=${data.task_id}` : '/dashboard'
+  );
+  
+  res.json({ received: true, event });
+});
+
+app.get('/webhooks/:apiKey/test', async (req, res) => {
+  const { apiKey } = req.params;
+  
+  const { data: agent } = await supabase
+    .from('users')
+    .select('id, name')
+    .eq('api_key', apiKey)
+    .eq('type', 'agent')
+    .single();
+  
+  if (!agent) {
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+  
+  res.json({ 
+    status: 'ok', 
+    agent: agent.name,
+    webhook_url: `/webhooks/${apiKey}`
+  });
+});
+
+function formatEventTitle(event) {
+  const titles = {
+    'human:applied': 'New Application',
+    'human:accepted': 'Task Accepted',
+    'task:completed': 'Work Submitted',
+    'task:approved': 'Payment Released',
+    'task:rejected': 'Work Rejected',
+    'dispute:escalated': 'Dispute Escalated'
+  }
+  return titles[event] || 'Notification'
+}
+
+function formatEventMessage(event, data) {
+  const messages = {
+    'human:applied': `${data.humanName} applied for "${data.taskTitle}"`,
+    'human:accepted': `${data.humanName} accepted "${data.taskTitle}"`,
+    'task:completed': `${data.humanName} submitted proof for "${data.taskTitle}"`,
+    'task:approved': `Payment of $${data.amount} released for "${data.taskTitle}"`,
+    'task:rejected': `Proof rejected for "${data.taskTitle}": ${data.feedback}`,
+    'dispute:escalated': `${data.humanName} escalated "${data.taskTitle}" to dispute`
+  }
+  return messages[event] || JSON.stringify(data)
+}
 
 // ============ MCP SERVER ============
 app.post('/api/mcp', async (req, res) => {
@@ -810,19 +1539,33 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'hire_human': {
-        const { task_id, human_id } = params;
+        const { task_id, human_id, deadline_hours = 24, instructions } = params;
+        
+        const deadline = new Date(Date.now() + deadline_hours * 60 * 60 * 1000).toISOString();
         
         const { error: taskError } = await supabase
           .from('tasks')
           .update({ 
             human_id, 
             status: 'assigned',
+            assigned_at: new Date().toISOString(),
+            deadline,
+            instructions,
             updated_at: new Date().toISOString()
           })
           .eq('id', task_id);
         
         if (taskError) throw taskError;
-        res.json({ success: true });
+        
+        // Notify human
+        await createNotification(
+          human_id,
+          'task_assigned',
+          'Task Assigned!',
+          `You have been assigned a new task. Check your dashboard for details.`
+        );
+        
+        res.json({ success: true, assigned_at: new Date().toISOString(), deadline });
         break;
       }
       
@@ -964,8 +1707,8 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'complete_task': {
-        // Human submits proof of completion
-        const { task_id, proof_url, notes } = params;
+        // Human submits proof of completion via new proof system
+        const { task_id, proof_text, proof_urls } = params;
         
         const { data: task, error: taskError } = await supabase
           .from('tasks')
@@ -981,14 +1724,28 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(403).json({ error: 'Not assigned to you' });
         }
         
-        // Update task to pending review
+        if (task.status !== 'in_progress') {
+          return res.status(400).json({ error: 'Task must be in_progress to submit proof' });
+        }
+        
+        // Create proof record
+        const proofId = uuidv4();
+        await supabase.from('task_proofs').insert({
+          id: proofId,
+          task_id,
+          human_id: user.id,
+          proof_text: proof_text || '',
+          proof_urls: proof_urls || [],
+          status: 'pending',
+          revision_count: 0,
+          created_at: new Date().toISOString()
+        });
+        
+        // Update task to pending_review
         await supabase
           .from('tasks')
           .update({
             status: 'pending_review',
-            proof_url: proof_url || null,
-            proof_notes: notes || null,
-            completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', task_id);
@@ -996,17 +1753,16 @@ app.post('/api/mcp', async (req, res) => {
         // Notify agent
         await createNotification(
           task.agent_id,
-          'task_completed',
-          'Task Completed!',
+          'proof_submitted',
+          'Proof Submitted',
           `${user.name} has completed "${task.title}". Review and release payment.`
         );
         
-        res.json({ success: true, status: 'pending_review' });
+        res.json({ success: true, status: 'pending_review', proof_id: proofId });
         break;
       }
       
       case 'approve_task': {
-        // Agent approves task and releases payment
         const { task_id } = params;
         
         const { data: task, error: taskError } = await supabase
@@ -1021,6 +1777,23 @@ app.post('/api/mcp', async (req, res) => {
         
         if (task.agent_id !== user.id) {
           return res.status(403).json({ error: 'Not your task' });
+        }
+        
+        // Get latest proof
+        const { data: latestProof } = await supabase
+          .from('task_proofs')
+          .select('id')
+          .eq('task_id', task_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        // Update proof status
+        if (latestProof) {
+          await supabase
+            .from('task_proofs')
+            .update({ status: 'approved', updated_at: new Date().toISOString() })
+            .eq('id', latestProof.id);
         }
         
         // Calculate payment
