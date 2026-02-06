@@ -949,6 +949,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [wallet, setWallet] = useState({ balance: 0, transactions: [] })
   const [notifications, setNotifications] = useState([])
   const [showNotifications, setShowNotifications] = useState(false)
+  const [conversations, setConversations] = useState([])
+  const [messages, setMessages] = useState([])
+  const [selectedConversation, setSelectedConversation] = useState(null)
+  const [newMessage, setNewMessage] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [showProofSubmit, setShowProofSubmit] = useState(null)
@@ -961,6 +965,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const humanNav = [
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Browse', icon: Icons.humans },
+    { id: 'messages', label: 'Messages', icon: Icons.messages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
     { id: 'profile', label: 'Profile', icon: Icons.profile },
@@ -970,6 +975,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'create', label: 'Create Task', icon: Icons.create },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
     { id: 'hired', label: 'Hired', icon: Icons.humans },
+    { id: 'messages', label: 'Messages', icon: Icons.messages },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
     { id: 'profile', label: 'Profile', icon: Icons.profile },
   ]
@@ -991,6 +997,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       fetchWallet()
       fetchNotifications()
     }
+    fetchConversations()
   }, [hiringMode])
 
   const fetchTasks = async () => {
@@ -1061,6 +1068,40 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     try {
       await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } })
       fetchNotifications()
+    } catch (e) {}
+  }
+
+  const fetchConversations = async () => {
+    try {
+      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.id } })
+      if (res.ok) {
+        const data = await res.json()
+        setConversations(data || [])
+      }
+    } catch (e) {}
+  }
+
+  const fetchMessages = async (conversationId) => {
+    try {
+      const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.id } })
+      if (res.ok) {
+        const data = await res.json()
+        setMessages(data || [])
+      }
+    } catch (e) {}
+  }
+
+  const sendMessage = async (e) => {
+    e.preventDefault()
+    if (!newMessage.trim() || !selectedConversation) return
+    try {
+      await fetch(`${API_URL}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: user.id },
+        body: JSON.stringify({ conversation_id: selectedConversation, content: newMessage })
+      })
+      setNewMessage('')
+      fetchMessages(selectedConversation)
     } catch (e) {}
   }
 
@@ -1740,6 +1781,79 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <input type="checkbox" className="w-5 h-5 rounded bg-white/10 border-white/20" />
                   <span className="text-white">Marketing & updates</span>
                 </label>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Messages Tab */}
+        {activeTab === 'messages' && (
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-8">Messages</h1>
+            
+            <div className={`${styles.card} p-0 overflow-hidden`} style={{ height: 'calc(100vh - 200px)' }}>
+              <div className="grid md:grid-cols-3 h-full">
+                {/* Conversations List */}
+                <div className="border-r border-white/10 overflow-y-auto">
+                  {conversations.length === 0 ? (
+                    <div className="p-6 text-center text-gray-400">No conversations yet</div>
+                  ) : (
+                    conversations.map(c => (
+                      <div
+                        key={c.id}
+                        className={`p-4 border-b border-white/10 cursor-pointer hover:bg-white/5 ${selectedConversation === c.id ? 'bg-orange-500/20' : ''}`}
+                        onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold">
+                            {c.other_user?.name?.charAt(0) || '?'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-medium truncate">{c.otherUser?.name || 'Unknown'}</p>
+                            <p className="text-gray-400 text-sm truncate">{c.last_message || 'No messages'}</p>
+                          </div>
+                          {c.unread > 0 && (
+                            <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">{c.unread}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Messages */}
+                <div className="col-span-2 flex flex-col h-full">
+                  {selectedConversation ? (
+                    <>
+                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {messages.map(m => (
+                          <div key={m.id} className={`flex ${m.sender_id === user.id ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[70%] rounded-xl p-3 ${m.sender_id === user.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-white'}`}>
+                              <p>{m.content}</p>
+                              <p className={`text-xs mt-1 ${m.sender_id === user.id ? 'text-orange-100' : 'text-gray-400'}`}>
+                                {new Date(m.created_at).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <form onSubmit={sendMessage} className="p-4 border-t border-white/10 flex gap-3">
+                        <input
+                          type="text"
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          placeholder="Type a message..."
+                          className={`${styles.input} flex-1`}
+                        />
+                        <Button type="submit">Send</Button>
+                      </form>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-gray-400">
+                      Select a conversation to start messaging
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
