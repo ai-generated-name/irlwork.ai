@@ -2,7 +2,7 @@
   "buildCommand": "cd ui && npm install && npm run build",
   "outputDirectory": "ui/dist",
   "devCommand": "cd ui && npm run dev",
-  "installCommand": "npm install && cd ui && npm install",
+  "installCommand": "cd ui && npm install",
   "framework": null,
   "rewrites": [
     {
