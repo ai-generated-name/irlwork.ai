@@ -58,17 +58,14 @@ const COUNTRY_NAMES = {
 
 // Filter to major cities (reduce dataset for performance)
 // Keep cities that are more likely to be relevant
-const majorCities = useMemo(() => {
-  // For now, just use all cities. Can optimize later if performance is an issue
-  return citiesData.map(city => ({
-    name: city.name,
-    country: COUNTRY_NAMES[city.country] || city.country,
-    countryCode: city.country,
-    lat: parseFloat(city.lat),
-    lng: parseFloat(city.lng),
-    displayName: `${city.name}, ${COUNTRY_NAMES[city.country] || city.country}`
-  }));
-}, []);
+const majorCities = citiesData.map(city => ({
+  name: city.name,
+  country: COUNTRY_NAMES[city.country] || city.country,
+  countryCode: city.country,
+  lat: parseFloat(city.lat),
+  lng: parseFloat(city.lng),
+  displayName: `${city.name}, ${COUNTRY_NAMES[city.country] || city.country}`
+}));
 
 const CityAutocomplete = ({
   value,
