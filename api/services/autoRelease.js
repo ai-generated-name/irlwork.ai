@@ -5,10 +5,14 @@ const { createClient } = require('@supabase/supabase-js');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+// Initialize Supabase client only if credentials are available
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+  supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+  );
+}
 
 let isRunning = false;
 let pollInterval = null;
@@ -158,6 +162,11 @@ async function autoApproveTask(task) {
  * Check for tasks eligible for auto-release
  */
 async function checkForStaleTasksOnce() {
+  if (!supabase) {
+    console.log('[AutoRelease] Supabase not configured, skipping check');
+    return;
+  }
+
   try {
     // Calculate cutoff time (48 hours ago)
     const cutoffTime = new Date(Date.now() - AUTO_RELEASE_THRESHOLD_MS);
@@ -230,6 +239,11 @@ async function poll() {
  * Start the auto-release service
  */
 function start() {
+  if (!supabase) {
+    console.log('[AutoRelease] ⚠️  Skipping - Supabase not configured');
+    return;
+  }
+
   if (isRunning) {
     console.log('[AutoRelease] Already running');
     return;
