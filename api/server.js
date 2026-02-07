@@ -1,5 +1,5 @@
 // irlwork.ai - API Server with Supabase + Payments
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
 const express = require('express');
 const cors = require('cors');
@@ -11,6 +11,11 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Background services
 const autoReleaseService = require('./services/autoRelease');
+
+// Payment and wallet services
+const { releasePaymentToPending, getWalletBalance } = require('../backend/services/paymentService');
+const { processWithdrawal, getWithdrawalHistory } = require('../backend/services/withdrawalService');
+const { startBalancePromoter } = require('../backend/services/balancePromoter');
 
 // Configuration
 const app = express();
@@ -1661,114 +1666,22 @@ app.post('/api/mcp', async (req, res) => {
       
       case 'release_payment': {
         const { task_id, human_id } = params;
-        
-        // Get task details
-        const { data: task, error: taskError } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('id', task_id)
-          .single();
-        
-        if (taskError || !task) {
-          return res.status(404).json({ error: 'Task not found' });
+
+        try {
+          // Use new payment service with 48-hour dispute window
+          const result = await releasePaymentToPending(
+            supabase,
+            task_id,
+            human_id,
+            user.id, // agent_id
+            createNotification
+          );
+
+          res.json(result);
+        } catch (error) {
+          console.error('Payment release error:', error);
+          res.status(400).json({ error: error.message });
         }
-        
-        const escrowAmount = task.escrow_amount || task.budget || 50;
-        
-        // Calculate fees
-        const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-        const netAmount = escrowAmount - platformFee;
-        
-        // Get human's wallet
-        const { data: human, error: humanError } = await supabase
-          .from('users')
-          .select('wallet_address')
-          .eq('id', human_id)
-          .single();
-        
-        if (humanError || !human?.wallet_address) {
-          return res.status(400).json({ error: 'Human has no wallet address' });
-        }
-        
-        // Initialize wallet and send payment (simulated if no wallet config)
-        let txHash = null;
-        if (process.env.PLATFORM_WALLET_PRIVATE_KEY) {
-          try {
-            const { sendUSDC } = require('./lib/wallet');
-            await require('./lib/wallet').initWallet();
-            txHash = await sendUSDC(human.wallet_address, netAmount);
-          } catch (e) {
-            console.error('Wallet error:', e.message);
-          }
-        } else {
-          console.log(`[SIMULATED] Sending ${netAmount} USDC to ${human.wallet_address}`);
-          txHash = '0x' + crypto.randomBytes(32).toString('hex');
-        }
-        
-        // Update task escrow status
-        await supabase
-          .from('tasks')
-          .update({
-            escrow_status: 'released',
-            escrow_released_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', task_id);
-        
-        // Record payout
-        await supabase.from('payouts').insert({
-          id: uuidv4(),
-          task_id,
-          human_id,
-          agent_id: user.id,
-          gross_amount: escrowAmount,
-          platform_fee: platformFee,
-          net_amount: netAmount,
-          wallet_address: human.wallet_address,
-          tx_hash: txHash,
-          status: 'completed',
-          processed_at: new Date().toISOString(),
-          created_at: new Date().toISOString()
-        });
-        
-        // Record transaction
-        await supabase.from('transactions').insert({
-          id: uuidv4(),
-          task_id,
-          agent_id: user.id,
-          human_id,
-          amount: escrowAmount,
-          platform_fee: platformFee,
-          net_amount: netAmount,
-          status: 'released',
-          release_tx: txHash,
-          created_at: new Date().toISOString()
-        });
-        
-        // Update human stats
-        await supabase
-          .from('users')
-          .update({
-            jobs_completed: supabase.raw('jobs_completed + 1'),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', human_id);
-        
-        // Notify human
-        await createNotification(
-          human_id,
-          'payment_released',
-          'Payment Released!',
-          `Your payment of ${netAmount.toFixed(2)} USDC has been sent to your wallet.`
-        );
-        
-        res.json({ 
-          success: true, 
-          amount: escrowAmount,
-          platform_fee: platformFee,
-          net_amount: netAmount,
-          tx_hash: txHash
-        });
         break;
       }
       
@@ -2473,25 +2386,168 @@ app.put('/api/profile', async (req, res) => {
   res.json({ success: true, profile });
 });
 
-// ============ WALLET STATUS ============
-app.get('/api/wallet/status', async (req, res) => {
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  let balance = 0;
-  if (user.wallet_address && process.env.BASE_RPC_URL) {
-    try {
-      const { getBalance } = require('./lib/wallet');
-      balance = await getBalance(user.wallet_address);
-    } catch (e) {}
+// ============ WALLET BALANCE & WITHDRAWALS ============
+
+app.get('/api/wallet/balance', async (req, res) => {
+  try {
+    const user = await getUserByToken(req.headers.authorization);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const balance = await getWalletBalance(supabase, user.id);
+
+    res.json({
+      user_id: user.id,
+      wallet_address: user.wallet_address,
+      has_wallet: !!user.wallet_address,
+      ...balance
+    });
+  } catch (error) {
+    console.error('Error fetching wallet balance:', error);
+    res.status(500).json({ error: 'Failed to fetch wallet balance' });
   }
-  
-  res.json({
-    wallet_address: user.wallet_address,
-    has_wallet: !!user.wallet_address,
-    balance: balance,
-    currency: 'USDC'
-  });
+});
+
+app.post('/api/wallet/withdraw', async (req, res) => {
+  try {
+    const user = await getUserByToken(req.headers.authorization);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Optional: specify amount in cents, or omit to withdraw all available
+    const { amount_cents } = req.body;
+
+    const { sendUSDC, initWallet } = require('./lib/wallet');
+
+    // Initialize wallet if needed
+    if (process.env.PLATFORM_WALLET_PRIVATE_KEY) {
+      await initWallet();
+    }
+
+    const result = await processWithdrawal(
+      supabase,
+      user.id,
+      amount_cents || null,
+      sendUSDC,
+      createNotification
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('Withdrawal error:', error);
+    res.status(400).json({
+      error: error.message || 'Withdrawal failed'
+    });
+  }
+});
+
+app.get('/api/wallet/withdrawals', async (req, res) => {
+  try {
+    const user = await getUserByToken(req.headers.authorization);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const history = await getWithdrawalHistory(supabase, user.id);
+
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching withdrawal history:', error);
+    res.status(500).json({ error: 'Failed to fetch withdrawal history' });
+  }
+});
+
+app.get('/api/wallet/status', async (req, res) => {
+  try {
+    const user = await getUserByToken(req.headers.authorization);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const balance = await getWalletBalance(supabase, user.id);
+
+    // Also get on-chain USDC balance if wallet is configured
+    let onChainBalance = 0;
+    if (user.wallet_address && process.env.BASE_RPC_URL) {
+      try {
+        const { getBalance } = require('./lib/wallet');
+        onChainBalance = await getBalance(user.wallet_address);
+      } catch (e) {
+        console.error('Error fetching on-chain balance:', e);
+      }
+    }
+
+    res.json({
+      wallet_address: user.wallet_address,
+      has_wallet: !!user.wallet_address,
+      currency: 'USDC',
+
+      // Platform-tracked balances
+      pending: balance.pending,           // Funds in 48-hour dispute window
+      available: balance.available,       // Funds ready to withdraw
+      total: balance.total,               // pending + available
+
+      // Breakdown in cents
+      pending_cents: balance.pending_cents,
+      available_cents: balance.available_cents,
+      total_cents: balance.total_cents,
+
+      // On-chain balance (for reference)
+      on_chain_balance: onChainBalance,
+
+      // Transaction details
+      transactions: balance.transactions
+    });
+  } catch (error) {
+    console.error('Error fetching wallet status:', error);
+    res.status(500).json({ error: 'Failed to fetch wallet status' });
+  }
+});
+
+app.get('/api/admin/pending-stats', async (req, res) => {
+  try {
+    const user = await getUserByToken(req.headers.authorization);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Get aggregate stats
+    const { data: stats, error } = await supabase
+      .from('pending_transactions')
+      .select('status, amount_cents')
+      .in('status', ['pending', 'available', 'frozen']);
+
+    if (error) throw error;
+
+    const pending = stats.filter(s => s.status === 'pending');
+    const available = stats.filter(s => s.status === 'available');
+    const frozen = stats.filter(s => s.status === 'frozen');
+
+    const pendingTotal = pending.reduce((sum, s) => sum + s.amount_cents, 0) / 100;
+    const availableTotal = available.reduce((sum, s) => sum + s.amount_cents, 0) / 100;
+    const frozenTotal = frozen.reduce((sum, s) => sum + s.amount_cents, 0) / 100;
+
+    res.json({
+      pending: {
+        count: pending.length,
+        total: pendingTotal
+      },
+      available: {
+        count: available.length,
+        total: availableTotal
+      },
+      frozen: {
+        count: frozen.length,
+        total: frozenTotal
+      },
+      grand_total: pendingTotal + availableTotal + frozenTotal
+    });
+  } catch (error) {
+    console.error('Error fetching pending stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
 });
 
 // ============ HEALTH ============
@@ -2525,6 +2581,10 @@ async function start() {
     console.log('🔄 Starting background services...');
     autoReleaseService.start();
     console.log('   ✅ Auto-release service started (48h threshold)');
+
+    // Start balance promoter (promotes pending → available after 48 hours)
+    startBalancePromoter(supabase, createNotification);
+    console.log('   ✅ Balance promoter started (15min interval)');
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
@@ -3005,7 +3065,325 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     .from('tasks')
     .update({ status: 'cancelled' })
     .eq('id', id);
-  
+
   res.json({ success: true });
+});
+
+// ============================================
+// DISPUTE ENDPOINTS
+// ============================================
+
+// File a dispute (agent only, within 48 hours of payment)
+app.post('/api/disputes', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { task_id, reason, category, evidence_urls } = req.body;
+
+  if (!task_id || !reason) {
+    return res.status(400).json({ error: 'Task ID and reason are required' });
+  }
+
+  // Get task details
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', task_id)
+    .single();
+
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  // Only agent can file dispute
+  if (task.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Only the task agent can file a dispute' });
+  }
+
+  // Task must be completed
+  if (task.status !== 'completed') {
+    return res.status(400).json({ error: 'Can only dispute completed tasks' });
+  }
+
+  // Get the pending payout for this task
+  const { data: payout, error: payoutError } = await supabase
+    .from('payouts')
+    .select('*')
+    .eq('task_id', task_id)
+    .eq('status', 'pending')
+    .single();
+
+  if (payoutError || !payout) {
+    return res.status(400).json({
+      error: 'Dispute window has closed for this task or payment has already been released'
+    });
+  }
+
+  // Check if we're still within the 48-hour dispute window
+  const now = new Date();
+  const disputeWindowCloses = new Date(payout.dispute_window_closes_at);
+
+  if (now > disputeWindowCloses) {
+    return res.status(400).json({
+      error: 'Dispute window has closed. You had 48 hours from payment release to file a dispute.'
+    });
+  }
+
+  // Check if dispute already exists for this task
+  const { data: existingDispute } = await supabase
+    .from('disputes')
+    .select('id')
+    .eq('task_id', task_id)
+    .single();
+
+  if (existingDispute) {
+    return res.status(400).json({ error: 'A dispute already exists for this task' });
+  }
+
+  // Freeze the pending funds
+  const { error: freezeError } = await supabase
+    .from('payouts')
+    .update({ status: 'frozen' })
+    .eq('id', payout.id);
+
+  if (freezeError) {
+    return res.status(500).json({ error: 'Failed to freeze payment' });
+  }
+
+  // Create dispute record
+  const disputeId = uuidv4();
+  const { data: dispute, error: disputeError } = await supabase
+    .from('disputes')
+    .insert({
+      id: disputeId,
+      task_id,
+      payout_id: payout.id,
+      filed_by: user.id,
+      filed_against: task.human_id,
+      reason,
+      category: category || 'other',
+      evidence_urls: evidence_urls || [],
+      status: 'open',
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+
+  if (disputeError) {
+    // Rollback: unfreeze the payment
+    await supabase
+      .from('payouts')
+      .update({ status: 'pending' })
+      .eq('id', payout.id);
+
+    return res.status(500).json({ error: 'Failed to create dispute: ' + disputeError.message });
+  }
+
+  // Increment total_disputes_filed for agent
+  await supabase
+    .from('users')
+    .update({
+      total_disputes_filed: supabase.raw('total_disputes_filed + 1'),
+      last_active_at: new Date().toISOString()
+    })
+    .eq('id', user.id);
+
+  // Notify the worker about the dispute
+  const amountDollars = (payout.amount_cents / 100).toFixed(2);
+  await createNotification(
+    task.human_id,
+    'dispute_filed',
+    'Dispute Filed',
+    `Task "${task.title}" is under review. $${amountDollars} is on hold.`,
+    `/tasks/${task_id}`
+  );
+
+  // Notify the agent that dispute was filed successfully
+  await createNotification(
+    user.id,
+    'dispute_created',
+    'Dispute Filed Successfully',
+    `Your dispute for task "${task.title}" has been submitted for review.`,
+    `/disputes/${disputeId}`
+  );
+
+  res.json({
+    success: true,
+    dispute: dispute,
+    message: 'Dispute filed successfully. Payment has been frozen pending review.'
+  });
+});
+
+// Get disputes (filtered by user role)
+app.get('/api/disputes', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { status } = req.query;
+
+  let query = supabase
+    .from('disputes')
+    .select(`
+      *,
+      task:tasks(*),
+      filed_by_user:users!disputes_filed_by_fkey(id, name, email),
+      filed_against_user:users!disputes_filed_against_fkey(id, name, email)
+    `)
+    .or(`filed_by.eq.${user.id},filed_against.eq.${user.id}`);
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data: disputes, error } = await query.order('created_at', { ascending: false });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json({ disputes });
+});
+
+// Get specific dispute
+app.get('/api/disputes/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id } = req.params;
+
+  const { data: dispute, error } = await supabase
+    .from('disputes')
+    .select(`
+      *,
+      task:tasks(*),
+      payout:payouts(*),
+      filed_by_user:users!disputes_filed_by_fkey(id, name, email),
+      filed_against_user:users!disputes_filed_against_fkey(id, name, email),
+      resolved_by_user:users!disputes_resolved_by_fkey(id, name, email)
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error || !dispute) {
+    return res.status(404).json({ error: 'Dispute not found' });
+  }
+
+  // Check access - only parties involved can view
+  if (dispute.filed_by !== user.id && dispute.filed_against !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  res.json({ dispute });
+});
+
+// Resolve a dispute (admin/arbiter only - to be implemented)
+app.post('/api/disputes/:id/resolve', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  // TODO: Add admin check here
+  // if (user.role !== 'admin') {
+  //   return res.status(403).json({ error: 'Admin access required' });
+  // }
+
+  const { id } = req.params;
+  const { resolution, resolution_notes, refund_agent } = req.body;
+
+  if (!resolution || !['approved', 'rejected'].includes(resolution)) {
+    return res.status(400).json({ error: 'Valid resolution required (approved or rejected)' });
+  }
+
+  const { data: dispute, error: disputeError } = await supabase
+    .from('disputes')
+    .select('*, payout:payouts(*), task:tasks(*)')
+    .eq('id', id)
+    .single();
+
+  if (disputeError || !dispute) {
+    return res.status(404).json({ error: 'Dispute not found' });
+  }
+
+  if (dispute.status !== 'open') {
+    return res.status(400).json({ error: 'Dispute has already been resolved' });
+  }
+
+  // Update dispute status
+  await supabase
+    .from('disputes')
+    .update({
+      status: 'resolved',
+      resolution_notes,
+      resolved_by: user.id,
+      resolved_at: new Date().toISOString()
+    })
+    .eq('id', id);
+
+  if (resolution === 'approved' && refund_agent) {
+    // Agent wins: refund the payment and update payout status
+    await supabase
+      .from('payouts')
+      .update({ status: 'refunded' })
+      .eq('id', dispute.payout.id);
+
+    // Update task escrow status
+    await supabase
+      .from('tasks')
+      .update({ escrow_status: 'refunded' })
+      .eq('id', dispute.task_id);
+
+    // Notify both parties
+    await createNotification(
+      dispute.filed_by,
+      'dispute_resolved',
+      'Dispute Resolved - Refund Issued',
+      `Your dispute for task "${dispute.task.title}" was approved. A refund has been issued.`,
+      `/disputes/${id}`
+    );
+
+    await createNotification(
+      dispute.filed_against,
+      'dispute_resolved',
+      'Dispute Resolved - Payment Withheld',
+      `The dispute for task "${dispute.task.title}" was resolved against you. Payment has been withheld.`,
+      `/disputes/${id}`
+    );
+  } else {
+    // Worker wins: release the payment
+    await supabase
+      .from('payouts')
+      .update({ status: 'available' })
+      .eq('id', dispute.payout.id);
+
+    // Notify both parties
+    await createNotification(
+      dispute.filed_against,
+      'dispute_resolved',
+      'Dispute Resolved - Payment Released',
+      `The dispute for task "${dispute.task.title}" was resolved in your favor. Payment has been released.`,
+      `/disputes/${id}`
+    );
+
+    await createNotification(
+      dispute.filed_by,
+      'dispute_resolved',
+      'Dispute Resolved - Payment Released to Worker',
+      `The dispute for task "${dispute.task.title}" was resolved in favor of the worker.`,
+      `/disputes/${id}`
+    );
+  }
+
+  res.json({
+    success: true,
+    message: `Dispute resolved: ${resolution}`,
+    dispute: { ...dispute, status: 'resolved' }
+  });
 });
 
