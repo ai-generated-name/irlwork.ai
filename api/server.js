@@ -13,9 +13,9 @@ const { createClient } = require('@supabase/supabase-js');
 const autoReleaseService = require('./services/autoRelease');
 
 // Payment and wallet services
-const { releasePaymentToPending, getWalletBalance } = require('./backend/services/paymentService');
-const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
-const { startBalancePromoter } = require('./backend/services/balancePromoter');
+const { releasePaymentToPending, getWalletBalance } = require('../backend/services/paymentService');
+const { processWithdrawal, getWithdrawalHistory } = require('../backend/services/withdrawalService');
+const { startBalancePromoter } = require('../backend/services/balancePromoter');
 
 // Configuration
 const app = express();
@@ -391,16 +391,29 @@ app.get('/api/humans', async (req, res) => {
   res.json(humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || []);
 });
 
+app.get('/api/users/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, wallet_address, type')
+    .eq('id', req.params.id)
+    .single();
+
+  if (error || !user) return res.status(404).json({ error: 'Not found' });
+  res.json({ ...user, skills: JSON.parse(user.skills || '[]') });
+});
+
 app.get('/api/humans/:id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const { data: user, error } = await supabase
     .from('users')
     .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, wallet_address')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
-  
+
   if (error || !user) return res.status(404).json({ error: 'Not found' });
   res.json({ ...user, skills: JSON.parse(user.skills || '[]') });
 });
@@ -527,22 +540,57 @@ app.get('/api/tasks/:id', async (req, res) => {
 
 app.get('/api/tasks/:id/status', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at')
+    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at, completed_at')
     .eq('id', req.params.id)
     .single();
-  
+
   if (error || !task) return res.status(404).json({ error: 'Not found' });
-  
+
+  // Get proof submissions
+  const { data: proofs } = await supabase
+    .from('task_proofs')
+    .select('id, status, proof_text, media_urls, created_at')
+    .eq('task_id', req.params.id)
+    .order('created_at', { ascending: false });
+
+  // Get pending payout to check dispute window
+  let dispute_window_info = null;
+  if (task.status === 'completed') {
+    const { data: payout } = await supabase
+      .from('payouts')
+      .select('dispute_window_closes_at, status')
+      .eq('task_id', req.params.id)
+      .eq('status', 'pending')
+      .single();
+
+    if (payout) {
+      const now = new Date();
+      const closes_at = new Date(payout.dispute_window_closes_at);
+      const ms_remaining = closes_at - now;
+      const hours_remaining = Math.max(0, ms_remaining / (1000 * 60 * 60));
+
+      dispute_window_info = {
+        dispute_window_closes_at: payout.dispute_window_closes_at,
+        dispute_window_open: ms_remaining > 0,
+        hours_remaining: hours_remaining.toFixed(1)
+      };
+    }
+  }
+
   res.json({
     task_id: task.id,
     task_status: task.status,
     escrow_status: task.escrow_status,
     escrow_amount: task.escrow_amount,
     escrow_deposited_at: task.escrow_deposited_at,
-    escrow_released_at: task.escrow_released_at
+    escrow_released_at: task.escrow_released_at,
+    proof_submitted_at: task.proof_submitted_at,
+    completed_at: task.completed_at,
+    proofs: proofs || [],
+    dispute_window: dispute_window_info
   });
 });
 
@@ -582,6 +630,121 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
   
   if (error) return res.status(500).json({ error: error.message });
   res.json({ id: application.id, status: 'pending' });
+});
+
+// Get applicants for a task
+app.get('/api/tasks/:id/applications', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: taskId } = req.params;
+
+  // Verify user is the task creator (agent)
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('creator_id')
+    .eq('id', taskId)
+    .single();
+
+  if (!task || task.creator_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  // Get all applications for this task
+  const { data: applications, error } = await supabase
+    .from('task_applications')
+    .select(`
+      *,
+      applicant:users!task_applications_human_id_fkey(
+        id,
+        name,
+        email,
+        hourly_rate,
+        rating,
+        review_count,
+        jobs_completed,
+        avatar_url
+      )
+    `)
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(applications || []);
+});
+
+// Agent assigns a human to a task
+app.post('/api/tasks/:id/assign', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: taskId } = req.params;
+  const { human_id } = req.body;
+
+  if (!human_id) {
+    return res.status(400).json({ error: 'human_id is required' });
+  }
+
+  // Verify user is the task creator (agent)
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', taskId)
+    .single();
+
+  if (!task || task.creator_id !== user.id) {
+    return res.status(403).json({ error: 'Only the task creator can assign humans' });
+  }
+
+  if (task.status !== 'open') {
+    return res.status(400).json({ error: 'Can only assign humans to open tasks' });
+  }
+
+  // Verify the human exists and applied
+  const { data: application } = await supabase
+    .from('task_applications')
+    .select('*')
+    .eq('task_id', taskId)
+    .eq('human_id', human_id)
+    .single();
+
+  if (!application) {
+    return res.status(404).json({ error: 'Human has not applied to this task' });
+  }
+
+  // Assign the human to the task
+  const { error } = await supabase
+    .from('tasks')
+    .update({
+      assignee_id: human_id,
+      status: 'in_progress',
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  // Update application status to accepted
+  await supabase
+    .from('task_applications')
+    .update({ status: 'accepted' })
+    .eq('id', application.id);
+
+  // Increment stats for the human
+  await supabase
+    .from('users')
+    .update({
+      total_tasks_accepted: supabase.raw('COALESCE(total_tasks_accepted, 0) + 1'),
+      last_active_at: new Date().toISOString()
+    })
+    .eq('id', human_id);
+
+  res.json({ success: true, task_id: taskId, human_id });
 });
 
 // ============ AGENT TASKS ============
@@ -2509,15 +2672,17 @@ app.get('/api/humans/:id/profile', async (req, res) => {
   const { data: user, error } = await supabase
     .from('users')
     .select(`
-      id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, 
-      verified, availability, wallet_address, created_at, profile_completeness
+      id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
+      verified, availability, wallet_address, created_at, profile_completeness,
+      total_tasks_completed, total_tasks_posted, total_tasks_accepted,
+      total_disputes_filed, total_usdc_paid, last_active_at
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
-  
+
   if (error || !user) return res.status(404).json({ error: 'Human not found' });
-  
+
   // Get reviews
   const { data: reviews } = await supabase
     .from('reviews')
@@ -2525,11 +2690,23 @@ app.get('/api/humans/:id/profile', async (req, res) => {
     .eq('human_id', user.id)
     .order('created_at', { ascending: false })
     .limit(10);
-  
+
+  // Calculate derived metrics
+  const completionRate = user.total_tasks_accepted > 0
+    ? ((user.total_tasks_completed / user.total_tasks_accepted) * 100).toFixed(1)
+    : null;
+
+  const paymentRate = user.total_tasks_completed > 0
+    ? (((user.total_tasks_completed - (user.total_disputes_filed || 0)) / user.total_tasks_completed) * 100).toFixed(1)
+    : null;
+
   res.json({
     ...user,
     skills: JSON.parse(user.skills || '[]'),
-    reviews: reviews || []
+    reviews: reviews || [],
+    // Derived metrics
+    completion_rate: completionRate,
+    payment_rate: paymentRate
   });
 });
 
@@ -2617,7 +2794,16 @@ app.get('/api/profile', async (req, res) => {
     .single();
   
   if (error || !profile) return res.status(404).json({ error: 'Profile not found' });
-  
+
+  // Calculate derived metrics
+  const completionRate = profile.total_tasks_accepted > 0
+    ? ((profile.total_tasks_completed / profile.total_tasks_accepted) * 100).toFixed(1)
+    : null;
+
+  const paymentRate = profile.total_tasks_completed > 0
+    ? (((profile.total_tasks_completed - (profile.total_disputes_filed || 0)) / profile.total_tasks_completed) * 100).toFixed(1)
+    : null;
+
   res.json({
     id: profile.id,
     email: profile.email,
@@ -2634,7 +2820,17 @@ app.get('/api/profile', async (req, res) => {
     verified: profile.verified,
     availability: profile.availability,
     profile_completeness: profile.profile_completeness,
-    created_at: profile.created_at
+    created_at: profile.created_at,
+    // Reputation metrics
+    total_tasks_completed: profile.total_tasks_completed || 0,
+    total_tasks_posted: profile.total_tasks_posted || 0,
+    total_tasks_accepted: profile.total_tasks_accepted || 0,
+    total_disputes_filed: profile.total_disputes_filed || 0,
+    total_usdc_paid: parseFloat(profile.total_usdc_paid) || 0,
+    last_active_at: profile.last_active_at,
+    // Derived metrics
+    completion_rate: completionRate,
+    payment_rate: paymentRate
   });
 });
 
