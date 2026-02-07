@@ -26,19 +26,33 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 3002;
 
 // CORS configuration - be permissive for development
-const corsOrigins = process.env.CORS_ORIGINS 
-  ? process.env.CORS_ORIGINS.split(',')
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
   : [
-      'https://www.irlwork.ai', 
-      'https://irlwork.ai', 
+      'https://www.irlwork.ai',
+      'https://irlwork.ai',
       'https://api.irlwork.ai',
       'http://localhost:5173',
       'http://localhost:3002'
     ];
 
+console.log('[CORS] Configured origins:', corsOrigins);
+
 app.use(cors({
-  origin: corsOrigins,
-  credentials: true
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (corsOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`[CORS] Blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Debug CORS in development
