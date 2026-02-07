@@ -2575,7 +2575,8 @@ function App() {
   if (path === '/auth') return <AuthPage />
   if (path === '/mcp') return <MCPPage />
 
-  return <LandingPageV4 />}
+  return <LandingPageV4 />
+}
 
 export default function AppWrapper() {
   return <App />
