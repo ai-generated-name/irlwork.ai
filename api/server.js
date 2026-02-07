@@ -59,7 +59,7 @@ const supabase = supabaseUrl && supabaseAnonKey
   : null;
 
 // Configuration
-const PLATFORM_FEE_PERCENT = 10;
+const PLATFORM_FEE_PERCENT = 15;
 const USDC_DECIMALS = 6;
 
 // Data categories
