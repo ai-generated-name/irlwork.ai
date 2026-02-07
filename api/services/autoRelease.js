@@ -179,16 +179,7 @@ async function checkForStaleTasksOnce() {
     // 3. Not already auto-released
     const { data: staleTasks, error } = await supabase
       .from('tasks')
-      .select(`
-        id,
-        title,
-        agent_id,
-        human_id,
-        budget,
-        escrow_amount,
-        proof_submitted_at,
-        human:users!tasks_human_id_fkey(id, name, wallet_address)
-      `)
+      .select('id, title, agent_id, budget, escrow_amount, proof_submitted_at')
       .eq('status', 'pending_review')
       .eq('auto_released', false)
       .lt('proof_submitted_at', cutoffTime.toISOString())
@@ -208,11 +199,33 @@ async function checkForStaleTasksOnce() {
 
     // Process each stale task
     for (const task of staleTasks) {
-      // Flatten human data
+      // Get human_id from task_proofs (submitted by the human)
+      const { data: proof } = await supabase
+        .from('task_proofs')
+        .select('human_id')
+        .eq('task_id', task.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!proof || !proof.human_id) {
+        console.log(`[AutoRelease] No human found for task ${task.id}, skipping`);
+        continue;
+      }
+
+      // Get human details
+      const { data: human } = await supabase
+        .from('users')
+        .select('id, name, wallet_address')
+        .eq('id', proof.human_id)
+        .single();
+
+      // Enrich task with human data
       const taskWithHumanData = {
         ...task,
-        human_name: task.human?.name,
-        human_wallet_address: task.human?.wallet_address
+        human_id: proof.human_id,
+        human_name: human?.name || 'Unknown',
+        human_wallet_address: human?.wallet_address
       };
 
       await autoApproveTask(taskWithHumanData);
