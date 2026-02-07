@@ -1,6 +1,7 @@
 // irlwork.ai - Modern Clean UI
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import EarningsDashboard from './components/EarningsDashboard'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
@@ -1561,44 +1562,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: Payments Tab */}
         {!hiringMode && activeTab === 'payments' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Payments</h1>
-            
-            {/* Wallet Balance */}
-            <div className={`${styles.card} mb-6`}>
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-gray-400 text-sm">Available Balance</p>
-                  <p className="text-4xl font-bold text-white mt-1">${wallet.balance.toFixed(2)}</p>
-                  <p className="text-xs text-gray-500 mt-1">USDC</p>
-                </div>
-                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center text-green-400 text-2xl">
-                  {Icons.wallet}
-                </div>
-              </div>
-              <Button className="mt-6 w-full">Withdraw Funds</Button>
-            </div>
-            
-            <h2 className="text-xl font-bold text-white mb-4">Recent Transactions</h2>
-            {wallet.transactions?.length > 0 ? (
-              <div className="space-y-3">
-                {wallet.transactions.map(tx => (
-                  <div key={tx.id} className={`${styles.card} flex justify-between items-center`}>
-                    <div>
-                      <p className="text-white">{tx.description || 'Task Payment'}</p>
-                      <p className="text-xs text-gray-500">{new Date(tx.created_at).toLocaleDateString()}</p>
-                    </div>
-                    <p className={`font-bold ${tx.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {tx.amount > 0 ? '+' : ''}${tx.amount}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={`${styles.card} text-center py-12`}>
-                <p className="text-gray-400">No transactions yet</p>
-                <p className="text-sm text-gray-500 mt-2">Complete tasks to earn USDC</p>
-              </div>
-            )}
+            <h1 className="text-3xl font-bold text-white mb-8">Earnings Dashboard</h1>
+            <EarningsDashboard user={user} />
           </div>
         )}
 
