@@ -13,9 +13,9 @@ const { createClient } = require('@supabase/supabase-js');
 const autoReleaseService = require('./services/autoRelease');
 
 // Payment and wallet services
-const { releasePaymentToPending, getWalletBalance } = require('../backend/services/paymentService');
-const { processWithdrawal, getWithdrawalHistory } = require('../backend/services/withdrawalService');
-const { startBalancePromoter } = require('../backend/services/balancePromoter');
+const { releasePaymentToPending, getWalletBalance } = require('./backend/services/paymentService');
+const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
+const { startBalancePromoter } = require('./backend/services/balancePromoter');
 
 // Configuration
 const app = express();
