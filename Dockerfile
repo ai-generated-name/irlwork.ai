@@ -23,3 +23,4 @@ RUN echo "=== Checking /app structure ===" && \
 # EXPOSE 3002
 
 CMD ["node", "server.js"]
+# Force rebuild
