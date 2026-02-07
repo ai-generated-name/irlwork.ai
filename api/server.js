@@ -393,6 +393,38 @@ app.get('/api/auth/verify', async (req, res) => {
   });
 });
 
+// ============ PAGE VIEWS ============
+app.post('/api/views', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const { page_type, target_id, referrer, ai_source } = req.body;
+
+  if (!['task', 'profile'].includes(page_type) || !target_id) {
+    return res.status(400).json({ error: 'Invalid page_type or target_id' });
+  }
+
+  // Get user if authenticated, but don't require auth
+  const user = await getUserByToken(req.headers.authorization);
+
+  // Hash IP + date for deduplication without storing raw IPs
+  const ipHash = crypto
+    .createHash('sha256')
+    .update((req.ip || 'unknown') + new Date().toISOString().slice(0, 10))
+    .digest('hex')
+    .slice(0, 16);
+
+  await supabase.from('page_views').insert({
+    page_type,
+    target_id,
+    viewer_id: user?.id || null,
+    referrer: referrer || req.headers.referer || null,
+    ai_source: ai_source || null,
+    ip_hash: ipHash
+  });
+
+  res.sendStatus(200);
+});
+
 // ============ HUMANS ============
 app.get('/api/humans', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
@@ -401,7 +433,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, wallet_address, latitude, longitude')
+    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude')
     .eq('type', 'human')
     .eq('verified', true);
 

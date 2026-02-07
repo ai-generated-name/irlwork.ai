@@ -9,6 +9,7 @@ import EscrowDisplay from '../components/TaskDetail/EscrowDisplay';
 import ProofSection from '../components/TaskDetail/ProofSection';
 import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
+import { trackView } from '../utils/trackView';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -72,6 +73,13 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
     fetchData();
   }, [taskId, user]);
+
+  // Track page view
+  useEffect(() => {
+    if (taskId) {
+      trackView('task', taskId);
+    }
+  }, [taskId]);
 
   // Load conversation and messages
   const loadConversation = async (taskData) => {
