@@ -1,0 +1,15 @@
+node_modules
+api
+db
+test_*.js
+*.log
+.env
+.env.local
+.DS_Store
+*.md
+INTEGRATION_*.md
+SETUP_*.md
+REPUTATION_*.md
+REDESIGN_*.md
+PENDING_*.md
+.vercel
