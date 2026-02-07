@@ -13,5 +13,5 @@ REPUTATION_*.md
 REDESIGN_*.md
 PENDING_*.md
 .vercel
-package.json
-package-lock.json
+/package.json
+/package-lock.json
