@@ -9,7 +9,7 @@ RUN npm ci --only=production
 
 # Copy source
 COPY api/ ./
-COPY backend/ ../backend/
+COPY backend/ ./backend/
 
 # Environment variables (set in Railway, not here)
 # EXPOSE 3002
