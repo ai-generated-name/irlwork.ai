@@ -498,33 +498,6 @@
   </div>
 
   <script>
-    // Track page views
-    const AI_REFERRERS = [
-      { pattern: /chat\.openai\.com|chatgpt\.com/i, source: 'chatgpt' },
-      { pattern: /perplexity\.ai/i, source: 'perplexity' },
-      { pattern: /claude\.ai/i, source: 'claude' },
-      { pattern: /gemini\.google\.com/i, source: 'gemini' },
-      { pattern: /bing\.com\/chat/i, source: 'bing_copilot' },
-      { pattern: /you\.com/i, source: 'you_com' },
-      { pattern: /phind\.com/i, source: 'phind' },
-    ];
-
-    function trackView(pageType, targetId) {
-      const referrer = document.referrer;
-      const aiMatch = AI_REFERRERS.find(r => r.pattern.test(referrer));
-
-      fetch('/api/views', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          page_type: pageType,
-          target_id: targetId,
-          referrer: referrer || null,
-          ai_source: aiMatch?.source || null
-        })
-      }).catch(() => {});
-    }
-
     // Sample profile data
     const profiles = [
       {
@@ -641,11 +614,6 @@
       const profile = profiles.find(p => p.id === profileId);
       const modal = document.getElementById('profileModal');
       const modalBody = document.getElementById('modalBody');
-
-      // Track profile view (Note: This uses demo IDs - replace with real UUIDs when connected to backend)
-      if (profile.userId) {
-        trackView('profile', profile.userId);
-      }
 
       modalBody.innerHTML = `
         <div class="modal-avatar">${profile.avatar}</div>
