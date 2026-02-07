@@ -2,6 +2,9 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import EarningsDashboard from './components/EarningsDashboard'
+import TaskDetailPage from './pages/TaskDetailPage'
+import LandingPageV4 from './pages/LandingPageV4'
+import ReputationMetrics from './components/ReputationMetrics'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
@@ -1446,25 +1449,40 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     
                     <div className="flex gap-3">
                       {task.status === 'open' && (
-                        <Button onClick={() => acceptTask(task.id)}>{Icons.check} Accept Task</Button>
+                        <>
+                          <Button onClick={() => acceptTask(task.id)}>{Icons.check} Accept Task</Button>
+                          <Button variant="secondary" onClick={() => window.location.href = `/dashboard/task/${task.id}`}>View Details</Button>
+                        </>
                       )}
                       {task.status === 'accepted' && (
-                        <Button onClick={() => {
-                          fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
-                            .then(() => fetchTasks())
-                        }}>▶️ Start Work</Button>
+                        <>
+                          <Button onClick={() => {
+                            fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
+                              .then(() => fetchTasks())
+                          }}>▶️ Start Work</Button>
+                          <Button variant="secondary" onClick={() => window.location.href = `/dashboard/task/${task.id}`}>View Details</Button>
+                        </>
                       )}
                       {task.status === 'in_progress' && (
-                        <Button onClick={() => setShowProofSubmit(task.id)}>✓ Submit Proof</Button>
+                        <Button onClick={() => window.location.href = `/dashboard/task/${task.id}`}>✓ Submit Proof</Button>
                       )}
                       {task.status === 'pending_review' && (
-                        <Button variant="secondary">Waiting for approval...</Button>
+                        <>
+                          <Button variant="secondary" disabled>Waiting for approval...</Button>
+                          <Button onClick={() => window.location.href = `/dashboard/task/${task.id}`}>View Details</Button>
+                        </>
                       )}
                       {task.status === 'completed' && (
-                        <span className="text-green-400 flex items-center gap-2">{Icons.check} Payment pending</span>
+                        <>
+                          <span className="text-green-400 flex items-center gap-2">{Icons.check} Payment pending</span>
+                          <Button variant="secondary" onClick={() => window.location.href = `/dashboard/task/${task.id}`}>View Details</Button>
+                        </>
                       )}
                       {task.status === 'paid' && (
-                        <span className="text-white flex items-center gap-2">{Icons.dollar} Paid!</span>
+                        <>
+                          <span className="text-white flex items-center gap-2">{Icons.dollar} Paid!</span>
+                          <Button variant="secondary" onClick={() => window.location.href = `/dashboard/task/${task.id}`}>View Details</Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -1629,6 +1647,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               <div className="mt-6 pt-6 border-t border-white/10">
                 <Button variant="secondary" className="w-full">Edit Profile</Button>
               </div>
+            </div>
+
+            {/* Reputation Metrics */}
+            <div className="mt-8">
+              <ReputationMetrics user={user} isHiringMode={hiringMode} />
             </div>
           </div>
         )}
@@ -2424,6 +2447,22 @@ function App() {
     return <Loading />
   }
 
+  // Task detail route - requires auth
+  if (path.startsWith('/dashboard/task/')) {
+    if (!user) {
+      console.log('[Auth] No user, redirecting to auth')
+      window.location.href = '/auth'
+      return <Loading />
+    }
+
+    const taskId = path.split('/').pop()
+    return <TaskDetailPage
+      user={user}
+      taskId={taskId}
+      onNavigate={(p) => { window.location.href = p }}
+    />
+  }
+
   // Dashboard route - requires auth
   if (path === '/dashboard') {
     if (!user) {
@@ -2431,22 +2470,22 @@ function App() {
       window.location.href = '/auth'
       return <Loading />
     }
-    
+
     // Check if user needs onboarding
     const needsOnboarding = user.needs_onboarding || !user.city || !user.skills?.length
     console.log('[Auth] Needs onboarding:', needsOnboarding)
-    
+
     if (needsOnboarding) {
       return <Onboarding onComplete={handleOnboardingComplete} />
     }
-    
+
     return <Dashboard user={user} onLogout={logout} />
   }
   
   if (path === '/auth') return <AuthPage />
   if (path === '/mcp') return <MCPPage />
-  
-  return <LandingPage onNavigate={(p) => { window.location.href = p }} />}
+
+  return <LandingPageV4 />}
 
 export default function AppWrapper() {
   return <App />
