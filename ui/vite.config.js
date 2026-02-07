@@ -10,4 +10,7 @@ export default defineConfig({
     sourcemap: false,
     assetsDir: 'assets',
   },
+  css: {
+    postcss: './postcss.config.cjs',
+  },
 })
