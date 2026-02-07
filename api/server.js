@@ -355,15 +355,35 @@ app.get('/api/auth/verify', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Invalid token' });
   
-  res.json({ 
-    user: { 
+  // Calculate derived metrics
+  const completionRate = user.total_tasks_accepted > 0
+    ? ((user.total_tasks_completed / user.total_tasks_accepted) * 100).toFixed(1)
+    : null;
+
+  const paymentRate = user.total_tasks_completed > 0
+    ? (((user.total_tasks_completed - (user.total_disputes_filed || 0)) / user.total_tasks_completed) * 100).toFixed(1)
+    : null;
+
+  res.json({
+    user: {
       id: user.id, email: user.email, name: user.name, type: user.type,
-      city: user.city, hourly_rate: user.hourly_rate, 
+      city: user.city, hourly_rate: user.hourly_rate,
       wallet_address: user.wallet_address,
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
-      profile_completeness: user.profile_completeness
-    } 
+      profile_completeness: user.profile_completeness,
+      // Reputation metrics
+      total_tasks_completed: user.total_tasks_completed || 0,
+      total_tasks_posted: user.total_tasks_posted || 0,
+      total_tasks_accepted: user.total_tasks_accepted || 0,
+      total_disputes_filed: user.total_disputes_filed || 0,
+      total_usdc_paid: parseFloat(user.total_usdc_paid) || 0,
+      last_active_at: user.last_active_at,
+      // Derived metrics
+      completion_rate: completionRate,
+      payment_rate: paymentRate,
+      jobs_completed: user.jobs_completed || 0
+    }
   });
 });
 
