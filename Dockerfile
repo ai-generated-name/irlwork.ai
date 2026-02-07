@@ -7,9 +7,8 @@ WORKDIR /app
 COPY api/package*.json ./
 RUN npm ci --only=production
 
-# Copy source
+# Copy source (includes backend/ subdirectory)
 COPY api/ ./
-COPY backend/ ./backend/
 
 # Debug: List what was copied
 RUN echo "=== Checking /app structure ===" && \
