@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 export default function LandingPageV4() {
-  const navigate = useNavigate()
+  const navigate = (path) => { window.location.href = path }
   const [currentTask, setCurrentTask] = useState(0)
 
   // Auto-rotate tasks
