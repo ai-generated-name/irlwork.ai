@@ -53,8 +53,7 @@ const COUNTRY_NAMES = {
   'CZ': 'Czech Republic',
   'AT': 'Austria',
   'CH': 'Switzerland',
-  'IE': 'Ireland',
-  'NZ': 'New Zealand',
+  'IE': 'Ireland'
 };
 
 // Filter to major cities (reduce dataset for performance)
