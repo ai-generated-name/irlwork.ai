@@ -9,6 +9,9 @@ const crypto = require('crypto');
 
 const { createClient } = require('@supabase/supabase-js');
 
+// Background services
+const autoReleaseService = require('./services/autoRelease');
+
 // Configuration
 const app = express();
 const server = http.createServer(app);
@@ -851,8 +854,9 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   // Update task status to pending_review
   await supabase
     .from('tasks')
-    .update({ 
+    .update({
       status: 'pending_review',
+      proof_submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', taskId);
@@ -1247,11 +1251,12 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
       `/dashboard`
     );
   } else {
-    // Partial resolution
+    // Partial resolution - reset 48h timer for agent review
     await supabase
       .from('tasks')
       .update({
         status: 'pending_review',
+        proof_submitted_at: new Date().toISOString(),
         dispute_resolved_at: new Date().toISOString(),
         dispute_resolution: resolution,
         notes,
@@ -1261,6 +1266,39 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
   }
   
   res.json({ success: true, resolution });
+});
+
+// Admin endpoint to manually trigger auto-release check (for testing)
+app.post('/api/admin/check-auto-release', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  // Check if user is admin (or allow in development)
+  const isDev = process.env.NODE_ENV !== 'production';
+  if (!isDev) {
+    const { data: adminUser } = await supabase
+      .from('users')
+      .select('type')
+      .eq('id', user.id)
+      .single();
+
+    if (adminUser?.type !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+  }
+
+  // Trigger auto-release check
+  console.log('[API] Manual auto-release check triggered by', user.email);
+  await autoReleaseService.checkNow();
+
+  res.json({
+    success: true,
+    message: 'Auto-release check completed',
+    threshold: '48 hours',
+    checkInterval: `${autoReleaseService.CHECK_INTERVAL_MS / 60000} minutes`
+  });
 });
 
 // ============ WEBHOOKS ============
@@ -1786,6 +1824,7 @@ app.post('/api/mcp', async (req, res) => {
           .from('tasks')
           .update({
             status: 'pending_review',
+            proof_submitted_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', task_id);
@@ -2481,10 +2520,15 @@ async function start() {
   
   if (supabase) {
     console.log('✅ Supabase connected');
+
+    // Start background services
+    console.log('🔄 Starting background services...');
+    autoReleaseService.start();
+    console.log('   ✅ Auto-release service started (48h threshold)');
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
-  
+
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`   API: http://localhost:${PORT}/api`);
@@ -2791,8 +2835,9 @@ app.post('/api/tasks/:id/complete', async (req, res) => {
   
   const { error } = await supabase
     .from('tasks')
-    .update({ 
+    .update({
       status: 'pending_review',
+      proof_submitted_at: new Date().toISOString(),
       proof_description,
       proof_images: proof_images || null,
       completed_at: new Date().toISOString()

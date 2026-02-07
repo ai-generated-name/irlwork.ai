@@ -167,6 +167,8 @@ DO $$ BEGIN
   ALTER TABLE tasks ADD COLUMN IF NOT EXISTS human_ids UUID[] DEFAULT '{}';
   ALTER TABLE tasks ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,8);
   ALTER TABLE tasks ADD COLUMN IF NOT EXISTS longitude DECIMAL(11,8);
+  ALTER TABLE tasks ADD COLUMN IF NOT EXISTS proof_submitted_at TIMESTAMP WITH TIME ZONE;
+  ALTER TABLE tasks ADD COLUMN IF NOT EXISTS auto_released BOOLEAN DEFAULT FALSE;
 EXCEPTION
   WHEN duplicate_column THEN RAISE NOTICE 'Column already exists';
 END $$;
@@ -175,6 +177,7 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category);
+CREATE INDEX IF NOT EXISTS idx_tasks_pending_review ON tasks(status, proof_submitted_at) WHERE status = 'pending_review';
 CREATE INDEX IF NOT EXISTS idx_task_assignments_task ON task_assignments(task_id);
 CREATE INDEX IF NOT EXISTS idx_task_assignments_human ON task_assignments(human_id);
 CREATE INDEX IF NOT EXISTS idx_task_proofs_task ON task_proofs(task_id);
