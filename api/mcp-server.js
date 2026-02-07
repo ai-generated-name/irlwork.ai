@@ -173,6 +173,63 @@ const handlers = {
       headers: { 'Authorization': API_KEY }
     })
     return await res.json()
+  },
+
+  // Get applicants for a task
+  async get_applicants(params) {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}/applications`, {
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // Assign a human to a task
+  async assign_human(params) {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}/assign`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({
+        human_id: params.human_id
+      })
+    })
+    return await res.json()
+  },
+
+  // View proof submissions for a task
+  async view_proof(params) {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}/proofs`, {
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // File a dispute for a task
+  async dispute_task(params) {
+    const res = await fetch(`${API_URL}/disputes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({
+        task_id: params.task_id,
+        reason: params.reason,
+        category: params.category || 'quality_issue',
+        evidence_urls: params.evidence_urls || []
+      })
+    })
+    return await res.json()
+  },
+
+  // Get detailed task status
+  async get_task_status(params) {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}/status`, {
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
   }
 }
 
@@ -235,12 +292,34 @@ const PORT = process.env.MCP_PORT || 3004
 server.listen(PORT, () => {
   console.log(`🤖 Humanwork.ai MCP Server running on port ${PORT}`)
   console.log(`   API: ${API_URL}`)
-  console.log(`   Endpoints:`)
+  console.log(`   Available Methods (19):`)
+  console.log(``)
+  console.log(`   Core:`)
   console.log(`   - list_humans(params)`)
   console.log(`   - get_human(human_id)`)
   console.log(`   - start_conversation(human_id, message)`)
   console.log(`   - send_message(conversation_id, content)`)
+  console.log(`   - get_messages(conversation_id)`)
+  console.log(``)
+  console.log(`   Bookings & Payments:`)
   console.log(`   - create_booking(...)`)
   console.log(`   - complete_booking(booking_id)`)
   console.log(`   - release_escrow(booking_id)`)
+  console.log(`   - my_bookings()`)
+  console.log(``)
+  console.log(`   Tasks & Applications:`)
+  console.log(`   - create_adhoc_task(...)`)
+  console.log(`   - my_adhoc_tasks()`)
+  console.log(`   - task_templates(params)`)
+  console.log(`   - get_applicants(task_id) [NEW]`)
+  console.log(`   - assign_human(task_id, human_id) [NEW]`)
+  console.log(``)
+  console.log(`   Proofs & Disputes:`)
+  console.log(`   - view_proof(task_id) [NEW]`)
+  console.log(`   - dispute_task(task_id, reason) [NEW]`)
+  console.log(`   - get_task_status(task_id) [NEW]`)
+  console.log(``)
+  console.log(`   Notifications:`)
+  console.log(`   - notifications()`)
+  console.log(`   - mark_notification_read(notification_id)`)
 })
