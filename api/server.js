@@ -17,6 +17,9 @@ const { releasePaymentToPending, getWalletBalance } = require('./backend/service
 const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
 const { startBalancePromoter } = require('./backend/services/balancePromoter');
 
+// Distance calculation utilities
+const { haversineDistance, filterByDistance } = require('./utils/distance');
+
 // Configuration
 const app = express();
 const server = http.createServer(app);
@@ -142,18 +145,18 @@ app.use(async (req, res, next) => {
 // ============ AUTH ============
 app.post('/api/auth/register/human', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   try {
-    const { email, password, name, city, state, hourly_rate, categories = [], bio = '', phone = '' } = req.body;
-    
+    const { email, password, name, city, state, hourly_rate, categories = [], bio = '', phone = '', latitude, longitude, travel_radius } = req.body;
+
     if (!email || !name || !city) {
       return res.status(400).json({ error: 'Name, email, and city are required' });
     }
-    
+
     const id = uuidv4();
     const password_hash = password ? crypto.createHash('sha256').update(password).digest('hex') : null;
     const profile_completeness = 0.2 + (hourly_rate ? 0.1 : 0) + (categories.length > 0 ? 0.2 : 0) + (bio ? 0.1 : 0) + (phone ? 0.1 : 0);
-    
+
     const { data: user, error } = await supabase
       .from('users')
       .insert({
@@ -167,7 +170,10 @@ app.post('/api/auth/register/human', async (req, res) => {
         account_type: 'human',
         city,
         state,
-        service_radius: 25,
+        latitude: latitude != null ? parseFloat(latitude) : null,
+        longitude: longitude != null ? parseFloat(longitude) : null,
+        travel_radius: travel_radius || 25,
+        service_radius: travel_radius || 25,
         skills: JSON.stringify(categories),
         profile_completeness,
         availability: 'available',
@@ -390,25 +396,37 @@ app.get('/api/auth/verify', async (req, res) => {
 // ============ HUMANS ============
 app.get('/api/humans', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { category, city, min_rate, max_rate } = req.query;
-  
+
+  const { category, city, min_rate, max_rate, user_lat, user_lng, radius } = req.query;
+
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, wallet_address')
+    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, wallet_address, latitude, longitude')
     .eq('type', 'human')
     .eq('verified', true);
-  
+
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
-  
+
   const { data: humans, error } = await query.order('rating', { ascending: false }).limit(100);
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
-  res.json(humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || []);
+
+  // Parse skills for all humans
+  let results = humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || [];
+
+  // Apply distance filtering if coordinates provided
+  if (user_lat && user_lng && radius) {
+    const userLatitude = parseFloat(user_lat);
+    const userLongitude = parseFloat(user_lng);
+    const maxRadius = parseFloat(radius);
+
+    results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+  }
+
+  res.json(results);
 });
 
 app.get('/api/users/:id', async (req, res) => {
@@ -2634,9 +2652,9 @@ app.get('/api/tasks/my-tasks', async (req, res) => {
 
 app.get('/api/tasks/available', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { category, city, urgency, limit = 50 } = req.query;
-  
+
+  const { category, city, urgency, limit = 50, user_lat, user_lng, radius } = req.query;
+
   let query = supabase
     .from('tasks')
     .select(`
@@ -2646,15 +2664,27 @@ app.get('/api/tasks/available', async (req, res) => {
     .eq('status', 'open')
     .order('created_at', { ascending: false })
     .limit(parseInt(limit));
-  
+
   if (category) query = query.eq('category', category);
   if (city) query = query.like('location', `%${city}%`);
   if (urgency) query = query.eq('urgency', urgency);
-  
+
   const { data: tasks, error } = await query;
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  res.json(tasks || []);
+
+  let results = tasks || [];
+
+  // Apply distance filtering if coordinates provided
+  if (user_lat && user_lng && radius) {
+    const userLatitude = parseFloat(user_lat);
+    const userLongitude = parseFloat(user_lng);
+    const maxRadius = parseFloat(radius);
+
+    results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+  }
+
+  res.json(results);
 });
 
 // ============ HUMANS DIRECTORY ============

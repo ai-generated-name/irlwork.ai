@@ -5,6 +5,7 @@ import EarningsDashboard from './components/EarningsDashboard'
 import TaskDetailPage from './pages/TaskDetailPage'
 import LandingPageV4 from './pages/LandingPageV4'
 import ReputationMetrics from './components/ReputationMetrics'
+import CityAutocomplete from './components/CityAutocomplete'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
@@ -373,7 +374,9 @@ function Onboarding({ onComplete }) {
     city: '',
     skills: '',
     travel_radius: 10,
-    hourly_rate: 25
+    hourly_rate: 25,
+    latitude: null,
+    longitude: null
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -389,7 +392,9 @@ function Onboarding({ onComplete }) {
         city: form.city,
         skills: form.skills.split(',').map(s => s.trim()).filter(Boolean),
         travel_radius: form.travel_radius,
-        hourly_rate: form.hourly_rate
+        hourly_rate: form.hourly_rate,
+        latitude: form.latitude,
+        longitude: form.longitude
       })
     } catch (err) {
       setError(err.message)
@@ -420,16 +425,18 @@ function Onboarding({ onComplete }) {
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-white">Where are you based?</h1>
             <p className="text-gray-400">This helps show you relevant tasks in your area</p>
-            <input
-              type="text"
-              placeholder="City (e.g. San Francisco)"
+            <CityAutocomplete
               value={form.city}
-              onChange={e => setForm({ ...form, city: e.target.value })}
-              className={styles.input}
-              autoFocus
+              onChange={(cityData) => setForm({
+                ...form,
+                city: cityData.city,
+                latitude: cityData.latitude,
+                longitude: cityData.longitude
+              })}
+              placeholder="Search for your city (e.g. San Francisco, USA)"
             />
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               onClick={() => setStep(2)}
               disabled={!form.city.trim()}
             >
@@ -959,6 +966,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [newMessage, setNewMessage] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [radiusFilter, setRadiusFilter] = useState(user?.travel_radius || 25)
+  const [profileCityData, setProfileCityData] = useState(null)
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
 
@@ -1004,6 +1013,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     fetchConversations()
   }, [hiringMode])
 
+  // Refetch humans when radius filter changes
+  useEffect(() => {
+    if (!hiringMode && activeTab === 'humans') {
+      fetchHumans()
+    }
+  }, [radiusFilter])
+
   const fetchTasks = async () => {
     try {
       const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.id } })
@@ -1020,13 +1036,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   const fetchHumans = async () => {
     try {
-      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.id } })
+      // Build query params with distance filtering if user has coordinates
+      const params = new URLSearchParams();
+      if (user.latitude && user.longitude && radiusFilter) {
+        params.append('user_lat', user.latitude);
+        params.append('user_lng', user.longitude);
+        params.append('radius', radiusFilter);
+      }
+
+      const url = `${API_URL}/humans${params.toString() ? `?${params.toString()}` : ''}`;
+      const res = await fetch(url, { headers: { Authorization: user.id } });
+
       if (res.ok) {
-        const data = await res.json()
-        setHumans(data || [])
+        const data = await res.json();
+        setHumans(data || []);
       }
     } catch (e) {
-      console.log('Could not fetch humans')
+      console.log('Could not fetch humans');
     }
   }
 
@@ -1368,7 +1394,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </select>
                   <input type="number" placeholder="Budget ($)" className={styles.input} />
                 </div>
-                <input type="text" placeholder="City" className={styles.input} />
+                <CityAutocomplete
+                  placeholder="Search for task location..."
+                  onChange={(cityData) => {
+                    // Store city data when form state is added
+                    console.log('Task location:', cityData);
+                  }}
+                />
                 <Button className="w-full">Create Task</Button>
               </form>
             </div>
@@ -1496,7 +1528,40 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {!hiringMode && activeTab === 'humans' && (
           <div>
             <h1 className="text-3xl font-bold text-white mb-8">Browse Workers</h1>
-            
+
+            {/* Radius Filter */}
+            {user.latitude && user.longitude && (
+              <div className="mb-6 bg-white/5 border border-white/10 rounded-xl p-6">
+                <div className="flex justify-between items-center mb-3">
+                  <label className="block text-gray-400 text-sm font-medium">
+                    Search within {radiusFilter} miles{user.city ? ` of ${user.city}` : ''}
+                  </label>
+                  <button
+                    onClick={() => setRadiusFilter(user.travel_radius || 25)}
+                    className="text-orange-400 text-xs hover:text-orange-300"
+                  >
+                    Reset to default ({user.travel_radius || 25} mi)
+                  </button>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="100"
+                  step="5"
+                  value={radiusFilter}
+                  onChange={(e) => setRadiusFilter(parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                  <span>5 mi</span>
+                  <span>25 mi</span>
+                  <span>50 mi</span>
+                  <span>75 mi</span>
+                  <span>100 mi</span>
+                </div>
+              </div>
+            )}
+
             {/* Search & Filter */}
             <div className="flex gap-4 mb-6">
               <div className="flex-1 relative">
@@ -1542,7 +1607,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-semibold text-white">{human.name}</h3>
-                            <p className="text-gray-400 text-sm">{Icons.location} {human.city || 'Remote'}</p>
+                            <p className="text-gray-400 text-sm">
+                              {Icons.location} {human.city || 'Remote'}
+                              {human.distance != null && (
+                                <span className="text-orange-400 ml-2">
+                                  • {human.distance.toFixed(1)} mi away
+                                </span>
+                              )}
+                            </p>
                           </div>
                           <div className="text-right">
                             <p className="text-green-400 font-bold text-lg">${human.hourly_rate || 25}/hr</p>
@@ -1668,16 +1740,27 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 e.preventDefault()
                 const formData = new FormData(e.target)
                 try {
+                  const updateData = {
+                    name: formData.get('name'),
+                    hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
+                    bio: formData.get('bio'),
+                    travel_radius: parseInt(formData.get('travel_radius')) || 25
+                  };
+
+                  // Add city data if user selected a new city
+                  if (profileCityData) {
+                    updateData.city = profileCityData.city;
+                    updateData.latitude = profileCityData.latitude;
+                    updateData.longitude = profileCityData.longitude;
+                  } else {
+                    // Keep existing city if not changed
+                    updateData.city = user.city;
+                  }
+
                   const res = await fetch(`${API_URL}/humans/profile`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                    body: JSON.stringify({
-                      name: formData.get('name'),
-                      city: formData.get('city'),
-                      hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
-                      bio: formData.get('bio'),
-                      travel_radius: parseInt(formData.get('travel_radius')) || 25
-                    })
+                    body: JSON.stringify(updateData)
                   })
                   if (res.ok) {
                     alert('Profile updated!')
@@ -1697,7 +1780,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                   <div>
                     <label className="block text-gray-400 text-sm mb-2">City</label>
-                    <input type="text" name="city" defaultValue={user?.city} className={styles.input} placeholder="San Francisco" />
+                    <CityAutocomplete
+                      value={profileCityData?.city || user?.city || ''}
+                      onChange={(cityData) => setProfileCityData(cityData)}
+                      placeholder={user?.city || "Search for your city..."}
+                    />
                   </div>
                 </div>
                 
@@ -2382,6 +2469,9 @@ function App() {
             city: profile.city,
             hourly_rate: profile.hourly_rate,
             skills: profile.skills,
+            latitude: profile.latitude,
+            longitude: profile.longitude,
+            travel_radius: profile.travel_radius,
             role: 'human'
           })
         })
