@@ -108,6 +108,37 @@ async function createNotification(userId, type, title, message, link = null) {
   });
 }
 
+// ============ MIDDLEWARE ============
+// Middleware to update last_active_at on authenticated requests
+app.use(async (req, res, next) => {
+  const token = req.headers.authorization;
+  if (token && supabase) {
+    try {
+      const user = await getUserByToken(token);
+      if (user) {
+        // Only update if last_active_at is more than 5 minutes old (or null)
+        const now = new Date();
+        const lastActive = user.last_active_at ? new Date(user.last_active_at) : null;
+        const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+        if (!lastActive || lastActive < fiveMinutesAgo) {
+          // Update last_active_at asynchronously without blocking the request
+          supabase
+            .from('users')
+            .update({ last_active_at: now.toISOString() })
+            .eq('id', user.id)
+            .then()
+            .catch(err => console.error('Error updating last_active_at:', err));
+        }
+      }
+    } catch (err) {
+      // Silently fail - don't block requests due to last_active_at updates
+      console.error('Error in last_active_at middleware:', err);
+    }
+  }
+  next();
+});
+
 // ============ AUTH ============
 app.post('/api/auth/register/human', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
@@ -1306,6 +1337,249 @@ app.post('/api/admin/check-auto-release', async (req, res) => {
   });
 });
 
+// ============ RATINGS (BLIND RATING WINDOW) ============
+// Submit a rating for a task (after finalization)
+app.post('/api/tasks/:id/rate', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: task_id } = req.params;
+  const { rating_score, comment } = req.body;
+
+  // Validate rating score
+  if (!rating_score || rating_score < 1 || rating_score > 5) {
+    return res.status(400).json({ error: 'Rating score must be between 1 and 5' });
+  }
+
+  // Get task details
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('*, human_id, agent_id, status, proof_submitted_at')
+    .eq('id', task_id)
+    .single();
+
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  // Check if user is part of this task
+  if (user.id !== task.human_id && user.id !== task.agent_id) {
+    return res.status(403).json({ error: 'You are not part of this task' });
+  }
+
+  // Check if task is finalized (paid or dispute resolved)
+  // Task can be rated after:
+  // 1. Task is paid (normal flow or auto-release)
+  // 2. Dispute is resolved and 48-hour dispute window has passed
+  const isTaskFinalized = task.status === 'paid' ||
+    (task.status === 'disputed' && task.dispute_resolved_at);
+
+  if (!isTaskFinalized) {
+    return res.status(400).json({
+      error: 'Task must be finalized before rating',
+      details: 'You can rate after the task is paid or a dispute is resolved'
+    });
+  }
+
+  // Determine who is being rated
+  const ratee_id = user.id === task.human_id ? task.agent_id : task.human_id;
+
+  // Check if user has already rated
+  const { data: existingRating } = await supabase
+    .from('ratings')
+    .select('id')
+    .eq('task_id', task_id)
+    .eq('rater_id', user.id)
+    .single();
+
+  if (existingRating) {
+    return res.status(400).json({ error: 'You have already rated this task' });
+  }
+
+  // Create rating
+  const { data: newRating, error: ratingError } = await supabase
+    .from('ratings')
+    .insert({
+      task_id,
+      rater_id: user.id,
+      ratee_id,
+      rating_score,
+      comment: comment || null,
+      visible_at: null, // Initially hidden
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+
+  if (ratingError) {
+    console.error('Error creating rating:', ratingError);
+    return res.status(500).json({ error: 'Failed to create rating' });
+  }
+
+  // The trigger will automatically handle setting visible_at if both parties have rated
+  // Check if both parties have now rated
+  const { data: allRatings, error: countError } = await supabase
+    .from('ratings')
+    .select('id, visible_at')
+    .eq('task_id', task_id);
+
+  const bothRated = allRatings && allRatings.length === 2;
+  const isVisible = bothRated && allRatings[0].visible_at !== null;
+
+  // Update user's aggregate rating
+  await updateUserRating(ratee_id);
+
+  // Send notification to the other party
+  const otherPartyId = ratee_id;
+  const raterType = user.id === task.human_id ? 'human' : 'agent';
+
+  await createNotification(
+    otherPartyId,
+    'rating_received',
+    bothRated ? 'Ratings Now Visible' : 'Rating Received',
+    bothRated
+      ? `Both parties have rated task #${task_id.substring(0, 8)}. Ratings are now visible!`
+      : `You have received a rating for task #${task_id.substring(0, 8)}. Rate the ${raterType} to see both ratings.`,
+    `/dashboard`
+  );
+
+  res.json({
+    success: true,
+    rating: newRating,
+    bothRated,
+    isVisible,
+    message: bothRated
+      ? 'Both parties have rated. Ratings are now visible!'
+      : 'Rating submitted. It will be visible once both parties rate, or after 72 hours.'
+  });
+});
+
+// Get visible ratings for a user
+app.get('/api/users/:id/ratings', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const { id: user_id } = req.params;
+
+  // Get all visible ratings for this user
+  const { data: ratings, error } = await supabase
+    .from('ratings')
+    .select(`
+      *,
+      rater:rater_id (id, name, type),
+      task:task_id (id, title, description)
+    `)
+    .eq('ratee_id', user_id)
+    .not('visible_at', 'is', null)
+    .lte('visible_at', new Date().toISOString())
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching ratings:', error);
+    return res.status(500).json({ error: 'Failed to fetch ratings' });
+  }
+
+  // Calculate average rating
+  const averageRating = ratings && ratings.length > 0
+    ? ratings.reduce((sum, r) => sum + r.rating_score, 0) / ratings.length
+    : null;
+
+  res.json({
+    ratings: ratings || [],
+    averageRating,
+    totalRatings: ratings?.length || 0
+  });
+});
+
+// Get ratings for a specific task (for the participants)
+app.get('/api/tasks/:id/ratings', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: task_id } = req.params;
+
+  // Get task to verify user is a participant
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('human_id, agent_id')
+    .eq('id', task_id)
+    .single();
+
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  if (user.id !== task.human_id && user.id !== task.agent_id) {
+    return res.status(403).json({ error: 'You are not part of this task' });
+  }
+
+  // Get ratings for this task
+  const { data: ratings, error } = await supabase
+    .from('ratings')
+    .select(`
+      *,
+      rater:rater_id (id, name, type),
+      ratee:ratee_id (id, name, type)
+    `)
+    .eq('task_id', task_id);
+
+  if (error) {
+    console.error('Error fetching task ratings:', error);
+    return res.status(500).json({ error: 'Failed to fetch ratings' });
+  }
+
+  // Filter to only show visible ratings
+  const visibleRatings = (ratings || []).filter(r => {
+    if (!r.visible_at) return false;
+    return new Date(r.visible_at) <= new Date();
+  });
+
+  // Check if user has rated
+  const userHasRated = (ratings || []).some(r => r.rater_id === user.id);
+  const bothRated = (ratings || []).length === 2;
+
+  res.json({
+    ratings: visibleRatings,
+    userHasRated,
+    bothRated,
+    canRate: !userHasRated && (task.human_id === user.id || task.agent_id === user.id)
+  });
+});
+
+// Helper function to update user's aggregate rating
+async function updateUserRating(userId) {
+  if (!supabase) return;
+
+  try {
+    // Get all visible ratings for this user
+    const { data: ratings } = await supabase
+      .from('ratings')
+      .select('rating_score')
+      .eq('ratee_id', userId)
+      .not('visible_at', 'is', null)
+      .lte('visible_at', new Date().toISOString());
+
+    if (!ratings || ratings.length === 0) return;
+
+    // Calculate average rating
+    const averageRating = ratings.reduce((sum, r) => sum + r.rating_score, 0) / ratings.length;
+
+    // Update user's rating field
+    await supabase
+      .from('users')
+      .update({ rating: averageRating.toFixed(2) })
+      .eq('id', userId);
+
+    console.log(`[RATING] Updated user ${userId} rating to ${averageRating.toFixed(2)}`);
+  } catch (error) {
+    console.error('Error updating user rating:', error);
+  }
+}
+
 // ============ WEBHOOKS ============
 async function deliverWebhook(agentId, payload) {
   if (!supabase) return;
@@ -2306,9 +2580,18 @@ app.post('/api/tasks/create', async (req, res) => {
     .single();
   
   if (error) return res.status(500).json({ error: error.message });
-  
-  res.json({ 
-    ...task, 
+
+  // Increment total_tasks_posted for agent
+  await supabase
+    .from('users')
+    .update({
+      total_tasks_posted: supabase.raw('COALESCE(total_tasks_posted, 0) + 1'),
+      last_active_at: new Date().toISOString()
+    })
+    .eq('id', user.id);
+
+  res.json({
+    ...task,
     deposit_instructions: {
       platform_wallet: process.env.PLATFORM_WALLET_ADDRESS,
       amount: uniqueDepositAmount,
@@ -2872,15 +3155,25 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
   
   const { error } = await supabase
     .from('tasks')
-    .update({ 
+    .update({
       status: 'in_progress',
       assignee_id: user.id,
       started_at: new Date().toISOString()
     })
     .eq('id', id)
     .eq('status', 'open');
-  
+
   if (error) return res.status(500).json({ error: error.message });
+
+  // Increment total_tasks_accepted for human
+  await supabase
+    .from('users')
+    .update({
+      total_tasks_accepted: supabase.raw('COALESCE(total_tasks_accepted, 0) + 1'),
+      last_active_at: new Date().toISOString()
+    })
+    .eq('id', user.id);
+
   res.json({ success: true });
 });
 
