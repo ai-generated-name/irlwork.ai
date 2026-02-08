@@ -6,7 +6,7 @@
  */
 
 /* ─── GOOGLE FONTS ─── */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 /* ─── DESIGN TOKENS V4 ─── */
 :root {
@@ -35,8 +35,15 @@
   --success-bg: #D1FAE5;
 
   /* Typography */
-  --font-display: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Space Mono', 'Courier New', monospace;
+  --font-code: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+  /* Dark Theme Colors */
+  --bg-dark: #0A1628;
+  --bg-dark-secondary: #111D2E;
+  --glow-teal: 0 0 40px rgba(93, 173, 226, 0.3);
 
   /* Spacing */
   --space-1: 4px;
@@ -76,7 +83,7 @@
 
 /* ─── BASE STYLES ─── */
 .landing-v4 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   background: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
@@ -90,6 +97,47 @@
 /* Hide old navbar on landing page, show new one */
 .landing-v4 .navbar {
   display: none;
+}
+
+/* ─── DARK THEME NAVBAR (Dashboard) ─── */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.logo:hover {
+  transform: translateY(-1px);
+}
+
+.logo-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border: 1.5px solid #1A1A1A;
+  border-radius: 4px;
+  background: transparent;
+  color: #1A1A1A;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.logo:hover .logo-mark {
+  border-width: 2px;
+  box-shadow: 2px 2px 0 #1A1A1A;
+}
+
+.logo-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1A1A1A;
+  letter-spacing: -0.01em;
 }
 
 /* ─── NAVBAR V4 ─── */
@@ -112,40 +160,41 @@
 .logo-v4 {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
   text-decoration: none;
-  transition: transform var(--duration-normal) var(--ease-smooth);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .logo-v4:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .logo-mark-v4 {
-  width: 40px;
-  height: 40px;
-  background: var(--teal-700);
-  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  padding: 8px 10px;
+  border: 1.5px solid #1A1A1A;
+  border-radius: 4px;
+  background: transparent;
+  color: #1A1A1A;
   font-weight: 700;
   font-size: 14px;
-  box-shadow: var(--shadow-md);
-  transition: all var(--duration-normal) var(--ease-smooth);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .logo-v4:hover .logo-mark-v4 {
-  background: var(--teal-900);
-  box-shadow: var(--shadow-lg);
+  border-width: 2px;
+  box-shadow: 2px 2px 0 #1A1A1A;
 }
 
 .logo-name-v4 {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .nav-links-v4 {
@@ -258,20 +307,28 @@
 }
 
 .hero-v4-title {
+  font-family: var(--font-display);
   font-size: clamp(48px, 6vw, 72px);
-  font-weight: 800;
-  line-height: 1.1;
+  font-weight: 700;
+  line-height: 1.05;
   letter-spacing: -0.03em;
   color: var(--text-primary);
   margin-bottom: var(--space-6);
 }
 
 .title-gradient {
-  background: linear-gradient(135deg, var(--teal-700) 0%, var(--coral-500) 100%);
+  background: linear-gradient(135deg, var(--teal-700) 0%, var(--teal-300) 50%, var(--coral-500) 100%);
+  background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   display: inline-block;
+  animation: gradient-shift 4s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 .hero-v4-subtitle {
@@ -369,8 +426,9 @@
 }
 
 .stat-value {
-  font-size: 32px;
-  font-weight: 800;
+  font-family: var(--font-code);
+  font-size: 28px;
+  font-weight: 600;
   color: var(--text-primary);
   font-feature-settings: 'tnum';
 }
@@ -577,10 +635,11 @@
 }
 
 .section-title {
+  font-family: var(--font-display);
   font-size: clamp(36px, 5vw, 56px);
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
   color: var(--text-primary);
   margin-bottom: var(--space-4);
 }
@@ -660,8 +719,9 @@
 }
 
 .step-title {
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: var(--space-3);
 }
@@ -732,15 +792,17 @@
 }
 
 .task-title {
+  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: var(--space-2);
 }
 
 .task-rate {
-  font-size: 24px;
-  font-weight: 800;
+  font-family: var(--font-code);
+  font-size: 22px;
+  font-weight: 600;
   color: var(--teal-700);
   margin-bottom: var(--space-3);
   font-feature-settings: 'tnum';
@@ -837,8 +899,9 @@
 }
 
 .feature-title {
+  font-family: var(--font-display);
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: var(--space-3);
 }
@@ -880,9 +943,11 @@
 }
 
 .cta-v4-title {
+  font-family: var(--font-display);
   font-size: clamp(32px, 4vw, 48px);
-  font-weight: 800;
-  line-height: 1.2;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   margin-bottom: var(--space-4);
   position: relative;
 }
@@ -1075,8 +1140,10 @@
 }
 
 .benefits-v4-title {
+  font-family: var(--font-display);
   font-size: clamp(32px, 4vw, 48px);
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
   margin-bottom: var(--space-4);
 }
@@ -1147,8 +1214,9 @@
 }
 
 .benefit-card-v4-title {
+  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: var(--space-2);
 }
@@ -1192,28 +1260,42 @@
 .footer-v4-logo {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
   text-decoration: none;
   margin-bottom: var(--space-4);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.footer-v4-logo:hover {
+  transform: translateY(-1px);
 }
 
 .footer-v4-logo-mark {
-  width: 40px;
-  height: 40px;
-  background: var(--teal-500);
-  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  padding: 8px 10px;
+  border: 1.5px solid #1A1A1A;
+  border-radius: 4px;
+  background: transparent;
+  color: #1A1A1A;
   font-weight: 700;
   font-size: 14px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.footer-v4-logo:hover .footer-v4-logo-mark {
+  border-width: 2px;
+  box-shadow: 2px 2px 0 #1A1A1A;
 }
 
 .footer-v4-logo-name {
-  font-size: 20px;
-  font-weight: 700;
-  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1A1A1A;
+  letter-spacing: -0.01em;
 }
 
 .footer-v4-tagline {

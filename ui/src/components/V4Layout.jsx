@@ -58,31 +58,33 @@ export function NavbarV4({ user, onLogout }) {
       <a href="/" style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
+        gap: '10px',
         textDecoration: 'none',
+        transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}>
         <div style={{
-          width: 40,
-          height: 40,
-          background: v4.colors.teal700,
-          borderRadius: 10,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
+          padding: '8px 10px',
+          border: '1.5px solid #1A1A1A',
+          borderRadius: 4,
+          background: 'transparent',
+          color: '#1A1A1A',
           fontWeight: 700,
           fontSize: 14,
-          boxShadow: v4.shadows.md,
+          letterSpacing: '-0.02em',
+          lineHeight: 1,
         }}>
           irl
         </div>
         <span style={{
           fontSize: 18,
-          fontWeight: 800,
+          fontWeight: 600,
           color: v4.colors.textPrimary,
-          letterSpacing: '-0.02em',
+          letterSpacing: '-0.01em',
         }}>
-          irlwork.ai
+          work.ai
         </span>
       </a>
 
@@ -168,25 +170,27 @@ export function FooterV4() {
             <a href="/" style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
+              gap: 10,
               marginBottom: 16,
               textDecoration: 'none',
             }}>
               <div style={{
-                width: 40,
-                height: 40,
-                background: v4.colors.teal500,
-                borderRadius: 8,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'white',
+                padding: '8px 10px',
+                border: '1.5px solid #1A1A1A',
+                borderRadius: 4,
+                background: 'transparent',
+                color: '#1A1A1A',
                 fontWeight: 700,
                 fontSize: 14,
+                letterSpacing: '-0.02em',
+                lineHeight: 1,
               }}>
                 irl
               </div>
-              <span style={{ fontSize: 20, fontWeight: 700, color: 'white' }}>irlwork.ai</span>
+              <span style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', letterSpacing: '-0.01em' }}>work.ai</span>
             </a>
             <p style={{
               color: 'rgba(255,255,255,0.7)',
@@ -243,7 +247,7 @@ export function FooterV4() {
           gap: 16,
         }}>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
-            © 2026 irlwork.ai — All rights reserved
+            © 2026 irl work.ai — All rights reserved
           </p>
           <div style={{ display: 'flex', gap: 24 }}>
             <a href="/privacy" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none', fontSize: 14 }}>Privacy Policy</a>
