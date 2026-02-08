@@ -333,6 +333,21 @@
   display: none;
 }
 
+/* Mobile-specific subtitle (hidden on desktop) */
+.hero-v4-subtitle-mobile {
+  display: none;
+}
+
+/* Mobile API link (hidden on desktop) */
+.hero-api-link-mobile {
+  display: none;
+}
+
+/* Mobile hero animation section (hidden on desktop) */
+.hero-animation-mobile-section {
+  display: none;
+}
+
 /* Mobile connection arrows - hidden on desktop */
 .mobile-arrow {
   display: none;
@@ -2306,34 +2321,26 @@
 }
 
 @media (max-width: 768px) {
-  /* ─── HERO SECTION ─── */
+  /* ─── HERO SECTION - Mobile Simplified ─── */
   .hero-v4 {
     grid-template-columns: 1fr;
-    gap: var(--space-4);
-    padding: calc(56px + 20px) var(--space-4) var(--space-6);
+    gap: 0;
+    padding: calc(56px + 16px) var(--space-4) 24px; /* 16px top after navbar, 24px bottom */
     min-height: auto;
   }
 
+  /* Hide animation inside hero on mobile - it moves to separate section below */
   .hero-v4-visual {
-    order: 1; /* Animation below text on mobile */
-    min-height: 200px;
-  }
-
-  .hero-v4-content {
-    order: 0; /* Text first on mobile */
-  }
-
-  .hero-v4-badge {
-    font-size: 11px;
-    padding: 6px 12px;
-  }
-
-  .badge-text-desktop {
     display: none;
   }
 
-  .badge-text-mobile {
-    display: inline;
+  .hero-v4-content {
+    order: 0;
+  }
+
+  /* Hide badge entirely on mobile */
+  .hero-v4-badge {
+    display: none;
   }
 
   .hero-v4-title {
@@ -2342,36 +2349,80 @@
     margin-bottom: var(--space-3);
   }
 
-  .hero-v4-subtitle {
+  /* Toggle subtitle versions */
+  .hero-v4-subtitle-desktop {
+    display: none;
+  }
+
+  .hero-v4-subtitle-mobile {
+    display: block;
     font-size: 16px;
     line-height: 1.5;
     margin-bottom: var(--space-4);
   }
 
+  /* CTA: Single full-width button on mobile */
   .hero-v4-cta {
-    gap: var(--space-3);
+    flex-direction: column;
   }
 
-  .hero-v4-stats {
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    margin-top: var(--space-4);
+  .hero-cta-primary {
+    width: 100%;
+    justify-content: center;
   }
 
-  .stat-item {
-    min-width: 80px;
-  }
-
-  .stat-value {
-    font-size: 20px;
-  }
-
-  .stat-label {
-    font-size: 11px;
-  }
-
-  .stat-divider {
+  /* Hide secondary button (API Docs) on mobile */
+  .hero-cta-secondary {
     display: none;
+  }
+
+  /* Mobile API link below CTA */
+  .hero-api-link-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: var(--space-3);
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .hero-api-link-mobile:hover {
+    color: var(--orange-500);
+  }
+
+  .hero-api-link-mobile svg {
+    transition: transform 0.2s ease;
+  }
+
+  .hero-api-link-mobile:hover svg {
+    transform: translateX(3px);
+  }
+
+  /* Hide stats on mobile */
+  .hero-v4-stats {
+    display: none;
+  }
+
+  /* Mobile hero animation section - appears below hero */
+  .hero-animation-mobile-section {
+    display: block;
+    padding: var(--space-6) var(--space-4);
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  }
+
+  .hero-animation-mobile-section .hero-animation-v2 {
+    height: 160px;
+    max-width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 8px;
   }
 
   /* ─── HERO ANIMATION (Mobile: Horizontal flow layout) ─── */
@@ -2542,20 +2593,29 @@
     height: 14px;
   }
 
-  /* ─── LIVE TICKER ─── */
+  /* ─── LIVE TICKER - More compact on mobile ─── */
   .ticker-container {
-    padding: var(--space-2) 0;
+    padding: 6px 0;
   }
 
   .ticker-item {
-    font-size: 13px;
-    gap: var(--space-2);
-    padding: 0 var(--space-3);
+    font-size: 12px;
+    gap: 6px;
+    padding: 0 var(--space-2);
   }
 
   .ticker-badge {
-    font-size: 9px;
-    padding: 2px 6px;
+    font-size: 8px;
+    padding: 2px 5px;
+  }
+
+  .ticker-divider {
+    opacity: 0.4;
+  }
+
+  .ticker-amount,
+  .ticker-location {
+    font-size: 11px;
   }
 
   /* ─── FEATURE CARDS BAR (2x2 grid) ─── */
