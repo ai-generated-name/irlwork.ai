@@ -3497,7 +3497,7 @@ app.get('/api/tasks/available', async (req, res) => {
       .from('tasks')
       .select(`
         *,
-        agent:users!tasks_agent_id_fkey(id, name, organization)
+        agent:users!tasks_agent_id_fkey(id, name)
       `)
       .eq('status', 'open');
 

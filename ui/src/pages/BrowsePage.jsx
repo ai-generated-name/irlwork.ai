@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { MapPin, Clock, DollarSign, Star, Briefcase, Users, Filter, X, Check } from 'lucide-react'
+import { MapPin, Clock, DollarSign, Star, Briefcase, Users, Filter, X, Check, Copy, Bot, User, ChevronRight } from 'lucide-react'
 import { supabase } from '../App'
+import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
 import '../landing-v4.css'
 
@@ -18,6 +19,7 @@ const categories = [
 ]
 
 export default function BrowsePage({ user }) {
+  const toast = useToast()
   const [viewMode, setViewMode] = useState('tasks') // 'tasks' or 'workers'
   const [tasks, setTasks] = useState([])
   const [workers, setWorkers] = useState([])
@@ -32,6 +34,10 @@ export default function BrowsePage({ user }) {
   const [applyLoading, setApplyLoading] = useState(false)
   const [applySuccess, setApplySuccess] = useState(false)
   const [applyError, setApplyError] = useState('')
+
+  // Hire worker modal state
+  const [showHireModal, setShowHireModal] = useState(null) // worker object or null
+  const [hireMode, setHireMode] = useState(null) // 'agent' or 'human' or null
 
   useEffect(() => {
     fetchData()
@@ -518,7 +524,7 @@ export default function BrowsePage({ user }) {
         {!loading && viewMode === 'workers' && (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
             gap: 24
           }}>
             {workers.length === 0 ? (
@@ -543,7 +549,9 @@ export default function BrowsePage({ user }) {
                     borderRadius: 'var(--radius-lg)',
                     border: '1px solid rgba(26,26,26,0.06)',
                     padding: 24,
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    flexDirection: 'column'
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.boxShadow = 'var(--shadow-lg)'
@@ -554,31 +562,50 @@ export default function BrowsePage({ user }) {
                     e.currentTarget.style.transform = 'translateY(0)'
                   }}
                 >
-                  {/* Avatar & Name */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+                  {/* Header: Avatar, Name, Location, Verified */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
                     <div style={{
-                      width: 56,
-                      height: 56,
+                      width: 48,
+                      height: 48,
                       borderRadius: '50%',
-                      background: worker.avatar_url ? `url(${worker.avatar_url}) center/cover` : 'var(--teal-500)',
+                      background: worker.avatar_url ? `url(${worker.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--coral-500), var(--coral-600))',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: 'white',
                       fontWeight: 600,
-                      fontSize: 20
+                      fontSize: 18,
+                      flexShrink: 0
                     }}>
                       {!worker.avatar_url && (worker.name?.[0]?.toUpperCase() || '?')}
                     </div>
-                    <div>
-                      <h3 style={{
-                        fontSize: 17,
-                        fontWeight: 600,
-                        color: 'var(--text-primary)',
-                        marginBottom: 4
-                      }}>
-                        {worker.name || 'Anonymous'}
-                      </h3>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <h3 style={{
+                          fontSize: 16,
+                          fontWeight: 600,
+                          color: 'var(--text-primary)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {worker.name || 'Anonymous'}
+                        </h3>
+                        {worker.verified && (
+                          <div style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: '50%',
+                            background: 'var(--success)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <Check size={10} style={{ color: 'white' }} />
+                          </div>
+                        )}
+                      </div>
                       {worker.city && (
                         <span style={{
                           fontSize: 13,
@@ -587,61 +614,97 @@ export default function BrowsePage({ user }) {
                           alignItems: 'center',
                           gap: 4
                         }}>
-                          <MapPin size={12} />
+                          <MapPin size={12} style={{ color: 'var(--coral-500)' }} />
                           {worker.city}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Skills */}
-                  {worker.skills && worker.skills.length > 0 && (
-                    <div style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 6,
-                      marginBottom: 16
-                    }}>
-                      {(Array.isArray(worker.skills) ? worker.skills : []).slice(0, 4).map((skill, idx) => (
-                        <span
-                          key={idx}
-                          style={{
-                            padding: '4px 10px',
-                            background: 'var(--bg-tertiary)',
-                            borderRadius: 'var(--radius-full)',
-                            fontSize: 12,
-                            color: 'var(--text-secondary)'
-                          }}
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Stats */}
-                  <div style={{
-                    display: 'flex',
-                    gap: 24,
+                  {/* Bio */}
+                  <p style={{
                     fontSize: 14,
                     color: 'var(--text-secondary)',
+                    marginBottom: 12,
+                    lineHeight: 1.5,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    minHeight: 42,
+                    flex: '0 0 auto'
+                  }}>
+                    {worker.bio || 'No bio provided'}
+                  </p>
+
+                  {/* Skills */}
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 6,
+                    marginBottom: 16,
+                    minHeight: 28
+                  }}>
+                    {(Array.isArray(worker.skills) ? worker.skills : []).slice(0, 3).map((skill, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          padding: '4px 10px',
+                          background: 'var(--bg-tertiary)',
+                          borderRadius: 'var(--radius-md)',
+                          fontSize: 12,
+                          color: 'var(--text-secondary)',
+                          border: '1px solid rgba(26,26,26,0.06)'
+                        }}
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                    {worker.skills && worker.skills.length > 3 && (
+                      <span style={{
+                        padding: '4px 10px',
+                        fontSize: 12,
+                        color: 'var(--text-tertiary)'
+                      }}>
+                        +{worker.skills.length - 3}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Footer: Rate + Rent Button */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: 'auto',
                     paddingTop: 16,
                     borderTop: '1px solid rgba(26,26,26,0.06)'
                   }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Star size={16} style={{ color: '#F59E0B' }} />
-                      {worker.rating ? worker.rating.toFixed(1) : 'New'}
+                    <span style={{
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: 'var(--coral-500)'
+                    }}>
+                      ${worker.hourly_rate || 25}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>/hr</span>
                     </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Briefcase size={16} />
-                      {worker.jobs_completed || 0} jobs
-                    </span>
-                    {worker.hourly_rate && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <DollarSign size={16} />
-                        ${worker.hourly_rate}/hr
-                      </span>
-                    )}
+                    <button
+                      onClick={() => setShowHireModal(worker)}
+                      style={{
+                        padding: '10px 24px',
+                        background: 'var(--coral-500)',
+                        color: 'white',
+                        fontWeight: 600,
+                        fontSize: 14,
+                        borderRadius: 'var(--radius-md)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--coral-600)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'var(--coral-500)'}
+                    >
+                      rent
+                    </button>
                   </div>
                 </div>
               ))
@@ -787,6 +850,250 @@ export default function BrowsePage({ user }) {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Hire Worker Modal */}
+      {showHireModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 24
+          }}
+          onClick={() => { setShowHireModal(null); setHireMode(null) }}
+        >
+          <div
+            style={{
+              background: '#1a1a1a',
+              borderRadius: 16,
+              padding: 0,
+              maxWidth: 440,
+              width: '100%',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '24px 24px 16px',
+              borderBottom: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h2 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 4 }}>
+                    rent {showHireModal.name}
+                  </h2>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+                    how are you hiring this human?
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setShowHireModal(null); setHireMode(null) }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 4,
+                    color: 'rgba(255,255,255,0.5)'
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Options */}
+            <div style={{ padding: 16 }}>
+              {/* For AI Agent Option */}
+              <button
+                onClick={() => setHireMode(hireMode === 'agent' ? null : 'agent')}
+                style={{
+                  width: '100%',
+                  padding: 16,
+                  background: hireMode === 'agent' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.05)',
+                  border: hireMode === 'agent' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginBottom: 8,
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Bot size={20} style={{ color: 'white' }} />
+                </div>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontWeight: 600, color: 'white', fontSize: 15 }}>for my AI agent</div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>get a snippet to paste into your agent's chat</div>
+                </div>
+                <ChevronRight size={20} style={{
+                  color: 'rgba(255,255,255,0.3)',
+                  transform: hireMode === 'agent' ? 'rotate(90deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s'
+                }} />
+              </button>
+
+              {/* Agent Mode Expanded Content */}
+              {hireMode === 'agent' && (
+                <div style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 16,
+                  marginTop: 8
+                }}>
+                  {/* Copyable Snippet */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: 12
+                  }}>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+                      copy this and paste it into your AI agent's chat:
+                    </span>
+                    <button
+                      onClick={() => {
+                        const snippet = `I want to hire a human from irlwork.ai for a task.
+
+Name: ${showHireModal.name}
+Profile: https://www.irlwork.ai/humans/${showHireModal.id}
+Skills: ${(showHireModal.skills || []).join(', ') || 'General'}
+Rate: $${showHireModal.hourly_rate || 25}/hr
+
+To contact this human, use the irlwork.ai MCP server. Add this to your MCP config:
+
+{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "your-api-key"
+      }
+    }
+  }
+}`
+                        navigator.clipboard.writeText(snippet)
+                        toast.success('Copied to clipboard!')
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        color: 'rgba(255,255,255,0.5)',
+                        fontSize: 13
+                      }}
+                    >
+                      <Copy size={14} /> copy
+                    </button>
+                  </div>
+
+                  <div style={{
+                    background: '#0d0d0d',
+                    borderRadius: 8,
+                    padding: 16,
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                    color: 'rgba(255,255,255,0.8)',
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word'
+                  }}>
+{`I want to hire a human from irlwork.ai for a task.
+
+Name: ${showHireModal.name}
+Profile: https://www.irlwork.ai/humans/${showHireModal.id}
+Skills: ${(showHireModal.skills || []).join(', ') || 'General'}
+Rate: $${showHireModal.hourly_rate || 25}/hr
+
+To contact this human, use the irlwork.ai MCP server. Add this to your MCP config:`}
+                  </div>
+
+                  {/* How to use */}
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ fontSize: 14, color: '#10B981', fontWeight: 500, marginBottom: 12 }}>
+                      how to use this
+                    </div>
+                    <ol style={{
+                      margin: 0,
+                      paddingLeft: 20,
+                      fontSize: 13,
+                      color: 'rgba(255,255,255,0.7)',
+                      lineHeight: 1.8
+                    }}>
+                      <li>Copy the snippet above</li>
+                      <li>Paste it into your AI agent's chat (Claude, ChatGPT, etc.)</li>
+                      <li>Your agent will set up the MCP server and contact this human</li>
+                      <li>You'll need an <a href="/dashboard?tab=api-keys" style={{ color: '#10B981', textDecoration: 'underline' }}>API key</a> — get one from your dashboard</li>
+                    </ol>
+                  </div>
+                </div>
+              )}
+
+              {/* I'm a Human Option */}
+              <button
+                onClick={() => {
+                  if (!user) {
+                    navigate('/auth')
+                    return
+                  }
+                  // Navigate to create task with this worker pre-selected
+                  window.location.href = `/dashboard?tab=create-task&worker=${showHireModal.id}`
+                }}
+                style={{
+                  width: '100%',
+                  padding: 16,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <User size={20} style={{ color: 'white' }} />
+                </div>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontWeight: 600, color: 'white', fontSize: 15 }}>I'm a human</div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>message {showHireModal.name} directly</div>
+                </div>
+                <ChevronRight size={20} style={{ color: 'rgba(255,255,255,0.3)' }} />
+              </button>
+            </div>
           </div>
         </div>
       )}
