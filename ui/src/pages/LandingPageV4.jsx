@@ -70,9 +70,9 @@ function HeroStats() {
 
   // Threshold logic
   const getWorkerDisplay = () => {
-    if (loading || stats.workers === null) return { value: '...', label: 'Workers Ready' }
-    if (stats.workers < 10) return { value: 'Growing', label: 'New workers joining daily' }
-    return { value: <AnimatedCounter end={stats.workers} suffix="+" />, label: 'Workers Ready' }
+    if (loading || stats.workers === null) return { value: '...', label: 'Humans Ready' }
+    if (stats.workers < 10) return { value: 'Growing', label: 'New humans joining daily' }
+    return { value: <AnimatedCounter end={stats.workers} suffix="+" />, label: 'Humans Ready' }
   }
 
   const getTaskDisplay = () => {

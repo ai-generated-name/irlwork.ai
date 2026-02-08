@@ -3438,31 +3438,46 @@
 .dashboard-v4-sidebar-logo {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 8px;
   padding: var(--space-6);
   text-decoration: none;
   border-bottom: 1px solid rgba(26, 26, 26, 0.06);
+  transition: transform 0.2s var(--ease-bounce);
+}
+
+.dashboard-v4-sidebar-logo:hover {
+  transform: translateY(-1px);
 }
 
 .dashboard-v4-sidebar-logo-mark {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, var(--orange-600) 0%, var(--orange-500) 100%);
-  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-display);
+  padding: 6px 8px;
+  border: 2px solid var(--text-primary);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 16px;
-  color: white;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  transition: all 0.2s var(--ease-bounce);
+}
+
+.dashboard-v4-sidebar-logo:hover .dashboard-v4-sidebar-logo-mark {
+  background: var(--text-primary);
+  color: var(--bg-secondary);
+  box-shadow: 3px 3px 0 var(--orange-500);
 }
 
 .dashboard-v4-sidebar-logo-name {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 /* Mode Toggle */
