@@ -323,6 +323,49 @@ async function createNotification(userId, type, title, message, link = null) {
   });
 }
 
+// Dispatch webhook to user if they have one configured
+async function dispatchWebhook(userId, event) {
+  if (!supabase) return;
+
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('webhook_url, webhook_secret')
+      .eq('id', userId)
+      .single();
+
+    if (!user?.webhook_url) return; // No webhook registered, skip
+
+    const payload = {
+      event_type: event.type,
+      task_id: event.task_id,
+      data: event.data,
+      timestamp: new Date().toISOString()
+    };
+
+    const headers = { 'Content-Type': 'application/json' };
+
+    // Add HMAC signature if secret is configured
+    if (user.webhook_secret) {
+      const signature = crypto
+        .createHmac('sha256', user.webhook_secret)
+        .update(JSON.stringify(payload))
+        .digest('hex');
+      headers['X-Webhook-Signature'] = signature;
+    }
+
+    await fetch(user.webhook_url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+  } catch (err) {
+    console.error(`Webhook delivery failed for user ${userId}:`, err.message);
+    // Don't throw - webhook failures shouldn't break the main flow
+  }
+}
+
 // ============ PHASE 1 ADMIN ROUTES ============
 // Mount admin routes for manual escrow/payment operations
 if (supabase) {
@@ -1427,9 +1470,9 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
         email,
         hourly_rate,
         rating,
-        review_count,
         jobs_completed,
-        avatar_url
+        bio,
+        city
       )
     `)
     .eq('task_id', taskId)
@@ -2561,25 +2604,34 @@ app.get('/api/agents/:id/webhook-url', async (req, res) => {
   res.json({ webhook_url: webhookUrl });
 });
 
-// Register/update webhook URL
+// Register/update webhook URL and optional signing secret
 app.post('/api/webhooks/register', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
-  if (!user || user.type !== 'agent') {
-    return res.status(401).json({ error: 'Agents only' });
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
-  
-  const { webhook_url } = req.body;
-  
-  await supabase
+
+  const { webhook_url, webhook_secret } = req.body;
+
+  const updateData = {
+    webhook_url: webhook_url || null,
+    updated_at: new Date().toISOString()
+  };
+
+  // Only update webhook_secret if provided (allows clearing URL without clearing secret)
+  if (webhook_secret !== undefined) {
+    updateData.webhook_secret = webhook_secret || null;
+  }
+
+  const { error } = await supabase
     .from('users')
-    .update({
-      mcp_webhook_url: webhook_url,
-      updated_at: new Date().toISOString()
-    })
+    .update(updateData)
     .eq('id', user.id);
-  
+
+  if (error) return res.status(500).json({ error: error.message });
+
   res.json({ success: true, webhook_url });
 });
 
@@ -3252,43 +3304,33 @@ app.get('/api/conversations', async (req, res) => {
 
 app.post('/api/conversations', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { agent_id, task_id, title } = req.body;
-  const id = uuidv4();
-  
-  // Check if conversation already exists
-  let query = supabase
-    .from('conversations')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('agent_id', agent_id || null);
-  
-  if (task_id) query = query.eq('task_id', task_id);
-  
-  const { data: existing } = await query.single();
-  
-  if (existing) {
-    return res.json(existing);
-  }
-  
+
+  // Use upsert to prevent race condition duplicates
+  // NOTE: Do NOT pass `id` field - let DB generate UUID on insert.
+  // On conflict, upsert updates the existing row and RETURNING gives back
+  // the existing row's ID (not a phantom generated one).
   const { data: conversation, error } = await supabase
     .from('conversations')
-    .insert({
-      id,
+    .upsert({
       user_id: user.id,
-      agent_id,
-      task_id,
+      agent_id: agent_id || null,
+      task_id: task_id || null,
       title: title || 'New Conversation',
-      created_at: new Date().toISOString()
+      status: 'active'
+    }, {
+      onConflict: 'user_id,agent_id,task_id',
+      ignoreDuplicates: false
     })
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
+
   res.json(conversation);
 });
 
@@ -3322,62 +3364,109 @@ app.get('/api/conversations/:id', async (req, res) => {
 // ============ MESSAGES ============
 app.get('/api/messages/:conversation_id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  // Verify user has access to conversation
-  const { data: conversation, error: convError } = await supabase
-    .from('conversations')
-    .select('id, user_id, agent_id')
-    .eq('id', req.params.conversation_id)
-    .single();
-  
-  if (convError || !conversation) {
-    return res.status(404).json({ error: 'Conversation not found' });
-  }
-  
-  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-  
-  const { data: messages, error } = await supabase
-    .from('messages')
-    .select(`
-      *,
-      sender:users!messages_sender_id_fkey(id, name, type, avatar_url)
-    `)
-    .eq('conversation_id', req.params.conversation_id)
-    .order('created_at', { ascending: true });
-  
-  if (error) return res.status(500).json({ error: error.message });
-  
-  res.json(messages || []);
-});
 
-app.post('/api/messages', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { conversation_id, content, message_type = 'text', metadata = {} } = req.body;
-  
+
+  const { conversation_id } = req.params;
+  const { limit = 50, before, after, after_time } = req.query;
+  const parsedLimit = Math.min(parseInt(limit) || 50, 100);
+
   // Verify user has access to conversation
   const { data: conversation, error: convError } = await supabase
     .from('conversations')
     .select('id, user_id, agent_id')
     .eq('id', conversation_id)
     .single();
-  
+
   if (convError || !conversation) {
     return res.status(404).json({ error: 'Conversation not found' });
   }
-  
+
   if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
-  
+
+  // Handle "before" cursor (loading older messages)
+  // Must use descending order to get nearest N before cursor, then reverse
+  if (before) {
+    const { data: ref } = await supabase
+      .from('messages')
+      .select('created_at')
+      .eq('id', before)
+      .single();
+
+    if (ref) {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          sender:users!messages_sender_id_fkey(id, name, type, avatar_url)
+        `)
+        .eq('conversation_id', conversation_id)
+        .lt('created_at', ref.created_at)
+        .order('created_at', { ascending: false })  // Descending to get nearest
+        .limit(parsedLimit);
+
+      if (error) return res.status(500).json({ error: error.message });
+      return res.json(data?.reverse() || []);  // Reverse to chronological order
+    }
+  }
+
+  // Handle "after" cursor or after_time (loading newer messages / polling)
+  let query = supabase
+    .from('messages')
+    .select(`
+      *,
+      sender:users!messages_sender_id_fkey(id, name, type, avatar_url)
+    `)
+    .eq('conversation_id', conversation_id)
+    .order('created_at', { ascending: true })
+    .limit(parsedLimit);
+
+  if (after) {
+    const { data: ref } = await supabase
+      .from('messages')
+      .select('created_at')
+      .eq('id', after)
+      .single();
+    if (ref) query = query.gt('created_at', ref.created_at);
+  }
+
+  // Time-based filter for polling optimization
+  if (after_time) {
+    query = query.gt('created_at', after_time);
+  }
+
+  const { data: messages, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json(messages || []);
+});
+
+app.post('/api/messages', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { conversation_id, content, message_type = 'text', metadata = {} } = req.body;
+
+  // Verify user has access to conversation (include task_id and task title for notifications)
+  const { data: conversation, error: convError } = await supabase
+    .from('conversations')
+    .select('id, user_id, agent_id, task_id, tasks(title)')
+    .eq('id', conversation_id)
+    .single();
+
+  if (convError || !conversation) {
+    return res.status(404).json({ error: 'Conversation not found' });
+  }
+
+  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
   const id = uuidv4();
   const { data: message, error } = await supabase
     .from('messages')
@@ -3392,32 +3481,117 @@ app.post('/api/messages', async (req, res) => {
     })
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
+
   // Update conversation's updated_at
   await supabase
     .from('conversations')
     .update({ updated_at: new Date().toISOString() })
     .eq('id', conversation_id);
-  
+
+  // Notify the OTHER party about the new message
+  const otherPartyId = (user.id === conversation.user_id)
+    ? conversation.agent_id
+    : conversation.user_id;
+
+  if (otherPartyId) {
+    const taskTitle = conversation.tasks?.title || 'a task';
+    const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+    await createNotification(
+      otherPartyId,
+      'new_message',
+      'New message',
+      `New message about "${taskTitle}": ${preview}`,
+      `/tasks/${conversation.task_id}`
+    );
+
+    // Dispatch webhook if the other party has one configured
+    await dispatchWebhook(otherPartyId, {
+      type: 'new_message',
+      task_id: conversation.task_id,
+      data: {
+        conversation_id,
+        message_id: message.id,
+        sender_name: user.name,
+        sender_type: user.type || (user.is_agent ? 'agent' : 'worker'),
+        content,
+        created_at: message.created_at
+      }
+    });
+  }
+
   res.json(message);
 });
 
 app.put('/api/messages/:id/read', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
+  // Mark message as read - only messages from OTHER senders can be marked read
   const { error } = await supabase
     .from('messages')
     .update({ read_at: new Date().toISOString() })
     .eq('id', req.params.id)
-    .eq('sender_id', user.id); // Only sender can mark as read
-  
+    .neq('sender_id', user.id); // Only mark OTHER party's messages as read
+
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
+});
+
+// Mark all messages in a conversation as read (bulk operation)
+app.put('/api/conversations/:id/read-all', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id } = req.params;
+
+  // Verify user is a participant in this conversation
+  const { data: conversation } = await supabase
+    .from('conversations')
+    .select('id, user_id, agent_id')
+    .eq('id', id)
+    .single();
+
+  if (!conversation) {
+    return res.status(404).json({ error: 'Conversation not found' });
+  }
+
+  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  // Mark all messages from OTHER sender as read
+  const { data, error } = await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('conversation_id', id)
+    .neq('sender_id', user.id)  // Only mark OTHER party's messages as read
+    .is('read_at', null)
+    .select('id');
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ marked_count: data?.length || 0 });
+});
+
+// Get unread message summary across all conversations (for agents and workers)
+app.get('/api/conversations/unread', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data, error } = await supabase.rpc('get_unread_summary', {
+    p_user_id: user.id
+  });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // Get unread message count
@@ -3996,149 +4170,8 @@ async function start() {
 
 start();
 
-// ============ CONVERSATIONS (Chat) ============
-app.get('/api/conversations', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  // Get conversations where user is participant
-  const { data: conversations, error } = await supabase
-    .from('conversations')
-    .select(`
-      *,
-      human:users!human_id(id, name, email, hourly_rate, rating),
-      agent:users!agent_id(id, name, email, api_key),
-      last_message:messages(content, created_at, sender_id)
-    `)
-    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
-    .order('updated_at', { ascending: false });
-  
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(conversations || []);
-});
-
-app.post('/api/conversations', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { human_id, agent_id, initial_message } = req.body;
-  const otherId = user.type === 'human' ? agent_id : human_id;
-  
-  // Check if conversation already exists
-  const { data: existing } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('human_id', user.type === 'human' ? user.id : human_id)
-    .eq('agent_id', user.type === 'agent' ? user.id : agent_id)
-    .single();
-  
-  if (existing) {
-    return res.json(existing);
-  }
-  
-  // Create new conversation
-  const { data: conversation, error } = await supabase
-    .from('conversations')
-    .insert({
-      id: uuidv4(),
-      human_id: user.type === 'human' ? user.id : human_id,
-      agent_id: user.type === 'agent' ? user.id : agent_id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .select()
-    .single();
-  
-  if (error) return res.status(500).json({ error: error.message });
-  
-  // Send initial message if provided
-  if (initial_message) {
-    await supabase.from('messages').insert({
-      id: uuidv4(),
-      conversation_id: conversation.id,
-      sender_id: user.id,
-      content: initial_message,
-      created_at: new Date().toISOString()
-    });
-  }
-  
-  res.json(conversation);
-});
-
-// ============ MESSAGES ============
-app.get('/api/messages/:conversation_id', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { conversation_id } = req.params;
-  
-  // Verify user is participant
-  const { data: conversation } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversation_id)
-    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
-    .single();
-  
-  if (!conversation) return res.status(403).json({ error: 'Access denied' });
-  
-  const { data: messages, error } = await supabase
-    .from('messages')
-    .select('*, sender:users!sender_id(id, name, email)')
-    .eq('conversation_id', conversation_id)
-    .order('created_at', { ascending: true });
-  
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(messages || []);
-});
-
-app.post('/api/messages', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { conversation_id, content } = req.body;
-  
-  // Verify user is participant
-  const { data: conversation } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversation_id)
-    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
-    .single();
-  
-  if (!conversation) return res.status(403).json({ error: 'Access denied' });
-  
-  // Create message
-  const { data: message, error } = await supabase
-    .from('messages')
-    .insert({
-      id: uuidv4(),
-      conversation_id,
-      sender_id: user.id,
-      content,
-      created_at: new Date().toISOString()
-    })
-    .select()
-    .single();
-  
-  if (error) return res.status(500).json({ error: error.message });
-  
-  // Update conversation timestamp
-  await supabase
-    .from('conversations')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', conversation_id);
-  
-  res.json(message);
-});
+// NOTE: Duplicate conversations/messages endpoints using human_id schema were removed.
+// The canonical endpoints using user_id schema are at lines ~3230-3451.
 
 // ============ MY TASKS ============
 app.get('/api/my-tasks', async (req, res) => {
