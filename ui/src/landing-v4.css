@@ -570,9 +570,6 @@ body:not(.landing-v4) .navbar-v4 {
 .task-popup:nth-child(8) { left: -240px; top: 55%; }
 .task-popup:nth-child(9) { right: -240px; top: 65%; }
 .task-popup:nth-child(10) { right: -240px; top: 50%; }
-  font-size: 13px;
-  color: var(--text-secondary);
-}
 
 /* ─── GEOMETRIC SHAPES ─── */
 .geometric-shape {
