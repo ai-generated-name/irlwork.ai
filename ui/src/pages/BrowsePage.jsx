@@ -191,7 +191,7 @@ export default function BrowsePage({ user }) {
   const navigate = (path) => { window.location.href = path }
 
   return (
-    <div className="landing-v4" style={{ minHeight: '100vh' }}>
+    <div className="landing-v4" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Navbar */}
       <nav className="navbar-v4">
         <a href="/" className="logo-v4">
@@ -210,7 +210,7 @@ export default function BrowsePage({ user }) {
       </nav>
 
       {/* Main Content */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '120px 24px 48px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '120px 24px 48px', flex: 1 }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
           <h1 style={{

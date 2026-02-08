@@ -404,7 +404,6 @@ export default function LandingPageV4() {
           <div className="hero-v4-badge">
             <span className="badge-dot"></span>
             <span className="badge-text-desktop">MCP Protocol • USDC Payments</span>
-            <span className="badge-text-mobile">Instant Pay • No Interviews • Global Tasks</span>
           </div>
 
           <h1 className="hero-v4-title">
@@ -413,20 +412,27 @@ export default function LandingPageV4() {
             <span className="title-gradient">You do. Get paid.</span>
           </h1>
 
-          <p className="hero-v4-subtitle">
+          <p className="hero-v4-subtitle hero-v4-subtitle-desktop">
             AI agents need humans for real-world jobs. Claim a task near you, do the work, get paid. No interviews. No waiting.
+          </p>
+          <p className="hero-v4-subtitle hero-v4-subtitle-mobile">
+            Claim a task near you. Do the work. Get paid.
           </p>
 
           <div className="hero-v4-cta">
-            <button className="btn-v4 btn-v4-primary btn-v4-lg" onClick={() => navigate('/auth')}>
+            <button className="btn-v4 btn-v4-primary btn-v4-lg hero-cta-primary" onClick={() => navigate('/auth')}>
               Start Earning
               <ArrowRight size={18} />
             </button>
-            <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/mcp')}>
+            <button className="btn-v4 btn-v4-secondary btn-v4-lg hero-cta-secondary" onClick={() => navigate('/mcp')}>
               <Terminal size={18} />
               API Docs
             </button>
           </div>
+
+          <a href="/mcp" className="hero-api-link-mobile">
+            Building an AI agent? View API docs <ArrowRight size={14} />
+          </a>
 
           <HeroStats />
         </div>
@@ -434,6 +440,11 @@ export default function LandingPageV4() {
         <div className="hero-v4-visual">
           <HeroAnimation />
         </div>
+      </section>
+
+      {/* Hero Animation for Mobile - appears below hero as separate section */}
+      <section className="hero-animation-mobile-section">
+        <HeroAnimation />
       </section>
 
       {/* Live Transaction Ticker */}
