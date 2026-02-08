@@ -1,3 +1,5 @@
+import CustomDropdown from './CustomDropdown';
+
 export default function TopFilterBar({
   searchQuery,
   onSearchChange,
@@ -8,6 +10,14 @@ export default function TopFilterBar({
   onMenuClick,
   categories = ['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general']
 }) {
+  // Format categories for CustomDropdown
+  const categoryOptions = [
+    { value: '', label: 'All Categories' },
+    ...categories.map(c => ({
+      value: c,
+      label: c.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+    }))
+  ];
   return (
     <div className="bg-[var(--bg-secondary)] border-b border-[rgba(26,26,26,0.06)] px-4 md:px-6 py-3 md:py-4 sticky top-0 z-10" style={{ boxShadow: 'var(--shadow-sm)' }}>
       <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
@@ -116,18 +126,13 @@ export default function TopFilterBar({
           </div>
 
           {/* Category Filter */}
-          <select
+          <CustomDropdown
             value={categoryFilter}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            className="select-v4 flex-1 md:flex-none md:w-44 py-2 md:py-2.5 text-sm md:text-base"
-          >
-            <option value="">All Categories</option>
-            {categories.map(c => (
-              <option key={c} value={c}>
-                {c.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </option>
-            ))}
-          </select>
+            onChange={onCategoryChange}
+            options={categoryOptions}
+            placeholder="All Categories"
+            className="flex-1 md:flex-none md:w-44"
+          />
         </div>
       </div>
     </div>

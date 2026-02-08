@@ -5,6 +5,7 @@ import EarningsDashboard from './components/EarningsDashboard'
 import ModeToggle from './components/ModeToggle'
 import UserDropdown from './components/UserDropdown'
 import TopFilterBar from './components/TopFilterBar'
+import CustomDropdown from './components/CustomDropdown'
 import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
 import ActivityFeed from './components/ActivityFeed'
@@ -38,6 +39,7 @@ const Icons = {
   task: '📋',
   create: '➕',
   humans: '👥',
+  hired: '🤝',
   messages: '💬',
   wallet: '💳',
   profile: '👤',
@@ -51,6 +53,7 @@ const Icons = {
   search: '🔍',
   filter: '🔽',
   upload: '📤',
+  bell: '🔔',
 }
 
 // === Components ===
@@ -641,6 +644,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   })
   const [activeTab, setActiveTab] = useState(hiringMode ? 'create' : 'tasks')
   const [tasks, setTasks] = useState([])
+  const [availableTasks, setAvailableTasks] = useState([]) // Tasks available for workers to browse
   const [humans, setHumans] = useState([])
   const [loading, setLoading] = useState(true)
   const [postedTasks, setPostedTasks] = useState([])
@@ -681,23 +685,41 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [unreadMessages, setUnreadMessages] = useState(0)
   const unreadNotifications = notifications.filter(n => !n.read_at).length
 
+  // Notification dropdown state
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+
+  // Working mode: My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
-    { id: 'browse', label: 'Browse', icon: Icons.humans },
+    { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
-    { id: 'notifications', label: 'Notifications', icon: '🔔', badge: unreadNotifications },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
   ]
 
+  // Hiring mode: Create Task, My Tasks, Browse Humans, Hired, Messages, Payments
   const hiringNav = [
     { id: 'create', label: 'Create Task', icon: Icons.create },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
-    { id: 'hired', label: 'Hired', icon: Icons.humans },
+    { id: 'browse', label: 'Browse Humans', icon: Icons.humans },
+    { id: 'hired', label: 'Hired', icon: Icons.hired },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
-    { id: 'notifications', label: 'Notifications', icon: '🔔', badge: unreadNotifications },
+    { id: 'payments', label: 'Payments', icon: Icons.wallet },
   ]
 
   const navItems = hiringMode ? hiringNav : humanNav
+
+  // Mark all notifications as read
+  const markAllNotificationsRead = async () => {
+    try {
+      const unreadIds = notifications.filter(n => !n.read_at).map(n => n.id)
+      for (const id of unreadIds) {
+        await markNotificationRead(id)
+      }
+    } catch (e) {
+      console.error('Error marking all notifications read:', e)
+    }
+  }
 
   const toggleHiringMode = () => {
     setHiringMode(!hiringMode)
@@ -707,9 +729,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   useEffect(() => {
     if (hiringMode) {
       fetchPostedTasks()
+      fetchHumans() // For hiring mode to browse workers
     } else {
       fetchTasks()
-      fetchHumans()
+      fetchAvailableTasks() // For working mode to browse available tasks
       fetchWallet()
     }
     fetchConversations()
@@ -769,6 +792,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       console.log('Could not fetch tasks')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Fetch available tasks for workers to browse
+  const fetchAvailableTasks = async () => {
+    try {
+      const res = await fetch(`${API_URL}/tasks/available`)
+      if (res.ok) {
+        const data = await res.json()
+        setAvailableTasks(data || [])
+      }
+    } catch (e) {
+      console.log('Could not fetch available tasks')
     }
   }
 
@@ -1136,63 +1172,172 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           ))}
         </nav>
 
-        {/* User Section with Dropdown */}
-        <div className="dashboard-v4-user">
-          <UserDropdown
-            user={user}
-            onLogout={onLogout}
-            onNavigate={(tab) => {
-              setActiveTab(tab)
-              setSidebarOpen(false)
-            }}
-          />
-        </div>
       </aside>
 
       {/* Main */}
       <main className="dashboard-v4-main">
-        {/* Top Filter Bar */}
+        {/* Top Header Bar */}
         <div className="dashboard-v4-topbar">
-          <button className="dashboard-v4-menu-btn" onClick={() => setSidebarOpen(true)}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 12h18M3 6h18M3 18h18" />
-            </svg>
-          </button>
-          <div className="dashboard-v4-search">
-            <svg className="dashboard-v4-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              className="dashboard-v4-search-input"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          {/* Left: Mobile menu + Logo */}
+          <div className="dashboard-v4-topbar-left">
+            <button className="dashboard-v4-menu-btn" onClick={() => setSidebarOpen(true)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12h18M3 6h18M3 18h18" />
+              </svg>
+            </button>
+            <a href="/dashboard" className="dashboard-v4-topbar-logo">
+              <div className="logo-mark-v4">irl</div>
+              <span className="logo-name-v4">irlwork.ai</span>
+            </a>
           </div>
-          <div className="dashboard-v4-filters">
-            <select
-              className="dashboard-v4-filter-select"
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-            >
-              <option value="">All Locations</option>
-              <option value="san-francisco">San Francisco</option>
-              <option value="new-york">New York</option>
-              <option value="los-angeles">Los Angeles</option>
-            </select>
-            <select
-              className="dashboard-v4-filter-select"
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-            >
-              <option value="">All Categories</option>
-              <option value="delivery">Delivery</option>
-              <option value="photography">Photography</option>
-              <option value="errands">Errands</option>
-              <option value="cleaning">Cleaning</option>
-              <option value="tech">Tech</option>
-            </select>
+
+          {/* Center: Search + Filters */}
+          <div className="dashboard-v4-topbar-center">
+            <div className="dashboard-v4-search">
+              <svg className="dashboard-v4-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                className="dashboard-v4-search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="dashboard-v4-filters">
+              <CustomDropdown
+                value={locationFilter}
+                onChange={setLocationFilter}
+                options={[
+                  { value: '', label: 'All Locations' },
+                  { value: 'san-francisco', label: 'San Francisco' },
+                  { value: 'new-york', label: 'New York' },
+                  { value: 'los-angeles', label: 'Los Angeles' }
+                ]}
+                placeholder="All Locations"
+              />
+              <CustomDropdown
+                value={filterCategory}
+                onChange={setFilterCategory}
+                options={[
+                  { value: '', label: 'All Categories' },
+                  { value: 'delivery', label: 'Delivery' },
+                  { value: 'photography', label: 'Photography' },
+                  { value: 'errands', label: 'Errands' },
+                  { value: 'cleaning', label: 'Cleaning' },
+                  { value: 'tech', label: 'Tech' }
+                ]}
+                placeholder="All Categories"
+              />
+            </div>
+          </div>
+
+          {/* Right: Notifications + User */}
+          <div className="dashboard-v4-topbar-right">
+            {/* Notifications Bell */}
+            <div className="dashboard-v4-notifications-wrapper">
+              <button
+                className="dashboard-v4-notification-bell"
+                onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {unreadNotifications > 0 && (
+                  <span className="dashboard-v4-notification-badge">{unreadNotifications}</span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown */}
+              {notificationDropdownOpen && (
+                <div className="dashboard-v4-notification-dropdown">
+                  <div className="dashboard-v4-notification-dropdown-header">
+                    <span>Notifications</span>
+                    {unreadNotifications > 0 && (
+                      <button onClick={markAllNotificationsRead} className="dashboard-v4-notification-mark-read">
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  <div className="dashboard-v4-notification-dropdown-list">
+                    {notifications.length === 0 ? (
+                      <div className="dashboard-v4-notification-dropdown-empty">
+                        No notifications yet
+                      </div>
+                    ) : (
+                      notifications.slice(0, 5).map(n => (
+                        <div
+                          key={n.id}
+                          className={`dashboard-v4-notification-dropdown-item ${!n.read_at ? 'unread' : ''}`}
+                          onClick={() => {
+                            markNotificationRead(n.id)
+                            setNotificationDropdownOpen(false)
+                          }}
+                        >
+                          <div className="dashboard-v4-notification-dropdown-icon">
+                            {n.type === 'task_assigned' ? '📋' : n.type === 'payment_received' ? '💰' : n.type === 'message' ? '💬' : '🔔'}
+                          </div>
+                          <div className="dashboard-v4-notification-dropdown-content">
+                            <p className="dashboard-v4-notification-dropdown-title">{n.title}</p>
+                            <p className="dashboard-v4-notification-dropdown-time">
+                              {new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          {!n.read_at && <div className="dashboard-v4-notification-dropdown-dot" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="dashboard-v4-notification-dropdown-footer">
+                    <button onClick={() => { setActiveTab('notifications'); setNotificationDropdownOpen(false); }}>
+                      View all notifications
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* User Dropdown */}
+            <div className="dashboard-v4-user-wrapper">
+              <button
+                className="dashboard-v4-user-trigger"
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+              >
+                <div className="dashboard-v4-user-avatar">
+                  {user?.name?.charAt(0) || '?'}
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={userDropdownOpen ? 'rotated' : ''}>
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+
+              {userDropdownOpen && (
+                <div className="dashboard-v4-user-dropdown">
+                  <div className="dashboard-v4-user-dropdown-header">
+                    <div className="dashboard-v4-user-dropdown-avatar">
+                      {user?.name?.charAt(0) || '?'}
+                    </div>
+                    <div className="dashboard-v4-user-dropdown-info">
+                      <p className="dashboard-v4-user-dropdown-name">{user?.name || 'User'}</p>
+                      <p className="dashboard-v4-user-dropdown-email">{user?.email || ''}</p>
+                    </div>
+                  </div>
+                  <div className="dashboard-v4-user-dropdown-divider" />
+                  <button className="dashboard-v4-user-dropdown-item" onClick={() => { setActiveTab('profile'); setUserDropdownOpen(false); }}>
+                    <span>{Icons.profile}</span> Profile
+                  </button>
+                  <button className="dashboard-v4-user-dropdown-item" onClick={() => { setActiveTab('settings'); setUserDropdownOpen(false); }}>
+                    <span>{Icons.settings}</span> Settings
+                  </button>
+                  <div className="dashboard-v4-user-dropdown-divider" />
+                  <button className="dashboard-v4-user-dropdown-item danger" onClick={onLogout}>
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1342,16 +1487,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Category</label>
-                    <select
-                      className="dashboard-v4-form-input dashboard-v4-form-select"
+                    <CustomDropdown
                       value={taskForm.category}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, category: e.target.value }))}
-                    >
-                      <option value="">Select category</option>
-                      {['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => (
-                        <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
+                      options={[
+                        { value: '', label: 'Select category' },
+                        ...['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => ({
+                          value: c,
+                          label: c.charAt(0).toUpperCase() + c.slice(1)
+                        }))
+                      ]}
+                      placeholder="Select category"
+                    />
                   </div>
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Budget (USD)</label>
@@ -1431,11 +1578,31 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               <div className="dashboard-v4-empty">
                 <div className="dashboard-v4-empty-icon">{Icons.task}</div>
                 <p className="dashboard-v4-empty-title">No tasks yet</p>
-                <p className="dashboard-v4-empty-text">Start earning by browsing available tasks</p>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}>
-                  <button className="v4-btn v4-btn-primary" onClick={() => setActiveTab('browse')}>
-                    Browse Tasks
-                  </button>
+                <p className="dashboard-v4-empty-text">Browse available tasks to start earning money</p>
+
+                {/* Suggested Actions */}
+                <div className="dashboard-v4-empty-actions">
+                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('browse')}>
+                    <span className="dashboard-v4-empty-action-icon">{Icons.search}</span>
+                    <div>
+                      <p className="dashboard-v4-empty-action-title">Browse tasks near you</p>
+                      <p className="dashboard-v4-empty-action-text">Find tasks in your area</p>
+                    </div>
+                  </div>
+                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('profile')}>
+                    <span className="dashboard-v4-empty-action-icon">{Icons.profile}</span>
+                    <div>
+                      <p className="dashboard-v4-empty-action-title">Complete your profile</p>
+                      <p className="dashboard-v4-empty-action-text">Add skills and location</p>
+                    </div>
+                  </div>
+                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('payments')}>
+                    <span className="dashboard-v4-empty-action-icon">{Icons.wallet}</span>
+                    <div>
+                      <p className="dashboard-v4-empty-action-title">Set up your wallet</p>
+                      <p className="dashboard-v4-empty-action-text">Get paid in USDC</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1496,8 +1663,109 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Working Mode: Browse Tab */}
+        {/* Working Mode: Browse Tasks Tab - Shows available tasks to claim */}
         {!hiringMode && activeTab === 'browse' && (
+          <div>
+            <h1 className="dashboard-v4-page-title">Browse Tasks</h1>
+
+            {/* Search & Filter */}
+            <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  className="dashboard-v4-form-input"
+                  style={{ paddingLeft: 44 }}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div style={{ width: 160 }}>
+                <CustomDropdown
+                  value={filterCategory}
+                  onChange={setFilterCategory}
+                  options={[
+                    { value: '', label: 'All Categories' },
+                    ...['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => ({
+                      value: c,
+                      label: c.charAt(0).toUpperCase() + c.slice(1)
+                    }))
+                  ]}
+                  placeholder="All Categories"
+                />
+              </div>
+              <div style={{ width: 160 }}>
+                <CustomDropdown
+                  value={locationFilter}
+                  onChange={setLocationFilter}
+                  options={[
+                    { value: '', label: 'All Locations' },
+                    { value: 'san-francisco', label: 'San Francisco' },
+                    { value: 'new-york', label: 'New York' },
+                    { value: 'los-angeles', label: 'Los Angeles' }
+                  ]}
+                  placeholder="All Locations"
+                />
+              </div>
+            </div>
+
+            {availableTasks.length === 0 ? (
+              <div className="dashboard-v4-empty">
+                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
+                <p className="dashboard-v4-empty-title">No tasks available right now</p>
+                <p className="dashboard-v4-empty-text">New tasks are posted every day. Check back soon or adjust your filters!</p>
+                <button className="v4-btn v4-btn-primary" style={{ marginTop: 16 }} onClick={fetchAvailableTasks}>
+                  Refresh Tasks
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+                {availableTasks
+                  .filter(t => !searchQuery || t.title?.toLowerCase().includes(searchQuery.toLowerCase()) || t.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .filter(t => !filterCategory || t.category === filterCategory)
+                  .filter(t => !locationFilter || t.city?.toLowerCase().includes(locationFilter.replace('-', ' ')))
+                  .map(task => (
+                  <div key={task.id} className="dashboard-v4-task-card">
+                    <div className="dashboard-v4-task-header">
+                      <div>
+                        <span className="dashboard-v4-task-status open">Open</span>
+                        <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
+                      </div>
+                      <span className="dashboard-v4-task-budget">${task.budget || (task.budget_cents ? task.budget_cents / 100 : 0)}</span>
+                    </div>
+
+                    {task.description && (
+                      <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {task.description}
+                      </p>
+                    )}
+
+                    <div className="dashboard-v4-task-meta">
+                      <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
+                      <span className="dashboard-v4-task-meta-item">📍 {task.city || task.location || 'Remote'}</span>
+                      {task.escrow_status === 'funded' && (
+                        <span className="dashboard-v4-task-meta-item" style={{ color: 'var(--success)' }}>✓ Escrow Funded</span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                        Posted {new Date(task.created_at).toLocaleDateString()}
+                      </span>
+                      <button className="v4-btn v4-btn-primary" onClick={() => acceptTask(task.id)}>
+                        Apply Now
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Hiring Mode: Browse Humans Tab - Shows available workers */}
+        {hiringMode && activeTab === 'browse' && (
           <div>
             <h1 className="dashboard-v4-page-title">Browse Workers</h1>
 
@@ -1514,24 +1782,27 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <select
-                className="dashboard-v4-form-input dashboard-v4-form-select"
-                style={{ width: 180 }}
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-              >
-                <option value="">All Categories</option>
-                {['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general'].map(c => (
-                  <option key={c} value={c}>{c.replace('_', ' ')}</option>
-                ))}
-              </select>
+              <div style={{ width: 180 }}>
+                <CustomDropdown
+                  value={filterCategory}
+                  onChange={setFilterCategory}
+                  options={[
+                    { value: '', label: 'All Skills' },
+                    ...['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general'].map(c => ({
+                      value: c,
+                      label: c.replace('_', ' ')
+                    }))
+                  ]}
+                  placeholder="All Skills"
+                />
+              </div>
             </div>
 
             {humans.length === 0 ? (
               <div className="dashboard-v4-empty">
                 <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-                <p className="dashboard-v4-empty-title">No workers available</p>
-                <p className="dashboard-v4-empty-text">Check back later for available humans</p>
+                <p className="dashboard-v4-empty-title">No workers found</p>
+                <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
@@ -1569,10 +1840,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
                           <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{human.jobs_completed || 0} jobs completed</span>
-                          <button className="v4-btn v4-btn-secondary" onClick={() => {
-                            setHiringMode(true)
-                            setActiveTab('create')
-                          }}>Hire</button>
+                          <button className="v4-btn v4-btn-primary" onClick={() => setActiveTab('create')}>
+                            Create Task
+                          </button>
                         </div>
                       </div>
                     </div>
