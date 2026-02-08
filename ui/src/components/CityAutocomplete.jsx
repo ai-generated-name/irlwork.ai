@@ -211,7 +211,7 @@ const CityAutocomplete = ({
   }, [value]);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`city-autocomplete-v4 ${className}`}>
       <input
         ref={inputRef}
         type="text"
@@ -223,31 +223,27 @@ const CityAutocomplete = ({
           if (query.length >= 2 && results.length > 0) setShowDropdown(true);
         }}
         placeholder={placeholder}
-        className="w-full px-4 py-3 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] focus:ring-2 focus:ring-[rgba(15,76,92,0.1)] transition-colors"
+        className="city-autocomplete-v4-input"
         autoComplete="off"
       />
 
       {showDropdown && results.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-2 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl shadow-xl max-h-80 overflow-y-auto"
+          className="city-autocomplete-v4-dropdown"
         >
           {results.map((city, index) => (
             <button
               key={`${city.name}-${city.countryCode}-${index}`}
               onClick={() => handleSelect(city)}
-              className={`w-full px-4 py-3 text-left hover:bg-[#F5F2ED] transition-colors ${
-                index === selectedIndex ? 'bg-[#F5F2ED]' : ''
-              }`}
+              className={`city-autocomplete-v4-item ${index === selectedIndex ? 'selected' : ''}`}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[#1A1A1A] font-medium">{city.name}</div>
-                  <div className="text-[#525252] text-sm">{city.country}</div>
-                </div>
-                <div className="text-xs text-[#8A8A8A]">
-                  {city.lat.toFixed(2)}, {city.lng.toFixed(2)}
-                </div>
+              <div>
+                <div className="city-autocomplete-v4-item-name">{city.name}</div>
+                <div className="city-autocomplete-v4-item-country">{city.country}</div>
+              </div>
+              <div className="city-autocomplete-v4-item-coords">
+                {city.lat.toFixed(2)}, {city.lng.toFixed(2)}
               </div>
             </button>
           ))}
@@ -255,11 +251,9 @@ const CityAutocomplete = ({
       )}
 
       {isLoading && query.length >= 2 && (
-        <div
-          className="absolute z-50 w-full mt-2 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl shadow-xl p-4"
-        >
-          <div className="text-[#8A8A8A] text-sm flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-[#0F4C5C] border-t-transparent rounded-full animate-spin"></div>
+        <div className="city-autocomplete-v4-dropdown">
+          <div className="city-autocomplete-v4-loading">
+            <div className="w-4 h-4 border-2 border-[var(--orange-500)] border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
             Loading cities...
           </div>
         </div>
@@ -268,9 +262,9 @@ const CityAutocomplete = ({
       {!isLoading && query.length >= 2 && results.length === 0 && showDropdown && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-2 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl shadow-xl p-4"
+          className="city-autocomplete-v4-dropdown"
         >
-          <div className="text-[#8A8A8A] text-sm">
+          <div className="city-autocomplete-v4-empty">
             No cities found for "{query}"
           </div>
         </div>

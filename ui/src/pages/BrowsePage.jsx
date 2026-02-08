@@ -290,7 +290,7 @@ export default function BrowsePage({ user }) {
         {/* Filters */}
         <div style={{
           display: 'flex',
-          gap: 16,
+          gap: 12,
           marginBottom: 32,
           flexWrap: 'wrap',
           justifyContent: 'center'
@@ -298,16 +298,8 @@ export default function BrowsePage({ user }) {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            style={{
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid rgba(26,26,26,0.1)',
-              background: 'white',
-              fontSize: 14,
-              color: 'var(--text-primary)',
-              minWidth: 160,
-              cursor: 'pointer'
-            }}
+            className="select-v4"
+            style={{ minWidth: 160 }}
           >
             {categories.map(cat => (
               <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -319,30 +311,15 @@ export default function BrowsePage({ user }) {
             placeholder="City or location..."
             value={cityFilter}
             onChange={(e) => setCityFilter(e.target.value)}
-            style={{
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid rgba(26,26,26,0.1)',
-              background: 'white',
-              fontSize: 14,
-              color: 'var(--text-primary)',
-              minWidth: 200
-            }}
+            className="city-autocomplete-v4-input"
+            style={{ minWidth: 180 }}
           />
 
           <select
             value={sortBy}
             onChange={(e) => { setSortBy(e.target.value); fetchData() }}
-            style={{
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid rgba(26,26,26,0.1)',
-              background: 'white',
-              fontSize: 14,
-              color: 'var(--text-primary)',
-              minWidth: 140,
-              cursor: 'pointer'
-            }}
+            className="select-v4"
+            style={{ minWidth: 150 }}
           >
             {viewMode === 'tasks' ? (
               <>
