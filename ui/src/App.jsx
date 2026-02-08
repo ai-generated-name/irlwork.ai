@@ -3504,7 +3504,7 @@ function App() {
       
       if (res.ok) {
         const data = await res.json()
-        console.log('[Auth] User found in DB:', data.user?.email)
+        console.log('[Auth] User found in DB:', data.user?.email, 'needs_onboarding:', data.user?.needs_onboarding)
 
         // Check if backend user has complete profile, otherwise merge with cached data
         const cachedUser = localStorage.getItem('user')
@@ -3512,17 +3512,30 @@ function App() {
 
         // If backend doesn't have city/skills but cached user does, preserve them
         if (cachedUser) {
-          const parsed = JSON.parse(cachedUser)
-          if (parsed.id === supabaseUser.id) {
-            if (!finalUser.city && parsed.city) finalUser.city = parsed.city
-            if ((!finalUser.skills || !finalUser.skills.length) && parsed.skills?.length) {
-              finalUser.skills = parsed.skills
+          try {
+            const parsed = JSON.parse(cachedUser)
+            if (parsed.id === supabaseUser.id) {
+              console.log('[Auth] Cache found, needs_onboarding:', parsed.needs_onboarding)
+              if (!finalUser.city && parsed.city) finalUser.city = parsed.city
+              if ((!finalUser.skills || !finalUser.skills.length) && parsed.skills?.length) {
+                finalUser.skills = parsed.skills
+              }
+              // IMPORTANT: Always trust cache's needs_onboarding=false over backend
+              // This handles the case where backend update failed but onboarding completed
+              if (parsed.needs_onboarding === false) {
+                console.log('[Auth] Overriding needs_onboarding to false from cache')
+                finalUser.needs_onboarding = false
+              }
             }
-            // Preserve needs_onboarding=false if it was set in cache
-            if (parsed.needs_onboarding === false) {
-              finalUser.needs_onboarding = false
-            }
+          } catch (e) {
+            console.error('[Auth] Failed to parse cached user:', e)
           }
+        }
+
+        // If user has city, they've completed onboarding - force needs_onboarding to false
+        if (finalUser.city && finalUser.needs_onboarding !== false) {
+          console.log('[Auth] User has city, forcing needs_onboarding to false')
+          finalUser.needs_onboarding = false
         }
 
         // Save to localStorage for persistence
