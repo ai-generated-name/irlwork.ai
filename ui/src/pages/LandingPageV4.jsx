@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import '../landing-v4.css'
 
 export default function LandingPageV4() {
   const navigate = (path) => { window.location.href = path }
