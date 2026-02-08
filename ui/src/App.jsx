@@ -8,6 +8,7 @@ import TopFilterBar from './components/TopFilterBar'
 import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
 import ActivityFeed from './components/ActivityFeed'
+import BrowsePage from './pages/BrowsePage'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
@@ -970,6 +971,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
   const [activities, setActivities] = useState([])
+  const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
+  const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
+  const [assigningWorker, setAssigningWorker] = useState(null) // loading state
 
   useEffect(() => {
     localStorage.setItem('irlwork_hiringMode', hiringMode)
@@ -1053,6 +1057,47 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       console.log('Could not fetch posted tasks')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchApplicationsForTask = async (taskId) => {
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}/applications`, {
+        headers: { Authorization: user.id }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setTaskApplications(prev => ({ ...prev, [taskId]: data }))
+      }
+    } catch (e) {
+      console.log('Could not fetch applications')
+    }
+  }
+
+  const handleAssignWorker = async (taskId, humanId) => {
+    setAssigningWorker(humanId)
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
+        body: JSON.stringify({ human_id: humanId })
+      })
+      if (res.ok) {
+        // Refresh tasks and applications
+        fetchPostedTasks()
+        setExpandedTask(null)
+        setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
+      } else {
+        const err = await res.json()
+        alert('Error: ' + (err.error || 'Failed to assign worker'))
+      }
+    } catch (e) {
+      alert('Network error. Please try again.')
+    } finally {
+      setAssigningWorker(null)
     }
   }
 
@@ -1332,6 +1377,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 {postedTasks.map(task => {
                   const statusBadge = getTaskStatus(task.status)
                   const needsAction = task.status === 'pending_review'
+                  const isOpen = task.status === 'open'
+                  const isExpanded = expandedTask === task.id
+                  const applications = taskApplications[task.id] || []
+
                   return (
                     <div key={task.id} className={`${styles.card}`}>
                       <div className="flex justify-between items-start">
@@ -1347,6 +1396,60 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         </div>
                         <p className="text-teal font-bold">${task.budget || 0}</p>
                       </div>
+
+                      {/* View Applicants Button for open tasks */}
+                      {isOpen && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <button
+                            onClick={() => {
+                              if (isExpanded) {
+                                setExpandedTask(null)
+                              } else {
+                                setExpandedTask(task.id)
+                                fetchApplicationsForTask(task.id)
+                              }
+                            }}
+                            className="text-teal font-medium text-sm hover:underline"
+                          >
+                            {isExpanded ? '▼ Hide Applicants' : '▶ View Applicants'}
+                          </button>
+
+                          {/* Applicants List */}
+                          {isExpanded && (
+                            <div className="mt-4 space-y-3">
+                              {applications.length === 0 ? (
+                                <p className="text-gray-500 text-sm py-4 text-center">No applicants yet</p>
+                              ) : (
+                                applications.map(app => (
+                                  <div key={app.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 rounded-full bg-teal flex items-center justify-center text-white font-semibold">
+                                        {app.applicant?.name?.[0]?.toUpperCase() || '?'}
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-gray-900">{app.applicant?.name || 'Anonymous'}</p>
+                                        <p className="text-sm text-gray-500">
+                                          ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                        </p>
+                                        {app.cover_letter && (
+                                          <p className="text-sm text-gray-600 mt-1 italic">"{app.cover_letter}"</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      onClick={() => handleAssignWorker(task.id, app.human_id)}
+                                      disabled={assigningWorker === app.human_id}
+                                    >
+                                      {assigningWorker === app.human_id ? 'Assigning...' : 'Accept'}
+                                    </Button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {needsAction && (
                         <div className="flex gap-3 mt-4">
                           <Button onClick={() => setShowProofReview(task.id)}>
@@ -2336,9 +2439,29 @@ function App() {
       if (res.ok) {
         const data = await res.json()
         console.log('[Auth] User found in DB:', data.user?.email)
+
+        // Check if backend user has complete profile, otherwise merge with cached data
+        const cachedUser = localStorage.getItem('user')
+        let finalUser = { ...data.user, supabase_user: true }
+
+        // If backend doesn't have city/skills but cached user does, preserve them
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser)
+          if (parsed.id === supabaseUser.id) {
+            if (!finalUser.city && parsed.city) finalUser.city = parsed.city
+            if ((!finalUser.skills || !finalUser.skills.length) && parsed.skills?.length) {
+              finalUser.skills = parsed.skills
+            }
+            // Preserve needs_onboarding=false if it was set in cache
+            if (parsed.needs_onboarding === false) {
+              finalUser.needs_onboarding = false
+            }
+          }
+        }
+
         // Save to localStorage for persistence
-        localStorage.setItem('user', JSON.stringify({ ...data.user, supabase_user: true }))
-        setUser({ ...data.user, supabase_user: true })
+        localStorage.setItem('user', JSON.stringify(finalUser))
+        setUser(finalUser)
       } else if (res.status === 404) {
         // Check localStorage first
         const cachedUser = localStorage.getItem('user')
@@ -2506,21 +2629,23 @@ function App() {
       window.location.href = '/auth'
       return <Loading />
     }
-    
-    // Check if user needs onboarding
-    const needsOnboarding = user.needs_onboarding || !user.city || !user.skills?.length
-    console.log('[Auth] Needs onboarding:', needsOnboarding)
-    
+
+    // Check if user needs onboarding - only trust the explicit flag
+    // Don't re-trigger onboarding based on missing city/skills if user already completed it
+    const needsOnboarding = user.needs_onboarding === true
+    console.log('[Auth] Needs onboarding:', needsOnboarding, 'user.needs_onboarding:', user.needs_onboarding)
+
     if (needsOnboarding) {
       return <Onboarding onComplete={handleOnboardingComplete} />
     }
-    
+
     return <Dashboard user={user} onLogout={logout} />
   }
   
   if (path === '/auth') return <AuthPage />
   if (path === '/mcp') return <MCPPage />
-  
+  if (path === '/browse') return <BrowsePage user={user} />
+
   return <LandingPage onNavigate={(p) => { window.location.href = p }} />}
 
 export default function AppWrapper() {
