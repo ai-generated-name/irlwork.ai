@@ -665,6 +665,7 @@ function ApiKeysTab({ user }) {
   const [copied, setCopied] = useState(false)
   const [confirmRevoke, setConfirmRevoke] = useState(null)
   const [error, setError] = useState(null)
+  const [showRevoked, setShowRevoked] = useState(false)
 
   const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -953,6 +954,29 @@ function ApiKeysTab({ user }) {
         </div>
       )}
 
+      {/* Filter Toggle */}
+      {keys.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+            {keys.filter(k => k.is_active).length} active key{keys.filter(k => k.is_active).length !== 1 ? 's' : ''}
+            {keys.filter(k => !k.is_active).length > 0 && (
+              <span> · {keys.filter(k => !k.is_active).length} revoked</span>
+            )}
+          </div>
+          {keys.some(k => !k.is_active) && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+              <input
+                type="checkbox"
+                checked={showRevoked}
+                onChange={(e) => setShowRevoked(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#FF6B35' }}
+              />
+              Show revoked keys
+            </label>
+          )}
+        </div>
+      )}
+
       {/* Keys List */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
@@ -980,7 +1004,7 @@ function ApiKeysTab({ user }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {keys.map(key => (
+          {keys.filter(key => showRevoked || key.is_active).map(key => (
             <div
               key={key.id}
               style={{
