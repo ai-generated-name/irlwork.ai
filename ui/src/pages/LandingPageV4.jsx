@@ -41,7 +41,7 @@ export default function LandingPageV4() {
         <div className="nav-links-v4">
           <a href="/mcp" className="nav-link-v4">For Agents</a>
           <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
-          <a href="/browse-humans" className="nav-link-v4">Browse Humans</a>
+          <a href="/browse" className="nav-link-v4">Browse Humans</a>
           <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>Join Now</button>
         </div>
       </nav>

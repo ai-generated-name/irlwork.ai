@@ -1353,26 +1353,70 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           <div>
             <h1 className="text-3xl font-bold text-[#1A1A1A] mb-8">Create Task</h1>
             <div className={`${styles.card} max-w-2xl`}>
-              <form className="space-y-4">
-                <input type="text" placeholder="Task title" className={styles.input} />
-                <textarea placeholder="Description" rows={4} className={styles.input} />
+              <form className="space-y-4" onSubmit={handleCreateTask}>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Task title"
+                    className={styles.input}
+                    value={taskForm.title}
+                    onChange={(e) => setTaskForm({...taskForm, title: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <textarea
+                    placeholder="Description (optional)"
+                    rows={4}
+                    className={styles.input}
+                    value={taskForm.description}
+                    onChange={(e) => setTaskForm({...taskForm, description: e.target.value})}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <select className={styles.input}>
-                    <option value="">Category</option>
-                    {['delivery', 'pickup', 'errands', 'cleaning', 'moving', 'general'].map(c => (
-                      <option key={c} value={c}>{c.replace('_', ' ')}</option>
+                  <select
+                    className={styles.input}
+                    value={taskForm.category}
+                    onChange={(e) => setTaskForm({...taskForm, category: e.target.value})}
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    {TASK_CATEGORIES.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
                   </select>
-                  <input type="number" placeholder="Budget ($)" className={styles.input} />
+                  <input
+                    type="number"
+                    placeholder={`Budget (min $${MIN_BUDGET})`}
+                    className={styles.input}
+                    value={taskForm.budget}
+                    onChange={(e) => setTaskForm({...taskForm, budget: e.target.value})}
+                    min={MIN_BUDGET}
+                    required
+                  />
                 </div>
                 <CityAutocomplete
                   placeholder="Search for task location..."
+                  value={taskForm.city}
                   onChange={(cityData) => {
-                    // Store city data when form state is added
-                    console.log('Task location:', cityData);
+                    setTaskForm({
+                      ...taskForm,
+                      city: cityData?.name || '',
+                      latitude: cityData?.latitude || null,
+                      longitude: cityData?.longitude || null
+                    })
                   }}
                 />
-                <Button className="w-full">Create Task</Button>
+                {createTaskError && (
+                  <p className="text-red-500 text-sm">{createTaskError}</p>
+                )}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createTaskLoading}
+                >
+                  {createTaskLoading ? 'Creating...' : 'Create Task'}
+                </Button>
               </form>
             </div>
           </div>

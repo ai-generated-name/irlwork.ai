@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+import API_URL from '../config/api'
 
 function EarningsDashboard({ user }) {
   const [balanceData, setBalanceData] = useState(null)
@@ -106,18 +105,18 @@ function EarningsDashboard({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-gray-400">Loading balance...</div>
+        <div className="text-[#525252]">Loading balance...</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-        <p className="text-red-400">Error: {error}</p>
+      <div className="bg-[#FEE2E2] border border-[#DC2626]/20 rounded-xl p-4">
+        <p className="text-[#DC2626]">Error: {error}</p>
         <button
           onClick={fetchBalance}
-          className="mt-2 text-sm text-red-300 hover:text-red-200 underline"
+          className="mt-2 text-sm text-[#DC2626] hover:text-[#B91C1C] underline"
         >
           Retry
         </button>

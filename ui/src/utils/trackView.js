@@ -1,3 +1,5 @@
+import API_URL from '../config/api';
+
 const AI_REFERRERS = [
   { pattern: /chat\.openai\.com|chatgpt\.com/i, source: 'chatgpt' },
   { pattern: /perplexity\.ai/i, source: 'perplexity' },
@@ -12,7 +14,7 @@ export function trackView(pageType, targetId) {
   const referrer = document.referrer;
   const aiMatch = AI_REFERRERS.find(r => r.pattern.test(referrer));
 
-  fetch('/api/views', {
+  fetch(`${API_URL}/views`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
