@@ -266,15 +266,18 @@ app.post('/api/auth/register/human', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
-    const { email, password, name, city, state, hourly_rate, categories = [], bio = '', phone = '', latitude, longitude, travel_radius } = req.body;
+    const { id: providedId, email, password, name, city, state, hourly_rate, categories = [], skills = [], bio = '', phone = '', latitude, longitude, travel_radius } = req.body;
 
     if (!email || !name || !city) {
       return res.status(400).json({ error: 'Name, email, and city are required' });
     }
 
-    const id = uuidv4();
+    // Use provided ID (from Supabase auth) or generate new one
+    const id = providedId || uuidv4();
+    // Accept both 'skills' and 'categories' for backwards compatibility
+    const userSkills = skills.length > 0 ? skills : categories;
     const password_hash = password ? crypto.createHash('sha256').update(password).digest('hex') : null;
-    const profile_completeness = 0.2 + (hourly_rate ? 0.1 : 0) + (categories.length > 0 ? 0.2 : 0) + (bio ? 0.1 : 0) + (phone ? 0.1 : 0);
+    const profile_completeness = 0.2 + (hourly_rate ? 0.1 : 0) + (userSkills.length > 0 ? 0.2 : 0) + (bio ? 0.1 : 0) + (phone ? 0.1 : 0);
 
     const { data: user, error } = await supabase
       .from('users')
@@ -293,27 +296,71 @@ app.post('/api/auth/register/human', async (req, res) => {
         longitude: longitude != null ? parseFloat(longitude) : null,
         travel_radius: travel_radius || 25,
         service_radius: travel_radius || 25,
-        skills: JSON.stringify(categories),
+        skills: JSON.stringify(userSkills),
         profile_completeness,
         availability: 'available',
         rating: 0,
         jobs_completed: 0,
         verified: false,
+        needs_onboarding: false,
         created_at: new Date().toISOString()
       })
       .select()
       .single();
     
     if (error) {
-      if (error.message.includes('duplicate key')) {
-        return res.status(400).json({ error: 'Email already exists' });
+      if (error.message.includes('duplicate key') || error.code === '23505') {
+        // User already exists - update their profile instead
+        const { data: existingUser, error: updateError } = await supabase
+          .from('users')
+          .update({
+            name,
+            city,
+            state,
+            hourly_rate: hourly_rate || 25,
+            skills: JSON.stringify(userSkills),
+            needs_onboarding: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (updateError) {
+          // Try by email if id doesn't match
+          const { data: byEmail, error: emailError } = await supabase
+            .from('users')
+            .update({
+              name,
+              city,
+              state,
+              hourly_rate: hourly_rate || 25,
+              skills: JSON.stringify(userSkills),
+              needs_onboarding: false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('email', email)
+            .select()
+            .single();
+
+          if (emailError) throw emailError;
+          return res.json({
+            user: { ...byEmail, skills: userSkills, needs_onboarding: false },
+            token: crypto.randomBytes(32).toString('hex')
+          });
+        }
+
+        return res.json({
+          user: { ...existingUser, skills: userSkills, needs_onboarding: false },
+          token: crypto.randomBytes(32).toString('hex')
+        });
       }
       throw error;
     }
     
-    // Insert categories
-    if (categories.length > 0) {
-      const categoryRows = categories.map(cat => ({
+    // Insert categories/skills
+    if (userSkills.length > 0) {
+      const categoryRows = userSkills.map(cat => ({
         id: uuidv4(),
         human_id: id,
         category_id: cat,
@@ -321,9 +368,9 @@ app.post('/api/auth/register/human', async (req, res) => {
       }));
       await supabase.from('user_categories').insert(categoryRows);
     }
-    
-    res.json({ 
-      user: { id, email, name, type: 'human', city, hourly_rate: hourly_rate || 25, categories }, 
+
+    res.json({
+      user: { id, email, name, type: 'human', city, hourly_rate: hourly_rate || 25, skills: userSkills, needs_onboarding: false },
       token: crypto.randomBytes(32).toString('hex')
     });
   } catch (e) {
@@ -943,7 +990,7 @@ app.get('/api/humans/:id', async (req, res) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, wallet_address')
+    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, wallet_address, needs_onboarding')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
@@ -961,7 +1008,7 @@ app.put('/api/humans/profile', async (req, res) => {
 
   const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius } = req.body;
 
-  const updates = { updated_at: new Date().toISOString() };
+  const updates = { updated_at: new Date().toISOString(), needs_onboarding: false };
 
   if (name) updates.name = name;
   if (wallet_address) updates.wallet_address = wallet_address;
