@@ -518,11 +518,13 @@ app.put('/api/humans/profile', async (req, res) => {
   if (hourly_rate) updates.hourly_rate = hourly_rate;
   if (bio !== undefined) updates.bio = bio;
   // Accept both 'skills' and 'categories' for backwards compatibility
-  if (skills) updates.skills = Array.isArray(skills) ? skills : JSON.parse(skills);
-  if (categories) updates.skills = Array.isArray(categories) ? categories : JSON.parse(categories);
+  // Store as JSON string to match registration format
+  if (skills) updates.skills = JSON.stringify(Array.isArray(skills) ? skills : JSON.parse(skills));
+  if (categories) updates.skills = JSON.stringify(Array.isArray(categories) ? categories : JSON.parse(categories));
   if (city) updates.city = city;
-  if (latitude !== undefined) updates.latitude = latitude;
-  if (longitude !== undefined) updates.longitude = longitude;
+  // Parse as floats to match registration format
+  if (latitude !== undefined) updates.latitude = latitude != null ? parseFloat(latitude) : null;
+  if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
   if (travel_radius) updates.travel_radius = travel_radius;
 
   const { data, error } = await supabase
