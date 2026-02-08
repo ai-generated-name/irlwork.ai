@@ -2,6 +2,12 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import EarningsDashboard from './components/EarningsDashboard'
+import ModeToggle from './components/ModeToggle'
+import UserDropdown from './components/UserDropdown'
+import TopFilterBar from './components/TopFilterBar'
+import QuickStats from './components/QuickStats'
+import EmptyState from './components/EmptyState'
+import ActivityFeed from './components/ActivityFeed'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
@@ -12,13 +18,17 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 // === Styles ===
 const styles = {
   btn: `px-5 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer border-0`,
-  btnPrimary: `bg-orange-500 text-white hover:bg-orange-600`,
-  btnSecondary: `bg-white/10 text-white hover:bg-white/20`,
+  btnPrimary: `bg-coral text-white hover:bg-coral-dark shadow-v4-md hover:shadow-v4-lg`,
+  btnSecondary: `bg-teal/10 text-teal hover:bg-teal/20`,
   btnSmall: `px-3 py-1.5 text-sm rounded-lg`,
-  input: `w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none transition-colors`,
-  card: `bg-white/5 border border-white/10 rounded-2xl p-6`,
+  input: `w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none transition-all`,
+  card: `bg-white border border-gray-100 rounded-2xl p-6 shadow-v4-sm hover:shadow-v4-md transition-shadow`,
   container: `max-w-6xl mx-auto px-6`,
-  gradient: `bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800`,
+  gradient: `bg-cream`,
+  // Dashboard-specific styles
+  sidebar: `bg-teal`,
+  sidebarNav: `text-white/70 hover:bg-teal-dark hover:text-white`,
+  sidebarNavActive: `bg-white text-teal font-medium`,
 }
 
 // === Icons ===
@@ -956,29 +966,33 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [newMessage, setNewMessage] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [locationFilter, setLocationFilter] = useState('')
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
+  const [activities, setActivities] = useState([])
 
   useEffect(() => {
     localStorage.setItem('irlwork_hiringMode', hiringMode)
   }, [hiringMode])
 
+  // Unread counts for badges
+  const [unreadMessages, setUnreadMessages] = useState(0)
+  const unreadNotifications = notifications.filter(n => !n.read_at).length
+
   const humanNav = [
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Browse', icon: Icons.humans },
-    { id: 'messages', label: 'Messages', icon: Icons.messages },
+    { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
+    { id: 'notifications', label: 'Notifications', icon: '🔔', badge: unreadNotifications },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
-    { id: 'profile', label: 'Profile', icon: Icons.profile },
   ]
 
   const hiringNav = [
     { id: 'create', label: 'Create Task', icon: Icons.create },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
     { id: 'hired', label: 'Hired', icon: Icons.humans },
-    { id: 'messages', label: 'Messages', icon: Icons.messages },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
-    { id: 'profile', label: 'Profile', icon: Icons.profile },
+    { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
+    { id: 'notifications', label: 'Notifications', icon: '🔔', badge: unreadNotifications },
   ]
 
   const navItems = hiringMode ? hiringNav : humanNav
@@ -991,14 +1005,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   useEffect(() => {
     if (hiringMode) {
       fetchPostedTasks()
-      fetchNotifications()
     } else {
       fetchTasks()
       fetchHumans()
       fetchWallet()
-      fetchNotifications()
     }
     fetchConversations()
+    fetchNotifications()
+    fetchUnreadMessages()
+    fetchActivities()
   }, [hiringMode])
 
   const fetchTasks = async () => {
@@ -1080,6 +1095,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setConversations(data || [])
       }
     } catch (e) {}
+  }
+
+  const fetchUnreadMessages = async () => {
+    try {
+      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.id } })
+      if (res.ok) {
+        const data = await res.json()
+        setUnreadMessages(data.count || 0)
+      }
+    } catch (e) {}
+  }
+
+  const fetchActivities = async () => {
+    try {
+      const res = await fetch(`${API_URL}/activity/feed`, { headers: { Authorization: user.id } })
+      if (res.ok) {
+        const data = await res.json()
+        setActivities(data || [])
+      }
+    } catch (e) {
+      console.log('Could not fetch activity feed')
+    }
   }
 
   const fetchMessages = async (conversationId) => {
@@ -1184,14 +1221,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   const getTaskStatus = (status) => {
     const colors = {
-      open: 'bg-blue-500/20 text-blue-400',
-      accepted: 'bg-purple-500/20 text-purple-400',
-      in_progress: 'bg-yellow-500/20 text-yellow-400',
-      pending_review: 'bg-orange-500/20 text-orange-400',
-      completed: 'bg-green-500/20 text-green-400',
-      paid: 'bg-gray-500/20 text-gray-400',
+      open: 'bg-teal/10 text-teal',
+      accepted: 'bg-purple-100 text-purple-600',
+      in_progress: 'bg-amber-100 text-amber-600',
+      pending_review: 'bg-coral/10 text-coral',
+      completed: 'bg-green-100 text-green-600',
+      paid: 'bg-gray-100 text-gray-500',
     }
-    return colors[status] || 'bg-gray-500/20 text-gray-400'
+    return colors[status] || 'bg-gray-100 text-gray-500'
   }
 
   const getStatusLabel = (status) => {
@@ -1209,105 +1246,85 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   return (
     <div className={`min-h-screen ${styles.gradient} flex`}>
       {/* Sidebar */}
-      <aside className="w-64 bg-white/5 border-r border-white/5 p-6 flex flex-col">
-        <div 
-          className="flex items-center gap-3 mb-8 cursor-pointer"
+      <aside className="w-64 bg-teal flex flex-col">
+        {/* Logo */}
+        <div
+          className="flex items-center gap-3 p-6 cursor-pointer"
           onClick={() => window.location.href = '/'}
         >
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-coral rounded-xl flex items-center justify-center shadow-v4-md">
             <span className="text-white text-xl">👤</span>
           </div>
           <span className="text-xl font-bold text-white">irlwork.ai</span>
         </div>
 
-        <nav className="flex-1 space-y-1">
+        {/* Mode Toggle */}
+        <div className="px-4">
+          <ModeToggle hiringMode={hiringMode} onToggle={toggleHiringMode} />
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-4 space-y-1">
           {navItems.map(item => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                activeTab === item.id 
-                  ? 'bg-orange-500 text-white' 
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
+                activeTab === item.id
+                  ? 'bg-white text-teal font-medium shadow-v4-sm'
+                  : 'text-white/70 hover:bg-teal-dark hover:text-white'
               }`}
             >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
+              <div className="flex items-center gap-3">
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+              {item.badge > 0 && (
+                <span className="bg-coral text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                  {item.badge}
+                </span>
+              )}
             </button>
           ))}
         </nav>
 
-        <div className="border-t border-white/5 pt-6 mt-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold">
-              {user?.name?.charAt(0) || '?'}
-            </div>
-            <div>
-              <p className="text-white font-medium text-sm">{user?.name || 'User'}</p>
-              <p className="text-gray-500 text-xs">{hiringMode ? 'Hiring Mode' : 'Working Mode'}</p>
-            </div>
-          </div>
-          
-          {/* Notifications Bell */}
-          <div className="relative mb-4">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all"
-            >
-              <span className="relative">
-                <span>🔔</span>
-                {notifications.filter(n => !n.read_at).length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
-                    {notifications.filter(n => !n.read_at).length}
-                  </span>
-                )}
-              </span>
-              <span>Notifications</span>
-            </button>
-            
-            {showNotifications && (
-              <div className="absolute bottom-full left-0 w-full mb-2 bg-gray-800 border border-white/10 rounded-xl max-h-80 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="p-4 text-gray-400 text-sm text-center">No notifications</div>
-                ) : (
-                  notifications.slice(0, 10).map(n => (
-                    <div
-                      key={n.id}
-                      className={`p-3 border-b border-white/10 cursor-pointer hover:bg-white/5 ${!n.read_at ? 'bg-orange-500/10' : ''}`}
-                      onClick={() => markNotificationRead(n.id)}
-                    >
-                      <p className="text-white text-sm font-medium">{n.title}</p>
-                      <p className="text-gray-400 text-xs">{n.message}</p>
-                      <p className="text-gray-500 text-xs mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-          
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all"
-          >
-            <span>🚪</span>
-            <span>Sign Out</span>
-          </button>
+        {/* User Section with Dropdown */}
+        <div className="p-4 border-t border-teal-dark/50">
+          <UserDropdown
+            user={user}
+            onLogout={onLogout}
+            onNavigate={(tab) => setActiveTab(tab)}
+          />
         </div>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 p-8 overflow-auto">
+      <main className="flex-1 flex flex-col overflow-hidden bg-cream">
+        {/* Top Filter Bar */}
+        <TopFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          locationFilter={locationFilter}
+          onLocationChange={setLocationFilter}
+          categoryFilter={filterCategory}
+          onCategoryChange={setFilterCategory}
+        />
+
+        {/* Content Area */}
+        <div className="flex-1 p-8 overflow-auto">
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">My Tasks</h1>
-            
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">My Tasks</h1>
+
             {loading ? (
-              <p className="text-gray-400">Loading...</p>
+              <p className="text-gray-500">Loading...</p>
             ) : postedTasks.length === 0 ? (
               <div className={`${styles.card} text-center py-12`}>
-                <p className="text-gray-400 mb-4">No tasks posted yet</p>
+                <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
+                  <span className="text-3xl">{Icons.task}</span>
+                </div>
+                <p className="text-gray-600 font-medium mb-2">No tasks posted yet</p>
                 <p className="text-sm text-gray-500">Create a task to get started</p>
               </div>
             ) : (
@@ -1322,13 +1339,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                           <span className={`text-xs px-2 py-1 rounded ${statusBadge}`}>
                             {(task.status || 'open').toUpperCase()}
                           </span>
-                          <h3 className="text-lg font-semibold text-white mt-2">{task.title}</h3>
-                          <p className="text-gray-400 text-sm">{task.category} • {task.city || 'Remote'} • Budget: ${task.budget}</p>
+                          <h3 className="text-lg font-semibold text-gray-900 mt-2">{task.title}</h3>
+                          <p className="text-gray-500 text-sm">{task.category} • {task.city || 'Remote'} • Budget: ${task.budget}</p>
                           {task.assignee && (
-                            <p className="text-gray-400 text-sm mt-1">Assigned to: {task.assignee.name}</p>
+                            <p className="text-gray-500 text-sm mt-1">Assigned to: {task.assignee.name}</p>
                           )}
                         </div>
-                        <p className="text-green-400 font-bold">${task.budget || 0}</p>
+                        <p className="text-teal font-bold">${task.budget || 0}</p>
                       </div>
                       {needsAction && (
                         <div className="flex gap-3 mt-4">
@@ -1338,7 +1355,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         </div>
                       )}
                       {task.status === 'paid' && (
-                        <p className="text-green-400 text-sm mt-2">💸 Payment released</p>
+                        <p className="text-green-600 text-sm mt-2">💸 Payment released</p>
                       )}
                     </div>
                   )
@@ -1351,7 +1368,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: Create Task Tab */}
         {hiringMode && activeTab === 'create' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Create Task</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Create Task</h1>
             <div className={`${styles.card} max-w-2xl`}>
               <form className="space-y-4">
                 <input type="text" placeholder="Task title" className={styles.input} />
@@ -1375,9 +1392,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: Hired Tab */}
         {hiringMode && activeTab === 'humans' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Hired</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Hired</h1>
             <div className={`${styles.card} text-center py-12`}>
-              <p className="text-gray-400">No humans hired yet</p>
+              <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
+                <span className="text-3xl">{Icons.humans}</span>
+              </div>
+              <p className="text-gray-600 font-medium">No humans hired yet</p>
               <p className="text-sm text-gray-500 mt-2">Hire someone for a task</p>
             </div>
           </div>
@@ -1387,40 +1407,35 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {!hiringMode && activeTab === 'tasks' && (
           <div>
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-3xl font-bold text-white">My Tasks</h1>
-              <span className="text-gray-400">{tasks.filter(t => t.status === 'in_progress').length} active</span>
+              <h1 className="text-3xl font-bold text-gray-900">My Tasks</h1>
+              <span className="text-gray-500">{tasks.filter(t => t.status === 'in_progress').length} active</span>
             </div>
-            
+
+            {/* Quick Stats - always show */}
+            <QuickStats
+              totalEarned={tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}
+              tasksCompleted={tasks.filter(t => t.status === 'completed' || t.status === 'paid').length}
+              rating={user?.rating || 0}
+            />
+
             {loading ? (
-              <p className="text-gray-400">Loading...</p>
+              <p className="text-gray-500">Loading...</p>
             ) : tasks.length === 0 ? (
-              <div className={`${styles.card} text-center py-16`}>
-                <div className="text-6xl mb-4">{Icons.task}</div>
-                <p className="text-gray-400 mb-2">No tasks yet</p>
-                <p className="text-sm text-gray-500">Switch to Hiring Mode to create tasks, or browse available tasks from agents</p>
-              </div>
+              <EmptyState
+                icon={Icons.task}
+                title="No tasks yet"
+                description="Start earning by browsing available tasks or switch to hiring mode to post your own tasks."
+                primaryAction={{
+                  label: "Browse Available Tasks",
+                  onClick: () => setActiveTab('browse')
+                }}
+                secondaryAction={{
+                  label: "Switch to Hiring Mode",
+                  onClick: toggleHiringMode
+                }}
+              />
             ) : (
               <div className="space-y-4">
-                {/* Task Stats */}
-                <div className="grid grid-cols-4 gap-4 mb-6">
-                  <div className={`${styles.card} text-center`}>
-                    <p className="text-2xl font-bold text-white">{tasks.filter(t => t.status === 'open').length}</p>
-                    <p className="text-xs text-gray-400">Open</p>
-                  </div>
-                  <div className={`${styles.card} text-center`}>
-                    <p className="text-2xl font-bold text-yellow-400">{tasks.filter(t => t.status === 'in_progress').length}</p>
-                    <p className="text-xs text-gray-400">Active</p>
-                  </div>
-                  <div className={`${styles.card} text-center`}>
-                    <p className="text-2xl font-bold text-green-400">{tasks.filter(t => t.status === 'completed').length}</p>
-                    <p className="text-xs text-gray-400">Completed</p>
-                  </div>
-                  <div className={`${styles.card} text-center`}>
-                    <p className="text-2xl font-bold text-white">${tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}</p>
-                    <p className="text-xs text-gray-400">Earned</p>
-                  </div>
-                </div>
-
                 {tasks.map(task => (
                   <div key={task.id} className={`${styles.card}`}>
                     <div className="flex justify-between items-start mb-4">
@@ -1428,22 +1443,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         <span className={`inline-block text-xs px-2 py-1 rounded ${getTaskStatus(task.status)}`}>
                           {getStatusLabel(task.status)}
                         </span>
-                        <h3 className="text-lg font-semibold text-white mt-2">{task.title}</h3>
-                        <p className="text-gray-400 text-sm mt-1">{task.category} • {task.city || 'Remote'}</p>
+                        <h3 className="text-lg font-semibold text-gray-900 mt-2">{task.title}</h3>
+                        <p className="text-gray-500 text-sm mt-1">{task.category} • {task.city || 'Remote'}</p>
                       </div>
-                      <p className="text-green-400 font-bold text-xl">${task.budget || 0}</p>
+                      <p className="text-teal font-bold text-xl">${task.budget || 0}</p>
                     </div>
-                    
+
                     {task.description && (
-                      <p className="text-gray-300 text-sm mb-4">{task.description}</p>
+                      <p className="text-gray-600 text-sm mb-4">{task.description}</p>
                     )}
-                    
+
                     <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
                       <span>{Icons.calendar} Posted: {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
                       {task.deadline && <span>📅 Due: {new Date(task.deadline).toLocaleDateString()}</span>}
                       {task.agent_name && <span>👤 Agent: {task.agent_name}</span>}
                     </div>
-                    
+
                     <div className="flex gap-3">
                       {task.status === 'open' && (
                         <Button onClick={() => acceptTask(task.id)}>{Icons.check} Accept Task</Button>
@@ -1461,23 +1476,26 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         <Button variant="secondary">Waiting for approval...</Button>
                       )}
                       {task.status === 'completed' && (
-                        <span className="text-green-400 flex items-center gap-2">{Icons.check} Payment pending</span>
+                        <span className="text-green-600 flex items-center gap-2">{Icons.check} Payment pending</span>
                       )}
                       {task.status === 'paid' && (
-                        <span className="text-white flex items-center gap-2">{Icons.dollar} Paid!</span>
+                        <span className="text-teal flex items-center gap-2">{Icons.dollar} Paid!</span>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
+
+            {/* Activity Feed */}
+            <ActivityFeed activities={activities} />
           </div>
         )}
 
         {/* Working Mode: Browse Tab */}
-        {!hiringMode && activeTab === 'humans' && (
+        {!hiringMode && activeTab === 'browse' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Browse Workers</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Browse Workers</h1>
             
             {/* Search & Filter */}
             <div className="flex gap-4 mb-6">
@@ -1505,8 +1523,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             
             {humans.length === 0 ? (
               <div className={`${styles.card} text-center py-16`}>
-                <div className="text-6xl mb-4">{Icons.humans}</div>
-                <p className="text-gray-400">No workers available</p>
+                <div className="w-20 h-20 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
+                  <span className="text-4xl">{Icons.humans}</span>
+                </div>
+                <p className="text-gray-600 font-medium">No workers available</p>
                 <p className="text-sm text-gray-500 mt-2">Check back later for available humans</p>
               </div>
             ) : (
@@ -1517,27 +1537,27 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   .map(human => (
                   <div key={human.id} className={`${styles.card}`}>
                     <div className="flex items-start gap-4">
-                      <div className="w-14 h-14 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold text-xl">
+                      <div className="w-14 h-14 bg-teal/10 rounded-xl flex items-center justify-center text-teal font-bold text-xl">
                         {human.name?.charAt(0) || '?'}
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="font-semibold text-white">{human.name}</h3>
-                            <p className="text-gray-400 text-sm">{Icons.location} {human.city || 'Remote'}</p>
+                            <h3 className="font-semibold text-gray-900">{human.name}</h3>
+                            <p className="text-gray-500 text-sm">{Icons.location} {human.city || 'Remote'}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-green-400 font-bold text-lg">${human.hourly_rate || 25}/hr</p>
+                            <p className="text-teal font-bold text-lg">${human.hourly_rate || 25}/hr</p>
                             {human.rating > 0 && (
-                              <p className="text-yellow-400 text-sm">{Icons.star} {human.rating.toFixed(1)}</p>
+                              <p className="text-amber-500 text-sm">{Icons.star} {human.rating.toFixed(1)}</p>
                             )}
                           </div>
                         </div>
-                        {human.bio && <p className="text-gray-400 text-sm mt-2 line-clamp-2">{human.bio}</p>}
+                        {human.bio && <p className="text-gray-500 text-sm mt-2 line-clamp-2">{human.bio}</p>}
                         {human.skills && (
                           <div className="flex flex-wrap gap-1 mt-3">
                             {human.skills.slice(0, 5).map((skill, i) => (
-                              <span key={i} className="text-xs bg-orange-500/20 text-orange-300 px-2 py-0.5 rounded-full">
+                              <span key={i} className="text-xs bg-teal/10 text-teal px-2 py-0.5 rounded-full">
                                 {skill}
                               </span>
                             ))}
@@ -1562,7 +1582,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: Payments Tab */}
         {!hiringMode && activeTab === 'payments' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Earnings Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Earnings Dashboard</h1>
             <EarningsDashboard user={user} />
           </div>
         )}
@@ -1570,24 +1590,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Profile Tab - Updated with Settings */}
         {activeTab === 'profile' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Profile</h1>
-            
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Profile</h1>
+
             <div className={`${styles.card} max-w-xl`}>
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold text-2xl">
+                <div className="w-20 h-20 bg-teal/10 rounded-xl flex items-center justify-center text-teal font-bold text-2xl">
                   {user?.name?.charAt(0) || '?'}
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-white">{user?.name}</h2>
-                  <p className="text-gray-400">{user?.email}</p>
+                  <h2 className="text-xl font-semibold text-gray-900">{user?.name}</h2>
+                  <p className="text-gray-500">{user?.email}</p>
                 </div>
               </div>
 
               {/* Mode Toggle */}
-              <div className="mb-6 p-4 bg-white/5 rounded-xl">
+              <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <div className="flex justify-between items-center mb-3">
                   <div>
-                    <p className="text-white font-medium">Mode</p>
+                    <p className="text-gray-900 font-medium">Mode</p>
                     <p className="text-xs text-gray-500">Switch between working and hiring</p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-sm ${hiringMode ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
@@ -1754,7 +1774,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Messages Tab */}
         {activeTab === 'messages' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Messages</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Messages</h1>
             
             <div className={`${styles.card} p-0 overflow-hidden`} style={{ height: 'calc(100vh - 200px)' }}>
               <div className="grid md:grid-cols-3 h-full">
@@ -1824,6 +1844,60 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
+        {/* Notifications Tab */}
+        {activeTab === 'notifications' && (
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Notifications</h1>
+
+            {notifications.length === 0 ? (
+              <div className={`${styles.card} text-center py-12`}>
+                <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
+                  <span className="text-3xl">🔔</span>
+                </div>
+                <p className="text-gray-600 font-medium">No notifications yet</p>
+                <p className="text-sm text-gray-500 mt-2">You'll see updates about your tasks here</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notifications.map(n => (
+                  <div
+                    key={n.id}
+                    className={`${styles.card} cursor-pointer transition-all duration-200 ${
+                      !n.read_at ? 'border-teal/30 bg-teal/5' : ''
+                    }`}
+                    onClick={() => markNotificationRead(n.id)}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                        !n.read_at ? 'bg-teal/20 text-teal' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        🔔
+                      </div>
+                      <div className="flex-1">
+                        <p className={`font-medium ${!n.read_at ? 'text-gray-900' : 'text-gray-600'}`}>
+                          {n.title}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">{n.message}</p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          {new Date(n.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      {!n.read_at && (
+                        <div className="w-2 h-2 bg-coral rounded-full"></div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Modals */}
         {showProofSubmit && (
           <ProofSubmitModal
@@ -1840,6 +1914,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             onReject={rejectTask}
           />
         )}
+        </div>
       </main>
     </div>
   )

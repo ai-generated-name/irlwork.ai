@@ -2199,6 +2199,43 @@ app.get('/api/notifications', async (req, res) => {
   res.json(notifications || []);
 });
 
+// ============ ACTIVITY FEED ============
+app.get('/api/activity/feed', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  try {
+    // Get recent tasks (created and completed) across the platform
+    const { data: recentTasks, error } = await supabase
+      .from('tasks')
+      .select('id, title, city, status, created_at, updated_at')
+      .in('status', ['open', 'completed', 'paid'])
+      .order('updated_at', { ascending: false })
+      .limit(10);
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    // Format as activity items
+    const activities = (recentTasks || []).map(task => {
+      if (task.status === 'completed' || task.status === 'paid') {
+        return {
+          type: 'completed',
+          message: `Task completed in ${task.city || 'Remote'}`,
+          created_at: task.updated_at || task.created_at
+        };
+      }
+      return {
+        type: 'posted',
+        message: `New task posted in ${task.city || 'Remote'}`,
+        created_at: task.created_at
+      };
+    });
+
+    res.json(activities);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch activity feed' });
+  }
+});
+
 // ============ CONVERSATIONS ============
 app.get('/api/conversations', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
