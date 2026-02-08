@@ -1,14 +1,16 @@
 -- Supabase Schema for irlwork.ai Chat System
 -- Run this SQL to create the conversations and messages tables
 
--- Conversations table - chat threads between users and agents
+-- Conversations table - chat threads between humans (workers) and agents
+-- NOTE: Uses human_id (not user_id) for the worker column to match production DB
 CREATE TABLE IF NOT EXISTS conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    human_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     agent_id UUID REFERENCES users(id) ON DELETE SET NULL,
     task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
     title VARCHAR(255),
     status VARCHAR(50) DEFAULT 'active',
+    last_message TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -26,7 +28,7 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 -- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_human_id ON conversations(human_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_agent_id ON conversations(agent_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_task_id ON conversations(task_id);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);

@@ -678,8 +678,8 @@ app.get('/api/auth/verify', async (req, res) => {
     ? (((user.total_tasks_completed - (user.total_disputes_filed || 0)) / user.total_tasks_completed) * 100).toFixed(1)
     : null;
 
-  // Determine if user needs onboarding - false if they have city (completed profile)
-  const needsOnboarding = user.needs_onboarding === true && !user.city;
+  // Use onboarding_completed_at as definitive check - if timestamp exists, onboarding is complete
+  const needsOnboarding = !user.onboarding_completed_at;
 
   res.json({
     user: {
@@ -710,6 +710,68 @@ app.get('/api/auth/verify', async (req, res) => {
       jobs_completed: user.jobs_completed || 0
     }
   });
+});
+
+// POST /api/auth/onboard - Idempotent onboarding completion
+// Creates user if doesn't exist, updates if exists
+// Always sets needs_onboarding: false and onboarding_completed_at
+app.post('/api/auth/onboard', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  // Get user ID from Authorization header (secure - not from body)
+  const userId = req.headers.authorization;
+  if (!userId) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
+  const { email, name, city, latitude, longitude, country, country_code,
+          hourly_rate, skills, travel_radius, role } = req.body;
+
+  // Validate required fields
+  if (!city || !latitude || !longitude) {
+    return res.status(400).json({ error: 'City and location are required' });
+  }
+
+  try {
+    // Upsert user with onboarding data
+    const { data, error } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
+        email,
+        name,
+        city,
+        latitude,
+        longitude,
+        country,
+        country_code,
+        hourly_rate: hourly_rate || null,
+        skills: JSON.stringify(skills || []),
+        travel_radius: travel_radius || 25,
+        role: role || 'human',
+        needs_onboarding: false,
+        onboarding_completed_at: new Date().toISOString()
+      }, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Onboarding error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Parse skills back to array for response
+    const userData = {
+      ...data,
+      skills: JSON.parse(data.skills || '[]'),
+      needs_onboarding: false
+    };
+
+    res.json({ user: userData });
+  } catch (e) {
+    console.error('Onboarding exception:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ============ HEADLESS AGENT REGISTRATION ============
@@ -3286,24 +3348,25 @@ app.get('/api/activity/feed', async (req, res) => {
 });
 
 // ============ CONVERSATIONS ============
+// NOTE: conversations table uses human_id (not user_id) for the worker column
 app.get('/api/conversations', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { data: conversations, error } = await supabase
     .from('conversations')
     .select(`
       *,
       task:tasks(id, title, category, budget),
-      user:users!conversations_user_id_fkey(id, name, type, rating),
-      agent:users!conversations_agent_id_fkey(id, name, type, organization),
-      last_message:messages(created_at, content, sender_id)[0]
+      human:users!human_id(id, name, type, rating),
+      agent:users!agent_id(id, name, type, organization),
+      last_message:messages(created_at, content, sender_id)
     `)
-    .or(`user_id.eq.${user.id},agent_id.eq.${user.id}`)
+    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
     .order('updated_at', { ascending: false });
-  
+
   if (error) return res.status(500).json({ error: error.message });
   res.json(conversations || []);
 });
@@ -3323,13 +3386,13 @@ app.post('/api/conversations', async (req, res) => {
   const { data: conversation, error } = await supabase
     .from('conversations')
     .upsert({
-      user_id: user.id,
+      human_id: user.id,
       agent_id: agent_id || null,
       task_id: task_id || null,
       title: title || 'New Conversation',
       status: 'active'
     }, {
-      onConflict: 'user_id,agent_id,task_id',
+      onConflict: 'human_id,agent_id,task_id',
       ignoreDuplicates: false
     })
     .select()
@@ -3342,25 +3405,25 @@ app.post('/api/conversations', async (req, res) => {
 
 app.get('/api/conversations/:id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { data: conversation, error } = await supabase
     .from('conversations')
     .select(`
       *,
       task:tasks(*),
-      user:users!conversations_user_id_fkey(*),
-      agent:users!conversations_agent_id_fkey(*)
+      human:users!human_id(*),
+      agent:users!agent_id(*)
     `)
     .eq('id', req.params.id)
     .single();
-  
+
   if (error || !conversation) return res.status(404).json({ error: 'Not found' });
-  
+
   // Verify user has access
-  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
+  if (conversation.human_id !== user.id && conversation.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
   
@@ -3381,7 +3444,7 @@ app.get('/api/messages/:conversation_id', async (req, res) => {
   // Verify user has access to conversation
   const { data: conversation, error: convError } = await supabase
     .from('conversations')
-    .select('id, user_id, agent_id')
+    .select('id, human_id, agent_id')
     .eq('id', conversation_id)
     .single();
 
@@ -3389,7 +3452,7 @@ app.get('/api/messages/:conversation_id', async (req, res) => {
     return res.status(404).json({ error: 'Conversation not found' });
   }
 
-  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
+  if (conversation.human_id !== user.id && conversation.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
 
@@ -3461,7 +3524,7 @@ app.post('/api/messages', async (req, res) => {
   // Verify user has access to conversation (include task_id and task title for notifications)
   const { data: conversation, error: convError } = await supabase
     .from('conversations')
-    .select('id, user_id, agent_id, task_id, tasks(title)')
+    .select('id, human_id, agent_id, task_id, tasks(title)')
     .eq('id', conversation_id)
     .single();
 
@@ -3469,7 +3532,7 @@ app.post('/api/messages', async (req, res) => {
     return res.status(404).json({ error: 'Conversation not found' });
   }
 
-  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
+  if (conversation.human_id !== user.id && conversation.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
 
@@ -3497,9 +3560,9 @@ app.post('/api/messages', async (req, res) => {
     .eq('id', conversation_id);
 
   // Notify the OTHER party about the new message
-  const otherPartyId = (user.id === conversation.user_id)
+  const otherPartyId = (user.id === conversation.human_id)
     ? conversation.agent_id
-    : conversation.user_id;
+    : conversation.human_id;
 
   if (otherPartyId) {
     const taskTitle = conversation.tasks?.title || 'a task';
@@ -3559,7 +3622,7 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
   // Verify user is a participant in this conversation
   const { data: conversation } = await supabase
     .from('conversations')
-    .select('id, user_id, agent_id')
+    .select('id, human_id, agent_id')
     .eq('id', id)
     .single();
 
@@ -3567,7 +3630,7 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
     return res.status(404).json({ error: 'Conversation not found' });
   }
 
-  if (conversation.user_id !== user.id && conversation.agent_id !== user.id) {
+  if (conversation.human_id !== user.id && conversation.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
 

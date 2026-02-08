@@ -19,6 +19,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [agentProfile, setAgentProfile] = useState(null);
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [lastMessageTime, setLastMessageTime] = useState(null); // For incremental polling
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(null);
@@ -104,18 +105,48 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     }
   };
 
-  // Load messages for a conversation
-  const loadMessages = async (conversationId) => {
+  // Load messages for a conversation (supports incremental polling with afterTime)
+  const loadMessages = async (conversationId, incremental = false) => {
     if (!conversationId) return;
 
     try {
-      const res = await fetch(`${API_URL}/messages/${conversationId}`, {
+      // Build URL with optional after_time for incremental polling
+      let url = `${API_URL}/messages/${conversationId}?limit=50`;
+      if (incremental && lastMessageTime) {
+        url += `&after_time=${encodeURIComponent(lastMessageTime)}`;
+      }
+
+      const res = await fetch(url, {
         headers: { Authorization: user.id }
       });
 
       if (res.ok) {
         const data = await res.json();
-        setMessages(data || []);
+        const newMessages = data || [];
+
+        if (incremental && lastMessageTime) {
+          // Append new messages to existing ones
+          if (newMessages.length > 0) {
+            setMessages(prev => [...prev, ...newMessages]);
+            setLastMessageTime(newMessages[newMessages.length - 1].created_at);
+          }
+        } else {
+          // Initial load - replace all messages
+          setMessages(newMessages);
+          // Set lastMessageTime to enable incremental polling
+          if (newMessages.length > 0) {
+            setLastMessageTime(newMessages[newMessages.length - 1].created_at);
+          } else {
+            // No messages yet - use current time so polling can still start
+            setLastMessageTime(new Date().toISOString());
+          }
+
+          // Mark all messages as read on initial conversation open
+          fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
+            method: 'PUT',
+            headers: { Authorization: user.id }
+          }).catch(() => {}); // Fire-and-forget
+        }
       }
     } catch (err) {
       console.error('Error loading messages:', err);
@@ -330,7 +361,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               messages={messages}
               user={user}
               onSendMessage={handleSendMessage}
-              onLoadMessages={() => conversation && loadMessages(conversation.id)}
+              onLoadMessages={() => conversation && loadMessages(conversation.id, true)}
             />
           </div>
         </div>

@@ -3498,102 +3498,46 @@ function App() {
   async function fetchUserProfile(supabaseUser) {
     try {
       console.log('[Auth] Fetching user profile...')
-      const res = await fetch(`${API_URL}/auth/verify`, { 
-        headers: { Authorization: supabaseUser.id } 
+      const res = await fetch(`${API_URL}/auth/verify`, {
+        headers: { Authorization: supabaseUser.id }
       })
-      
+
       if (res.ok) {
         const data = await res.json()
         console.log('[Auth] User found in DB:', data.user?.email, 'needs_onboarding:', data.user?.needs_onboarding)
 
-        // Check if backend user has complete profile, otherwise merge with cached data
-        const cachedUser = localStorage.getItem('user')
-        let finalUser = { ...data.user, supabase_user: true }
-
-        // If backend doesn't have city/skills but cached user does, preserve them
-        if (cachedUser) {
-          try {
-            const parsed = JSON.parse(cachedUser)
-            if (parsed.id === supabaseUser.id) {
-              console.log('[Auth] Cache found, needs_onboarding:', parsed.needs_onboarding)
-              if (!finalUser.city && parsed.city) finalUser.city = parsed.city
-              if ((!finalUser.skills || !finalUser.skills.length) && parsed.skills?.length) {
-                finalUser.skills = parsed.skills
-              }
-              // IMPORTANT: Always trust cache's needs_onboarding=false over backend
-              // This handles the case where backend update failed but onboarding completed
-              if (parsed.needs_onboarding === false) {
-                console.log('[Auth] Overriding needs_onboarding to false from cache')
-                finalUser.needs_onboarding = false
-              }
-            }
-          } catch (e) {
-            console.error('[Auth] Failed to parse cached user:', e)
-          }
-        }
-
-        // If user has city, they've completed onboarding - force needs_onboarding to false
-        if (finalUser.city && finalUser.needs_onboarding !== false) {
-          console.log('[Auth] User has city, forcing needs_onboarding to false')
-          finalUser.needs_onboarding = false
-        }
-
-        // Save to localStorage for persistence
-        localStorage.setItem('user', JSON.stringify(finalUser))
+        // Trust backend completely - no localStorage merge
+        const finalUser = { ...data.user, supabase_user: true }
+        localStorage.setItem('user', JSON.stringify(finalUser)) // Cache for next load
         setUser(finalUser)
       } else if (res.status === 404) {
-        // Check localStorage first
-        const cachedUser = localStorage.getItem('user')
-        if (cachedUser) {
-          const parsed = JSON.parse(cachedUser)
-          if (parsed.id === supabaseUser.id && !parsed.needs_onboarding) {
-            console.log('[Auth] Using cached user (onboarding completed)')
-            setUser(parsed)
-            return
-          }
-        }
-        // New user - create profile
+        // New user - needs onboarding
         console.log('[Auth] New user, needs onboarding')
-        setUser({
+        const newUser = {
           id: supabaseUser.id,
           email: supabaseUser.email,
           name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
           avatar_url: supabaseUser.user_metadata?.avatar_url || '',
           supabase_user: true,
           needs_onboarding: true
-        })
-      } else {
-        // Check localStorage
-        const cachedUser = localStorage.getItem('user')
-        if (cachedUser) {
-          const parsed = JSON.parse(cachedUser)
-          if (parsed.id === supabaseUser.id) {
-            console.log('[Auth] Backend error, using cached user')
-            setUser(parsed)
-            return
-          }
         }
-        console.log('[Auth] Backend error, treating as new user')
-        setUser({
+        localStorage.setItem('user', JSON.stringify(newUser))
+        setUser(newUser)
+      } else {
+        console.log('[Auth] Backend error:', res.status)
+        // On error, create minimal user that needs onboarding
+        const newUser = {
           id: supabaseUser.id,
           email: supabaseUser.email,
           name: supabaseUser.user_metadata?.full_name || 'User',
           supabase_user: true,
           needs_onboarding: true
-        })
+        }
+        setUser(newUser)
       }
     } catch (e) {
-      // Check localStorage
-      const cachedUser = localStorage.getItem('user')
-      if (cachedUser) {
-        const parsed = JSON.parse(cachedUser)
-        if (parsed.id === supabaseUser.id) {
-          console.log('[Auth] Backend down, using cached user')
-          setUser(parsed)
-          return
-        }
-      }
-      console.log('[Auth] Backend unavailable, using Supabase session')
+      console.error('[Auth] Fetch error:', e)
+      // On network error, create minimal user that needs onboarding
       setUser({
         id: supabaseUser.id,
         email: supabaseUser.email,
@@ -3616,21 +3560,15 @@ function App() {
   const handleOnboardingComplete = async (profile) => {
     console.log('[Onboarding] Completing with profile:', profile)
 
-    // Build the complete user object with all profile data
-    const updatedUser = {
-      ...user,
-      ...profile,
-      needs_onboarding: false,
-      supabase_user: true
-    }
-
     try {
-      // First try to register the user in our backend
-      const registerRes = await fetch(`${API_URL}/auth/register/human`, {
+      // Use the new idempotent onboard endpoint
+      const res = await fetch(`${API_URL}/auth/onboard`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
         body: JSON.stringify({
-          id: user.id,
           email: user.email,
           name: user.name,
           city: profile.city,
@@ -3645,59 +3583,22 @@ function App() {
         })
       })
 
-      if (registerRes.ok) {
-        const data = await registerRes.json()
-        // Ensure needs_onboarding is false in the saved user
-        const finalUser = { ...data.user, supabase_user: true, needs_onboarding: false }
-        console.log('[Onboarding] Register success, saving user:', finalUser)
-        localStorage.setItem('user', JSON.stringify(finalUser))
-        setUser(finalUser)
-        window.location.href = '/dashboard'
-        return
-      }
-
-      console.log('[Onboarding] Register returned non-ok, trying profile update')
-
-      // Fallback: update profile directly (for existing users)
-      const res = await fetch(`${API_URL}/humans/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: user.id
-        },
-        body: JSON.stringify({
-          name: user.name,
-          city: profile.city,
-          latitude: profile.latitude,
-          longitude: profile.longitude,
-          country: profile.country,
-          country_code: profile.country_code,
-          hourly_rate: profile.hourly_rate,
-          skills: profile.skills,
-          travel_radius: profile.travel_radius
-        })
-      })
-
       if (res.ok) {
         const data = await res.json()
-        // Ensure needs_onboarding is false in the saved user
-        const finalUser = { ...data.user, supabase_user: true, needs_onboarding: false }
-        console.log('[Onboarding] Profile update success, saving user:', finalUser)
+        const finalUser = { ...data.user, supabase_user: true }
+        console.log('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
         window.location.href = '/dashboard'
       } else {
         const errorData = await res.json().catch(() => ({}))
-        console.error('[Onboarding] Profile update failed:', errorData)
-        throw new Error(errorData.error || 'Failed to save profile')
+        console.error('[Onboarding] Failed:', errorData)
+        throw new Error(errorData.error || 'Failed to complete onboarding')
       }
     } catch (e) {
-      console.error('[Onboarding] Failed:', e)
-      // Save to localStorage with needs_onboarding: false so we don't loop
-      console.log('[Onboarding] Saving fallback user to localStorage:', updatedUser)
-      localStorage.setItem('user', JSON.stringify(updatedUser))
-      setUser(updatedUser)
-      window.location.href = '/dashboard'
+      console.error('[Onboarding] Error:', e)
+      // Show error to user instead of silently failing
+      alert('Failed to save profile. Please try again.')
     }
   }
 
@@ -3725,6 +3626,22 @@ function App() {
     }
   }
 
+  // Onboarding route - dedicated route for onboarding wizard
+  if (path === '/onboard') {
+    if (!user) {
+      console.log('[Auth] No user for onboard, redirecting to auth')
+      window.location.href = '/auth'
+      return <Loading />
+    }
+    // If user doesn't need onboarding, redirect to dashboard
+    if (!user.needs_onboarding) {
+      console.log('[Auth] User already onboarded, redirecting to dashboard')
+      window.location.href = '/dashboard'
+      return <Loading />
+    }
+    return <Onboarding onComplete={handleOnboardingComplete} />
+  }
+
   // Dashboard route - requires auth
   if (path === '/dashboard') {
     if (!user) {
@@ -3733,18 +3650,16 @@ function App() {
       return <Loading />
     }
 
-    // Check if user needs onboarding - only trust the explicit flag
-    // Don't re-trigger onboarding based on missing city/skills if user already completed it
-    const needsOnboarding = user.needs_onboarding === true
-    console.log('[Auth] Needs onboarding:', needsOnboarding, 'user.needs_onboarding:', user.needs_onboarding)
-
-    if (needsOnboarding) {
-      return <Onboarding onComplete={handleOnboardingComplete} />
+    // If user needs onboarding, redirect to /onboard
+    if (user.needs_onboarding) {
+      console.log('[Auth] User needs onboarding, redirecting to /onboard')
+      window.location.href = '/onboard'
+      return <Loading />
     }
 
     return <Dashboard user={user} onLogout={logout} />
   }
-  
+
   if (path === '/auth') return <AuthPage />
   if (path === '/mcp') return <MCPPage />
   if (path === '/browse') return <BrowsePage user={user} />

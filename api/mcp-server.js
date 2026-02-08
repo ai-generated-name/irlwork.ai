@@ -67,12 +67,34 @@ const handlers = {
     return await res.json()
   },
 
-  // Get messages
+  // Get messages with optional since filter and auto-read marking
   async get_messages(params) {
-    const res = await fetch(`${API_URL}/conversations/${params.conversation_id}/messages`, {
+    const { conversation_id, since } = params;
+
+    // Build query params for pagination/filtering
+    const query = new URLSearchParams();
+    if (since) {
+      query.append('after_time', since);  // Map MCP 'since' to API 'after_time'
+    }
+
+    const res = await fetch(`${API_URL}/messages/${conversation_id}?${query}`, {
       headers: { 'Authorization': API_KEY }
-    })
-    return await res.json()
+    });
+    const messages = await res.json();
+
+    // Auto-mark as read if there are unread messages from others
+    if (Array.isArray(messages) && messages.length > 0) {
+      const hasUnread = messages.some(m => !m.read_at);
+      if (hasUnread) {
+        // Fire-and-forget the read-all call
+        fetch(`${API_URL}/conversations/${conversation_id}/read-all`, {
+          method: 'PUT',
+          headers: { 'Authorization': API_KEY }
+        }).catch(() => {}); // Ignore errors
+      }
+    }
+
+    return messages;
   },
 
   // Create booking request
@@ -126,6 +148,28 @@ const handlers = {
   async notifications() {
     const res = await fetch(`${API_URL}/notifications`, {
       headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // Get unread message summary across all conversations
+  async get_unread_summary() {
+    const res = await fetch(`${API_URL}/conversations/unread`, {
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // Register/update webhook URL for push notifications
+  async set_webhook(params) {
+    const { url, secret } = params;
+    const res = await fetch(`${API_URL}/webhooks/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({ webhook_url: url, webhook_secret: secret })
     })
     return await res.json()
   },
@@ -292,14 +336,15 @@ const PORT = process.env.MCP_PORT || 3004
 server.listen(PORT, () => {
   console.log(`🤖 Humanwork.ai MCP Server running on port ${PORT}`)
   console.log(`   API: ${API_URL}`)
-  console.log(`   Available Methods (19):`)
+  console.log(`   Available Methods (21):`)
   console.log(``)
   console.log(`   Core:`)
   console.log(`   - list_humans(params)`)
   console.log(`   - get_human(human_id)`)
   console.log(`   - start_conversation(human_id, message)`)
   console.log(`   - send_message(conversation_id, content)`)
-  console.log(`   - get_messages(conversation_id)`)
+  console.log(`   - get_messages(conversation_id, since?) [UPDATED]`)
+  console.log(`   - get_unread_summary() [NEW]`)
   console.log(``)
   console.log(`   Bookings & Payments:`)
   console.log(`   - create_booking(...)`)
@@ -319,7 +364,8 @@ server.listen(PORT, () => {
   console.log(`   - dispute_task(task_id, reason) [NEW]`)
   console.log(`   - get_task_status(task_id) [NEW]`)
   console.log(``)
-  console.log(`   Notifications:`)
+  console.log(`   Notifications & Webhooks:`)
   console.log(`   - notifications()`)
   console.log(`   - mark_notification_read(notification_id)`)
+  console.log(`   - set_webhook(url, secret?) [NEW]`)
 })
