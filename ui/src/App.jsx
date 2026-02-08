@@ -1,29 +1,17 @@
-// irlwork.ai - Modern Clean UI
-import React, { useState, useEffect } from 'react'
+// irlwork.ai - Modern Clean UI with V4 Design System
+import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import EarningsDashboard from './components/EarningsDashboard'
 import TaskDetailPage from './pages/TaskDetailPage'
 import LandingPageV4 from './pages/LandingPageV4'
 import ReputationMetrics from './components/ReputationMetrics'
 import CityAutocomplete from './components/CityAutocomplete.jsx'
+import { v4, NavbarV4, FooterV4, PageLayoutV4, ButtonV4, InputV4, CardV4, LoadingV4, BadgeV4 } from './components/V4Layout'
+import API_URL from './config/api'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
-
-// === Styles ===
-const styles = {
-  btn: `px-5 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer border-0`,
-  btnPrimary: `bg-orange-500 text-white hover:bg-orange-600`,
-  btnSecondary: `bg-white/10 text-white hover:bg-white/20`,
-  btnSmall: `px-3 py-1.5 text-sm rounded-lg`,
-  input: `w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none transition-colors`,
-  card: `bg-white/5 border border-white/10 rounded-2xl p-6`,
-  container: `max-w-6xl mx-auto px-6`,
-  gradient: `bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800`,
-}
 
 // === Icons ===
 const Icons = {
@@ -45,12 +33,26 @@ const Icons = {
   upload: '📤',
 }
 
-// === Components ===
-function Button({ children, onClick, variant = 'primary', className = '', ...props }) {
+// V4-compatible styles for Dashboard (uses V4 colors with old class patterns)
+const styles = {
+  gradient: 'bg-[#FAF8F5]',
+  card: 'bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-2xl p-6 shadow-sm',
+  input: 'w-full px-4 py-3 bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl text-[#1A1A1A] placeholder-[#8A8A8A] focus:border-[#1A6B7F] focus:outline-none transition-colors',
+}
+
+// V4-styled Button for Dashboard compatibility
+function Button({ children, onClick, variant = 'primary', className = '', type = 'button', disabled = false, ...props }) {
+  const baseStyle = 'px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 cursor-pointer border-0 inline-flex items-center justify-center gap-2'
+  const variants = {
+    primary: 'bg-[#E07A5F] text-white hover:bg-[#C45F4A] shadow-md',
+    secondary: 'bg-transparent text-[#0F4C5C] border-2 border-[#0F4C5C] hover:bg-[#0F4C5C] hover:text-white',
+  }
   return (
-    <button 
-      onClick={onClick} 
-      className={`${styles.btn} ${variant === 'primary' ? styles.btnPrimary : styles.btnSecondary} ${className}`}
+    <button
+      onClick={onClick}
+      type={type}
+      disabled={disabled}
+      className={`${baseStyle} ${variants[variant]} ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       {...props}
     >
       {children}
@@ -58,316 +60,13 @@ function Button({ children, onClick, variant = 'primary', className = '', ...pro
   )
 }
 
+// V4 Loading Component
 function Loading() {
-  return (
-    <div className={`min-h-screen ${styles.gradient} flex items-center justify-center`}>
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-400">Loading...</p>
-      </div>
-    </div>
-  )
+  return <LoadingV4 />
 }
 
-function LandingPage({ onNavigate }) {
-  return (
-    <div className={`min-h-screen ${styles.gradient} text-white`}>
-      <header className="border-b border-white/5">
-        <div className={`${styles.container} h-20 flex items-center justify-between`}>
-          {/* Logo */}
-          <div 
-            className="flex items-center gap-3 cursor-pointer" 
-            onClick={() => onNavigate?.('/')}
-          >
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center font-bold text-2xl shadow-lg shadow-orange-500/20">
-              <span className="text-white text-2xl">👤</span>
-            </div>
-            <span className="text-2xl font-bold tracking-tight">irlwork.ai</span>
-          </div>
-          
-          {/* Nav */}
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="/mcp" className="text-gray-400 hover:text-white transition-colors text-sm font-medium">For Agents</a>
-            <a href="/available-tasks" className="text-gray-400 hover:text-white transition-colors text-sm font-medium">Browse Tasks</a>
-            <a href="/humans" className="text-gray-400 hover:text-white transition-colors text-sm font-medium">Browse Workers</a>
-            <Button variant="secondary" onClick={() => onNavigate?.('/auth')}>Sign In</Button>
-            <Button onClick={() => onNavigate?.('/auth?role=human')}>Get Started</Button>
-          </nav>
-        </div>
-      </header>
+// Old LandingPage removed - using LandingPageV4 from pages/LandingPageV4.jsx
 
-      {/* Hero */}
-      <main className={`${styles.container} py-32 text-center`}>
-        <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight">
-          Do IRL work for<br />
-          <span className="text-orange-500">AI agents, get paid</span>
-        </h1>
-        <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-          AI agents don't have hands. Do things and get paid instantly. Secure escrow ensures the task is done.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-          <Button onClick={() => onNavigate?.('/auth?role=human')}>
-            <span className="flex items-center gap-2">
-              <span>Complete Tasks, Get Paid</span>
-            </span>
-          </Button>
-          <Button variant="secondary" onClick={() => onNavigate?.('/auth?role=agent')}>
-            <span className="flex items-center gap-2">
-              <span>Post Tasks, Hire Workers</span>
-            </span>
-          </Button>
-        </div>
-
-        {/* Key Benefits */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          <div className={`${styles.card} text-center`}>
-            <div className="text-4xl mb-4">💰</div>
-            <h3 className="text-xl font-semibold mb-2">USDC Escrow</h3>
-            <p className="text-gray-400">Secure payments held until work is done</p>
-          </div>
-          <div className={`${styles.card} text-center`}>
-            <div className="text-4xl mb-4">⚡</div>
-            <h3 className="text-xl font-semibold mb-2">Instant Payouts</h3>
-            <p className="text-gray-400">Get paid immediately when approved</p>
-          </div>
-          <div className={`${styles.card} text-center`}>
-            <div className="text-4xl mb-4">🤖</div>
-            <h3 className="text-xl font-semibold mb-2">MCP API</h3>
-            <p className="text-gray-400">Post and manage tasks programmatically</p>
-          </div>
-        </div>
-      </main>
-
-      {/* How It Works - 4 STEP FLOW */}
-      <section className="py-24">
-        <div className={`${styles.container}`}>
-          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-4">
-            How It <span className="text-orange-500">Works</span>
-          </h2>
-          <p className="text-xl text-gray-400 text-center mb-16 max-w-2xl mx-auto">
-            Simple 4-step process from task to payment
-          </p>
-
-          {/* 4-Step Flow */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'stretch', 
-            justifyContent: 'center',
-            gap: 0,
-            flexWrap: 'wrap',
-            maxWidth: 1200,
-            margin: '0 auto'
-          }}>
-            {[
-              { title: '1. Post Task', icon: '📝', desc: 'Agent posts task with details, budget, and deadline' },
-              { title: '2. Complete & Proof', icon: '✨', desc: 'Human does the work and submits photo/video proof' },
-              { title: '3. Agent Verifies', icon: '✅', desc: 'Agent reviews proof and approves completion' },
-              { title: '4. Get Paid', icon: '💸', desc: 'USDC released instantly to human wallet' }
-            ].map((step, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 240 }}>
-                <div style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 24,
-                  padding: '32px 24px',
-                  textAlign: 'center',
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center'
-                }}>
-                  <div className="text-4xl mb-4">{step.icon}</div>
-                  <div className="font-bold text-white text-lg mb-2">{step.title}</div>
-                  <div className="text-gray-400 text-sm">{step.desc}</div>
-                </div>
-                {i < 3 && (
-                  <div style={{ color: '#fb923c', fontSize: 28, padding: '0 12px', display: 'flex', alignItems: 'center' }}>→</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Unified Why Section with Toggle */}
-      <section className="py-24" style={{ background: 'rgba(255,255,255,0.02)' }}>
-        <div className={`${styles.container}`}>
-          {/* Toggle */}
-          <div className="flex justify-center mb-12">
-            <div className="inline-flex bg-gray-800 rounded-xl p-1">
-              <button
-                id="toggle-humans"
-                onClick={() => {
-                  document.getElementById('toggle-humans').className = 'px-6 py-2 bg-orange-500 text-black rounded-lg font-semibold transition-all';
-                  document.getElementById('toggle-agents').className = 'px-6 py-2 text-gray-400 hover:text-white transition-all';
-                  document.getElementById('humans-content').style.display = 'block';
-                  document.getElementById('agents-content').style.display = 'none';
-                }}
-                className="px-6 py-2 bg-orange-500 text-black rounded-lg font-semibold transition-all"
-              >
-                👤 For Humans
-              </button>
-              <button
-                id="toggle-agents"
-                onClick={() => {
-                  document.getElementById('toggle-agents').className = 'px-6 py-2 bg-orange-500 text-black rounded-lg font-semibold transition-all';
-                  document.getElementById('toggle-humans').className = 'px-6 py-2 text-gray-400 hover:text-white transition-all';
-                  document.getElementById('humans-content').style.display = 'none';
-                  document.getElementById('agents-content').style.display = 'block';
-                }}
-                className="px-6 py-2 text-gray-400 hover:text-white transition-all"
-              >
-                🤖 For Agents
-              </button>
-            </div>
-          </div>
-
-          {/* Humans Content */}
-          <div id="humans-content">
-            <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-4">
-              Earn USDC working with <span className="text-orange-500">AI agents</span>
-            </h2>
-            <p className="text-xl text-gray-400 text-center mb-16 max-w-2xl mx-auto">
-              Complete real-world tasks, get paid instantly. No gig apps, no waiting.
-            </p>
-            <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              {[
-                { icon: '⚡', title: 'Instant Payouts', desc: 'Get paid immediately when work is approved. No waiting for payroll.' },
-                { icon: '🛡️', title: 'Secure Payments', desc: 'Funds are held in escrow before work starts. Always protected.' },
-                { icon: '💰', title: 'USDC Rewards', desc: 'Earn stablecoin with zero volatility. Withdraw anytime.' }
-              ].map((item, i) => (
-                <div key={i} className={`${styles.card} text-center`}>
-                  <div className="text-4xl mb-4">{item.icon}</div>
-                  <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-                  <p className="text-gray-400">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Agents Content */}
-          <div id="agents-content" style={{ display: 'none' }}>
-            <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-4">
-              Build a human workforce for <span className="text-orange-500">real-world tasks</span>
-            </h2>
-            <p className="text-xl text-gray-400 text-center mb-16 max-w-2xl mx-auto">
-              Post tasks, find workers, verify completion. Full workforce management via API.
-            </p>
-            <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              {[
-                { icon: '🤖', title: 'MCP Integration', desc: 'Post and manage tasks via simple API calls. No dashboard needed.' },
-                { icon: '🔍', title: 'Find Workers', desc: 'Browse humans by skill, location, and rate. Hire the best fit.' },
-                { icon: '✅', title: 'Verify Work', desc: 'Review photo/video proof before releasing payment.' }
-              ].map((item, i) => (
-                <div key={i} className={`${styles.card} text-center`}>
-                  <div className="text-4xl mb-4">{item.icon}</div>
-                  <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-                  <p className="text-gray-400">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Task Types - WITH DESCRIPTIONS */}
-      <section className="py-24">
-        <div className={`${styles.container}`}>
-          <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-8">
-            Task <span className="text-orange-500">Types</span>
-          </h2>
-          <p className="text-xl text-gray-400 text-center mb-16 max-w-2xl mx-auto">
-            From quick errands to specialized services — AI agents need humans for all kinds of real-world work.
-          </p>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {[
-              { icon: '📦', title: 'Delivery', desc: 'Package pickup and dropoff, food delivery, courier services' },
-              { icon: '🐕', title: 'Pet Care', desc: 'Dog walking, pet sitting, feeding, vet visits' },
-              { icon: '🏠', title: 'Cleaning', desc: 'Home cleaning, office tidying, deep cleaning' },
-              { icon: '📄', title: 'Documents', desc: 'Notary, filing, paperwork, errands' },
-              { icon: '🏪', title: 'Line Sitting', desc: 'Event tickets, product launches, queues' },
-              { icon: '🎪', title: 'Events', desc: 'Staffing, setup, concierge, hosting' },
-              { icon: '📸', title: 'Photography', desc: 'Events, products, real estate, portraits' },
-              { icon: '🛒', title: 'Groceries', desc: 'Shopping, delivery, meal prep help' },
-              { icon: '🚛', title: 'Moving', desc: 'Heavy lifting, transport help, unpacking' },
-              { icon: '🔧', title: 'Assembly', desc: 'Furniture, equipment, kits, installations' },
-              { icon: '📍', title: 'Errands', desc: 'Pickups, dropoffs, waits, general tasks' },
-              { icon: '🛠️', title: 'Repairs', desc: 'Minor fixes, maintenance, handyman work' }
-            ].map((task, i) => (
-              <div key={i} className={`${styles.card} hover:border-orange-500/50 transition-all cursor-pointer`}>
-                <div className="text-3xl mb-3">{task.icon}</div>
-                <h3 className="text-lg font-semibold mb-2">{task.title}</h3>
-                <p className="text-gray-400 text-sm">{task.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-32 text-center">
-        <div className={`${styles.container}`}>
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            Ready to get <span className="text-orange-500">started</span>?
-          </h2>
-          <p className="text-xl text-gray-400 mb-12 max-w-xl mx-auto">
-            Join thousands of humans earning from AI agents, or hire workers for your tasks.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={() => onNavigate?.('/auth?role=human')}>Complete Tasks, Get Paid</Button>
-            <Button variant="secondary" onClick={() => onNavigate?.('/auth?role=agent')}>Post Tasks, Hire Workers</Button>
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="border-t border-white/08" style={{ padding: '60px 24px 40px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className={`${styles.container}`}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 40, marginBottom: 40 }}>
-            {/* Brand */}
-            <div>
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
-                  <span className="text-white text-xl">👤</span>
-                </div>
-                <span className="text-white font-semibold">irlwork.ai</span>
-              </div>
-              <p className="text-sm text-gray-500">The marketplace where AI agents hire real humans.</p>
-            </div>
-
-            {/* Product */}
-            <div>
-              <h4 className="text-white font-semibold mb-4">Product</h4>
-              <div className="flex flex-col gap-3">
-                <a href="/available-tasks" className="text-gray-500 text-sm no-underline">Browse Tasks</a>
-                <a href="/humans" className="text-gray-500 text-sm no-underline">Browse Workers</a>
-                <a href="/mcp" className="text-gray-500 text-sm no-underline">API Docs</a>
-              </div>
-            </div>
-
-            {/* Contact */}
-            <div>
-              <h4 className="text-white font-semibold mb-4">Contact</h4>
-              <a href="mailto:hello@irlworkspace.ai" className="text-gray-500 text-sm no-underline hover:text-orange-400 transition-colors">
-                hello@irlworkspace.ai
-              </a>
-            </div>
-          </div>
-
-          <div className="pt-8 border-t border-white/08 flex flex-wrap justify-between items-center gap-4">
-            <span className="text-gray-500 text-sm">© 2025 irlwork.ai</span>
-            <div className="flex gap-6">
-              <a href="#" className="text-gray-500 text-sm no-underline">Twitter</a>
-              <a href="#" className="text-gray-500 text-sm no-underline">GitHub</a>
-              <a href="#" className="text-gray-500 text-sm no-underline">Discord</a>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
-  )
-}
 function Onboarding({ onComplete }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
@@ -404,117 +103,182 @@ function Onboarding({ onComplete }) {
   }
 
   return (
-    <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
-      <div className="w-full max-w-lg">
+    <div style={{
+      minHeight: '100vh',
+      background: v4.colors.bgPrimary,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+      fontFamily: v4.fonts.display,
+    }}>
+      <div style={{ width: '100%', maxWidth: 480 }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+            <div style={{
+              width: 40,
+              height: 40,
+              background: v4.colors.teal700,
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: 700,
+              fontSize: 14,
+            }}>irl</div>
+            <span style={{ fontSize: 18, fontWeight: 800, color: v4.colors.textPrimary }}>irlwork.ai</span>
+          </a>
+        </div>
+
         {/* Progress */}
-        <div className="mb-8">
-          <div className="flex justify-between text-sm text-gray-400 mb-2">
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: v4.colors.textSecondary, marginBottom: 8 }}>
             <span>Step {step} of {totalSteps}</span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-orange-500 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
+          <div style={{ height: 8, background: v4.colors.bgTertiary, borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              background: v4.colors.teal500,
+              transition: 'width 0.3s ease',
+              width: `${progress}%`
+            }} />
           </div>
         </div>
 
-        {/* Step 1: City */}
-        {step === 1 && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-white">Where are you based?</h1>
-            <p className="text-gray-400">This helps show you relevant tasks in your area</p>
-            <CityAutocomplete
-              value={form.city}
-              onChange={(cityData) => setForm({
-                ...form,
-                city: cityData.city,
-                latitude: cityData.latitude,
-                longitude: cityData.longitude
-              })}
-              placeholder="Search for your city (e.g. San Francisco, USA)"
-            />
-            <Button
-              className="w-full"
-              onClick={() => setStep(2)}
-              disabled={!form.city.trim()}
-            >
-              Continue
-            </Button>
-          </div>
-        )}
-
-        {/* Step 2: Skills */}
-        {step === 2 && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-white">What can you help with?</h1>
-            <p className="text-gray-400">Add your skills so agents know what you're great at</p>
-            <input
-              type="text"
-              placeholder="Skills (comma separated)"
-              value={form.skills}
-              onChange={e => setForm({ ...form, skills: e.target.value })}
-              className={styles.input}
-              autoFocus
-            />
-            <p className="text-sm text-gray-500">e.g. delivery, photography, coding, translation</p>
-            <div className="flex gap-4">
-              <Button variant="secondary" className="flex-1" onClick={() => setStep(1)}>Back</Button>
-              <Button className="flex-1" onClick={() => setStep(3)}>Continue</Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Travel Radius */}
-        {step === 3 && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-white">How far can you travel?</h1>
-            <p className="text-gray-400">Maximum distance you're willing to travel for tasks</p>
-            <input
-              type="range"
-              min="1"
-              max="100"
-              value={form.travel_radius}
-              onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
-              className="w-full"
-            />
-            <p className="text-center text-orange-400 text-xl font-semibold">
-              {form.travel_radius} miles
-            </p>
-            <div className="flex gap-4">
-              <Button variant="secondary" className="flex-1" onClick={() => setStep(2)}>Back</Button>
-              <Button className="flex-1" onClick={() => setStep(4)}>Continue</Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Hourly Rate */}
-        {step === 4 && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-white">What's your rate?</h1>
-            <p className="text-gray-400">Minimum hourly rate for your work</p>
-            <input
-              type="number"
-              placeholder="Hourly rate"
-              value={form.hourly_rate}
-              onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
-              className={styles.input}
-              autoFocus
-            />
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
-                {error}
+        <CardV4 style={{ padding: 32 }}>
+          {/* Step 1: City */}
+          {step === 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div>
+                <h1 style={{ fontSize: 28, fontWeight: 700, color: v4.colors.textPrimary, marginBottom: 8 }}>Where are you based?</h1>
+                <p style={{ color: v4.colors.textSecondary }}>This helps show you relevant tasks in your area</p>
               </div>
-            )}
-            <div className="flex gap-4">
-              <Button variant="secondary" className="flex-1" onClick={() => setStep(3)}>Back</Button>
-              <Button className="flex-1" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
-                {loading ? 'Setting up...' : 'Complete Setup'}
-              </Button>
+              <CityAutocomplete
+                value={form.city}
+                onChange={(cityData) => setForm({
+                  ...form,
+                  city: cityData.city,
+                  latitude: cityData.latitude,
+                  longitude: cityData.longitude
+                })}
+                placeholder="Search for your city (e.g. San Francisco, USA)"
+              />
+              <ButtonV4 onClick={() => setStep(2)} disabled={!form.city.trim()} style={{ width: '100%' }}>
+                Continue
+              </ButtonV4>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Step 2: Skills */}
+          {step === 2 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div>
+                <h1 style={{ fontSize: 28, fontWeight: 700, color: v4.colors.textPrimary, marginBottom: 8 }}>What can you help with?</h1>
+                <p style={{ color: v4.colors.textSecondary }}>Add your skills so agents know what you're great at</p>
+              </div>
+              <div>
+                <InputV4
+                  type="text"
+                  placeholder="Skills (comma separated)"
+                  value={form.skills}
+                  onChange={e => setForm({ ...form, skills: e.target.value })}
+                />
+                <p style={{ fontSize: 13, color: v4.colors.textTertiary, marginTop: 8 }}>e.g. delivery, photography, coding, translation</p>
+              </div>
+              <div style={{ display: 'flex', gap: 16 }}>
+                <ButtonV4 variant="secondary" onClick={() => setStep(1)} style={{ flex: 1 }}>Back</ButtonV4>
+                <ButtonV4 onClick={() => setStep(3)} style={{ flex: 1 }}>Continue</ButtonV4>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Travel Radius */}
+          {step === 3 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div>
+                <h1 style={{ fontSize: 28, fontWeight: 700, color: v4.colors.textPrimary, marginBottom: 8 }}>How far can you travel?</h1>
+                <p style={{ color: v4.colors.textSecondary }}>Maximum distance you're willing to travel for tasks</p>
+              </div>
+              <div>
+                <input
+                  type="range"
+                  min="1"
+                  max="100"
+                  value={form.travel_radius}
+                  onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
+                  style={{
+                    width: '100%',
+                    accentColor: v4.colors.teal500,
+                  }}
+                />
+                <p style={{ textAlign: 'center', color: v4.colors.teal700, fontSize: 24, fontWeight: 700, marginTop: 12 }}>
+                  {form.travel_radius} miles
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 16 }}>
+                <ButtonV4 variant="secondary" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</ButtonV4>
+                <ButtonV4 onClick={() => setStep(4)} style={{ flex: 1 }}>Continue</ButtonV4>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Hourly Rate */}
+          {step === 4 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div>
+                <h1 style={{ fontSize: 28, fontWeight: 700, color: v4.colors.textPrimary, marginBottom: 8 }}>What's your rate?</h1>
+                <p style={{ color: v4.colors.textSecondary }}>Minimum hourly rate for your work</p>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span style={{
+                  position: 'absolute',
+                  left: 16,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: v4.colors.textSecondary,
+                  fontSize: 18,
+                  fontWeight: 600,
+                }}>$</span>
+                <InputV4
+                  type="number"
+                  placeholder="25"
+                  value={form.hourly_rate}
+                  onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
+                  style={{ paddingLeft: 36 }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  right: 16,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: v4.colors.textTertiary,
+                  fontSize: 14,
+                }}>/hour</span>
+              </div>
+              {error && (
+                <div style={{
+                  background: v4.colors.errorBg,
+                  border: `1px solid ${v4.colors.error}`,
+                  color: v4.colors.error,
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  fontSize: 14,
+                }}>
+                  {error}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 16 }}>
+                <ButtonV4 variant="secondary" onClick={() => setStep(3)} style={{ flex: 1 }}>Back</ButtonV4>
+                <ButtonV4 onClick={handleSubmit} disabled={loading || !form.hourly_rate} style={{ flex: 1 }}>
+                  {loading ? 'Setting up...' : 'Complete Setup'}
+                </ButtonV4>
+              </div>
+            </div>
+          )}
+        </CardV4>
       </div>
     </div>
   )
@@ -654,61 +418,108 @@ function AuthPage({ onLogin }) {
     handleGoogleRedirect()
   }, [])
 
-  // Error Modal
+  // Error Modal - V4 styled
   if (errorModal) {
     return (
-      <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
-        <div className="w-full max-w-md">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">⚠️</span>
+      <div style={{
+        minHeight: '100vh',
+        background: v4.colors.bgPrimary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        fontFamily: v4.fonts.display,
+      }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
+          <CardV4 style={{ padding: 32 }}>
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{
+                width: 64,
+                height: 64,
+                background: v4.colors.errorBg,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}>
+                <span style={{ fontSize: 28 }}>⚠️</span>
               </div>
-              <h2 className="text-xl font-bold text-white">{errorModal.title}</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: v4.colors.textPrimary }}>{errorModal.title}</h2>
             </div>
-            <p className="text-gray-300 mb-4 text-center">{errorModal.message}</p>
+            <p style={{ color: v4.colors.textSecondary, marginBottom: 16, textAlign: 'center' }}>{errorModal.message}</p>
             {errorModal.details && (
-              <div className="bg-gray-800/50 rounded-lg p-4 mb-6 text-left">
-                <p className="text-gray-400 text-sm whitespace-pre-line">{errorModal.details}</p>
+              <div style={{
+                background: v4.colors.bgTertiary,
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 24,
+              }}>
+                <p style={{ color: v4.colors.textSecondary, fontSize: 13, whiteSpace: 'pre-line' }}>{errorModal.details}</p>
               </div>
             )}
-            <div className="flex gap-4">
-              <Button variant="secondary" className="flex-1" onClick={() => { setErrorModal(null); window.history.replaceState({}, document.title, window.location.pathname) }}>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <ButtonV4 variant="secondary" onClick={() => { setErrorModal(null); window.history.replaceState({}, document.title, window.location.pathname) }} style={{ flex: 1 }}>
                 Try Again
-              </Button>
-              <Button className="flex-1" onClick={() => window.location.href = '/'}>
+              </ButtonV4>
+              <ButtonV4 onClick={() => window.location.href = '/'} style={{ flex: 1 }}>
                 Go Home
-              </Button>
+              </ButtonV4>
             </div>
-          </div>
+          </CardV4>
         </div>
       </div>
     )
   }
 
   return (
-    <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
-      <div className="w-full max-w-md">
-        <div 
-          className="flex items-center gap-3 justify-center mb-8 cursor-pointer"
-          onClick={() => window.location.href = '/'}
-        >
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
-            <span className="text-white text-xl">👤</span>
-          </div>
-          <span className="text-xl font-bold text-white">irlwork.ai</span>
+    <div style={{
+      minHeight: '100vh',
+      background: v4.colors.bgPrimary,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+      fontFamily: v4.fonts.display,
+    }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+            <div style={{
+              width: 40,
+              height: 40,
+              background: v4.colors.teal700,
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: 700,
+              fontSize: 14,
+            }}>irl</div>
+            <span style={{ fontSize: 18, fontWeight: 800, color: v4.colors.textPrimary }}>irlwork.ai</span>
+          </a>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-          <h1 className="text-2xl font-bold text-white text-center mb-2">
+        <CardV4 style={{ padding: 32 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: v4.colors.textPrimary, textAlign: 'center', marginBottom: 8 }}>
             {isLogin ? 'Welcome back' : 'Create account'}
           </h1>
-          <p className="text-gray-400 text-center mb-8">
+          <p style={{ color: v4.colors.textSecondary, textAlign: 'center', marginBottom: 32 }}>
             {isLogin ? 'Sign in to continue' : 'Start earning from real-world tasks'}
           </p>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
+            <div style={{
+              background: v4.colors.errorBg,
+              border: `1px solid ${v4.colors.error}`,
+              color: v4.colors.error,
+              padding: '12px 16px',
+              borderRadius: 12,
+              marginBottom: 24,
+              fontSize: 14,
+            }}>
               {error}
             </div>
           )}
@@ -716,9 +527,26 @@ function AuthPage({ onLogin }) {
           <button
             onClick={handleGoogle}
             disabled={loading}
-            className={`${styles.btn} ${styles.btnSecondary} w-full mb-6 flex items-center justify-center gap-3`}
+            style={{
+              width: '100%',
+              padding: '14px 24px',
+              background: v4.colors.bgSecondary,
+              border: `2px solid rgba(26, 26, 26, 0.1)`,
+              borderRadius: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              fontFamily: v4.fonts.display,
+              fontWeight: 600,
+              fontSize: 15,
+              color: v4.colors.textPrimary,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              marginBottom: 24,
+            }}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -727,56 +555,74 @@ function AuthPage({ onLogin }) {
             Continue with Google
           </button>
 
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 border-t border-white/10" />
-            <span className="text-gray-500 text-sm">or</span>
-            <div className="flex-1 border-t border-white/10" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(26, 26, 26, 0.1)' }} />
+            <span style={{ color: v4.colors.textTertiary, fontSize: 13 }}>or</span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(26, 26, 26, 0.1)' }} />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {!isLogin && (
-              <input
+              <InputV4
                 type="text"
                 placeholder="Full name"
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
-                className={styles.input}
                 required={!isLogin}
               />
             )}
-            <input
+            <InputV4
               type="email"
               placeholder="Email"
               value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })}
-              className={styles.input}
               required
             />
-            <input
+            <InputV4
               type="password"
               placeholder="Password"
               value={form.password}
               onChange={e => setForm({ ...form, password: e.target.value })}
-              className={styles.input}
               required
               minLength={6}
             />
-            <Button type="submit" className="w-full" disabled={loading}>
+            <ButtonV4 type="submit" disabled={loading} style={{ width: '100%' }}>
               {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
-            </Button>
+            </ButtonV4>
           </form>
 
-          <p className="text-center text-gray-400 mt-6 text-sm">
+          <p style={{ textAlign: 'center', color: v4.colors.textSecondary, marginTop: 24, fontSize: 14 }}>
             {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button onClick={() => setIsLogin(!isLogin)} className="text-orange-500 hover:text-orange-400">
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: v4.colors.coral500,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: v4.fonts.display,
+              }}
+            >
               {isLogin ? 'Sign up' : 'Sign in'}
             </button>
           </p>
-        </div>
+        </CardV4>
 
         <button
           onClick={() => window.location.href = '/'}
-          className="block w-full text-center text-gray-400 hover:text-white mt-6 text-sm"
+          style={{
+            display: 'block',
+            width: '100%',
+            textAlign: 'center',
+            color: v4.colors.textSecondary,
+            marginTop: 24,
+            fontSize: 14,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: v4.fonts.display,
+          }}
         >
           ← Back to home
         </button>
@@ -815,37 +661,63 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
-      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Submit Proof</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.6)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 50,
+      padding: 24,
+      fontFamily: v4.fonts.display,
+    }}>
+      <CardV4 style={{ maxWidth: 520, width: '100%', padding: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: v4.colors.textPrimary }}>Submit Proof</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: v4.colors.textTertiary, cursor: 'pointer' }}>✕</button>
         </div>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Describe your work</label>
+            <label style={{ display: 'block', color: v4.colors.textSecondary, fontSize: 14, marginBottom: 8 }}>Describe your work</label>
             <textarea
               value={proofText}
               onChange={(e) => setProofText(e.target.value)}
               placeholder="Describe what you did to complete this task..."
               rows={4}
-              className={`${styles.input} resize-none`}
+              style={{
+                width: '100%',
+                padding: '14px 18px',
+                background: v4.colors.bgSecondary,
+                border: `2px solid rgba(26, 26, 26, 0.1)`,
+                borderRadius: 12,
+                color: v4.colors.textPrimary,
+                fontSize: 15,
+                fontFamily: v4.fonts.display,
+                resize: 'none',
+              }}
             />
           </div>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Upload Proof (max 3 files)</label>
+            <label style={{ display: 'block', color: v4.colors.textSecondary, fontSize: 14, marginBottom: 8 }}>Upload Proof (max 3 files)</label>
             <div
-              className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center cursor-pointer hover:border-orange-500 transition-colors"
               onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: `2px dashed rgba(26, 26, 26, 0.2)`,
+                borderRadius: 12,
+                padding: 24,
+                textAlign: 'center',
+                cursor: 'pointer',
+              }}
             >
-              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
-              <div className="text-3xl mb-2">📤</div>
-              <p className="text-gray-400 text-sm">Click to upload images</p>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
+              <div style={{ fontSize: 28, marginBottom: 8 }}>📤</div>
+              <p style={{ color: v4.colors.textTertiary, fontSize: 14 }}>Click to upload images</p>
             </div>
             {files.length > 0 && (
-              <div className="flex gap-2 mt-3 flex-wrap">
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                 {files.map((file, i) => (
-                  <div key={i} className="bg-white/10 rounded-lg p-2 text-sm text-white">
+                  <div key={i} style={{ background: v4.colors.bgTertiary, borderRadius: 8, padding: '6px 12px', fontSize: 13, color: v4.colors.textSecondary }}>
                     {file.name.slice(0, 15)}...
                   </div>
                 ))}
@@ -853,18 +725,18 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
             )}
           </div>
           {uploadedUrls.length > 0 && (
-            <p className="text-green-400 text-sm flex items-center gap-2">
+            <p style={{ color: v4.colors.success, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>✓</span> {uploadedUrls.length} files uploaded
             </p>
           )}
         </div>
-        <div className="flex gap-3 mt-6">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={handleSubmit} disabled={submitting}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <ButtonV4 variant="secondary" onClick={onClose} style={{ flex: 1 }}>Cancel</ButtonV4>
+          <ButtonV4 onClick={handleSubmit} disabled={submitting} style={{ flex: 1 }}>
             {submitting ? 'Submitting...' : 'Submit Proof'}
-          </Button>
+          </ButtonV4>
         </div>
-      </div>
+      </CardV4>
     </div>
   )
 }
@@ -875,74 +747,93 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
   const [hours, setHours] = useState(24)
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
-      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Review Proof</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.6)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 50,
+      padding: 24,
+      fontFamily: v4.fonts.display,
+    }}>
+      <CardV4 style={{ maxWidth: 520, width: '100%', padding: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: v4.colors.textPrimary }}>Review Proof</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: v4.colors.textTertiary, cursor: 'pointer' }}>✕</button>
         </div>
-        <div className="space-y-4 mb-6">
-          <div className="bg-white/5 rounded-xl p-4">
-            <h3 className="font-semibold text-white mb-2">{task?.title}</h3>
-            <p className="text-gray-400 text-sm">{task?.description}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <div style={{ background: v4.colors.bgTertiary, borderRadius: 12, padding: 16 }}>
+            <h3 style={{ fontWeight: 600, color: v4.colors.textPrimary, marginBottom: 8 }}>{task?.title}</h3>
+            <p style={{ color: v4.colors.textSecondary, fontSize: 14 }}>{task?.description}</p>
           </div>
           {task?.proof_description && (
-            <div className="bg-white/5 rounded-xl p-4">
-              <h4 className="text-gray-400 text-sm mb-2">Human's Proof:</h4>
-              <p className="text-white">{task.proof_description}</p>
+            <div style={{ background: v4.colors.bgTertiary, borderRadius: 12, padding: 16 }}>
+              <h4 style={{ color: v4.colors.textSecondary, fontSize: 14, marginBottom: 8 }}>Human's Proof:</h4>
+              <p style={{ color: v4.colors.textPrimary }}>{task.proof_description}</p>
             </div>
           )}
           {task?.proof_urls?.length > 0 && (
             <div>
-              <h4 className="text-gray-400 text-sm mb-2">Proof Images:</h4>
-              <div className="flex gap-2 flex-wrap">
+              <h4 style={{ color: v4.colors.textSecondary, fontSize: 14, marginBottom: 8 }}>Proof Images:</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {task.proof_urls.map((url, i) => (
-                  <img key={i} src={url} alt={`Proof ${i + 1}`} className="w-24 h-24 object-cover rounded-lg" />
+                  <img key={i} src={url} alt={`Proof ${i + 1}`} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8 }} />
                 ))}
               </div>
             </div>
           )}
         </div>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Feedback (required for reject)</label>
+            <label style={{ display: 'block', color: v4.colors.textSecondary, fontSize: 14, marginBottom: 8 }}>Feedback (required for reject)</label>
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Provide feedback..."
               rows={3}
-              className={`${styles.input} resize-none`}
+              style={{
+                width: '100%',
+                padding: '14px 18px',
+                background: v4.colors.bgSecondary,
+                border: `2px solid rgba(26, 26, 26, 0.1)`,
+                borderRadius: 12,
+                color: v4.colors.textPrimary,
+                fontSize: 15,
+                fontFamily: v4.fonts.display,
+                resize: 'none',
+              }}
             />
           </div>
           {rejecting && (
             <div>
-              <label className="block text-gray-400 text-sm mb-2">Extend deadline by (hours)</label>
-              <input
+              <label style={{ display: 'block', color: v4.colors.textSecondary, fontSize: 14, marginBottom: 8 }}>Extend deadline by (hours)</label>
+              <InputV4
                 type="number"
                 value={hours}
                 onChange={(e) => setHours(parseInt(e.target.value) || 0)}
                 min={1}
                 max={168}
-                className={styles.input}
               />
             </div>
           )}
         </div>
-        <div className="flex gap-3 mt-6">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>Close</Button>
-          <Button variant="secondary" className="flex-1" onClick={() => setRejecting(!rejecting)}>
-            {rejecting ? 'Cancel Reject' : 'Reject & Request Changes'}
-          </Button>
-          <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={onApprove}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <ButtonV4 variant="secondary" onClick={onClose} style={{ flex: 1 }}>Close</ButtonV4>
+          <ButtonV4 variant="secondary" onClick={() => setRejecting(!rejecting)} style={{ flex: 1 }}>
+            {rejecting ? 'Cancel' : 'Reject'}
+          </ButtonV4>
+          <ButtonV4 variant="success" onClick={onApprove} style={{ flex: 1 }}>
             Approve & Pay
-          </Button>
+          </ButtonV4>
         </div>
         {rejecting && (
-          <Button className="w-full mt-3 bg-red-600 hover:bg-red-700" onClick={() => onReject({ feedback, extendHours: hours })} disabled={!feedback.trim()}>
+          <ButtonV4 variant="danger" onClick={() => onReject({ feedback, extendHours: hours })} disabled={!feedback.trim()} style={{ width: '100%', marginTop: 12 }}>
             Confirm Rejection
-          </Button>
+          </ButtonV4>
         )}
-      </div>
+      </CardV4>
     </div>
   )
 }
@@ -970,6 +861,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [profileCityData, setProfileCityData] = useState(null)
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
+
+  // Create Task form state
+  const [taskForm, setTaskForm] = useState({
+    title: '', description: '', category: '',
+    budget: '', city: '', latitude: null, longitude: null
+  })
+  const [createTaskLoading, setCreateTaskLoading] = useState(false)
+  const [createTaskError, setCreateTaskError] = useState('')
+
+  const TASK_CATEGORIES = [
+    { value: 'delivery', label: 'Delivery & Pickup' },
+    { value: 'photography', label: 'Photography' },
+    { value: 'errands', label: 'Errands' },
+    { value: 'cleaning', label: 'Cleaning' },
+    { value: 'moving', label: 'Moving & Labor' },
+    { value: 'tech', label: 'Tech Support' },
+    { value: 'general', label: 'General Task' }
+  ]
+  const MIN_BUDGET = 5
 
   useEffect(() => {
     localStorage.setItem('irlwork_hiringMode', hiringMode)
@@ -1067,6 +977,67 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       console.log('Could not fetch posted tasks')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault()
+    setCreateTaskError('')
+
+    // Validation
+    if (!taskForm.title.trim()) {
+      setCreateTaskError('Title is required')
+      return
+    }
+    if (!taskForm.category) {
+      setCreateTaskError('Please select a category')
+      return
+    }
+    if (!taskForm.budget || parseFloat(taskForm.budget) < MIN_BUDGET) {
+      setCreateTaskError(`Minimum budget is $${MIN_BUDGET}`)
+      return
+    }
+    if (!taskForm.city) {
+      setCreateTaskError('Please select a location')
+      return
+    }
+
+    setCreateTaskLoading(true)
+
+    try {
+      const res = await fetch(`${API_URL}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
+        body: JSON.stringify({
+          title: taskForm.title,
+          description: taskForm.description,
+          category: taskForm.category,
+          budget: parseFloat(taskForm.budget),
+          city: taskForm.city,
+          latitude: taskForm.latitude,
+          longitude: taskForm.longitude
+        })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to create task')
+      }
+
+      // Reset form and switch to posted tasks
+      setTaskForm({
+        title: '', description: '', category: '',
+        budget: '', city: '', latitude: null, longitude: null
+      })
+      setActiveTab('posted')
+      fetchPostedTasks()
+    } catch (err) {
+      setCreateTaskError(err.message)
+    } finally {
+      setCreateTaskLoading(false)
     }
   }
 
@@ -1213,14 +1184,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   const getTaskStatus = (status) => {
     const colors = {
-      open: 'bg-blue-500/20 text-blue-400',
-      accepted: 'bg-purple-500/20 text-purple-400',
-      in_progress: 'bg-yellow-500/20 text-yellow-400',
-      pending_review: 'bg-orange-500/20 text-orange-400',
-      completed: 'bg-green-500/20 text-green-400',
-      paid: 'bg-gray-500/20 text-gray-400',
+      open: 'bg-[#D1E9F0] text-[#0F4C5C]',
+      accepted: 'bg-[#E8D5F0] text-[#6B21A8]',
+      in_progress: 'bg-[#FEF3C7] text-[#D97706]',
+      pending_review: 'bg-[#FFE4DB] text-[#C45F4A]',
+      completed: 'bg-[#D1FAE5] text-[#059669]',
+      paid: 'bg-[#F5F2ED] text-[#525252]',
     }
-    return colors[status] || 'bg-gray-500/20 text-gray-400'
+    return colors[status] || 'bg-[#F5F2ED] text-[#525252]'
   }
 
   const getStatusLabel = (status) => {
@@ -1238,15 +1209,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   return (
     <div className={`min-h-screen ${styles.gradient} flex`}>
       {/* Sidebar */}
-      <aside className="w-64 bg-white/5 border-r border-white/5 p-6 flex flex-col">
-        <div 
+      <aside className="w-64 bg-white border-r border-[rgba(26,26,26,0.08)] p-6 flex flex-col">
+        <div
           className="flex items-center gap-3 mb-8 cursor-pointer"
           onClick={() => window.location.href = '/'}
         >
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
-            <span className="text-white text-xl">👤</span>
+          <div className="w-10 h-10 bg-[#0F4C5C] rounded-xl flex items-center justify-center">
+            <span className="text-white text-sm font-bold">irl</span>
           </div>
-          <span className="text-xl font-bold text-white">irlwork.ai</span>
+          <span className="text-xl font-bold text-[#1A1A1A]">irlwork.ai</span>
         </div>
 
         <nav className="flex-1 space-y-1">
@@ -1255,9 +1226,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                activeTab === item.id 
-                  ? 'bg-orange-500 text-white' 
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                activeTab === item.id
+                  ? 'bg-[#0F4C5C] text-white'
+                  : 'text-[#525252] hover:bg-[#F5F2ED] hover:text-[#1A1A1A]'
               }`}
             >
               <span>{item.icon}</span>
@@ -1266,58 +1237,58 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           ))}
         </nav>
 
-        <div className="border-t border-white/5 pt-6 mt-6">
+        <div className="border-t border-[rgba(26,26,26,0.08)] pt-6 mt-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold">
+            <div className="w-10 h-10 bg-[rgba(15,76,92,0.1)] rounded-full flex items-center justify-center text-[#0F4C5C] font-bold">
               {user?.name?.charAt(0) || '?'}
             </div>
             <div>
-              <p className="text-white font-medium text-sm">{user?.name || 'User'}</p>
-              <p className="text-gray-500 text-xs">{hiringMode ? 'Hiring Mode' : 'Working Mode'}</p>
+              <p className="text-[#1A1A1A] font-medium text-sm">{user?.name || 'User'}</p>
+              <p className="text-[#8A8A8A] text-xs">{hiringMode ? 'Hiring Mode' : 'Working Mode'}</p>
             </div>
           </div>
-          
+
           {/* Notifications Bell */}
           <div className="relative mb-4">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all"
+              className="w-full flex items-center gap-3 px-4 py-3 text-[#525252] hover:text-[#1A1A1A] rounded-xl hover:bg-[#F5F2ED] transition-all"
             >
               <span className="relative">
                 <span>🔔</span>
                 {notifications.filter(n => !n.read_at).length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#E07A5F] rounded-full text-xs flex items-center justify-center text-white">
                     {notifications.filter(n => !n.read_at).length}
                   </span>
                 )}
               </span>
               <span>Notifications</span>
             </button>
-            
+
             {showNotifications && (
-              <div className="absolute bottom-full left-0 w-full mb-2 bg-gray-800 border border-white/10 rounded-xl max-h-80 overflow-y-auto">
+              <div className="absolute bottom-full left-0 w-full mb-2 bg-white border border-[rgba(26,26,26,0.1)] rounded-xl max-h-80 overflow-y-auto shadow-lg">
                 {notifications.length === 0 ? (
-                  <div className="p-4 text-gray-400 text-sm text-center">No notifications</div>
+                  <div className="p-4 text-[#525252] text-sm text-center">No notifications</div>
                 ) : (
                   notifications.slice(0, 10).map(n => (
                     <div
                       key={n.id}
-                      className={`p-3 border-b border-white/10 cursor-pointer hover:bg-white/5 ${!n.read_at ? 'bg-orange-500/10' : ''}`}
+                      className={`p-3 border-b border-[rgba(26,26,26,0.08)] cursor-pointer hover:bg-[#F5F2ED] ${!n.read_at ? 'bg-[rgba(224,122,95,0.08)]' : ''}`}
                       onClick={() => markNotificationRead(n.id)}
                     >
-                      <p className="text-white text-sm font-medium">{n.title}</p>
-                      <p className="text-gray-400 text-xs">{n.message}</p>
-                      <p className="text-gray-500 text-xs mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
+                      <p className="text-[#1A1A1A] text-sm font-medium">{n.title}</p>
+                      <p className="text-[#525252] text-xs">{n.message}</p>
+                      <p className="text-[#8A8A8A] text-xs mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
                     </div>
                   ))
                 )}
               </div>
             )}
           </div>
-          
+
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition-all"
+            className="w-full flex items-center gap-3 px-4 py-3 text-[#525252] hover:text-[#1A1A1A] rounded-xl hover:bg-[#F5F2ED] transition-all"
           >
             <span>🚪</span>
             <span>Sign Out</span>
@@ -1330,14 +1301,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">My Tasks</h1>
-            
+            <h1 className="text-3xl font-bold text-[#1A1A1A] mb-8">My Tasks</h1>
+
             {loading ? (
-              <p className="text-gray-400">Loading...</p>
+              <p className="text-[#525252]">Loading...</p>
             ) : postedTasks.length === 0 ? (
               <div className={`${styles.card} text-center py-12`}>
-                <p className="text-gray-400 mb-4">No tasks posted yet</p>
-                <p className="text-sm text-gray-500">Create a task to get started</p>
+                <p className="text-[#525252] mb-4">No tasks posted yet</p>
+                <p className="text-sm text-[#8A8A8A]">Create a task to get started</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -1351,13 +1322,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                           <span className={`text-xs px-2 py-1 rounded ${statusBadge}`}>
                             {(task.status || 'open').toUpperCase()}
                           </span>
-                          <h3 className="text-lg font-semibold text-white mt-2">{task.title}</h3>
-                          <p className="text-gray-400 text-sm">{task.category} • {task.city || 'Remote'} • Budget: ${task.budget}</p>
+                          <h3 className="text-lg font-semibold text-[#1A1A1A] mt-2">{task.title}</h3>
+                          <p className="text-[#525252] text-sm">{task.category} • {task.city || 'Remote'} • Budget: ${task.budget}</p>
                           {task.assignee && (
-                            <p className="text-gray-400 text-sm mt-1">Assigned to: {task.assignee.name}</p>
+                            <p className="text-[#525252] text-sm mt-1">Assigned to: {task.assignee.name}</p>
                           )}
                         </div>
-                        <p className="text-green-400 font-bold">${task.budget || 0}</p>
+                        <p className="text-[#059669] font-bold">${task.budget || 0}</p>
                       </div>
                       {needsAction && (
                         <div className="flex gap-3 mt-4">
@@ -1367,7 +1338,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         </div>
                       )}
                       {task.status === 'paid' && (
-                        <p className="text-green-400 text-sm mt-2">💸 Payment released</p>
+                        <p className="text-[#059669] text-sm mt-2">💸 Payment released</p>
                       )}
                     </div>
                   )
@@ -1380,7 +1351,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: Create Task Tab */}
         {hiringMode && activeTab === 'create' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Create Task</h1>
+            <h1 className="text-3xl font-bold text-[#1A1A1A] mb-8">Create Task</h1>
             <div className={`${styles.card} max-w-2xl`}>
               <form className="space-y-4">
                 <input type="text" placeholder="Task title" className={styles.input} />
@@ -1410,10 +1381,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: Hired Tab */}
         {hiringMode && activeTab === 'humans' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Hired</h1>
+            <h1 className="text-3xl font-bold text-[#1A1A1A] mb-8">Hired</h1>
             <div className={`${styles.card} text-center py-12`}>
-              <p className="text-gray-400">No humans hired yet</p>
-              <p className="text-sm text-gray-500 mt-2">Hire someone for a task</p>
+              <p className="text-[#525252]">No humans hired yet</p>
+              <p className="text-sm text-[#8A8A8A] mt-2">Hire someone for a task</p>
             </div>
           </div>
         )}
@@ -1422,37 +1393,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {!hiringMode && activeTab === 'tasks' && (
           <div>
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-3xl font-bold text-white">My Tasks</h1>
-              <span className="text-gray-400">{tasks.filter(t => t.status === 'in_progress').length} active</span>
+              <h1 className="text-3xl font-bold text-[#1A1A1A]">My Tasks</h1>
+              <span className="text-[#525252]">{tasks.filter(t => t.status === 'in_progress').length} active</span>
             </div>
-            
+
             {loading ? (
-              <p className="text-gray-400">Loading...</p>
+              <p className="text-[#525252]">Loading...</p>
             ) : tasks.length === 0 ? (
               <div className={`${styles.card} text-center py-16`}>
                 <div className="text-6xl mb-4">{Icons.task}</div>
-                <p className="text-gray-400 mb-2">No tasks yet</p>
-                <p className="text-sm text-gray-500">Switch to Hiring Mode to create tasks, or browse available tasks from agents</p>
+                <p className="text-[#525252] mb-2">No tasks yet</p>
+                <p className="text-sm text-[#8A8A8A]">Switch to Hiring Mode to create tasks, or browse available tasks from agents</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* Task Stats */}
                 <div className="grid grid-cols-4 gap-4 mb-6">
                   <div className={`${styles.card} text-center`}>
-                    <p className="text-2xl font-bold text-white">{tasks.filter(t => t.status === 'open').length}</p>
-                    <p className="text-xs text-gray-400">Open</p>
+                    <p className="text-2xl font-bold text-[#1A1A1A]">{tasks.filter(t => t.status === 'open').length}</p>
+                    <p className="text-xs text-[#525252]">Open</p>
                   </div>
                   <div className={`${styles.card} text-center`}>
-                    <p className="text-2xl font-bold text-yellow-400">{tasks.filter(t => t.status === 'in_progress').length}</p>
-                    <p className="text-xs text-gray-400">Active</p>
+                    <p className="text-2xl font-bold text-[#D97706]">{tasks.filter(t => t.status === 'in_progress').length}</p>
+                    <p className="text-xs text-[#525252]">Active</p>
                   </div>
                   <div className={`${styles.card} text-center`}>
-                    <p className="text-2xl font-bold text-green-400">{tasks.filter(t => t.status === 'completed').length}</p>
-                    <p className="text-xs text-gray-400">Completed</p>
+                    <p className="text-2xl font-bold text-[#059669]">{tasks.filter(t => t.status === 'completed').length}</p>
+                    <p className="text-xs text-[#525252]">Completed</p>
                   </div>
                   <div className={`${styles.card} text-center`}>
-                    <p className="text-2xl font-bold text-white">${tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}</p>
-                    <p className="text-xs text-gray-400">Earned</p>
+                    <p className="text-2xl font-bold text-[#0F4C5C]">${tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}</p>
+                    <p className="text-xs text-[#525252]">Earned</p>
                   </div>
                 </div>
 
@@ -1463,22 +1434,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         <span className={`inline-block text-xs px-2 py-1 rounded ${getTaskStatus(task.status)}`}>
                           {getStatusLabel(task.status)}
                         </span>
-                        <h3 className="text-lg font-semibold text-white mt-2">{task.title}</h3>
-                        <p className="text-gray-400 text-sm mt-1">{task.category} • {task.city || 'Remote'}</p>
+                        <h3 className="text-lg font-semibold text-[#1A1A1A] mt-2">{task.title}</h3>
+                        <p className="text-[#525252] text-sm mt-1">{task.category} • {task.city || 'Remote'}</p>
                       </div>
-                      <p className="text-green-400 font-bold text-xl">${task.budget || 0}</p>
+                      <p className="text-[#059669] font-bold text-xl">${task.budget || 0}</p>
                     </div>
-                    
+
                     {task.description && (
-                      <p className="text-gray-300 text-sm mb-4">{task.description}</p>
+                      <p className="text-[#525252] text-sm mb-4">{task.description}</p>
                     )}
-                    
-                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+
+                    <div className="flex items-center gap-4 text-xs text-[#8A8A8A] mb-4">
                       <span>{Icons.calendar} Posted: {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
                       {task.deadline && <span>📅 Due: {new Date(task.deadline).toLocaleDateString()}</span>}
                       {task.agent_name && <span>👤 Agent: {task.agent_name}</span>}
                     </div>
-                    
+
                     <div className="flex gap-3">
                       {task.status === 'open' && (
                         <>
@@ -1506,13 +1477,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                       )}
                       {task.status === 'completed' && (
                         <>
-                          <span className="text-green-400 flex items-center gap-2">{Icons.check} Payment pending</span>
+                          <span className="text-[#059669] flex items-center gap-2">{Icons.check} Payment pending</span>
                           <Button variant="secondary" onClick={() => window.location.href = `/dashboard/task/${task.id}`}>View Details</Button>
                         </>
                       )}
                       {task.status === 'paid' && (
                         <>
-                          <span className="text-white flex items-center gap-2">{Icons.dollar} Paid!</span>
+                          <span className="text-[#0F4C5C] flex items-center gap-2">{Icons.dollar} Paid!</span>
                           <Button variant="secondary" onClick={() => window.location.href = `/dashboard/task/${task.id}`}>View Details</Button>
                         </>
                       )}
@@ -1527,18 +1498,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: Browse Tab */}
         {!hiringMode && activeTab === 'humans' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Browse Workers</h1>
+            <h1 className="text-3xl font-bold text-[#1A1A1A] mb-8">Browse Workers</h1>
 
             {/* Radius Filter */}
             {user.latitude && user.longitude && (
-              <div className="mb-6 bg-white/5 border border-white/10 rounded-xl p-6">
+              <div className="mb-6 bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-6">
                 <div className="flex justify-between items-center mb-3">
-                  <label className="block text-gray-400 text-sm font-medium">
+                  <label className="block text-[#525252] text-sm font-medium">
                     Search within {radiusFilter} miles{user.city ? ` of ${user.city}` : ''}
                   </label>
                   <button
                     onClick={() => setRadiusFilter(user.travel_radius || 25)}
-                    className="text-orange-400 text-xs hover:text-orange-300"
+                    className="text-[#E07A5F] text-xs hover:text-[#C45F4A]"
                   >
                     Reset to default ({user.travel_radius || 25} mi)
                   </button>
@@ -1550,9 +1521,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   step="5"
                   value={radiusFilter}
                   onChange={(e) => setRadiusFilter(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                  className="w-full h-2 bg-[#F5F2ED] rounded-lg appearance-none cursor-pointer slider accent-[#0F4C5C]"
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                <div className="flex justify-between text-xs text-[#8A8A8A] mt-2">
                   <span>5 mi</span>
                   <span>25 mi</span>
                   <span>50 mi</span>
@@ -1565,16 +1536,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             {/* Search & Filter */}
             <div className="flex gap-4 mb-6">
               <div className="flex-1 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">{Icons.search}</span>
-                <input 
-                  type="text" 
-                  placeholder="Search by name or skill..." 
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8A8A8A]">{Icons.search}</span>
+                <input
+                  type="text"
+                  placeholder="Search by name or skill..."
                   className={`${styles.input} pl-12`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <select 
+              <select
                 className={styles.input}
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
@@ -1585,12 +1556,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 ))}
               </select>
             </div>
-            
+
             {humans.length === 0 ? (
               <div className={`${styles.card} text-center py-16`}>
                 <div className="text-6xl mb-4">{Icons.humans}</div>
-                <p className="text-gray-400">No workers available</p>
-                <p className="text-sm text-gray-500 mt-2">Check back later for available humans</p>
+                <p className="text-[#525252]">No workers available</p>
+                <p className="text-sm text-[#8A8A8A] mt-2">Check back later for available humans</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
@@ -1600,41 +1571,41 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   .map(human => (
                   <div key={human.id} className={`${styles.card}`}>
                     <div className="flex items-start gap-4">
-                      <div className="w-14 h-14 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold text-xl">
+                      <div className="w-14 h-14 bg-[rgba(15,76,92,0.1)] rounded-full flex items-center justify-center text-[#0F4C5C] font-bold text-xl">
                         {human.name?.charAt(0) || '?'}
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="font-semibold text-white">{human.name}</h3>
-                            <p className="text-gray-400 text-sm">
+                            <h3 className="font-semibold text-[#1A1A1A]">{human.name}</h3>
+                            <p className="text-[#525252] text-sm">
                               {Icons.location} {human.city || 'Remote'}
                               {human.distance != null && (
-                                <span className="text-orange-400 ml-2">
+                                <span className="text-[#E07A5F] ml-2">
                                   • {human.distance.toFixed(1)} mi away
                                 </span>
                               )}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-green-400 font-bold text-lg">${human.hourly_rate || 25}/hr</p>
+                            <p className="text-[#059669] font-bold text-lg">${human.hourly_rate || 25}/hr</p>
                             {human.rating > 0 && (
-                              <p className="text-yellow-400 text-sm">{Icons.star} {human.rating.toFixed(1)}</p>
+                              <p className="text-[#D97706] text-sm">{Icons.star} {human.rating.toFixed(1)}</p>
                             )}
                           </div>
                         </div>
-                        {human.bio && <p className="text-gray-400 text-sm mt-2 line-clamp-2">{human.bio}</p>}
+                        {human.bio && <p className="text-[#525252] text-sm mt-2 line-clamp-2">{human.bio}</p>}
                         {human.skills && (
                           <div className="flex flex-wrap gap-1 mt-3">
                             {human.skills.slice(0, 5).map((skill, i) => (
-                              <span key={i} className="text-xs bg-orange-500/20 text-orange-300 px-2 py-0.5 rounded-full">
+                              <span key={i} className="text-xs bg-[rgba(15,76,92,0.1)] text-[#0F4C5C] px-2 py-0.5 rounded-full">
                                 {skill}
                               </span>
                             ))}
                           </div>
                         )}
                         <div className="flex items-center justify-between mt-4">
-                          <span className="text-xs text-gray-500">{human.jobs_completed || 0} jobs completed</span>
+                          <span className="text-xs text-[#8A8A8A]">{human.jobs_completed || 0} jobs completed</span>
                           <Button variant="secondary" className="text-sm" onClick={() => {
                             setHiringMode(true)
                             setActiveTab('create')
@@ -1652,7 +1623,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: Payments Tab */}
         {!hiringMode && activeTab === 'payments' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Earnings Dashboard</h1>
+            <h1 className="text-3xl font-bold text-[#1A1A1A] mb-8">Earnings Dashboard</h1>
             <EarningsDashboard user={user} />
           </div>
         )}
@@ -1660,32 +1631,32 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Profile Tab - Updated with Settings */}
         {activeTab === 'profile' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Profile</h1>
-            
+            <h1 className="text-3xl font-bold text-[#1A1A1A] mb-8">Profile</h1>
+
             <div className={`${styles.card} max-w-xl`}>
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold text-2xl">
+                <div className="w-20 h-20 bg-[rgba(15,76,92,0.1)] rounded-full flex items-center justify-center text-[#0F4C5C] font-bold text-2xl">
                   {user?.name?.charAt(0) || '?'}
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-white">{user?.name}</h2>
-                  <p className="text-gray-400">{user?.email}</p>
+                  <h2 className="text-xl font-semibold text-[#1A1A1A]">{user?.name}</h2>
+                  <p className="text-[#525252]">{user?.email}</p>
                 </div>
               </div>
 
               {/* Mode Toggle */}
-              <div className="mb-6 p-4 bg-white/5 rounded-xl">
+              <div className="mb-6 p-4 bg-[#F5F2ED] rounded-xl">
                 <div className="flex justify-between items-center mb-3">
                   <div>
-                    <p className="text-white font-medium">Mode</p>
-                    <p className="text-xs text-gray-500">Switch between working and hiring</p>
+                    <p className="text-[#1A1A1A] font-medium">Mode</p>
+                    <p className="text-xs text-[#8A8A8A]">Switch between working and hiring</p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm ${hiringMode ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                  <span className={`px-3 py-1 rounded-full text-sm ${hiringMode ? 'bg-[#D1FAE5] text-[#059669]' : 'bg-[#D1E9F0] text-[#0F4C5C]'}`}>
                     {hiringMode ? 'Hiring' : 'Working'}
                   </span>
                 </div>
-                <Button 
-                  variant={hiringMode ? 'secondary' : 'primary'} 
+                <Button
+                  variant={hiringMode ? 'secondary' : 'primary'}
                   className="w-full"
                   onClick={toggleHiringMode}
                 >
@@ -1694,29 +1665,29 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               </div>
 
               <div className="space-y-4">
-                <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Location</span>
-                  <span className="text-white">{user?.city || 'Not set'}</span>
+                <div className="flex justify-between py-3 border-b border-[rgba(26,26,26,0.08)]">
+                  <span className="text-[#525252]">Location</span>
+                  <span className="text-[#1A1A1A]">{user?.city || 'Not set'}</span>
                 </div>
-                <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Hourly Rate</span>
-                  <span className="text-white">${user?.hourly_rate || 25}/hr</span>
+                <div className="flex justify-between py-3 border-b border-[rgba(26,26,26,0.08)]">
+                  <span className="text-[#525252]">Hourly Rate</span>
+                  <span className="text-[#1A1A1A]">${user?.hourly_rate || 25}/hr</span>
                 </div>
-                <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Travel Radius</span>
-                  <span className="text-white">{user?.travel_radius || 25} miles</span>
+                <div className="flex justify-between py-3 border-b border-[rgba(26,26,26,0.08)]">
+                  <span className="text-[#525252]">Travel Radius</span>
+                  <span className="text-[#1A1A1A]">{user?.travel_radius || 25} miles</span>
                 </div>
-                <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Skills</span>
-                  <span className="text-white">{user?.skills?.join(', ') || 'None'}</span>
+                <div className="flex justify-between py-3 border-b border-[rgba(26,26,26,0.08)]">
+                  <span className="text-[#525252]">Skills</span>
+                  <span className="text-[#1A1A1A]">{user?.skills?.join(', ') || 'None'}</span>
                 </div>
                 <div className="flex justify-between py-3">
-                  <span className="text-gray-400">Jobs Completed</span>
-                  <span className="text-white">{user?.jobs_completed || 0}</span>
+                  <span className="text-[#525252]">Jobs Completed</span>
+                  <span className="text-[#1A1A1A]">{user?.jobs_completed || 0}</span>
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-white/10">
+              <div className="mt-6 pt-6 border-t border-[rgba(26,26,26,0.08)]">
                 <Button variant="secondary" className="w-full">Edit Profile</Button>
               </div>
             </div>
@@ -1731,11 +1702,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
-            
+            <h1 className="text-3xl font-bold text-[#1A1A1A] mb-8">Settings</h1>
+
             <div className={`${styles.card} max-w-2xl mb-6`}>
-              <h2 className="text-xl font-semibold text-white mb-6">Profile Settings</h2>
-              
+              <h2 className="text-xl font-semibold text-[#1A1A1A] mb-6">Profile Settings</h2>
+
               <form className="space-y-4" onSubmit={async (e) => {
                 e.preventDefault()
                 const formData = new FormData(e.target)
@@ -1775,11 +1746,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               }}>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-400 text-sm mb-2">Full Name</label>
+                    <label className="block text-[#525252] text-sm mb-2">Full Name</label>
                     <input type="text" name="name" defaultValue={user?.name} className={styles.input} />
                   </div>
                   <div>
-                    <label className="block text-gray-400 text-sm mb-2">City</label>
+                    <label className="block text-[#525252] text-sm mb-2">City</label>
                     <CityAutocomplete
                       value={profileCityData?.city || user?.city || ''}
                       onChange={(cityData) => setProfileCityData(cityData)}
@@ -1787,29 +1758,29 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-400 text-sm mb-2">Hourly Rate ($)</label>
+                    <label className="block text-[#525252] text-sm mb-2">Hourly Rate ($)</label>
                     <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className={styles.input} />
                   </div>
                   <div>
-                    <label className="block text-gray-400 text-sm mb-2">Travel Radius (miles)</label>
+                    <label className="block text-[#525252] text-sm mb-2">Travel Radius (miles)</label>
                     <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className={styles.input} />
                   </div>
                 </div>
-                
+
                 <div>
-                  <label className="block text-gray-400 text-sm mb-2">Bio</label>
+                  <label className="block text-[#525252] text-sm mb-2">Bio</label>
                   <textarea name="bio" rows={3} defaultValue={user?.bio || ''} className={`${styles.input} resize-none`} placeholder="Tell agents about yourself..." />
                 </div>
-                
+
                 <Button type="submit" className="w-full">Save Changes</Button>
               </form>
             </div>
-            
+
             <div className={`${styles.card} max-w-2xl mb-6`}>
-              <h2 className="text-xl font-semibold text-white mb-6">Skills</h2>
+              <h2 className="text-xl font-semibold text-[#1A1A1A] mb-6">Skills</h2>
               <form className="space-y-4" onSubmit={async (e) => {
                 e.preventDefault()
                 const formData = new FormData(e.target)
@@ -1832,29 +1803,29 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 }
               }}>
                 <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className={styles.input} placeholder="delivery, photography, moving, cleaning" />
-                <p className="text-xs text-gray-500">Separate skills with commas</p>
+                <p className="text-xs text-[#8A8A8A]">Separate skills with commas</p>
                 <Button type="submit" className="w-full">Update Skills</Button>
               </form>
             </div>
-            
+
             <div className={`${styles.card} max-w-2xl`}>
-              <h2 className="text-xl font-semibold text-white mb-6">Notification Preferences</h2>
+              <h2 className="text-xl font-semibold text-[#1A1A1A] mb-6">Notification Preferences</h2>
               <div className="space-y-4">
                 <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-white/10 border-white/20" />
-                  <span className="text-white">Task assignments</span>
+                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-[#F5F2ED] border-[rgba(26,26,26,0.2)] accent-[#0F4C5C]" />
+                  <span className="text-[#1A1A1A]">Task assignments</span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-white/10 border-white/20" />
-                  <span className="text-white">Payment notifications</span>
+                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-[#F5F2ED] border-[rgba(26,26,26,0.2)] accent-[#0F4C5C]" />
+                  <span className="text-[#1A1A1A]">Payment notifications</span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-white/10 border-white/20" />
-                  <span className="text-white">Messages from agents</span>
+                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-[#F5F2ED] border-[rgba(26,26,26,0.2)] accent-[#0F4C5C]" />
+                  <span className="text-[#1A1A1A]">Messages from agents</span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" className="w-5 h-5 rounded bg-white/10 border-white/20" />
-                  <span className="text-white">Marketing & updates</span>
+                  <input type="checkbox" className="w-5 h-5 rounded bg-[#F5F2ED] border-[rgba(26,26,26,0.2)] accent-[#0F4C5C]" />
+                  <span className="text-[#1A1A1A]">Marketing & updates</span>
                 </label>
               </div>
             </div>
@@ -1864,55 +1835,55 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Messages Tab */}
         {activeTab === 'messages' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Messages</h1>
-            
+            <h1 className="text-3xl font-bold text-[#1A1A1A] mb-8">Messages</h1>
+
             <div className={`${styles.card} p-0 overflow-hidden`} style={{ height: 'calc(100vh - 200px)' }}>
               <div className="grid md:grid-cols-3 h-full">
                 {/* Conversations List */}
-                <div className="border-r border-white/10 overflow-y-auto">
+                <div className="border-r border-[rgba(26,26,26,0.08)] overflow-y-auto">
                   {conversations.length === 0 ? (
-                    <div className="p-6 text-center text-gray-400">No conversations yet</div>
+                    <div className="p-6 text-center text-[#525252]">No conversations yet</div>
                   ) : (
                     conversations.map(c => (
                       <div
                         key={c.id}
-                        className={`p-4 border-b border-white/10 cursor-pointer hover:bg-white/5 ${selectedConversation === c.id ? 'bg-orange-500/20' : ''}`}
+                        className={`p-4 border-b border-[rgba(26,26,26,0.08)] cursor-pointer hover:bg-[#F5F2ED] ${selectedConversation === c.id ? 'bg-[rgba(15,76,92,0.1)]' : ''}`}
                         onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold">
+                          <div className="w-10 h-10 bg-[rgba(15,76,92,0.1)] rounded-full flex items-center justify-center text-[#0F4C5C] font-bold">
                             {c.other_user?.name?.charAt(0) || '?'}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-white font-medium truncate">{c.otherUser?.name || 'Unknown'}</p>
-                            <p className="text-gray-400 text-sm truncate">{c.last_message || 'No messages'}</p>
+                            <p className="text-[#1A1A1A] font-medium truncate">{c.otherUser?.name || 'Unknown'}</p>
+                            <p className="text-[#525252] text-sm truncate">{c.last_message || 'No messages'}</p>
                           </div>
                           {c.unread > 0 && (
-                            <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">{c.unread}</span>
+                            <span className="bg-[#E07A5F] text-white text-xs px-2 py-0.5 rounded-full">{c.unread}</span>
                           )}
                         </div>
                       </div>
                     ))
                   )}
                 </div>
-                
+
                 {/* Messages */}
                 <div className="col-span-2 flex flex-col h-full">
                   {selectedConversation ? (
                     <>
-                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#FAF8F5]">
                         {messages.map(m => (
                           <div key={m.id} className={`flex ${m.sender_id === user.id ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[70%] rounded-xl p-3 ${m.sender_id === user.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-white'}`}>
+                            <div className={`max-w-[70%] rounded-xl p-3 ${m.sender_id === user.id ? 'bg-[#0F4C5C] text-white' : 'bg-white text-[#1A1A1A] border border-[rgba(26,26,26,0.08)]'}`}>
                               <p>{m.content}</p>
-                              <p className={`text-xs mt-1 ${m.sender_id === user.id ? 'text-orange-100' : 'text-gray-400'}`}>
+                              <p className={`text-xs mt-1 ${m.sender_id === user.id ? 'text-[rgba(255,255,255,0.7)]' : 'text-[#8A8A8A]'}`}>
                                 {new Date(m.created_at).toLocaleTimeString()}
                               </p>
                             </div>
                           </div>
                         ))}
                       </div>
-                      <form onSubmit={sendMessage} className="p-4 border-t border-white/10 flex gap-3">
+                      <form onSubmit={sendMessage} className="p-4 border-t border-[rgba(26,26,26,0.08)] flex gap-3 bg-white">
                         <input
                           type="text"
                           value={newMessage}
@@ -1924,7 +1895,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                       </form>
                     </>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center text-gray-400">
+                    <div className="flex-1 flex items-center justify-center text-[#525252]">
                       Select a conversation to start messaging
                     </div>
                   )}
@@ -1957,61 +1928,64 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
 function MCPPage() {
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <header className="border-b border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-              <span className="text-white text-xl">👤</span>
-            </div>
-            <span className="text-xl font-bold">irlwork.ai</span>
-          </a>
-          <a href="/" className="text-gray-400 hover:text-white">Home</a>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-4 py-16">
+    <PageLayoutV4>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '64px 24px' }}>
         {/* Hero */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            MCP <span className="text-orange-500">Integration</span>
+        <div style={{ textAlign: 'center', marginBottom: 64 }}>
+          <h1 style={{ fontSize: 48, fontWeight: 700, color: v4.colors.textPrimary, marginBottom: 16 }}>
+            MCP <span style={{ color: v4.colors.teal700 }}>Integration</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p style={{ fontSize: 18, color: v4.colors.textSecondary, maxWidth: 600, margin: '0 auto' }}>
             Connect your AI agent to hire real humans for physical-world tasks. One command install via Model Context Protocol.
           </p>
-          <div className="flex justify-center gap-4 mt-8">
-            <a href="#quick-start" className="px-6 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400">
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 32 }}>
+            <a href="#quick-start" style={{
+              padding: '14px 28px',
+              background: v4.colors.coral500,
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: 12,
+              textDecoration: 'none',
+            }}>
               Install Now
             </a>
-            <a href="#tools" className="px-6 py-3 bg-gray-800 text-white font-semibold rounded-lg hover:bg-gray-700 border border-gray-700">
+            <a href="#tools" style={{
+              padding: '14px 28px',
+              background: 'transparent',
+              color: v4.colors.teal700,
+              fontWeight: 600,
+              borderRadius: 12,
+              textDecoration: 'none',
+              border: `2px solid ${v4.colors.teal700}`,
+            }}>
               View Tools
             </a>
           </div>
         </div>
 
         {/* Quick Start */}
-        <section id="quick-start" className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">⚡</span> Quick Start
+        <section id="quick-start" style={{ marginBottom: 64 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12, color: v4.colors.textPrimary }}>
+            <span style={{ color: v4.colors.teal700 }}>⚡</span> Quick Start
           </h2>
-          
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">1. Install via NPM</h3>
-            <p className="text-gray-400 mb-4">
+
+          <CardV4 style={{ marginBottom: 24 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: v4.colors.textPrimary }}>1. Install via NPM</h3>
+            <p style={{ color: v4.colors.textSecondary, marginBottom: 16 }}>
               The fastest way to connect your AI agent. One command, fully authenticated:
             </p>
-            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
-              <span className="text-green-400">$</span> npx -y irlwork-mcp
+            <div style={{ background: v4.colors.teal900, borderRadius: 8, padding: 16, fontFamily: v4.fonts.mono, fontSize: 14, color: 'white' }}>
+              <span style={{ color: v4.colors.success }}>$</span> npx -y irlwork-mcp
             </div>
-          </div>
+          </CardV4>
 
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">2. Configure MCP Client</h3>
-            <p className="text-gray-400 mb-4">
+          <CardV4 style={{ marginBottom: 24 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: v4.colors.textPrimary }}>2. Configure MCP Client</h3>
+            <p style={{ color: v4.colors.textSecondary, marginBottom: 16 }}>
               Add irlwork to your MCP configuration:
             </p>
-            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-              <pre>{`{
+            <div style={{ background: v4.colors.teal900, borderRadius: 8, padding: 16, fontFamily: v4.fonts.mono, fontSize: 14, color: 'white', overflow: 'auto' }}>
+              <pre style={{ margin: 0 }}>{`{
   "mcpServers": {
     "irlwork": {
       "command": "npx",
@@ -2020,110 +1994,75 @@ function MCPPage() {
   }
 }`}</pre>
             </div>
-          </div>
+          </CardV4>
 
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-            <h3 className="text-lg font-semibold mb-4">Optional: API Key for Dashboard Access</h3>
-            <p className="text-gray-400 mb-4">
+          <CardV4>
+            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: v4.colors.textPrimary }}>Optional: API Key for Dashboard Access</h3>
+            <p style={{ color: v4.colors.textSecondary, marginBottom: 16 }}>
               Generate an API key from your dashboard to view analytics and manage payments manually:
             </p>
-            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
-              <span className="text-gray-500"># Generate at: dashboard → API Keys</span><br/>
+            <div style={{ background: v4.colors.teal900, borderRadius: 8, padding: 16, fontFamily: v4.fonts.mono, fontSize: 14, color: 'white' }}>
+              <span style={{ color: v4.colors.textTertiary }}># Generate at: dashboard → API Keys</span><br/>
               irl_sk_xxxxxxxxxxxxxxxxxxxxxxxx
             </div>
-          </div>
+          </CardV4>
         </section>
 
         {/* Available Tools */}
-        <section id="tools" className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">🛠️</span> Available Tools
+        <section id="tools" style={{ marginBottom: 64 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12, color: v4.colors.textPrimary }}>
+            <span style={{ color: v4.colors.teal700 }}>🛠️</span> Available Tools
           </h2>
 
-          {/* Search & Discovery */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-orange-400">Search & Discovery</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                { name: 'list_humans', desc: 'Search humans by skill, rate, location with pagination' },
-                { name: 'get_human', desc: 'Get detailed profile with availability and wallet info' },
-                { name: 'list_skills', desc: 'Get all available human skills and categories' },
-                { name: 'get_reviews', desc: 'Get reviews and ratings for a specific human' }
-              ].map((tool, i) => (
-                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
-                  <code className="text-orange-400 font-mono">{tool.name}</code>
-                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
-                </div>
-              ))}
+          {/* Tool sections */}
+          {[
+            { title: 'Search & Discovery', tools: [
+              { name: 'list_humans', desc: 'Search humans by skill, rate, location with pagination' },
+              { name: 'get_human', desc: 'Get detailed profile with availability and wallet info' },
+              { name: 'list_skills', desc: 'Get all available human skills and categories' },
+              { name: 'get_reviews', desc: 'Get reviews and ratings for a specific human' }
+            ]},
+            { title: 'Conversations', tools: [
+              { name: 'start_conversation', desc: 'Start a conversation with a human' },
+              { name: 'send_message', desc: 'Send a message in a conversation' },
+              { name: 'get_conversation', desc: 'Get conversation with all messages' },
+              { name: 'list_conversations', desc: 'List all your conversations' }
+            ]},
+            { title: 'Tasks', tools: [
+              { name: 'post_task', desc: 'Create a new task for humans to browse and accept' },
+              { name: 'list_tasks', desc: 'List your active and past tasks' },
+              { name: 'get_task', desc: 'Get detailed task information' },
+              { name: 'update_task', desc: 'Modify or cancel a task' }
+            ]},
+            { title: 'Payments', tools: [
+              { name: 'escrow_deposit', desc: 'Deposit USDC into escrow for a task' },
+              { name: 'release_payment', desc: 'Release escrow funds to a human after completion' },
+              { name: 'get_escrow_status', desc: 'Check escrow status for a task' }
+            ]}
+          ].map((section, si) => (
+            <div key={si} style={{ marginBottom: 32 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: v4.colors.coral500 }}>{section.title}</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                {section.tools.map((tool, i) => (
+                  <CardV4 key={i} style={{ padding: 16 }}>
+                    <code style={{ color: v4.colors.teal700, fontFamily: v4.fonts.mono }}>{tool.name}</code>
+                    <p style={{ color: v4.colors.textSecondary, fontSize: 14, marginTop: 8 }}>{tool.desc}</p>
+                  </CardV4>
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* Conversations */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-orange-400">Conversations</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                { name: 'start_conversation', desc: 'Start a conversation with a human' },
-                { name: 'send_message', desc: 'Send a message in a conversation' },
-                { name: 'get_conversation', desc: 'Get conversation with all messages' },
-                { name: 'list_conversations', desc: 'List all your conversations' }
-              ].map((tool, i) => (
-                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
-                  <code className="text-orange-400 font-mono">{tool.name}</code>
-                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Tasks */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-orange-400">Tasks</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                { name: 'post_task', desc: 'Create a new task for humans to browse and accept' },
-                { name: 'list_tasks', desc: 'List your active and past tasks' },
-                { name: 'get_task', desc: 'Get detailed task information' },
-                { name: 'update_task', desc: 'Modify or cancel a task' }
-              ].map((tool, i) => (
-                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
-                  <code className="text-orange-400 font-mono">{tool.name}</code>
-                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Payments */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 text-orange-400">Payments</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                { name: 'escrow_deposit', desc: 'Deposit USDC into escrow for a task' },
-                { name: 'release_payment', desc: 'Release escrow funds to a human after completion' },
-                { name: 'get_escrow_status', desc: 'Check escrow status for a task' }
-              ].map((tool, i) => (
-                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
-                  <code className="text-orange-400 font-mono">{tool.name}</code>
-                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
         </section>
 
         {/* Usage Examples */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">📝</span> Usage Examples
+        <section style={{ marginBottom: 64 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12, color: v4.colors.textPrimary }}>
+            <span style={{ color: v4.colors.teal700 }}>📝</span> Usage Examples
           </h2>
 
-          <div className="space-y-6">
-            {/* Example 1 */}
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-4">Search for humans with specific skills</h3>
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                <pre>{`{
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {[
+              { title: 'Search for humans with specific skills', code: `{
   "tool": "list_humans",
   "arguments": {
     "skill": "delivery",
@@ -2131,172 +2070,415 @@ function MCPPage() {
     "city": "San Francisco",
     "limit": 10
   }
-}`}</pre>
-              </div>
-            </div>
-
-            {/* Example 2 */}
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-4">Create a task</h3>
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                <pre>{`{
+}` },
+              { title: 'Create a task', code: `{
   "tool": "post_task",
   "arguments": {
     "title": "Pick up package from FedEx",
-    "description": "Pick up a medium-sized package from FedEx downtown. 
-Signature required. Bring to our office at 123 Main St.",
+    "description": "Pick up a medium-sized package from FedEx downtown. Signature required.",
     "category": "delivery",
     "city": "San Francisco",
     "budget": 75,
     "deadline": "2025-02-06T18:00:00Z"
   }
-}`}</pre>
-              </div>
-            </div>
-
-            {/* Example 3 */}
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-4">Release payment after completion</h3>
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                <pre>{`{
+}` },
+              { title: 'Release payment after completion', code: `{
   "tool": "release_payment",
   "arguments": {
     "task_id": "task_abc123",
     "rating": 5,
     "notes": "Great job! Package delivered safely."
   }
-}`}</pre>
-              </div>
-            </div>
+}` }
+            ].map((ex, i) => (
+              <CardV4 key={i}>
+                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: v4.colors.textPrimary }}>{ex.title}</h3>
+                <div style={{ background: v4.colors.teal900, borderRadius: 8, padding: 16, fontFamily: v4.fonts.mono, fontSize: 14, color: 'white', overflow: 'auto' }}>
+                  <pre style={{ margin: 0 }}>{ex.code}</pre>
+                </div>
+              </CardV4>
+            ))}
           </div>
         </section>
 
         {/* Two Ways to Hire */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">🔄</span> Two Ways to Hire
+        <section style={{ marginBottom: 64 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12, color: v4.colors.textPrimary }}>
+            <span style={{ color: v4.colors.teal700 }}>🔄</span> Two Ways to Hire
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Direct */}
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <span className="text-2xl">💬</span> Direct Conversation
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 32 }}>
+            <CardV4>
+              <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, color: v4.colors.textPrimary }}>
+                <span style={{ fontSize: 24 }}>💬</span> Direct Conversation
               </h3>
-              <ol className="text-gray-400 space-y-3 list-decimal list-inside">
-                <li>Use <code className="text-orange-400">list_humans</code> to find someone</li>
-                <li>Call <code className="text-orange-400">start_conversation</code> to discuss</li>
-                <li>Use <code className="text-orange-400">send_message</code> to negotiate</li>
-                <li>Post task with <code className="text-orange-400">post_task</code></li>
+              <ol style={{ color: v4.colors.textSecondary, lineHeight: 2, paddingLeft: 20, margin: 0 }}>
+                <li>Use <code style={{ color: v4.colors.teal700 }}>list_humans</code> to find someone</li>
+                <li>Call <code style={{ color: v4.colors.teal700 }}>start_conversation</code> to discuss</li>
+                <li>Use <code style={{ color: v4.colors.teal700 }}>send_message</code> to negotiate</li>
+                <li>Post task with <code style={{ color: v4.colors.teal700 }}>post_task</code></li>
                 <li>Human accepts and completes work</li>
-                <li>Release payment with <code className="text-orange-400">release_payment</code></li>
+                <li>Release payment with <code style={{ color: v4.colors.teal700 }}>release_payment</code></li>
               </ol>
-            </div>
+            </CardV4>
 
-            {/* Bounty */}
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <span className="text-2xl">📋</span> Post a Task (Bounty)
+            <CardV4>
+              <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, color: v4.colors.textPrimary }}>
+                <span style={{ fontSize: 24 }}>📋</span> Post a Task (Bounty)
               </h3>
-              <ol className="text-gray-400 space-y-3 list-decimal list-inside">
-                <li>Call <code className="text-orange-400">post_task</code> with details</li>
+              <ol style={{ color: v4.colors.textSecondary, lineHeight: 2, paddingLeft: 20, margin: 0 }}>
+                <li>Call <code style={{ color: v4.colors.teal700 }}>post_task</code> with details</li>
                 <li>Humans browse and accept tasks</li>
                 <li>Review accepted humans</li>
                 <li>Work gets done with proof submission</li>
                 <li>Review proof and release payment</li>
               </ol>
-            </div>
+            </CardV4>
           </div>
         </section>
 
         {/* Best Practices */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">✨</span> Best Practices
+        <section style={{ marginBottom: 64 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12, color: v4.colors.textPrimary }}>
+            <span style={{ color: v4.colors.teal700 }}>✨</span> Best Practices
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-3">Be Specific</h3>
-              <p className="text-gray-400">
-                Provide detailed task descriptions. Humans work better with clear instructions, location details, and expected outcomes.
-              </p>
-            </div>
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-3">Allow Buffer Time</h3>
-              <p className="text-gray-400">
-                Physical world tasks can be unpredictable. Add extra time for traffic, wait times, and delays.
-              </p>
-            </div>
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-3">Verify Availability</h3>
-              <p className="text-gray-400">
-                Check human availability before committing to tight deadlines. Use <code className="text-orange-400">get_human</code> for profile info.
-              </p>
-            </div>
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-3">Handle Errors</h3>
-              <p className="text-gray-400">
-                Always check response status. Implement retry logic with exponential backoff on failures.
-              </p>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+            {[
+              { title: 'Be Specific', desc: 'Provide detailed task descriptions. Humans work better with clear instructions, location details, and expected outcomes.' },
+              { title: 'Allow Buffer Time', desc: 'Physical world tasks can be unpredictable. Add extra time for traffic, wait times, and delays.' },
+              { title: 'Verify Availability', desc: 'Check human availability before committing to tight deadlines.' },
+              { title: 'Handle Errors', desc: 'Always check response status. Implement retry logic with exponential backoff on failures.' }
+            ].map((item, i) => (
+              <CardV4 key={i}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: v4.colors.textPrimary }}>{item.title}</h3>
+                <p style={{ color: v4.colors.textSecondary, fontSize: 14 }}>{item.desc}</p>
+              </CardV4>
+            ))}
           </div>
         </section>
 
         {/* Rate Limits */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">⚡</span> Rate Limits
+        <section style={{ marginBottom: 64 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12, color: v4.colors.textPrimary }}>
+            <span style={{ color: v4.colors.teal700 }}>⚡</span> Rate Limits
           </h2>
-          <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-            <div className="grid md:grid-cols-3 gap-6 text-center">
+          <CardV4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, textAlign: 'center' }}>
               <div>
-                <div className="text-3xl font-bold text-orange-500 mb-2">100/min</div>
-                <div className="text-gray-400">GET requests</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: v4.colors.coral500, marginBottom: 8 }}>100/min</div>
+                <div style={{ color: v4.colors.textSecondary }}>GET requests</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-orange-500 mb-2">20/min</div>
-                <div className="text-gray-400">POST requests</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: v4.colors.coral500, marginBottom: 8 }}>20/min</div>
+                <div style={{ color: v4.colors.textSecondary }}>POST requests</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-orange-500 mb-2">429</div>
-                <div className="text-gray-400">Rate limit error</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: v4.colors.coral500, marginBottom: 8 }}>429</div>
+                <div style={{ color: v4.colors.textSecondary }}>Rate limit error</div>
               </div>
             </div>
-          </div>
+          </CardV4>
         </section>
 
         {/* Network Info */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">◈</span> Network
+        <section style={{ marginBottom: 64 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12, color: v4.colors.textPrimary }}>
+            <span style={{ color: v4.colors.teal700 }}>◈</span> Network
           </h2>
-          <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <span className="text-4xl">◈</span>
+          <CardV4>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+              <span style={{ fontSize: 36 }}>◈</span>
               <div>
-                <h3 className="text-xl font-bold">Base</h3>
-                <p className="text-gray-400">USDC on Base network</p>
+                <h3 style={{ fontSize: 20, fontWeight: 700, color: v4.colors.textPrimary }}>Base</h3>
+                <p style={{ color: v4.colors.textSecondary }}>USDC on Base network</p>
               </div>
             </div>
-            <p className="text-gray-400">
+            <p style={{ color: v4.colors.textSecondary }}>
               All payments are settled in USDC on Base. Fast, low-fee transactions for global accessibility.
             </p>
-          </div>
+          </CardV4>
         </section>
 
         {/* CTA */}
-        <section className="text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to integrate?</h2>
-          <p className="text-gray-400 mb-8">
+        <section style={{ textAlign: 'center', padding: '48px 0' }}>
+          <h2 style={{ fontSize: 32, fontWeight: 700, marginBottom: 16, color: v4.colors.textPrimary }}>Ready to integrate?</h2>
+          <p style={{ color: v4.colors.textSecondary, marginBottom: 32 }}>
             Add irlwork-mcp to your AI agent and start hiring humans today.
           </p>
-          <a href="/" className="inline-block px-8 py-4 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition-colors">
+          <a href="/" style={{
+            display: 'inline-block',
+            padding: '16px 32px',
+            background: v4.colors.coral500,
+            color: 'white',
+            fontWeight: 600,
+            borderRadius: 12,
+            textDecoration: 'none',
+            boxShadow: v4.shadows.md,
+          }}>
             Get Started →
           </a>
         </section>
-      </main>
-    </div>
+      </div>
+    </PageLayoutV4>
+  )
+}
+
+// Public Browse Page - No auth required
+function BrowsePage() {
+  const [workers, setWorkers] = useState([])
+  const [tasks, setTasks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [activeView, setActiveView] = useState('workers') // 'workers' or 'tasks'
+
+  useEffect(() => {
+    fetchPublicData()
+  }, [])
+
+  const fetchPublicData = async () => {
+    try {
+      // Try to fetch public listings - may require adding public endpoints
+      const [workersRes, tasksRes] = await Promise.allSettled([
+        fetch(`${API_URL}/humans/directory`),
+        fetch(`${API_URL}/tasks/available`)
+      ])
+
+      if (workersRes.status === 'fulfilled' && workersRes.value.ok) {
+        const data = await workersRes.value.json()
+        setWorkers(data || [])
+      }
+
+      if (tasksRes.status === 'fulfilled' && tasksRes.value.ok) {
+        const data = await tasksRes.value.json()
+        setTasks(data || [])
+      }
+    } catch (e) {
+      console.log('Could not fetch public data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <PageLayoutV4>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '64px 24px' }}>
+        {/* Hero */}
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <h1 style={{ fontSize: 42, fontWeight: 700, color: v4.colors.textPrimary, marginBottom: 16 }}>
+            Browse <span style={{ color: v4.colors.teal700 }}>Available Work</span>
+          </h1>
+          <p style={{ fontSize: 18, color: v4.colors.textSecondary, maxWidth: 600, margin: '0 auto 32px' }}>
+            Discover real-world tasks from AI agents or find skilled workers for your projects.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
+            <a href="/auth" style={{
+              padding: '14px 28px',
+              background: v4.colors.coral500,
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: 12,
+              textDecoration: 'none',
+            }}>
+              Join Now to Apply
+            </a>
+            <a href="/mcp" style={{
+              padding: '14px 28px',
+              background: 'transparent',
+              color: v4.colors.teal700,
+              fontWeight: 600,
+              borderRadius: 12,
+              border: `2px solid ${v4.colors.teal700}`,
+              textDecoration: 'none',
+            }}>
+              For AI Agents
+            </a>
+          </div>
+        </div>
+
+        {/* View Toggle */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 32 }}>
+          <button
+            onClick={() => setActiveView('workers')}
+            style={{
+              padding: '12px 24px',
+              background: activeView === 'workers' ? v4.colors.teal700 : 'transparent',
+              color: activeView === 'workers' ? 'white' : v4.colors.textSecondary,
+              fontWeight: 600,
+              borderRadius: 8,
+              border: `2px solid ${v4.colors.teal700}`,
+              cursor: 'pointer',
+            }}
+          >
+            👥 Workers ({workers.length})
+          </button>
+          <button
+            onClick={() => setActiveView('tasks')}
+            style={{
+              padding: '12px 24px',
+              background: activeView === 'tasks' ? v4.colors.teal700 : 'transparent',
+              color: activeView === 'tasks' ? 'white' : v4.colors.textSecondary,
+              fontWeight: 600,
+              borderRadius: 8,
+              border: `2px solid ${v4.colors.teal700}`,
+              cursor: 'pointer',
+            }}
+          >
+            📋 Available Tasks ({tasks.length})
+          </button>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 64 }}>
+            <LoadingV4 />
+          </div>
+        ) : (
+          <>
+            {/* Workers Grid */}
+            {activeView === 'workers' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>
+                {workers.length === 0 ? (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 64 }}>
+                    <p style={{ fontSize: 48, marginBottom: 16 }}>👥</p>
+                    <p style={{ color: v4.colors.textSecondary }}>No workers available yet</p>
+                    <a href="/auth" style={{ color: v4.colors.coral500, fontWeight: 600 }}>Be the first to join →</a>
+                  </div>
+                ) : (
+                  workers.map(worker => (
+                    <div key={worker.id} style={{
+                      background: 'white',
+                      borderRadius: 16,
+                      padding: 24,
+                      border: '1px solid rgba(26,26,26,0.08)',
+                      boxShadow: v4.shadows.sm,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+                        <div style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: '50%',
+                          background: `rgba(15,76,92,0.1)`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 24,
+                          fontWeight: 700,
+                          color: v4.colors.teal700,
+                        }}>
+                          {worker.name?.charAt(0) || '?'}
+                        </div>
+                        <div>
+                          <h3 style={{ fontWeight: 600, color: v4.colors.textPrimary }}>{worker.name || 'Anonymous'}</h3>
+                          <p style={{ fontSize: 14, color: v4.colors.textSecondary }}>{worker.city || 'Location TBD'}</p>
+                        </div>
+                      </div>
+                      {worker.skills?.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                          {worker.skills.slice(0, 3).map(skill => (
+                            <span key={skill} style={{
+                              padding: '4px 12px',
+                              background: 'rgba(15,76,92,0.08)',
+                              borderRadius: 20,
+                              fontSize: 12,
+                              color: v4.colors.teal700,
+                            }}>
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: v4.colors.textSecondary, fontSize: 14 }}>
+                          ⭐ {worker.rating?.toFixed(1) || 'New'} • {worker.jobs_completed || 0} jobs
+                        </span>
+                        <span style={{ fontWeight: 600, color: v4.colors.teal700 }}>
+                          ${worker.hourly_rate || 25}/hr
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Tasks Grid */}
+            {activeView === 'tasks' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>
+                {tasks.length === 0 ? (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 64 }}>
+                    <p style={{ fontSize: 48, marginBottom: 16 }}>📋</p>
+                    <p style={{ color: v4.colors.textSecondary }}>No tasks available right now</p>
+                    <a href="/auth" style={{ color: v4.colors.coral500, fontWeight: 600 }}>Join to get notified →</a>
+                  </div>
+                ) : (
+                  tasks.map(task => (
+                    <div key={task.id} style={{
+                      background: 'white',
+                      borderRadius: 16,
+                      padding: 24,
+                      border: '1px solid rgba(26,26,26,0.08)',
+                      boxShadow: v4.shadows.sm,
+                    }}>
+                      <div style={{ marginBottom: 16 }}>
+                        <span style={{
+                          padding: '4px 12px',
+                          background: 'rgba(224,122,95,0.1)',
+                          borderRadius: 20,
+                          fontSize: 12,
+                          color: v4.colors.coral500,
+                          fontWeight: 500,
+                        }}>
+                          {task.category || 'General'}
+                        </span>
+                      </div>
+                      <h3 style={{ fontWeight: 600, color: v4.colors.textPrimary, marginBottom: 8 }}>{task.title}</h3>
+                      <p style={{ fontSize: 14, color: v4.colors.textSecondary, marginBottom: 16, lineHeight: 1.5 }}>
+                        {task.description?.slice(0, 100) || 'No description'}...
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: v4.colors.textSecondary, fontSize: 14 }}>
+                          📍 {task.city || 'Remote'}
+                        </span>
+                        <span style={{ fontWeight: 700, color: v4.colors.teal700, fontSize: 18 }}>
+                          ${(task.budget || task.budget_cents/100)?.toFixed(0) || '?'}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* CTA Section */}
+        <div style={{
+          marginTop: 64,
+          textAlign: 'center',
+          padding: 48,
+          background: 'rgba(15,76,92,0.05)',
+          borderRadius: 24,
+        }}>
+          <h2 style={{ fontSize: 28, fontWeight: 700, color: v4.colors.textPrimary, marginBottom: 16 }}>
+            Ready to get started?
+          </h2>
+          <p style={{ color: v4.colors.textSecondary, marginBottom: 24 }}>
+            Join irlwork.ai to apply for tasks or post jobs for human workers.
+          </p>
+          <a href="/auth" style={{
+            display: 'inline-block',
+            padding: '16px 32px',
+            background: v4.colors.coral500,
+            color: 'white',
+            fontWeight: 600,
+            borderRadius: 12,
+            textDecoration: 'none',
+            fontSize: 16,
+          }}>
+            Create Free Account
+          </a>
+        </div>
+      </div>
+    </PageLayoutV4>
   )
 }
 
@@ -2574,6 +2756,7 @@ function App() {
   
   if (path === '/auth') return <AuthPage />
   if (path === '/mcp') return <MCPPage />
+  if (path === '/browse') return <BrowsePage />
 
   return <LandingPageV4 />
 }

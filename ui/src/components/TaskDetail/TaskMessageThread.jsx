@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 const styles = {
-  input: 'w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors'
+  input: 'w-full bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] transition-colors'
 };
 
 export default function TaskMessageThread({
@@ -51,21 +51,21 @@ export default function TaskMessageThread({
   };
 
   return (
-    <div className="bg-white/5 rounded-xl border border-white/10 flex flex-col h-[500px]">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] flex flex-col h-[500px] shadow-sm">
       {/* Header */}
-      <div className="p-4 border-b border-white/10">
-        <h3 className="text-white font-bold">Messages</h3>
-        <p className="text-gray-400 text-sm">Chat with the agent about this task</p>
+      <div className="p-4 border-b border-[rgba(26,26,26,0.08)]">
+        <h3 className="text-[#1A1A1A] font-bold">Messages</h3>
+        <p className="text-[#525252] text-sm">Chat with the agent about this task</p>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#FAF8F5]">
         {!conversation ? (
-          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+          <div className="flex items-center justify-center h-full text-[#525252] text-sm">
             No messages yet. Send a message to start the conversation.
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+          <div className="flex items-center justify-center h-full text-[#525252] text-sm">
             No messages yet. Be the first to send a message!
           </div>
         ) : (
@@ -78,16 +78,16 @@ export default function TaskMessageThread({
                 <div
                   className={`max-w-[70%] rounded-xl p-3 ${
                     m.sender_id === user.id
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-white/10 text-white'
+                      ? 'bg-[#0F4C5C] text-white'
+                      : 'bg-white text-[#1A1A1A] border border-[rgba(26,26,26,0.08)]'
                   }`}
                 >
                   <p className="whitespace-pre-wrap break-words">{m.content}</p>
                   <p
                     className={`text-xs mt-1 ${
                       m.sender_id === user.id
-                        ? 'text-orange-100'
-                        : 'text-gray-400'
+                        ? 'text-[rgba(255,255,255,0.7)]'
+                        : 'text-[#8A8A8A]'
                     }`}
                   >
                     {new Date(m.created_at).toLocaleTimeString()}
@@ -101,7 +101,7 @@ export default function TaskMessageThread({
       </div>
 
       {/* Message Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-white/10 flex gap-3">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-[rgba(26,26,26,0.08)] flex gap-3 bg-white rounded-b-2xl">
         <input
           type="text"
           value={newMessage}
@@ -113,7 +113,7 @@ export default function TaskMessageThread({
         <button
           type="submit"
           disabled={sending || !newMessage.trim()}
-          className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-colors"
+          className="bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-colors"
         >
           {sending ? '...' : 'Send'}
         </button>

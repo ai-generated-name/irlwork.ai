@@ -10,8 +10,7 @@ import ProofSection from '../components/TaskDetail/ProofSection';
 import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
 import { trackView } from '../utils/trackView';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import API_URL from '../config/api';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [task, setTask] = useState(null);
@@ -239,8 +238,11 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading task details...</div>
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="w-12 h-12 border-4 border-[#F5F2ED] border-t-[#0F4C5C] rounded-full animate-spin mb-4"></div>
+          <div className="text-[#525252] text-lg">Loading task details...</div>
+        </div>
       </div>
     );
   }
@@ -248,12 +250,12 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-400 text-xl mb-4">Error: {error}</div>
+          <div className="text-[#DC2626] text-xl mb-4">Error: {error}</div>
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-xl"
+            className="bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
           >
             Back to Dashboard
           </button>
@@ -263,18 +265,18 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1A1A]">
       {/* Header */}
-      <header className="border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
+      <header className="border-b border-[rgba(26,26,26,0.08)] sticky top-0 bg-white z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-[#525252] hover:text-[#1A1A1A] transition-colors"
           >
             <span>←</span>
             <span>Back to Dashboard</span>
           </button>
-          <div className="text-gray-400 text-sm">
+          <div className="text-[#8A8A8A] text-sm">
             Task ID: {taskId.slice(0, 8)}...
           </div>
         </div>

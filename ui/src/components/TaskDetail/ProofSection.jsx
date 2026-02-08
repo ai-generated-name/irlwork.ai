@@ -4,7 +4,7 @@
 import React, { useState, useRef } from 'react';
 
 const styles = {
-  input: 'w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors'
+  input: 'w-full bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] transition-colors'
 };
 
 export default function ProofSection({ task, onSubmit }) {
@@ -52,13 +52,13 @@ export default function ProofSection({ task, onSubmit }) {
   };
 
   return (
-    <div className="bg-white/5 rounded-xl border border-white/10 p-6 mb-6">
-      <h2 className="text-xl font-bold text-white mb-4">Submit Proof of Work</h2>
+    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 mb-6 shadow-sm">
+      <h2 className="text-xl font-bold text-[#1A1A1A] mb-4">Submit Proof of Work</h2>
 
       <div className="space-y-4">
         {/* Proof Text */}
         <div>
-          <label className="block text-gray-400 text-sm mb-2">Describe your work</label>
+          <label className="block text-[#525252] text-sm mb-2">Describe your work</label>
           <textarea
             value={proofText}
             onChange={(e) => setProofText(e.target.value)}
@@ -70,9 +70,9 @@ export default function ProofSection({ task, onSubmit }) {
 
         {/* File Upload */}
         <div>
-          <label className="block text-gray-400 text-sm mb-2">Upload Proof (max 3 images)</label>
+          <label className="block text-[#525252] text-sm mb-2">Upload Proof (max 3 images)</label>
           <div
-            className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center cursor-pointer hover:border-orange-500 transition-colors"
+            className="border-2 border-dashed border-[rgba(26,26,26,0.2)] rounded-xl p-6 text-center cursor-pointer hover:border-[#0F4C5C] transition-colors bg-[#FAF8F5]"
             onClick={() => fileInputRef.current?.click()}
           >
             <input
@@ -84,16 +84,16 @@ export default function ProofSection({ task, onSubmit }) {
               className="hidden"
             />
             <div className="text-3xl mb-2">📤</div>
-            <p className="text-gray-400 text-sm">Click to upload images</p>
-            <p className="text-gray-500 text-xs mt-1">PNG, JPG, or JPEG (max 3 files)</p>
+            <p className="text-[#525252] text-sm">Click to upload images</p>
+            <p className="text-[#8A8A8A] text-xs mt-1">PNG, JPG, or JPEG (max 3 files)</p>
           </div>
 
           {/* Selected Files */}
           {files.length > 0 && (
             <div className="flex gap-2 mt-3 flex-wrap">
               {files.map((file, i) => (
-                <div key={i} className="bg-white/10 rounded-lg p-2 pr-3 flex items-center gap-2">
-                  <span className="text-sm text-white">
+                <div key={i} className="bg-[#F5F2ED] rounded-lg p-2 pr-3 flex items-center gap-2">
+                  <span className="text-sm text-[#1A1A1A]">
                     {file.name.length > 20 ? file.name.slice(0, 20) + '...' : file.name}
                   </span>
                   <button
@@ -101,7 +101,7 @@ export default function ProofSection({ task, onSubmit }) {
                       e.stopPropagation();
                       removeFile(i);
                     }}
-                    className="text-gray-400 hover:text-red-400 text-sm"
+                    className="text-[#8A8A8A] hover:text-[#DC2626] text-sm"
                   >
                     ✕
                   </button>
@@ -112,7 +112,7 @@ export default function ProofSection({ task, onSubmit }) {
 
           {/* Uploaded Confirmation */}
           {uploadedUrls.length > 0 && (
-            <p className="text-green-400 text-sm flex items-center gap-2 mt-3">
+            <p className="text-[#059669] text-sm flex items-center gap-2 mt-3">
               <span>✓</span> {uploadedUrls.length} files uploaded
             </p>
           )}
@@ -122,15 +122,15 @@ export default function ProofSection({ task, onSubmit }) {
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-colors"
+          className="w-full bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-colors"
         >
           {submitting ? 'Submitting...' : 'Submit Proof'}
         </button>
 
         {/* Instructions */}
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm text-blue-300">
+        <div className="bg-[#D1E9F0] border border-[rgba(15,76,92,0.2)] rounded-lg p-3 text-sm text-[#0F4C5C]">
           <p className="font-medium mb-1">📝 Proof Submission Tips:</p>
-          <ul className="list-disc list-inside space-y-1 text-xs text-gray-400">
+          <ul className="list-disc list-inside space-y-1 text-xs text-[#525252]">
             <li>Provide detailed description of work completed</li>
             <li>Upload clear photos showing the finished task</li>
             <li>Agent has 48 hours to review before auto-release</li>

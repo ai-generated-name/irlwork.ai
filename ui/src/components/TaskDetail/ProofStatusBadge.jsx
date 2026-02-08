@@ -7,31 +7,31 @@ const STATUS_CONFIG = {
   pending_review: {
     label: 'Pending Agent Review',
     icon: '⏳',
-    color: 'bg-orange-500/20 border-orange-500/50 text-orange-400',
+    color: 'bg-[#FFE4DB] border-[#E07A5F] text-[#C45F4A]',
     description: 'Your proof has been submitted and is awaiting agent review'
   },
   completed: {
     label: 'Approved',
     icon: '✓',
-    color: 'bg-green-500/20 border-green-500/50 text-green-400',
+    color: 'bg-[#D1FAE5] border-[#059669] text-[#059669]',
     description: 'Your proof has been approved by the agent'
   },
   paid: {
     label: 'Paid',
     icon: '✓',
-    color: 'bg-green-500/20 border-green-500/50 text-green-400',
+    color: 'bg-[#D1FAE5] border-[#059669] text-[#059669]',
     description: 'Payment has been released to your wallet'
   },
   disputed: {
     label: 'Disputed',
     icon: '⚠️',
-    color: 'bg-red-500/20 border-red-500/50 text-red-400',
+    color: 'bg-[#FEE2E2] border-[#DC2626] text-[#DC2626]',
     description: 'The agent has disputed your proof. Please check messages for feedback.'
   },
   rejected: {
     label: 'Rejected',
     icon: '✕',
-    color: 'bg-red-500/20 border-red-500/50 text-red-400',
+    color: 'bg-[#FEE2E2] border-[#DC2626] text-[#DC2626]',
     description: 'Your proof was rejected. Check messages for details.'
   }
 };
