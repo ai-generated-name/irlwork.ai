@@ -1206,98 +1206,151 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     return labels[status] || status
   }
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
-    <div className={`min-h-screen ${styles.gradient} flex`}>
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-[rgba(26,26,26,0.08)] p-6 flex flex-col">
-        <div
-          className="flex items-center gap-3 mb-8 cursor-pointer"
-          onClick={() => window.location.href = '/'}
-        >
-          <div className="w-10 h-10 bg-[#0F4C5C] rounded-xl flex items-center justify-center">
-            <span className="text-white text-sm font-bold">irl</span>
+    <div className={`min-h-screen ${styles.gradient}`}>
+      {/* Mobile Header - visible on small screens */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-[rgba(250,248,245,0.95)] backdrop-blur-lg border-b border-[rgba(26,26,26,0.1)]">
+        <a href="/" className="flex items-center gap-2 no-underline">
+          <div className="w-9 h-9 bg-[#0F4C5C] rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-md">
+            irl
           </div>
-          <span className="text-xl font-bold text-[#1A1A1A]">irlwork.ai</span>
-        </div>
-
-        <nav className="flex-1 space-y-1">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                activeTab === item.id
-                  ? 'bg-[#0F4C5C] text-white'
-                  : 'text-[#525252] hover:bg-[#F5F2ED] hover:text-[#1A1A1A]'
-              }`}
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="border-t border-[rgba(26,26,26,0.08)] pt-6 mt-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-[rgba(15,76,92,0.1)] rounded-full flex items-center justify-center text-[#0F4C5C] font-bold">
-              {user?.name?.charAt(0) || '?'}
-            </div>
-            <div>
-              <p className="text-[#1A1A1A] font-medium text-sm">{user?.name || 'User'}</p>
-              <p className="text-[#8A8A8A] text-xs">{hiringMode ? 'Hiring Mode' : 'Working Mode'}</p>
-            </div>
-          </div>
-
-          {/* Notifications Bell */}
-          <div className="relative mb-4">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-[#525252] hover:text-[#1A1A1A] rounded-xl hover:bg-[#F5F2ED] transition-all"
-            >
-              <span className="relative">
-                <span>🔔</span>
-                {notifications.filter(n => !n.read_at).length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#E07A5F] rounded-full text-xs flex items-center justify-center text-white">
-                    {notifications.filter(n => !n.read_at).length}
-                  </span>
-                )}
-              </span>
-              <span>Notifications</span>
-            </button>
-
-            {showNotifications && (
-              <div className="absolute bottom-full left-0 w-full mb-2 bg-white border border-[rgba(26,26,26,0.1)] rounded-xl max-h-80 overflow-y-auto shadow-lg">
-                {notifications.length === 0 ? (
-                  <div className="p-4 text-[#525252] text-sm text-center">No notifications</div>
-                ) : (
-                  notifications.slice(0, 10).map(n => (
-                    <div
-                      key={n.id}
-                      className={`p-3 border-b border-[rgba(26,26,26,0.08)] cursor-pointer hover:bg-[#F5F2ED] ${!n.read_at ? 'bg-[rgba(224,122,95,0.08)]' : ''}`}
-                      onClick={() => markNotificationRead(n.id)}
-                    >
-                      <p className="text-[#1A1A1A] text-sm font-medium">{n.title}</p>
-                      <p className="text-[#525252] text-xs">{n.message}</p>
-                      <p className="text-[#8A8A8A] text-xs mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-
+          <span className="text-base font-extrabold text-[#1A1A1A]">irlwork.ai</span>
+        </a>
+        <div className="flex items-center gap-3">
+          <a href="/mcp" className="text-[#525252] no-underline text-sm font-medium">Agents</a>
           <button
-            onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-[#525252] hover:text-[#1A1A1A] rounded-xl hover:bg-[#F5F2ED] transition-all"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="w-10 h-10 flex items-center justify-center text-[#525252] bg-white rounded-xl border border-[rgba(26,26,26,0.1)]"
           >
-            <span>🚪</span>
-            <span>Sign Out</span>
+            {mobileMenuOpen ? '✕' : '☰'}
           </button>
         </div>
-      </aside>
+      </header>
 
-      {/* Main */}
-      <main className="flex-1 p-8 overflow-auto">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-[#FAF8F5] pt-16">
+          <nav className="p-4 space-y-2">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl transition-all text-lg ${
+                  activeTab === item.id
+                    ? 'bg-[#0F4C5C] text-white'
+                    : 'text-[#525252] bg-white border border-[rgba(26,26,26,0.08)]'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+            <div className="pt-4 border-t border-[rgba(26,26,26,0.08)] mt-4">
+              <button
+                onClick={onLogout}
+                className="w-full flex items-center gap-3 px-4 py-4 text-[#DC2626] bg-white border border-[rgba(26,26,26,0.08)] rounded-xl"
+              >
+                <span>🚪</span>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </nav>
+        </div>
+      )}
+
+      <div className="flex">
+        {/* Desktop Sidebar - hidden on mobile */}
+        <aside className="hidden lg:flex w-64 bg-white border-r border-[rgba(26,26,26,0.08)] p-6 flex-col fixed left-0 top-0 bottom-0">
+          <div
+            className="flex items-center gap-3 mb-8 cursor-pointer"
+            onClick={() => window.location.href = '/'}
+          >
+            <div className="w-10 h-10 bg-[#0F4C5C] rounded-xl flex items-center justify-center">
+              <span className="text-white text-sm font-bold">irl</span>
+            </div>
+            <span className="text-xl font-bold text-[#1A1A1A]">irlwork.ai</span>
+          </div>
+
+          <nav className="flex-1 space-y-1">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  activeTab === item.id
+                    ? 'bg-[#0F4C5C] text-white'
+                    : 'text-[#525252] hover:bg-[#F5F2ED] hover:text-[#1A1A1A]'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="border-t border-[rgba(26,26,26,0.08)] pt-6 mt-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-[rgba(15,76,92,0.1)] rounded-full flex items-center justify-center text-[#0F4C5C] font-bold">
+                {user?.name?.charAt(0) || '?'}
+              </div>
+              <div>
+                <p className="text-[#1A1A1A] font-medium text-sm">{user?.name || 'User'}</p>
+                <p className="text-[#8A8A8A] text-xs">{hiringMode ? 'Hiring Mode' : 'Working Mode'}</p>
+              </div>
+            </div>
+
+            {/* Notifications Bell */}
+            <div className="relative mb-4">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-[#525252] hover:text-[#1A1A1A] rounded-xl hover:bg-[#F5F2ED] transition-all"
+              >
+                <span className="relative">
+                  <span>🔔</span>
+                  {notifications.filter(n => !n.read_at).length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#E07A5F] rounded-full text-xs flex items-center justify-center text-white">
+                      {notifications.filter(n => !n.read_at).length}
+                    </span>
+                  )}
+                </span>
+                <span>Notifications</span>
+              </button>
+
+              {showNotifications && (
+                <div className="absolute bottom-full left-0 w-full mb-2 bg-white border border-[rgba(26,26,26,0.1)] rounded-xl max-h-80 overflow-y-auto shadow-lg">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-[#525252] text-sm text-center">No notifications</div>
+                  ) : (
+                    notifications.slice(0, 10).map(n => (
+                      <div
+                        key={n.id}
+                        className={`p-3 border-b border-[rgba(26,26,26,0.08)] cursor-pointer hover:bg-[#F5F2ED] ${!n.read_at ? 'bg-[rgba(224,122,95,0.08)]' : ''}`}
+                        onClick={() => markNotificationRead(n.id)}
+                      >
+                        <p className="text-[#1A1A1A] text-sm font-medium">{n.title}</p>
+                        <p className="text-[#525252] text-xs">{n.message}</p>
+                        <p className="text-[#8A8A8A] text-xs mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 text-[#525252] hover:text-[#1A1A1A] rounded-xl hover:bg-[#F5F2ED] transition-all"
+            >
+              <span>🚪</span>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* Main */}
+        <main className="flex-1 p-4 lg:p-8 lg:ml-64 pt-20 lg:pt-8 overflow-auto min-h-screen">
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
@@ -1767,9 +1820,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     updateData.city = profileCityData.city;
                     updateData.latitude = profileCityData.latitude;
                     updateData.longitude = profileCityData.longitude;
-                  } else {
-                    // Keep existing city if not changed
+                  } else if (user.city) {
+                    // Keep existing city and coordinates if not changed
                     updateData.city = user.city;
+                    updateData.latitude = user.latitude;
+                    updateData.longitude = user.longitude;
                   }
 
                   const res = await fetch(`${API_URL}/humans/profile`, {
@@ -1965,7 +2020,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             onReject={rejectTask}
           />
         )}
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

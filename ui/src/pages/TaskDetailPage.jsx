@@ -9,6 +9,7 @@ import EscrowDisplay from '../components/TaskDetail/EscrowDisplay';
 import ProofSection from '../components/TaskDetail/ProofSection';
 import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
+import { v4 } from '../components/V4Layout';
 import { trackView } from '../utils/trackView';
 import API_URL from '../config/api';
 
@@ -265,10 +266,27 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1A1A]">
-      {/* Header */}
-      <header className="border-b border-[rgba(26,26,26,0.08)] sticky top-0 bg-white z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1A1A]" style={{ fontFamily: v4.fonts.display }}>
+      {/* V4 Navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-8 py-4 bg-[rgba(250,248,245,0.95)] backdrop-blur-lg border-b border-[rgba(26,26,26,0.1)]">
+        <a href="/" className="flex items-center gap-3 no-underline">
+          <div className="w-10 h-10 bg-[#0F4C5C] rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md">
+            irl
+          </div>
+          <span className="text-lg font-extrabold text-[#1A1A1A] tracking-tight hidden sm:inline">irlwork.ai</span>
+        </a>
+        <div className="flex items-center gap-4 md:gap-6">
+          <a href="/mcp" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">For Agents</a>
+          <a href="/dashboard" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">Browse Tasks</a>
+          <a href="/dashboard" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
+            Dashboard
+          </a>
+        </div>
+      </nav>
+
+      {/* Sub-header with back button */}
+      <header className="border-b border-[rgba(26,26,26,0.08)] sticky top-[72px] bg-white z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <button
             onClick={() => onNavigate?.('/dashboard')}
             className="flex items-center gap-2 text-[#525252] hover:text-[#1A1A1A] transition-colors"
@@ -283,7 +301,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 mt-[72px]">
         {/* Countdown Banner (only when pending review) */}
         {taskStatus?.dispute_window_info && (
           <CountdownBanner disputeWindowInfo={taskStatus.dispute_window_info} />
