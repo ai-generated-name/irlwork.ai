@@ -661,6 +661,7 @@ function ApiKeysTab({ user }) {
   const [newKey, setNewKey] = useState(null)
   const [copied, setCopied] = useState(false)
   const [confirmRevoke, setConfirmRevoke] = useState(null)
+  const [error, setError] = useState(null)
 
   const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -686,6 +687,7 @@ function ApiKeysTab({ user }) {
 
   const generateKey = async () => {
     setGenerating(true)
+    setError(null)
     try {
       const response = await fetch(`${API_URL}/keys/generate`, {
         method: 'POST',
@@ -699,9 +701,14 @@ function ApiKeysTab({ user }) {
         const data = await response.json()
         setNewKey(data.api_key)
         fetchKeys()
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        setError(errorData.error || `Failed to generate key (${response.status})`)
+        console.error('Generate key error:', response.status, errorData)
       }
-    } catch (error) {
-      console.error('Error generating key:', error)
+    } catch (err) {
+      setError('Network error - check if API is running')
+      console.error('Error generating key:', err)
     } finally {
       setGenerating(false)
     }
@@ -766,7 +773,7 @@ function ApiKeysTab({ user }) {
         </div>
         <button
           className="v4-btn v4-btn-primary"
-          onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); }}
+          onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
         >
           + Generate New Key
         </button>
@@ -797,6 +804,19 @@ function ApiKeysTab({ user }) {
                   }}
                   autoFocus
                 />
+                {error && (
+                  <div style={{
+                    background: '#FEE2E2',
+                    border: '1px solid #FECACA',
+                    borderRadius: 8,
+                    padding: '12px 16px',
+                    marginBottom: 20,
+                    color: '#DC2626',
+                    fontSize: 14
+                  }}>
+                    {error}
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                   <button
                     className="v4-btn v4-btn-secondary"

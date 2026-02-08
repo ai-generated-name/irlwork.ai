@@ -21,14 +21,16 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 // Background services
-console.log('[Startup] Loading autoRelease...');
-const autoReleaseService = require('./services/autoRelease');
+// DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
+// console.log('[Startup] Loading autoRelease...');
+// const autoReleaseService = require('./services/autoRelease');
 
 // Payment and wallet services
 console.log('[Startup] Loading payment services...');
 const { releasePaymentToPending, getWalletBalance } = require('./backend/services/paymentService');
-const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
-const { startBalancePromoter } = require('./backend/services/balancePromoter');
+// DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
+// const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
+// const { startBalancePromoter } = require('./backend/services/balancePromoter');
 
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
@@ -1090,12 +1092,49 @@ app.get('/api/humans/:id', async (req, res) => {
 app.put('/api/humans/profile', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  let user = await getUserByToken(req.headers.authorization);
+
+  // If user doesn't exist in our DB but has a valid UUID token (from Supabase Auth), auto-create them
+  if (!user) {
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (uuidRegex.test(token)) {
+      // Create the user record
+      const { name, city, hourly_rate, skills } = req.body;
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          id: token,
+          email: req.body.email || `${token}@oauth.user`,
+          name: name || 'New User',
+          type: 'human',
+          city: city || '',
+          hourly_rate: hourly_rate || 25,
+          skills: JSON.stringify(skills || []),
+          verified: true,
+          needs_onboarding: false,
+          availability: 'available',
+          rating: 0,
+          jobs_completed: 0,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Failed to auto-create user:', createError);
+        return res.status(401).json({ error: 'Unauthorized - could not create user' });
+      }
+      user = newUser;
+    } else {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
 
   const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code } = req.body;
 
-  const updates = { updated_at: new Date().toISOString(), needs_onboarding: false };
+  const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
 
   if (name) updates.name = name;
   if (wallet_address) updates.wallet_address = wallet_address;
@@ -3684,54 +3723,18 @@ app.get('/api/wallet/balance', async (req, res) => {
   }
 });
 
+// DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
+// Withdrawals are now handled manually by admin
 app.post('/api/wallet/withdraw', async (req, res) => {
-  try {
-    const user = await getUserByToken(req.headers.authorization);
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Optional: specify amount in cents, or omit to withdraw all available
-    const { amount_cents } = req.body;
-
-    const { sendUSDC, initWallet } = require('./lib/wallet');
-
-    // Initialize wallet if needed
-    if (process.env.PLATFORM_WALLET_PRIVATE_KEY) {
-      await initWallet();
-    }
-
-    const result = await processWithdrawal(
-      supabase,
-      user.id,
-      amount_cents || null,
-      sendUSDC,
-      createNotification
-    );
-
-    res.json(result);
-  } catch (error) {
-    console.error('Withdrawal error:', error);
-    res.status(400).json({
-      error: error.message || 'Withdrawal failed'
-    });
-  }
+  res.status(410).json({
+    error: 'Self-service withdrawals are disabled for Phase 1. Payments are processed manually by the platform.'
+  });
 });
 
 app.get('/api/wallet/withdrawals', async (req, res) => {
-  try {
-    const user = await getUserByToken(req.headers.authorization);
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const history = await getWithdrawalHistory(supabase, user.id);
-
-    res.json(history);
-  } catch (error) {
-    console.error('Error fetching withdrawal history:', error);
-    res.status(500).json({ error: 'Failed to fetch withdrawal history' });
-  }
+  res.status(410).json({
+    error: 'Self-service withdrawal history is disabled for Phase 1. Contact support for payment status.'
+  });
 });
 
 app.get('/api/wallet/status', async (req, res) => {
@@ -3852,14 +3855,15 @@ async function start() {
   if (supabase) {
     console.log('✅ Supabase connected');
 
+    // DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
     // Start background services
-    console.log('🔄 Starting background services...');
-    autoReleaseService.start();
-    console.log('   ✅ Auto-release service started (48h threshold)');
+    // console.log('🔄 Starting background services...');
+    // autoReleaseService.start();
+    // console.log('   ✅ Auto-release service started (48h threshold)');
 
     // Start balance promoter (promotes pending → available after 48 hours)
-    startBalancePromoter(supabase, createNotification);
-    console.log('   ✅ Balance promoter started (15min interval)');
+    // startBalancePromoter(supabase, createNotification);
+    // console.log('   ✅ Balance promoter started (15min interval)');
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
