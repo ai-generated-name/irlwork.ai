@@ -11,6 +11,7 @@ import EmptyState from './components/EmptyState'
 import ActivityFeed from './components/ActivityFeed'
 import BrowsePage from './pages/BrowsePage'
 import LandingPageV4 from './pages/LandingPageV4'
+import CityAutocomplete from './components/CityAutocomplete'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
@@ -85,6 +86,10 @@ function Onboarding({ onComplete }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     city: '',
+    latitude: null,
+    longitude: null,
+    country: '',
+    country_code: '',
     skills: '',
     travel_radius: 10,
     hourly_rate: 25
@@ -101,6 +106,10 @@ function Onboarding({ onComplete }) {
     try {
       await onComplete({
         city: form.city,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        country: form.country,
+        country_code: form.country_code,
         skills: form.skills.split(',').map(s => s.trim()).filter(Boolean),
         travel_radius: form.travel_radius,
         hourly_rate: form.hourly_rate
@@ -134,17 +143,22 @@ function Onboarding({ onComplete }) {
           <div>
             <h1 className="onboarding-v4-title">Where are you based?</h1>
             <p className="onboarding-v4-subtitle">This helps show you relevant tasks in your area</p>
-            <input
-              type="text"
-              placeholder="City (e.g. San Francisco)"
+            <CityAutocomplete
               value={form.city}
-              onChange={e => setForm({ ...form, city: e.target.value })}
-              className="onboarding-v4-input"
-              autoFocus
+              onChange={(locationData) => setForm({
+                ...form,
+                city: locationData.city,
+                latitude: locationData.latitude,
+                longitude: locationData.longitude,
+                country: locationData.country,
+                country_code: locationData.country_code
+              })}
+              placeholder="Search for your city..."
+              className="onboarding-v4-city-input"
             />
             <button
               className="onboarding-v4-btn-next"
-              style={{ width: '100%' }}
+              style={{ width: '100%', marginTop: '1rem' }}
               onClick={() => setStep(2)}
               disabled={!form.city.trim()}
             >

@@ -266,7 +266,7 @@ app.post('/api/auth/register/human', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
-    const { id: providedId, email, password, name, city, state, hourly_rate, categories = [], skills = [], bio = '', phone = '', latitude, longitude, travel_radius } = req.body;
+    const { id: providedId, email, password, name, city, state, hourly_rate, categories = [], skills = [], bio = '', phone = '', latitude, longitude, travel_radius, country, country_code } = req.body;
 
     if (!email || !name || !city) {
       return res.status(400).json({ error: 'Name, email, and city are required' });
@@ -294,6 +294,8 @@ app.post('/api/auth/register/human', async (req, res) => {
         state,
         latitude: latitude != null ? parseFloat(latitude) : null,
         longitude: longitude != null ? parseFloat(longitude) : null,
+        country: country || null,
+        country_code: country_code || null,
         travel_radius: travel_radius || 25,
         service_radius: travel_radius || 25,
         skills: JSON.stringify(userSkills),
@@ -536,6 +538,9 @@ app.get('/api/auth/verify', async (req, res) => {
     ? (((user.total_tasks_completed - (user.total_disputes_filed || 0)) / user.total_tasks_completed) * 100).toFixed(1)
     : null;
 
+  // Determine if user needs onboarding - false if they have city (completed profile)
+  const needsOnboarding = user.needs_onboarding === true && !user.city;
+
   res.json({
     user: {
       id: user.id, email: user.email, name: user.name, type: user.type,
@@ -544,6 +549,7 @@ app.get('/api/auth/verify', async (req, res) => {
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
       profile_completeness: user.profile_completeness,
+      needs_onboarding: needsOnboarding,
       // Reputation metrics
       total_tasks_completed: user.total_tasks_completed || 0,
       total_tasks_posted: user.total_tasks_posted || 0,
@@ -1006,7 +1012,7 @@ app.put('/api/humans/profile', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius } = req.body;
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false };
 
@@ -1022,6 +1028,8 @@ app.put('/api/humans/profile', async (req, res) => {
   // Parse as floats to match registration format
   if (latitude !== undefined) updates.latitude = latitude != null ? parseFloat(latitude) : null;
   if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
+  if (country !== undefined) updates.country = country;
+  if (country_code !== undefined) updates.country_code = country_code;
   if (travel_radius) updates.travel_radius = travel_radius;
 
   const { data, error } = await supabase
@@ -3363,10 +3371,11 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Agents only' });
   }
   
-  const { 
-    title, description, category, location, 
+  const {
+    title, description, category, location,
     budget_type, budget_min, budget_max, budget,
-    duration_hours, urgency, insurance_option 
+    duration_hours, urgency, insurance_option,
+    latitude, longitude, country, country_code
   } = req.body;
   
   const id = uuidv4();
@@ -3384,6 +3393,10 @@ app.post('/api/tasks/create', async (req, res) => {
       description,
       category,
       location,
+      latitude: latitude != null ? parseFloat(latitude) : null,
+      longitude: longitude != null ? parseFloat(longitude) : null,
+      country: country || null,
+      country_code: country_code || null,
       budget_type: budget_type || 'hourly',
       budget_min,
       budget_max,
@@ -3399,7 +3412,7 @@ app.post('/api/tasks/create', async (req, res) => {
     })
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: error.message });
 
   // Increment total_tasks_posted for agent

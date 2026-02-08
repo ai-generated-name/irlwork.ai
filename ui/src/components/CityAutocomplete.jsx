@@ -55,8 +55,12 @@ const COUNTRY_NAMES = {
   'IE': 'Ireland'
 };
 
-// Cache for loaded cities data - loaded on demand
+// Countries where state/province should be shown in display name
+const COUNTRIES_WITH_STATES = ['US', 'CA', 'AU'];
+
+// Cache for loaded cities and admin1 data - loaded on demand
 let citiesCache = null;
+let admin1Map = null;
 
 const CityAutocomplete = ({
   value,
@@ -82,18 +86,53 @@ const CityAutocomplete = ({
 
     setIsLoading(true);
     try {
-      const citiesModule = await import('cities.json');
+      // Load cities and admin1 data in parallel
+      const [citiesModule, admin1Module] = await Promise.all([
+        import('cities.json'),
+        import('cities.json/admin1.json')
+      ]);
       const citiesData = citiesModule.default;
+      const admin1Data = admin1Module.default;
 
-      // Process cities data
-      citiesCache = citiesData.map(city => ({
-        name: city.name,
-        country: COUNTRY_NAMES[city.country] || city.country,
-        countryCode: city.country,
-        lat: parseFloat(city.lat),
-        lng: parseFloat(city.lng),
-        displayName: `${city.name}, ${COUNTRY_NAMES[city.country] || city.country}`
-      }));
+      // Build admin1 lookup map: "US.MA" -> "Massachusetts"
+      if (!admin1Map) {
+        admin1Map = new Map();
+        admin1Data.forEach(a => admin1Map.set(a.code, a.name));
+      }
+
+      // Process cities data with state/province info
+      citiesCache = citiesData.map(city => {
+        const countryCode = city.country;
+        const countryName = COUNTRY_NAMES[countryCode] || countryCode;
+
+        // Look up state/province name for countries that use them
+        let stateName = null;
+        let stateCode = null;
+        if (COUNTRIES_WITH_STATES.includes(countryCode) && city.admin1) {
+          const admin1Key = `${countryCode}.${city.admin1}`;
+          stateName = admin1Map.get(admin1Key) || null;
+          stateCode = city.admin1;
+        }
+
+        // Build display name: "City, State, Country" or "City, Country"
+        let displayName;
+        if (stateName) {
+          displayName = `${city.name}, ${stateName}, ${countryName}`;
+        } else {
+          displayName = `${city.name}, ${countryName}`;
+        }
+
+        return {
+          name: city.name,
+          country: countryName,
+          countryCode,
+          state: stateName,
+          stateCode,
+          lat: parseFloat(city.lat),
+          lng: parseFloat(city.lng),
+          displayName
+        };
+      });
 
       setCitiesLoaded(true);
       return citiesCache;
@@ -150,11 +189,15 @@ const CityAutocomplete = ({
     setQuery(city.displayName);
     setShowDropdown(false);
 
-    // Call onChange with city data
+    // Call onChange with full city data including country and state
     onChange({
       city: city.displayName,
       latitude: city.lat,
-      longitude: city.lng
+      longitude: city.lng,
+      country: city.country,
+      country_code: city.countryCode,
+      state: city.state,
+      state_code: city.stateCode
     });
   };
 
