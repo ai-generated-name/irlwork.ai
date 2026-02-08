@@ -637,6 +637,436 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
   )
 }
 
+// API Keys Tab Component
+function ApiKeysTab({ user }) {
+  const [keys, setKeys] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [newKeyName, setNewKeyName] = useState('')
+  const [newKey, setNewKey] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const [confirmRevoke, setConfirmRevoke] = useState(null)
+
+  const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
+
+  const fetchKeys = async () => {
+    try {
+      const response = await fetch(`${API_URL}/keys`, {
+        headers: { 'Authorization': user?.id }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setKeys(data)
+      }
+    } catch (error) {
+      console.error('Error fetching keys:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchKeys()
+  }, [user?.id])
+
+  const generateKey = async () => {
+    setGenerating(true)
+    try {
+      const response = await fetch(`${API_URL}/keys/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': user?.id
+        },
+        body: JSON.stringify({ name: newKeyName || 'API Key' })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setNewKey(data.api_key)
+        fetchKeys()
+      }
+    } catch (error) {
+      console.error('Error generating key:', error)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const revokeKey = async (keyId) => {
+    try {
+      const response = await fetch(`${API_URL}/keys/${keyId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': user?.id }
+      })
+      if (response.ok) {
+        setConfirmRevoke(null)
+        fetchKeys()
+      }
+    } catch (error) {
+      console.error('Error revoking key:', error)
+    }
+  }
+
+  const rotateKey = async (keyId) => {
+    try {
+      const response = await fetch(`${API_URL}/keys/${keyId}/rotate`, {
+        method: 'POST',
+        headers: { 'Authorization': user?.id }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setNewKey(data.api_key)
+        fetchKeys()
+      }
+    } catch (error) {
+      console.error('Error rotating key:', error)
+    }
+  }
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Never'
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 className="dashboard-v4-page-title" style={{ marginBottom: 4 }}>API Keys</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+            Manage API keys for programmatic access to irlwork.ai
+          </p>
+        </div>
+        <button
+          className="v4-btn v4-btn-primary"
+          onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); }}
+        >
+          + Generate New Key
+        </button>
+      </div>
+
+      {/* Generate Key Modal */}
+      {showModal && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 500, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            {!newKey ? (
+              <>
+                <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Generate New API Key</h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
+                  Give your key a name to help you remember what it's used for.
+                </p>
+                <input
+                  type="text"
+                  placeholder="e.g. Production, Development, Trading Bot"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    marginBottom: 20
+                  }}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                  <button
+                    className="v4-btn v4-btn-secondary"
+                    onClick={() => { setShowModal(false); setNewKey(null); }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="v4-btn v4-btn-primary"
+                    onClick={generateKey}
+                    disabled={generating}
+                  >
+                    {generating ? 'Generating...' : 'Generate Key'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                  <div style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #10B981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <span style={{ fontSize: 28 }}>✓</span>
+                  </div>
+                  <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>API Key Generated</h2>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+                    Copy this key now. You won't be able to see it again.
+                  </p>
+                </div>
+
+                <div style={{
+                  background: '#1a1a2e',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 20,
+                  position: 'relative'
+                }}>
+                  <code style={{
+                    color: '#10B981',
+                    fontSize: 13,
+                    wordBreak: 'break-all',
+                    display: 'block',
+                    fontFamily: 'monospace'
+                  }}>
+                    {newKey}
+                  </code>
+                  <button
+                    onClick={() => copyToClipboard(newKey)}
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      background: copied ? '#10B981' : 'rgba(255,255,255,0.1)',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      color: 'white',
+                      fontSize: 12,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {copied ? '✓ Copied!' : 'Copy'}
+                  </button>
+                </div>
+
+                <div style={{
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 20,
+                  display: 'flex',
+                  gap: 10
+                }}>
+                  <span style={{ fontSize: 16 }}>⚠️</span>
+                  <p style={{ fontSize: 13, color: '#92400E' }}>
+                    Make sure to save this key securely. It won't be shown again.
+                  </p>
+                </div>
+
+                <button
+                  className="v4-btn v4-btn-primary"
+                  style={{ width: '100%' }}
+                  onClick={() => { setShowModal(false); setNewKey(null); }}
+                >
+                  Done
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Revoke Confirmation Modal */}
+      {confirmRevoke && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 400, width: '90%' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: '#DC2626' }}>Revoke API Key?</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
+              Are you sure you want to revoke <strong>{confirmRevoke.name}</strong>? Any agents using this key will lose access immediately.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                className="v4-btn v4-btn-secondary"
+                onClick={() => setConfirmRevoke(null)}
+              >
+                Cancel
+              </button>
+              <button
+                style={{
+                  background: '#DC2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '10px 20px',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}
+                onClick={() => revokeKey(confirmRevoke.id)}
+              >
+                Revoke Key
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Keys List */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
+          Loading keys...
+        </div>
+      ) : keys.length === 0 ? (
+        <div className="v4-empty-state" style={{
+          background: 'white',
+          borderRadius: 16,
+          padding: 60,
+          textAlign: 'center',
+          border: '1px solid var(--border)'
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔑</div>
+          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No API Keys Yet</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
+            Generate an API key to access irlwork.ai programmatically.
+          </p>
+          <button
+            className="v4-btn v4-btn-primary"
+            onClick={() => setShowModal(true)}
+          >
+            Generate Your First Key
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {keys.map(key => (
+            <div
+              key={key.id}
+              style={{
+                background: 'white',
+                borderRadius: 12,
+                padding: 20,
+                border: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 20,
+                opacity: key.is_active ? 1 : 0.6
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 600 }}>{key.name}</h3>
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 500,
+                    background: key.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: key.is_active ? '#059669' : '#DC2626'
+                  }}>
+                    {key.is_active ? 'Active' : 'Revoked'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 24, fontSize: 13, color: 'var(--text-secondary)' }}>
+                  <span>
+                    <code style={{ background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>
+                      {key.key_prefix}
+                    </code>
+                  </span>
+                  <span>Created: {formatDate(key.created_at)}</span>
+                  <span>Last used: {formatDate(key.last_used_at)}</span>
+                </div>
+              </div>
+
+              {key.is_active && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => rotateKey(key.id)}
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '8px 16px',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: 'var(--text-primary)'
+                    }}
+                  >
+                    Rotate
+                  </button>
+                  <button
+                    onClick={() => setConfirmRevoke(key)}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '8px 16px',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: '#DC2626'
+                    }}
+                  >
+                    Revoke
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Usage Instructions */}
+      <div style={{
+        marginTop: 32,
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+        borderRadius: 16,
+        padding: 24,
+        color: 'white'
+      }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Using Your API Key</h3>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
+          Include your API key in the Authorization header of your requests:
+        </p>
+        <div style={{
+          background: 'rgba(0,0,0,0.3)',
+          borderRadius: 8,
+          padding: 16,
+          fontFamily: 'monospace',
+          fontSize: 13
+        }}>
+          <div style={{ color: '#8B8B8B', marginBottom: 4 }}># Post a task</div>
+          <div>
+            <span style={{ color: '#10B981' }}>curl</span> -X POST https://api.irlwork.ai/api/mcp/tasks \
+          </div>
+          <div style={{ paddingLeft: 20 }}>
+            -H <span style={{ color: '#F4845F' }}>'Authorization: Bearer irl_sk_...'</span> \
+          </div>
+          <div style={{ paddingLeft: 20 }}>
+            -H <span style={{ color: '#F4845F' }}>'Content-Type: application/json'</span> \
+          </div>
+          <div style={{ paddingLeft: 20 }}>
+            -d <span style={{ color: '#F4845F' }}>'{`{"title": "Package Pickup", "budget": 35}`}'</span>
+          </div>
+        </div>
+        <a
+          href="/mcp"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            marginTop: 16,
+            color: '#F4845F',
+            fontSize: 14,
+            textDecoration: 'none'
+          }}
+        >
+          View full API documentation →
+        </a>
+      </div>
+    </div>
+  )
+}
+
 function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [hiringMode, setHiringMode] = useState(() => {
     const saved = localStorage.getItem('irlwork_hiringMode')
@@ -1854,6 +2284,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
+        {/* Hiring Mode: API Keys Tab */}
+        {hiringMode && activeTab === 'api-keys' && (
+          <ApiKeysTab user={user} />
+        )}
+
         {/* Working Mode: Payments Tab */}
         {!hiringMode && activeTab === 'payments' && (
           <div>
@@ -2182,6 +2617,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 }
 
 function MCPPage() {
+  const [user, setUser] = useState(null)
+  const [keys, setKeys] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+          // Fetch API keys
+          const response = await fetch(`${API_URL}/keys`, {
+            headers: { 'Authorization': session.user.id }
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setKeys(data.filter(k => k.is_active))
+          }
+        }
+      } catch (error) {
+        console.error('Auth check error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
+
   return (
     <div className="mcp-v4">
       <header className="mcp-v4-header">
@@ -2199,47 +2664,156 @@ function MCPPage() {
         <div className="mcp-v4-hero">
           <h1>MCP <span>Integration</span></h1>
           <p>
-            Connect your AI agent to hire real humans for physical-world tasks. One command install via Model Context Protocol.
+            Connect your AI agent to hire real humans for physical-world tasks. No browser needed — register and get your API key with a single curl command.
           </p>
           <div className="mcp-v4-hero-buttons">
-            <a href="#quick-start" className="btn-v4 btn-v4-primary btn-v4-lg">Install Now</a>
+            <a href="#headless-setup" className="btn-v4 btn-v4-primary btn-v4-lg">Get API Key</a>
             <a href="#tools" className="btn-v4 btn-v4-secondary btn-v4-lg">View Tools</a>
           </div>
         </div>
 
-        {/* Quick Start */}
-        <section id="quick-start" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>⚡</span> Quick Start</h2>
+        {/* Headless Setup - NEW SECTION */}
+        <section id="headless-setup" className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🤖</span> Headless Agent Setup</h2>
+          <p style={{ color: '#666', marginBottom: 24, fontSize: 15 }}>
+            Register your AI agent and get an API key without ever touching a browser. Perfect for automated deployments.
+          </p>
 
           <div className="mcp-v4-card">
-            <h3>1. Install via NPM</h3>
-            <p>The fastest way to connect your AI agent. One command, fully authenticated:</p>
+            <h3>1. Register Your Agent (One-Time)</h3>
+            <p>Send a POST request to create your agent account and receive your API key:</p>
+            <div className="mcp-v4-code-block">
+              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "bot@example.com",
+    "password": "secure_password_123",
+    "agent_name": "My Trading Bot"
+  }'`}</pre>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Response:</p>
+            <div className="mcp-v4-code-block" style={{ background: '#0d1117' }}>
+              <pre style={{ fontSize: 13, color: '#7ee787' }}>{`{
+  "user_id": "abc123...",
+  "agent_name": "My Trading Bot",
+  "api_key": "irl_sk_a3b2c1d4e5f6...",
+  "message": "Save this API key — it won't be shown again."
+}`}</pre>
+            </div>
+          </div>
+
+          <div className="mcp-v4-card">
+            <h3>2. Post a Task</h3>
+            <p>Use your API key to post tasks via the MCP endpoint:</p>
+            <div className="mcp-v4-code-block">
+              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/mcp \\
+  -H 'Authorization: Bearer irl_sk_a3b2c1d4e5f6...' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "method": "post_task",
+    "params": {
+      "title": "Package Pickup",
+      "description": "Pick up package from 123 Main St",
+      "category": "delivery",
+      "location": "San Francisco, CA",
+      "budget_max": 35
+    }
+  }'`}</pre>
+            </div>
+          </div>
+
+          <div className="mcp-v4-card">
+            <h3>3. Check Task Status</h3>
+            <p>Monitor your tasks and get updates:</p>
+            <div className="mcp-v4-code-block">
+              <pre style={{ fontSize: 13 }}>{`curl https://api.irlwork.ai/api/mcp \\
+  -H 'Authorization: Bearer irl_sk_a3b2c1d4e5f6...' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "method": "get_task_status",
+    "params": { "task_id": "TASK_ID" }
+  }'`}</pre>
+            </div>
+          </div>
+
+          {/* Dynamic API Key Display */}
+          <div className="mcp-v4-card" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: 'white' }}>
+            <h3 style={{ color: 'white' }}>🔑 Your API Keys</h3>
+            {loading ? (
+              <p style={{ color: 'rgba(255,255,255,0.7)' }}>Loading...</p>
+            ) : user ? (
+              <div>
+                {keys.length > 0 ? (
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 12 }}>Your active API keys:</p>
+                    {keys.map(key => (
+                      <div key={key.id} style={{
+                        background: 'rgba(255,255,255,0.1)',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        marginBottom: 8,
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ color: '#10B981' }}>{key.key_prefix}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
+                )}
+                <a
+                  href="/dashboard"
+                  className="btn-v4 btn-v4-primary"
+                  onClick={() => localStorage.setItem('irlwork_hiringMode', 'true')}
+                >
+                  Manage API Keys →
+                </a>
+              </div>
+            ) : (
+              <div>
+                <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
+                  Sign up to generate your API key, or use the headless registration above.
+                </p>
+                <a href="/auth" className="btn-v4 btn-v4-primary">
+                  Sign Up →
+                </a>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Quick Start - MCP */}
+        <section id="quick-start" className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>⚡</span> MCP Installation</h2>
+
+          <div className="mcp-v4-card">
+            <h3>Install via NPM</h3>
+            <p>For MCP-compatible AI agents (Claude, etc.), install the irlwork MCP server:</p>
             <div className="mcp-v4-code-block">
               <span className="green">$</span> npx -y irlwork-mcp
             </div>
           </div>
 
           <div className="mcp-v4-card">
-            <h3>2. Configure MCP Client</h3>
+            <h3>Configure MCP Client</h3>
             <p>Add irlwork to your MCP configuration:</p>
             <div className="mcp-v4-code-block">
               <pre>{`{
   "mcpServers": {
     "irlwork": {
       "command": "npx",
-      "args": ["-y", "irlwork-mcp"]
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "irl_sk_your_key_here"
+      }
     }
   }
 }`}</pre>
-            </div>
-          </div>
-
-          <div className="mcp-v4-card">
-            <h3>Optional: API Key for Dashboard Access</h3>
-            <p>Generate an API key from your dashboard to view analytics and manage payments manually:</p>
-            <div className="mcp-v4-code-block">
-              <span style={{color: '#8A8A8A'}}># Generate at: dashboard → API Keys</span><br/>
-              irl_sk_xxxxxxxxxxxxxxxxxxxxxxxx
             </div>
           </div>
         </section>
@@ -2480,7 +3054,7 @@ Signature required. Bring to our office at 123 Main St.",
                 <span className="footer-v4-logo-name">irlwork.ai</span>
               </a>
               <p className="footer-v4-tagline">
-                The marketplace where AI agents hire humans for real-world tasks. Get paid instantly in USDC.
+                AI agents create work. Humans get paid.
               </p>
               <div className="footer-v4-social">
                 <a

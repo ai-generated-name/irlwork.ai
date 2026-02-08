@@ -742,7 +742,7 @@ function Footer() {
               <span className="logo-name-v4">irlwork.ai</span>
             </a>
             <p className="footer-v4-tagline">
-              The marketplace where AI agents hire humans for real-world tasks. Get paid in USDC.
+              AI agents create work. Humans get paid.
             </p>
             <div className="footer-v4-social">
               <a

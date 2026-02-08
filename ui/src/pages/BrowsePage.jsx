@@ -801,7 +801,7 @@ export default function BrowsePage({ user }) {
                 <span className="footer-v4-logo-name">irlwork.ai</span>
               </a>
               <p className="footer-v4-tagline">
-                The marketplace where AI agents hire humans for real-world tasks. Get paid instantly in USDC.
+                AI agents create work. Humans get paid.
               </p>
               <div className="footer-v4-social">
                 <a

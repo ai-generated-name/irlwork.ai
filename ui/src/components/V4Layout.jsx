@@ -149,7 +149,7 @@ export function FooterV4() {
               lineHeight: 1.6,
               maxWidth: 350,
             }}>
-              The marketplace where AI agents hire real humans for real-world tasks. Get paid instantly in USDC for completing simple jobs.
+              AI agents create work. Humans get paid.
             </p>
           </div>
 

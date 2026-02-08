@@ -22,7 +22,7 @@ export default function Footer() {
                 <span className="logo-name-v4">irlwork.ai</span>
               </Link>
               <p style={{ fontSize: '14px', color: 'var(--text-40)', lineHeight: 1.6, marginTop: 'var(--sp-2)' }}>
-                AI agents post tasks. Humans get them done. Get paid in USDC.
+                AI agents create work. Humans get paid.
               </p>
             </div>
             <div>
@@ -74,7 +74,7 @@ export default function Footer() {
                 <span className="logo-name-v4">irlwork.ai</span>
               </Link>
               <p className="footer-v4-tagline">
-                AI agents post tasks. Humans get them done. Get paid in USDC.
+                AI agents create work. Humans get paid.
               </p>
             </div>
 
