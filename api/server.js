@@ -50,6 +50,7 @@ const corsOrigins = process.env.CORS_ORIGINS
       'https://irlwork.ai',
       'https://api.irlwork.ai',
       'http://localhost:5173',
+      'http://localhost:5180',
       'http://localhost:3002'
     ];
 
@@ -1221,19 +1222,18 @@ app.get('/api/tasks', async (req, res) => {
 
 app.post('/api/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
-  
+
   const { title, description, category, location, budget_type, budget_min, budget_max, duration_hours, urgency, insurance_option, budget } = req.body;
-  
+
   const id = uuidv4();
   const budgetAmount = budget || budget_max || budget_min || 50;
-  
-  // Generate unique deposit amount (budget + random cents)
-  const randomCents = (Math.random() * 99 + 1) / 100;
-  const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
-  
+
+  // PHASE 1 MANUAL OPERATIONS: No deposit amount generated at creation
+  // Deposit instructions are provided when worker is approved (see /api/tasks/:id/assign)
+
   const { data: task, error } = await supabase
     .from('tasks')
     .insert({
@@ -1252,26 +1252,20 @@ app.post('/api/tasks', async (req, res) => {
       urgency: urgency || 'scheduled',
       insurance_option,
       status: 'open',
-      escrow_status: 'unfunded',
+      escrow_status: 'awaiting_worker',  // PHASE 1: No payment needed until worker approved
       escrow_amount: budgetAmount,
-      unique_deposit_amount: uniqueDepositAmount,
       created_at: new Date().toISOString()
     })
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
-  // Return task with deposit instructions
-  res.json({ 
-    ...task, 
-    deposit_instructions: {
-      platform_wallet: process.env.PLATFORM_WALLET_ADDRESS,
-      amount: uniqueDepositAmount,
-      currency: 'USDC',
-      network: 'base',
-      deadline: '24h'
-    }
+
+  // PHASE 1: No deposit instructions at task creation
+  // Agent will receive deposit instructions when they approve a worker
+  res.json({
+    ...task,
+    message: 'Task posted. Deposit instructions will be provided when a worker is approved.'
   });
 });
 
@@ -1426,6 +1420,7 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
 });
 
 // Agent assigns a human to a task
+// PHASE 1: This triggers escrow deposit flow - worker cannot start until deposit confirmed
 app.post('/api/tasks/:id/assign', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
@@ -1466,13 +1461,28 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     return res.status(404).json({ error: 'Human has not applied to this task' });
   }
 
-  // Assign the human to the task
+  // Get human details for response
+  const { data: humanUser } = await supabase
+    .from('users')
+    .select('id, name, email')
+    .eq('id', human_id)
+    .single();
+
+  // PHASE 1: Generate unique deposit amount NOW (budget + random cents for matching)
+  const budgetAmount = task.escrow_amount || task.budget || 50;
+  const randomCents = (Math.random() * 99 + 1) / 100;
+  const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
+
+  // Assign the human but set status to 'assigned' (not 'in_progress')
+  // Worker cannot start until escrow is deposited (escrow_status = 'deposited')
   const { error } = await supabase
     .from('tasks')
     .update({
       human_id: human_id,
-      status: 'in_progress',
-      started_at: new Date().toISOString(),
+      status: 'assigned',  // PHASE 1: Not in_progress - must wait for deposit
+      escrow_status: 'pending_deposit',  // PHASE 1: Trigger deposit flow
+      unique_deposit_amount: uniqueDepositAmount,
+      deposit_amount_cents: Math.round(uniqueDepositAmount * 100),
       updated_at: new Date().toISOString()
     })
     .eq('id', taskId);
@@ -1492,16 +1502,32 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     .eq('task_id', taskId)
     .neq('human_id', human_id);
 
-  // Increment stats for the human
-  await supabase
-    .from('users')
-    .update({
-      total_tasks_accepted: supabase.raw('COALESCE(total_tasks_accepted, 0) + 1'),
-      last_active_at: new Date().toISOString()
-    })
-    .eq('id', human_id);
+  // Notify worker: "You've been selected! Funding is in progress."
+  await createNotification(
+    human_id,
+    'task_assigned',
+    'You\'ve Been Selected!',
+    `You've been selected for "${task.title}". Funding is in progress — you'll be notified when work can begin.`,
+    `/tasks/${taskId}`
+  );
 
-  res.json({ success: true, task_id: taskId, human_id });
+  // PHASE 1: Return deposit instructions to agent
+  res.json({
+    success: true,
+    task_id: taskId,
+    worker: {
+      id: humanUser?.id || human_id,
+      name: humanUser?.name || 'Worker'
+    },
+    escrow_status: 'pending_deposit',
+    deposit_instructions: {
+      wallet_address: process.env.PLATFORM_WALLET_ADDRESS,
+      amount_usdc: uniqueDepositAmount,
+      network: 'Base',
+      note: 'Send exactly this amount. Your worker will be notified once deposit is confirmed by the platform.'
+    },
+    message: 'Worker selected. Please send the exact USDC amount to complete the assignment.'
+  });
 });
 
 // ============ AGENT TASKS ============
@@ -1929,29 +1955,31 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   });
 });
 
+// PHASE 1: Agent approves proof - task goes to 'approved' status
+// Payment is NOT released automatically - admin must release via /api/admin/tasks/:id/release-payment
 app.post('/api/tasks/:id/approve', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id: taskId } = req.params;
-  
+
   // Get task details
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .select('*')
     .eq('id', taskId)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Not your task' });
   }
-  
+
   // Get latest proof
   const { data: latestProof } = await supabase
     .from('task_proofs')
@@ -1960,12 +1988,12 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
-  
+
   if (!latestProof) {
     return res.status(400).json({ error: 'No proof to approve' });
   }
-  
-  // Update proof status
+
+  // Update proof status to approved
   await supabase
     .from('task_proofs')
     .update({
@@ -1973,73 +2001,39 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
       updated_at: new Date().toISOString()
     })
     .eq('id', latestProof.id);
-  
-  // Calculate payment
-  const escrowAmount = task.escrow_amount || task.budget || 50;
-  const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-  const netAmount = escrowAmount - platformFee;
-  const txHash = '0x' + crypto.randomBytes(32).toString('hex');
-  
-  // Update task to paid
+
+  // PHASE 1: Update task to 'approved' status (NOT 'paid')
+  // escrow_status stays as 'deposited' until admin releases payment
   await supabase
     .from('tasks')
     .update({
-      status: 'paid',
-      escrow_status: 'released',
-      escrow_released_at: new Date().toISOString(),
+      status: 'approved',  // PHASE 1: Intermediate status - proof approved, awaiting admin release
       updated_at: new Date().toISOString()
     })
     .eq('id', taskId);
-  
-  // Record payout
-  await supabase.from('payouts').insert({
-    id: uuidv4(),
-    task_id: taskId,
-    human_id: task.human_id,
-    agent_id: user.id,
-    gross_amount: escrowAmount,
-    platform_fee: platformFee,
-    net_amount: netAmount,
-    wallet_address: task.human?.wallet_address || null,
-    tx_hash: txHash,
-    status: 'completed',
-    processed_at: new Date().toISOString(),
-    created_at: new Date().toISOString()
-  });
-  
-  // Update human stats
-  await supabase
-    .from('users')
-    .update({
-      jobs_completed: supabase.raw('jobs_completed + 1'),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', task.human_id);
-  
-  // Notify human
+
+  // Notify worker: "Your proof has been approved! Payment is being processed."
   await createNotification(
     task.human_id,
-    'payment_released',
-    'Payment Released!',
-    `Your payment of ${netAmount.toFixed(2)} USDC has been sent to your wallet.`,
-    `/dashboard`
+    'proof_approved',
+    'Proof Approved!',
+    `Your proof for "${task.title}" has been approved! Payment is being processed by the platform.`,
+    `/tasks/${taskId}`
   );
-  
-  // Deliver webhook
+
+  // Deliver webhook to agent
   await deliverWebhook(task.agent_id, {
-    event: 'payment_released',
+    event: 'proof_approved',
     task_id: taskId,
     proof_id: latestProof.id,
-    amount: netAmount,
-    tx_hash: txHash,
+    message: 'Proof approved. Payment will be processed by the platform.',
     timestamp: new Date().toISOString()
   });
-  
-  res.json({ 
-    success: true, 
-    status: 'paid',
-    net_amount: netAmount,
-    tx_hash: txHash
+
+  res.json({
+    success: true,
+    status: 'approved',
+    message: 'Proof approved. Payment will be processed manually by the platform.'
   });
 });
 
@@ -2224,36 +2218,11 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
   res.json({ success: true, resolution });
 });
 
-// Admin endpoint to manually trigger auto-release check (for testing)
+// DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
+// Auto-release is disabled; all payment releases are manual
 app.post('/api/admin/check-auto-release', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  // Check if user is admin (or allow in development)
-  const isDev = process.env.NODE_ENV !== 'production';
-  if (!isDev) {
-    const { data: adminUser } = await supabase
-      .from('users')
-      .select('type')
-      .eq('id', user.id)
-      .single();
-
-    if (adminUser?.type !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-  }
-
-  // Trigger auto-release check
-  console.log('[API] Manual auto-release check triggered by', user.email);
-  await autoReleaseService.checkNow();
-
-  res.json({
-    success: true,
-    message: 'Auto-release check completed',
-    threshold: '48 hours',
-    checkInterval: `${autoReleaseService.CHECK_INTERVAL_MS / 60000} minutes`
+  res.status(410).json({
+    error: 'Auto-release is disabled for Phase 1. Use manual admin endpoints instead.'
   });
 });
 
@@ -2859,23 +2828,12 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'release_payment': {
-        const { task_id, human_id } = params;
-
-        try {
-          // Use new payment service with 48-hour dispute window
-          const result = await releasePaymentToPending(
-            supabase,
-            task_id,
-            human_id,
-            user.id, // agent_id
-            createNotification
-          );
-
-          res.json(result);
-        } catch (error) {
-          console.error('Payment release error:', error);
-          res.status(400).json({ error: error.message });
-        }
+        // DISABLED FOR PHASE 1 MANUAL OPERATIONS
+        // Payment release is now handled manually by the platform admin
+        res.status(410).json({
+          error: 'Automatic payment release is disabled for Phase 1. When you approve proof, payment will be processed manually by the platform.',
+          message: 'Use approve_task to approve the work. Payment will be released by the platform after verification.'
+        });
         break;
       }
       
@@ -4079,12 +4037,12 @@ app.get('/api/tasks/available', async (req, res) => {
 // ============ TASKS CRUD ============
 app.post('/api/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { title, description, category, budget, city, state, deadline, requirements } = req.body;
-  
+
   const { data: task, error } = await supabase
     .from('tasks')
     .insert({
@@ -4096,6 +4054,8 @@ app.post('/api/tasks', async (req, res) => {
       city,
       state,
       status: 'open',
+      escrow_status: 'awaiting_worker',  // PHASE 1: No payment needed until worker approved
+      escrow_amount: parseFloat(budget),
       creator_id: user.id,
       deadline,
       requirements: requirements || null,
@@ -4103,9 +4063,12 @@ app.post('/api/tasks', async (req, res) => {
     })
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  res.json(task);
+  res.json({
+    ...task,
+    message: 'Task posted. Deposit instructions will be provided when a worker is approved.'
+  });
 });
 
 app.patch('/api/tasks/:id', async (req, res) => {
@@ -4197,104 +4160,52 @@ app.post('/api/tasks/:id/complete', async (req, res) => {
   res.json({ success: true });
 });
 
+// PHASE 1: Duplicate approve endpoint - also updated for manual payment flow
 app.post('/api/tasks/:id/approve', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
-  
+
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .select('*')
     .eq('id', id)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Not your task' });
   }
-  
-  // Calculate payment
-  const escrowAmount = task.escrow_amount || task.budget || 50;
-  const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-  const netAmount = escrowAmount - platformFee;
-  
-  // Get human's wallet
-  const { data: human, error: humanError } = await supabase
-    .from('users')
-    .select('wallet_address')
-    .eq('id', task.human_id)
-    .single();
-  
-  // Simulate payment if no wallet
-  let txHash = null;
-  if (human?.wallet_address && process.env.PLATFORM_WALLET_PRIVATE_KEY) {
-    try {
-      const { sendUSDC } = require('./lib/wallet');
-      txHash = await sendUSDC(human.wallet_address, netAmount);
-    } catch (e) {
-      console.error('Wallet error:', e.message);
-      txHash = '0x' + crypto.randomBytes(32).toString('hex');
-    }
-  } else {
-    console.log(`[SIMULATED] Releasing ${netAmount} USDC to ${human?.wallet_address || 'human'}`);
-    txHash = '0x' + crypto.randomBytes(32).toString('hex');
-  }
-  
-  // Update task to paid
+
+  // PHASE 1: Update task to 'approved' status (NOT 'paid')
+  // escrow_status stays as 'deposited' until admin releases payment
   await supabase
     .from('tasks')
     .update({
-      status: 'paid',
-      escrow_status: 'released',
-      escrow_released_at: new Date().toISOString(),
+      status: 'approved',  // PHASE 1: Intermediate status
       updated_at: new Date().toISOString()
     })
     .eq('id', id);
-  
-  // Record payout
-  await supabase.from('payouts').insert({
-    id: uuidv4(),
-    task_id: id,
-    human_id: task.human_id,
-    agent_id: user.id,
-    gross_amount: escrowAmount,
-    platform_fee: platformFee,
-    net_amount: netAmount,
-    wallet_address: human?.wallet_address || null,
-    tx_hash: txHash,
-    status: 'completed',
-    processed_at: new Date().toISOString(),
-    created_at: new Date().toISOString()
-  });
-  
-  // Update human stats
-  await supabase
-    .from('users')
-    .update({
-      jobs_completed: supabase.raw('jobs_completed + 1'),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', task.human_id);
-  
-  // Notify human
+
+  // Notify worker
   await createNotification(
     task.human_id,
-    'payment_released',
-    'Payment Released!',
-    `Your payment of ${netAmount.toFixed(2)} USDC has been sent.`
+    'proof_approved',
+    'Task Approved!',
+    `Your work on "${task.title}" has been approved! Payment is being processed by the platform.`,
+    `/tasks/${id}`
   );
-  
-  res.json({ 
-    success: true, 
-    status: 'paid',
-    net_amount: netAmount,
-    tx_hash: txHash
+
+  res.json({
+    success: true,
+    status: 'approved',
+    message: 'Task approved. Payment will be processed manually by the platform.'
   });
 });
 

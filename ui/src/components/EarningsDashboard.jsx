@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import API_URL from '../config/api'
+import { useToast } from '../context/ToastContext'
 
 function EarningsDashboard({ user }) {
+  const toast = useToast()
   const [balanceData, setBalanceData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -36,12 +38,12 @@ function EarningsDashboard({ user }) {
 
   const handleWithdraw = async () => {
     if (!balanceData?.available_cents || balanceData.available_cents <= 0) {
-      alert('No funds available to withdraw')
+      toast.error('No funds available to withdraw')
       return
     }
 
     if (!user.wallet_address) {
-      alert('Please add a wallet address in your profile settings first')
+      toast.error('Please add a wallet address in your profile settings first')
       return
     }
 
@@ -79,7 +81,7 @@ function EarningsDashboard({ user }) {
       }, 3000)
 
     } catch (err) {
-      alert(`Withdrawal failed: ${err.message}`)
+      toast.error(`Withdrawal failed: ${err.message}`)
       console.error('Withdrawal error:', err)
     } finally {
       setWithdrawing(false)

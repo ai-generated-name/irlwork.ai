@@ -2,6 +2,7 @@
 // Always-visible messaging interface for task communication
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useToast } from '../../context/ToastContext';
 
 const styles = {
   input: 'w-full bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] transition-colors'
@@ -14,6 +15,7 @@ export default function TaskMessageThread({
   onSendMessage,
   onLoadMessages
 }) {
+  const toast = useToast();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
@@ -44,7 +46,7 @@ export default function TaskMessageThread({
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      toast.error('Failed to send message. Please try again.');
     } finally {
       setSending(false);
     }

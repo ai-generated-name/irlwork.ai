@@ -1,5 +1,6 @@
 // irlwork.ai - Modern Clean UI
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
 import EarningsDashboard from './components/EarningsDashboard'
 import ModeToggle from './components/ModeToggle'
@@ -60,8 +61,8 @@ const Icons = {
 // === Components ===
 function Button({ children, onClick, variant = 'primary', className = '', ...props }) {
   return (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       className={`${styles.btn} ${variant === 'primary' ? styles.btnPrimary : styles.btnSecondary} ${className}`}
       {...props}
     >
@@ -69,6 +70,7 @@ function Button({ children, onClick, variant = 'primary', className = '', ...pro
     </button>
   )
 }
+
 
 function Loading() {
   return (
@@ -490,6 +492,7 @@ function AuthPage({ onLogin }) {
 }
 
 function ProofSubmitModal({ task, onClose, onSubmit }) {
+  const toast = useToast()
   const [proofText, setProofText] = useState('')
   const [files, setFiles] = useState([])
   const [uploadedUrls, setUploadedUrls] = useState([])
@@ -499,7 +502,7 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
   const handleFileSelect = (e) => {
     const selected = Array.from(e.target.files || [])
     if (selected.length + files.length > 3) {
-      alert('Maximum 3 files allowed')
+      toast.error('Maximum 3 files allowed')
       return
     }
     setFiles(prev => [...prev, ...selected].slice(0, 3))
@@ -507,7 +510,7 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
 
   const handleSubmit = async () => {
     if (!proofText.trim() && uploadedUrls.length === 0) {
-      alert('Please provide proof text or upload images')
+      toast.error('Please provide proof text or upload images')
       return
     }
     setSubmitting(true)
@@ -738,6 +741,7 @@ function ApiKeysTab({ user }) {
       if (response.ok) {
         const data = await response.json()
         setNewKey(data.api_key)
+        setShowModal(true)
         fetchKeys()
       }
     } catch (error) {
@@ -846,18 +850,21 @@ function ApiKeysTab({ user }) {
                 </div>
 
                 <div style={{
-                  background: '#1a1a2e',
+                  background: '#F8F6F1',
+                  border: '1px solid #E5E2DC',
                   borderRadius: 12,
                   padding: 16,
                   marginBottom: 20,
                   position: 'relative'
                 }}>
                   <code style={{
-                    color: '#10B981',
+                    color: '#1a1a1a',
                     fontSize: 13,
                     wordBreak: 'break-all',
                     display: 'block',
-                    fontFamily: 'monospace'
+                    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace',
+                    paddingRight: 70,
+                    lineHeight: 1.5
                   }}>
                     {newKey}
                   </code>
@@ -865,16 +872,19 @@ function ApiKeysTab({ user }) {
                     onClick={() => copyToClipboard(newKey)}
                     style={{
                       position: 'absolute',
-                      top: 12,
+                      top: '50%',
                       right: 12,
-                      background: copied ? '#10B981' : 'rgba(255,255,255,0.1)',
+                      transform: 'translateY(-50%)',
+                      background: copied ? '#10B981' : '#FF6B35',
                       border: 'none',
                       borderRadius: 6,
-                      padding: '6px 12px',
+                      padding: '8px 14px',
                       cursor: 'pointer',
                       color: 'white',
-                      fontSize: 12,
-                      transition: 'all 0.2s'
+                      fontSize: 13,
+                      fontWeight: 500,
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   >
                     {copied ? '✓ Copied!' : 'Copy'}
@@ -1102,6 +1112,7 @@ function ApiKeysTab({ user }) {
 }
 
 function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
+  const toast = useToast()
   const [hiringMode, setHiringMode] = useState(() => {
     const saved = localStorage.getItem('irlwork_hiringMode')
     return saved === 'true'
@@ -1469,10 +1480,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
       } else {
         const err = await res.json()
-        alert('Error: ' + (err.error || 'Failed to assign worker'))
+        toast.error(err.error || 'Failed to assign worker')
       }
     } catch (e) {
-      alert('Network error. Please try again.')
+      toast.error('Network error. Please try again.')
     } finally {
       setAssigningWorker(null)
     }
@@ -1654,14 +1665,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         headers: { Authorization: user.id }
       })
       if (res.ok) {
-        alert('Payment released successfully!')
+        toast.success('Payment released successfully!')
         fetchPostedTasks()
       } else {
         const err = await res.json()
-        alert('Error: ' + (err.error || 'Unknown error'))
+        toast.error(err.error || 'Unknown error')
       }
     } catch (e) {
-      console.log('Could not release payment')
+      toast.error('Could not release payment')
     }
   }
 
@@ -2579,15 +2590,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     })
                   })
                   if (res.ok) {
-                    alert('Profile updated!')
+                    toast.success('Profile updated!')
                     setProfileLocation(null)
-                    window.location.reload()
+                    setTimeout(() => window.location.reload(), 1000)
                   } else {
                     const err = await res.json()
-                    alert('Error: ' + (err.error || 'Unknown error'))
+                    toast.error(err.error || 'Unknown error')
                   }
                 } catch (err) {
-                  alert('Error saving profile')
+                  toast.error('Error saving profile')
                 }
               }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
@@ -2639,14 +2650,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     body: JSON.stringify({ skills })
                   })
                   if (res.ok) {
-                    alert('Skills updated!')
-                    window.location.reload()
+                    toast.success('Skills updated!')
+                    setTimeout(() => window.location.reload(), 1000)
                   } else {
                     const err = await res.json()
-                    alert('Error: ' + (err.error || 'Unknown error'))
+                    toast.error(err.error || 'Unknown error')
                   }
                 } catch (err) {
-                  alert('Error saving skills')
+                  toast.error('Error saving skills')
                 }
               }}>
                 <div className="dashboard-v4-form-group">
@@ -3756,5 +3767,9 @@ function App() {
   return <LandingPageV4 />}
 
 export default function AppWrapper() {
-  return <App />
+  return (
+    <ToastProvider>
+      <App />
+    </ToastProvider>
+  )
 }

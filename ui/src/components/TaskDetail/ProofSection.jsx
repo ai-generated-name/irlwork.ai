@@ -2,12 +2,14 @@
 // Inline proof submission form (extracted from ProofSubmitModal logic)
 
 import React, { useState, useRef } from 'react';
+import { useToast } from '../../context/ToastContext';
 
 const styles = {
   input: 'w-full bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] transition-colors'
 };
 
 export default function ProofSection({ task, onSubmit }) {
+  const toast = useToast();
   const [proofText, setProofText] = useState('');
   const [files, setFiles] = useState([]);
   const [uploadedUrls, setUploadedUrls] = useState([]);
@@ -20,7 +22,7 @@ export default function ProofSection({ task, onSubmit }) {
   const handleFileSelect = (e) => {
     const selected = Array.from(e.target.files || []);
     if (selected.length + files.length > 3) {
-      alert('Maximum 3 files allowed');
+      toast.error('Maximum 3 files allowed');
       return;
     }
     setFiles(prev => [...prev, ...selected].slice(0, 3));
@@ -32,7 +34,7 @@ export default function ProofSection({ task, onSubmit }) {
 
   const handleSubmit = async () => {
     if (!proofText.trim() && uploadedUrls.length === 0) {
-      alert('Please provide proof text or upload images');
+      toast.error('Please provide proof text or upload images');
       return;
     }
 
@@ -43,9 +45,10 @@ export default function ProofSection({ task, onSubmit }) {
       setProofText('');
       setFiles([]);
       setUploadedUrls([]);
+      toast.success('Proof submitted successfully!');
     } catch (error) {
       console.error('Error submitting proof:', error);
-      alert('Failed to submit proof. Please try again.');
+      toast.error('Failed to submit proof. Please try again.');
     } finally {
       setSubmitting(false);
     }
