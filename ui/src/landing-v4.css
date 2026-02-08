@@ -324,6 +324,15 @@
   50% { opacity: 0.5; transform: scale(1.3); }
 }
 
+/* Badge text toggle for mobile/desktop */
+.badge-text-desktop {
+  display: inline;
+}
+
+.badge-text-mobile {
+  display: none;
+}
+
 .hero-v4-title {
   font-family: var(--font-display);
   font-size: clamp(40px, 5vw, 60px);
@@ -2096,6 +2105,27 @@
   color: white;
 }
 
+/* Override logo colors when inside dark footer */
+.footer-v4 .logo-v4 .logo-mark-v4,
+.footer-dark .logo-v4 .logo-mark-v4 {
+  border-color: white;
+  background: white;
+  color: var(--bg-dark);
+}
+
+.footer-v4 .logo-v4:hover .logo-mark-v4,
+.footer-dark .logo-v4:hover .logo-mark-v4 {
+  background: var(--orange-500);
+  border-color: var(--orange-500);
+  color: white;
+  box-shadow: 3px 3px 0 rgba(255, 255, 255, 0.3);
+}
+
+.footer-v4 .logo-v4 .logo-name-v4,
+.footer-dark .logo-v4 .logo-name-v4 {
+  color: white;
+}
+
 .footer-v4-tagline {
   color: var(--text-tertiary);
   font-size: 13px;
@@ -2291,6 +2321,14 @@
   .hero-v4-badge {
     font-size: 11px;
     padding: 6px 12px;
+  }
+
+  .badge-text-desktop {
+    display: none;
+  }
+
+  .badge-text-mobile {
+    display: inline;
   }
 
   .hero-v4-title {
