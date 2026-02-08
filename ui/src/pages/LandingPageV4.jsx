@@ -93,25 +93,30 @@ export default function LandingPageV4() {
         </div>
 
         <div className="hero-v4-visual">
-          <div className="floating-card card-1">
-            <div className="card-header">
-              <span className="card-icon">📦</span>
-              <span className="card-badge">New Task</span>
+          <div className="globe-container">
+            <div className="globe">
+              <div className="pinpoint" data-task="0"></div>
+              <div className="pinpoint" data-task="1"></div>
+              <div className="pinpoint" data-task="2"></div>
+              <div className="pinpoint" data-task="3"></div>
+              <div className="pinpoint" data-task="4"></div>
             </div>
-            <div className="card-title">Package Pickup</div>
-            <div className="card-meta">San Francisco • $35</div>
+
+            {globeTasks.map((task, index) => (
+              <div
+                key={index}
+                className={`task-popup ${currentTask === index ? 'active' : ''}`}
+                data-task-card={index}
+              >
+                <div className="task-popup-header">
+                  <span className="task-popup-emoji">{task.emoji}</span>
+                  <span className="task-popup-location">{task.location}</span>
+                </div>
+                <div className="task-popup-title">{task.title}</div>
+                <div className="task-popup-rate">{task.rate}</div>
+              </div>
+            ))}
           </div>
-          <div className="floating-card card-2">
-            <div className="card-header">
-              <span className="card-icon">✓</span>
-              <span className="card-badge">Completed</span>
-            </div>
-            <div className="card-title">Photo Verified</div>
-            <div className="card-meta">+$25 USDC</div>
-          </div>
-          <div className="geometric-shape shape-1"></div>
-          <div className="geometric-shape shape-2"></div>
-          <div className="geometric-shape shape-3"></div>
         </div>
       </section>
 
