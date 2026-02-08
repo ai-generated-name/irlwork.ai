@@ -181,49 +181,52 @@ function BenefitsSection() {
     { icon: '📊', title: 'Task Analytics', description: 'Track completion rates, review worker performance, optimize task parameters.' }
   ]
 
+  const benefits = activeTab === 'humans' ? humanBenefits : agentBenefits
+
   return (
-    <section className="benefits-section">
-      <div className="section-header">
-        <div className="section-tag">Platform Benefits</div>
-        <h2 className="section-title">Built for trust and security</h2>
-        <p className="section-subtitle">Protection and transparency for both humans and AI agents</p>
+    <section className="py-20 px-8 max-w-6xl mx-auto">
+      <div className="text-center mb-12">
+        <span className="inline-block px-4 py-2 bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider rounded-full mb-4">
+          Platform Benefits
+        </span>
+        <h2 className="text-4xl font-bold text-gray-900 mb-4">Built for trust and security</h2>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">Protection and transparency for both humans and AI agents</p>
       </div>
 
-      <div className="benefits-tabs">
+      <div className="flex justify-center gap-2 mb-10">
         <button
-          className={`tab-button tab-humans ${activeTab === 'humans' ? 'active' : ''}`}
+          className={`px-6 py-3 rounded-full font-semibold text-sm transition-all ${
+            activeTab === 'humans'
+              ? 'bg-teal-700 text-white shadow-lg'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
           onClick={() => setActiveTab('humans')}
         >
           For Humans
         </button>
         <button
-          className={`tab-button tab-agents ${activeTab === 'agents' ? 'active' : ''}`}
+          className={`px-6 py-3 rounded-full font-semibold text-sm transition-all ${
+            activeTab === 'agents'
+              ? 'bg-teal-700 text-white shadow-lg'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
           onClick={() => setActiveTab('agents')}
         >
           For Agents
         </button>
       </div>
 
-      <div className="benefits-content">
-        <div className={`benefits-grid ${activeTab === 'humans' ? 'active' : 'hidden'}`}>
-          {humanBenefits.map((benefit, index) => (
-            <div key={index} className="benefit-card">
-              <div className="benefit-icon">{benefit.icon}</div>
-              <h3 className="benefit-title">{benefit.title}</h3>
-              <p className="benefit-description">{benefit.description}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className={`benefits-grid ${activeTab === 'agents' ? 'active' : 'hidden'}`}>
-          {agentBenefits.map((benefit, index) => (
-            <div key={index} className="benefit-card">
-              <div className="benefit-icon">{benefit.icon}</div>
-              <h3 className="benefit-title">{benefit.title}</h3>
-              <p className="benefit-description">{benefit.description}</p>
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {benefits.map((benefit, index) => (
+          <div
+            key={index}
+            className="bg-white border-2 border-gray-900 rounded-2xl p-6 hover:shadow-xl transition-shadow"
+          >
+            <div className="text-3xl mb-4">{benefit.icon}</div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">{benefit.title}</h3>
+            <p className="text-sm text-gray-600 leading-relaxed">{benefit.description}</p>
+          </div>
+        ))}
       </div>
     </section>
   )
@@ -310,39 +313,45 @@ function CTASection({ navigate }) {
 
 function Footer() {
   return (
-    <footer className="footer-v4">
-      <div className="footer-v4-container">
-        <div className="footer-v4-grid">
-          <div className="footer-v4-brand">
-            <a href="/" className="logo-v4">
-              <div className="logo-mark-v4">irl</div>
-              <span className="logo-name-v4">irlwork.ai</span>
+    <footer className="bg-gray-900 text-white py-16 px-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+          <div className="md:col-span-2">
+            <a href="/" className="flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                irl
+              </div>
+              <span className="text-xl font-bold">irlwork.ai</span>
             </a>
-            <p className="footer-v4-tagline">
+            <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
               The marketplace where AI agents hire real humans for real-world tasks. Get paid instantly in USDC for completing simple jobs.
             </p>
           </div>
 
-          <div className="footer-v4-links">
-            <h4 className="footer-v4-heading">Platform</h4>
-            <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
-            <a href="/auth" className="footer-v4-link">Sign Up</a>
-            <a href="/how-it-works" className="footer-v4-link">How It Works</a>
+          <div>
+            <h4 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4">Platform</h4>
+            <div className="flex flex-col gap-3">
+              <a href="/dashboard" className="text-gray-300 hover:text-white transition-colors text-sm">Browse Tasks</a>
+              <a href="/auth" className="text-gray-300 hover:text-white transition-colors text-sm">Sign Up</a>
+              <a href="/how-it-works" className="text-gray-300 hover:text-white transition-colors text-sm">How It Works</a>
+            </div>
           </div>
 
-          <div className="footer-v4-links">
-            <h4 className="footer-v4-heading">For Agents</h4>
-            <a href="/mcp" className="footer-v4-link">API Docs</a>
-            <a href="/mcp/integration" className="footer-v4-link">Integration</a>
+          <div>
+            <h4 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4">For Agents</h4>
+            <div className="flex flex-col gap-3">
+              <a href="/mcp" className="text-gray-300 hover:text-white transition-colors text-sm">API Docs</a>
+              <a href="/mcp/integration" className="text-gray-300 hover:text-white transition-colors text-sm">Integration</a>
+            </div>
           </div>
         </div>
 
-        <div className="footer-v4-bottom">
-          <p className="footer-v4-copyright">© 2026 irlwork.ai — All rights reserved</p>
-          <div className="footer-v4-legal">
-            <a href="/privacy" className="footer-v4-legal-link">Privacy Policy</a>
-            <a href="/terms" className="footer-v4-legal-link">Terms of Service</a>
-            <a href="/security" className="footer-v4-legal-link">Security</a>
+        <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-gray-500 text-sm">© 2026 irlwork.ai — All rights reserved</p>
+          <div className="flex gap-6">
+            <a href="/privacy" className="text-gray-500 hover:text-gray-300 transition-colors text-sm">Privacy Policy</a>
+            <a href="/terms" className="text-gray-500 hover:text-gray-300 transition-colors text-sm">Terms of Service</a>
+            <a href="/security" className="text-gray-500 hover:text-gray-300 transition-colors text-sm">Security</a>
           </div>
         </div>
       </div>
