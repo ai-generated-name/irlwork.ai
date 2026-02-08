@@ -98,11 +98,16 @@ app.get('/ready', (req, res) => {
   res.json({ status: 'ready', supabase: !!supabase })
 });
 
-// Supabase client
+// Supabase client - prefer service role key to bypass RLS for backend operations
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
   : null;
 
 // Configuration
@@ -2755,10 +2760,8 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'post_task': {
-        // PHASE 1: No deposit amount generated at task creation
-        // Deposit instructions are provided when worker is approved via hire_human
         const id = uuidv4();
-        const budgetAmount = params.budget_max || params.budget_min || 50;
+        const budgetAmount = params.budget || params.budget_max || params.budget_min || 50;
 
         const { data: task, error } = await supabase
           .from('tasks')
@@ -2769,14 +2772,12 @@ app.post('/api/mcp', async (req, res) => {
             description: params.description,
             category: params.category,
             location: params.location,
-            budget_type: params.budget_type || 'hourly',
-            budget_min: params.budget_min,
-            budget_max: params.budget_max,
+            latitude: params.latitude || null,
+            longitude: params.longitude || null,
             budget: budgetAmount,
-            duration_hours: params.duration_hours,
-            urgency: params.urgency || 'scheduled',
             status: 'open',
-            escrow_status: 'awaiting_worker',  // PHASE 1: No payment until worker approved
+            task_type: 'direct',
+            human_ids: [],
             escrow_amount: budgetAmount,
             created_at: new Date().toISOString()
           })
@@ -2785,12 +2786,10 @@ app.post('/api/mcp', async (req, res) => {
 
         if (error) throw error;
 
-        // PHASE 1: No deposit instructions at task creation
         res.json({
           id: task.id,
           status: 'open',
-          escrow_status: 'awaiting_worker',
-          message: 'Task posted. Deposit instructions will be provided when you hire a worker.'
+          message: 'Task posted successfully.'
         });
         break;
       }
@@ -3623,30 +3622,22 @@ app.get('/api/humans/:id/profile', async (req, res) => {
 // ============ TASK CREATION (Agents only) ============
 app.post('/api/tasks/create', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') {
     return res.status(401).json({ error: 'Agents only' });
   }
-  
-  const {
-    title, description, category, location,
-    budget_type, budget_min, budget_max, budget,
-    duration_hours, urgency, insurance_option,
-    latitude, longitude, country, country_code
-  } = req.body;
-  
+
+  const { title, description, category, location, budget, latitude, longitude, country, country_code } = req.body;
+
   const id = uuidv4();
-  const budgetAmount = budget || budget_max || budget_min || 50;
-  const randomCents = (Math.random() * 99 + 1) / 100;
-  const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
-  
+  const budgetAmount = budget || 50;
+
   const { data: task, error } = await supabase
     .from('tasks')
     .insert({
       id,
       agent_id: user.id,
-      human_id: null,
       title,
       description,
       category,
@@ -3655,17 +3646,11 @@ app.post('/api/tasks/create', async (req, res) => {
       longitude: longitude != null ? parseFloat(longitude) : null,
       country: country || null,
       country_code: country_code || null,
-      budget_type: budget_type || 'hourly',
-      budget_min,
-      budget_max,
       budget: budgetAmount,
-      duration_hours,
-      urgency: urgency || 'scheduled',
-      insurance_option,
       status: 'open',
-      escrow_status: 'unfunded',
+      task_type: 'direct',
+      human_ids: [],
       escrow_amount: budgetAmount,
-      unique_deposit_amount: uniqueDepositAmount,
       created_at: new Date().toISOString()
     })
     .select()
@@ -3673,24 +3658,9 @@ app.post('/api/tasks/create', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // Increment total_tasks_posted for agent
-  await supabase
-    .from('users')
-    .update({
-      total_tasks_posted: supabase.raw('COALESCE(total_tasks_posted, 0) + 1'),
-      last_active_at: new Date().toISOString()
-    })
-    .eq('id', user.id);
-
   res.json({
     ...task,
-    deposit_instructions: {
-      platform_wallet: process.env.PLATFORM_WALLET_ADDRESS,
-      amount: uniqueDepositAmount,
-      currency: 'USDC',
-      network: 'base',
-      deadline: '24h'
-    }
+    message: 'Task posted successfully.'
   });
 });
 

@@ -986,13 +986,17 @@ To contact this human, use the irlwork.ai MCP server. Add this to your MCP confi
   "mcpServers": {
     "irlwork": {
       "command": "npx",
-      "args": ["-y", "@anthropic/irlwork-mcp"],
+      "args": ["irlwork-mcp"],
       "env": {
-        "IRLWORK_API_KEY": "your-api-key"
+        "IRLWORK_API_KEY": "YOUR_API_KEY_HERE"
       }
     }
   }
-}`
+}
+
+Then use the start_conversation tool with humanId "${showHireModal.id}" to message them.
+
+Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`
                         navigator.clipboard.writeText(snippet)
                         toast.success('Copied to clipboard!')
                       }}
@@ -1029,7 +1033,23 @@ Profile: https://www.irlwork.ai/humans/${showHireModal.id}
 Skills: ${(showHireModal.skills || []).join(', ') || 'General'}
 Rate: $${showHireModal.hourly_rate || 25}/hr
 
-To contact this human, use the irlwork.ai MCP server. Add this to your MCP config:`}
+To contact this human, use the irlwork.ai MCP server. Add this to your MCP config:
+
+{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "YOUR_API_KEY_HERE"
+      }
+    }
+  }
+}
+
+Then use the start_conversation tool with humanId "${showHireModal.id}" to message them.
+
+Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
                   </div>
 
                   {/* How to use */}
