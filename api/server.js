@@ -1244,33 +1244,26 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget_type, budget_min, budget_max, duration_hours, urgency, insurance_option, budget } = req.body;
+  const { title, description, category, location, budget, latitude, longitude } = req.body;
 
   const id = uuidv4();
-  const budgetAmount = budget || budget_max || budget_min || 50;
-
-  // PHASE 1 MANUAL OPERATIONS: No deposit amount generated at creation
-  // Deposit instructions are provided when worker is approved (see /api/tasks/:id/assign)
+  const budgetAmount = budget || 50;
 
   const { data: task, error } = await supabase
     .from('tasks')
     .insert({
       id,
       agent_id: user.id,
-      human_id: null,
       title,
       description,
       category,
       location,
-      budget_type: budget_type || 'hourly',
-      budget_min,
-      budget_max,
+      latitude: latitude || null,
+      longitude: longitude || null,
       budget: budgetAmount,
-      duration_hours,
-      urgency: urgency || 'scheduled',
-      insurance_option,
       status: 'open',
-      escrow_status: 'awaiting_worker',  // PHASE 1: No payment needed until worker approved
+      task_type: 'direct',
+      human_ids: [],
       escrow_amount: budgetAmount,
       created_at: new Date().toISOString()
     })
@@ -1279,11 +1272,9 @@ app.post('/api/tasks', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // PHASE 1: No deposit instructions at task creation
-  // Agent will receive deposit instructions when they approve a worker
   res.json({
     ...task,
-    message: 'Task posted. Deposit instructions will be provided when a worker is approved.'
+    message: 'Task posted successfully.'
   });
 });
 
