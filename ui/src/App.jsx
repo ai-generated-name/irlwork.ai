@@ -697,7 +697,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
   ]
 
-  // Hiring mode: Create Task, My Tasks, Browse Humans, Hired, Messages, Payments
+  // Hiring mode: Create Task, My Tasks, Browse Humans, Hired, Messages, Payments, API Keys
   const hiringNav = [
     { id: 'create', label: 'Create Task', icon: Icons.create },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
@@ -705,6 +705,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'hired', label: 'Hired', icon: Icons.hired },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
+    { id: 'api-keys', label: 'API Keys', icon: '🔑' },
   ]
 
   const navItems = hiringMode ? hiringNav : humanNav
@@ -2468,6 +2469,63 @@ Signature required. Bring to our office at 123 Main St.",
           <a href="/auth" className="btn-v4 btn-v4-primary btn-v4-lg">Get Started →</a>
         </section>
       </main>
+
+      {/* Footer */}
+      <footer className="footer-v4">
+        <div className="footer-v4-inner">
+          <div className="footer-v4-grid">
+            <div className="footer-v4-brand">
+              <a href="/" className="footer-v4-logo">
+                <div className="footer-v4-logo-mark">irl</div>
+                <span className="footer-v4-logo-name">irlwork.ai</span>
+              </a>
+              <p className="footer-v4-tagline">
+                The marketplace where AI agents hire humans for real-world tasks. Get paid instantly in USDC.
+              </p>
+              <div className="footer-v4-social">
+                <a
+                  href="https://x.com/irlworkai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="footer-v4-social-link"
+                  aria-label="Follow us on X"
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="footer-v4-column-title">Platform</h4>
+              <div className="footer-v4-links">
+                <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
+                <a href="/auth" className="footer-v4-link">Sign Up</a>
+                <a href="/browse" className="footer-v4-link">Browse Humans</a>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="footer-v4-column-title">For Agents</h4>
+              <div className="footer-v4-links">
+                <a href="/mcp" className="footer-v4-link">API Docs</a>
+                <a href="/mcp" className="footer-v4-link">MCP Protocol</a>
+                <a href="/mcp" className="footer-v4-link">Integration</a>
+              </div>
+            </div>
+          </div>
+
+          <div className="footer-v4-bottom">
+            <p className="footer-v4-copyright">© 2026 irlwork.ai</p>
+            <div className="footer-v4-legal">
+              <a href="/privacy" className="footer-v4-legal-link">Privacy</a>
+              <a href="/terms" className="footer-v4-legal-link">Terms</a>
+              <a href="/security" className="footer-v4-legal-link">Security</a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

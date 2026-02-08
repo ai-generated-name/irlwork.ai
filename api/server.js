@@ -107,24 +107,114 @@ const QUICK_CATEGORIES = [
 ];
 
 // ============ HELPERS ============
+// Generate a secure API key
+function generateApiKey() {
+  const prefix = 'irl_sk_';
+  const randomBytes = crypto.randomBytes(32).toString('hex');
+  return prefix + randomBytes;
+}
+
+// Hash an API key for storage
+function hashApiKey(apiKey) {
+  return crypto.createHash('sha256').update(apiKey).digest('hex');
+}
+
+// Get the prefix of an API key for display
+function getApiKeyPrefix(apiKey) {
+  return apiKey.substring(0, 12) + '...';
+}
+
+// Rate limiting helper
+async function checkRateLimit(ipHash, action, maxAttempts, windowMinutes) {
+  if (!supabase) return { allowed: true };
+
+  const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
+
+  // Get existing rate limit record
+  const { data: existing } = await supabase
+    .from('rate_limits')
+    .select('*')
+    .eq('ip_hash', ipHash)
+    .eq('action', action)
+    .gte('first_attempt_at', windowStart)
+    .single();
+
+  if (existing) {
+    if (existing.attempts >= maxAttempts) {
+      return { allowed: false, remaining: 0, resetAt: new Date(new Date(existing.first_attempt_at).getTime() + windowMinutes * 60 * 1000) };
+    }
+    // Update attempt count
+    await supabase
+      .from('rate_limits')
+      .update({ attempts: existing.attempts + 1, last_attempt_at: new Date().toISOString() })
+      .eq('id', existing.id);
+    return { allowed: true, remaining: maxAttempts - existing.attempts - 1 };
+  }
+
+  // Create new rate limit record
+  await supabase.from('rate_limits').insert({
+    id: uuidv4(),
+    ip_hash: ipHash,
+    action,
+    attempts: 1,
+    first_attempt_at: new Date().toISOString(),
+    last_attempt_at: new Date().toISOString()
+  });
+
+  return { allowed: true, remaining: maxAttempts - 1 };
+}
+
 async function getUserByToken(token) {
   if (!token || !supabase) return null;
-  
-  const { data } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', token)
-    .single();
-  
-  if (data) return data;
-  
-  // Check API key
+
+  // Remove "Bearer " prefix if present
+  const cleanToken = token.replace(/^Bearer\s+/i, '');
+
+  // Check if it's a UUID (user ID)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(cleanToken)) {
+    const { data } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', cleanToken)
+      .single();
+    if (data) return data;
+  }
+
+  // Check if it's a new-style API key (irl_sk_...)
+  if (cleanToken.startsWith('irl_sk_')) {
+    const keyHash = hashApiKey(cleanToken);
+    const { data: apiKeyRecord } = await supabase
+      .from('api_keys')
+      .select('user_id, is_active')
+      .eq('key_hash', keyHash)
+      .single();
+
+    if (apiKeyRecord && apiKeyRecord.is_active) {
+      // Update last_used_at
+      await supabase
+        .from('api_keys')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('key_hash', keyHash);
+
+      // Get the user
+      const { data: user } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', apiKeyRecord.user_id)
+        .single();
+      return user;
+    }
+    return null;
+  }
+
+  // Check legacy API key in users table
   const { data: apiUser } = await supabase
     .from('users')
     .select('*')
-    .eq('api_key', token)
+    .eq('api_key', cleanToken)
     .single();
-  
+
   return apiUser;
 }
 
@@ -420,6 +510,296 @@ app.get('/api/auth/verify', async (req, res) => {
       jobs_completed: user.jobs_completed || 0
     }
   });
+});
+
+// ============ HEADLESS AGENT REGISTRATION ============
+// POST /api/auth/register-agent - Public endpoint for AI agents to register
+app.post('/api/auth/register-agent', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  try {
+    const { email, password, agent_name, webhook_url } = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Rate limiting: 5 registrations per IP per hour
+    const ipHash = crypto
+      .createHash('sha256')
+      .update(req.ip || 'unknown')
+      .digest('hex')
+      .slice(0, 16);
+
+    const rateCheck = await checkRateLimit(ipHash, 'agent_registration', 5, 60);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded. Maximum 5 registrations per hour.',
+        reset_at: rateCheck.resetAt
+      });
+    }
+
+    // Check if email already exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Create user
+    const userId = uuidv4();
+    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    const name = agent_name || email.split('@')[0];
+
+    const { error: createError } = await supabase.from('users').insert({
+      id: userId,
+      email,
+      password_hash: passwordHash,
+      name,
+      type: 'agent',
+      role: 'agent',
+      agent_name: agent_name || null,
+      webhook_url: webhook_url || null,
+      verified: true, // Auto-verify agents
+      created_at: new Date().toISOString()
+    });
+
+    if (createError) {
+      console.error('Agent registration error:', createError);
+      return res.status(500).json({ error: 'Failed to create account' });
+    }
+
+    // Generate API key
+    const apiKey = generateApiKey();
+    const keyHash = hashApiKey(apiKey);
+    const keyPrefix = getApiKeyPrefix(apiKey);
+
+    const { error: keyError } = await supabase.from('api_keys').insert({
+      id: uuidv4(),
+      user_id: userId,
+      key_hash: keyHash,
+      key_prefix: keyPrefix,
+      name: 'Initial Key',
+      is_active: true,
+      created_at: new Date().toISOString()
+    });
+
+    if (keyError) {
+      console.error('API key creation error:', keyError);
+      // User was created but key failed - still return success
+    }
+
+    // Generate JWT-like token (user ID for now)
+    const token = userId;
+
+    res.status(201).json({
+      user_id: userId,
+      agent_name: name,
+      api_key: apiKey,
+      token,
+      message: 'Save this API key — it won\'t be shown again.'
+    });
+  } catch (e) {
+    console.error('Agent registration error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============ API KEY MANAGEMENT ============
+// POST /api/keys/generate - Generate a new API key
+app.post('/api/keys/generate', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const { name } = req.body;
+
+    // Generate new API key
+    const apiKey = generateApiKey();
+    const keyHash = hashApiKey(apiKey);
+    const keyPrefix = getApiKeyPrefix(apiKey);
+
+    const keyId = uuidv4();
+    const { error } = await supabase.from('api_keys').insert({
+      id: keyId,
+      user_id: user.id,
+      key_hash: keyHash,
+      key_prefix: keyPrefix,
+      name: name || 'API Key',
+      is_active: true,
+      created_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('Key generation error:', error);
+      return res.status(500).json({ error: 'Failed to generate key' });
+    }
+
+    res.status(201).json({
+      id: keyId,
+      api_key: apiKey,
+      key_prefix: keyPrefix,
+      name: name || 'API Key',
+      created_at: new Date().toISOString(),
+      message: 'Save this API key — it won\'t be shown again.'
+    });
+  } catch (e) {
+    console.error('Key generation error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/keys - List all API keys for the user
+app.get('/api/keys', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const { data: keys, error } = await supabase
+      .from('api_keys')
+      .select('id, key_prefix, name, created_at, last_used_at, is_active, revoked_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Key list error:', error);
+      return res.status(500).json({ error: 'Failed to list keys' });
+    }
+
+    res.json(keys || []);
+  } catch (e) {
+    console.error('Key list error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/keys/:id - Revoke/deactivate an API key
+app.delete('/api/keys/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const { id } = req.params;
+
+    // Verify ownership
+    const { data: key } = await supabase
+      .from('api_keys')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (!key) {
+      return res.status(404).json({ error: 'Key not found' });
+    }
+
+    if (key.user_id !== user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Revoke the key
+    const { error } = await supabase
+      .from('api_keys')
+      .update({
+        is_active: false,
+        revoked_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Key revoke error:', error);
+      return res.status(500).json({ error: 'Failed to revoke key' });
+    }
+
+    res.json({ success: true, message: 'API key revoked' });
+  } catch (e) {
+    console.error('Key revoke error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/keys/:id/rotate - Revoke old key and generate new one
+app.post('/api/keys/:id/rotate', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const { id } = req.params;
+
+    // Verify ownership
+    const { data: oldKey } = await supabase
+      .from('api_keys')
+      .select('user_id, name')
+      .eq('id', id)
+      .single();
+
+    if (!oldKey) {
+      return res.status(404).json({ error: 'Key not found' });
+    }
+
+    if (oldKey.user_id !== user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Revoke old key
+    await supabase
+      .from('api_keys')
+      .update({
+        is_active: false,
+        revoked_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    // Generate new key
+    const apiKey = generateApiKey();
+    const keyHash = hashApiKey(apiKey);
+    const keyPrefix = getApiKeyPrefix(apiKey);
+    const newKeyId = uuidv4();
+
+    const { error } = await supabase.from('api_keys').insert({
+      id: newKeyId,
+      user_id: user.id,
+      key_hash: keyHash,
+      key_prefix: keyPrefix,
+      name: oldKey.name,
+      is_active: true,
+      created_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('Key rotation error:', error);
+      return res.status(500).json({ error: 'Failed to rotate key' });
+    }
+
+    res.status(201).json({
+      id: newKeyId,
+      api_key: apiKey,
+      key_prefix: keyPrefix,
+      name: oldKey.name,
+      created_at: new Date().toISOString(),
+      old_key_id: id,
+      message: 'Key rotated successfully. Save this new API key — it won\'t be shown again.'
+    });
+  } catch (e) {
+    console.error('Key rotation error:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ============ PAGE VIEWS ============
