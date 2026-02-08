@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "node api/server.js",
+    "startCommand": "node server.js",
     "healthcheckPath": "/ready",
     "healthcheckTimeout": 60,
     "restartPolicyType": "ALWAYS",
