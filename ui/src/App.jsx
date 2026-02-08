@@ -1163,11 +1163,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
+  const [filterCoords, setFilterCoords] = useState({ lat: null, lng: null })
+  const [radiusFilter, setRadiusFilter] = useState('50')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
   const [activities, setActivities] = useState([])
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
+
+  // Profile edit location state
+  const [profileLocation, setProfileLocation] = useState(null)
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
   const [assigningWorker, setAssigningWorker] = useState(null) // loading state
 
@@ -1177,7 +1182,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     description: '',
     category: '',
     budget: '',
-    city: ''
+    city: '',
+    latitude: null,
+    longitude: null,
+    country: '',
+    country_code: ''
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
@@ -1185,6 +1194,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   useEffect(() => {
     localStorage.setItem('irlwork_hiringMode', hiringMode)
   }, [hiringMode])
+
+  // Pre-fill location filter with user's city
+  useEffect(() => {
+    if (user?.city && !locationFilter) {
+      setLocationFilter(user.city)
+      if (user.latitude && user.longitude) {
+        setFilterCoords({ lat: user.latitude, lng: user.longitude })
+      }
+    }
+  }, [user])
+
+  // Handle location selection from filter
+  const handleLocationSelect = (locationData) => {
+    setLocationFilter(locationData.city)
+    setFilterCoords({
+      lat: locationData.latitude,
+      lng: locationData.longitude
+    })
+  }
 
   // Unread counts for badges
   const [unreadMessages, setUnreadMessages] = useState(0)
@@ -1505,7 +1533,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           description: taskForm.description,
           category: taskForm.category,
           budget: parseFloat(taskForm.budget),
-          location: taskForm.city
+          location: taskForm.city,
+          latitude: taskForm.latitude,
+          longitude: taskForm.longitude,
+          country: taskForm.country,
+          country_code: taskForm.country_code
         })
       })
 
@@ -1514,7 +1546,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '' })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '' })
         // Switch to posted tab
         setActiveTab('posted')
       } else {
@@ -2050,12 +2082,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 </div>
                 <div className="dashboard-v4-form-group">
                   <label className="dashboard-v4-form-label">City</label>
-                  <input
-                    type="text"
-                    placeholder="Where should this be done?"
-                    className="dashboard-v4-form-input"
+                  <CityAutocomplete
                     value={taskForm.city}
-                    onChange={(e) => setTaskForm(prev => ({ ...prev, city: e.target.value }))}
+                    onChange={(locationData) => setTaskForm(prev => ({
+                      ...prev,
+                      city: locationData.city,
+                      latitude: locationData.latitude,
+                      longitude: locationData.longitude,
+                      country: locationData.country,
+                      country_code: locationData.country_code
+                    }))}
+                    placeholder="Where should this be done?"
+                    className="dashboard-v4-city-input"
                   />
                 </div>
                 {createTaskError && (
@@ -2476,12 +2514,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 e.preventDefault()
                 const formData = new FormData(e.target)
                 try {
+                  const locationData = profileLocation || {}
                   const res = await fetch(`${API_URL}/humans/profile`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Authorization: user.id },
                     body: JSON.stringify({
                       name: formData.get('name'),
-                      city: formData.get('city'),
+                      city: locationData.city || user?.city,
+                      latitude: locationData.latitude ?? user?.latitude,
+                      longitude: locationData.longitude ?? user?.longitude,
+                      country: locationData.country || user?.country,
+                      country_code: locationData.country_code || user?.country_code,
                       hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
                       bio: formData.get('bio'),
                       travel_radius: parseInt(formData.get('travel_radius')) || 25
@@ -2489,6 +2532,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   })
                   if (res.ok) {
                     alert('Profile updated!')
+                    setProfileLocation(null)
                     window.location.reload()
                   } else {
                     const err = await res.json()
@@ -2505,7 +2549,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">City</label>
-                    <input type="text" name="city" defaultValue={user?.city} className="dashboard-v4-form-input" placeholder="San Francisco" />
+                    <CityAutocomplete
+                      value={profileLocation?.city || user?.city || ''}
+                      onChange={setProfileLocation}
+                      placeholder="San Francisco"
+                      className="dashboard-v4-city-input"
+                    />
                   </div>
                 </div>
 

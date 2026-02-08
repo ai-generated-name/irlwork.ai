@@ -112,8 +112,69 @@ function filterByDistance(items, refLat, refLon, maxRadius, options = {}) {
   return itemsWithDistance;
 }
 
+/**
+ * Calculate distance in kilometers instead of miles
+ */
+function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in kilometers
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const lat1Rad = toRadians(lat1);
+  const lat2Rad = toRadians(lat2);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+/**
+ * Filter items by distance in kilometers
+ */
+function filterByDistanceKm(items, refLat, refLon, maxRadiusKm, options = {}) {
+  const {
+    latKey = 'latitude',
+    lonKey = 'longitude',
+    addDistance = true
+  } = options;
+
+  const itemsWithDistance = items
+    .map(item => {
+      if (item[latKey] == null || item[lonKey] == null) {
+        return { ...item, distance: null, distanceKm: null };
+      }
+
+      const distanceKm = haversineDistanceKm(
+        refLat,
+        refLon,
+        parseFloat(item[latKey]),
+        parseFloat(item[lonKey])
+      );
+
+      return addDistance ? { ...item, distance: distanceKm, distanceKm } : item;
+    })
+    .filter(item => {
+      if (item.distanceKm === null) return true;
+      return item.distanceKm <= maxRadiusKm;
+    })
+    .sort((a, b) => {
+      if (a.distanceKm === null) return 1;
+      if (b.distanceKm === null) return -1;
+      return a.distanceKm - b.distanceKm;
+    });
+
+  return itemsWithDistance;
+}
+
 module.exports = {
   haversineDistance,
+  haversineDistanceKm,
   filterByDistance,
+  filterByDistanceKm,
   toRadians
 };

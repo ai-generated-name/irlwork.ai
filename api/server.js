@@ -32,7 +32,7 @@ const { startBalancePromoter } = require('./backend/services/balancePromoter');
 
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
-const { haversineDistance, filterByDistance } = require('./utils/distance');
+const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./utils/distance');
 console.log('[Startup] All modules loaded');
 
 // Configuration
@@ -78,6 +78,9 @@ if (process.env.NODE_ENV !== 'production') {
   })
 }
 app.use(express.json({ limit: '10mb' }));
+
+// Rate limiting middleware (applied after JSON parsing)
+app.use(rateLimitMiddleware);
 
 // Health check endpoint (first, before any other middleware)
 app.get('/health', (req, res) => {
@@ -163,6 +166,84 @@ async function checkRateLimit(ipHash, action, maxAttempts, windowMinutes) {
 
   return { allowed: true, remaining: maxAttempts - 1 };
 }
+
+// ============ RATE LIMITING MIDDLEWARE ============
+// In-memory rate limiting with headers
+const rateLimitStore = new Map();
+
+const RATE_LIMITS = {
+  authenticated: { requests: 300, windowMs: 60 * 1000 },  // 300/min for authenticated
+  unauthenticated: { requests: 100, windowMs: 60 * 1000 } // 100/min for unauthenticated
+};
+
+function getRateLimitKey(req) {
+  // Use API key or IP as the rate limit key
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '');
+  if (token?.startsWith('irl_sk_')) {
+    return `key:${hashApiKey(token)}`;
+  }
+  // Fall back to IP
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  return `ip:${crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16)}`;
+}
+
+function rateLimitMiddleware(req, res, next) {
+  // Skip rate limiting for health checks
+  if (req.path === '/health' || req.path === '/ready') {
+    return next();
+  }
+
+  const key = getRateLimitKey(req);
+  const isAuthenticated = req.headers.authorization?.includes('irl_sk_');
+  const limits = isAuthenticated ? RATE_LIMITS.authenticated : RATE_LIMITS.unauthenticated;
+
+  const now = Date.now();
+  let record = rateLimitStore.get(key);
+
+  // Clean up old record if window expired
+  if (record && now - record.windowStart > limits.windowMs) {
+    record = null;
+  }
+
+  if (!record) {
+    record = { count: 0, windowStart: now };
+    rateLimitStore.set(key, record);
+  }
+
+  record.count++;
+
+  const remaining = Math.max(0, limits.requests - record.count);
+  const resetAt = new Date(record.windowStart + limits.windowMs);
+
+  // Add rate limit headers to all responses
+  res.set({
+    'X-RateLimit-Limit': limits.requests.toString(),
+    'X-RateLimit-Remaining': remaining.toString(),
+    'X-RateLimit-Reset': Math.floor(resetAt.getTime() / 1000).toString()
+  });
+
+  if (record.count > limits.requests) {
+    return res.status(429).json({
+      error: 'Rate limit exceeded',
+      limit: limits.requests,
+      remaining: 0,
+      reset_at: resetAt.toISOString(),
+      retry_after_seconds: Math.ceil((resetAt.getTime() - now) / 1000)
+    });
+  }
+
+  next();
+}
+
+// Clean up rate limit store periodically (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of rateLimitStore.entries()) {
+    if (now - record.windowStart > 5 * 60 * 1000) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
 
 async function getUserByToken(token) {
   if (!token || !supabase) return null;
@@ -1047,22 +1128,56 @@ app.put('/api/humans/profile', async (req, res) => {
 // ============ TASKS ============
 app.get('/api/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { category, city, urgency, status, my_tasks } = req.query;
+
+  const { category, city, urgency, status, my_tasks, user_lat, user_lng, radius_km } = req.query;
   const user = await getUserByToken(req.headers.authorization);
 
   let query = supabase.from('tasks').select('*');
 
   if (category) query = query.eq('category', category);
-  if (city) query = query.like('location', `%${city}%`);
   if (urgency) query = query.eq('urgency', urgency);
   if (status) query = query.eq('status', status);
   if (my_tasks && user) query = query.eq('agent_id', user.id);
-  
+
   const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(100);
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  res.json(tasks || []);
+
+  let results = tasks || [];
+
+  // Apply location filtering
+  if (user_lat && user_lng && radius_km !== 'anywhere') {
+    const userLatitude = parseFloat(user_lat);
+    const userLongitude = parseFloat(user_lng);
+    const radiusKm = parseFloat(radius_km) || 50;
+
+    if (radiusKm === 0) {
+      // Exact city match - filter to ~5km radius
+      results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
+    } else {
+      results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
+    }
+
+    // Fallback: include tasks without coords that match city string
+    if (city) {
+      const tasksWithoutCoords = (tasks || []).filter(t =>
+        !t.latitude && !t.longitude &&
+        t.location?.toLowerCase().includes(city.toLowerCase())
+      );
+      // Merge, avoiding duplicates
+      const resultIds = new Set(results.map(r => r.id));
+      tasksWithoutCoords.forEach(t => {
+        if (!resultIds.has(t.id)) results.push(t);
+      });
+    }
+  } else if (city) {
+    // String-based fallback when no coordinates provided
+    results = results.filter(t =>
+      t.location?.toLowerCase().includes(city.toLowerCase())
+    );
+  }
+
+  res.json(results);
 });
 
 app.post('/api/tasks', async (req, res) => {
@@ -3255,7 +3370,7 @@ app.get('/api/tasks/my-tasks', async (req, res) => {
 app.get('/api/tasks/available', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const { category, city, urgency, limit = 50, user_lat, user_lng, radius } = req.query;
+  const { category, city, urgency, limit = 50, user_lat, user_lng, radius, radius_km } = req.query;
 
   let query = supabase
     .from('tasks')
@@ -3268,7 +3383,6 @@ app.get('/api/tasks/available', async (req, res) => {
     .limit(parseInt(limit));
 
   if (category) query = query.eq('category', category);
-  if (city) query = query.like('location', `%${city}%`);
   if (urgency) query = query.eq('urgency', urgency);
 
   const { data: tasks, error } = await query;
@@ -3277,13 +3391,38 @@ app.get('/api/tasks/available', async (req, res) => {
 
   let results = tasks || [];
 
-  // Apply distance filtering if coordinates provided
-  if (user_lat && user_lng && radius) {
+  // Apply distance filtering if coordinates provided (km preferred, miles fallback)
+  if (user_lat && user_lng && (radius_km || radius) && radius_km !== 'anywhere') {
     const userLatitude = parseFloat(user_lat);
     const userLongitude = parseFloat(user_lng);
-    const maxRadius = parseFloat(radius);
 
-    results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+    if (radius_km) {
+      const radiusKm = parseFloat(radius_km) || 50;
+      if (radiusKm === 0) {
+        results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
+      } else {
+        results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
+      }
+    } else if (radius) {
+      const maxRadius = parseFloat(radius);
+      results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+    }
+
+    // Fallback: include tasks without coords that match city string
+    if (city) {
+      const tasksWithoutCoords = (tasks || []).filter(t =>
+        !t.latitude && !t.longitude &&
+        t.location?.toLowerCase().includes(city.toLowerCase())
+      );
+      const resultIds = new Set(results.map(r => r.id));
+      tasksWithoutCoords.forEach(t => {
+        if (!resultIds.has(t.id)) results.push(t);
+      });
+    }
+  } else if (city) {
+    results = results.filter(t =>
+      t.location?.toLowerCase().includes(city.toLowerCase())
+    );
   }
 
   res.json(results);
