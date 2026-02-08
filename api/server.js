@@ -3089,11 +3089,17 @@ app.post('/api/mcp', async (req, res) => {
           created_at: new Date().toISOString()
         });
         
-        // Update human stats
+        // Update human stats - increment jobs_completed
+        const { data: humanStats } = await supabase
+          .from('users')
+          .select('jobs_completed')
+          .eq('id', task.human_id)
+          .single();
+
         await supabase
           .from('users')
           .update({
-            jobs_completed: supabase.raw('jobs_completed + 1'),
+            jobs_completed: (humanStats?.jobs_completed || 0) + 1,
             updated_at: new Date().toISOString()
           })
           .eq('id', task.human_id);
