@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import citiesData from 'cities.json';
+import React, { useState, useEffect, useRef } from 'react';
 
 // Country code to country name mapping (common countries)
 const COUNTRY_NAMES = {
@@ -56,16 +55,8 @@ const COUNTRY_NAMES = {
   'IE': 'Ireland'
 };
 
-// Filter to major cities (reduce dataset for performance)
-// Keep cities that are more likely to be relevant
-const majorCities = citiesData.map(city => ({
-  name: city.name,
-  country: COUNTRY_NAMES[city.country] || city.country,
-  countryCode: city.country,
-  lat: parseFloat(city.lat),
-  lng: parseFloat(city.lng),
-  displayName: `${city.name}, ${COUNTRY_NAMES[city.country] || city.country}`
-}));
+// Cache for loaded cities data - loaded on demand
+let citiesCache = null;
 
 const CityAutocomplete = ({
   value,
@@ -77,8 +68,42 @@ const CityAutocomplete = ({
   const [results, setResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [citiesLoaded, setCitiesLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+
+  // Load cities data lazily on first focus
+  const loadCities = async () => {
+    if (citiesCache) {
+      setCitiesLoaded(true);
+      return citiesCache;
+    }
+
+    setIsLoading(true);
+    try {
+      const citiesModule = await import('cities.json');
+      const citiesData = citiesModule.default;
+
+      // Process cities data
+      citiesCache = citiesData.map(city => ({
+        name: city.name,
+        country: COUNTRY_NAMES[city.country] || city.country,
+        countryCode: city.country,
+        lat: parseFloat(city.lat),
+        lng: parseFloat(city.lng),
+        displayName: `${city.name}, ${COUNTRY_NAMES[city.country] || city.country}`
+      }));
+
+      setCitiesLoaded(true);
+      return citiesCache;
+    } catch (e) {
+      console.error('Failed to load cities data:', e);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Search cities when query changes
   useEffect(() => {
@@ -88,10 +113,27 @@ const CityAutocomplete = ({
       return;
     }
 
-    const lowerQuery = query.toLowerCase();
+    // Only search if cities are loaded
+    if (!citiesCache) {
+      loadCities().then(() => {
+        // Re-trigger search after loading
+        if (citiesCache && query.length >= 2) {
+          searchCities(query);
+        }
+      });
+      return;
+    }
+
+    searchCities(query);
+  }, [query, citiesLoaded]);
+
+  const searchCities = (searchQuery) => {
+    if (!citiesCache) return;
+
+    const lowerQuery = searchQuery.toLowerCase();
 
     // Fuzzy search: match city name or country
-    const matches = majorCities
+    const matches = citiesCache
       .filter(city =>
         city.name.toLowerCase().includes(lowerQuery) ||
         city.country.toLowerCase().includes(lowerQuery)
@@ -101,7 +143,7 @@ const CityAutocomplete = ({
     setResults(matches);
     setShowDropdown(matches.length > 0);
     setSelectedIndex(0);
-  }, [query]);
+  };
 
   // Handle city selection
   const handleSelect = (city) => {
@@ -176,7 +218,10 @@ const CityAutocomplete = ({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        onFocus={() => query.length >= 2 && results.length > 0 && setShowDropdown(true)}
+        onFocus={() => {
+          loadCities(); // Preload cities on focus
+          if (query.length >= 2 && results.length > 0) setShowDropdown(true);
+        }}
         placeholder={placeholder}
         className="w-full px-4 py-3 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] focus:ring-2 focus:ring-[rgba(15,76,92,0.1)] transition-colors"
         autoComplete="off"
@@ -209,7 +254,18 @@ const CityAutocomplete = ({
         </div>
       )}
 
-      {query.length >= 2 && results.length === 0 && showDropdown && (
+      {isLoading && query.length >= 2 && (
+        <div
+          className="absolute z-50 w-full mt-2 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl shadow-xl p-4"
+        >
+          <div className="text-[#8A8A8A] text-sm flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-[#0F4C5C] border-t-transparent rounded-full animate-spin"></div>
+            Loading cities...
+          </div>
+        </div>
+      )}
+
+      {!isLoading && query.length >= 2 && results.length === 0 && showDropdown && (
         <div
           ref={dropdownRef}
           className="absolute z-50 w-full mt-2 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl shadow-xl p-4"
