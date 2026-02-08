@@ -13,6 +13,10 @@ import ActivityFeed from './components/ActivityFeed'
 import BrowsePage from './pages/BrowsePage'
 import BrowseTasksV2 from './pages/BrowseTasksV2'
 import LandingPageV4 from './pages/LandingPageV4'
+import AdminDashboard from './pages/AdminDashboard'
+
+// Admin user IDs - must match ADMIN_USER_IDS in backend
+const ADMIN_USER_IDS = ['b49dc7ef-38b5-40ce-936b-e5fddebc4cb7']
 import CityAutocomplete from './components/CityAutocomplete'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
@@ -1278,6 +1282,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
+  // Check if current user is admin
+  const isAdmin = user && ADMIN_USER_IDS.includes(user.id)
+
   // Working mode: My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
@@ -1297,7 +1304,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'api-keys', label: 'API Keys', icon: '🔑' },
   ]
 
-  const navItems = hiringMode ? hiringNav : humanNav
+  // Add admin tab if user is admin
+  const baseNav = hiringMode ? hiringNav : humanNav
+  const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: '🛡️' }] : baseNav
 
   // Mark all notifications as read
   const markAllNotificationsRead = async () => {
@@ -2629,6 +2638,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 </label>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Admin Tab - Only visible to admins */}
+        {activeTab === 'admin' && isAdmin && (
+          <div>
+            <AdminDashboard user={user} />
           </div>
         )}
 
