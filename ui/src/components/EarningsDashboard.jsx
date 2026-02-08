@@ -132,9 +132,9 @@ function EarningsDashboard({ user }) {
     <div className="space-y-6">
       {/* Success Message */}
       {withdrawResult && (
-        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-          <p className="text-green-400 font-semibold">Withdrawal Successful!</p>
-          <p className="text-sm text-green-300 mt-1">
+        <div className="bg-[#D1FAE5] border border-[#059669]/20 rounded-xl p-4">
+          <p className="text-[#059669] font-semibold">Withdrawal Successful!</p>
+          <p className="text-sm text-[#059669]/80 mt-1">
             ${withdrawResult.amount_withdrawn} sent to {withdrawResult.wallet_address?.substring(0, 10)}...
           </p>
           {withdrawResult.tx_hash && (
@@ -142,7 +142,7 @@ function EarningsDashboard({ user }) {
               href={`https://basescan.org/tx/${withdrawResult.tx_hash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-green-300 hover:text-green-200 underline mt-2 inline-block"
+              className="text-xs text-[#059669] hover:text-[#047857] underline mt-2 inline-block"
             >
               View on BaseScan
             </a>
@@ -151,64 +151,64 @@ function EarningsDashboard({ user }) {
       )}
 
       {/* Pending Balance Card - Amber/Yellow */}
-      <div className="bg-amber-50/5 border border-amber-500/20 rounded-lg p-6">
+      <div className="bg-[#FEF3C7] border-2 border-[#D97706]/20 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-amber-400 text-sm font-medium uppercase tracking-wide">Pending</h3>
-            <p className="text-xs text-amber-500/60 mt-1">In 48-hour dispute window</p>
+            <h3 className="text-[#D97706] text-sm font-medium uppercase tracking-wide">Pending</h3>
+            <p className="text-xs text-[#D97706]/60 mt-1">In 48-hour dispute window</p>
           </div>
-          <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-400 text-xl">
+          <div className="w-12 h-12 bg-[#D97706]/20 rounded-full flex items-center justify-center text-[#D97706] text-xl">
             ⏱️
           </div>
         </div>
 
-        <p className="text-4xl font-bold text-amber-300">
+        <p className="text-4xl font-bold text-[#92400E]">
           ${balanceData?.pending?.toFixed(2) || '0.00'}
         </p>
 
         {pendingTransactions.length > 0 ? (
           <div className="mt-4 space-y-2">
             {pendingTransactions.slice(0, 3).map(tx => (
-              <div key={tx.id} className="flex justify-between items-center text-sm py-2 border-t border-amber-500/10">
+              <div key={tx.id} className="flex justify-between items-center text-sm py-2 border-t border-[#D97706]/10">
                 <div>
-                  <p className="text-amber-200">Task #{tx.task_id?.substring(0, 8)}</p>
-                  <p className="text-xs text-amber-500/60">{formatDate(tx.clears_at)}</p>
+                  <p className="text-[#92400E]">Task #{tx.task_id?.substring(0, 8)}</p>
+                  <p className="text-xs text-[#D97706]/60">{formatDate(tx.clears_at)}</p>
                 </div>
-                <p className="text-amber-300 font-semibold">
+                <p className="text-[#92400E] font-semibold">
                   ${(tx.amount_cents / 100).toFixed(2)}
                 </p>
               </div>
             ))}
             {pendingTransactions.length > 3 && (
-              <p className="text-xs text-amber-500/60 text-center pt-2">
+              <p className="text-xs text-[#D97706]/60 text-center pt-2">
                 +{pendingTransactions.length - 3} more pending
               </p>
             )}
           </div>
         ) : (
-          <p className="text-amber-500/60 text-sm mt-4">No pending transactions</p>
+          <p className="text-[#D97706]/60 text-sm mt-4">No pending transactions</p>
         )}
       </div>
 
       {/* Available Balance Card - Green */}
-      <div className="bg-green-50/5 border border-green-500/20 rounded-lg p-6">
+      <div className="bg-[#D1FAE5] border-2 border-[#059669]/20 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-green-400 text-sm font-medium uppercase tracking-wide">Available</h3>
-            <p className="text-xs text-green-500/60 mt-1">Ready to withdraw</p>
+            <h3 className="text-[#059669] text-sm font-medium uppercase tracking-wide">Available</h3>
+            <p className="text-xs text-[#059669]/60 mt-1">Ready to withdraw</p>
           </div>
-          <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-green-400 text-xl">
+          <div className="w-12 h-12 bg-[#059669]/20 rounded-full flex items-center justify-center text-[#059669] text-xl">
             💳
           </div>
         </div>
 
-        <p className="text-4xl font-bold text-green-300">
+        <p className="text-4xl font-bold text-[#065F46]">
           ${balanceData?.available?.toFixed(2) || '0.00'}
         </p>
 
         {!user.wallet_address && (
-          <div className="mt-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-            <p className="text-yellow-400 text-sm">
+          <div className="mt-4 bg-[#FEF3C7] border border-[#D97706]/20 rounded-lg p-3">
+            <p className="text-[#D97706] text-sm">
               ⚠️ Add wallet address in profile to withdraw
             </p>
           </div>
@@ -218,10 +218,10 @@ function EarningsDashboard({ user }) {
           onClick={handleWithdraw}
           disabled={withdrawing || !balanceData?.available_cents || balanceData.available_cents <= 0 || !user.wallet_address}
           className={`
-            mt-4 w-full py-3 px-4 rounded-lg font-semibold transition-all
+            mt-4 w-full py-3 px-4 rounded-xl font-semibold transition-all
             ${withdrawing || !balanceData?.available_cents || balanceData.available_cents <= 0 || !user.wallet_address
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
+              ? 'bg-[#F5F2ED] text-[#8A8A8A] cursor-not-allowed'
+              : 'bg-[#059669] hover:bg-[#047857] text-white shadow-lg hover:shadow-xl'
             }
           `}
         >
@@ -231,9 +231,9 @@ function EarningsDashboard({ user }) {
         {availableTransactions.length > 0 && (
           <div className="mt-4 space-y-2">
             {availableTransactions.slice(0, 2).map(tx => (
-              <div key={tx.id} className="flex justify-between items-center text-sm py-2 border-t border-green-500/10">
-                <p className="text-green-200">Task #{tx.task_id?.substring(0, 8)}</p>
-                <p className="text-green-300 font-semibold">
+              <div key={tx.id} className="flex justify-between items-center text-sm py-2 border-t border-[#059669]/10">
+                <p className="text-[#065F46]">Task #{tx.task_id?.substring(0, 8)}</p>
+                <p className="text-[#065F46] font-semibold">
                   ${(tx.amount_cents / 100).toFixed(2)}
                 </p>
               </div>
@@ -244,7 +244,7 @@ function EarningsDashboard({ user }) {
 
       {/* Transaction History */}
       <div>
-        <h3 className="text-xl font-bold text-white mb-4">Transaction History</h3>
+        <h3 className="text-xl font-bold text-[#1A1A1A] mb-4">Transaction History</h3>
 
         {allTransactions.length > 0 ? (
           <div className="space-y-3">
@@ -256,25 +256,25 @@ function EarningsDashboard({ user }) {
               return (
                 <div
                   key={tx.id}
-                  className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-colors"
+                  className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-white font-medium">
+                        <p className="text-[#1A1A1A] font-medium">
                           {tx.task_title || `Task #${tx.task_id?.substring(0, 8)}`}
                         </p>
                         <span className={`
                           px-2 py-0.5 rounded-full text-xs font-semibold
-                          ${isPending ? 'bg-amber-500/20 text-amber-400' : ''}
-                          ${isAvailable ? 'bg-green-500/20 text-green-400' : ''}
-                          ${isWithdrawn ? 'bg-gray-500/20 text-gray-400' : ''}
+                          ${isPending ? 'bg-[#FEF3C7] text-[#D97706]' : ''}
+                          ${isAvailable ? 'bg-[#D1FAE5] text-[#059669]' : ''}
+                          ${isWithdrawn ? 'bg-[#F5F2ED] text-[#525252]' : ''}
                         `}>
                           {tx.status}
                         </span>
                       </div>
 
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-[#8A8A8A] mt-1">
                         {new Date(tx.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -285,13 +285,13 @@ function EarningsDashboard({ user }) {
                       </p>
 
                       {isPending && tx.clears_at && (
-                        <p className="text-xs text-amber-400 mt-1">
+                        <p className="text-xs text-[#D97706] mt-1">
                           Clears in {formatDate(tx.clears_at)}
                         </p>
                       )}
 
                       {isWithdrawn && tx.withdrawn_at && (
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-[#8A8A8A] mt-1">
                           Withdrawn {new Date(tx.withdrawn_at).toLocaleDateString()}
                         </p>
                       )}
@@ -300,9 +300,9 @@ function EarningsDashboard({ user }) {
                     <div className="text-right">
                       <p className={`
                         text-xl font-bold
-                        ${isPending ? 'text-amber-400' : ''}
-                        ${isAvailable ? 'text-green-400' : ''}
-                        ${isWithdrawn ? 'text-gray-400' : ''}
+                        ${isPending ? 'text-[#D97706]' : ''}
+                        ${isAvailable ? 'text-[#059669]' : ''}
+                        ${isWithdrawn ? 'text-[#525252]' : ''}
                       `}>
                         ${(tx.amount_cents / 100).toFixed(2)}
                       </p>
@@ -313,10 +313,10 @@ function EarningsDashboard({ user }) {
             })}
           </div>
         ) : (
-          <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
+          <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-12 text-center">
             <div className="text-4xl mb-4">💸</div>
-            <p className="text-gray-400 font-medium">No transactions yet</p>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-[#525252] font-medium">No transactions yet</p>
+            <p className="text-sm text-[#8A8A8A] mt-2">
               Complete tasks to start earning USDC
             </p>
           </div>
@@ -325,9 +325,9 @@ function EarningsDashboard({ user }) {
 
       {/* Wallet Info */}
       {user.wallet_address && (
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-1">Withdrawal Address</p>
-          <p className="text-white font-mono text-sm">
+        <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-4">
+          <p className="text-xs text-[#8A8A8A] mb-1">Withdrawal Address</p>
+          <p className="text-[#1A1A1A] font-mono text-sm">
             {user.wallet_address}
           </p>
         </div>
