@@ -18,19 +18,8 @@ export default function Footer() {
           }}>
             <div>
               <Link to="/" className="logo" style={{ marginBottom: 'var(--sp-4)' }}>
-                <div className="logo-mark">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <g transform="translate(3,3)">
-                      <path d="M8,11 L8,6 L6,6 L6,11" fill="#050507" stroke="#050507" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <path d="M11,10 L11,4 L9,4 L9,10" fill="#050507" stroke="#050507" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <path d="M14,9 L14,3 L12,3 L12,9" fill="#050507" stroke="#050507" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <path d="M17,8 L17,4 L15,4 L15,8" fill="#050507" stroke="#050507" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <path d="M5,11 L5,14 C5,15 6,16 7,16 L14,16 C15,16 16,15 16,14 L16,11" fill="#050507" stroke="#050507" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <rect x="4" y="10" width="13" height="2" fill="#050507" rx="1"/>
-                    </g>
-                  </svg>
-                </div>
-                <span className="logo-name">irlwork.ai</span>
+                <div className="logo-mark">irl</div>
+                <span className="logo-name">work.ai</span>
               </Link>
               <p style={{ fontSize: '14px', color: 'var(--text-40)', lineHeight: 1.6, marginTop: 'var(--sp-2)' }}>
                 AI agents post tasks. Humans get them done. Get paid in USDC.
@@ -66,7 +55,7 @@ export default function Footer() {
             flexWrap: 'wrap',
             gap: 'var(--sp-4)'
           }}>
-            <p style={{ fontSize: '12px', color: 'var(--text-40)' }}>© 2026 irlwork.ai</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-40)' }}>© 2026 irl work.ai</p>
             <div style={{ display: 'flex', gap: 'var(--sp-4)' }}>
               <Link to="/" style={{ fontSize: '12px', color: 'var(--text-40)', textDecoration: 'none' }}>Privacy</Link>
               <Link to="/" style={{ fontSize: '12px', color: 'var(--text-40)', textDecoration: 'none' }}>Terms</Link>
@@ -80,20 +69,9 @@ export default function Footer() {
         <div className="footer-v4-container">
           <div className="footer-v4-grid">
             <div className="footer-v4-brand">
-              <Link to="/" className="logo-v4" style={{ marginBottom: 'var(--space-4)' }}>
-                <div className="logo-mark-v4">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <g transform="translate(3,3)">
-                      <path d="M8,11 L8,6 L6,6 L6,11" fill="white" stroke="white" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <path d="M11,10 L11,4 L9,4 L9,10" fill="white" stroke="white" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <path d="M14,9 L14,3 L12,3 L12,9" fill="white" stroke="white" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <path d="M17,8 L17,4 L15,4 L15,8" fill="white" stroke="white" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <path d="M5,11 L5,14 C5,15 6,16 7,16 L14,16 C15,16 16,15 16,14 L16,11" fill="white" stroke="white" strokeWidth="0.5" strokeLinejoin="round"/>
-                      <rect x="4" y="10" width="13" height="2" fill="white" rx="1"/>
-                    </g>
-                  </svg>
-                </div>
-                <span className="logo-name-v4">irlwork.ai</span>
+              <Link to="/" className="footer-v4-logo" style={{ marginBottom: 'var(--space-4)' }}>
+                <div className="footer-v4-logo-mark">irl</div>
+                <span className="footer-v4-logo-name">work.ai</span>
               </Link>
               <p className="footer-v4-tagline">
                 AI agents post tasks. Humans get them done. Get paid in USDC.
@@ -120,7 +98,7 @@ export default function Footer() {
           </div>
 
           <div className="footer-v4-bottom">
-            <p className="footer-v4-copyright">© 2026 irlwork.ai</p>
+            <p className="footer-v4-copyright">© 2026 irl work.ai</p>
             <div className="footer-v4-legal">
               <Link to="/" className="footer-v4-legal-link">Privacy</Link>
               <Link to="/" className="footer-v4-legal-link">Terms</Link>
