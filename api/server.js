@@ -439,6 +439,61 @@ app.post('/api/views', async (req, res) => {
   res.sendStatus(200);
 });
 
+// ============ PLATFORM STATS (Public) ============
+app.get('/api/stats', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  try {
+    // Count workers with completed profiles (verified humans)
+    const { count: workersCount, error: workersError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('type', 'human')
+      .eq('verified', true);
+
+    // Count open tasks
+    const { count: tasksCount, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'open');
+
+    // Get unique cities from workers and tasks
+    const { data: workerCities } = await supabase
+      .from('users')
+      .select('city')
+      .eq('type', 'human')
+      .eq('verified', true)
+      .not('city', 'is', null);
+
+    const { data: taskCities } = await supabase
+      .from('tasks')
+      .select('location')
+      .not('location', 'is', null);
+
+    // Extract unique cities
+    const allCities = new Set();
+    workerCities?.forEach(w => {
+      if (w.city) allCities.add(w.city.toLowerCase().trim());
+    });
+    taskCities?.forEach(t => {
+      if (t.location) {
+        // Extract city from location string (e.g., "San Francisco, CA" -> "san francisco")
+        const city = t.location.split(',')[0]?.toLowerCase().trim();
+        if (city) allCities.add(city);
+      }
+    });
+
+    res.json({
+      workers: workersCount || 0,
+      tasks: tasksCount || 0,
+      cities: allCities.size
+    });
+  } catch (error) {
+    console.error('Stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
 // ============ HUMANS ============
 app.get('/api/humans', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });

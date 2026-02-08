@@ -7,6 +7,110 @@ import {
 } from 'lucide-react'
 import '../landing-v4.css'
 
+// Animated Counter Component
+function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
+  const [count, setCount] = useState(0)
+  const countRef = useRef(null)
+  const [hasAnimated, setHasAnimated] = useState(false)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasAnimated) {
+          setHasAnimated(true)
+          const startTime = Date.now()
+          const animate = () => {
+            const elapsed = Date.now() - startTime
+            const progress = Math.min(elapsed / duration, 1)
+            // Easing function for smooth deceleration
+            const eased = 1 - Math.pow(1 - progress, 3)
+            setCount(Math.floor(eased * end))
+            if (progress < 1) {
+              requestAnimationFrame(animate)
+            }
+          }
+          requestAnimationFrame(animate)
+        }
+      },
+      { threshold: 0.5 }
+    )
+
+    if (countRef.current) {
+      observer.observe(countRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [end, duration, hasAnimated])
+
+  return <span ref={countRef}>{count}{suffix}</span>
+}
+
+// Hero Stats Component with live data
+function HeroStats() {
+  const [stats, setStats] = useState({ workers: null, tasks: null, cities: null })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002'
+        const response = await fetch(`${API_URL}/api/stats`)
+        if (response.ok) {
+          const data = await response.json()
+          setStats(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStats()
+  }, [])
+
+  // Threshold logic
+  const getWorkerDisplay = () => {
+    if (loading || stats.workers === null) return { value: '...', label: 'Workers Ready' }
+    if (stats.workers < 10) return { value: 'Growing', label: 'New workers joining daily' }
+    return { value: <AnimatedCounter end={stats.workers} suffix="+" />, label: 'Workers Ready' }
+  }
+
+  const getTaskDisplay = () => {
+    if (loading || stats.tasks === null) return { value: '...', label: 'Tasks Available' }
+    if (stats.tasks < 10) return { value: 'Active', label: 'New tasks posted daily' }
+    return { value: <AnimatedCounter end={stats.tasks} suffix="+" />, label: 'Tasks Available' }
+  }
+
+  const getCityDisplay = () => {
+    if (loading || stats.cities === null) return { value: '...', label: 'Cities Active' }
+    if (stats.cities < 5) return { value: 'Global', label: 'Expanding worldwide' }
+    return { value: <AnimatedCounter end={stats.cities} suffix="+" />, label: 'Cities Active' }
+  }
+
+  const workerDisplay = getWorkerDisplay()
+  const taskDisplay = getTaskDisplay()
+  const cityDisplay = getCityDisplay()
+
+  return (
+    <div className="hero-v4-stats">
+      <div className="stat-item">
+        <div className="stat-value">{workerDisplay.value}</div>
+        <div className="stat-label">{workerDisplay.label}</div>
+      </div>
+      <div className="stat-divider"></div>
+      <div className="stat-item">
+        <div className="stat-value">{taskDisplay.value}</div>
+        <div className="stat-label">{taskDisplay.label}</div>
+      </div>
+      <div className="stat-divider"></div>
+      <div className="stat-item">
+        <div className="stat-value">{cityDisplay.value}</div>
+        <div className="stat-label">{cityDisplay.label}</div>
+      </div>
+    </div>
+  )
+}
+
 // Hero Animation: Globe-centric design with AI → Globe → Human flow
 function HeroAnimation() {
   const [step, setStep] = useState(0)
@@ -304,22 +408,7 @@ export default function LandingPageV4() {
             </button>
           </div>
 
-          <div className="hero-v4-stats">
-            <div className="stat-item">
-              <div className="stat-value">$2.4M+</div>
-              <div className="stat-label">Paid Out</div>
-            </div>
-            <div className="stat-divider"></div>
-            <div className="stat-item">
-              <div className="stat-value">12K+</div>
-              <div className="stat-label">Tasks Done</div>
-            </div>
-            <div className="stat-divider"></div>
-            <div className="stat-item">
-              <div className="stat-value">2.3s</div>
-              <div className="stat-label">Avg Match</div>
-            </div>
-          </div>
+          <HeroStats />
         </div>
 
         <div className="hero-v4-visual">
