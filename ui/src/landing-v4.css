@@ -4015,7 +4015,7 @@
 }
 
 .dashboard-v4-topbar-logo {
-  display: flex;
+  display: none; /* Hidden on desktop - sidebar has logo */
   align-items: center;
   gap: 8px;
   text-decoration: none;
@@ -4895,6 +4895,10 @@
 
   .dashboard-v4-topbar-center {
     display: none;
+  }
+
+  .dashboard-v4-topbar-logo {
+    display: flex; /* Show logo on mobile when sidebar is hidden */
   }
 
   .dashboard-v4-topbar-logo .logo-name-v4 {
