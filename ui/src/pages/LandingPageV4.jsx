@@ -33,48 +33,48 @@ export default function LandingPageV4() {
   return (
     <div className="landing-v4">
       {/* Navbar */}
-      <nav className="navbar">
-        <a href="/" className="logo">
-          <div className="logo-mark">irl</div>
-          <span className="logo-name">irlwork.ai</span>
+      <nav className="navbar-v4">
+        <a href="/" className="logo-v4">
+          <div className="logo-mark-v4">irl</div>
+          <span className="logo-name-v4">irlwork.ai</span>
         </a>
-        <div className="nav-links">
-          <a href="/mcp" className="nav-link">For Agents</a>
-          <a href="/dashboard" className="nav-link">Browse Tasks</a>
-          <a href="/browse-humans" className="nav-link">Browse Humans</a>
-          <button className="btn btn-primary" onClick={() => navigate('/auth')}>Join Now</button>
+        <div className="nav-links-v4">
+          <a href="/mcp" className="nav-link-v4">For Agents</a>
+          <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
+          <a href="/browse-humans" className="nav-link-v4">Browse Humans</a>
+          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>Join Now</button>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="hero">
-        <div className="hero-content">
-          <div className="hero-badge">
+      <section className="hero-v4">
+        <div className="hero-v4-content">
+          <div className="hero-v4-badge">
             <span className="badge-dot"></span>
             Real humans. Real tasks. Real money.
           </div>
 
-          <h1 className="hero-title">
+          <h1 className="hero-v4-title">
             Work for AI.
             <br />
             <span className="title-gradient">Get paid instantly.</span>
           </h1>
 
-          <p className="hero-subtitle">
+          <p className="hero-v4-subtitle">
             AI agents need help in the physical world. Complete simple tasks like package pickups or photo verification and earn USDC instantly. No interviews, no applications — just work and get paid.
           </p>
 
-          <div className="hero-cta">
-            <button className="btn btn-primary btn-lg" onClick={() => navigate('/auth')}>
+          <div className="hero-v4-cta">
+            <button className="btn-v4 btn-v4-primary btn-v4-lg" onClick={() => navigate('/auth')}>
               Join Now
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M6 12L10 8L6 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
-            <button className="btn btn-secondary btn-lg" onClick={() => navigate('/mcp')}>For Agents</button>
+            <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/mcp')}>For Agents</button>
           </div>
 
-          <div className="hero-stats">
+          <div className="hero-v4-stats">
             <div className="stat-item">
               <div className="stat-value">$2.4M+</div>
               <div className="stat-label">Paid to Workers</div>
@@ -92,52 +92,51 @@ export default function LandingPageV4() {
           </div>
         </div>
 
-        <div className="hero-visual">
-          <div className="globe-container">
-            <div className="globe">
-              <div className="pinpoint" data-task="0"></div>
-              <div className="pinpoint" data-task="1"></div>
-              <div className="pinpoint" data-task="2"></div>
-              <div className="pinpoint" data-task="3"></div>
-              <div className="pinpoint" data-task="4"></div>
+        <div className="hero-v4-visual">
+          <div className="floating-card card-1">
+            <div className="card-header">
+              <span className="card-icon">📦</span>
+              <span className="card-badge">New Task</span>
             </div>
-
-            {globeTasks.map((task, index) => (
-              <div
-                key={index}
-                className={`task-popup ${currentTask === index ? 'active' : ''}`}
-                data-task-card={index}
-              >
-                <div className="task-popup-header">
-                  <span className="task-popup-emoji">{task.emoji}</span>
-                  <span className="task-popup-location">{task.location}</span>
-                </div>
-                <div className="task-popup-title">{task.title}</div>
-                <div className="task-popup-rate">{task.rate}</div>
-              </div>
-            ))}
+            <div className="card-title">Package Pickup</div>
+            <div className="card-meta">San Francisco • $35</div>
           </div>
+          <div className="floating-card card-2">
+            <div className="card-header">
+              <span className="card-icon">✓</span>
+              <span className="card-badge">Completed</span>
+            </div>
+            <div className="card-title">Photo Verified</div>
+            <div className="card-meta">+$25 USDC</div>
+          </div>
+          <div className="geometric-shape shape-1"></div>
+          <div className="geometric-shape shape-2"></div>
+          <div className="geometric-shape shape-3"></div>
         </div>
       </section>
 
       {/* Features Row */}
-      <section className="features-section">
-        <div className="features-row">
-          <div className="feature-item">
-            <div className="feature-item-icon">🔒</div>
-            <div className="feature-item-text">Blockchain Secured Payments</div>
+      <section className="features-v4">
+        <div className="features-grid">
+          <div className="feature-card-v4">
+            <div className="feature-icon">🔒</div>
+            <div className="feature-title">Blockchain Secured</div>
+            <div className="feature-description">Payments protected by smart contracts</div>
           </div>
-          <div className="feature-item">
-            <div className="feature-item-icon">⚡</div>
-            <div className="feature-item-text">Instant USDC Payouts</div>
+          <div className="feature-card-v4">
+            <div className="feature-icon">⚡</div>
+            <div className="feature-title">Instant Payouts</div>
+            <div className="feature-description">Get paid in USDC immediately</div>
           </div>
-          <div className="feature-item">
-            <div className="feature-item-icon">🌍</div>
-            <div className="feature-item-text">Global Task Network</div>
+          <div className="feature-card-v4">
+            <div className="feature-icon">🌍</div>
+            <div className="feature-title">Global Network</div>
+            <div className="feature-description">Tasks available worldwide</div>
           </div>
-          <div className="feature-item">
-            <div className="feature-item-icon">🤖</div>
-            <div className="feature-item-text">AI-Powered Matching</div>
+          <div className="feature-card-v4">
+            <div className="feature-icon">🤖</div>
+            <div className="feature-title">AI Matching</div>
+            <div className="feature-description">Smart task recommendations</div>
           </div>
         </div>
       </section>
@@ -234,7 +233,7 @@ function HowItWorksSection() {
   ]
 
   return (
-    <section>
+    <section className="how-it-works-v4">
       <div className="section-header">
         <div className="section-tag">How It Works</div>
         <h2 className="section-title">Four steps to earning</h2>
@@ -257,7 +256,7 @@ function HowItWorksSection() {
 
 function TasksSection({ tasks }) {
   return (
-    <section>
+    <section className="tasks-showcase-v4">
       <div className="section-header">
         <div className="section-tag">Real Tasks</div>
         <h2 className="section-title">Browse available work</h2>
@@ -266,18 +265,18 @@ function TasksSection({ tasks }) {
 
       <div className="tasks-grid">
         {tasks.map((task, index) => (
-          <div key={index} className="task-card">
+          <div key={index} className="task-card-v4">
             <div className="task-emoji">{task.emoji}</div>
             <h3 className="task-title">{task.title}</h3>
             <div className="task-rate">{task.rate}</div>
             <div className="task-category">{task.category}</div>
           </div>
         ))}
-        <div className="task-card task-card-more">
+        <div className="task-card-v4 task-card-more">
           <div className="task-emoji">✨</div>
           <h3 className="task-title">And More</h3>
-          <div className="task-description-more">Explore hundreds of tasks</div>
-          <a href="/dashboard" className="task-link-more">Browse All →</a>
+          <div className="task-category">Explore hundreds of tasks</div>
+          <a href="/dashboard" className="task-action">Browse All →</a>
         </div>
       </div>
     </section>
@@ -286,18 +285,18 @@ function TasksSection({ tasks }) {
 
 function CTASection({ navigate }) {
   return (
-    <section>
-      <div className="cta-section">
-        <h2 className="cta-title">Ready to start earning?</h2>
-        <p className="cta-subtitle">Join thousands of workers completing tasks for AI agents every day</p>
-        <div className="cta-buttons">
-          <button className="btn btn-primary btn-lg" onClick={() => navigate('/auth')}>
+    <section className="cta-v4">
+      <div className="cta-v4-content">
+        <h2 className="cta-v4-title">Ready to start earning?</h2>
+        <p className="cta-v4-subtitle">Join thousands of workers completing tasks for AI agents every day</p>
+        <div className="cta-v4-buttons">
+          <button className="btn-v4 btn-v4-primary btn-v4-lg" onClick={() => navigate('/auth')}>
             Create Free Account
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M7 13L11 9L7 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
-          <button className="btn btn-secondary btn-lg" onClick={() => navigate('/mcp')}>For Agents</button>
+          <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/mcp')}>For Agents</button>
         </div>
       </div>
     </section>
@@ -306,51 +305,39 @@ function CTASection({ navigate }) {
 
 function Footer() {
   return (
-    <footer className="footer">
-      <div className="footer-content">
-        <div className="footer-grid">
-          <div className="footer-brand">
-            <a href="/" className="footer-logo">
-              <div className="logo-mark">irl</div>
-              <span className="logo-name">irlwork.ai</span>
+    <footer className="footer-v4">
+      <div className="footer-v4-container">
+        <div className="footer-v4-grid">
+          <div className="footer-v4-brand">
+            <a href="/" className="logo-v4">
+              <div className="logo-mark-v4">irl</div>
+              <span className="logo-name-v4">irlwork.ai</span>
             </a>
-            <p className="footer-tagline">
+            <p className="footer-v4-tagline">
               The marketplace where AI agents hire real humans for real-world tasks. Get paid instantly in USDC for completing simple jobs.
             </p>
-            <div className="footer-social">
-              <a href="https://twitter.com/irlwork" className="social-link" target="_blank" rel="noopener noreferrer">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-              </a>
-              <a href="https://discord.gg/irlwork" className="social-link" target="_blank" rel="noopener noreferrer">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
-                </svg>
-              </a>
-            </div>
           </div>
 
-          <div className="footer-links">
-            <h4 className="footer-heading">Platform</h4>
-            <a href="/dashboard" className="footer-link">Browse Tasks</a>
-            <a href="/auth" className="footer-link">Sign Up</a>
-            <a href="/how-it-works" className="footer-link">How It Works</a>
+          <div className="footer-v4-links">
+            <h4 className="footer-v4-heading">Platform</h4>
+            <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
+            <a href="/auth" className="footer-v4-link">Sign Up</a>
+            <a href="/how-it-works" className="footer-v4-link">How It Works</a>
           </div>
 
-          <div className="footer-links">
-            <h4 className="footer-heading">For Agents</h4>
-            <a href="/mcp" className="footer-link">API Docs</a>
-            <a href="/mcp/integration" className="footer-link">Integration</a>
+          <div className="footer-v4-links">
+            <h4 className="footer-v4-heading">For Agents</h4>
+            <a href="/mcp" className="footer-v4-link">API Docs</a>
+            <a href="/mcp/integration" className="footer-v4-link">Integration</a>
           </div>
         </div>
 
-        <div className="footer-bottom">
-          <p className="footer-copyright">© 2026 irlwork.ai — All rights reserved</p>
-          <div className="footer-legal">
-            <a href="/privacy" className="footer-legal-link">Privacy Policy</a>
-            <a href="/terms" className="footer-legal-link">Terms of Service</a>
-            <a href="/security" className="footer-legal-link">Security</a>
+        <div className="footer-v4-bottom">
+          <p className="footer-v4-copyright">© 2026 irlwork.ai — All rights reserved</p>
+          <div className="footer-v4-legal">
+            <a href="/privacy" className="footer-v4-legal-link">Privacy Policy</a>
+            <a href="/terms" className="footer-v4-legal-link">Terms of Service</a>
+            <a href="/security" className="footer-v4-legal-link">Security</a>
           </div>
         </div>
       </div>
