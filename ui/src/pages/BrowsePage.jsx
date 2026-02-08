@@ -108,14 +108,16 @@ export default function BrowsePage({ user }) {
 
         const res = await fetch(`${API_URL}/tasks/available?${params}`)
         if (res.ok) {
-          let data = await res.json()
+          const data = await res.json()
+          // API returns { tasks: [...], total, hasMore }
+          let taskList = Array.isArray(data) ? data : (data.tasks || [])
           // Sort
           if (sortBy === 'newest') {
-            data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            taskList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
           } else if (sortBy === 'highest') {
-            data.sort((a, b) => (b.budget || b.budget_cents/100) - (a.budget || a.budget_cents/100))
+            taskList.sort((a, b) => (b.budget || b.budget_cents/100) - (a.budget || a.budget_cents/100))
           }
-          setTasks(data)
+          setTasks(taskList)
         }
       } else {
         const params = new URLSearchParams()
