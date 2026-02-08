@@ -129,6 +129,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
   box-shadow: var(--shadow-md);
   transition: all var(--duration-normal) var(--ease-smooth);
 }
@@ -184,17 +187,9 @@
   font-size: 14px;
 }
 
-/* Show navbar-v4 only in landing-v4 context */
-body:not(.landing-v4) .navbar-v4 {
-  display: none;
-}
-
-.landing-v4 ~ * .navbar {
+/* Navbar is visible by default inside .landing-v4 */
+.landing-v4 .navbar-v4 {
   display: flex;
-}
-
-.landing-v4 ~ * .navbar-v4 {
-  display: none;
 }
 
 /* ─── HERO SECTION V4 ─── */
