@@ -2729,10 +2729,9 @@ app.post('/api/mcp', async (req, res) => {
       case 'list_humans': {
         let query = supabase
           .from('users')
-          .select('id, name, city, hourly_rate, skills, rating, jobs_completed, wallet_address')
+          .select('id, name, city, hourly_rate, skills, rating, jobs_completed, bio')
           .eq('type', 'human')
-          .eq('verified', true)
-          .eq('availability', 'available');
+          .eq('verified', true);
         
         if (params.category) query = query.like('skills', `%${params.category}%`);
         if (params.city) query = query.like('city', `%${params.city}%`);
@@ -3083,7 +3082,7 @@ app.post('/api/mcp', async (req, res) => {
       case 'set_webhook': {
         // Register webhook URL for task status updates
         const { webhook_url } = params;
-        
+
         await supabase
           .from('users')
           .update({
@@ -3091,11 +3090,80 @@ app.post('/api/mcp', async (req, res) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id);
-        
+
         res.json({ success: true, webhook_url });
         break;
       }
-      
+
+      case 'start_conversation': {
+        // Start a conversation with a human
+        const { humanId, human_id, message, initial_message } = params;
+        const targetHumanId = humanId || human_id;
+        const messageContent = message || initial_message;
+
+        if (!targetHumanId) {
+          return res.status(400).json({ error: 'humanId is required' });
+        }
+
+        // Check if human exists
+        const { data: human, error: humanError } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .eq('id', targetHumanId)
+          .eq('type', 'human')
+          .single();
+
+        if (humanError || !human) {
+          return res.status(404).json({ error: 'Human not found' });
+        }
+
+        // Check for existing conversation
+        const { data: existingConv } = await supabase
+          .from('conversations')
+          .select('id')
+          .or(`and(participant1_id.eq.${user.id},participant2_id.eq.${targetHumanId}),and(participant1_id.eq.${targetHumanId},participant2_id.eq.${user.id})`)
+          .single();
+
+        let conversationId;
+
+        if (existingConv) {
+          conversationId = existingConv.id;
+        } else {
+          // Create new conversation
+          conversationId = uuidv4();
+          const { error: convError } = await supabase
+            .from('conversations')
+            .insert({
+              id: conversationId,
+              participant1_id: user.id,
+              participant2_id: targetHumanId,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (convError) throw convError;
+        }
+
+        // Send initial message if provided
+        if (messageContent) {
+          const messageId = uuidv4();
+          await supabase.from('messages').insert({
+            id: messageId,
+            conversation_id: conversationId,
+            sender_id: user.id,
+            content: messageContent,
+            created_at: new Date().toISOString()
+          });
+        }
+
+        res.json({
+          conversation_id: conversationId,
+          human: { id: human.id, name: human.name },
+          message: messageContent ? 'Conversation started with initial message' : 'Conversation started'
+        });
+        break;
+      }
+
       default:
         res.status(400).json({ error: `Unknown method: ${method}` });
     }
