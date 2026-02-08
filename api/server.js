@@ -17,25 +17,42 @@ const { releasePaymentToPending, getWalletBalance } = require('./backend/service
 const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
 const { startBalancePromoter } = require('./backend/services/balancePromoter');
 
+// Distance calculation utilities
+const { haversineDistance, filterByDistance } = require('./utils/distance');
+
 // Configuration
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3002;
 
 // CORS configuration - be permissive for development
-const corsOrigins = process.env.CORS_ORIGINS 
-  ? process.env.CORS_ORIGINS.split(',')
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
   : [
-      'https://www.irlwork.ai', 
-      'https://irlwork.ai', 
+      'https://www.irlwork.ai',
+      'https://irlwork.ai',
       'https://api.irlwork.ai',
       'http://localhost:5173',
       'http://localhost:3002'
     ];
 
+console.log('[CORS] Configured origins:', corsOrigins);
+
 app.use(cors({
-  origin: corsOrigins,
-  credentials: true
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (corsOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`[CORS] Blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Debug CORS in development
@@ -142,18 +159,18 @@ app.use(async (req, res, next) => {
 // ============ AUTH ============
 app.post('/api/auth/register/human', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   try {
-    const { email, password, name, city, state, hourly_rate, categories = [], bio = '', phone = '' } = req.body;
-    
+    const { email, password, name, city, state, hourly_rate, categories = [], bio = '', phone = '', latitude, longitude, travel_radius } = req.body;
+
     if (!email || !name || !city) {
       return res.status(400).json({ error: 'Name, email, and city are required' });
     }
-    
+
     const id = uuidv4();
     const password_hash = password ? crypto.createHash('sha256').update(password).digest('hex') : null;
     const profile_completeness = 0.2 + (hourly_rate ? 0.1 : 0) + (categories.length > 0 ? 0.2 : 0) + (bio ? 0.1 : 0) + (phone ? 0.1 : 0);
-    
+
     const { data: user, error } = await supabase
       .from('users')
       .insert({
@@ -167,7 +184,10 @@ app.post('/api/auth/register/human', async (req, res) => {
         account_type: 'human',
         city,
         state,
-        service_radius: 25,
+        latitude: latitude != null ? parseFloat(latitude) : null,
+        longitude: longitude != null ? parseFloat(longitude) : null,
+        travel_radius: travel_radius || 25,
+        service_radius: travel_radius || 25,
         skills: JSON.stringify(categories),
         profile_completeness,
         availability: 'available',
@@ -355,52 +375,129 @@ app.get('/api/auth/verify', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Invalid token' });
   
-  res.json({ 
-    user: { 
+  // Calculate derived metrics
+  const completionRate = user.total_tasks_accepted > 0
+    ? ((user.total_tasks_completed / user.total_tasks_accepted) * 100).toFixed(1)
+    : null;
+
+  const paymentRate = user.total_tasks_completed > 0
+    ? (((user.total_tasks_completed - (user.total_disputes_filed || 0)) / user.total_tasks_completed) * 100).toFixed(1)
+    : null;
+
+  res.json({
+    user: {
       id: user.id, email: user.email, name: user.name, type: user.type,
-      city: user.city, hourly_rate: user.hourly_rate, 
+      city: user.city, hourly_rate: user.hourly_rate,
       wallet_address: user.wallet_address,
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
-      profile_completeness: user.profile_completeness
-    } 
+      profile_completeness: user.profile_completeness,
+      // Reputation metrics
+      total_tasks_completed: user.total_tasks_completed || 0,
+      total_tasks_posted: user.total_tasks_posted || 0,
+      total_tasks_accepted: user.total_tasks_accepted || 0,
+      total_disputes_filed: user.total_disputes_filed || 0,
+      total_usdc_paid: parseFloat(user.total_usdc_paid) || 0,
+      last_active_at: user.last_active_at,
+      // Derived metrics
+      completion_rate: completionRate,
+      payment_rate: paymentRate,
+      jobs_completed: user.jobs_completed || 0
+    }
   });
+});
+
+// ============ PAGE VIEWS ============
+app.post('/api/views', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const { page_type, target_id, referrer, ai_source } = req.body;
+
+  if (!['task', 'profile'].includes(page_type) || !target_id) {
+    return res.status(400).json({ error: 'Invalid page_type or target_id' });
+  }
+
+  // Get user if authenticated, but don't require auth
+  const user = await getUserByToken(req.headers.authorization);
+
+  // Hash IP + date for deduplication without storing raw IPs
+  const ipHash = crypto
+    .createHash('sha256')
+    .update((req.ip || 'unknown') + new Date().toISOString().slice(0, 10))
+    .digest('hex')
+    .slice(0, 16);
+
+  await supabase.from('page_views').insert({
+    page_type,
+    target_id,
+    viewer_id: user?.id || null,
+    referrer: referrer || req.headers.referer || null,
+    ai_source: ai_source || null,
+    ip_hash: ipHash
+  });
+
+  res.sendStatus(200);
 });
 
 // ============ HUMANS ============
 app.get('/api/humans', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { category, city, min_rate, max_rate } = req.query;
-  
+
+  const { category, city, min_rate, max_rate, user_lat, user_lng, radius } = req.query;
+
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, wallet_address')
+    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude')
     .eq('type', 'human')
     .eq('verified', true);
-  
+
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
-  
+
   const { data: humans, error } = await query.order('rating', { ascending: false }).limit(100);
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
-  res.json(humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || []);
+
+  // Parse skills for all humans
+  let results = humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || [];
+
+  // Apply distance filtering if coordinates provided
+  if (user_lat && user_lng && radius) {
+    const userLatitude = parseFloat(user_lat);
+    const userLongitude = parseFloat(user_lng);
+    const maxRadius = parseFloat(radius);
+
+    results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+  }
+
+  res.json(results);
+});
+
+app.get('/api/users/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, wallet_address, type')
+    .eq('id', req.params.id)
+    .single();
+
+  if (error || !user) return res.status(404).json({ error: 'Not found' });
+  res.json({ ...user, skills: JSON.parse(user.skills || '[]') });
 });
 
 app.get('/api/humans/:id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const { data: user, error } = await supabase
     .from('users')
     .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, wallet_address')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
-  
+
   if (error || !user) return res.status(404).json({ error: 'Not found' });
   res.json({ ...user, skills: JSON.parse(user.skills || '[]') });
 });
@@ -408,30 +505,37 @@ app.get('/api/humans/:id', async (req, res) => {
 // ============ PROFILE ============
 app.put('/api/humans/profile', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { wallet_address, hourly_rate, bio, categories, city, travel_radius } = req.body;
-  
+
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius } = req.body;
+
   const updates = { updated_at: new Date().toISOString() };
-  
+
+  if (name) updates.name = name;
   if (wallet_address) updates.wallet_address = wallet_address;
   if (hourly_rate) updates.hourly_rate = hourly_rate;
-  if (bio) updates.bio = bio;
-  if (categories) updates.skills = JSON.stringify(categories);
+  if (bio !== undefined) updates.bio = bio;
+  // Accept both 'skills' and 'categories' for backwards compatibility
+  // Store as JSON string to match registration format
+  if (skills) updates.skills = JSON.stringify(Array.isArray(skills) ? skills : JSON.parse(skills));
+  if (categories) updates.skills = JSON.stringify(Array.isArray(categories) ? categories : JSON.parse(categories));
   if (city) updates.city = city;
-  if (travel_radius) updates.service_radius = travel_radius;
-  
+  // Parse as floats to match registration format
+  if (latitude !== undefined) updates.latitude = latitude != null ? parseFloat(latitude) : null;
+  if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
+  if (travel_radius) updates.travel_radius = travel_radius;
+
   const { data, error } = await supabase
     .from('users')
     .update(updates)
     .eq('id', user.id)
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
+
   res.json({ success: true, user: data });
 });
 
@@ -527,22 +631,57 @@ app.get('/api/tasks/:id', async (req, res) => {
 
 app.get('/api/tasks/:id/status', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at')
+    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at, completed_at')
     .eq('id', req.params.id)
     .single();
-  
+
   if (error || !task) return res.status(404).json({ error: 'Not found' });
-  
+
+  // Get proof submissions
+  const { data: proofs } = await supabase
+    .from('task_proofs')
+    .select('id, status, proof_text, media_urls, created_at')
+    .eq('task_id', req.params.id)
+    .order('created_at', { ascending: false });
+
+  // Get pending payout to check dispute window
+  let dispute_window_info = null;
+  if (task.status === 'completed') {
+    const { data: payout } = await supabase
+      .from('payouts')
+      .select('dispute_window_closes_at, status')
+      .eq('task_id', req.params.id)
+      .eq('status', 'pending')
+      .single();
+
+    if (payout) {
+      const now = new Date();
+      const closes_at = new Date(payout.dispute_window_closes_at);
+      const ms_remaining = closes_at - now;
+      const hours_remaining = Math.max(0, ms_remaining / (1000 * 60 * 60));
+
+      dispute_window_info = {
+        dispute_window_closes_at: payout.dispute_window_closes_at,
+        dispute_window_open: ms_remaining > 0,
+        hours_remaining: hours_remaining.toFixed(1)
+      };
+    }
+  }
+
   res.json({
     task_id: task.id,
     task_status: task.status,
     escrow_status: task.escrow_status,
     escrow_amount: task.escrow_amount,
     escrow_deposited_at: task.escrow_deposited_at,
-    escrow_released_at: task.escrow_released_at
+    escrow_released_at: task.escrow_released_at,
+    proof_submitted_at: task.proof_submitted_at,
+    completed_at: task.completed_at,
+    proofs: proofs || [],
+    dispute_window: dispute_window_info
   });
 });
 
@@ -582,6 +721,121 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
   
   if (error) return res.status(500).json({ error: error.message });
   res.json({ id: application.id, status: 'pending' });
+});
+
+// Get applicants for a task
+app.get('/api/tasks/:id/applications', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: taskId } = req.params;
+
+  // Verify user is the task creator (agent)
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('creator_id')
+    .eq('id', taskId)
+    .single();
+
+  if (!task || task.creator_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  // Get all applications for this task
+  const { data: applications, error } = await supabase
+    .from('task_applications')
+    .select(`
+      *,
+      applicant:users!task_applications_human_id_fkey(
+        id,
+        name,
+        email,
+        hourly_rate,
+        rating,
+        review_count,
+        jobs_completed,
+        avatar_url
+      )
+    `)
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(applications || []);
+});
+
+// Agent assigns a human to a task
+app.post('/api/tasks/:id/assign', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: taskId } = req.params;
+  const { human_id } = req.body;
+
+  if (!human_id) {
+    return res.status(400).json({ error: 'human_id is required' });
+  }
+
+  // Verify user is the task creator (agent)
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', taskId)
+    .single();
+
+  if (!task || task.creator_id !== user.id) {
+    return res.status(403).json({ error: 'Only the task creator can assign humans' });
+  }
+
+  if (task.status !== 'open') {
+    return res.status(400).json({ error: 'Can only assign humans to open tasks' });
+  }
+
+  // Verify the human exists and applied
+  const { data: application } = await supabase
+    .from('task_applications')
+    .select('*')
+    .eq('task_id', taskId)
+    .eq('human_id', human_id)
+    .single();
+
+  if (!application) {
+    return res.status(404).json({ error: 'Human has not applied to this task' });
+  }
+
+  // Assign the human to the task
+  const { error } = await supabase
+    .from('tasks')
+    .update({
+      assignee_id: human_id,
+      status: 'in_progress',
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  // Update application status to accepted
+  await supabase
+    .from('task_applications')
+    .update({ status: 'accepted' })
+    .eq('id', application.id);
+
+  // Increment stats for the human
+  await supabase
+    .from('users')
+    .update({
+      total_tasks_accepted: supabase.raw('COALESCE(total_tasks_accepted, 0) + 1'),
+      last_active_at: new Date().toISOString()
+    })
+    .eq('id', human_id);
+
+  res.json({ success: true, task_id: taskId, human_id });
 });
 
 // ============ AGENT TASKS ============
@@ -2488,9 +2742,9 @@ app.get('/api/tasks/my-tasks', async (req, res) => {
 
 app.get('/api/tasks/available', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { category, city, urgency, limit = 50 } = req.query;
-  
+
+  const { category, city, urgency, limit = 50, user_lat, user_lng, radius } = req.query;
+
   let query = supabase
     .from('tasks')
     .select(`
@@ -2500,15 +2754,27 @@ app.get('/api/tasks/available', async (req, res) => {
     .eq('status', 'open')
     .order('created_at', { ascending: false })
     .limit(parseInt(limit));
-  
+
   if (category) query = query.eq('category', category);
   if (city) query = query.like('location', `%${city}%`);
   if (urgency) query = query.eq('urgency', urgency);
-  
+
   const { data: tasks, error } = await query;
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  res.json(tasks || []);
+
+  let results = tasks || [];
+
+  // Apply distance filtering if coordinates provided
+  if (user_lat && user_lng && radius) {
+    const userLatitude = parseFloat(user_lat);
+    const userLongitude = parseFloat(user_lng);
+    const maxRadius = parseFloat(radius);
+
+    results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+  }
+
+  res.json(results);
 });
 
 // ============ HUMANS DIRECTORY ============
@@ -2546,15 +2812,17 @@ app.get('/api/humans/:id/profile', async (req, res) => {
   const { data: user, error } = await supabase
     .from('users')
     .select(`
-      id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, 
-      verified, availability, wallet_address, created_at, profile_completeness
+      id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
+      verified, availability, wallet_address, created_at, profile_completeness,
+      total_tasks_completed, total_tasks_posted, total_tasks_accepted,
+      total_disputes_filed, total_usdc_paid, last_active_at
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
-  
+
   if (error || !user) return res.status(404).json({ error: 'Human not found' });
-  
+
   // Get reviews
   const { data: reviews } = await supabase
     .from('reviews')
@@ -2562,11 +2830,23 @@ app.get('/api/humans/:id/profile', async (req, res) => {
     .eq('human_id', user.id)
     .order('created_at', { ascending: false })
     .limit(10);
-  
+
+  // Calculate derived metrics
+  const completionRate = user.total_tasks_accepted > 0
+    ? ((user.total_tasks_completed / user.total_tasks_accepted) * 100).toFixed(1)
+    : null;
+
+  const paymentRate = user.total_tasks_completed > 0
+    ? (((user.total_tasks_completed - (user.total_disputes_filed || 0)) / user.total_tasks_completed) * 100).toFixed(1)
+    : null;
+
   res.json({
     ...user,
     skills: JSON.parse(user.skills || '[]'),
-    reviews: reviews || []
+    reviews: reviews || [],
+    // Derived metrics
+    completion_rate: completionRate,
+    payment_rate: paymentRate
   });
 });
 
@@ -2654,7 +2934,16 @@ app.get('/api/profile', async (req, res) => {
     .single();
   
   if (error || !profile) return res.status(404).json({ error: 'Profile not found' });
-  
+
+  // Calculate derived metrics
+  const completionRate = profile.total_tasks_accepted > 0
+    ? ((profile.total_tasks_completed / profile.total_tasks_accepted) * 100).toFixed(1)
+    : null;
+
+  const paymentRate = profile.total_tasks_completed > 0
+    ? (((profile.total_tasks_completed - (profile.total_disputes_filed || 0)) / profile.total_tasks_completed) * 100).toFixed(1)
+    : null;
+
   res.json({
     id: profile.id,
     email: profile.email,
@@ -2671,7 +2960,17 @@ app.get('/api/profile', async (req, res) => {
     verified: profile.verified,
     availability: profile.availability,
     profile_completeness: profile.profile_completeness,
-    created_at: profile.created_at
+    created_at: profile.created_at,
+    // Reputation metrics
+    total_tasks_completed: profile.total_tasks_completed || 0,
+    total_tasks_posted: profile.total_tasks_posted || 0,
+    total_tasks_accepted: profile.total_tasks_accepted || 0,
+    total_disputes_filed: profile.total_disputes_filed || 0,
+    total_usdc_paid: parseFloat(profile.total_usdc_paid) || 0,
+    last_active_at: profile.last_active_at,
+    // Derived metrics
+    completion_rate: completionRate,
+    payment_rate: paymentRate
   });
 });
 
