@@ -1094,7 +1094,13 @@ app.get('/api/users/:id', async (req, res) => {
   res.json({ ...user, skills: JSON.parse(user.skills || '[]') });
 });
 
-app.get('/api/humans/:id', async (req, res) => {
+app.get('/api/humans/:id', async (req, res, next) => {
+  // Skip if id is a reserved route name (handled by later routes)
+  const reservedRoutes = ['directory'];
+  if (reservedRoutes.includes(req.params.id)) {
+    return next();
+  }
+
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const { data: user, error } = await supabase
@@ -1288,15 +1294,21 @@ app.post('/api/tasks', async (req, res) => {
   });
 });
 
-app.get('/api/tasks/:id', async (req, res) => {
+app.get('/api/tasks/:id', async (req, res, next) => {
+  // Skip if id is a reserved route name (handled by later routes)
+  const reservedRoutes = ['available', 'my-tasks'];
+  if (reservedRoutes.includes(req.params.id)) {
+    return next();
+  }
+
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const { data: task, error } = await supabase
     .from('tasks')
     .select('*')
     .eq('id', req.params.id)
     .single();
-  
+
   if (error || !task) return res.status(404).json({ error: 'Not found' });
   res.json(task);
 });
@@ -3416,62 +3428,139 @@ app.get('/api/tasks/my-tasks', async (req, res) => {
 app.get('/api/tasks/available', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const { category, city, urgency, limit = 50, user_lat, user_lng, radius, radius_km } = req.query;
+  const {
+    category,
+    city,
+    urgency,
+    limit = 50,
+    offset = 0,
+    user_lat,
+    user_lng,
+    radius,
+    radius_km,
+    search,
+    sort = 'distance'
+  } = req.query;
 
-  let query = supabase
-    .from('tasks')
-    .select(`
-      *,
-      agent:users!tasks_agent_id_fkey(id, name, organization)
-    `)
-    .eq('status', 'open')
-    .order('created_at', { ascending: false })
-    .limit(parseInt(limit));
+  try {
+    // If lat/lng provided, use RPC function for optimized distance-based search
+    if (user_lat && user_lng && radius_km !== 'anywhere') {
+      const radiusValue = radius_km ? parseFloat(radius_km) : (radius ? parseFloat(radius) * 1.60934 : 25);
+      const effectiveRadius = radiusValue === 0 ? 5 : radiusValue; // 0 means "exact city" -> use 5km
 
-  if (category) query = query.eq('category', category);
-  if (urgency) query = query.eq('urgency', urgency);
+      const { data, error } = await supabase.rpc('search_tasks_nearby', {
+        user_lat: parseFloat(user_lat),
+        user_lng: parseFloat(user_lng),
+        radius: effectiveRadius,
+        category_filter: category || null,
+        search_text: search || null,
+        sort_by: sort || 'distance',
+        result_limit: parseInt(limit) || 50,
+        result_offset: parseInt(offset) || 0
+      });
 
-  const { data: tasks, error } = await query;
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  let results = tasks || [];
-
-  // Apply distance filtering if coordinates provided (km preferred, miles fallback)
-  if (user_lat && user_lng && (radius_km || radius) && radius_km !== 'anywhere') {
-    const userLatitude = parseFloat(user_lat);
-    const userLongitude = parseFloat(user_lng);
-
-    if (radius_km) {
-      const radiusKm = parseFloat(radius_km) || 50;
-      if (radiusKm === 0) {
-        results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
+      if (error) {
+        console.error('RPC error:', error);
+        // Fall through to legacy filtering if RPC fails
       } else {
-        results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
+        // Merge in tasks without coordinates that match city string
+        let results = data || [];
+        if (city) {
+          const { data: cityTasks } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('status', 'open')
+            .is('latitude', null)
+            .ilike('location', `%${city}%`)
+            .limit(20);
+
+          if (cityTasks) {
+            const existingIds = new Set(results.map(r => r.id));
+            cityTasks.forEach(t => {
+              if (!existingIds.has(t.id)) {
+                results.push({ ...t, distance_km: null });
+              }
+            });
+          }
+        }
+
+        return res.json({
+          tasks: results,
+          total: results.length,
+          hasMore: results.length === parseInt(limit)
+        });
       }
-    } else if (radius) {
-      const maxRadius = parseFloat(radius);
-      results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
     }
 
-    // Fallback: include tasks without coords that match city string
-    if (city) {
-      const tasksWithoutCoords = (tasks || []).filter(t =>
-        !t.latitude && !t.longitude &&
+    // Fallback: no location or RPC failed - use legacy filtering
+    let query = supabase
+      .from('tasks')
+      .select(`
+        *,
+        agent:users!tasks_agent_id_fkey(id, name, organization)
+      `)
+      .eq('status', 'open');
+
+    if (category) query = query.eq('category', category);
+    if (urgency) query = query.eq('urgency', urgency);
+    if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+
+    // Sort
+    if (sort === 'pay_high') {
+      query = query.order('budget', { ascending: false, nullsFirst: false });
+    } else if (sort === 'pay_low') {
+      query = query.order('budget', { ascending: true, nullsFirst: false });
+    } else {
+      query = query.order('created_at', { ascending: false });
+    }
+
+    query = query.limit(parseInt(limit));
+
+    const { data: tasks, error } = await query;
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    let results = tasks || [];
+
+    // Apply distance filtering if coordinates provided (legacy fallback)
+    if (user_lat && user_lng && (radius_km || radius) && radius_km !== 'anywhere') {
+      const userLatitude = parseFloat(user_lat);
+      const userLongitude = parseFloat(user_lng);
+
+      if (radius_km) {
+        const radiusKm = parseFloat(radius_km) || 50;
+        if (radiusKm === 0) {
+          results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
+        } else {
+          results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
+        }
+      } else if (radius) {
+        const maxRadius = parseFloat(radius);
+        results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+      }
+
+      // Fallback: include tasks without coords that match city string
+      if (city) {
+        const tasksWithoutCoords = (tasks || []).filter(t =>
+          !t.latitude && !t.longitude &&
+          t.location?.toLowerCase().includes(city.toLowerCase())
+        );
+        const resultIds = new Set(results.map(r => r.id));
+        tasksWithoutCoords.forEach(t => {
+          if (!resultIds.has(t.id)) results.push(t);
+        });
+      }
+    } else if (city) {
+      results = results.filter(t =>
         t.location?.toLowerCase().includes(city.toLowerCase())
       );
-      const resultIds = new Set(results.map(r => r.id));
-      tasksWithoutCoords.forEach(t => {
-        if (!resultIds.has(t.id)) results.push(t);
-      });
     }
-  } else if (city) {
-    results = results.filter(t =>
-      t.location?.toLowerCase().includes(city.toLowerCase())
-    );
-  }
 
-  res.json(results);
+    res.json({ tasks: results, total: results.length, hasMore: false });
+  } catch (err) {
+    console.error('Error fetching available tasks:', err);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
 });
 
 // ============ HUMANS DIRECTORY ============
@@ -4058,30 +4147,7 @@ app.get('/api/my-tasks', async (req, res) => {
   res.json(tasks || []);
 });
 
-app.get('/api/tasks/available', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { category, city, min_budget, max_budget } = req.query;
-  
-  let query = supabase
-    .from('tasks')
-    .select(`
-      *,
-      creator:users!creator_id(id, name, email, rating)
-    `)
-    .eq('status', 'open')
-    .order('created_at', { ascending: false });
-  
-  if (category) query = query.eq('category', category);
-  if (city) query = query.like('city', `%${city}%`);
-  if (min_budget) query = query.gte('budget', parseFloat(min_budget));
-  if (max_budget) query = query.lte('budget', parseFloat(max_budget));
-  
-  const { data: tasks, error } = await query;
-  
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(tasks || []);
-});
+// REMOVED: Duplicate /api/tasks/available route - consolidated into main route above (line ~3416)
 
 // ============ TASKS CRUD ============
 app.post('/api/tasks', async (req, res) => {

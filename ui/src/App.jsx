@@ -11,6 +11,7 @@ import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
 import ActivityFeed from './components/ActivityFeed'
 import BrowsePage from './pages/BrowsePage'
+import BrowseTasksV2 from './pages/BrowseTasksV2'
 import LandingPageV4 from './pages/LandingPageV4'
 import CityAutocomplete from './components/CityAutocomplete'
 
@@ -2313,112 +2314,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
         {/* Working Mode: Browse Tasks Tab - Shows available tasks to claim */}
         {!hiringMode && activeTab === 'browse' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">Browse Tasks</h1>
-
-            {/* Search & Filter */}
-            <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
-                <input
-                  type="text"
-                  placeholder="Search tasks..."
-                  className="dashboard-v4-form-input"
-                  style={{ paddingLeft: 44 }}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <div style={{ width: 160 }}>
-                <CustomDropdown
-                  value={filterCategory}
-                  onChange={setFilterCategory}
-                  options={[
-                    { value: '', label: 'All Categories' },
-                    ...['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => ({
-                      value: c,
-                      label: c.charAt(0).toUpperCase() + c.slice(1)
-                    }))
-                  ]}
-                  placeholder="All Categories"
-                />
-              </div>
-              <div style={{ width: 200 }}>
-                <CityAutocomplete
-                  value={locationFilter}
-                  onChange={handleLocationSelect}
-                  placeholder="Filter by city..."
-                  className="dashboard-v4-city-filter"
-                />
-              </div>
-              <div style={{ width: 140 }}>
-                <CustomDropdown
-                  value={radiusFilter}
-                  onChange={setRadiusFilter}
-                  options={[
-                    { value: '0', label: 'Exact City' },
-                    { value: '25', label: 'Within 25km' },
-                    { value: '50', label: 'Within 50km' },
-                    { value: '100', label: 'Within 100km' },
-                    { value: 'anywhere', label: 'Anywhere' }
-                  ]}
-                  placeholder="Radius"
-                />
-              </div>
-            </div>
-
-            {availableTasks.length === 0 ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
-                <p className="dashboard-v4-empty-title">No tasks available right now</p>
-                <p className="dashboard-v4-empty-text">New tasks are posted every day. Check back soon or adjust your filters!</p>
-                <button className="v4-btn v4-btn-primary" style={{ marginTop: 16 }} onClick={fetchAvailableTasks}>
-                  Refresh Tasks
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
-                {availableTasks
-                  .filter(t => !searchQuery || t.title?.toLowerCase().includes(searchQuery.toLowerCase()) || t.description?.toLowerCase().includes(searchQuery.toLowerCase()))
-                  .filter(t => !filterCategory || t.category === filterCategory)
-                  .filter(t => !locationFilter || t.city?.toLowerCase().includes(locationFilter.replace('-', ' ')))
-                  .map(task => (
-                  <div key={task.id} className="dashboard-v4-task-card">
-                    <div className="dashboard-v4-task-header">
-                      <div>
-                        <span className="dashboard-v4-task-status open">Open</span>
-                        <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
-                      </div>
-                      <span className="dashboard-v4-task-budget">${task.budget || (task.budget_cents ? task.budget_cents / 100 : 0)}</span>
-                    </div>
-
-                    {task.description && (
-                      <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {task.description}
-                      </p>
-                    )}
-
-                    <div className="dashboard-v4-task-meta">
-                      <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                      <span className="dashboard-v4-task-meta-item">📍 {task.city || task.location || 'Remote'}</span>
-                      {task.escrow_status === 'funded' && (
-                        <span className="dashboard-v4-task-meta-item" style={{ color: 'var(--success)' }}>✓ Escrow Funded</span>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                        Posted {new Date(task.created_at).toLocaleDateString()}
-                      </span>
-                      <button className="v4-btn v4-btn-primary" onClick={() => acceptTask(task.id)}>
-                        Apply Now
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <BrowseTasksV2
+            user={user}
+            initialLocation={{
+              lat: filterCoords?.lat || user?.latitude,
+              lng: filterCoords?.lng || user?.longitude,
+              city: locationFilter || user?.city
+            }}
+            initialRadius={radiusFilter || '25'}
+          />
         )}
 
         {/* Hiring Mode: Browse Humans Tab - Shows available workers */}
