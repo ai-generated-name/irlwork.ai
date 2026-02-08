@@ -1305,6 +1305,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     fetchActivities()
   }, [hiringMode])
 
+  // Re-fetch tasks when location/radius filters change
+  useEffect(() => {
+    if (!hiringMode) {
+      fetchAvailableTasks()
+    }
+  }, [filterCoords.lat, filterCoords.lng, radiusFilter, filterCategory])
+
   // Real-time subscriptions for agents
   useEffect(() => {
     if (!hiringMode || !user) return
@@ -1362,7 +1369,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   // Fetch available tasks for workers to browse
   const fetchAvailableTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/tasks/available`)
+      const params = new URLSearchParams()
+      if (filterCoords.lat && filterCoords.lng) {
+        params.set('user_lat', filterCoords.lat)
+        params.set('user_lng', filterCoords.lng)
+        params.set('radius_km', radiusFilter)
+        if (locationFilter) params.set('city', locationFilter)
+      } else if (locationFilter) {
+        params.set('city', locationFilter)
+      }
+      if (filterCategory) params.set('category', filterCategory)
+
+      const url = params.toString() ? `${API_URL}/tasks/available?${params}` : `${API_URL}/tasks/available`
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
         setAvailableTasks(data || [])
@@ -2269,17 +2288,26 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   placeholder="All Categories"
                 />
               </div>
-              <div style={{ width: 160 }}>
-                <CustomDropdown
+              <div style={{ width: 200 }}>
+                <CityAutocomplete
                   value={locationFilter}
-                  onChange={setLocationFilter}
+                  onChange={handleLocationSelect}
+                  placeholder="Filter by city..."
+                  className="dashboard-v4-city-filter"
+                />
+              </div>
+              <div style={{ width: 140 }}>
+                <CustomDropdown
+                  value={radiusFilter}
+                  onChange={setRadiusFilter}
                   options={[
-                    { value: '', label: 'All Locations' },
-                    { value: 'san-francisco', label: 'San Francisco' },
-                    { value: 'new-york', label: 'New York' },
-                    { value: 'los-angeles', label: 'Los Angeles' }
+                    { value: '0', label: 'Exact City' },
+                    { value: '25', label: 'Within 25km' },
+                    { value: '50', label: 'Within 50km' },
+                    { value: '100', label: 'Within 100km' },
+                    { value: 'anywhere', label: 'Anywhere' }
                   ]}
-                  placeholder="All Locations"
+                  placeholder="Radius"
                 />
               </div>
             </div>

@@ -384,7 +384,7 @@ app.post('/api/auth/register/human', async (req, res) => {
         availability: 'available',
         rating: 0,
         jobs_completed: 0,
-        verified: false,
+        verified: true,
         needs_onboarding: false,
         created_at: new Date().toISOString()
       })
@@ -3638,8 +3638,8 @@ app.put('/api/profile', async (req, res) => {
   
   const { name, bio, city, state, hourly_rate, skills, availability, wallet_address } = req.body;
   
-  const updates = { updated_at: new Date().toISOString() };
-  
+  const updates = { updated_at: new Date().toISOString(), verified: true };
+
   if (name) updates.name = name;
   if (bio !== undefined) updates.bio = bio;
   if (city) updates.city = city;
