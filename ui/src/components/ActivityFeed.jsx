@@ -40,19 +40,19 @@ export default function ActivityFeed({ activities = [] }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-v4-sm mt-8">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-      <div className="space-y-3">
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 shadow-v4-sm mt-6 md:mt-8">
+      <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Recent Activity</h3>
+      <div className="space-y-2 md:space-y-3">
         {activities.length === 0 ? (
           <p className="text-gray-500 text-sm py-4 text-center">No recent activity</p>
         ) : (
           activities.slice(0, 5).map((activity, i) => (
-            <div key={i} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${getActivityColor(activity.type)}`}>
+            <div key={i} className="flex items-start gap-2 md:gap-3 py-2 border-b border-gray-50 last:border-0">
+              <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm flex-shrink-0 ${getActivityColor(activity.type)}`}>
                 {getActivityIcon(activity.type)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-700 truncate">{activity.message}</p>
+                <p className="text-xs md:text-sm text-gray-700 line-clamp-2">{activity.message}</p>
                 <p className="text-xs text-gray-400">{formatTimeAgo(activity.created_at)}</p>
               </div>
             </div>

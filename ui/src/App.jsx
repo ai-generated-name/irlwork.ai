@@ -969,6 +969,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
   const [activities, setActivities] = useState([])
@@ -1396,8 +1397,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   return (
     <div className={`min-h-screen ${styles.gradient} flex`}>
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-teal flex flex-col">
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-teal flex flex-col transform transition-transform duration-300 ease-in-out
+        md:relative md:translate-x-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         {/* Logo */}
         <div
           className="flex items-center gap-3 p-6 cursor-pointer"
@@ -1419,7 +1432,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           {navItems.map(item => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id)
+                setSidebarOpen(false)
+              }}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
                 activeTab === item.id
                   ? 'bg-white text-teal font-medium shadow-v4-sm'
@@ -1444,13 +1460,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           <UserDropdown
             user={user}
             onLogout={onLogout}
-            onNavigate={(tab) => setActiveTab(tab)}
+            onNavigate={(tab) => {
+              setActiveTab(tab)
+              setSidebarOpen(false)
+            }}
           />
         </div>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-cream">
+      <main className="flex-1 flex flex-col overflow-hidden bg-cream md:ml-0">
         {/* Top Filter Bar */}
         <TopFilterBar
           searchQuery={searchQuery}
@@ -1459,14 +1478,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           onLocationChange={setLocationFilter}
           categoryFilter={filterCategory}
           onCategoryChange={setFilterCategory}
+          onMenuClick={() => setSidebarOpen(true)}
         />
 
         {/* Content Area */}
-        <div className="flex-1 p-8 overflow-auto">
+        <div className="flex-1 p-4 md:p-8 overflow-auto">
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">My Tasks</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">My Tasks</h1>
 
             {loading ? (
               <p className="text-gray-500">Loading...</p>
@@ -1577,7 +1597,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: Create Task Tab */}
         {hiringMode && activeTab === 'create' && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Create Task</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Create Task</h1>
             <div className={`${styles.card} max-w-2xl`}>
               <form className="space-y-4" onSubmit={handleCreateTask}>
                 <input
@@ -1594,7 +1614,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   value={taskForm.description}
                   onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <select
                     className={styles.input}
                     value={taskForm.category}
@@ -1635,7 +1655,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: Hired Tab */}
         {hiringMode && activeTab === 'humans' && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Hired</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Hired</h1>
             <div className={`${styles.card} text-center py-12`}>
               <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
                 <span className="text-3xl">{Icons.humans}</span>
@@ -1650,7 +1670,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {!hiringMode && activeTab === 'tasks' && (
           <div>
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900">My Tasks</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Tasks</h1>
               <span className="text-gray-500">{tasks.filter(t => t.status === 'in_progress').length} active</span>
             </div>
 
@@ -1738,7 +1758,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: Browse Tab */}
         {!hiringMode && activeTab === 'browse' && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Browse Workers</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Browse Workers</h1>
             
             {/* Search & Filter */}
             <div className="flex gap-4 mb-6">
@@ -1825,7 +1845,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: Payments Tab */}
         {!hiringMode && activeTab === 'payments' && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Earnings Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Earnings</h1>
             <EarningsDashboard user={user} />
           </div>
         )}
@@ -1833,7 +1853,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Profile Tab - Updated with Settings */}
         {activeTab === 'profile' && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Profile</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Profile</h1>
 
             <div className={`${styles.card} max-w-xl`}>
               <div className="flex items-center gap-4 mb-6">
@@ -1899,7 +1919,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div>
-            <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-6 md:mb-8">Settings</h1>
             
             <div className={`${styles.card} max-w-2xl mb-6`}>
               <h2 className="text-xl font-semibold text-white mb-6">Profile Settings</h2>
@@ -2017,63 +2037,75 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Messages Tab */}
         {activeTab === 'messages' && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Messages</h1>
-            
-            <div className={`${styles.card} p-0 overflow-hidden`} style={{ height: 'calc(100vh - 200px)' }}>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Messages</h1>
+
+            <div className={`${styles.card} p-0 overflow-hidden`} style={{ height: 'calc(100vh - 200px)', minHeight: '400px' }}>
               <div className="grid md:grid-cols-3 h-full">
-                {/* Conversations List */}
-                <div className="border-r border-white/10 overflow-y-auto">
+                {/* Conversations List - Hidden on mobile when conversation is selected */}
+                <div className={`border-r border-gray-100 overflow-y-auto ${selectedConversation ? 'hidden md:block' : 'block'}`}>
                   {conversations.length === 0 ? (
                     <div className="p-6 text-center text-gray-400">No conversations yet</div>
                   ) : (
                     conversations.map(c => (
                       <div
                         key={c.id}
-                        className={`p-4 border-b border-white/10 cursor-pointer hover:bg-white/5 ${selectedConversation === c.id ? 'bg-orange-500/20' : ''}`}
+                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selectedConversation === c.id ? 'bg-teal/10' : ''}`}
                         onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center text-orange-400 font-bold">
+                          <div className="w-10 h-10 bg-teal/20 rounded-full flex items-center justify-center text-teal font-bold">
                             {c.other_user?.name?.charAt(0) || '?'}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-white font-medium truncate">{c.otherUser?.name || 'Unknown'}</p>
-                            <p className="text-gray-400 text-sm truncate">{c.last_message || 'No messages'}</p>
+                            <p className="text-gray-900 font-medium truncate">{c.otherUser?.name || 'Unknown'}</p>
+                            <p className="text-gray-500 text-sm truncate">{c.last_message || 'No messages'}</p>
                           </div>
                           {c.unread > 0 && (
-                            <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">{c.unread}</span>
+                            <span className="bg-coral text-white text-xs px-2 py-0.5 rounded-full">{c.unread}</span>
                           )}
                         </div>
                       </div>
                     ))
                   )}
                 </div>
-                
-                {/* Messages */}
-                <div className="col-span-2 flex flex-col h-full">
+
+                {/* Messages - Full width on mobile when selected */}
+                <div className={`md:col-span-2 flex flex-col h-full ${selectedConversation ? 'block' : 'hidden md:flex'}`}>
                   {selectedConversation ? (
                     <>
-                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {/* Mobile Back Button */}
+                      <div className="md:hidden p-3 border-b border-gray-100 flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedConversation(null)}
+                          className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <span className="font-medium text-gray-900">Back</span>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
                         {messages.map(m => (
                           <div key={m.id} className={`flex ${m.sender_id === user.id ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[70%] rounded-xl p-3 ${m.sender_id === user.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-white'}`}>
-                              <p>{m.content}</p>
-                              <p className={`text-xs mt-1 ${m.sender_id === user.id ? 'text-orange-100' : 'text-gray-400'}`}>
+                            <div className={`max-w-[85%] md:max-w-[70%] rounded-xl p-3 ${m.sender_id === user.id ? 'bg-coral text-white' : 'bg-gray-100 text-gray-900'}`}>
+                              <p className="text-sm md:text-base">{m.content}</p>
+                              <p className={`text-xs mt-1 ${m.sender_id === user.id ? 'text-white/70' : 'text-gray-500'}`}>
                                 {new Date(m.created_at).toLocaleTimeString()}
                               </p>
                             </div>
                           </div>
                         ))}
                       </div>
-                      <form onSubmit={sendMessage} className="p-4 border-t border-white/10 flex gap-3">
+                      <form onSubmit={sendMessage} className="p-3 md:p-4 border-t border-gray-100 flex gap-2 md:gap-3">
                         <input
                           type="text"
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Type a message..."
-                          className={`${styles.input} flex-1`}
+                          className={`${styles.input} flex-1 text-sm md:text-base`}
                         />
-                        <Button type="submit">Send</Button>
+                        <Button type="submit" className="px-4 md:px-5">Send</Button>
                       </form>
                     </>
                   ) : (
@@ -2090,7 +2122,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Notifications</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Notifications</h1>
 
             {notifications.length === 0 ? (
               <div className={`${styles.card} text-center py-12`}>

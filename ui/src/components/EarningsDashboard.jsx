@@ -129,7 +129,7 @@ function EarningsDashboard({ user }) {
   const allTransactions = balanceData?.transactions || []
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Success Message */}
       {withdrawResult && (
         <div className="bg-[#D1FAE5] border border-[#059669]/20 rounded-xl p-4">
@@ -150,104 +150,107 @@ function EarningsDashboard({ user }) {
         </div>
       )}
 
-      {/* Pending Balance Card - Amber/Yellow */}
-      <div className="bg-[#FEF3C7] border-2 border-[#D97706]/20 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-[#D97706] text-sm font-medium uppercase tracking-wide">Pending</h3>
-            <p className="text-xs text-[#D97706]/60 mt-1">In 48-hour dispute window</p>
+      {/* Balance Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        {/* Pending Balance Card - Amber/Yellow */}
+        <div className="bg-[#FEF3C7] border-2 border-[#D97706]/20 rounded-xl p-4 md:p-6">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <div>
+              <h3 className="text-[#D97706] text-xs md:text-sm font-medium uppercase tracking-wide">Pending</h3>
+              <p className="text-xs text-[#D97706]/60 mt-0.5 md:mt-1">48-hour hold</p>
+            </div>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-[#D97706]/20 rounded-full flex items-center justify-center text-[#D97706] text-lg md:text-xl">
+              ⏱️
+            </div>
           </div>
-          <div className="w-12 h-12 bg-[#D97706]/20 rounded-full flex items-center justify-center text-[#D97706] text-xl">
-            ⏱️
-          </div>
-        </div>
 
-        <p className="text-4xl font-bold text-[#92400E]">
-          ${balanceData?.pending?.toFixed(2) || '0.00'}
-        </p>
+          <p className="text-3xl md:text-4xl font-bold text-[#92400E]">
+            ${balanceData?.pending?.toFixed(2) || '0.00'}
+          </p>
 
-        {pendingTransactions.length > 0 ? (
-          <div className="mt-4 space-y-2">
-            {pendingTransactions.slice(0, 3).map(tx => (
-              <div key={tx.id} className="flex justify-between items-center text-sm py-2 border-t border-[#D97706]/10">
-                <div>
-                  <p className="text-[#92400E]">Task #{tx.task_id?.substring(0, 8)}</p>
-                  <p className="text-xs text-[#D97706]/60">{formatDate(tx.clears_at)}</p>
+          {pendingTransactions.length > 0 ? (
+            <div className="mt-3 md:mt-4 space-y-2">
+              {pendingTransactions.slice(0, 3).map(tx => (
+                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[#D97706]/10">
+                  <div>
+                    <p className="text-[#92400E]">Task #{tx.task_id?.substring(0, 8)}</p>
+                    <p className="text-xs text-[#D97706]/60">{formatDate(tx.clears_at)}</p>
+                  </div>
+                  <p className="text-[#92400E] font-semibold">
+                    ${(tx.amount_cents / 100).toFixed(2)}
+                  </p>
                 </div>
-                <p className="text-[#92400E] font-semibold">
-                  ${(tx.amount_cents / 100).toFixed(2)}
+              ))}
+              {pendingTransactions.length > 3 && (
+                <p className="text-xs text-[#D97706]/60 text-center pt-2">
+                  +{pendingTransactions.length - 3} more pending
                 </p>
-              </div>
-            ))}
-            {pendingTransactions.length > 3 && (
-              <p className="text-xs text-[#D97706]/60 text-center pt-2">
-                +{pendingTransactions.length - 3} more pending
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="text-[#D97706]/60 text-sm mt-4">No pending transactions</p>
-        )}
-      </div>
-
-      {/* Available Balance Card - Green */}
-      <div className="bg-[#D1FAE5] border-2 border-[#059669]/20 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-[#059669] text-sm font-medium uppercase tracking-wide">Available</h3>
-            <p className="text-xs text-[#059669]/60 mt-1">Ready to withdraw</p>
-          </div>
-          <div className="w-12 h-12 bg-[#059669]/20 rounded-full flex items-center justify-center text-[#059669] text-xl">
-            💳
-          </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-[#D97706]/60 text-xs md:text-sm mt-3 md:mt-4">No pending transactions</p>
+          )}
         </div>
 
-        <p className="text-4xl font-bold text-[#065F46]">
-          ${balanceData?.available?.toFixed(2) || '0.00'}
-        </p>
-
-        {!user.wallet_address && (
-          <div className="mt-4 bg-[#FEF3C7] border border-[#D97706]/20 rounded-lg p-3">
-            <p className="text-[#D97706] text-sm">
-              ⚠️ Add wallet address in profile to withdraw
-            </p>
+        {/* Available Balance Card - Green */}
+        <div className="bg-[#D1FAE5] border-2 border-[#059669]/20 rounded-xl p-4 md:p-6">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <div>
+              <h3 className="text-[#059669] text-xs md:text-sm font-medium uppercase tracking-wide">Available</h3>
+              <p className="text-xs text-[#059669]/60 mt-0.5 md:mt-1">Ready to withdraw</p>
+            </div>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-[#059669]/20 rounded-full flex items-center justify-center text-[#059669] text-lg md:text-xl">
+              💳
+            </div>
           </div>
-        )}
 
-        <button
-          onClick={handleWithdraw}
-          disabled={withdrawing || !balanceData?.available_cents || balanceData.available_cents <= 0 || !user.wallet_address}
-          className={`
-            mt-4 w-full py-3 px-4 rounded-xl font-semibold transition-all
-            ${withdrawing || !balanceData?.available_cents || balanceData.available_cents <= 0 || !user.wallet_address
-              ? 'bg-[#F5F2ED] text-[#8A8A8A] cursor-not-allowed'
-              : 'bg-[#059669] hover:bg-[#047857] text-white shadow-lg hover:shadow-xl'
-            }
-          `}
-        >
-          {withdrawing ? 'Processing...' : 'Withdraw to Wallet'}
-        </button>
+          <p className="text-3xl md:text-4xl font-bold text-[#065F46]">
+            ${balanceData?.available?.toFixed(2) || '0.00'}
+          </p>
 
-        {availableTransactions.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {availableTransactions.slice(0, 2).map(tx => (
-              <div key={tx.id} className="flex justify-between items-center text-sm py-2 border-t border-[#059669]/10">
-                <p className="text-[#065F46]">Task #{tx.task_id?.substring(0, 8)}</p>
-                <p className="text-[#065F46] font-semibold">
-                  ${(tx.amount_cents / 100).toFixed(2)}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+          {!user.wallet_address && (
+            <div className="mt-3 md:mt-4 bg-[#FEF3C7] border border-[#D97706]/20 rounded-lg p-2.5 md:p-3">
+              <p className="text-[#D97706] text-xs md:text-sm">
+                ⚠️ Add wallet in profile to withdraw
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={handleWithdraw}
+            disabled={withdrawing || !balanceData?.available_cents || balanceData.available_cents <= 0 || !user.wallet_address}
+            className={`
+              mt-3 md:mt-4 w-full py-2.5 md:py-3 px-4 rounded-xl font-semibold transition-all text-sm md:text-base
+              ${withdrawing || !balanceData?.available_cents || balanceData.available_cents <= 0 || !user.wallet_address
+                ? 'bg-[#F5F2ED] text-[#8A8A8A] cursor-not-allowed'
+                : 'bg-[#059669] hover:bg-[#047857] text-white shadow-lg hover:shadow-xl'
+              }
+            `}
+          >
+            {withdrawing ? 'Processing...' : 'Withdraw to Wallet'}
+          </button>
+
+          {availableTransactions.length > 0 && (
+            <div className="mt-3 md:mt-4 space-y-2">
+              {availableTransactions.slice(0, 2).map(tx => (
+                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[#059669]/10">
+                  <p className="text-[#065F46]">Task #{tx.task_id?.substring(0, 8)}</p>
+                  <p className="text-[#065F46] font-semibold">
+                    ${(tx.amount_cents / 100).toFixed(2)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Transaction History */}
       <div>
-        <h3 className="text-xl font-bold text-[#1A1A1A] mb-4">Transaction History</h3>
+        <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Transaction History</h3>
 
         {allTransactions.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             {allTransactions.map(tx => {
               const isPending = tx.status === 'pending'
               const isAvailable = tx.status === 'available'
@@ -256,16 +259,16 @@ function EarningsDashboard({ user }) {
               return (
                 <div
                   key={tx.id}
-                  className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-4 hover:shadow-md transition-shadow"
+                  className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4 hover:shadow-md transition-shadow"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[#1A1A1A] font-medium">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-[#1A1A1A] font-medium text-sm md:text-base truncate">
                           {tx.task_title || `Task #${tx.task_id?.substring(0, 8)}`}
                         </p>
                         <span className={`
-                          px-2 py-0.5 rounded-full text-xs font-semibold
+                          px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0
                           ${isPending ? 'bg-[#FEF3C7] text-[#D97706]' : ''}
                           ${isAvailable ? 'bg-[#D1FAE5] text-[#059669]' : ''}
                           ${isWithdrawn ? 'bg-[#F5F2ED] text-[#525252]' : ''}
@@ -297,9 +300,9 @@ function EarningsDashboard({ user }) {
                       )}
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       <p className={`
-                        text-xl font-bold
+                        text-lg md:text-xl font-bold
                         ${isPending ? 'text-[#D97706]' : ''}
                         ${isAvailable ? 'text-[#059669]' : ''}
                         ${isWithdrawn ? 'text-[#525252]' : ''}
@@ -313,10 +316,10 @@ function EarningsDashboard({ user }) {
             })}
           </div>
         ) : (
-          <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-12 text-center">
-            <div className="text-4xl mb-4">💸</div>
-            <p className="text-[#525252] font-medium">No transactions yet</p>
-            <p className="text-sm text-[#8A8A8A] mt-2">
+          <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
+            <div className="text-3xl md:text-4xl mb-3 md:mb-4">💸</div>
+            <p className="text-[#525252] font-medium text-sm md:text-base">No transactions yet</p>
+            <p className="text-xs md:text-sm text-[#8A8A8A] mt-2">
               Complete tasks to start earning USDC
             </p>
           </div>
@@ -325,9 +328,9 @@ function EarningsDashboard({ user }) {
 
       {/* Wallet Info */}
       {user.wallet_address && (
-        <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-4">
+        <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4">
           <p className="text-xs text-[#8A8A8A] mb-1">Withdrawal Address</p>
-          <p className="text-[#1A1A1A] font-mono text-sm">
+          <p className="text-[#1A1A1A] font-mono text-xs md:text-sm break-all">
             {user.wallet_address}
           </p>
         </div>
