@@ -68,10 +68,10 @@ function Button({ children, onClick, variant = 'primary', className = '', ...pro
 
 function Loading() {
   return (
-    <div className={`min-h-screen ${styles.gradient} flex items-center justify-center`}>
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-400">Loading...</p>
+    <div className="loading-v4">
+      <div className="loading-v4-content">
+        <div className="loading-v4-spinner" />
+        <p className="loading-v4-text">Loading...</p>
       </div>
     </div>
   )
@@ -110,17 +110,17 @@ function Onboarding({ onComplete }) {
   }
 
   return (
-    <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
-      <div className="w-full max-w-lg">
+    <div className="onboarding-v4">
+      <div className="onboarding-v4-container">
         {/* Progress */}
-        <div className="mb-8">
-          <div className="flex justify-between text-sm text-gray-400 mb-2">
+        <div className="onboarding-v4-progress">
+          <div className="onboarding-v4-progress-header">
             <span>Step {step} of {totalSteps}</span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-orange-500 transition-all duration-300"
+          <div className="onboarding-v4-progress-bar">
+            <div
+              className="onboarding-v4-progress-fill"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -128,94 +128,93 @@ function Onboarding({ onComplete }) {
 
         {/* Step 1: City */}
         {step === 1 && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-white">Where are you based?</h1>
-            <p className="text-gray-400">This helps show you relevant tasks in your area</p>
+          <div>
+            <h1 className="onboarding-v4-title">Where are you based?</h1>
+            <p className="onboarding-v4-subtitle">This helps show you relevant tasks in your area</p>
             <input
               type="text"
               placeholder="City (e.g. San Francisco)"
               value={form.city}
               onChange={e => setForm({ ...form, city: e.target.value })}
-              className={styles.input}
+              className="onboarding-v4-input"
               autoFocus
             />
-            <Button 
-              className="w-full" 
+            <button
+              className="onboarding-v4-btn-next"
+              style={{ width: '100%' }}
               onClick={() => setStep(2)}
               disabled={!form.city.trim()}
             >
               Continue
-            </Button>
+            </button>
           </div>
         )}
 
         {/* Step 2: Skills */}
         {step === 2 && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-white">What can you help with?</h1>
-            <p className="text-gray-400">Add your skills so agents know what you're great at</p>
+          <div>
+            <h1 className="onboarding-v4-title">What can you help with?</h1>
+            <p className="onboarding-v4-subtitle">Add your skills so agents know what you're great at</p>
             <input
               type="text"
               placeholder="Skills (comma separated)"
               value={form.skills}
               onChange={e => setForm({ ...form, skills: e.target.value })}
-              className={styles.input}
+              className="onboarding-v4-input"
               autoFocus
             />
-            <p className="text-sm text-gray-500">e.g. delivery, photography, coding, translation</p>
-            <div className="flex gap-4">
-              <Button variant="secondary" className="flex-1" onClick={() => setStep(1)}>Back</Button>
-              <Button className="flex-1" onClick={() => setStep(3)}>Continue</Button>
+            <p className="onboarding-v4-hint">e.g. delivery, photography, coding, translation</p>
+            <div className="onboarding-v4-buttons">
+              <button className="onboarding-v4-btn-back" onClick={() => setStep(1)}>Back</button>
+              <button className="onboarding-v4-btn-next" onClick={() => setStep(3)}>Continue</button>
             </div>
           </div>
         )}
 
         {/* Step 3: Travel Radius */}
         {step === 3 && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-white">How far can you travel?</h1>
-            <p className="text-gray-400">Maximum distance you're willing to travel for tasks</p>
+          <div>
+            <h1 className="onboarding-v4-title">How far can you travel?</h1>
+            <p className="onboarding-v4-subtitle">Maximum distance you're willing to travel for tasks</p>
             <input
               type="range"
               min="1"
               max="100"
               value={form.travel_radius}
               onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
-              className="w-full"
+              className="onboarding-v4-slider"
             />
-            <p className="text-center text-orange-400 text-xl font-semibold">
+            <p className="onboarding-v4-slider-value">
               {form.travel_radius} miles
             </p>
-            <div className="flex gap-4">
-              <Button variant="secondary" className="flex-1" onClick={() => setStep(2)}>Back</Button>
-              <Button className="flex-1" onClick={() => setStep(4)}>Continue</Button>
+            <div className="onboarding-v4-buttons">
+              <button className="onboarding-v4-btn-back" onClick={() => setStep(2)}>Back</button>
+              <button className="onboarding-v4-btn-next" onClick={() => setStep(4)}>Continue</button>
             </div>
           </div>
         )}
 
         {/* Step 4: Hourly Rate */}
         {step === 4 && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-white">What's your rate?</h1>
-            <p className="text-gray-400">Minimum hourly rate for your work</p>
+          <div>
+            <h1 className="onboarding-v4-title">What's your rate?</h1>
+            <p className="onboarding-v4-subtitle">Minimum hourly rate for your work</p>
             <input
               type="number"
               placeholder="Hourly rate"
               value={form.hourly_rate}
               onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
-              className={styles.input}
+              className="onboarding-v4-input"
               autoFocus
             />
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
-                {error}
-              </div>
+              <div className="auth-v4-error">{error}</div>
             )}
-            <div className="flex gap-4">
-              <Button variant="secondary" className="flex-1" onClick={() => setStep(3)}>Back</Button>
-              <Button className="flex-1" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
+            <div className="onboarding-v4-buttons">
+              <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
+              <button className="onboarding-v4-btn-next" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
                 {loading ? 'Setting up...' : 'Complete Setup'}
-              </Button>
+              </button>
             </div>
           </div>
         )}
@@ -361,28 +360,22 @@ function AuthPage({ onLogin }) {
   // Error Modal
   if (errorModal) {
     return (
-      <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
-        <div className="w-full max-w-md">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">⚠️</span>
-              </div>
-              <h2 className="text-xl font-bold text-white">{errorModal.title}</h2>
-            </div>
-            <p className="text-gray-300 mb-4 text-center">{errorModal.message}</p>
+      <div className="auth-v4">
+        <div className="auth-v4-container">
+          <div className="auth-v4-error-modal">
+            <div className="auth-v4-error-icon">⚠️</div>
+            <h2 className="auth-v4-error-title">{errorModal.title}</h2>
+            <p className="auth-v4-error-message">{errorModal.message}</p>
             {errorModal.details && (
-              <div className="bg-gray-800/50 rounded-lg p-4 mb-6 text-left">
-                <p className="text-gray-400 text-sm whitespace-pre-line">{errorModal.details}</p>
-              </div>
+              <div className="auth-v4-error-details">{errorModal.details}</div>
             )}
-            <div className="flex gap-4">
-              <Button variant="secondary" className="flex-1" onClick={() => { setErrorModal(null); window.history.replaceState({}, document.title, window.location.pathname) }}>
+            <div className="auth-v4-error-buttons">
+              <button className="auth-v4-error-btn-secondary" onClick={() => { setErrorModal(null); window.history.replaceState({}, document.title, window.location.pathname) }}>
                 Try Again
-              </Button>
-              <Button className="flex-1" onClick={() => window.location.href = '/'}>
+              </button>
+              <button className="auth-v4-submit" onClick={() => window.location.href = '/'}>
                 Go Home
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -391,36 +384,29 @@ function AuthPage({ onLogin }) {
   }
 
   return (
-    <div className={`min-h-screen ${styles.gradient} flex items-center justify-center p-6`}>
-      <div className="w-full max-w-md">
-        <div 
-          className="flex items-center gap-3 justify-center mb-8 cursor-pointer"
-          onClick={() => window.location.href = '/'}
-        >
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
-            <span className="text-white text-xl">👤</span>
-          </div>
-          <span className="text-xl font-bold text-white">irlwork.ai</span>
-        </div>
+    <div className="auth-v4">
+      <div className="auth-v4-container">
+        <a href="/" className="auth-v4-logo">
+          <div className="logo-mark-v4">irl</div>
+          <span className="logo-name-v4">irlwork.ai</span>
+        </a>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-          <h1 className="text-2xl font-bold text-white text-center mb-2">
+        <div className="auth-v4-card">
+          <h1 className="auth-v4-title">
             {isLogin ? 'Welcome back' : 'Create account'}
           </h1>
-          <p className="text-gray-400 text-center mb-8">
+          <p className="auth-v4-subtitle">
             {isLogin ? 'Sign in to continue' : 'Start earning from real-world tasks'}
           </p>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
-              {error}
-            </div>
+            <div className="auth-v4-error">{error}</div>
           )}
 
           <button
             onClick={handleGoogle}
             disabled={loading}
-            className={`${styles.btn} ${styles.btnSecondary} w-full mb-6 flex items-center justify-center gap-3`}
+            className="auth-v4-google-btn"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -431,20 +417,20 @@ function AuthPage({ onLogin }) {
             Continue with Google
           </button>
 
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 border-t border-white/10" />
-            <span className="text-gray-500 text-sm">or</span>
-            <div className="flex-1 border-t border-white/10" />
+          <div className="auth-v4-divider">
+            <div className="auth-v4-divider-line" />
+            <span className="auth-v4-divider-text">or</span>
+            <div className="auth-v4-divider-line" />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="auth-v4-form">
             {!isLogin && (
               <input
                 type="text"
                 placeholder="Full name"
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
-                className={styles.input}
+                className="auth-v4-input"
                 required={!isLogin}
               />
             )}
@@ -453,7 +439,7 @@ function AuthPage({ onLogin }) {
               placeholder="Email"
               value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })}
-              className={styles.input}
+              className="auth-v4-input"
               required
             />
             <input
@@ -461,27 +447,24 @@ function AuthPage({ onLogin }) {
               placeholder="Password"
               value={form.password}
               onChange={e => setForm({ ...form, password: e.target.value })}
-              className={styles.input}
+              className="auth-v4-input"
               required
               minLength={6}
             />
-            <Button type="submit" className="w-full" disabled={loading}>
+            <button type="submit" className="auth-v4-submit" disabled={loading}>
               {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
-            </Button>
+            </button>
           </form>
 
-          <p className="text-center text-gray-400 mt-6 text-sm">
+          <p className="auth-v4-switch">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button onClick={() => setIsLogin(!isLogin)} className="text-orange-500 hover:text-orange-400">
+            <button onClick={() => setIsLogin(!isLogin)} className="auth-v4-switch-link">
               {isLogin ? 'Sign up' : 'Sign in'}
             </button>
           </p>
         </div>
 
-        <button
-          onClick={() => window.location.href = '/'}
-          className="block w-full text-center text-gray-400 hover:text-white mt-6 text-sm"
-        >
+        <button onClick={() => window.location.href = '/'} className="auth-v4-back">
           ← Back to home
         </button>
       </div>
@@ -1098,7 +1081,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   }
 
   return (
-    <div className={`min-h-screen ${styles.gradient} flex`}>
+    <div className="dashboard-v4">
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -1108,29 +1091,31 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       )}
 
       {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-teal flex flex-col transform transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <aside className={`dashboard-v4-sidebar ${sidebarOpen ? 'open' : ''}`}>
         {/* Logo */}
-        <div
-          className="flex items-center gap-3 p-6 cursor-pointer"
-          onClick={() => window.location.href = '/'}
-        >
-          <div className="w-10 h-10 bg-coral rounded-xl flex items-center justify-center shadow-v4-md">
-            <span className="text-white text-xl">👤</span>
-          </div>
-          <span className="text-xl font-bold text-white">irlwork.ai</span>
-        </div>
+        <a href="/" className="dashboard-v4-sidebar-logo">
+          <div className="dashboard-v4-sidebar-logo-mark">irl</div>
+          <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
+        </a>
 
         {/* Mode Toggle */}
-        <div className="px-4">
-          <ModeToggle hiringMode={hiringMode} onToggle={toggleHiringMode} />
+        <div className="dashboard-v4-mode-toggle">
+          <button
+            className={`dashboard-v4-mode-btn ${!hiringMode ? 'active' : ''}`}
+            onClick={() => { setHiringMode(false); setActiveTab('tasks') }}
+          >
+            Working
+          </button>
+          <button
+            className={`dashboard-v4-mode-btn ${hiringMode ? 'active' : ''}`}
+            onClick={() => { setHiringMode(true); setActiveTab('create') }}
+          >
+            Hiring
+          </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="dashboard-v4-nav">
           {navItems.map(item => (
             <button
               key={item.id}
@@ -1138,27 +1123,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 setActiveTab(item.id)
                 setSidebarOpen(false)
               }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
-                activeTab === item.id
-                  ? 'bg-white text-teal font-medium shadow-v4-sm'
-                  : 'text-white/70 hover:bg-teal-dark hover:text-white'
-              }`}
+              className={`dashboard-v4-nav-item ${activeTab === item.id ? 'active' : ''}`}
             >
-              <div className="flex items-center gap-3">
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
+              <div className="dashboard-v4-nav-item-content">
+                <span className="dashboard-v4-nav-icon">{item.icon}</span>
+                <span className="dashboard-v4-nav-label">{item.label}</span>
               </div>
               {item.badge > 0 && (
-                <span className="bg-coral text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                  {item.badge}
-                </span>
+                <span className="dashboard-v4-nav-badge">{item.badge}</span>
               )}
             </button>
           ))}
         </nav>
 
         {/* User Section with Dropdown */}
-        <div className="p-4 border-t border-teal-dark/50">
+        <div className="dashboard-v4-user">
           <UserDropdown
             user={user}
             onLogout={onLogout}
@@ -1171,63 +1150,101 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-cream md:ml-0">
+      <main className="dashboard-v4-main">
         {/* Top Filter Bar */}
-        <TopFilterBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          locationFilter={locationFilter}
-          onLocationChange={setLocationFilter}
-          categoryFilter={filterCategory}
-          onCategoryChange={setFilterCategory}
-          onMenuClick={() => setSidebarOpen(true)}
-        />
+        <div className="dashboard-v4-topbar">
+          <button className="dashboard-v4-menu-btn" onClick={() => setSidebarOpen(true)}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 12h18M3 6h18M3 18h18" />
+            </svg>
+          </button>
+          <div className="dashboard-v4-search">
+            <svg className="dashboard-v4-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              className="dashboard-v4-search-input"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="dashboard-v4-filters">
+            <select
+              className="dashboard-v4-filter-select"
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+            >
+              <option value="">All Locations</option>
+              <option value="san-francisco">San Francisco</option>
+              <option value="new-york">New York</option>
+              <option value="los-angeles">Los Angeles</option>
+            </select>
+            <select
+              className="dashboard-v4-filter-select"
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+            >
+              <option value="">All Categories</option>
+              <option value="delivery">Delivery</option>
+              <option value="photography">Photography</option>
+              <option value="errands">Errands</option>
+              <option value="cleaning">Cleaning</option>
+              <option value="tech">Tech</option>
+            </select>
+          </div>
+        </div>
 
         {/* Content Area */}
-        <div className="flex-1 p-4 md:p-8 overflow-auto">
+        <div className="dashboard-v4-content">
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">My Tasks</h1>
+            <h1 className="dashboard-v4-page-title">My Tasks</h1>
 
             {loading ? (
-              <p className="text-gray-500">Loading...</p>
+              <div className="dashboard-v4-empty">
+                <div className="dashboard-v4-empty-icon">⏳</div>
+                <p className="dashboard-v4-empty-text">Loading...</p>
+              </div>
             ) : postedTasks.length === 0 ? (
-              <div className={`${styles.card} text-center py-12`}>
-                <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
-                  <span className="text-3xl">{Icons.task}</span>
-                </div>
-                <p className="text-gray-600 font-medium mb-2">No tasks posted yet</p>
-                <p className="text-sm text-gray-500">Create a task to get started</p>
+              <div className="dashboard-v4-empty">
+                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
+                <p className="dashboard-v4-empty-title">No tasks posted yet</p>
+                <p className="dashboard-v4-empty-text">Create a task to get started</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div>
                 {postedTasks.map(task => {
-                  const statusBadge = getTaskStatus(task.status)
                   const needsAction = task.status === 'pending_review'
                   const isOpen = task.status === 'open'
                   const isExpanded = expandedTask === task.id
                   const applications = taskApplications[task.id] || []
 
                   return (
-                    <div key={task.id} className={`${styles.card}`}>
-                      <div className="flex justify-between items-start">
+                    <div key={task.id} className="dashboard-v4-task-card">
+                      <div className="dashboard-v4-task-header">
                         <div>
-                          <span className={`text-xs px-2 py-1 rounded ${statusBadge}`}>
-                            {(task.status || 'open').toUpperCase()}
+                          <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
+                            {getStatusLabel(task.status)}
                           </span>
-                          <h3 className="text-lg font-semibold text-gray-900 mt-2">{task.title}</h3>
-                          <p className="text-gray-500 text-sm">{task.category} • {task.city || 'Remote'} • Budget: ${task.budget}</p>
-                          {task.assignee && (
-                            <p className="text-gray-500 text-sm mt-1">Assigned to: {task.assignee.name}</p>
-                          )}
+                          <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
                         </div>
-                        <p className="text-teal font-bold">${task.budget || 0}</p>
+                        <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
+                      </div>
+
+                      <div className="dashboard-v4-task-meta">
+                        <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
+                        <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
+                        {task.assignee && (
+                          <span className="dashboard-v4-task-meta-item">👤 {task.assignee.name}</span>
+                        )}
                       </div>
 
                       {/* View Applicants Button for open tasks */}
                       {isOpen && (
-                        <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
                           <button
                             onClick={() => {
                               if (isExpanded) {
@@ -1237,39 +1254,40 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                                 fetchApplicationsForTask(task.id)
                               }
                             }}
-                            className="text-teal font-medium text-sm hover:underline"
+                            style={{ color: 'var(--orange-600)', fontWeight: 500, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}
                           >
                             {isExpanded ? '▼ Hide Applicants' : '▶ View Applicants'}
                           </button>
 
                           {/* Applicants List */}
                           {isExpanded && (
-                            <div className="mt-4 space-y-3">
+                            <div style={{ marginTop: 16 }}>
                               {applications.length === 0 ? (
-                                <p className="text-gray-500 text-sm py-4 text-center">No applicants yet</p>
+                                <p style={{ color: 'var(--text-tertiary)', fontSize: 14, textAlign: 'center', padding: 16 }}>No applicants yet</p>
                               ) : (
                                 applications.map(app => (
-                                  <div key={app.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-full bg-teal flex items-center justify-center text-white font-semibold">
+                                  <div key={app.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
                                         {app.applicant?.name?.[0]?.toUpperCase() || '?'}
                                       </div>
                                       <div>
-                                        <p className="font-medium text-gray-900">{app.applicant?.name || 'Anonymous'}</p>
-                                        <p className="text-sm text-gray-500">
+                                        <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
+                                        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                                           ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
                                         </p>
                                         {app.cover_letter && (
-                                          <p className="text-sm text-gray-600 mt-1 italic">"{app.cover_letter}"</p>
+                                          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>"{app.cover_letter}"</p>
                                         )}
                                       </div>
                                     </div>
-                                    <Button
+                                    <button
                                       onClick={() => handleAssignWorker(task.id, app.human_id)}
                                       disabled={assigningWorker === app.human_id}
+                                      className="v4-btn v4-btn-primary"
                                     >
                                       {assigningWorker === app.human_id ? 'Assigning...' : 'Accept'}
-                                    </Button>
+                                    </button>
                                   </div>
                                 ))
                               )}
@@ -1279,14 +1297,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                       )}
 
                       {needsAction && (
-                        <div className="flex gap-3 mt-4">
-                          <Button onClick={() => setShowProofReview(task.id)}>
+                        <div className="dashboard-v4-task-actions">
+                          <button className="v4-btn v4-btn-primary" onClick={() => setShowProofReview(task.id)}>
                             Review Proof
-                          </Button>
+                          </button>
                         </div>
                       )}
                       {task.status === 'paid' && (
-                        <p className="text-green-600 text-sm mt-2">💸 Payment released</p>
+                        <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}>💸 Payment released</p>
                       )}
                     </div>
                   )
@@ -1299,71 +1317,83 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: Create Task Tab */}
         {hiringMode && activeTab === 'create' && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Create Task</h1>
-            <div className={`${styles.card} max-w-2xl`}>
-              <form className="space-y-4" onSubmit={handleCreateTask}>
-                <input
-                  type="text"
-                  placeholder="Task title"
-                  className={styles.input}
-                  value={taskForm.title}
-                  onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
-                />
-                <textarea
-                  placeholder="Description"
-                  rows={4}
-                  className={styles.input}
-                  value={taskForm.description}
-                  onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <select
-                    className={styles.input}
-                    value={taskForm.category}
-                    onChange={(e) => setTaskForm(prev => ({ ...prev, category: e.target.value }))}
-                  >
-                    <option value="">Category</option>
-                    {['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => (
-                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                    ))}
-                  </select>
+            <h1 className="dashboard-v4-page-title">Create Task</h1>
+            <div className="dashboard-v4-form">
+              <form onSubmit={handleCreateTask}>
+                <div className="dashboard-v4-form-group">
+                  <label className="dashboard-v4-form-label">Task Title</label>
                   <input
-                    type="number"
-                    placeholder="Budget ($)"
-                    className={styles.input}
-                    value={taskForm.budget}
-                    onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
-                    min="5"
+                    type="text"
+                    placeholder="What do you need done?"
+                    className="dashboard-v4-form-input"
+                    value={taskForm.title}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
                   />
                 </div>
-                <input
-                  type="text"
-                  placeholder="City"
-                  className={styles.input}
-                  value={taskForm.city}
-                  onChange={(e) => setTaskForm(prev => ({ ...prev, city: e.target.value }))}
-                />
+                <div className="dashboard-v4-form-group">
+                  <label className="dashboard-v4-form-label">Description</label>
+                  <textarea
+                    placeholder="Provide details about the task..."
+                    className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                    value={taskForm.description}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Category</label>
+                    <select
+                      className="dashboard-v4-form-input dashboard-v4-form-select"
+                      value={taskForm.category}
+                      onChange={(e) => setTaskForm(prev => ({ ...prev, category: e.target.value }))}
+                    >
+                      <option value="">Select category</option>
+                      {['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => (
+                        <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Budget (USD)</label>
+                    <input
+                      type="number"
+                      placeholder="$"
+                      className="dashboard-v4-form-input"
+                      value={taskForm.budget}
+                      onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
+                      min="5"
+                    />
+                  </div>
+                </div>
+                <div className="dashboard-v4-form-group">
+                  <label className="dashboard-v4-form-label">City</label>
+                  <input
+                    type="text"
+                    placeholder="Where should this be done?"
+                    className="dashboard-v4-form-input"
+                    value={taskForm.city}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, city: e.target.value }))}
+                  />
+                </div>
                 {createTaskError && (
-                  <p className="text-red-500 text-sm">{createTaskError}</p>
+                  <div className="dashboard-v4-form-error">{createTaskError}</div>
                 )}
-                <Button className="w-full" disabled={creatingTask}>
+                <button type="submit" className="dashboard-v4-form-submit" disabled={creatingTask}>
                   {creatingTask ? 'Creating...' : 'Create Task'}
-                </Button>
+                </button>
               </form>
             </div>
           </div>
         )}
 
         {/* Hiring Mode: Hired Tab */}
-        {hiringMode && activeTab === 'humans' && (
+        {hiringMode && activeTab === 'hired' && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Hired</h1>
-            <div className={`${styles.card} text-center py-12`}>
-              <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
-                <span className="text-3xl">{Icons.humans}</span>
-              </div>
-              <p className="text-gray-600 font-medium">No humans hired yet</p>
-              <p className="text-sm text-gray-500 mt-2">Hire someone for a task</p>
+            <h1 className="dashboard-v4-page-title">Hired</h1>
+            <div className="dashboard-v4-empty">
+              <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
+              <p className="dashboard-v4-empty-title">No humans hired yet</p>
+              <p className="dashboard-v4-empty-text">Hire someone for a task</p>
             </div>
           </div>
         )}
@@ -1371,80 +1401,89 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
           <div>
-            <div className="flex justify-between items-center mb-8">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Tasks</h1>
-              <span className="text-gray-500">{tasks.filter(t => t.status === 'in_progress').length} active</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
+              <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>{tasks.filter(t => t.status === 'in_progress').length} active</span>
             </div>
 
-            {/* Quick Stats - always show */}
-            <QuickStats
-              totalEarned={tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}
-              tasksCompleted={tasks.filter(t => t.status === 'completed' || t.status === 'paid').length}
-              rating={user?.rating || 0}
-            />
+            {/* Quick Stats */}
+            <div className="dashboard-v4-stats">
+              <div className="dashboard-v4-stat-card">
+                <div className="dashboard-v4-stat-label">Total Earned</div>
+                <div className="dashboard-v4-stat-value orange">${tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}</div>
+              </div>
+              <div className="dashboard-v4-stat-card">
+                <div className="dashboard-v4-stat-label">Tasks Completed</div>
+                <div className="dashboard-v4-stat-value">{tasks.filter(t => t.status === 'completed' || t.status === 'paid').length}</div>
+              </div>
+              <div className="dashboard-v4-stat-card">
+                <div className="dashboard-v4-stat-label">Rating</div>
+                <div className="dashboard-v4-stat-value">⭐ {user?.rating?.toFixed(1) || 'New'}</div>
+              </div>
+            </div>
 
             {loading ? (
-              <p className="text-gray-500">Loading...</p>
+              <div className="dashboard-v4-empty">
+                <div className="dashboard-v4-empty-icon">⏳</div>
+                <p className="dashboard-v4-empty-text">Loading...</p>
+              </div>
             ) : tasks.length === 0 ? (
-              <EmptyState
-                icon={Icons.task}
-                title="No tasks yet"
-                description="Start earning by browsing available tasks or switch to hiring mode to post your own tasks."
-                primaryAction={{
-                  label: "Browse Available Tasks",
-                  onClick: () => setActiveTab('browse')
-                }}
-                secondaryAction={{
-                  label: "Switch to Hiring Mode",
-                  onClick: toggleHiringMode
-                }}
-              />
+              <div className="dashboard-v4-empty">
+                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
+                <p className="dashboard-v4-empty-title">No tasks yet</p>
+                <p className="dashboard-v4-empty-text">Start earning by browsing available tasks</p>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}>
+                  <button className="v4-btn v4-btn-primary" onClick={() => setActiveTab('browse')}>
+                    Browse Tasks
+                  </button>
+                </div>
+              </div>
             ) : (
-              <div className="space-y-4">
+              <div>
                 {tasks.map(task => (
-                  <div key={task.id} className={`${styles.card}`}>
-                    <div className="flex justify-between items-start mb-4">
+                  <div key={task.id} className="dashboard-v4-task-card">
+                    <div className="dashboard-v4-task-header">
                       <div>
-                        <span className={`inline-block text-xs px-2 py-1 rounded ${getTaskStatus(task.status)}`}>
+                        <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
                           {getStatusLabel(task.status)}
                         </span>
-                        <h3 className="text-lg font-semibold text-gray-900 mt-2">{task.title}</h3>
-                        <p className="text-gray-500 text-sm mt-1">{task.category} • {task.city || 'Remote'}</p>
+                        <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
                       </div>
-                      <p className="text-teal font-bold text-xl">${task.budget || 0}</p>
+                      <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
                     </div>
 
                     {task.description && (
-                      <p className="text-gray-600 text-sm mb-4">{task.description}</p>
+                      <p className="dashboard-v4-task-description">{task.description}</p>
                     )}
 
-                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                      <span>{Icons.calendar} Posted: {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
-                      {task.deadline && <span>📅 Due: {new Date(task.deadline).toLocaleDateString()}</span>}
-                      {task.agent_name && <span>👤 Agent: {task.agent_name}</span>}
+                    <div className="dashboard-v4-task-meta">
+                      <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
+                      <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
+                      <span className="dashboard-v4-task-meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+                      {task.agent_name && <span className="dashboard-v4-task-meta-item">🤖 {task.agent_name}</span>}
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="dashboard-v4-task-actions">
                       {task.status === 'open' && (
-                        <Button onClick={() => acceptTask(task.id)}>{Icons.check} Accept Task</Button>
+                        <button className="v4-btn v4-btn-primary" onClick={() => acceptTask(task.id)}>Accept Task</button>
                       )}
                       {task.status === 'accepted' && (
-                        <Button onClick={() => {
+                        <button className="v4-btn v4-btn-primary" onClick={() => {
                           fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
                             .then(() => fetchTasks())
-                        }}>▶️ Start Work</Button>
+                        }}>▶️ Start Work</button>
                       )}
                       {task.status === 'in_progress' && (
-                        <Button onClick={() => setShowProofSubmit(task.id)}>✓ Submit Proof</Button>
+                        <button className="v4-btn v4-btn-primary" onClick={() => setShowProofSubmit(task.id)}>✓ Submit Proof</button>
                       )}
                       {task.status === 'pending_review' && (
-                        <Button variant="secondary">Waiting for approval...</Button>
+                        <button className="v4-btn v4-btn-secondary" disabled>Waiting for approval...</button>
                       )}
                       {task.status === 'completed' && (
-                        <span className="text-green-600 flex items-center gap-2">{Icons.check} Payment pending</span>
+                        <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 8 }}>✓ Payment pending</span>
                       )}
                       {task.status === 'paid' && (
-                        <span className="text-teal flex items-center gap-2">{Icons.dollar} Paid!</span>
+                        <span style={{ color: 'var(--orange-600)', display: 'flex', alignItems: 'center', gap: 8 }}>💰 Paid!</span>
                       )}
                     </div>
                   </div>
@@ -1460,22 +1499,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: Browse Tab */}
         {!hiringMode && activeTab === 'browse' && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Browse Workers</h1>
-            
+            <h1 className="dashboard-v4-page-title">Browse Workers</h1>
+
             {/* Search & Filter */}
-            <div className="flex gap-4 mb-6">
-              <div className="flex-1 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">{Icons.search}</span>
-                <input 
-                  type="text" 
-                  placeholder="Search by name or skill..." 
-                  className={`${styles.input} pl-12`}
+            <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
+                <input
+                  type="text"
+                  placeholder="Search by name or skill..."
+                  className="dashboard-v4-form-input"
+                  style={{ paddingLeft: 44 }}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <select 
-                className={styles.input}
+              <select
+                className="dashboard-v4-form-input dashboard-v4-form-select"
+                style={{ width: 180 }}
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
               >
@@ -1485,55 +1526,53 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 ))}
               </select>
             </div>
-            
+
             {humans.length === 0 ? (
-              <div className={`${styles.card} text-center py-16`}>
-                <div className="w-20 h-20 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
-                  <span className="text-4xl">{Icons.humans}</span>
-                </div>
-                <p className="text-gray-600 font-medium">No workers available</p>
-                <p className="text-sm text-gray-500 mt-2">Check back later for available humans</p>
+              <div className="dashboard-v4-empty">
+                <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
+                <p className="dashboard-v4-empty-title">No workers available</p>
+                <p className="dashboard-v4-empty-text">Check back later for available humans</p>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
                 {humans
                   .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
                   .filter(h => !filterCategory || h.skills?.includes(filterCategory))
                   .map(human => (
-                  <div key={human.id} className={`${styles.card}`}>
-                    <div className="flex items-start gap-4">
-                      <div className="w-14 h-14 bg-teal/10 rounded-xl flex items-center justify-center text-teal font-bold text-xl">
+                  <div key={human.id} className="dashboard-v4-task-card">
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                      <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 20 }}>
                         {human.name?.charAt(0) || '?'}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
-                            <h3 className="font-semibold text-gray-900">{human.name}</h3>
-                            <p className="text-gray-500 text-sm">{Icons.location} {human.city || 'Remote'}</p>
+                            <h3 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{human.name}</h3>
+                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>📍 {human.city || 'Remote'}</p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-teal font-bold text-lg">${human.hourly_rate || 25}/hr</p>
+                          <div style={{ textAlign: 'right' }}>
+                            <p style={{ fontWeight: 700, color: 'var(--orange-600)', fontSize: 18 }}>${human.hourly_rate || 25}/hr</p>
                             {human.rating > 0 && (
-                              <p className="text-amber-500 text-sm">{Icons.star} {human.rating.toFixed(1)}</p>
+                              <p style={{ fontSize: 13, color: 'var(--warning)' }}>⭐ {human.rating.toFixed(1)}</p>
                             )}
                           </div>
                         </div>
-                        {human.bio && <p className="text-gray-500 text-sm mt-2 line-clamp-2">{human.bio}</p>}
+                        {human.bio && <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8 }}>{human.bio}</p>}
                         {human.skills && (
-                          <div className="flex flex-wrap gap-1 mt-3">
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
                             {human.skills.slice(0, 5).map((skill, i) => (
-                              <span key={i} className="text-xs bg-teal/10 text-teal px-2 py-0.5 rounded-full">
+                              <span key={i} style={{ fontSize: 12, background: 'rgba(244, 132, 95, 0.1)', color: 'var(--orange-600)', padding: '4px 10px', borderRadius: 'var(--radius-full)' }}>
                                 {skill}
                               </span>
                             ))}
                           </div>
                         )}
-                        <div className="flex items-center justify-between mt-4">
-                          <span className="text-xs text-gray-500">{human.jobs_completed || 0} jobs completed</span>
-                          <Button variant="secondary" className="text-sm" onClick={() => {
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{human.jobs_completed || 0} jobs completed</span>
+                          <button className="v4-btn v4-btn-secondary" onClick={() => {
                             setHiringMode(true)
                             setActiveTab('create')
-                          }}>Hire</Button>
+                          }}>Hire</button>
                         </div>
                       </div>
                     </div>
@@ -1547,7 +1586,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: Payments Tab */}
         {!hiringMode && activeTab === 'payments' && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Earnings</h1>
+            <h1 className="dashboard-v4-page-title">Earnings</h1>
             <EarningsDashboard user={user} />
           </div>
         )}
@@ -1555,64 +1594,60 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Profile Tab - Updated with Settings */}
         {activeTab === 'profile' && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Profile</h1>
+            <h1 className="dashboard-v4-page-title">Profile</h1>
 
-            <div className={`${styles.card} max-w-xl`}>
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-20 h-20 bg-teal/10 rounded-xl flex items-center justify-center text-teal font-bold text-2xl">
+            <div className="dashboard-v4-form" style={{ maxWidth: 500 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+                <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 28 }}>
                   {user?.name?.charAt(0) || '?'}
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-gray-900">{user?.name}</h2>
-                  <p className="text-gray-500">{user?.email}</p>
+                <div style={{ flex: 1 }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name}</h2>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{user?.email}</p>
                 </div>
               </div>
 
               {/* Mode Toggle */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <div className="flex justify-between items-center mb-3">
+              <div style={{ marginBottom: 24, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div>
-                    <p className="text-gray-900 font-medium">Mode</p>
-                    <p className="text-xs text-gray-500">Switch between working and hiring</p>
+                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Mode</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Switch between working and hiring</p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm ${hiringMode ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                  <span className={hiringMode ? 'v4-badge v4-badge-success' : 'v4-badge v4-badge-orange'}>
                     {hiringMode ? 'Hiring' : 'Working'}
                   </span>
                 </div>
-                <Button 
-                  variant={hiringMode ? 'secondary' : 'primary'} 
-                  className="w-full"
-                  onClick={toggleHiringMode}
-                >
+                <button className="v4-btn v4-btn-secondary" style={{ width: '100%' }} onClick={toggleHiringMode}>
                   {hiringMode ? '← Switch to Working Mode' : 'Switch to Hiring Mode →'}
-                </Button>
+                </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Location</span>
-                  <span className="text-white">{user?.city || 'Not set'}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
+                  <span style={{ color: 'var(--text-tertiary)' }}>Location</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{user?.city || 'Not set'}</span>
                 </div>
-                <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Hourly Rate</span>
-                  <span className="text-white">${user?.hourly_rate || 25}/hr</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
+                  <span style={{ color: 'var(--text-tertiary)' }}>Hourly Rate</span>
+                  <span style={{ color: 'var(--text-primary)' }}>${user?.hourly_rate || 25}/hr</span>
                 </div>
-                <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Travel Radius</span>
-                  <span className="text-white">{user?.travel_radius || 25} miles</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
+                  <span style={{ color: 'var(--text-tertiary)' }}>Travel Radius</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{user?.travel_radius || 25} miles</span>
                 </div>
-                <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Skills</span>
-                  <span className="text-white">{user?.skills?.join(', ') || 'None'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
+                  <span style={{ color: 'var(--text-tertiary)' }}>Skills</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{user?.skills?.join(', ') || 'None'}</span>
                 </div>
-                <div className="flex justify-between py-3">
-                  <span className="text-gray-400">Jobs Completed</span>
-                  <span className="text-white">{user?.jobs_completed || 0}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
+                  <span style={{ color: 'var(--text-tertiary)' }}>Jobs Completed</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{user?.jobs_completed || 0}</span>
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-white/10">
-                <Button variant="secondary" className="w-full">Edit Profile</Button>
+              <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
+                <button className="v4-btn v4-btn-secondary" style={{ width: '100%' }} onClick={() => setActiveTab('settings')}>Edit Profile</button>
               </div>
             </div>
           </div>
@@ -1621,12 +1656,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-6 md:mb-8">Settings</h1>
-            
-            <div className={`${styles.card} max-w-2xl mb-6`}>
-              <h2 className="text-xl font-semibold text-white mb-6">Profile Settings</h2>
-              
-              <form className="space-y-4" onSubmit={async (e) => {
+            <h1 className="dashboard-v4-page-title">Settings</h1>
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Profile Settings</h2>
+
+              <form onSubmit={async (e) => {
                 e.preventDefault()
                 const formData = new FormData(e.target)
                 try {
@@ -1652,40 +1687,40 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   alert('Error saving profile')
                 }
               }}>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Full Name</label>
-                    <input type="text" name="name" defaultValue={user?.name} className={styles.input} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Full Name</label>
+                    <input type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
                   </div>
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">City</label>
-                    <input type="text" name="city" defaultValue={user?.city} className={styles.input} placeholder="San Francisco" />
-                  </div>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Hourly Rate ($)</label>
-                    <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className={styles.input} />
-                  </div>
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Travel Radius (miles)</label>
-                    <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className={styles.input} />
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">City</label>
+                    <input type="text" name="city" defaultValue={user?.city} className="dashboard-v4-form-input" placeholder="San Francisco" />
                   </div>
                 </div>
-                
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Bio</label>
-                  <textarea name="bio" rows={3} defaultValue={user?.bio || ''} className={`${styles.input} resize-none`} placeholder="Tell agents about yourself..." />
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
+                    <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
+                  </div>
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
+                    <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className="dashboard-v4-form-input" />
+                  </div>
                 </div>
-                
-                <Button type="submit" className="w-full">Save Changes</Button>
+
+                <div className="dashboard-v4-form-group">
+                  <label className="dashboard-v4-form-label">Bio</label>
+                  <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" placeholder="Tell agents about yourself..." />
+                </div>
+
+                <button type="submit" className="dashboard-v4-form-submit">Save Changes</button>
               </form>
             </div>
-            
-            <div className={`${styles.card} max-w-2xl mb-6`}>
-              <h2 className="text-xl font-semibold text-white mb-6">Skills</h2>
-              <form className="space-y-4" onSubmit={async (e) => {
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Skills</h2>
+              <form onSubmit={async (e) => {
                 e.preventDefault()
                 const formData = new FormData(e.target)
                 const skills = formData.get('skills').split(',').map(s => s.trim()).filter(Boolean)
@@ -1706,30 +1741,32 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   alert('Error saving skills')
                 }
               }}>
-                <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className={styles.input} placeholder="delivery, photography, moving, cleaning" />
-                <p className="text-xs text-gray-500">Separate skills with commas</p>
-                <Button type="submit" className="w-full">Update Skills</Button>
+                <div className="dashboard-v4-form-group">
+                  <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className="dashboard-v4-form-input" placeholder="delivery, photography, moving, cleaning" />
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
+                </div>
+                <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
               </form>
             </div>
-            
-            <div className={`${styles.card} max-w-2xl`}>
-              <h2 className="text-xl font-semibold text-white mb-6">Notification Preferences</h2>
-              <div className="space-y-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-white/10 border-white/20" />
-                  <span className="text-white">Task assignments</span>
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notification Preferences</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
+                  <span style={{ color: 'var(--text-primary)' }}>Task assignments</span>
                 </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-white/10 border-white/20" />
-                  <span className="text-white">Payment notifications</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
+                  <span style={{ color: 'var(--text-primary)' }}>Payment notifications</span>
                 </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="w-5 h-5 rounded bg-white/10 border-white/20" />
-                  <span className="text-white">Messages from agents</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
+                  <span style={{ color: 'var(--text-primary)' }}>Messages from agents</span>
                 </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" className="w-5 h-5 rounded bg-white/10 border-white/20" />
-                  <span className="text-white">Marketing & updates</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
+                  <span style={{ color: 'var(--text-primary)' }}>Marketing & updates</span>
                 </label>
               </div>
             </div>
@@ -1739,83 +1776,73 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Messages Tab */}
         {activeTab === 'messages' && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Messages</h1>
+            <h1 className="dashboard-v4-page-title">Messages</h1>
 
-            <div className={`${styles.card} p-0 overflow-hidden`} style={{ height: 'calc(100vh - 200px)', minHeight: '400px' }}>
-              <div className="grid md:grid-cols-3 h-full">
-                {/* Conversations List - Hidden on mobile when conversation is selected */}
-                <div className={`border-r border-gray-100 overflow-y-auto ${selectedConversation ? 'hidden md:block' : 'block'}`}>
-                  {conversations.length === 0 ? (
-                    <div className="p-6 text-center text-gray-400">No conversations yet</div>
-                  ) : (
-                    conversations.map(c => (
-                      <div
-                        key={c.id}
-                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selectedConversation === c.id ? 'bg-teal/10' : ''}`}
-                        onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-teal/20 rounded-full flex items-center justify-center text-teal font-bold">
-                            {c.other_user?.name?.charAt(0) || '?'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-gray-900 font-medium truncate">{c.otherUser?.name || 'Unknown'}</p>
-                            <p className="text-gray-500 text-sm truncate">{c.last_message || 'No messages'}</p>
-                          </div>
-                          {c.unread > 0 && (
-                            <span className="bg-coral text-white text-xs px-2 py-0.5 rounded-full">{c.unread}</span>
-                          )}
-                        </div>
+            <div className="dashboard-v4-messages">
+              {/* Conversations List */}
+              <div className={`dashboard-v4-conversations ${selectedConversation ? 'hidden md:block' : 'block'}`}>
+                {conversations.length === 0 ? (
+                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>No conversations yet</div>
+                ) : (
+                  conversations.map(c => (
+                    <div
+                      key={c.id}
+                      className={`dashboard-v4-conversation-item ${selectedConversation === c.id ? 'active' : ''}`}
+                      onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
+                    >
+                      <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
+                        {c.other_user?.name?.charAt(0) || '?'}
                       </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Messages - Full width on mobile when selected */}
-                <div className={`md:col-span-2 flex flex-col h-full ${selectedConversation ? 'block' : 'hidden md:flex'}`}>
-                  {selectedConversation ? (
-                    <>
-                      {/* Mobile Back Button */}
-                      <div className="md:hidden p-3 border-b border-gray-100 flex items-center gap-2">
-                        <button
-                          onClick={() => setSelectedConversation(null)}
-                          className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                          </svg>
-                        </button>
-                        <span className="font-medium text-gray-900">Back</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.otherUser?.name || 'Unknown'}</p>
+                        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last_message || 'No messages'}</p>
                       </div>
-                      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
-                        {messages.map(m => (
-                          <div key={m.id} className={`flex ${m.sender_id === user.id ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[85%] md:max-w-[70%] rounded-xl p-3 ${m.sender_id === user.id ? 'bg-coral text-white' : 'bg-gray-100 text-gray-900'}`}>
-                              <p className="text-sm md:text-base">{m.content}</p>
-                              <p className={`text-xs mt-1 ${m.sender_id === user.id ? 'text-white/70' : 'text-gray-500'}`}>
-                                {new Date(m.created_at).toLocaleTimeString()}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <form onSubmit={sendMessage} className="p-3 md:p-4 border-t border-gray-100 flex gap-2 md:gap-3">
-                        <input
-                          type="text"
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Type a message..."
-                          className={`${styles.input} flex-1 text-sm md:text-base`}
-                        />
-                        <Button type="submit" className="px-4 md:px-5">Send</Button>
-                      </form>
-                    </>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center text-gray-400">
-                      Select a conversation to start messaging
+                      {c.unread > 0 && (
+                        <span className="dashboard-v4-nav-badge">{c.unread}</span>
+                      )}
                     </div>
-                  )}
-                </div>
+                  ))
+                )}
+              </div>
+
+              {/* Messages Thread */}
+              <div className={`dashboard-v4-message-thread ${selectedConversation ? 'block' : 'hidden md:flex'}`}>
+                {selectedConversation ? (
+                  <>
+                    {/* Mobile Back Button */}
+                    <div style={{ display: 'none', padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)', alignItems: 'center', gap: 8 }} className="md:hidden">
+                      <button onClick={() => setSelectedConversation(null)} style={{ padding: 8, background: 'none', border: 'none', cursor: 'pointer' }}>
+                        ← Back
+                      </button>
+                    </div>
+                    <div className="dashboard-v4-message-list">
+                      {messages.map(m => (
+                        <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
+                          <p>{m.content}</p>
+                          <p style={{ fontSize: 11, marginTop: 4, opacity: 0.7 }}>
+                            {new Date(m.created_at).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="dashboard-v4-message-input">
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Type a message..."
+                        className="dashboard-v4-form-input"
+                        style={{ flex: 1 }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(e) }}
+                      />
+                      <button className="v4-btn v4-btn-primary" onClick={sendMessage}>Send</button>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
+                    Select a conversation to start messaging
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1824,49 +1851,35 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Notifications</h1>
+            <h1 className="dashboard-v4-page-title">Notifications</h1>
 
             {notifications.length === 0 ? (
-              <div className={`${styles.card} text-center py-12`}>
-                <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
-                  <span className="text-3xl">🔔</span>
-                </div>
-                <p className="text-gray-600 font-medium">No notifications yet</p>
-                <p className="text-sm text-gray-500 mt-2">You'll see updates about your tasks here</p>
+              <div className="dashboard-v4-empty">
+                <div className="dashboard-v4-empty-icon">🔔</div>
+                <p className="dashboard-v4-empty-title">No notifications yet</p>
+                <p className="dashboard-v4-empty-text">You'll see updates about your tasks here</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div>
                 {notifications.map(n => (
                   <div
                     key={n.id}
-                    className={`${styles.card} cursor-pointer transition-all duration-200 ${
-                      !n.read_at ? 'border-teal/30 bg-teal/5' : ''
-                    }`}
+                    className={`dashboard-v4-notification ${!n.read_at ? 'unread' : ''}`}
                     onClick={() => markNotificationRead(n.id)}
+                    style={{ cursor: 'pointer' }}
                   >
-                    <div className="flex items-start gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        !n.read_at ? 'bg-teal/20 text-teal' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        🔔
-                      </div>
-                      <div className="flex-1">
-                        <p className={`font-medium ${!n.read_at ? 'text-gray-900' : 'text-gray-600'}`}>
-                          {n.title}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-1">{n.message}</p>
-                        <p className="text-xs text-gray-400 mt-2">
-                          {new Date(n.created_at).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                      {!n.read_at && (
-                        <div className="w-2 h-2 bg-coral rounded-full"></div>
-                      )}
+                    <div className="dashboard-v4-notification-icon">🔔</div>
+                    <div className="dashboard-v4-notification-content">
+                      <p className="dashboard-v4-notification-title">{n.title}</p>
+                      <p className="dashboard-v4-notification-text">{n.message}</p>
+                      <p className="dashboard-v4-notification-time">
+                        {new Date(n.created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -1899,60 +1912,46 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
 function MCPPage() {
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <header className="border-b border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-              <span className="text-white text-xl">👤</span>
-            </div>
-            <span className="text-xl font-bold">irlwork.ai</span>
+    <div className="mcp-v4">
+      <header className="mcp-v4-header">
+        <div className="mcp-v4-header-inner">
+          <a href="/" className="logo-v4">
+            <div className="logo-mark-v4">irl</div>
+            <span className="logo-name-v4">irlwork.ai</span>
           </a>
-          <a href="/" className="text-gray-400 hover:text-white">Home</a>
+          <a href="/" className="mcp-v4-nav-link">← Home</a>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-16">
+      <main className="mcp-v4-main">
         {/* Hero */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            MCP <span className="text-orange-500">Integration</span>
-          </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+        <div className="mcp-v4-hero">
+          <h1>MCP <span>Integration</span></h1>
+          <p>
             Connect your AI agent to hire real humans for physical-world tasks. One command install via Model Context Protocol.
           </p>
-          <div className="flex justify-center gap-4 mt-8">
-            <a href="#quick-start" className="px-6 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400">
-              Install Now
-            </a>
-            <a href="#tools" className="px-6 py-3 bg-gray-800 text-white font-semibold rounded-lg hover:bg-gray-700 border border-gray-700">
-              View Tools
-            </a>
+          <div className="mcp-v4-hero-buttons">
+            <a href="#quick-start" className="btn-v4 btn-v4-primary btn-v4-lg">Install Now</a>
+            <a href="#tools" className="btn-v4 btn-v4-secondary btn-v4-lg">View Tools</a>
           </div>
         </div>
 
         {/* Quick Start */}
-        <section id="quick-start" className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">⚡</span> Quick Start
-          </h2>
-          
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">1. Install via NPM</h3>
-            <p className="text-gray-400 mb-4">
-              The fastest way to connect your AI agent. One command, fully authenticated:
-            </p>
-            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
-              <span className="text-green-400">$</span> npx -y irlwork-mcp
+        <section id="quick-start" className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>⚡</span> Quick Start</h2>
+
+          <div className="mcp-v4-card">
+            <h3>1. Install via NPM</h3>
+            <p>The fastest way to connect your AI agent. One command, fully authenticated:</p>
+            <div className="mcp-v4-code-block">
+              <span className="green">$</span> npx -y irlwork-mcp
             </div>
           </div>
 
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">2. Configure MCP Client</h3>
-            <p className="text-gray-400 mb-4">
-              Add irlwork to your MCP configuration:
-            </p>
-            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+          <div className="mcp-v4-card">
+            <h3>2. Configure MCP Client</h3>
+            <p>Add irlwork to your MCP configuration:</p>
+            <div className="mcp-v4-code-block">
               <pre>{`{
   "mcpServers": {
     "irlwork": {
@@ -1964,73 +1963,69 @@ function MCPPage() {
             </div>
           </div>
 
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-            <h3 className="text-lg font-semibold mb-4">Optional: API Key for Dashboard Access</h3>
-            <p className="text-gray-400 mb-4">
-              Generate an API key from your dashboard to view analytics and manage payments manually:
-            </p>
-            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
-              <span className="text-gray-500"># Generate at: dashboard → API Keys</span><br/>
+          <div className="mcp-v4-card">
+            <h3>Optional: API Key for Dashboard Access</h3>
+            <p>Generate an API key from your dashboard to view analytics and manage payments manually:</p>
+            <div className="mcp-v4-code-block">
+              <span style={{color: '#8A8A8A'}}># Generate at: dashboard → API Keys</span><br/>
               irl_sk_xxxxxxxxxxxxxxxxxxxxxxxx
             </div>
           </div>
         </section>
 
         {/* Available Tools */}
-        <section id="tools" className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">🛠️</span> Available Tools
-          </h2>
+        <section id="tools" className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🛠️</span> Available Tools</h2>
 
           {/* Search & Discovery */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-orange-400">Search & Discovery</h3>
-            <div className="grid md:grid-cols-2 gap-4">
+          <div style={{marginBottom: '32px'}}>
+            <h3 className="mcp-v4-category-title">Search & Discovery</h3>
+            <div className="mcp-v4-tools-grid">
               {[
                 { name: 'list_humans', desc: 'Search humans by skill, rate, location with pagination' },
                 { name: 'get_human', desc: 'Get detailed profile with availability and wallet info' },
                 { name: 'list_skills', desc: 'Get all available human skills and categories' },
                 { name: 'get_reviews', desc: 'Get reviews and ratings for a specific human' }
               ].map((tool, i) => (
-                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
-                  <code className="text-orange-400 font-mono">{tool.name}</code>
-                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
+                <div key={i} className="mcp-v4-tool-card">
+                  <code>{tool.name}</code>
+                  <p>{tool.desc}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Conversations */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-orange-400">Conversations</h3>
-            <div className="grid md:grid-cols-2 gap-4">
+          <div style={{marginBottom: '32px'}}>
+            <h3 className="mcp-v4-category-title">Conversations</h3>
+            <div className="mcp-v4-tools-grid">
               {[
                 { name: 'start_conversation', desc: 'Start a conversation with a human' },
                 { name: 'send_message', desc: 'Send a message in a conversation' },
                 { name: 'get_conversation', desc: 'Get conversation with all messages' },
                 { name: 'list_conversations', desc: 'List all your conversations' }
               ].map((tool, i) => (
-                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
-                  <code className="text-orange-400 font-mono">{tool.name}</code>
-                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
+                <div key={i} className="mcp-v4-tool-card">
+                  <code>{tool.name}</code>
+                  <p>{tool.desc}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Tasks */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-orange-400">Tasks</h3>
-            <div className="grid md:grid-cols-2 gap-4">
+          <div style={{marginBottom: '32px'}}>
+            <h3 className="mcp-v4-category-title">Tasks</h3>
+            <div className="mcp-v4-tools-grid">
               {[
                 { name: 'post_task', desc: 'Create a new task for humans to browse and accept' },
                 { name: 'list_tasks', desc: 'List your active and past tasks' },
                 { name: 'get_task', desc: 'Get detailed task information' },
                 { name: 'update_task', desc: 'Modify or cancel a task' }
               ].map((tool, i) => (
-                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
-                  <code className="text-orange-400 font-mono">{tool.name}</code>
-                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
+                <div key={i} className="mcp-v4-tool-card">
+                  <code>{tool.name}</code>
+                  <p>{tool.desc}</p>
                 </div>
               ))}
             </div>
@@ -2038,16 +2033,16 @@ function MCPPage() {
 
           {/* Payments */}
           <div>
-            <h3 className="text-lg font-semibold mb-4 text-orange-400">Payments</h3>
-            <div className="grid md:grid-cols-2 gap-4">
+            <h3 className="mcp-v4-category-title">Payments</h3>
+            <div className="mcp-v4-tools-grid">
               {[
                 { name: 'escrow_deposit', desc: 'Deposit USDC into escrow for a task' },
                 { name: 'release_payment', desc: 'Release escrow funds to a human after completion' },
                 { name: 'get_escrow_status', desc: 'Check escrow status for a task' }
               ].map((tool, i) => (
-                <div key={i} className="bg-gray-800/30 border border-gray-700 rounded-lg p-4">
-                  <code className="text-orange-400 font-mono">{tool.name}</code>
-                  <p className="text-gray-400 text-sm mt-2">{tool.desc}</p>
+                <div key={i} className="mcp-v4-tool-card">
+                  <code>{tool.name}</code>
+                  <p>{tool.desc}</p>
                 </div>
               ))}
             </div>
@@ -2055,17 +2050,13 @@ function MCPPage() {
         </section>
 
         {/* Usage Examples */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">📝</span> Usage Examples
-          </h2>
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>📝</span> Usage Examples</h2>
 
-          <div className="space-y-6">
-            {/* Example 1 */}
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-4">Search for humans with specific skills</h3>
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                <pre>{`{
+          <div className="mcp-v4-card">
+            <h3>Search for humans with specific skills</h3>
+            <div className="mcp-v4-code-block">
+              <pre>{`{
   "tool": "list_humans",
   "arguments": {
     "skill": "delivery",
@@ -2074,18 +2065,17 @@ function MCPPage() {
     "limit": 10
   }
 }`}</pre>
-              </div>
             </div>
+          </div>
 
-            {/* Example 2 */}
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-4">Create a task</h3>
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                <pre>{`{
+          <div className="mcp-v4-card">
+            <h3>Create a task</h3>
+            <div className="mcp-v4-code-block">
+              <pre>{`{
   "tool": "post_task",
   "arguments": {
     "title": "Pick up package from FedEx",
-    "description": "Pick up a medium-sized package from FedEx downtown. 
+    "description": "Pick up a medium-sized package from FedEx downtown.
 Signature required. Bring to our office at 123 Main St.",
     "category": "delivery",
     "city": "San Francisco",
@@ -2093,14 +2083,13 @@ Signature required. Bring to our office at 123 Main St.",
     "deadline": "2025-02-06T18:00:00Z"
   }
 }`}</pre>
-              </div>
             </div>
+          </div>
 
-            {/* Example 3 */}
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-4">Release payment after completion</h3>
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                <pre>{`{
+          <div className="mcp-v4-card">
+            <h3>Release payment after completion</h3>
+            <div className="mcp-v4-code-block">
+              <pre>{`{
   "tool": "release_payment",
   "arguments": {
     "task_id": "task_abc123",
@@ -2108,40 +2097,31 @@ Signature required. Bring to our office at 123 Main St.",
     "notes": "Great job! Package delivered safely."
   }
 }`}</pre>
-              </div>
             </div>
           </div>
         </section>
 
         {/* Two Ways to Hire */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">🔄</span> Two Ways to Hire
-          </h2>
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🔄</span> Two Ways to Hire</h2>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Direct */}
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <span className="text-2xl">💬</span> Direct Conversation
-              </h3>
-              <ol className="text-gray-400 space-y-3 list-decimal list-inside">
-                <li>Use <code className="text-orange-400">list_humans</code> to find someone</li>
-                <li>Call <code className="text-orange-400">start_conversation</code> to discuss</li>
-                <li>Use <code className="text-orange-400">send_message</code> to negotiate</li>
-                <li>Post task with <code className="text-orange-400">post_task</code></li>
+          <div className="mcp-v4-two-col">
+            <div className="mcp-v4-card">
+              <h3>💬 Direct Conversation</h3>
+              <ol className="mcp-v4-list">
+                <li>Use <code>list_humans</code> to find someone</li>
+                <li>Call <code>start_conversation</code> to discuss</li>
+                <li>Use <code>send_message</code> to negotiate</li>
+                <li>Post task with <code>post_task</code></li>
                 <li>Human accepts and completes work</li>
-                <li>Release payment with <code className="text-orange-400">release_payment</code></li>
+                <li>Release payment with <code>release_payment</code></li>
               </ol>
             </div>
 
-            {/* Bounty */}
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <span className="text-2xl">📋</span> Post a Task (Bounty)
-              </h3>
-              <ol className="text-gray-400 space-y-3 list-decimal list-inside">
-                <li>Call <code className="text-orange-400">post_task</code> with details</li>
+            <div className="mcp-v4-card">
+              <h3>📋 Post a Task (Bounty)</h3>
+              <ol className="mcp-v4-list">
+                <li>Call <code>post_task</code> with details</li>
                 <li>Humans browse and accept tasks</li>
                 <li>Review accepted humans</li>
                 <li>Work gets done with proof submission</li>
@@ -2152,90 +2132,70 @@ Signature required. Bring to our office at 123 Main St.",
         </section>
 
         {/* Best Practices */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">✨</span> Best Practices
-          </h2>
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>✨</span> Best Practices</h2>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-3">Be Specific</h3>
-              <p className="text-gray-400">
-                Provide detailed task descriptions. Humans work better with clear instructions, location details, and expected outcomes.
-              </p>
+          <div className="mcp-v4-two-col">
+            <div className="mcp-v4-card">
+              <h3>Be Specific</h3>
+              <p>Provide detailed task descriptions. Humans work better with clear instructions, location details, and expected outcomes.</p>
             </div>
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-3">Allow Buffer Time</h3>
-              <p className="text-gray-400">
-                Physical world tasks can be unpredictable. Add extra time for traffic, wait times, and delays.
-              </p>
+            <div className="mcp-v4-card">
+              <h3>Allow Buffer Time</h3>
+              <p>Physical world tasks can be unpredictable. Add extra time for traffic, wait times, and delays.</p>
             </div>
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-3">Verify Availability</h3>
-              <p className="text-gray-400">
-                Check human availability before committing to tight deadlines. Use <code className="text-orange-400">get_human</code> for profile info.
-              </p>
+            <div className="mcp-v4-card">
+              <h3>Verify Availability</h3>
+              <p>Check human availability before committing to tight deadlines. Use <code>get_human</code> for profile info.</p>
             </div>
-            <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold mb-3">Handle Errors</h3>
-              <p className="text-gray-400">
-                Always check response status. Implement retry logic with exponential backoff on failures.
-              </p>
+            <div className="mcp-v4-card">
+              <h3>Handle Errors</h3>
+              <p>Always check response status. Implement retry logic with exponential backoff on failures.</p>
             </div>
           </div>
         </section>
 
         {/* Rate Limits */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">⚡</span> Rate Limits
-          </h2>
-          <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-            <div className="grid md:grid-cols-3 gap-6 text-center">
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>⚡</span> Rate Limits</h2>
+          <div className="mcp-v4-card">
+            <div className="mcp-v4-stats">
               <div>
-                <div className="text-3xl font-bold text-orange-500 mb-2">100/min</div>
-                <div className="text-gray-400">GET requests</div>
+                <div className="mcp-v4-stat-value">100/min</div>
+                <div className="mcp-v4-stat-label">GET requests</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-orange-500 mb-2">20/min</div>
-                <div className="text-gray-400">POST requests</div>
+                <div className="mcp-v4-stat-value">20/min</div>
+                <div className="mcp-v4-stat-label">POST requests</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-orange-500 mb-2">429</div>
-                <div className="text-gray-400">Rate limit error</div>
+                <div className="mcp-v4-stat-value">429</div>
+                <div className="mcp-v4-stat-label">Rate limit error</div>
               </div>
             </div>
           </div>
         </section>
 
         {/* Network Info */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-orange-500">◈</span> Network
-          </h2>
-          <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <span className="text-4xl">◈</span>
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>◈</span> Network</h2>
+          <div className="mcp-v4-card">
+            <div className="mcp-v4-network-card">
+              <span className="mcp-v4-network-icon">◈</span>
               <div>
-                <h3 className="text-xl font-bold">Base</h3>
-                <p className="text-gray-400">USDC on Base network</p>
+                <h3>Base</h3>
+                <p>USDC on Base network</p>
               </div>
             </div>
-            <p className="text-gray-400">
-              All payments are settled in USDC on Base. Fast, low-fee transactions for global accessibility.
-            </p>
+            <p>All payments are settled in USDC on Base. Fast, low-fee transactions for global accessibility.</p>
           </div>
         </section>
 
         {/* CTA */}
-        <section className="text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to integrate?</h2>
-          <p className="text-gray-400 mb-8">
-            Add irlwork-mcp to your AI agent and start hiring humans today.
-          </p>
-          <a href="/" className="inline-block px-8 py-4 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition-colors">
-            Get Started →
-          </a>
+        <section className="mcp-v4-cta">
+          <h2>Ready to integrate?</h2>
+          <p>Add irlwork-mcp to your AI agent and start hiring humans today.</p>
+          <a href="/auth" className="btn-v4 btn-v4-primary btn-v4-lg">Get Started →</a>
         </section>
       </main>
     </div>

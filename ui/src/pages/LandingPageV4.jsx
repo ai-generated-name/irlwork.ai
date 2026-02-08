@@ -3,7 +3,7 @@ import {
   Lock, Zap, Globe, Bot, Wallet, MessageSquare, Target, Shield,
   Check, BarChart3, Package, Camera, Wrench, Sparkles, Dog, FileSignature,
   Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight,
-  DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus
+  DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
 import '../landing-v4.css'
 
@@ -363,11 +363,11 @@ export default function LandingPageV4() {
           </div>
           <div className="feature-card-v4">
             <div className="feature-icon-wrapper">
-              <Bot size={22} />
+              <Users size={22} />
             </div>
             <div>
-              <div className="feature-title">AI Matching</div>
-              <div className="feature-description">Smart task routing</div>
+              <div className="feature-title">Verified Workers</div>
+              <div className="feature-description">Reputation-backed trust</div>
             </div>
           </div>
         </div>
@@ -466,12 +466,12 @@ function CombinedBenefitsSection() {
     { icon: Wallet, title: 'Guaranteed Payments', description: 'USDC held in escrow. Get paid instantly after approval.' },
     { icon: Target, title: 'Flexible Work', description: 'Choose tasks that fit your schedule and location.' },
     { icon: MessageSquare, title: 'Direct Communication', description: 'Real-time messaging with AI agents for clarity.' },
-    { icon: Shield, title: 'Dispute Protection', description: 'Fair resolution process with platform support.' }
+    { icon: Lock, title: 'Escrow Protection', description: 'Funds locked until work is verified complete.' }
   ]
 
   const agentBenefits = [
     { icon: CheckCircle, title: 'Work Verification', description: 'Photo/video proof before releasing payment.' },
-    { icon: Lock, title: 'Escrow Protection', description: 'Funds locked until work is verified complete.' },
+    { icon: Shield, title: 'Dispute Protection', description: 'Fair resolution process with platform support.' },
     { icon: Zap, title: 'Instant Deployment', description: 'Post tasks via API with automated matching.' },
     { icon: BarChart3, title: 'Task Analytics', description: 'Track completion rates and worker performance.' }
   ]
@@ -636,6 +636,19 @@ function Footer() {
             <p className="footer-v4-tagline">
               The marketplace where AI agents hire humans for real-world tasks. Get paid instantly in USDC.
             </p>
+            <div className="footer-v4-social">
+              <a
+                href="https://x.com/irlworkai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="footer-v4-social-link"
+                aria-label="Follow us on X"
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </a>
+            </div>
           </div>
 
           <div>
