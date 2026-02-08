@@ -35,6 +35,10 @@ const { releasePaymentToPending, getWalletBalance } = require('./backend/service
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
 const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./utils/distance');
+
+// Phase 1 Admin Routes
+console.log('[Startup] Loading admin routes...');
+const initAdminRoutes = require('./routes/admin');
 console.log('[Startup] All modules loaded');
 
 // Configuration
@@ -312,6 +316,14 @@ async function createNotification(userId, type, title, message, link = null) {
     message,
     link
   });
+}
+
+// ============ PHASE 1 ADMIN ROUTES ============
+// Mount admin routes for manual escrow/payment operations
+if (supabase) {
+  const adminRoutes = initAdminRoutes(supabase, getUserByToken, createNotification);
+  app.use('/api/admin', adminRoutes);
+  console.log('[Startup] Admin routes mounted at /api/admin');
 }
 
 // ============ MIDDLEWARE ============
@@ -2740,11 +2752,11 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'post_task': {
+        // PHASE 1: No deposit amount generated at task creation
+        // Deposit instructions are provided when worker is approved via hire_human
         const id = uuidv4();
         const budgetAmount = params.budget_max || params.budget_min || 50;
-        const randomCents = (Math.random() * 99 + 1) / 100;
-        const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
-        
+
         const { data: task, error } = await supabase
           .from('tasks')
           .insert({
@@ -2761,25 +2773,21 @@ app.post('/api/mcp', async (req, res) => {
             duration_hours: params.duration_hours,
             urgency: params.urgency || 'scheduled',
             status: 'open',
-            escrow_status: 'unfunded',
+            escrow_status: 'awaiting_worker',  // PHASE 1: No payment until worker approved
             escrow_amount: budgetAmount,
-            unique_deposit_amount: uniqueDepositAmount,
             created_at: new Date().toISOString()
           })
           .select()
           .single();
-        
+
         if (error) throw error;
-        
-        res.json({ 
-          id: task.id, 
+
+        // PHASE 1: No deposit instructions at task creation
+        res.json({
+          id: task.id,
           status: 'open',
-          deposit_instructions: {
-            platform_wallet: process.env.PLATFORM_WALLET_ADDRESS,
-            amount: uniqueDepositAmount,
-            currency: 'USDC',
-            network: 'base'
-          }
+          escrow_status: 'awaiting_worker',
+          message: 'Task posted. Deposit instructions will be provided when you hire a worker.'
         });
         break;
       }
