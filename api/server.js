@@ -2793,33 +2793,67 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'hire_human': {
+        // PHASE 1: Hiring triggers escrow deposit flow - worker cannot start until deposit confirmed
         const { task_id, human_id, deadline_hours = 24, instructions } = params;
-        
+
+        // Get task for budget
+        const { data: taskData, error: fetchError } = await supabase
+          .from('tasks')
+          .select('escrow_amount, budget, title')
+          .eq('id', task_id)
+          .single();
+
+        if (fetchError || !taskData) {
+          throw new Error('Task not found');
+        }
+
+        // PHASE 1: Generate unique deposit amount NOW
+        const budgetAmount = taskData.escrow_amount || taskData.budget || 50;
+        const randomCents = (Math.random() * 99 + 1) / 100;
+        const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
+
         const deadline = new Date(Date.now() + deadline_hours * 60 * 60 * 1000).toISOString();
-        
+
         const { error: taskError } = await supabase
           .from('tasks')
-          .update({ 
-            human_id, 
-            status: 'assigned',
+          .update({
+            human_id,
+            status: 'assigned',  // PHASE 1: Not in_progress - must wait for deposit confirmation
+            escrow_status: 'pending_deposit',  // PHASE 1: Trigger deposit flow
+            unique_deposit_amount: uniqueDepositAmount,
+            deposit_amount_cents: Math.round(uniqueDepositAmount * 100),
             assigned_at: new Date().toISOString(),
             deadline,
             instructions,
             updated_at: new Date().toISOString()
           })
           .eq('id', task_id);
-        
+
         if (taskError) throw taskError;
-        
+
         // Notify human
         await createNotification(
           human_id,
           'task_assigned',
-          'Task Assigned!',
-          `You have been assigned a new task. Check your dashboard for details.`
+          'You\'ve Been Selected!',
+          `You've been selected for "${taskData.title}". Funding is in progress — you'll be notified when work can begin.`,
+          `/tasks/${task_id}`
         );
-        
-        res.json({ success: true, assigned_at: new Date().toISOString(), deadline });
+
+        // PHASE 1: Return deposit instructions to agent
+        res.json({
+          success: true,
+          assigned_at: new Date().toISOString(),
+          deadline,
+          escrow_status: 'pending_deposit',
+          deposit_instructions: {
+            wallet_address: process.env.PLATFORM_WALLET_ADDRESS,
+            amount_usdc: uniqueDepositAmount,
+            network: 'Base',
+            note: 'Send exactly this amount. Your worker will be notified once deposit is confirmed by the platform.'
+          },
+          message: 'Worker selected. Please send the exact USDC amount to complete the assignment.'
+        });
         break;
       }
       
