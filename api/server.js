@@ -478,14 +478,12 @@ app.post('/api/auth/register/human', async (req, res) => {
 
 app.post('/api/auth/register/agent', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   try {
-    const { email, name, organization } = req.body;
+    const { email, name } = req.body;
     const id = uuidv4();
     const api_key = 'irl_' + crypto.randomBytes(24).toString('hex');
-    const baseUrl = process.env.API_URL || `http://localhost:${PORT}`;
-    const webhook_url = `${baseUrl}/webhooks/${id}`;
-    
+
     const { data: user, error } = await supabase
       .from('users')
       .insert({
@@ -495,16 +493,14 @@ app.post('/api/auth/register/agent', async (req, res) => {
         name,
         type: 'agent',
         api_key,
-        organization,
-        mcp_webhook_url: webhook_url,
         created_at: new Date().toISOString()
       })
       .select()
       .single();
-    
+
     if (error) throw error;
-    
-    res.json({ user: { id, email, name, type: 'agent' }, api_key, webhook_url });
+
+    res.json({ user: { id, email, name, type: 'agent' }, api_key });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -722,9 +718,6 @@ app.post('/api/auth/register-agent', async (req, res) => {
       password_hash: passwordHash,
       name,
       type: 'agent',
-      role: 'agent',
-      agent_name: agent_name || null,
-      webhook_url: webhook_url || null,
       verified: true, // Auto-verify agents
       created_at: new Date().toISOString()
     });

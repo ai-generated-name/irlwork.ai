@@ -27,7 +27,6 @@ RETURNS TABLE (
   status TEXT,
   agent_id UUID,
   human_id UUID,
-  escrow_status TEXT,
   created_at TIMESTAMPTZ,
   distance_km DOUBLE PRECISION
 ) AS $$
@@ -36,7 +35,7 @@ BEGIN
   SELECT
     t.id, t.title, t.description, t.category, t.budget, t.duration,
     t.location, t.latitude, t.longitude, t.status, t.agent_id, t.human_id,
-    t.escrow_status, t.created_at,
+    t.created_at,
     (6371 * acos(
       LEAST(1.0, cos(radians(user_lat)) * cos(radians(t.latitude)) *
       cos(radians(t.longitude) - radians(user_lng)) +
@@ -102,46 +101,46 @@ WHERE NOT EXISTS (SELECT 1 FROM users WHERE type = 'agent');
 -- 4. SEED TEST TASKS IN HO CHI MINH CITY
 -- ============================================
 WITH agent AS (SELECT id FROM users WHERE type = 'agent' LIMIT 1)
-INSERT INTO tasks (id, agent_id, title, description, category, location, latitude, longitude, budget, status, escrow_status, created_at)
+INSERT INTO tasks (id, agent_id, title, description, category, location, latitude, longitude, budget, status, created_at)
 SELECT gen_random_uuid(), agent.id,
    'Pick up documents from District 1 notary',
    'Collect signed documents from notary on Nguyen Hue, deliver to District 7.',
-   'delivery', 'District 1, Ho Chi Minh City', 10.7769, 106.7009, 15, 'open', 'funded', NOW() - INTERVAL '2 hours'
+   'delivery', 'District 1, Ho Chi Minh City', 10.7769, 106.7009, 15, 'open', NOW() - INTERVAL '2 hours'
 FROM agent
 UNION ALL SELECT gen_random_uuid(), agent.id,
    'Photograph coffee shop interior',
    'Take 20+ high-quality photos of our new coffee shop for Google Maps. Must have own camera.',
-   'photography', 'District 3, Ho Chi Minh City', 10.7831, 106.6892, 40, 'open', 'funded', NOW() - INTERVAL '5 hours'
+   'photography', 'District 3, Ho Chi Minh City', 10.7831, 106.6892, 40, 'open', NOW() - INTERVAL '5 hours'
 FROM agent
 UNION ALL SELECT gen_random_uuid(), agent.id,
    'Check product availability at 3 stores',
    'Visit 3 electronics stores in District 10 and check if specific laptop models are in stock.',
-   'data-collection', 'District 10, Ho Chi Minh City', 10.7725, 106.6671, 25, 'open', 'funded', NOW() - INTERVAL '1 day'
+   'data-collection', 'District 10, Ho Chi Minh City', 10.7725, 106.6671, 25, 'open', NOW() - INTERVAL '1 day'
 FROM agent
 UNION ALL SELECT gen_random_uuid(), agent.id,
    'Set up Ubiquiti UniFi access point',
    'Install and configure a UniFi AP at a small office. Must have networking experience.',
-   'tech-setup', 'Thu Duc, Ho Chi Minh City', 10.8494, 106.7530, 60, 'open', 'funded', NOW() - INTERVAL '3 hours'
+   'tech-setup', 'Thu Duc, Ho Chi Minh City', 10.8494, 106.7530, 60, 'open', NOW() - INTERVAL '3 hours'
 FROM agent
 UNION ALL SELECT gen_random_uuid(), agent.id,
    'Translate 2-page contract VN to EN',
    'Translate a short rental contract from Vietnamese to English. Legal accuracy important.',
-   'translation', 'District 7, Ho Chi Minh City', 10.7295, 106.7218, 30, 'open', 'funded', NOW() - INTERVAL '12 hours'
+   'translation', 'District 7, Ho Chi Minh City', 10.7295, 106.7218, 30, 'open', NOW() - INTERVAL '12 hours'
 FROM agent
 UNION ALL SELECT gen_random_uuid(), agent.id,
    'Verify business address exists',
    'Go to this address and confirm there is an active business operating there. Take a photo.',
-   'verification', 'Binh Thanh, Ho Chi Minh City', 10.8015, 106.7107, 10, 'open', 'unfunded', NOW() - INTERVAL '6 hours'
+   'verification', 'Binh Thanh, Ho Chi Minh City', 10.8015, 106.7107, 10, 'open', NOW() - INTERVAL '6 hours'
 FROM agent
 UNION ALL SELECT gen_random_uuid(), agent.id,
    'Grocery delivery from Vinmart',
    'Buy specific items from Vinmart and deliver to my apartment in District 2.',
-   'errands', 'District 2, Ho Chi Minh City', 10.7868, 106.7497, 12, 'open', 'funded', NOW() - INTERVAL '30 minutes'
+   'errands', 'District 2, Ho Chi Minh City', 10.7868, 106.7497, 12, 'open', NOW() - INTERVAL '30 minutes'
 FROM agent
 UNION ALL SELECT gen_random_uuid(), agent.id,
    'Return package to post office',
    'Drop off a pre-labeled return package at the nearest Vietnam Post office.',
-   'delivery', 'District 1, Ho Chi Minh City', 10.7756, 106.7019, 8, 'open', 'funded', NOW() - INTERVAL '4 hours'
+   'delivery', 'District 1, Ho Chi Minh City', 10.7756, 106.7019, 8, 'open', NOW() - INTERVAL '4 hours'
 FROM agent;
 
 -- ============================================

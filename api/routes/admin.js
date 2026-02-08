@@ -169,52 +169,6 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
   });
 
   // ============================================================================
-  // GET /api/admin/tasks/:id - Full task detail with payment history
-  // ============================================================================
-  router.get('/tasks/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      const { data: task, error } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          agent:users!tasks_agent_id_fkey(id, name, email, wallet_address),
-          human:users!tasks_human_id_fkey(id, name, email, wallet_address)
-        `)
-        .eq('id', id)
-        .single();
-
-      if (error || !task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-
-      // Get payment history
-      const { data: payments } = await supabase
-        .from('manual_payments')
-        .select('*')
-        .eq('task_id', id)
-        .order('created_at', { ascending: false });
-
-      // Get proofs
-      const { data: proofs } = await supabase
-        .from('task_proofs')
-        .select('*')
-        .eq('task_id', id)
-        .order('created_at', { ascending: false });
-
-      res.json({
-        task,
-        payments: payments || [],
-        proofs: proofs || []
-      });
-    } catch (error) {
-      console.error('[Admin] Task detail error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ============================================================================
   // GET /api/admin/tasks/pending-deposits - Tasks awaiting USDC deposit
   // ============================================================================
   router.get('/tasks/pending-deposits', async (req, res) => {
@@ -520,7 +474,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         .select(`
           id, title, escrow_amount, updated_at,
           agent:users!tasks_agent_id_fkey(id, name, email),
-          human:users!tasks_human_id_fkey(id, name, email, wallet_address)
+          human:users!tasks_human_id_fkey(id, name, email, circle_wallet_id)
         `)
         .eq('status', 'approved')
         .eq('escrow_status', 'deposited')
@@ -554,6 +508,53 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
   });
 
   // ============================================================================
+  // GET /api/admin/tasks/:id - Full task detail with payment history
+  // NOTE: This route MUST come after all /tasks/specific-path routes
+  // ============================================================================
+  router.get('/tasks/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const { data: task, error } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          agent:users!tasks_agent_id_fkey(id, name, email, circle_wallet_id),
+          human:users!tasks_human_id_fkey(id, name, email, circle_wallet_id)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error || !task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+
+      // Get payment history
+      const { data: payments } = await supabase
+        .from('manual_payments')
+        .select('*')
+        .eq('task_id', id)
+        .order('created_at', { ascending: false });
+
+      // Get proofs
+      const { data: proofs } = await supabase
+        .from('task_proofs')
+        .select('*')
+        .eq('task_id', id)
+        .order('created_at', { ascending: false });
+
+      res.json({
+        task,
+        payments: payments || [],
+        proofs: proofs || []
+      });
+    } catch (error) {
+      console.error('[Admin] Task detail error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
   // POST /api/admin/tasks/:id/release-payment - Release payment (fees calculated server-side)
   // ============================================================================
   router.post('/tasks/:id/release-payment', async (req, res) => {
@@ -564,7 +565,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       // Get task
       const { data: task, error: taskError } = await supabase
         .from('tasks')
-        .select('*, human:users!tasks_human_id_fkey(id, name, email, wallet_address)')
+        .select('*, human:users!tasks_human_id_fkey(id, name, email, circle_wallet_id)')
         .eq('id', id)
         .single();
 
@@ -639,7 +640,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         deposit_amount: depositAmount,
         worker_amount: parseFloat(workerAmount),
         platform_fee: parseFloat(platformFee),
-        worker_wallet: task.human?.wallet_address || null,
+        worker_wallet: task.human?.circle_wallet_id || null,
         message: 'Payment released. Ready for withdrawal confirmation.'
       });
     } catch (error) {
@@ -658,7 +659,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         .select(`
           *,
           task:tasks(id, title),
-          worker:users!manual_payments_worker_id_fkey(id, name, email, wallet_address)
+          worker:users!manual_payments_worker_id_fkey(id, name, email, circle_wallet_id)
         `)
         .eq('status', 'pending_withdrawal')
         .order('released_at', { ascending: true });
