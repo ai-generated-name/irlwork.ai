@@ -9,6 +9,7 @@ import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
 import ActivityFeed from './components/ActivityFeed'
 import BrowsePage from './pages/BrowsePage'
+import LandingPageV4 from './pages/LandingPageV4'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
@@ -975,6 +976,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
   const [assigningWorker, setAssigningWorker] = useState(null) // loading state
 
+  // Task creation form state
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    category: '',
+    budget: '',
+    city: ''
+  })
+  const [creatingTask, setCreatingTask] = useState(false)
+  const [createTaskError, setCreateTaskError] = useState('')
+
   useEffect(() => {
     localStorage.setItem('irlwork_hiringMode', hiringMode)
   }, [hiringMode])
@@ -1019,6 +1031,46 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     fetchUnreadMessages()
     fetchActivities()
   }, [hiringMode])
+
+  // Real-time subscriptions for agents
+  useEffect(() => {
+    if (!hiringMode || !user) return
+
+    // Subscribe to changes on agent's tasks
+    const tasksChannel = supabase
+      .channel(`agent-tasks-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks' },
+        (payload) => {
+          // Refresh tasks when any change occurs on agent's tasks
+          if (payload.new?.agent_id === user.id || payload.old?.agent_id === user.id) {
+            fetchPostedTasks()
+          }
+        }
+      )
+      .subscribe()
+
+    // Subscribe to new applications
+    const applicationsChannel = supabase
+      .channel(`task-applications-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'task_applications' },
+        (payload) => {
+          // Refresh applications for the task if it's expanded
+          if (expandedTask && payload.new?.task_id === expandedTask) {
+            fetchApplicationsForTask(expandedTask)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(tasksChannel)
+      supabase.removeChannel(applicationsChannel)
+    }
+  }, [hiringMode, user, expandedTask])
 
   const fetchTasks = async () => {
     try {
@@ -1161,6 +1213,60 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       }
     } catch (e) {
       console.log('Could not fetch activity feed')
+    }
+  }
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault()
+    setCreateTaskError('')
+
+    // Validation
+    if (!taskForm.title.trim()) {
+      setCreateTaskError('Title is required')
+      return
+    }
+    if (!taskForm.category) {
+      setCreateTaskError('Category is required')
+      return
+    }
+    if (!taskForm.budget || parseFloat(taskForm.budget) < 5) {
+      setCreateTaskError('Budget must be at least $5')
+      return
+    }
+
+    setCreatingTask(true)
+    try {
+      const res = await fetch(`${API_URL}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
+        body: JSON.stringify({
+          title: taskForm.title,
+          description: taskForm.description,
+          category: taskForm.category,
+          budget: parseFloat(taskForm.budget),
+          location: taskForm.city
+        })
+      })
+
+      if (res.ok) {
+        const newTask = await res.json()
+        // Optimistic update - add to list immediately
+        setPostedTasks(prev => [newTask, ...prev])
+        // Reset form
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '' })
+        // Switch to posted tab
+        setActiveTab('posted')
+      } else {
+        const err = await res.json()
+        setCreateTaskError(err.error || 'Failed to create task')
+      }
+    } catch (e) {
+      setCreateTaskError('Network error. Please try again.')
+    } finally {
+      setCreatingTask(false)
     }
   }
 
@@ -1473,20 +1579,54 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Create Task</h1>
             <div className={`${styles.card} max-w-2xl`}>
-              <form className="space-y-4">
-                <input type="text" placeholder="Task title" className={styles.input} />
-                <textarea placeholder="Description" rows={4} className={styles.input} />
+              <form className="space-y-4" onSubmit={handleCreateTask}>
+                <input
+                  type="text"
+                  placeholder="Task title"
+                  className={styles.input}
+                  value={taskForm.title}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                />
+                <textarea
+                  placeholder="Description"
+                  rows={4}
+                  className={styles.input}
+                  value={taskForm.description}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                />
                 <div className="grid grid-cols-2 gap-4">
-                  <select className={styles.input}>
+                  <select
+                    className={styles.input}
+                    value={taskForm.category}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, category: e.target.value }))}
+                  >
                     <option value="">Category</option>
-                    {['delivery', 'pickup', 'errands', 'cleaning', 'moving', 'general'].map(c => (
-                      <option key={c} value={c}>{c.replace('_', ' ')}</option>
+                    {['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => (
+                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
                     ))}
                   </select>
-                  <input type="number" placeholder="Budget ($)" className={styles.input} />
+                  <input
+                    type="number"
+                    placeholder="Budget ($)"
+                    className={styles.input}
+                    value={taskForm.budget}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
+                    min="5"
+                  />
                 </div>
-                <input type="text" placeholder="City" className={styles.input} />
-                <Button className="w-full">Create Task</Button>
+                <input
+                  type="text"
+                  placeholder="City"
+                  className={styles.input}
+                  value={taskForm.city}
+                  onChange={(e) => setTaskForm(prev => ({ ...prev, city: e.target.value }))}
+                />
+                {createTaskError && (
+                  <p className="text-red-500 text-sm">{createTaskError}</p>
+                )}
+                <Button className="w-full" disabled={creatingTask}>
+                  {creatingTask ? 'Creating...' : 'Create Task'}
+                </Button>
               </form>
             </div>
           </div>
@@ -2646,7 +2786,7 @@ function App() {
   if (path === '/mcp') return <MCPPage />
   if (path === '/browse') return <BrowsePage user={user} />
 
-  return <LandingPage onNavigate={(p) => { window.location.href = p }} />}
+  return <LandingPageV4 />}
 
 export default function AppWrapper() {
   return <App />
