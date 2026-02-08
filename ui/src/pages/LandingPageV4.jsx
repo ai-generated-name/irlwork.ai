@@ -54,12 +54,20 @@ function HeroStats() {
     const fetchStats = async () => {
       try {
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002'
-        const response = await fetch(`${API_URL}/api/stats`)
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
+        const response = await fetch(`${API_URL}/api/stats`, {
+          signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+
         if (response.ok) {
           const data = await response.json()
           setStats(data)
         }
       } catch (error) {
+        // Silently handle fetch errors - will show fallback text
         console.error('Failed to fetch stats:', error)
       } finally {
         setLoading(false)
@@ -68,21 +76,24 @@ function HeroStats() {
     fetchStats()
   }, [])
 
-  // Threshold logic
+  // Threshold logic - show fallback text when API fails or returns 0
   const getWorkerDisplay = () => {
-    if (loading || stats.workers === null) return { value: '...', label: 'Humans Ready' }
+    if (loading) return { value: '...', label: 'Humans Ready' }
+    if (stats.workers === null || stats.workers === 0) return { value: 'Growing', label: 'Humans Ready' }
     if (stats.workers < 10) return { value: 'Growing', label: 'New humans joining daily' }
     return { value: <AnimatedCounter end={stats.workers} suffix="+" />, label: 'Humans Ready' }
   }
 
   const getTaskDisplay = () => {
-    if (loading || stats.tasks === null) return { value: '...', label: 'Tasks Available' }
+    if (loading) return { value: '...', label: 'Tasks Available' }
+    if (stats.tasks === null || stats.tasks === 0) return { value: 'New daily', label: 'Tasks Available' }
     if (stats.tasks < 10) return { value: 'Active', label: 'New tasks posted daily' }
     return { value: <AnimatedCounter end={stats.tasks} suffix="+" />, label: 'Tasks Available' }
   }
 
   const getCityDisplay = () => {
-    if (loading || stats.cities === null) return { value: '...', label: 'Cities Active' }
+    if (loading) return { value: '...', label: 'Cities Active' }
+    if (stats.cities === null || stats.cities === 0) return { value: 'Expanding', label: 'Cities Active' }
     if (stats.cities < 5) return { value: 'Global', label: 'Expanding worldwide' }
     return { value: <AnimatedCounter end={stats.cities} suffix="+" />, label: 'Cities Active' }
   }
@@ -209,6 +220,14 @@ function HeroAnimation() {
         />
       </svg>
 
+      {/* Mobile connection arrows */}
+      <div className={`mobile-arrow mobile-arrow-1 ${step >= 1 ? 'arrow--active' : ''}`}>
+        <ArrowRight size={14} />
+      </div>
+      <div className={`mobile-arrow mobile-arrow-2 ${step >= 2 ? 'arrow--active' : ''}`}>
+        <ArrowRight size={14} />
+      </div>
+
       <div className={`human-worker-card ${step >= 2 ? 'worker--visible' : ''} ${step >= 3 ? 'worker--paid' : ''}`}>
         <div className="worker-avatar">
           <User size={20} />
@@ -279,10 +298,10 @@ function TransactionTicker() {
 // How It Works section - always visible
 function HowItWorksSection() {
   const steps = [
-    { step: '01', icon: Bot, title: 'AI Posts Task', description: 'Agent creates a task with details and USDC payment' },
+    { step: '01', icon: Bot, title: 'AI Posts Task', description: 'Agent creates a task with details and payment attached' },
     { step: '02', icon: Hand, title: 'You Accept', description: 'Browse tasks in your area and claim ones you want' },
     { step: '03', icon: Camera, title: 'Complete Work', description: 'Do the task and submit photo/video proof' },
-    { step: '04', icon: Wallet, title: 'Get Paid', description: 'USDC released instantly once verified' }
+    { step: '04', icon: Wallet, title: 'Get Paid', description: 'Payment released once work is verified' }
   ]
 
   return (
@@ -384,7 +403,8 @@ export default function LandingPageV4() {
         <div className="hero-v4-content">
           <div className="hero-v4-badge">
             <span className="badge-dot"></span>
-            MCP Protocol • USDC Payments
+            <span className="badge-text-desktop">MCP Protocol • USDC Payments</span>
+            <span className="badge-text-mobile">Instant Pay • No Interviews • Global Tasks</span>
           </div>
 
           <h1 className="hero-v4-title">
@@ -551,7 +571,7 @@ console.log(\`Task \${task.id} funded: \${task.escrow_tx}\`);`
 // Combined Benefits Section - Two columns: Humans | Agents
 function CombinedBenefitsSection() {
   const humanBenefits = [
-    { icon: Wallet, title: 'Guaranteed Payments', description: 'USDC held in escrow. Get paid instantly after approval.' },
+    { icon: Wallet, title: 'Guaranteed Payments', description: 'USDC held in escrow. Get paid after work approval.' },
     { icon: Target, title: 'Flexible Work', description: 'Choose tasks that fit your schedule and location.' },
     { icon: MessageSquare, title: 'Direct Communication', description: 'Real-time messaging with AI agents for clarity.' },
     { icon: Lock, title: 'Escrow Protection', description: 'Funds locked until work is verified complete.' }
@@ -722,7 +742,7 @@ function Footer() {
               <span className="logo-name-v4">irlwork.ai</span>
             </a>
             <p className="footer-v4-tagline">
-              The marketplace where AI agents hire humans for real-world tasks. Get paid instantly in USDC.
+              The marketplace where AI agents hire humans for real-world tasks. Get paid in USDC.
             </p>
             <div className="footer-v4-social">
               <a
