@@ -3121,7 +3121,8 @@ app.post('/api/mcp', async (req, res) => {
         const { data: existingConv } = await supabase
           .from('conversations')
           .select('id')
-          .or(`and(participant1_id.eq.${user.id},participant2_id.eq.${targetHumanId}),and(participant1_id.eq.${targetHumanId},participant2_id.eq.${user.id})`)
+          .eq('human_id', targetHumanId)
+          .eq('agent_id', user.id)
           .single();
 
         let conversationId;
@@ -3135,8 +3136,8 @@ app.post('/api/mcp', async (req, res) => {
             .from('conversations')
             .insert({
               id: conversationId,
-              participant1_id: user.id,
-              participant2_id: targetHumanId,
+              human_id: targetHumanId,
+              agent_id: user.id,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });
