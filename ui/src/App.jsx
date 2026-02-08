@@ -3602,70 +3602,86 @@ function App() {
 
   const handleOnboardingComplete = async (profile) => {
     console.log('[Onboarding] Completing with profile:', profile)
-    
-    // Optimistically update user state
+
+    // Build the complete user object with all profile data
     const updatedUser = {
       ...user,
       ...profile,
-      needs_onboarding: false
+      needs_onboarding: false,
+      supabase_user: true
     }
-    
+
     try {
       // First try to register the user in our backend
-      try {
-        const registerRes = await fetch(`${API_URL}/auth/register/human`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            city: profile.city,
-            hourly_rate: profile.hourly_rate,
-            skills: profile.skills,
-            role: 'human'
-          })
+      const registerRes = await fetch(`${API_URL}/auth/register/human`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          city: profile.city,
+          latitude: profile.latitude,
+          longitude: profile.longitude,
+          country: profile.country,
+          country_code: profile.country_code,
+          hourly_rate: profile.hourly_rate,
+          skills: profile.skills,
+          travel_radius: profile.travel_radius,
+          role: 'human'
         })
-        
-        if (registerRes.ok) {
-          const data = await registerRes.json()
-          const finalUser = { ...data.user, supabase_user: true }
-          // Save to localStorage
-          localStorage.setItem('user', JSON.stringify(finalUser))
-          setUser(finalUser)
-          window.location.href = '/dashboard'
-          return
-        }
-      } catch (e) {
-        console.log('[Onboarding] Register endpoint unavailable, trying profile update')
+      })
+
+      if (registerRes.ok) {
+        const data = await registerRes.json()
+        // Ensure needs_onboarding is false in the saved user
+        const finalUser = { ...data.user, supabase_user: true, needs_onboarding: false }
+        console.log('[Onboarding] Register success, saving user:', finalUser)
+        localStorage.setItem('user', JSON.stringify(finalUser))
+        setUser(finalUser)
+        window.location.href = '/dashboard'
+        return
       }
-      
-      // Fallback: update profile directly
+
+      console.log('[Onboarding] Register returned non-ok, trying profile update')
+
+      // Fallback: update profile directly (for existing users)
       const res = await fetch(`${API_URL}/humans/profile`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           Authorization: user.id
         },
         body: JSON.stringify({
+          name: user.name,
           city: profile.city,
+          latitude: profile.latitude,
+          longitude: profile.longitude,
+          country: profile.country,
+          country_code: profile.country_code,
           hourly_rate: profile.hourly_rate,
-          skills: profile.skills
+          skills: profile.skills,
+          travel_radius: profile.travel_radius
         })
       })
-      
+
       if (res.ok) {
         const data = await res.json()
-        const finalUser = { ...data.user, supabase_user: true }
+        // Ensure needs_onboarding is false in the saved user
+        const finalUser = { ...data.user, supabase_user: true, needs_onboarding: false }
+        console.log('[Onboarding] Profile update success, saving user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
         window.location.href = '/dashboard'
       } else {
-        throw new Error('Failed to save profile')
+        const errorData = await res.json().catch(() => ({}))
+        console.error('[Onboarding] Profile update failed:', errorData)
+        throw new Error(errorData.error || 'Failed to save profile')
       }
     } catch (e) {
       console.error('[Onboarding] Failed:', e)
-      // Even if backend fails, save to localStorage and redirect
+      // Save to localStorage with needs_onboarding: false so we don't loop
+      console.log('[Onboarding] Saving fallback user to localStorage:', updatedUser)
       localStorage.setItem('user', JSON.stringify(updatedUser))
       setUser(updatedUser)
       window.location.href = '/dashboard'
