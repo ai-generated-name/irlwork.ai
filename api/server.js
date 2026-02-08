@@ -543,11 +543,11 @@ app.put('/api/humans/profile', async (req, res) => {
 app.get('/api/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
   
-  const { category, city, urgent, status, my_tasks } = req.query;
+  const { category, city, urgency, status, my_tasks } = req.query;
   const user = await getUserByToken(req.headers.authorization);
-  
+
   let query = supabase.from('tasks').select('*');
-  
+
   if (category) query = query.eq('category', category);
   if (city) query = query.like('location', `%${city}%`);
   if (urgency) query = query.eq('urgency', urgency);
@@ -593,7 +593,7 @@ app.post('/api/tasks', async (req, res) => {
       urgency: urgency || 'scheduled',
       insurance_option,
       status: 'open',
-      escrow_status: 'pending',
+      escrow_status: 'unfunded',
       escrow_amount: budgetAmount,
       unique_deposit_amount: uniqueDepositAmount,
       created_at: new Date().toISOString()
@@ -735,11 +735,11 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
   // Verify user is the task creator (agent)
   const { data: task } = await supabase
     .from('tasks')
-    .select('creator_id')
+    .select('agent_id')
     .eq('id', taskId)
     .single();
 
-  if (!task || task.creator_id !== user.id) {
+  if (!task || task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
 
@@ -787,7 +787,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     .eq('id', taskId)
     .single();
 
-  if (!task || task.creator_id !== user.id) {
+  if (!task || task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Only the task creator can assign humans' });
   }
 
@@ -811,7 +811,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   const { error } = await supabase
     .from('tasks')
     .update({
-      assignee_id: human_id,
+      human_id: human_id,
       status: 'in_progress',
       started_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -825,6 +825,13 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     .from('task_applications')
     .update({ status: 'accepted' })
     .eq('id', application.id);
+
+  // Reject all other applications for this task
+  await supabase
+    .from('task_applications')
+    .update({ status: 'rejected' })
+    .eq('task_id', taskId)
+    .neq('human_id', human_id);
 
   // Increment stats for the human
   await supabase
@@ -2126,7 +2133,7 @@ app.post('/api/mcp', async (req, res) => {
             duration_hours: params.duration_hours,
             urgency: params.urgency || 'scheduled',
             status: 'open',
-            escrow_status: 'pending',
+            escrow_status: 'unfunded',
             escrow_amount: budgetAmount,
             unique_deposit_amount: uniqueDepositAmount,
             created_at: new Date().toISOString()
@@ -2888,7 +2895,7 @@ app.post('/api/tasks/create', async (req, res) => {
       urgency: urgency || 'scheduled',
       insurance_option,
       status: 'open',
-      escrow_status: 'pending',
+      escrow_status: 'unfunded',
       escrow_amount: budgetAmount,
       unique_deposit_amount: uniqueDepositAmount,
       created_at: new Date().toISOString()

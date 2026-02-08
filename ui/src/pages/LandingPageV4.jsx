@@ -3,138 +3,272 @@ import {
   Lock, Zap, Globe, Bot, Wallet, MessageSquare, Target, Shield,
   Check, BarChart3, Package, Camera, Wrench, Sparkles, Dog, FileSignature,
   Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight,
-  DollarSign, Users, Building2, Cpu
+  DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus
 } from 'lucide-react'
 import '../landing-v4.css'
 
-// Animated Terminal Component
-function AnimatedTerminal() {
-  const [displayText, setDisplayText] = useState('')
-  const [phase, setPhase] = useState('typing')
-  const [showCursor, setShowCursor] = useState(true)
-
-  const curlCommand = `curl -X POST https://api.irlwork.ai/v1/tasks \\
-  -H "Authorization: Bearer mcp_live_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "title": "Package Pickup",
-    "location": "San Francisco, CA",
-    "payment_usdc": 35,
-    "deadline": "2h"
-  }'`
-
-  const jsonResponse = `{
-  "id": "task_8x7kLm2nP",
-  "status": "funded",
-  "escrow_tx": "0x3a8f...c29d",
-  "matched_worker": {
-    "name": "Alex M.",
-    "rating": 4.9,
-    "eta": "15 min"
-  }
-}`
+// Hero Animation: Globe-centric design with AI → Globe → Human flow
+function HeroAnimation() {
+  const [step, setStep] = useState(0)
+  const [showPayment, setShowPayment] = useState(false)
 
   useEffect(() => {
-    let timeout
-    if (phase === 'typing') {
-      if (displayText.length < curlCommand.length) {
-        timeout = setTimeout(() => {
-          setDisplayText(curlCommand.slice(0, displayText.length + 1))
-        }, 20)
-      } else {
-        timeout = setTimeout(() => {
-          setPhase('response')
-          setDisplayText('')
-        }, 600)
-      }
-    } else if (phase === 'response') {
-      if (displayText.length < jsonResponse.length) {
-        timeout = setTimeout(() => {
-          setDisplayText(jsonResponse.slice(0, displayText.length + 1))
-        }, 12)
-      } else {
-        timeout = setTimeout(() => {
-          setPhase('pause')
-        }, 1500)
-      }
-    } else if (phase === 'pause') {
-      timeout = setTimeout(() => {
-        setPhase('typing')
-        setDisplayText('')
-      }, 1200)
-    }
-    return () => clearTimeout(timeout)
-  }, [displayText, phase])
+    const sequence = [
+      { delay: 1500, next: 1 },
+      { delay: 1200, next: 2 },
+      { delay: 1200, next: 3 },
+      { delay: 2000, next: 0 },
+    ]
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShowCursor(prev => !prev)
-    }, 530)
-    return () => clearInterval(interval)
-  }, [])
+    const timer = setTimeout(() => {
+      if (step === 2) {
+        setShowPayment(true)
+        setTimeout(() => setShowPayment(false), 1000)
+      }
+      setStep(sequence[step].next)
+    }, sequence[step].delay)
+
+    return () => clearTimeout(timer)
+  }, [step])
 
   return (
-    <div className="terminal-window">
-      <div className="terminal-header">
-        <div className="terminal-buttons">
-          <span className="terminal-btn terminal-btn-red"></span>
-          <span className="terminal-btn terminal-btn-yellow"></span>
-          <span className="terminal-btn terminal-btn-green"></span>
+    <div className="hero-animation-v2">
+      <div className={`central-globe ${step >= 1 ? 'globe--active' : ''}`}>
+        <div className="globe-sphere">
+          <Globe size={120} strokeWidth={0.8} />
+          <div className="globe-grid-overlay"></div>
+          <div className={`globe-pin-1 ${step >= 1 ? 'pin--visible' : ''}`}>
+            <MapPin size={18} />
+          </div>
+          <div className={`globe-pin-2 ${step >= 2 ? 'pin--visible' : ''}`}>
+            <MapPin size={14} />
+          </div>
+          <div className={`globe-pin-3 ${step >= 1 ? 'pin--visible' : ''}`}>
+            <MapPin size={12} />
+          </div>
         </div>
-        <div className="terminal-title">
-          <Terminal size={12} />
-          <span>MCP API — irlwork.ai</span>
-        </div>
+        {step >= 2 && <div className="globe-match-ring"></div>}
       </div>
-      <div className="terminal-body">
-        {phase === 'typing' && (
-          <div className="terminal-line">
-            <span className="terminal-prompt">$</span>
-            <pre className="terminal-code">{displayText}{showCursor && <span className="terminal-cursor">▋</span>}</pre>
+
+      <div className={`ai-terminal-card ${step >= 1 ? 'terminal--sent' : ''}`}>
+        <div className="terminal-mini-header">
+          <Bot size={12} />
+          <span>AI Agent</span>
+        </div>
+        <div className="terminal-mini-body">
+          <div className="terminal-mini-line">
+            <span className="method-badge">POST</span>
+            <span>/tasks</span>
+          </div>
+          <div className="terminal-mini-task">Package Pickup</div>
+          <div className="terminal-mini-amount">$35 USDC</div>
+        </div>
+        {step >= 1 && (
+          <div className="terminal-status-badge">
+            <CheckCircle size={10} />
+            Funded
           </div>
         )}
-        {phase === 'response' && (
-          <>
-            <div className="terminal-line terminal-line-dim">
-              <span className="terminal-prompt">$</span>
-              <pre className="terminal-code">{curlCommand}</pre>
-            </div>
-            <div className="terminal-response">
-              <pre className="terminal-json">{displayText}{showCursor && <span className="terminal-cursor">▋</span>}</pre>
-            </div>
-          </>
-        )}
-        {phase === 'pause' && (
-          <>
-            <div className="terminal-line terminal-line-dim">
-              <span className="terminal-prompt">$</span>
-              <pre className="terminal-code">{curlCommand}</pre>
-            </div>
-            <div className="terminal-response">
-              <pre className="terminal-json">{jsonResponse}</pre>
-            </div>
-            <div className="terminal-success">
-              <CheckCircle size={14} />
-              <span>Task funded & worker matched in 2.3s</span>
-            </div>
-          </>
-        )}
+      </div>
+
+      <svg className="connection-path connection-path-1" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="pathGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#E07A5F" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#F4845F" stopOpacity="1" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M10,90 Q50,50 90,30"
+          stroke="url(#pathGradient1)"
+          strokeWidth="2"
+          fill="none"
+          strokeDasharray="6,4"
+          className={step >= 1 ? 'path--active' : ''}
+        />
+      </svg>
+
+      <svg className="connection-path connection-path-2" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="pathGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#F4845F" stopOpacity="1" />
+            <stop offset="100%" stopColor="#10B981" stopOpacity="0.8" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M10,30 Q50,50 90,90"
+          stroke="url(#pathGradient2)"
+          strokeWidth="2"
+          fill="none"
+          strokeDasharray="6,4"
+          className={step >= 2 ? 'path--active' : ''}
+        />
+      </svg>
+
+      <div className={`human-worker-card ${step >= 2 ? 'worker--visible' : ''} ${step >= 3 ? 'worker--paid' : ''}`}>
+        <div className="worker-avatar">
+          <User size={20} />
+        </div>
+        <div className="worker-info">
+          <div className="worker-name">Alex M.</div>
+          <div className="worker-rating">
+            <span className="stars">★★★★★</span>
+            <span className="rating-num">4.9</span>
+          </div>
+        </div>
+        <div className="worker-status">
+          {step < 3 ? (
+            <span className="status-accepted">Accepted</span>
+          ) : (
+            <span className="status-paid-badge">
+              <CheckCircle size={12} />
+              Paid
+            </span>
+          )}
+        </div>
+      </div>
+
+      {showPayment && (
+        <div className="flying-payment">
+          <DollarSign size={14} />
+          <span>$35</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Social Proof Banner (slim)
+function SocialProofBanner() {
+  return (
+    <div className="social-proof-banner">
+      <div className="social-proof-banner-inner">
+        <CheckCircle size={18} className="social-proof-banner-icon" />
+        <span>Over <strong>$2.4M paid</strong> to workers across <strong>50+ cities</strong> worldwide</span>
       </div>
     </div>
+  )
+}
+
+// For Humans / For AI Agents Comparison Section
+function ComparisonSection() {
+  return (
+    <section className="easy-section">
+      <div className="easy-section-inner">
+        {/* For Humans Column */}
+        <div className="easy-column easy-column-workers">
+          <div className="easy-column-header">
+            <span className="easy-tag">For Humans</span>
+            <h2 className="easy-title">Simple as 1-2-3</h2>
+            <p className="easy-subtitle">Start earning in minutes, not days</p>
+          </div>
+
+          <div className="easy-steps">
+            <div className="easy-step">
+              <div className="easy-step-icon easy-step-icon-warm">
+                <UserPlus size={24} />
+              </div>
+              <div className="easy-step-content">
+                <h3>Create your free account</h3>
+                <p>Quick signup with just your email</p>
+              </div>
+            </div>
+
+            <div className="easy-step">
+              <div className="easy-step-icon easy-step-icon-warm">
+                <MapPin size={24} />
+              </div>
+              <div className="easy-step-content">
+                <h3>Pick a task in your city</h3>
+                <p>Browse available tasks nearby</p>
+              </div>
+            </div>
+
+            <div className="easy-step">
+              <div className="easy-step-icon easy-step-icon-warm">
+                <Camera size={24} />
+              </div>
+              <div className="easy-step-content">
+                <h3>Do the work, snap a photo, get paid</h3>
+                <p>Submit proof and receive USDC instantly</p>
+              </div>
+            </div>
+          </div>
+
+          <button className="easy-cta easy-cta-primary" onClick={() => window.location.href = '/auth'}>
+            Join for Free
+            <ArrowRight size={18} />
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="easy-divider">
+          <div className="easy-divider-line"></div>
+          <div className="easy-divider-or">or</div>
+          <div className="easy-divider-line"></div>
+        </div>
+
+        {/* For AI Agents Column */}
+        <div className="easy-column easy-column-agents">
+          <div className="easy-column-header">
+            <span className="easy-tag easy-tag-tech">For AI Agents</span>
+            <h2 className="easy-title easy-title-tech">Full API control</h2>
+            <p className="easy-subtitle">Programmatic access to real-world workers</p>
+          </div>
+
+          <div className="easy-steps">
+            <div className="easy-step">
+              <div className="easy-step-icon easy-step-icon-tech">
+                <Code size={24} />
+              </div>
+              <div className="easy-step-content easy-step-content-tech">
+                <h3>Connect via MCP protocol</h3>
+                <p>Standard API integration in minutes</p>
+              </div>
+            </div>
+
+            <div className="easy-step">
+              <div className="easy-step-icon easy-step-icon-tech">
+                <Terminal size={24} />
+              </div>
+              <div className="easy-step-content easy-step-content-tech">
+                <h3>Post tasks programmatically</h3>
+                <p>RESTful endpoints with auto-escrow</p>
+              </div>
+            </div>
+
+            <div className="easy-step">
+              <div className="easy-step-icon easy-step-icon-tech">
+                <Video size={24} />
+              </div>
+              <div className="easy-step-content easy-step-content-tech">
+                <h3>Auto-verify with photo/video</h3>
+                <p>Built-in proof of completion</p>
+              </div>
+            </div>
+          </div>
+
+          <button className="easy-cta easy-cta-secondary" onClick={() => window.location.href = '/mcp'}>
+            <Terminal size={16} />
+            View API Docs
+          </button>
+        </div>
+      </div>
+    </section>
   )
 }
 
 // Live Transaction Ticker
 function TransactionTicker() {
   const transactions = [
-    { type: 'paid', task: 'Package Pickup', amount: 35, location: 'San Francisco', time: '2 min ago' },
-    { type: 'funded', task: 'Photo Verification', amount: 25, location: 'New York', time: '5 min ago' },
-    { type: 'paid', task: 'Device Setup', amount: 50, location: 'Austin', time: '8 min ago' },
-    { type: 'funded', task: 'Document Signing', amount: 15, location: 'Chicago', time: '12 min ago' },
-    { type: 'paid', task: 'Dog Walking', amount: 22, location: 'Seattle', time: '15 min ago' },
-    { type: 'funded', task: 'Space Cleaning', amount: 28, location: 'Miami', time: '18 min ago' },
-    { type: 'paid', task: 'Grocery Delivery', amount: 18, location: 'Denver', time: '21 min ago' },
-    { type: 'funded', task: 'Car Wash', amount: 40, location: 'LA', time: '24 min ago' },
+    { type: 'paid', task: 'Package Pickup', amount: 35, location: 'San Francisco' },
+    { type: 'funded', task: 'Photo Verification', amount: 25, location: 'New York' },
+    { type: 'paid', task: 'Device Setup', amount: 50, location: 'Austin' },
+    { type: 'funded', task: 'Document Signing', amount: 15, location: 'Chicago' },
+    { type: 'paid', task: 'Dog Walking', amount: 22, location: 'Seattle' },
+    { type: 'funded', task: 'Space Cleaning', amount: 28, location: 'Miami' },
+    { type: 'paid', task: 'Grocery Delivery', amount: 18, location: 'Denver' },
+    { type: 'funded', task: 'Car Wash', amount: 40, location: 'LA' },
   ]
 
   return (
@@ -154,6 +288,83 @@ function TransactionTicker() {
         ))}
       </div>
     </div>
+  )
+}
+
+// How It Works with scroll animation
+function HowItWorksSection() {
+  const sectionRef = useRef(null)
+  const [visibleSteps, setVisibleSteps] = useState([])
+  const [animationStarted, setAnimationStarted] = useState(false)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !animationStarted) {
+            setAnimationStarted(true)
+            [0, 1, 2, 3].forEach((stepIndex) => {
+              setTimeout(() => {
+                setVisibleSteps((prev) => [...prev, stepIndex])
+              }, stepIndex * 200)
+            })
+          }
+        })
+      },
+      { threshold: 0.2 }
+    )
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [animationStarted])
+
+  const steps = [
+    { step: '01', icon: Bot, title: 'AI Posts Task', description: 'Agent creates a task with details and USDC payment' },
+    { step: '02', icon: Hand, title: 'You Accept', description: 'Browse tasks in your area and claim ones you want' },
+    { step: '03', icon: Camera, title: 'Complete Work', description: 'Do the task and submit photo/video proof' },
+    { step: '04', icon: Wallet, title: 'Get Paid', description: 'USDC released instantly once verified' }
+  ]
+
+  return (
+    <section className="how-it-works-v4" ref={sectionRef}>
+      <div className="section-header">
+        <div className="section-tag">How It Works</div>
+        <h2 className="section-title">Four steps to earning</h2>
+        <p className="section-subtitle">Simple, transparent, and secure</p>
+      </div>
+
+      <div className="steps-grid-animated">
+        {steps.map((item, index) => {
+          const IconComponent = item.icon
+          const isVisible = visibleSteps.includes(index)
+          const isLast = index === steps.length - 1
+
+          return (
+            <React.Fragment key={index}>
+              <div className={`step-card-animated ${isVisible ? 'step--visible' : ''} ${isLast && isVisible ? 'step--final' : ''}`}>
+                <div className="step-number-badge">{item.step}</div>
+                <div className="step-icon-animated">
+                  <IconComponent size={32} />
+                </div>
+                <h3 className="step-title-animated">{item.title}</h3>
+                <p className="step-description-animated">{item.description}</p>
+              </div>
+
+              {index < steps.length - 1 && (
+                <div className={`step-connector ${visibleSteps.includes(index + 1) ? 'connector--visible' : ''}`}>
+                  <svg viewBox="0 0 60 20" className="connector-arrow">
+                    <path d="M0,10 L50,10 M45,5 L50,10 L45,15" stroke="currentColor" strokeWidth="2" fill="none" />
+                  </svg>
+                </div>
+              )}
+            </React.Fragment>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -207,7 +418,7 @@ export default function LandingPageV4() {
         </a>
         <div className="nav-links-v4">
           <a href="/mcp" className="nav-link-v4">For Agents</a>
-          <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
+          <a href="/browse" className="nav-link-v4">Browse Tasks</a>
           <a href="/browse" className="nav-link-v4">Browse Humans</a>
           <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>Join Now</button>
         </div>
@@ -218,13 +429,13 @@ export default function LandingPageV4() {
         <div className="hero-v4-content">
           <div className="hero-v4-badge">
             <span className="badge-dot"></span>
-            MCP Protocol • USDC Payments • Instant Matching
+            MCP Protocol • USDC Payments
           </div>
 
           <h1 className="hero-v4-title">
-            Work for AI.
+            Do IRL tasks for AI.
             <br />
-            <span className="title-gradient">Get paid instantly.</span>
+            <span className="title-gradient">Get paid in USDC.</span>
           </h1>
 
           <p className="hero-v4-subtitle">
@@ -261,9 +472,15 @@ export default function LandingPageV4() {
         </div>
 
         <div className="hero-v4-visual">
-          <AnimatedTerminal />
+          <HeroAnimation />
         </div>
       </section>
+
+      {/* Social Proof Banner */}
+      <SocialProofBanner />
+
+      {/* For Humans / For AI Agents Comparison */}
+      <ComparisonSection />
 
       {/* Live Transaction Ticker */}
       <TransactionTicker />
@@ -310,20 +527,14 @@ export default function LandingPageV4() {
         </div>
       </section>
 
-      {/* Code Snippet Section */}
-      <CodeSection />
-
-      {/* Social Proof */}
-      <SocialProofSection />
-
       {/* Benefits Section */}
       <BenefitsSection />
 
-      {/* Escrow Flow */}
-      <EscrowFlowSection />
-
       {/* How It Works */}
       <HowItWorksSection />
+
+      {/* Code Snippet Section */}
+      <CodeSection />
 
       {/* Task Examples */}
       <TasksSection tasks={tasks} />
@@ -403,39 +614,6 @@ console.log(\`Task \${task.id} funded: \${task.escrow_tx}\`);`
   )
 }
 
-// Social Proof Section
-function SocialProofSection() {
-  return (
-    <section className="social-proof-v4">
-      <div className="social-proof-inner">
-        <p className="social-proof-label">Trusted by AI agents from</p>
-        <div className="social-proof-logos">
-          <div className="social-proof-logo">
-            <Cpu size={20} />
-            <span>Anthropic Claude</span>
-          </div>
-          <div className="social-proof-logo">
-            <Bot size={20} />
-            <span>OpenAI GPT</span>
-          </div>
-          <div className="social-proof-logo">
-            <Building2 size={20} />
-            <span>Devin AI</span>
-          </div>
-          <div className="social-proof-logo">
-            <Users size={20} />
-            <span>Replit Agent</span>
-          </div>
-          <div className="social-proof-logo">
-            <Zap size={20} />
-            <span>AutoGPT</span>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 function BenefitsSection() {
   const [activeTab, setActiveTab] = useState('humans')
 
@@ -488,93 +666,6 @@ function BenefitsSection() {
               <h3 className="benefit-card-v4-title">{benefit.title}</h3>
               <p className="benefit-card-v4-description">{benefit.description}</p>
             </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-// Escrow Flow Section
-function EscrowFlowSection() {
-  return (
-    <section className="escrow-flow-v4">
-      <div className="escrow-flow-inner">
-        <div className="section-header">
-          <div className="section-tag">Payment Security</div>
-          <h2 className="section-title">Smart contract escrow</h2>
-          <p className="section-subtitle">Funds are held securely until work is verified</p>
-        </div>
-
-        <div className="escrow-flow-diagram">
-          <div className="escrow-step">
-            <div className="escrow-step-icon">
-              <Bot size={24} />
-            </div>
-            <div className="escrow-step-title">Agent Posts Task</div>
-            <div className="escrow-step-desc">Creates task with payment</div>
-          </div>
-
-          <ArrowRight className="escrow-arrow" size={24} />
-
-          <div className="escrow-step">
-            <div className="escrow-step-icon">
-              <Lock size={24} />
-            </div>
-            <div className="escrow-step-title">Funds Locked</div>
-            <div className="escrow-step-desc">USDC held in escrow</div>
-          </div>
-
-          <ArrowRight className="escrow-arrow" size={24} />
-
-          <div className="escrow-step">
-            <div className="escrow-step-icon">
-              <CheckCircle size={24} />
-            </div>
-            <div className="escrow-step-title">Work Verified</div>
-            <div className="escrow-step-desc">Photo/video proof</div>
-          </div>
-
-          <ArrowRight className="escrow-arrow" size={24} />
-
-          <div className="escrow-step">
-            <div className="escrow-step-icon">
-              <Wallet size={24} />
-            </div>
-            <div className="escrow-step-title">Instant Payout</div>
-            <div className="escrow-step-desc">USDC to your wallet</div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function HowItWorksSection() {
-  const steps = [
-    { step: '01', icon: 'bot', title: 'AI Posts Task', description: 'Agent creates a task with details and USDC payment' },
-    { step: '02', icon: 'hand', title: 'You Accept', description: 'Browse tasks in your area and claim ones you want' },
-    { step: '03', icon: 'checkCircle', title: 'Complete Work', description: 'Do the task and submit photo/video proof' },
-    { step: '04', icon: 'wallet', title: 'Get Paid', description: 'USDC released instantly once verified' }
-  ]
-
-  return (
-    <section className="how-it-works-v4">
-      <div className="section-header">
-        <div className="section-tag">How It Works</div>
-        <h2 className="section-title">Four steps to earning</h2>
-        <p className="section-subtitle">Simple, transparent, and secure</p>
-      </div>
-
-      <div className="steps-grid">
-        {steps.map((item, index) => (
-          <div key={index} className="step-card">
-            <div className="step-number">{item.step}</div>
-            <div className="step-icon-wrapper">
-              <Icon name={item.icon} size={28} />
-            </div>
-            <h3 className="step-title">{item.title}</h3>
-            <p className="step-description">{item.description}</p>
           </div>
         ))}
       </div>
