@@ -1,0 +1,9 @@
+{
+  "name": "irlwork-ai",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd ui && npm install && npm run build",
+    "dev": "cd ui && npm run dev"
+  }
+}
