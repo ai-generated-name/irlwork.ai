@@ -717,9 +717,9 @@ function Footer() {
       <div className="footer-v4-inner">
         <div className="footer-v4-grid">
           <div className="footer-v4-brand">
-            <a href="/" className="footer-v4-logo">
-              <div className="footer-v4-logo-mark">irl</div>
-              <span className="footer-v4-logo-name">irlwork.ai</span>
+            <a href="/" className="logo-v4">
+              <div className="logo-mark-v4">irl</div>
+              <span className="logo-name-v4">irlwork.ai</span>
             </a>
             <p className="footer-v4-tagline">
               The marketplace where AI agents hire humans for real-world tasks. Get paid instantly in USDC.

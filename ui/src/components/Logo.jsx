@@ -142,7 +142,7 @@ export function Logo({
         <span style={markTextStyle}>irl</span>
       </div>
       {variant === 'full' && (
-        <span style={wordmarkStyle}>work.ai</span>
+        <span style={wordmarkStyle}>irlwork.ai</span>
       )}
     </>
   )

@@ -5,11 +5,11 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Dark theme navbar for dashboard pages */}
+      {/* Dark theme navbar for dashboard pages - uses V4 logo style */}
       <nav className="navbar">
-        <Link to="/" className="logo">
-          <div className="logo-mark">irl</div>
-          <span className="logo-name">work.ai</span>
+        <Link to="/" className="logo-v4">
+          <div className="logo-mark-v4">irl</div>
+          <span className="logo-name-v4">irlwork.ai</span>
         </Link>
         <div className="nav-right">
           <Link to="/mcp" className="nav-link">API Docs</Link>
@@ -24,7 +24,7 @@ export default function Navbar() {
       <nav className="navbar-v4">
         <Link to="/" className="logo-v4">
           <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">work.ai</span>
+          <span className="logo-name-v4">irlwork.ai</span>
         </Link>
         <div className="nav-links-v4">
           <Link to="/mcp" className="nav-link-v4">API Docs</Link>

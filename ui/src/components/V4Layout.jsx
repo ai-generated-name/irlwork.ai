@@ -55,37 +55,9 @@ export function NavbarV4({ user, onLogout }) {
       borderBottom: '1px solid rgba(26, 26, 26, 0.1)',
       fontFamily: v4.fonts.display,
     }}>
-      <a href="/" style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        textDecoration: 'none',
-        transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '8px 10px',
-          border: '1.5px solid #1A1A1A',
-          borderRadius: 4,
-          background: 'transparent',
-          color: '#1A1A1A',
-          fontWeight: 700,
-          fontSize: 14,
-          letterSpacing: '-0.02em',
-          lineHeight: 1,
-        }}>
-          irl
-        </div>
-        <span style={{
-          fontSize: 18,
-          fontWeight: 600,
-          color: v4.colors.textPrimary,
-          letterSpacing: '-0.01em',
-        }}>
-          work.ai
-        </span>
+      <a href="/" className="logo-v4">
+        <div className="logo-mark-v4">irl</div>
+        <span className="logo-name-v4">irlwork.ai</span>
       </a>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
@@ -167,30 +139,9 @@ export function FooterV4() {
         }}>
           {/* Brand */}
           <div style={{ gridColumn: 'span 2' }}>
-            <a href="/" style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              marginBottom: 16,
-              textDecoration: 'none',
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8px 10px',
-                border: '1.5px solid #1A1A1A',
-                borderRadius: 4,
-                background: 'transparent',
-                color: '#1A1A1A',
-                fontWeight: 700,
-                fontSize: 14,
-                letterSpacing: '-0.02em',
-                lineHeight: 1,
-              }}>
-                irl
-              </div>
-              <span style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', letterSpacing: '-0.01em' }}>work.ai</span>
+            <a href="/" className="logo-v4" style={{ marginBottom: 16 }}>
+              <div className="logo-mark-v4">irl</div>
+              <span className="logo-name-v4">irlwork.ai</span>
             </a>
             <p style={{
               color: 'rgba(255,255,255,0.7)',

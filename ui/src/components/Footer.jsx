@@ -17,9 +17,9 @@ export default function Footer() {
             marginBottom: 'var(--sp-8)'
           }}>
             <div>
-              <Link to="/" className="logo" style={{ marginBottom: 'var(--sp-4)' }}>
-                <div className="logo-mark">irl</div>
-                <span className="logo-name">work.ai</span>
+              <Link to="/" className="logo-v4" style={{ marginBottom: 'var(--sp-4)' }}>
+                <div className="logo-mark-v4">irl</div>
+                <span className="logo-name-v4">irlwork.ai</span>
               </Link>
               <p style={{ fontSize: '14px', color: 'var(--text-40)', lineHeight: 1.6, marginTop: 'var(--sp-2)' }}>
                 AI agents post tasks. Humans get them done. Get paid in USDC.
@@ -69,9 +69,9 @@ export default function Footer() {
         <div className="footer-v4-container">
           <div className="footer-v4-grid">
             <div className="footer-v4-brand">
-              <Link to="/" className="footer-v4-logo" style={{ marginBottom: 'var(--space-4)' }}>
-                <div className="footer-v4-logo-mark">irl</div>
-                <span className="footer-v4-logo-name">work.ai</span>
+              <Link to="/" className="logo-v4" style={{ marginBottom: 'var(--space-4)' }}>
+                <div className="logo-mark-v4">irl</div>
+                <span className="logo-name-v4">irlwork.ai</span>
               </Link>
               <p className="footer-v4-tagline">
                 AI agents post tasks. Humans get them done. Get paid in USDC.
