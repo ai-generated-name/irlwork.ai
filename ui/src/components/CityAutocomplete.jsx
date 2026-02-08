@@ -178,29 +178,29 @@ const CityAutocomplete = ({
         onKeyDown={handleKeyDown}
         onFocus={() => query.length >= 2 && results.length > 0 && setShowDropdown(true)}
         placeholder={placeholder}
-        className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+        className="w-full px-4 py-3 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] focus:ring-2 focus:ring-[rgba(15,76,92,0.1)] transition-colors"
         autoComplete="off"
       />
 
       {showDropdown && results.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-2 bg-gray-900 border border-gray-800 rounded-lg shadow-xl max-h-80 overflow-y-auto"
+          className="absolute z-50 w-full mt-2 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl shadow-xl max-h-80 overflow-y-auto"
         >
           {results.map((city, index) => (
             <button
               key={`${city.name}-${city.countryCode}-${index}`}
               onClick={() => handleSelect(city)}
-              className={`w-full px-4 py-3 text-left hover:bg-gray-800 transition-colors ${
-                index === selectedIndex ? 'bg-gray-800' : ''
+              className={`w-full px-4 py-3 text-left hover:bg-[#F5F2ED] transition-colors ${
+                index === selectedIndex ? 'bg-[#F5F2ED]' : ''
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-white font-medium">{city.name}</div>
-                  <div className="text-gray-400 text-sm">{city.country}</div>
+                  <div className="text-[#1A1A1A] font-medium">{city.name}</div>
+                  <div className="text-[#525252] text-sm">{city.country}</div>
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-[#8A8A8A]">
                   {city.lat.toFixed(2)}, {city.lng.toFixed(2)}
                 </div>
               </div>
@@ -212,9 +212,9 @@ const CityAutocomplete = ({
       {query.length >= 2 && results.length === 0 && showDropdown && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-2 bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-4"
+          className="absolute z-50 w-full mt-2 bg-white border border-[rgba(26,26,26,0.12)] rounded-xl shadow-xl p-4"
         >
-          <div className="text-gray-400 text-sm">
+          <div className="text-[#8A8A8A] text-sm">
             No cities found for "{query}"
           </div>
         </div>

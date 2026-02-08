@@ -505,30 +505,35 @@ app.get('/api/humans/:id', async (req, res) => {
 // ============ PROFILE ============
 app.put('/api/humans/profile', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { wallet_address, hourly_rate, bio, categories, city, travel_radius } = req.body;
-  
+
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius } = req.body;
+
   const updates = { updated_at: new Date().toISOString() };
-  
+
+  if (name) updates.name = name;
   if (wallet_address) updates.wallet_address = wallet_address;
   if (hourly_rate) updates.hourly_rate = hourly_rate;
-  if (bio) updates.bio = bio;
-  if (categories) updates.skills = JSON.stringify(categories);
+  if (bio !== undefined) updates.bio = bio;
+  // Accept both 'skills' and 'categories' for backwards compatibility
+  if (skills) updates.skills = Array.isArray(skills) ? skills : JSON.parse(skills);
+  if (categories) updates.skills = Array.isArray(categories) ? categories : JSON.parse(categories);
   if (city) updates.city = city;
-  if (travel_radius) updates.service_radius = travel_radius;
-  
+  if (latitude !== undefined) updates.latitude = latitude;
+  if (longitude !== undefined) updates.longitude = longitude;
+  if (travel_radius) updates.travel_radius = travel_radius;
+
   const { data, error } = await supabase
     .from('users')
     .update(updates)
     .eq('id', user.id)
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
+
   res.json({ success: true, user: data });
 });
 
