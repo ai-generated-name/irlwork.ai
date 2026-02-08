@@ -2590,6 +2590,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     })
                   })
                   if (res.ok) {
+                    const data = await res.json()
+                    // Update localStorage with new user data
+                    if (data.user) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      localStorage.setItem('user', JSON.stringify(updatedUser))
+                    }
                     toast.success('Profile updated!')
                     setProfileLocation(null)
                     setTimeout(() => window.location.reload(), 1000)
@@ -2650,6 +2656,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     body: JSON.stringify({ skills })
                   })
                   if (res.ok) {
+                    const data = await res.json()
+                    // Update localStorage with new user data
+                    if (data.user) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      localStorage.setItem('user', JSON.stringify(updatedUser))
+                    }
                     toast.success('Skills updated!')
                     setTimeout(() => window.location.reload(), 1000)
                   } else {

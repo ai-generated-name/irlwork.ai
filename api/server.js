@@ -641,11 +641,18 @@ app.get('/api/auth/verify', async (req, res) => {
     user: {
       id: user.id, email: user.email, name: user.name, type: user.type,
       city: user.city, hourly_rate: user.hourly_rate,
+      bio: user.bio || '',
+      travel_radius: user.travel_radius || 25,
+      latitude: user.latitude,
+      longitude: user.longitude,
+      country: user.country,
+      country_code: user.country_code,
       wallet_address: user.wallet_address,
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
+      verified: user.verified,
       // Reputation metrics
       total_tasks_completed: user.total_tasks_completed || 0,
       total_tasks_posted: user.total_tasks_posted || 0,
