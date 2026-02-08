@@ -1,6 +1,17 @@
 // irlwork.ai - API Server with Supabase + Payments
+console.log('[Startup] Loading environment...');
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
+// Global error handlers
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught Exception:', err.message, err.stack);
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[FATAL] Unhandled Rejection:', reason);
+});
+
+console.log('[Startup] Loading modules...');
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -10,15 +21,19 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 // Background services
+console.log('[Startup] Loading autoRelease...');
 const autoReleaseService = require('./services/autoRelease');
 
 // Payment and wallet services
+console.log('[Startup] Loading payment services...');
 const { releasePaymentToPending, getWalletBalance } = require('./backend/services/paymentService');
 const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
 const { startBalancePromoter } = require('./backend/services/balancePromoter');
 
 // Distance calculation utilities
+console.log('[Startup] Loading utils...');
 const { haversineDistance, filterByDistance } = require('./utils/distance');
+console.log('[Startup] All modules loaded');
 
 // Configuration
 const app = express();
