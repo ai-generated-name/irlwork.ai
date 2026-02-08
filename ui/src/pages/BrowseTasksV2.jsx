@@ -146,12 +146,22 @@ export default function BrowseTasksV2({
   }, [fetchTasks]);
 
   // Handle location change from CityAutocomplete
-  const handleLocationChange = (value, coords) => {
-    setLocation({
-      city: value,
-      lat: coords?.lat || null,
-      lng: coords?.lng || null,
-    });
+  // CityAutocomplete passes a single object: { city, latitude, longitude, country, ... }
+  const handleLocationChange = (locationData) => {
+    if (typeof locationData === 'object' && locationData !== null) {
+      setLocation({
+        city: locationData.city || '',
+        lat: locationData.latitude || null,
+        lng: locationData.longitude || null,
+      });
+    } else {
+      // Fallback for string value (e.g., manual typing)
+      setLocation({
+        city: locationData || '',
+        lat: null,
+        lng: null,
+      });
+    }
   };
 
   // Handle task selection
