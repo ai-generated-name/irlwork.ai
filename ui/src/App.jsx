@@ -3610,8 +3610,8 @@ function App() {
       }
     } catch (e) {
       console.error('[Onboarding] Error:', e)
-      // Show error to user instead of silently failing
-      alert('Failed to save profile. Please try again.')
+      // Re-throw so the Onboarding component can show the error in-UI
+      throw e
     }
   }
 
