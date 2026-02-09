@@ -1429,7 +1429,7 @@ app.get('/api/tasks/:id/status', async (req, res) => {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at, completed_at')
+    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at')
     .eq('id', req.params.id)
     .single();
 
@@ -1438,9 +1438,9 @@ app.get('/api/tasks/:id/status', async (req, res) => {
   // Get proof submissions
   const { data: proofs } = await supabase
     .from('task_proofs')
-    .select('id, status, proof_text, media_urls, created_at')
+    .select('id, status, proof_text, proof_urls, submitted_at')
     .eq('task_id', req.params.id)
-    .order('created_at', { ascending: false });
+    .order('submitted_at', { ascending: false });
 
   // Get pending payout to check dispute window
   let dispute_window_info = null;
@@ -1474,7 +1474,6 @@ app.get('/api/tasks/:id/status', async (req, res) => {
     escrow_deposited_at: task.escrow_deposited_at,
     escrow_released_at: task.escrow_released_at,
     proof_submitted_at: task.proof_submitted_at,
-    completed_at: task.completed_at,
     proofs: proofs || [],
     dispute_window: dispute_window_info
   });
@@ -1693,9 +1692,9 @@ app.get('/api/agent/tasks', async (req, res) => {
     .from('tasks')
     .select(`
       *,
-      assignee:users!assignee_id(id, name, email, hourly_rate, rating)
+      assignee:users!human_id(id, name, email, hourly_rate, rating)
     `)
-    .eq('creator_id', user.id)
+    .eq('agent_id', user.id)
     .order('created_at', { ascending: false })
     .limit(parseInt(limit));
   
@@ -1721,16 +1720,16 @@ app.post('/api/tasks/:id/release', async (req, res) => {
   // Get task details
   const { data: task, error: taskError } = await supabase
     .from('tasks')
-    .select('*, assignee:users!assignee_id(*)')
+    .select('*, assignee:users!human_id(*)')
     .eq('id', id)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   // Only task creator (agent) can release payment
-  if (task.creator_id !== user.id) {
+  if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
   
@@ -1771,7 +1770,7 @@ app.post('/api/tasks/:id/release', async (req, res) => {
   await supabase.from('transactions').insert({
     id: uuidv4(),
     task_id: id,
-    human_id: task.assignee_id,
+    human_id: task.human_id,
     agent_id: user.id,
     amount: budget,
     platform_fee: platformFee,
@@ -1781,10 +1780,10 @@ app.post('/api/tasks/:id/release', async (req, res) => {
     tx_hash: txHash,
     created_at: new Date().toISOString()
   });
-  
+
   // Create notification for human
   await createNotification(
-    task.assignee_id,
+    task.human_id,
     'payment_released',
     'Payment Released',
     `Your payment of ${netAmount.toFixed(2)} USDC has been sent to your wallet.`,
@@ -2109,8 +2108,7 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
       proof_text,
       proof_urls: proof_urls || [],
       status: 'pending',
-      revision_count: 0,
-      created_at: new Date().toISOString()
+      submitted_at: new Date().toISOString()
     })
     .select()
     .single();
@@ -3196,15 +3194,14 @@ app.post('/api/mcp', async (req, res) => {
       case 'get_human': {
         const { data: human, error } = await supabase
           .from('users')
-          .select('*, certifications(*)')
+          .select('*')
           .eq('id', params.human_id)
           .single();
         
         if (error) {
-          res.status(404).json({ error: 'Human not found' });
-        } else {
-          res.json({ ...human, skills: JSON.parse(human.skills || '[]') });
+          return res.status(404).json({ error: 'Human not found' });
         }
+        res.json({ ...human, skills: JSON.parse(human.skills || '[]') });
         break;
       }
       
@@ -3373,10 +3370,9 @@ app.post('/api/mcp', async (req, res) => {
           proof_text: proof_text || '',
           proof_urls: proof_urls || [],
           status: 'pending',
-          revision_count: 0,
-          created_at: new Date().toISOString()
+          submitted_at: new Date().toISOString()
         });
-        
+
         // Update task to pending_review
         await supabase
           .from('tasks')
@@ -4593,17 +4589,17 @@ app.get('/api/my-tasks', async (req, res) => {
     .from('tasks')
     .select(`
       *,
-      creator:users!creator_id(id, name, email),
-      assignee:users!assignee_id(id, name, email)
+      creator:users!agent_id(id, name, email),
+      assignee:users!human_id(id, name, email)
     `)
     .order('created_at', { ascending: false });
-  
+
   if (user.type === 'human') {
-    // Humans see tasks they created OR tasks assigned to them
-    query = query.or(`creator_id.eq.${user.id},assignee_id.eq.${user.id}`);
+    // Humans see tasks assigned to them OR tasks they're involved in
+    query = query.or(`agent_id.eq.${user.id},human_id.eq.${user.id}`);
   } else {
     // Agents see tasks they created
-    query = query.eq('creator_id', user.id);
+    query = query.eq('agent_id', user.id);
   }
   
   const { data: tasks, error } = await query;
@@ -4615,67 +4611,33 @@ app.get('/api/my-tasks', async (req, res) => {
 // REMOVED: Duplicate /api/tasks/available route - consolidated into main route above (line ~3416)
 
 // ============ TASKS CRUD ============
-app.post('/api/tasks', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { title, description, category, budget, city, state, deadline, requirements } = req.body;
-
-  const { data: task, error } = await supabase
-    .from('tasks')
-    .insert({
-      id: uuidv4(),
-      title,
-      description,
-      category,
-      budget: parseFloat(budget),
-      city,
-      state,
-      status: 'open',
-      escrow_status: 'awaiting_worker',  // PHASE 1: No payment needed until human approved
-      escrow_amount: parseFloat(budget),
-      creator_id: user.id,
-      deadline,
-      requirements: requirements || null,
-      created_at: new Date().toISOString()
-    })
-    .select()
-    .single();
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({
-    ...task,
-    message: 'Task posted. Deposit instructions will be provided when a human is approved.'
-  });
-});
+// NOTE: POST /api/tasks is defined earlier (~line 1356) using agent_id — do not duplicate here
 
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
   const updates = req.body;
-  
-  // Verify ownership
+
+  // Verify ownership (agent_id is the actual column in the tasks table)
   const { data: task } = await supabase
     .from('tasks')
-    .select('creator_id')
+    .select('agent_id')
     .eq('id', id)
     .single();
-  
-  if (!task || task.creator_id !== user.id) {
+
+  if (!task || task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
-  
+
   const { error } = await supabase
     .from('tasks')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id);
-  
+
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
@@ -4696,8 +4658,8 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     .from('tasks')
     .update({
       status: 'in_progress',
-      assignee_id: user.id,
-      started_at: new Date().toISOString()
+      human_id: user.id,
+      work_started_at: new Date().toISOString()
     })
     .eq('id', id)
     .eq('status', 'open');
@@ -4769,14 +4731,14 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
   
   const { data: task } = await supabase
     .from('tasks')
-    .select('creator_id')
+    .select('agent_id')
     .eq('id', id)
     .single();
-  
-  if (!task || task.creator_id !== user.id) {
+
+  if (!task || task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
-  
+
   await supabase
     .from('tasks')
     .update({ status: 'cancelled' })
@@ -5010,10 +4972,10 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  // TODO: Add admin check here
-  // if (user.role !== 'admin') {
-  //   return res.status(403).json({ error: 'Admin access required' });
-  // }
+  // Admin check: only admins can resolve disputes
+  if (user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
 
   const { id } = req.params;
   const { resolution, resolution_notes, refund_agent } = req.body;

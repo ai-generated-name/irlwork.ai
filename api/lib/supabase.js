@@ -108,15 +108,8 @@ async function getHumanProfile(id) {
   
   if (error) return null;
   
-  // Get certifications
-  const { data: certs } = await supabase
-    .from('certifications')
-    .select('*')
-    .eq('user_id', id);
-  
   return {
-    ...parseJsonFields(user),
-    certifications: certs || []
+    ...parseJsonFields(user)
   };
 }
 
