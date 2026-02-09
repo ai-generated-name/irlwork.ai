@@ -132,7 +132,7 @@ async function autoApproveTask(task) {
       'payment_released',
       'Payment Auto-Released!',
       `Your payment of ${netAmount.toFixed(2)} USDC has been automatically released after 48 hours.`,
-      `/dashboard`
+      `/tasks/${task.id}`
     );
 
     // Notify agent
@@ -141,7 +141,7 @@ async function autoApproveTask(task) {
       'auto_released',
       'Task Auto-Approved',
       `Task "${task.title}" was automatically approved after 48 hours. Payment released to ${task.human_name}.`,
-      `/dashboard?task=${task.id}`
+      `/tasks/${task.id}`
     );
 
     console.log(`[AutoRelease] ✅ Auto-approved task ${task.id}, paid ${netAmount} USDC`);

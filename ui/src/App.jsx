@@ -1926,6 +1926,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                           onClick={() => {
                             markNotificationRead(n.id)
                             setNotificationDropdownOpen(false)
+                            if (n.link) window.location.href = n.link
                           }}
                         >
                           <div className="dashboard-v4-notification-dropdown-icon">
@@ -2740,7 +2741,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <div
                     key={n.id}
                     className={`dashboard-v4-notification ${!n.read_at ? 'unread' : ''}`}
-                    onClick={() => markNotificationRead(n.id)}
+                    onClick={() => { markNotificationRead(n.id); if (n.link) window.location.href = n.link }}
                     style={{ cursor: 'pointer' }}
                   >
                     <div className="dashboard-v4-notification-icon">🔔</div>
@@ -3622,7 +3623,7 @@ function App() {
   if (path.startsWith('/tasks/')) {
     const taskId = path.split('/tasks/')[1]
     if (taskId) {
-      return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} />
+      return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
     }
   }
 

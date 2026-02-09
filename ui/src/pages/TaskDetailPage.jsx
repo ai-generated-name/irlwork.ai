@@ -11,6 +11,7 @@ import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
 import { v4 } from '../components/V4Layout';
 import { trackView } from '../utils/trackView';
+import ReportTaskModal from '../components/ReportTaskModal';
 import API_URL from '../config/api';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
@@ -23,6 +24,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Fetch initial data
   useEffect(() => {
@@ -325,8 +327,22 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             <span>←</span>
             <span>Back to Dashboard</span>
           </button>
-          <div className="text-[#8A8A8A] text-sm">
-            Task ID: {taskId.slice(0, 8)}...
+          <div className="flex items-center gap-4">
+            {user && task && task.agent_id !== user.id && (
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="flex items-center gap-1.5 text-[#8A8A8A] hover:text-[#DC2626] transition-colors text-sm"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                  <line x1="4" y1="22" x2="4" y2="15" />
+                </svg>
+                Report
+              </button>
+            )}
+            <div className="text-[#8A8A8A] text-sm">
+              Task ID: {taskId.slice(0, 8)}...
+            </div>
           </div>
         </div>
       </header>
@@ -366,6 +382,14 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           </div>
         </div>
       </main>
+
+      {/* Report Modal */}
+      <ReportTaskModal
+        task={task}
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        userToken={user?.id}
+      />
     </div>
   );
 }

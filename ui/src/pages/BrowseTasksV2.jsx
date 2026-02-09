@@ -3,6 +3,7 @@ import TaskMap from '../components/TaskMap';
 import CategoryPills, { TASK_CATEGORIES } from '../components/CategoryPills';
 import TaskCardV2 from '../components/TaskCardV2';
 import QuickApplyModal from '../components/QuickApplyModal';
+import ReportTaskModal from '../components/ReportTaskModal';
 import CityAutocomplete from '../components/CityAutocomplete';
 import CustomDropdown from '../components/CustomDropdown';
 
@@ -85,6 +86,9 @@ export default function BrowseTasksV2({
   const [applyModalTask, setApplyModalTask] = useState(null);
   const [appliedTaskIds, setAppliedTaskIds] = useState(new Set());
 
+  // Report modal state
+  const [reportModalTask, setReportModalTask] = useState(null);
+
   // Refs
   const taskListRef = useRef(null);
 
@@ -164,17 +168,9 @@ export default function BrowseTasksV2({
     }
   };
 
-  // Handle task selection
+  // Handle task selection - navigate to task detail page
   const handleTaskSelect = (taskId) => {
-    setSelectedTaskId(taskId);
-
-    // Scroll card into view
-    if (taskListRef.current) {
-      const cardEl = taskListRef.current.querySelector(`[data-task-id="${taskId}"]`);
-      if (cardEl) {
-        cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    }
+    window.location.href = `/tasks/${taskId}`;
   };
 
   // Handle apply success
@@ -380,6 +376,8 @@ export default function BrowseTasksV2({
                     onHover={setHoveredTaskId}
                     onApply={setApplyModalTask}
                     hasApplied={appliedTaskIds.has(task.id)}
+                    onReport={setReportModalTask}
+                    showReport={!!user}
                   />
                 </div>
               ))
@@ -453,6 +451,14 @@ export default function BrowseTasksV2({
         isOpen={!!applyModalTask}
         onClose={() => setApplyModalTask(null)}
         onSuccess={handleApplySuccess}
+        userToken={user?.id}
+      />
+
+      {/* Report task modal */}
+      <ReportTaskModal
+        task={reportModalTask}
+        isOpen={!!reportModalTask}
+        onClose={() => setReportModalTask(null)}
         userToken={user?.id}
       />
     </div>

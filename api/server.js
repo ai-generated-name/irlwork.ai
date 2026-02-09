@@ -1307,6 +1307,11 @@ app.get('/api/tasks', async (req, res) => {
   if (status) query = query.eq('status', status);
   if (my_tasks && user) query = query.eq('agent_id', user.id);
 
+  // Filter out moderated tasks from browse (unless viewing own tasks)
+  if (!my_tasks) {
+    query = query.not('moderation_status', 'in', '("hidden","removed")');
+  }
+
   const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(100);
 
   if (error) return res.status(500).json({ error: error.message });
@@ -1767,9 +1772,9 @@ app.post('/api/tasks/:id/release', async (req, res) => {
     'payment_released',
     'Payment Released',
     `Your payment of ${netAmount.toFixed(2)} USDC has been sent to your wallet.`,
-    `/dashboard`
+    `/tasks/${id}`
   );
-  
+
   res.json({
     success: true,
     txHash,
@@ -1974,7 +1979,7 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
     'proof_submitted',
     'Proof Submitted',
     `${user.name} has submitted proof for "${task.title}". Review it now.`,
-    `/dashboard?task=${taskId}`
+    `/tasks/${taskId}`
   );
   
   // Deliver webhook to agent
@@ -2060,7 +2065,7 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
     'proof_rejected',
     'Proof Rejected',
     `Your proof was rejected. ${extend_deadline_hours > 0 ? `Deadline extended by ${extend_deadline_hours} hours.` : ''} Feedback: ${feedback || 'See details.'}`,
-    `/dashboard?task=${taskId}`
+    `/tasks/${taskId}`
   );
   
   // Deliver webhook
@@ -2162,6 +2167,173 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   });
 });
 
+// ============ TASK REPORTING ============
+app.post('/api/tasks/:id/report', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: taskId } = req.params;
+  const { reason, description } = req.body;
+
+  // Validate reason
+  const VALID_REASONS = ['scam_fraud', 'misleading', 'inappropriate', 'spam', 'illegal', 'harassment', 'other'];
+  if (!reason || !VALID_REASONS.includes(reason)) {
+    return res.status(400).json({ error: 'Invalid reason. Must be one of: ' + VALID_REASONS.join(', ') });
+  }
+
+  // Validate description
+  if (!description || description.trim().length === 0) {
+    return res.status(400).json({ error: 'Description is required' });
+  }
+  if (description.length > 2000) {
+    return res.status(400).json({ error: 'Description must be 2000 characters or less' });
+  }
+
+  // Rate limit: 10 reports per hour per IP
+  const ipHash = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex').slice(0, 16);
+  const rateCheck = await checkRateLimit(ipHash, 'report_task', 10, 60);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ error: 'Too many reports. Please try again later.' });
+  }
+
+  // Get task
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('id, title, agent_id, status, moderation_status, report_count')
+    .eq('id', taskId)
+    .single();
+
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  // Cannot report own task
+  if (task.agent_id === user.id) {
+    return res.status(403).json({ error: 'You cannot report your own task' });
+  }
+
+  // Task already removed
+  if (task.moderation_status === 'removed') {
+    return res.status(400).json({ error: 'This task has already been removed' });
+  }
+
+  // Check for duplicate report
+  const { data: existing } = await supabase
+    .from('task_reports')
+    .select('id')
+    .eq('task_id', taskId)
+    .eq('reporter_id', user.id)
+    .single();
+
+  if (existing) {
+    return res.status(409).json({ error: 'You have already reported this task' });
+  }
+
+  // Create report
+  const reportId = uuidv4();
+  const { error: insertError } = await supabase.from('task_reports').insert({
+    id: reportId,
+    task_id: taskId,
+    reporter_id: user.id,
+    reason,
+    description: description.trim(),
+    status: 'pending'
+  });
+
+  if (insertError) {
+    console.error('[Report] Insert error:', insertError);
+    return res.status(500).json({ error: 'Failed to submit report' });
+  }
+
+  // Increment report_count on task
+  const newReportCount = (task.report_count || 0) + 1;
+  const taskUpdate = {
+    report_count: newReportCount,
+    updated_at: new Date().toISOString()
+  };
+
+  // Auto-flag at 3+ reports
+  if (newReportCount >= 3 && (!task.moderation_status || task.moderation_status === 'clean')) {
+    taskUpdate.moderation_status = 'flagged';
+  }
+
+  // Auto-hide at 5+ reports
+  if (newReportCount >= 5 && task.moderation_status !== 'hidden' && task.moderation_status !== 'removed') {
+    taskUpdate.moderation_status = 'hidden';
+    taskUpdate.hidden_at = new Date().toISOString();
+    taskUpdate.hidden_reason = 'Auto-hidden due to multiple reports';
+  }
+
+  await supabase.from('tasks').update(taskUpdate).eq('id', taskId);
+
+  // Increment total_reports_received on task creator
+  const { data: creator } = await supabase
+    .from('users')
+    .select('total_reports_received')
+    .eq('id', task.agent_id)
+    .single();
+
+  await supabase.from('users').update({
+    total_reports_received: ((creator?.total_reports_received) || 0) + 1
+  }).eq('id', task.agent_id);
+
+  // Notify reporter (confirmation)
+  await createNotification(
+    user.id,
+    'report_submitted',
+    'Report Received',
+    'Thank you for reporting this task. Our team will review it shortly.',
+    null
+  );
+
+  // Notify admins
+  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+  for (const adminId of adminIds) {
+    await createNotification(
+      adminId,
+      'new_task_report',
+      'New Task Report',
+      `Task "${task.title}" reported for ${reason.replace('_', '/')}. (${newReportCount} total reports)`,
+      '/admin?queue=reports'
+    );
+  }
+
+  // Notify task creator if auto-hidden
+  if (newReportCount >= 5 && task.moderation_status !== 'hidden' && task.moderation_status !== 'removed') {
+    await createNotification(
+      task.agent_id,
+      'task_auto_hidden',
+      'Task Hidden',
+      `Your task "${task.title}" has been temporarily hidden pending review due to multiple reports. Contact support for more details.`,
+      null
+    );
+  }
+
+  res.json({
+    success: true,
+    report_id: reportId,
+    message: 'Report submitted successfully. Thank you for helping keep our platform safe.'
+  });
+});
+
+app.get('/api/tasks/:id/reports/check', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data } = await supabase
+    .from('task_reports')
+    .select('id')
+    .eq('task_id', req.params.id)
+    .eq('reporter_id', user.id)
+    .single();
+
+  res.json({ has_reported: !!data });
+});
+
 app.post('/api/tasks/:id/dispute', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
   
@@ -2206,7 +2378,7 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     'dispute_opened',
     'Dispute Opened',
     `A dispute has been opened for task "${task.title}". Reason: ${reason}`,
-    `/dashboard?task=${taskId}`
+    `/tasks/${taskId}`
   );
   
   // Deliver webhook
@@ -2295,7 +2467,7 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
       'dispute_resolved',
       'Dispute Resolved - Favorable',
       `The dispute has been resolved in your favor. Payment of ${netAmount.toFixed(2)} USDC has been released.`,
-      `/dashboard`
+      `/tasks/${task_id}`
     );
   } else if (refund_human) {
     // Refund escrow to agent
@@ -2316,14 +2488,14 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
       'dispute_resolved',
       'Dispute Resolved - Refund',
       `The dispute has been resolved. Escrow of ${task.escrow_amount} USDC has been refunded to your wallet.`,
-      `/dashboard`
+      `/tasks/${task_id}`
     );
     await createNotification(
       task.human_id,
       'dispute_resolved',
       'Dispute Resolved',
       `The dispute has been resolved. ${notes || 'See details in your dashboard.'}`,
-      `/dashboard`
+      `/tasks/${task_id}`
     );
   } else {
     // Partial resolution - reset 48h timer for agent review
@@ -2457,7 +2629,7 @@ app.post('/api/tasks/:id/rate', async (req, res) => {
     bothRated
       ? `Both parties have rated task #${task_id.substring(0, 8)}. Ratings are now visible!`
       : `You have received a rating for task #${task_id.substring(0, 8)}. Rate the ${raterType} to see both ratings.`,
-    `/dashboard`
+    `/tasks/${task_id}`
   );
 
   res.json({
@@ -2774,7 +2946,7 @@ app.post('/webhooks/:apiKey', async (req, res) => {
     event,
     formatEventTitle(event),
     formatEventMessage(event, data),
-    data.task_id ? `/dashboard?task=${data.task_id}` : '/dashboard'
+    data.task_id ? `/tasks/${data.task_id}` : '/dashboard'
   );
   
   res.json({ received: true, event });
@@ -3056,7 +3228,8 @@ app.post('/api/mcp', async (req, res) => {
           task.agent_id,
           'proof_submitted',
           'Proof Submitted',
-          `${user.name} has completed "${task.title}". Review and release payment.`
+          `${user.name} has completed "${task.title}". Review and release payment.`,
+          `/tasks/${task_id}`
         );
         
         res.json({ success: true, status: 'pending_review', proof_id: proofId });
@@ -3171,7 +3344,8 @@ app.post('/api/mcp', async (req, res) => {
           task.human_id,
           'payment_released',
           'Payment Released!',
-          `Your payment of ${netAmount.toFixed(2)} USDC has been sent.`
+          `Your payment of ${netAmount.toFixed(2)} USDC has been sent.`,
+          `/tasks/${task_id}`
         );
         
         res.json({ 
