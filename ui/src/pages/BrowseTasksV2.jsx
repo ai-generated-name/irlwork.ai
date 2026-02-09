@@ -7,7 +7,7 @@ import ReportTaskModal from '../components/ReportTaskModal';
 import CityAutocomplete from '../components/CityAutocomplete';
 import CustomDropdown from '../components/CustomDropdown';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.irlwork.ai';
+import API_URL from '../config/api';
 
 const SORT_OPTIONS = [
   { value: 'distance', label: 'Nearest First' },
@@ -126,7 +126,9 @@ export default function BrowseTasksV2({
 
       params.set('limit', '50');
 
-      const res = await fetch(`${API_URL}/api/tasks/available?${params}`);
+      const res = await fetch(`${API_URL}/tasks/available?${params}`, {
+        headers: user?.id ? { Authorization: user.id } : {}
+      });
       const data = await res.json();
 
       if (!res.ok) {

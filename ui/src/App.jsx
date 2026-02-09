@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
+import ErrorBoundary from './components/ErrorBoundary'
 import EarningsDashboard from './components/EarningsDashboard'
 import ModeToggle from './components/ModeToggle'
 import UserDropdown from './components/UserDropdown'
@@ -14,6 +15,7 @@ import BrowsePage from './pages/BrowsePage'
 import BrowseTasksV2 from './pages/BrowseTasksV2'
 import LandingPageV4 from './pages/LandingPageV4'
 import AdminDashboard from './pages/AdminDashboard'
+import DisputePanel from './components/DisputePanel'
 
 // Admin user IDs - must match ADMIN_USER_IDS in backend
 const ADMIN_USER_IDS = ['b49dc7ef-38b5-40ce-936b-e5fddebc4cb7']
@@ -1291,6 +1293,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
+    { id: 'disputes', label: 'Disputes', icon: '⚖️' },
   ]
 
   // Hiring mode: Create Task, My Tasks, Browse Humans, Hired, Messages, Payments, API Keys
@@ -1301,6 +1304,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'hired', label: 'Hired', icon: Icons.hired },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
+    { id: 'disputes', label: 'Disputes', icon: '⚖️' },
     { id: 'api-keys', label: 'API Keys', icon: '🔑' },
   ]
 
@@ -2642,6 +2646,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
+        {/* Disputes Tab */}
+        {activeTab === 'disputes' && (
+          <div>
+            <h1 className="dashboard-v4-page-title">Disputes</h1>
+            <DisputePanel user={user} />
+          </div>
+        )}
+
         {/* Admin Tab - Only visible to admins */}
         {activeTab === 'admin' && isAdmin && (
           <div>
@@ -3669,8 +3681,10 @@ function App() {
 
 export default function AppWrapper() {
   return (
-    <ToastProvider>
-      <App />
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </ErrorBoundary>
   )
 }

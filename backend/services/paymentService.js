@@ -115,22 +115,32 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     created_at: new Date().toISOString()
   });
 
-  // Update human stats
+  // Update human stats (fetch then increment - supabase.raw() not available in JS client)
+  const { data: humanStats } = await supabase
+    .from('users')
+    .select('jobs_completed, total_tasks_completed')
+    .eq('id', humanId)
+    .single();
   await supabase
     .from('users')
     .update({
-      jobs_completed: supabase.raw('jobs_completed + 1'),
-      total_tasks_completed: supabase.raw('COALESCE(total_tasks_completed, 0) + 1'),
+      jobs_completed: (humanStats?.jobs_completed || 0) + 1,
+      total_tasks_completed: (humanStats?.total_tasks_completed || 0) + 1,
       last_active_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', humanId);
 
   // Update agent's total_usdc_paid
+  const { data: agentStats } = await supabase
+    .from('users')
+    .select('total_usdc_paid')
+    .eq('id', agentId)
+    .single();
   await supabase
     .from('users')
     .update({
-      total_usdc_paid: supabase.raw(`COALESCE(total_usdc_paid, 0) + ${netAmount}`),
+      total_usdc_paid: (parseFloat(agentStats?.total_usdc_paid) || 0) + netAmount,
       last_active_at: new Date().toISOString()
     })
     .eq('id', agentId);

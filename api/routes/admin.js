@@ -734,11 +734,16 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       if (updateTaskError) throw updateTaskError;
 
-      // Update worker stats
+      // Update worker stats (fetch then increment - supabase.raw() not available in JS client)
+      const { data: workerStats } = await supabase
+        .from('users')
+        .select('jobs_completed')
+        .eq('id', payment.worker_id)
+        .single();
       await supabase
         .from('users')
         .update({
-          jobs_completed: supabase.raw('COALESCE(jobs_completed, 0) + 1'),
+          jobs_completed: (workerStats?.jobs_completed || 0) + 1,
           updated_at: new Date().toISOString()
         })
         .eq('id', payment.worker_id);

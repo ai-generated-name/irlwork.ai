@@ -53,11 +53,13 @@ function HeroStats() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002'
+        const API_URL = import.meta.env.VITE_API_URL
+          ? `${import.meta.env.VITE_API_URL}/api`
+          : 'https://api.irlwork.ai/api'
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
 
-        const response = await fetch(`${API_URL}/api/stats`, {
+        const response = await fetch(`${API_URL}/stats`, {
           signal: controller.signal
         })
         clearTimeout(timeoutId)

@@ -38,6 +38,13 @@ export default function BrowsePage({ user }) {
   // Hire worker modal state
   const [showHireModal, setShowHireModal] = useState(null) // worker object or null
   const [hireMode, setHireMode] = useState(null) // 'agent' or 'human' or null
+  const [hireTitle, setHireTitle] = useState('')
+  const [hireDescription, setHireDescription] = useState('')
+  const [hireBudget, setHireBudget] = useState('')
+  const [hireCategory, setHireCategory] = useState('')
+  const [hireLoading, setHireLoading] = useState(false)
+  const [hireSuccess, setHireSuccess] = useState(false)
+  const [hireError, setHireError] = useState('')
 
   useEffect(() => {
     fetchData()
@@ -174,6 +181,82 @@ export default function BrowsePage({ user }) {
       setApplyError('Network error. Please try again.')
     } finally {
       setApplyLoading(false)
+    }
+  }
+
+  function resetHireForm() {
+    setShowHireModal(null)
+    setHireMode(null)
+    setHireTitle('')
+    setHireDescription('')
+    setHireBudget('')
+    setHireCategory('')
+    setHireError('')
+    setHireSuccess(false)
+  }
+
+  async function handleHire() {
+    if (!user || !showHireModal) return
+    if (!hireTitle.trim()) {
+      setHireError('Please enter a task title.')
+      return
+    }
+    if (!hireBudget || Number(hireBudget) <= 0) {
+      setHireError('Please enter a valid budget.')
+      return
+    }
+
+    setHireLoading(true)
+    setHireError('')
+
+    try {
+      // Step 1: Create the task
+      const createRes = await fetch(`${API_URL}/tasks/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
+        body: JSON.stringify({
+          title: hireTitle.trim(),
+          description: hireDescription.trim(),
+          budget: Number(hireBudget),
+          category: hireCategory || 'general'
+        })
+      })
+
+      if (!createRes.ok) {
+        const err = await createRes.json()
+        throw new Error(err.error || 'Failed to create task')
+      }
+
+      const taskData = await createRes.json()
+      const taskId = taskData.id || taskData.task?.id
+
+      // Step 2: Assign the worker to the task
+      const assignRes = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
+        body: JSON.stringify({ worker_id: showHireModal.id })
+      })
+
+      if (!assignRes.ok) {
+        const err = await assignRes.json()
+        throw new Error(err.error || 'Task created but failed to assign worker')
+      }
+
+      setHireSuccess(true)
+      toast.success(`${showHireModal.name} has been hired!`)
+      setTimeout(() => {
+        resetHireForm()
+      }, 2500)
+    } catch (e) {
+      setHireError(e.message || 'Something went wrong. Please try again.')
+    } finally {
+      setHireLoading(false)
     }
   }
 
@@ -869,14 +952,14 @@ export default function BrowsePage({ user }) {
             zIndex: 1000,
             padding: 24
           }}
-          onClick={() => { setShowHireModal(null); setHireMode(null) }}
+          onClick={resetHireForm}
         >
           <div
             style={{
               background: '#1a1a1a',
               borderRadius: 16,
               padding: 0,
-              maxWidth: 440,
+              maxWidth: 480,
               width: '100%',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
               maxHeight: '90vh',
@@ -884,6 +967,30 @@ export default function BrowsePage({ user }) {
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Success State */}
+            {hireSuccess ? (
+              <div style={{ padding: 48, textAlign: 'center' }}>
+                <div style={{
+                  width: 64,
+                  height: 64,
+                  background: 'rgba(16, 185, 129, 0.2)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px'
+                }}>
+                  <Check size={32} style={{ color: '#10B981' }} />
+                </div>
+                <h3 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 8 }}>
+                  Task Created & Assigned!
+                </h3>
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+                  {showHireModal.name} has been assigned to your task.
+                </p>
+              </div>
+            ) : (
+            <>
             {/* Header */}
             <div style={{
               padding: '24px 24px 16px',
@@ -899,7 +1006,7 @@ export default function BrowsePage({ user }) {
                   </p>
                 </div>
                 <button
-                  onClick={() => { setShowHireModal(null); setHireMode(null) }}
+                  onClick={resetHireForm}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -1082,14 +1189,13 @@ Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
                     navigate('/auth')
                     return
                   }
-                  // Navigate to create task with this worker pre-selected
-                  window.location.href = `/dashboard?tab=create-task&worker=${showHireModal.id}`
+                  setHireMode(hireMode === 'human' ? null : 'human')
                 }}
                 style={{
                   width: '100%',
                   padding: 16,
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: hireMode === 'human' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.05)',
+                  border: hireMode === 'human' ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(255,255,255,0.1)',
                   borderRadius: 12,
                   cursor: 'pointer',
                   display: 'flex',
@@ -1111,11 +1217,191 @@ Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontWeight: 600, color: 'white', fontSize: 15 }}>I'm a human</div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>message {showHireModal.name} directly</div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>create a task and hire {showHireModal.name} directly</div>
                 </div>
-                <ChevronRight size={20} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                <ChevronRight size={20} style={{
+                  color: 'rgba(255,255,255,0.3)',
+                  transform: hireMode === 'human' ? 'rotate(90deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s'
+                }} />
               </button>
+
+              {/* Human Hire Form */}
+              {hireMode === 'human' && (
+                <div style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  borderRadius: 12,
+                  padding: 20,
+                  marginTop: 8
+                }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      marginBottom: 6,
+                      color: 'rgba(255,255,255,0.7)'
+                    }}>
+                      Task Title *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Pick up my dry cleaning"
+                      value={hireTitle}
+                      onChange={(e) => setHireTitle(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: 8,
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        background: 'rgba(255,255,255,0.05)',
+                        color: 'white',
+                        fontSize: 14,
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      marginBottom: 6,
+                      color: 'rgba(255,255,255,0.7)'
+                    }}>
+                      Description
+                    </label>
+                    <textarea
+                      placeholder="Describe what you need done..."
+                      value={hireDescription}
+                      onChange={(e) => setHireDescription(e.target.value)}
+                      style={{
+                        width: '100%',
+                        minHeight: 80,
+                        padding: '12px 14px',
+                        borderRadius: 8,
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        background: 'rgba(255,255,255,0.05)',
+                        color: 'white',
+                        fontSize: 14,
+                        fontFamily: 'inherit',
+                        resize: 'vertical',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        marginBottom: 6,
+                        color: 'rgba(255,255,255,0.7)'
+                      }}>
+                        Budget ($) *
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="50"
+                        min="1"
+                        value={hireBudget}
+                        onChange={(e) => setHireBudget(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          background: 'rgba(255,255,255,0.05)',
+                          color: 'white',
+                          fontSize: 14,
+                          fontFamily: 'inherit',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        marginBottom: 6,
+                        color: 'rgba(255,255,255,0.7)'
+                      }}>
+                        Category
+                      </label>
+                      <select
+                        value={hireCategory}
+                        onChange={(e) => setHireCategory(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          background: 'rgba(255,255,255,0.08)',
+                          color: 'white',
+                          fontSize: 14,
+                          fontFamily: 'inherit',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="" style={{ background: '#1a1a1a' }}>Select...</option>
+                        {categories.slice(1).map(cat => (
+                          <option key={cat.value} value={cat.value} style={{ background: '#1a1a1a' }}>
+                            {cat.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {hireError && (
+                    <div style={{
+                      padding: 12,
+                      background: 'rgba(220, 38, 38, 0.15)',
+                      borderRadius: 8,
+                      color: '#FCA5A5',
+                      fontSize: 13,
+                      marginBottom: 16,
+                      border: '1px solid rgba(220, 38, 38, 0.3)'
+                    }}>
+                      {hireError}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleHire}
+                    disabled={hireLoading}
+                    style={{
+                      width: '100%',
+                      padding: 14,
+                      borderRadius: 8,
+                      border: 'none',
+                      background: hireLoading ? 'rgba(255,255,255,0.1)' : 'var(--coral-500)',
+                      color: 'white',
+                      fontWeight: 600,
+                      fontSize: 15,
+                      cursor: hireLoading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => { if (!hireLoading) e.currentTarget.style.background = 'var(--coral-600)' }}
+                    onMouseOut={(e) => { if (!hireLoading) e.currentTarget.style.background = 'var(--coral-500)' }}
+                  >
+                    {hireLoading ? 'Creating task...' : `Hire ${showHireModal.name}`}
+                  </button>
+                </div>
+              )}
             </div>
+            </>
+            )}
           </div>
         </div>
       )}

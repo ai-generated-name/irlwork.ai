@@ -2,6 +2,7 @@
 // Central hub for workers to view task info, communicate with agents, and submit proof
 
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../App';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
@@ -83,6 +84,42 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       trackView('task', taskId);
     }
   }, [taskId]);
+
+  // Real-time subscription for task changes
+  useEffect(() => {
+    if (!taskId) return;
+
+    const channel = supabase
+      .channel(`task-detail-${taskId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tasks', filter: `id=eq.${taskId}` },
+        async (payload) => {
+          // Update task data with the real-time change
+          setTask(prev => prev ? { ...prev, ...payload.new } : payload.new);
+
+          // If status changed, also refresh the task status endpoint for full details
+          if (user) {
+            try {
+              const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
+                headers: { Authorization: user.id }
+              });
+              if (statusRes.ok) {
+                const statusData = await statusRes.json();
+                setTaskStatus(statusData);
+              }
+            } catch (err) {
+              console.error('Error refreshing task status:', err);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [taskId, user]);
 
   // Load conversation and messages
   const loadConversation = async (taskData) => {
@@ -362,7 +399,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
             {/* Show proof section if in progress, or status badge if submitted */}
             {task.status === 'in_progress' ? (
-              <ProofSection task={task} onSubmit={handleSubmitProof} />
+              <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
             ) : (
               <ProofStatusBadge task={task} proofs={taskStatus?.proofs} />
             )}

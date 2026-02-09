@@ -3,33 +3,85 @@
 
 import React, { useState, useRef } from 'react';
 import { useToast } from '../../context/ToastContext';
+import API_URL from '../../config/api';
 
 const styles = {
   input: 'w-full bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] transition-colors'
 };
 
-export default function ProofSection({ task, onSubmit }) {
+export default function ProofSection({ task, user, onSubmit }) {
   const toast = useToast();
   const [proofText, setProofText] = useState('');
   const [files, setFiles] = useState([]);
   const [uploadedUrls, setUploadedUrls] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
   // Only show if task status is 'in_progress'
   if (!task || task.status !== 'in_progress') return null;
 
-  const handleFileSelect = (e) => {
+  // Convert file to base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Upload a single file to the backend
+  const uploadFile = async (file) => {
+    const base64 = await fileToBase64(file);
+    const res = await fetch(`${API_URL}/upload/proof`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: user?.id || '',
+      },
+      body: JSON.stringify({
+        file: base64,
+        filename: file.name,
+        mimeType: file.type,
+      }),
+    });
+    if (!res.ok) throw new Error('Upload failed');
+    const data = await res.json();
+    return data.url;
+  };
+
+  const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files || []);
     if (selected.length + files.length > 3) {
       toast.error('Maximum 3 files allowed');
       return;
     }
-    setFiles(prev => [...prev, ...selected].slice(0, 3));
+
+    const newFiles = [...files, ...selected].slice(0, 3);
+    setFiles(newFiles);
+
+    // Upload immediately
+    setUploading(true);
+    try {
+      const urls = [...uploadedUrls];
+      for (const file of selected) {
+        const url = await uploadFile(file);
+        urls.push(url);
+      }
+      setUploadedUrls(urls.slice(0, 3));
+      toast.success(`${selected.length} file(s) uploaded`);
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error('Failed to upload file(s)');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const removeFile = (index) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadedUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -76,7 +128,7 @@ export default function ProofSection({ task, onSubmit }) {
           <label className="block text-[#525252] text-sm mb-2">Upload Proof (max 3 images)</label>
           <div
             className="border-2 border-dashed border-[rgba(26,26,26,0.2)] rounded-xl p-6 text-center cursor-pointer hover:border-[#0F4C5C] transition-colors bg-[#FAF8F5]"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !uploading && fileInputRef.current?.click()}
           >
             <input
               ref={fileInputRef}
@@ -86,8 +138,10 @@ export default function ProofSection({ task, onSubmit }) {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <div className="text-3xl mb-2">📤</div>
-            <p className="text-[#525252] text-sm">Click to upload images</p>
+            <div className="text-3xl mb-2">{uploading ? '⏳' : '📤'}</div>
+            <p className="text-[#525252] text-sm">
+              {uploading ? 'Uploading...' : 'Click to upload images'}
+            </p>
             <p className="text-[#8A8A8A] text-xs mt-1">PNG, JPG, or JPEG (max 3 files)</p>
           </div>
 
@@ -116,7 +170,7 @@ export default function ProofSection({ task, onSubmit }) {
           {/* Uploaded Confirmation */}
           {uploadedUrls.length > 0 && (
             <p className="text-[#059669] text-sm flex items-center gap-2 mt-3">
-              <span>✓</span> {uploadedUrls.length} files uploaded
+              <span>✓</span> {uploadedUrls.length} file(s) uploaded
             </p>
           )}
         </div>
@@ -124,10 +178,10 @@ export default function ProofSection({ task, onSubmit }) {
         {/* Submit Button */}
         <button
           onClick={handleSubmit}
-          disabled={submitting}
+          disabled={submitting || uploading}
           className="w-full bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-colors"
         >
-          {submitting ? 'Submitting...' : 'Submit Proof'}
+          {submitting ? 'Submitting...' : uploading ? 'Uploading files...' : 'Submit Proof'}
         </button>
 
         {/* Instructions */}

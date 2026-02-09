@@ -92,12 +92,8 @@ async function checkAndUpdateVisibility() {
       }
     }
 
-    // Update visibility for ratings where only one party rated (or both rated but trigger didn't fire)
-    const ratingsToUpdate = staleRatings.filter(rating => {
-      // Always make visible after 72 hours, regardless of whether both parties rated
-      // This handles edge cases where the trigger might not have fired
-      return true;
-    });
+    // All stale ratings (>72h with no visible_at) should become visible
+    const ratingsToUpdate = staleRatings;
 
     if (ratingsToUpdate.length === 0) {
       console.log('[RATING_VISIBILITY] No ratings need visibility updates');
