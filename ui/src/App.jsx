@@ -12,6 +12,7 @@ import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
 import BrowsePage from './pages/BrowsePage'
 import BrowseTasksV2 from './pages/BrowseTasksV2'
+import MyTasksPage from './pages/MyTasksPage'
 import LandingPageV4 from './pages/LandingPageV4'
 import AdminDashboard from './pages/AdminDashboard'
 import DisputePanel from './components/DisputePanel'
@@ -23,8 +24,8 @@ import CityAutocomplete from './components/CityAutocomplete'
 import { TASK_CATEGORIES } from './components/CategoryPills'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-export const supabase = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -1875,13 +1876,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   const acceptTask = async (taskId) => {
     try {
-      await fetch(`${API_URL}/tasks/${taskId}/accept`, { 
+      await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
         headers: { Authorization: user.id }
       })
       fetchTasks()
     } catch (e) {
       console.log('Could not accept task')
+    }
+  }
+
+  const startWork = async (taskId) => {
+    try {
+      await fetch(`${API_URL}/tasks/${taskId}/start`, {
+        method: 'POST',
+        headers: { Authorization: user.id }
+      })
+      fetchTasks()
+    } catch (e) {
+      console.log('Could not start work')
     }
   }
 
@@ -2388,162 +2401,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>{tasks.filter(t => ['open', 'accepted', 'in_progress', 'pending_review', 'disputed'].includes(t.status)).length} active</span>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="dashboard-v4-stats">
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Total Earned</div>
-                <div className="dashboard-v4-stat-value orange">${tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}</div>
-              </div>
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Tasks Completed</div>
-                <div className="dashboard-v4-stat-value">{tasks.filter(t => t.status === 'completed' || t.status === 'paid').length}</div>
-              </div>
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Rating</div>
-                <div className="dashboard-v4-stat-value">⭐ {user?.rating?.toFixed(1) || 'New'}</div>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">⏳</div>
-                <p className="dashboard-v4-empty-text">Loading...</p>
-              </div>
-            ) : tasks.length === 0 ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
-                <p className="dashboard-v4-empty-title">No tasks yet</p>
-                <p className="dashboard-v4-empty-text">Browse available tasks to start earning money</p>
-
-                {/* Suggested Actions */}
-                <div className="dashboard-v4-empty-actions">
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('browse')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.search}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Browse tasks near you</p>
-                      <p className="dashboard-v4-empty-action-text">Find tasks in your area</p>
-                    </div>
-                  </div>
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('profile')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.profile}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Complete your profile</p>
-                      <p className="dashboard-v4-empty-action-text">Add skills and location</p>
-                    </div>
-                  </div>
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('payments')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.wallet}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Set up your wallet</p>
-                      <p className="dashboard-v4-empty-action-text">Get paid in USDC</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : ((() => {
-              const getStatusClass = (status) => {
-                if (status === 'disputed') return 'disputed'
-                if (status === 'open') return 'open'
-                if (status === 'in_progress') return 'in-progress'
-                if (status === 'completed' || status === 'paid') return 'completed'
-                return 'pending'
-              }
-
-              const activeTasks = tasks.filter(t => ['open', 'accepted', 'in_progress', 'pending_review', 'disputed'].includes(t.status))
-              const completedTasks = tasks.filter(t => ['completed', 'paid'].includes(t.status))
-
-              const renderTaskCard = (task) => (
-                <div
-                  key={task.id}
-                  className="dashboard-v4-task-card dashboard-v4-task-card-clickable"
-                  onClick={() => { window.location.href = `/tasks/${task.id}` }}
-                  role="link"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter') window.location.href = `/tasks/${task.id}` }}
-                >
-                  <div className="dashboard-v4-task-header">
-                    <div>
-                      <span className={`dashboard-v4-task-status ${getStatusClass(task.status)}`}>
-                        {getStatusLabel(task.status)}
-                      </span>
-                      <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
-                    </div>
-                    <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
-                  </div>
-
-                  {task.description && (
-                    <p className="dashboard-v4-task-description">{task.description}</p>
-                  )}
-
-                  <div className="dashboard-v4-task-meta">
-                    <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                    <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
-                    <span className="dashboard-v4-task-meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
-                    {task.agent_name && <span className="dashboard-v4-task-meta-item">🤖 {task.agent_name}</span>}
-                  </div>
-
-                  <div className="dashboard-v4-task-actions">
-                    {task.status === 'open' && (
-                      <button className="v4-btn v4-btn-primary" onClick={(e) => { e.stopPropagation(); acceptTask(task.id) }}>Accept Task</button>
-                    )}
-                    {task.status === 'accepted' && (
-                      <button className="v4-btn v4-btn-primary" onClick={(e) => {
-                        e.stopPropagation()
-                        fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
-                          .then(() => fetchTasks())
-                      }}>Start Work</button>
-                    )}
-                    {task.status === 'in_progress' && (
-                      <button className="v4-btn v4-btn-primary" onClick={(e) => { e.stopPropagation(); setShowProofSubmit(task.id) }}>Submit Proof</button>
-                    )}
-                    {task.status === 'pending_review' && (
-                      <span className="dashboard-v4-task-status-hint">Waiting for approval...</span>
-                    )}
-                    {task.status === 'completed' && (
-                      <span className="dashboard-v4-task-status-hint success">Payment pending</span>
-                    )}
-                    {task.status === 'paid' && (
-                      <span className="dashboard-v4-task-status-hint paid">Paid</span>
-                    )}
-                    {task.status === 'disputed' && (
-                      <span className="dashboard-v4-task-status-hint disputed">Under review</span>
-                    )}
-                    <span className="dashboard-v4-task-open-arrow">→</span>
-                  </div>
-                </div>
-              )
-
-              return (
-                <div>
-                  {/* Active Tasks */}
-                  {activeTasks.length > 0 && (
-                    <div>
-                      <h2 className="dashboard-v4-section-heading">Active ({activeTasks.length})</h2>
-                      {activeTasks.map(renderTaskCard)}
-                    </div>
-                  )}
-
-                  {/* Completed Tasks */}
-                  {completedTasks.length > 0 && (
-                    <div style={{ marginTop: activeTasks.length > 0 ? 32 : 0 }}>
-                      <h2 className="dashboard-v4-section-heading muted">Completed ({completedTasks.length})</h2>
-                      {completedTasks.map(renderTaskCard)}
-                    </div>
-                  )}
-
-                  {activeTasks.length === 0 && completedTasks.length === 0 && (
-                    <p style={{ color: 'var(--text-tertiary)', textAlign: 'center', padding: 24 }}>No tasks found</p>
-                  )}
-                </div>
-              )
-            })())}
-          </div>
+          <MyTasksPage
+            user={user}
+            tasks={tasks}
+            loading={loading}
+            acceptTask={acceptTask}
+            onStartWork={startWork}
+            setShowProofSubmit={setShowProofSubmit}
+            activities={activities}
+          />
         )}
 
         {/* Working Mode: Browse Tasks Tab - Shows available tasks to claim */}
