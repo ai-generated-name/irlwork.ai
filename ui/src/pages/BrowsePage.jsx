@@ -3,6 +3,8 @@ import { MapPin, Clock, DollarSign, Star, Briefcase, Users, Filter, X, Check, Co
 import { supabase } from '../App'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
+import HumanProfileCard from '../components/HumanProfileCard'
+import HumanProfileModal from '../components/HumanProfileModal'
 import '../landing-v4.css'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
@@ -20,9 +22,9 @@ const categories = [
 
 export default function BrowsePage({ user }) {
   const toast = useToast()
-  const [viewMode, setViewMode] = useState('tasks') // 'tasks' or 'workers'
+  const [viewMode, setViewMode] = useState('tasks') // 'tasks' or 'humans'
   const [tasks, setTasks] = useState([])
-  const [workers, setWorkers] = useState([])
+  const [humans, setHumans] = useState([])
   const [loading, setLoading] = useState(true)
   const [categoryFilter, setCategoryFilter] = useState('')
   const [cityFilter, setCityFilter] = useState('')
@@ -35,8 +37,8 @@ export default function BrowsePage({ user }) {
   const [applySuccess, setApplySuccess] = useState(false)
   const [applyError, setApplyError] = useState('')
 
-  // Hire worker modal state
-  const [showHireModal, setShowHireModal] = useState(null) // worker object or null
+  // Hire human modal state
+  const [showHireModal, setShowHireModal] = useState(null) // human object or null
   const [hireMode, setHireMode] = useState(null) // 'agent' or 'human' or null
   const [hireTitle, setHireTitle] = useState('')
   const [hireDescription, setHireDescription] = useState('')
@@ -45,6 +47,9 @@ export default function BrowsePage({ user }) {
   const [hireLoading, setHireLoading] = useState(false)
   const [hireSuccess, setHireSuccess] = useState(false)
   const [hireError, setHireError] = useState('')
+
+  // Expanded profile modal
+  const [expandedHumanId, setExpandedHumanId] = useState(null)
 
   useEffect(() => {
     fetchData()
@@ -76,18 +81,18 @@ export default function BrowsePage({ user }) {
       )
       .subscribe()
 
-    // Real-time subscription for workers
-    const workersChannel = supabase
-      .channel('browse-workers')
+    // Real-time subscription for humans
+    const humansChannel = supabase
+      .channel('browse-humans')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'users' },
         (payload) => {
-          if (viewMode !== 'workers') return
+          if (viewMode !== 'humans') return
           if (payload.new?.type !== 'human') return
 
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            setWorkers(prev => {
+            setHumans(prev => {
               const exists = prev.find(w => w.id === payload.new.id)
               if (exists) {
                 return prev.map(w => w.id === payload.new.id ? payload.new : w)
@@ -101,7 +106,7 @@ export default function BrowsePage({ user }) {
 
     return () => {
       supabase.removeChannel(tasksChannel)
-      supabase.removeChannel(workersChannel)
+      supabase.removeChannel(humansChannel)
     }
   }, [viewMode, categoryFilter, cityFilter])
 
@@ -140,7 +145,7 @@ export default function BrowsePage({ user }) {
           } else if (sortBy === 'completed') {
             data.sort((a, b) => (b.jobs_completed || 0) - (a.jobs_completed || 0))
           }
-          setWorkers(data)
+          setHumans(data)
         }
       }
     } catch (e) {
@@ -233,7 +238,7 @@ export default function BrowsePage({ user }) {
       const taskData = await createRes.json()
       const taskId = taskData.id || taskData.task?.id
 
-      // Step 2: Assign the worker to the task
+      // Step 2: Assign the human to the task
       const assignRes = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
         headers: {
@@ -245,7 +250,7 @@ export default function BrowsePage({ user }) {
 
       if (!assignRes.ok) {
         const err = await assignRes.json()
-        throw new Error(err.error || 'Task created but failed to assign worker')
+        throw new Error(err.error || 'Task created but failed to assign human')
       }
 
       setHireSuccess(true)
@@ -311,7 +316,7 @@ export default function BrowsePage({ user }) {
             color: 'var(--text-primary)',
             marginBottom: 16
           }}>
-            {viewMode === 'tasks' ? 'Available Tasks' : 'Browse Workers'}
+            {viewMode === 'tasks' ? 'Available Tasks' : 'Browse Humans'}
           </h1>
           <p style={{
             fontSize: 18,
@@ -321,7 +326,7 @@ export default function BrowsePage({ user }) {
           }}>
             {viewMode === 'tasks'
               ? 'Find tasks in your area and start earning. No applications needed for most tasks.'
-              : 'Discover skilled workers ready to help with your tasks.'}
+              : 'Discover skilled humans ready to help with your tasks.'}
           </p>
         </div>
 
@@ -358,24 +363,24 @@ export default function BrowsePage({ user }) {
             Tasks
           </button>
           <button
-            onClick={() => setViewMode('workers')}
+            onClick={() => setViewMode('humans')}
             style={{
               padding: '12px 24px',
               borderRadius: 'var(--radius-full)',
               border: 'none',
-              background: viewMode === 'workers' ? 'white' : 'transparent',
-              color: viewMode === 'workers' ? 'var(--teal-700)' : 'var(--text-secondary)',
+              background: viewMode === 'humans' ? 'white' : 'transparent',
+              color: viewMode === 'humans' ? 'var(--teal-700)' : 'var(--text-secondary)',
               fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: viewMode === 'workers' ? 'var(--shadow-md)' : 'none',
+              boxShadow: viewMode === 'humans' ? 'var(--shadow-md)' : 'none',
               transition: 'all 0.2s'
             }}
           >
             <Users size={18} />
-            Workers
+            Humans
           </button>
         </div>
 
@@ -605,14 +610,14 @@ export default function BrowsePage({ user }) {
           </div>
         )}
 
-        {/* Workers Grid */}
-        {!loading && viewMode === 'workers' && (
+        {/* Humans Grid */}
+        {!loading && viewMode === 'humans' && (
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
             gap: 24
           }}>
-            {workers.length === 0 ? (
+            {humans.length === 0 ? (
               <div style={{
                 gridColumn: '1 / -1',
                 textAlign: 'center',
@@ -622,176 +627,18 @@ export default function BrowsePage({ user }) {
                 border: '1px solid rgba(26,26,26,0.06)'
               }}>
                 <Users size={48} style={{ color: 'var(--text-tertiary)', marginBottom: 16 }} />
-                <p style={{ color: 'var(--text-secondary)' }}>No workers found.</p>
+                <p style={{ color: 'var(--text-secondary)' }}>No humans found.</p>
                 <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Try adjusting your filters.</p>
               </div>
             ) : (
-              workers.map(worker => (
-                <div
-                  key={worker.id}
-                  style={{
-                    background: 'white',
-                    borderRadius: 'var(--radius-lg)',
-                    border: '1px solid rgba(26,26,26,0.06)',
-                    padding: 24,
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.boxShadow = 'var(--shadow-lg)'
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.boxShadow = 'none'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                  }}
-                >
-                  {/* Header: Avatar, Name, Location, Verified */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-                    <div style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: '50%',
-                      background: worker.avatar_url ? `url(${worker.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--coral-500), var(--coral-600))',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 600,
-                      fontSize: 18,
-                      flexShrink: 0
-                    }}>
-                      {!worker.avatar_url && (worker.name?.[0]?.toUpperCase() || '?')}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <h3 style={{
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: 'var(--text-primary)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}>
-                          {worker.name || 'Anonymous'}
-                        </h3>
-                        {worker.verified && (
-                          <div style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: '50%',
-                            background: 'var(--success)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            <Check size={10} style={{ color: 'white' }} />
-                          </div>
-                        )}
-                      </div>
-                      {worker.city && (
-                        <span style={{
-                          fontSize: 13,
-                          color: 'var(--text-tertiary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4
-                        }}>
-                          <MapPin size={12} style={{ color: 'var(--coral-500)' }} />
-                          {worker.city}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Bio */}
-                  <p style={{
-                    fontSize: 14,
-                    color: 'var(--text-secondary)',
-                    marginBottom: 12,
-                    lineHeight: 1.5,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    minHeight: 42,
-                    flex: '0 0 auto'
-                  }}>
-                    {worker.bio || 'No bio provided'}
-                  </p>
-
-                  {/* Skills */}
-                  <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 6,
-                    marginBottom: 16,
-                    minHeight: 28
-                  }}>
-                    {(Array.isArray(worker.skills) ? worker.skills : []).slice(0, 3).map((skill, idx) => (
-                      <span
-                        key={idx}
-                        style={{
-                          padding: '4px 10px',
-                          background: 'var(--bg-tertiary)',
-                          borderRadius: 'var(--radius-md)',
-                          fontSize: 12,
-                          color: 'var(--text-secondary)',
-                          border: '1px solid rgba(26,26,26,0.06)'
-                        }}
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                    {worker.skills && worker.skills.length > 3 && (
-                      <span style={{
-                        padding: '4px 10px',
-                        fontSize: 12,
-                        color: 'var(--text-tertiary)'
-                      }}>
-                        +{worker.skills.length - 3}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Footer: Rate + Rent Button */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: 'auto',
-                    paddingTop: 16,
-                    borderTop: '1px solid rgba(26,26,26,0.06)'
-                  }}>
-                    <span style={{
-                      fontSize: 20,
-                      fontWeight: 700,
-                      color: 'var(--coral-500)'
-                    }}>
-                      ${worker.hourly_rate || 25}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>/hr</span>
-                    </span>
-                    <button
-                      onClick={() => setShowHireModal(worker)}
-                      style={{
-                        padding: '10px 24px',
-                        background: 'var(--coral-500)',
-                        color: 'white',
-                        fontWeight: 600,
-                        fontSize: 14,
-                        borderRadius: 'var(--radius-md)',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--coral-600)'}
-                      onMouseOut={(e) => e.currentTarget.style.background = 'var(--coral-500)'}
-                    >
-                      rent
-                    </button>
-                  </div>
-                </div>
+              humans.map(human => (
+                <HumanProfileCard
+                  key={human.id}
+                  human={human}
+                  variant="browse"
+                  onExpand={(h) => setExpandedHumanId(h.id)}
+                  onHire={(h) => setShowHireModal(h)}
+                />
               ))
             )}
           </div>
@@ -939,7 +786,7 @@ export default function BrowsePage({ user }) {
         </div>
       )}
 
-      {/* Hire Worker Modal */}
+      {/* Hire Human Modal */}
       {showHireModal && (
         <div
           style={{
@@ -1404,6 +1251,19 @@ Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
             )}
           </div>
         </div>
+      )}
+
+      {/* Expanded Profile Modal */}
+      {expandedHumanId && (
+        <HumanProfileModal
+          humanId={expandedHumanId}
+          onClose={() => setExpandedHumanId(null)}
+          onHire={(human) => {
+            setExpandedHumanId(null)
+            setShowHireModal(human)
+          }}
+          user={user}
+        />
       )}
 
       {/* Footer */}

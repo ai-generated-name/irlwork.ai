@@ -452,8 +452,8 @@ function QueueItem({ item, queue, onConfirmDeposit, onReleasePayment, onConfirmW
 
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
             {item.agent && <span>Agent: {item.agent.name || item.agent.email}</span>}
-            {item.human && <span>Worker: {item.human.name || item.human.email}</span>}
-            {item.worker && <span>Worker: {item.worker.name || item.worker.email}</span>}
+            {item.human && <span>Human: {item.human.name || item.human.email}</span>}
+            {item.worker && <span>Human: {item.worker.name || item.worker.email}</span>}
             {item.expected_deposit && <span>Expected: ${item.expected_deposit.toFixed(2)}</span>}
             {item.worker_amount && <span>Amount: ${item.worker_amount}</span>}
           </div>

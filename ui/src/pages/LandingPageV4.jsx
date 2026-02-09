@@ -47,7 +47,7 @@ function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
 
 // Hero Stats Component with live data
 function HeroStats() {
-  const [stats, setStats] = useState({ workers: null, tasks: null, cities: null })
+  const [stats, setStats] = useState({ humans: null, tasks: null, cities: null })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -79,11 +79,11 @@ function HeroStats() {
   }, [])
 
   // Threshold logic - show fallback text when API fails or returns 0
-  const getWorkerDisplay = () => {
+  const getHumanDisplay = () => {
     if (loading) return { value: '...', label: 'Humans Ready' }
-    if (stats.workers === null || stats.workers === 0) return { value: 'Growing', label: 'Humans Ready' }
-    if (stats.workers < 10) return { value: 'Growing', label: 'New humans joining daily' }
-    return { value: <AnimatedCounter end={stats.workers} suffix="+" />, label: 'Humans Ready' }
+    if (stats.humans === null || stats.humans === 0) return { value: 'Growing', label: 'Humans Ready' }
+    if (stats.humans < 10) return { value: 'Growing', label: 'New humans joining daily' }
+    return { value: <AnimatedCounter end={stats.humans} suffix="+" />, label: 'Humans Ready' }
   }
 
   const getTaskDisplay = () => {
@@ -100,15 +100,15 @@ function HeroStats() {
     return { value: <AnimatedCounter end={stats.cities} suffix="+" />, label: 'Cities Active' }
   }
 
-  const workerDisplay = getWorkerDisplay()
+  const humanDisplay = getHumanDisplay()
   const taskDisplay = getTaskDisplay()
   const cityDisplay = getCityDisplay()
 
   return (
     <div className="hero-v4-stats">
       <div className="stat-item">
-        <div className="stat-value">{workerDisplay.value}</div>
-        <div className="stat-label">{workerDisplay.label}</div>
+        <div className="stat-value">{humanDisplay.value}</div>
+        <div className="stat-label">{humanDisplay.label}</div>
       </div>
       <div className="stat-divider"></div>
       <div className="stat-item">
@@ -230,18 +230,18 @@ function HeroAnimation() {
         <ArrowRight size={14} />
       </div>
 
-      <div className={`human-worker-card ${step >= 2 ? 'worker--visible' : ''} ${step >= 3 ? 'worker--paid' : ''}`}>
-        <div className="worker-avatar">
+      <div className={`human-card ${step >= 2 ? 'human--visible' : ''} ${step >= 3 ? 'human--paid' : ''}`}>
+        <div className="human-avatar">
           <User size={20} />
         </div>
-        <div className="worker-info">
-          <div className="worker-name">Alex M.</div>
-          <div className="worker-rating">
+        <div className="human-info">
+          <div className="human-name">Alex M.</div>
+          <div className="human-rating">
             <span className="stars">★★★★★</span>
             <span className="rating-num">4.9</span>
           </div>
         </div>
-        <div className="worker-status">
+        <div className="human-status">
           {step < 3 ? (
             <span className="status-accepted">Accepted</span>
           ) : (
@@ -487,7 +487,7 @@ export default function LandingPageV4() {
               <Users size={22} />
             </div>
             <div>
-              <div className="feature-title">Verified Workers</div>
+              <div className="feature-title">Verified Humans</div>
               <div className="feature-description">Reputation-backed trust</div>
             </div>
           </div>
@@ -532,7 +532,7 @@ const task = await client.tasks.create({
   verification: "photo"
 });
 
-// Task is live! Workers can now accept it
+// Task is live! Humans can now accept it
 console.log(\`Task \${task.id} funded: \${task.escrow_tx}\`);`
 
   return (
@@ -594,7 +594,7 @@ function CombinedBenefitsSection() {
     { icon: CheckCircle, title: 'Work Verification', description: 'Photo/video proof before releasing payment.' },
     { icon: Shield, title: 'Dispute Protection', description: 'Fair resolution process with platform support.' },
     { icon: Zap, title: 'Instant Deployment', description: 'Post tasks via API with automated matching.' },
-    { icon: BarChart3, title: 'Task Analytics', description: 'Track completion rates and worker performance.' }
+    { icon: BarChart3, title: 'Task Analytics', description: 'Track completion rates and human performance.' }
   ]
 
   return (

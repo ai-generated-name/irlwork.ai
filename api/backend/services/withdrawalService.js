@@ -2,14 +2,14 @@ const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 
 /**
- * Withdrawal Service - Handles worker withdrawals from available balance
+ * Withdrawal Service - Handles human withdrawals from available balance
  *
- * Workers can only withdraw funds that have status='available' in pending_transactions
+ * Humans can only withdraw funds that have status='available' in pending_transactions
  * (i.e., funds that have passed the 48-hour dispute window)
  */
 
 /**
- * Process withdrawal request from worker
+ * Process withdrawal request from human
  * @param {object} supabase - Supabase client
  * @param {string} userId - User ID requesting withdrawal
  * @param {number} amountCents - Amount to withdraw in cents (optional, defaults to all available)
@@ -81,7 +81,7 @@ async function processWithdrawal(supabase, userId, amountCents = null, sendUSDC,
     const actualWithdrawAmountCents = txsToWithdraw.reduce((sum, tx) => sum + tx.withdrawAmount, 0);
     const actualWithdrawAmount = actualWithdrawAmountCents / 100;
 
-    // Send USDC to worker's wallet
+    // Send USDC to human's wallet
     let txHash = null;
 
     if (sendUSDC && process.env.PLATFORM_WALLET_PRIVATE_KEY) {

@@ -16,6 +16,8 @@ import BrowseTasksV2 from './pages/BrowseTasksV2'
 import LandingPageV4 from './pages/LandingPageV4'
 import AdminDashboard from './pages/AdminDashboard'
 import DisputePanel from './components/DisputePanel'
+import HumanProfileCard from './components/HumanProfileCard'
+import HumanProfileModal from './components/HumanProfileModal'
 
 // Admin user IDs - must match ADMIN_USER_IDS in backend
 const ADMIN_USER_IDS = ['b49dc7ef-38b5-40ce-936b-e5fddebc4cb7']
@@ -1211,7 +1213,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     updateTabUrl(tabId)
   }
   const [tasks, setTasks] = useState([])
-  const [availableTasks, setAvailableTasks] = useState([]) // Tasks available for workers to browse
+  const [availableTasks, setAvailableTasks] = useState([]) // Tasks available for humans to browse
   const [humans, setHumans] = useState([])
   const [loading, setLoading] = useState(true)
   const [postedTasks, setPostedTasks] = useState([])
@@ -1236,7 +1238,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
-  const [assigningWorker, setAssigningWorker] = useState(null) // loading state
+  const [assigningHuman, setAssigningHuman] = useState(null) // loading state
+  const [expandedHumanId, setExpandedHumanId] = useState(null) // expanded profile modal
 
   // Task creation form state
   const [taskForm, setTaskForm] = useState({
@@ -1362,7 +1365,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   useEffect(() => {
     if (hiringMode) {
       fetchPostedTasks()
-      fetchHumans() // For hiring mode to browse workers
+      fetchHumans() // For hiring mode to browse humans
     } else {
       fetchTasks()
       fetchAvailableTasks() // For working mode to browse available tasks
@@ -1435,7 +1438,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     }
   }
 
-  // Fetch available tasks for workers to browse
+  // Fetch available tasks for humans to browse
   const fetchAvailableTasks = async () => {
     try {
       const params = new URLSearchParams()
@@ -1500,8 +1503,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     }
   }
 
-  const handleAssignWorker = async (taskId, humanId) => {
-    setAssigningWorker(humanId)
+  const handleAssignHuman = async (taskId, humanId) => {
+    setAssigningHuman(humanId)
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
@@ -1518,12 +1521,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
       } else {
         const err = await res.json()
-        toast.error(err.error || 'Failed to assign worker')
+        toast.error(err.error || 'Failed to assign human')
       }
     } catch (e) {
       toast.error('Network error. Please try again.')
     } finally {
-      setAssigningWorker(null)
+      setAssigningHuman(null)
     }
   }
 
@@ -2152,11 +2155,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                                       </div>
                                     </div>
                                     <button
-                                      onClick={() => handleAssignWorker(task.id, app.human_id)}
-                                      disabled={assigningWorker === app.human_id}
+                                      onClick={() => handleAssignHuman(task.id, app.human_id)}
+                                      disabled={assigningHuman === app.human_id}
                                       className="v4-btn v4-btn-primary"
                                     >
-                                      {assigningWorker === app.human_id ? 'Assigning...' : 'Accept'}
+                                      {assigningHuman === app.human_id ? 'Assigning...' : 'Accept'}
                                     </button>
                                   </div>
                                 ))
@@ -2407,10 +2410,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           />
         )}
 
-        {/* Hiring Mode: Browse Humans Tab - Shows available workers */}
+        {/* Hiring Mode: Browse Humans Tab - Shows available humans */}
         {hiringMode && activeTab === 'browse' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Browse Workers</h1>
+            <h1 className="dashboard-v4-page-title">Browse Humans</h1>
 
             {/* Search & Filter */}
             <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
@@ -2444,7 +2447,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             {humans.length === 0 ? (
               <div className="dashboard-v4-empty">
                 <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-                <p className="dashboard-v4-empty-title">No workers found</p>
+                <p className="dashboard-v4-empty-title">No humans found</p>
                 <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
               </div>
             ) : (
@@ -2453,44 +2456,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
                   .filter(h => !filterCategory || h.skills?.includes(filterCategory))
                   .map(human => (
-                  <div key={human.id} className="dashboard-v4-task-card">
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-                      <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 20 }}>
-                        {human.name?.charAt(0) || '?'}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <h3 style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{human.name}</h3>
-                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>📍 {human.city || 'Remote'}</p>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontWeight: 700, color: 'var(--orange-600)', fontSize: 18 }}>${human.hourly_rate || 25}/hr</p>
-                            {human.rating > 0 && (
-                              <p style={{ fontSize: 13, color: 'var(--warning)' }}>⭐ {human.rating.toFixed(1)}</p>
-                            )}
-                          </div>
-                        </div>
-                        {human.bio && <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8 }}>{human.bio}</p>}
-                        {human.skills && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-                            {human.skills.slice(0, 5).map((skill, i) => (
-                              <span key={i} style={{ fontSize: 12, background: 'rgba(244, 132, 95, 0.1)', color: 'var(--orange-600)', padding: '4px 10px', borderRadius: 'var(--radius-full)' }}>
-                                {skill}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{human.jobs_completed || 0} jobs completed</span>
-                          <button className="v4-btn v4-btn-primary" onClick={() => setActiveTab('create')}>
-                            Create Task
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    <HumanProfileCard
+                      key={human.id}
+                      human={human}
+                      variant="dashboard"
+                      onExpand={(h) => setExpandedHumanId(h.id)}
+                      onHire={() => setActiveTab('create')}
+                    />
+                  ))}
               </div>
             )}
           </div>
@@ -2861,6 +2834,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           />
         )}
         </div>
+
+        {/* Expanded Human Profile Modal */}
+        {expandedHumanId && (
+          <HumanProfileModal
+            humanId={expandedHumanId}
+            onClose={() => setExpandedHumanId(null)}
+            onHire={(human) => {
+              setExpandedHumanId(null)
+              setActiveTab('create')
+            }}
+            user={user}
+          />
+        )}
       </main>
     </div>
   )

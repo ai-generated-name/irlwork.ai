@@ -1098,8 +1098,8 @@ app.get('/api/stats', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
-    // Count workers with completed profiles (verified humans)
-    const { count: workersCount, error: workersError } = await supabase
+    // Count humans with completed profiles (verified humans)
+    const { count: humansCount, error: humansError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
       .eq('type', 'human')
@@ -1111,8 +1111,8 @@ app.get('/api/stats', async (req, res) => {
       .select('*', { count: 'exact', head: true })
       .eq('status', 'open');
 
-    // Get unique cities from workers and tasks
-    const { data: workerCities } = await supabase
+    // Get unique cities from humans and tasks
+    const { data: humanCities } = await supabase
       .from('users')
       .select('city')
       .eq('type', 'human')
@@ -1126,7 +1126,7 @@ app.get('/api/stats', async (req, res) => {
 
     // Extract unique cities
     const allCities = new Set();
-    workerCities?.forEach(w => {
+    humanCities?.forEach(w => {
       if (w.city) allCities.add(w.city.toLowerCase().trim());
     });
     taskCities?.forEach(t => {
@@ -1138,7 +1138,7 @@ app.get('/api/stats', async (req, res) => {
     });
 
     res.json({
-      workers: workersCount || 0,
+      humans: humansCount || 0,
       tasks: tasksCount || 0,
       cities: allCities.size
     });
@@ -1550,7 +1550,7 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
 });
 
 // Agent assigns a human to a task
-// PHASE 1: This triggers escrow deposit flow - worker cannot start until deposit confirmed
+// PHASE 1: This triggers escrow deposit flow - human cannot start until deposit confirmed
 app.post('/api/tasks/:id/assign', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
@@ -1604,7 +1604,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
 
   // Assign the human but set status to 'assigned' (not 'in_progress')
-  // Worker cannot start until escrow is deposited (escrow_status = 'deposited')
+  // Human cannot start until escrow is deposited (escrow_status = 'deposited')
   const { error } = await supabase
     .from('tasks')
     .update({
@@ -1632,7 +1632,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     .eq('task_id', taskId)
     .neq('human_id', human_id);
 
-  // Notify worker: "You've been selected! Funding is in progress."
+  // Notify human: "You've been selected! Funding is in progress."
   await createNotification(
     human_id,
     'task_assigned',
@@ -1647,16 +1647,20 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     task_id: taskId,
     worker: {
       id: humanUser?.id || human_id,
-      name: humanUser?.name || 'Worker'
+      name: humanUser?.name || 'Human'
+    },
+    human: {
+      id: humanUser?.id || human_id,
+      name: humanUser?.name || 'Human'
     },
     escrow_status: 'pending_deposit',
     deposit_instructions: {
       wallet_address: process.env.PLATFORM_WALLET_ADDRESS,
       amount_usdc: uniqueDepositAmount,
       network: 'Base',
-      note: 'Send exactly this amount. Your worker will be notified once deposit is confirmed by the platform.'
+      note: 'Send exactly this amount. Your human will be notified once deposit is confirmed by the platform.'
     },
-    message: 'Worker selected. Please send the exact USDC amount to complete the assignment.'
+    message: 'Human selected. Please send the exact USDC amount to complete the assignment.'
   });
 });
 
@@ -2142,7 +2146,7 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     })
     .eq('id', taskId);
 
-  // Notify worker: "Your proof has been approved! Payment is being processed."
+  // Notify human: "Your proof has been approved! Payment is being processed."
   await createNotification(
     task.human_id,
     'proof_approved',
@@ -3090,7 +3094,7 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'hire_human': {
-        // PHASE 1: Hiring triggers escrow deposit flow - worker cannot start until deposit confirmed
+        // PHASE 1: Hiring triggers escrow deposit flow - human cannot start until deposit confirmed
         const { task_id, human_id, deadline_hours = 24, instructions } = params;
 
         // Get task for budget
@@ -3147,9 +3151,9 @@ app.post('/api/mcp', async (req, res) => {
             wallet_address: process.env.PLATFORM_WALLET_ADDRESS,
             amount_usdc: uniqueDepositAmount,
             network: 'Base',
-            note: 'Send exactly this amount. Your worker will be notified once deposit is confirmed by the platform.'
+            note: 'Send exactly this amount. Your human will be notified once deposit is confirmed by the platform.'
           },
-          message: 'Worker selected. Please send the exact USDC amount to complete the assignment.'
+          message: 'Human selected. Please send the exact USDC amount to complete the assignment.'
         });
         break;
       }
@@ -3532,7 +3536,7 @@ app.get('/api/activity/feed', async (req, res) => {
 });
 
 // ============ CONVERSATIONS ============
-// NOTE: conversations table uses human_id (not user_id) for the worker column
+// NOTE: conversations table uses human_id (not user_id) for the human column
 app.get('/api/conversations', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
@@ -3832,7 +3836,7 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
   res.json({ marked_count: data?.length || 0 });
 });
 
-// Get unread message summary across all conversations (for agents and workers)
+// Get unread message summary across all conversations (for agents and humans)
 app.get('/api/conversations/unread', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
@@ -4050,7 +4054,7 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
@@ -4480,7 +4484,7 @@ app.post('/api/tasks', async (req, res) => {
       city,
       state,
       status: 'open',
-      escrow_status: 'awaiting_worker',  // PHASE 1: No payment needed until worker approved
+      escrow_status: 'awaiting_worker',  // PHASE 1: No payment needed until human approved
       escrow_amount: parseFloat(budget),
       creator_id: user.id,
       deadline,
@@ -4493,7 +4497,7 @@ app.post('/api/tasks', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   res.json({
     ...task,
-    message: 'Task posted. Deposit instructions will be provided when a worker is approved.'
+    message: 'Task posted. Deposit instructions will be provided when a human is approved.'
   });
 });
 
@@ -4757,7 +4761,7 @@ app.post('/api/disputes', async (req, res) => {
     })
     .eq('id', user.id);
 
-  // Notify the worker about the dispute
+  // Notify the human about the dispute
   const amountDollars = (payout.amount_cents / 100).toFixed(2);
   await createNotification(
     task.human_id,
@@ -4923,7 +4927,7 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       `/disputes/${id}`
     );
   } else {
-    // Worker wins: release the payment
+    // Human wins: release the payment
     await supabase
       .from('payouts')
       .update({ status: 'available' })
@@ -4941,8 +4945,8 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     await createNotification(
       dispute.filed_by,
       'dispute_resolved',
-      'Dispute Resolved - Payment Released to Worker',
-      `The dispute for task "${dispute.task.title}" was resolved in favor of the worker.`,
+      'Dispute Resolved - Payment Released to Human',
+      `The dispute for task "${dispute.task.title}" was resolved in favor of the human.`,
       `/disputes/${id}`
     );
   }

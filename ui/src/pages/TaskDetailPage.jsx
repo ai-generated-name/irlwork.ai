@@ -1,5 +1,5 @@
 // Task Detail Page
-// Central hub for workers to view task info, communicate with agents, and submit proof
+// Central hub for humans to view task info, communicate with agents, and submit proof
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../App';
