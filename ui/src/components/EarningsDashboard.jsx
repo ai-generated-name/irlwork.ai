@@ -13,10 +13,18 @@ function EarningsDashboard({ user }) {
   const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false)
 
   useEffect(() => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     fetchBalance()
   }, [user])
 
   const fetchBalance = async () => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       const res = await fetch(`${API_URL}/wallet/balance`, {
@@ -45,7 +53,7 @@ function EarningsDashboard({ user }) {
     }
 
     // Require wallet address for non-stripe withdrawals
-    if (method !== 'stripe' && !user.wallet_address) {
+    if (method !== 'stripe' && !user?.wallet_address) {
       toast.error('Please add a wallet address in your profile settings first')
       return
     }
