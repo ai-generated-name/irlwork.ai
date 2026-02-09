@@ -10,7 +10,6 @@ import TopFilterBar from './components/TopFilterBar'
 import CustomDropdown from './components/CustomDropdown'
 import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
-import ActivityFeed from './components/ActivityFeed'
 import BrowsePage from './pages/BrowsePage'
 import BrowseTasksV2 from './pages/BrowseTasksV2'
 import LandingPageV4 from './pages/LandingPageV4'
@@ -1375,7 +1374,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
-  const [activities, setActivities] = useState([])
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
 
   // Profile edit location state
@@ -1439,7 +1437,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
-    { id: 'disputes', label: 'Disputes', icon: '⚖️' },
   ]
 
   // Hiring mode: Create Task, My Tasks, Browse Humans, Hired, Messages, Payments, API Keys
@@ -1517,7 +1514,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     fetchConversations()
     fetchNotifications()
     fetchUnreadMessages()
-    fetchActivities()
   }, [hiringMode])
 
   // Re-fetch tasks when location/radius filters change
@@ -1796,18 +1792,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     } catch (e) {}
   }
 
-  const fetchActivities = async () => {
-    try {
-      const res = await fetch(`${API_URL}/activity/feed`, { headers: { Authorization: user.id } })
-      if (res.ok) {
-        const data = await res.json()
-        setActivities(data || [])
-      }
-    } catch (e) {
-      console.log('Could not fetch activity feed')
-    }
-  }
-
   const handleCreateTask = async (e) => {
     e.preventDefault()
     setCreateTaskError('')
@@ -1974,6 +1958,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       pending_review: 'bg-coral/10 text-coral',
       completed: 'bg-green-100 text-green-600',
       paid: 'bg-gray-100 text-gray-500',
+      disputed: 'bg-red-100 text-red-600',
     }
     return colors[status] || 'bg-gray-100 text-gray-500'
   }
@@ -1986,6 +1971,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       pending_review: 'Pending Review',
       completed: 'Completed',
       paid: 'Paid',
+      disputed: 'Disputed',
     }
     return labels[status] || status
   }
@@ -2385,7 +2371,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>{tasks.filter(t => t.status === 'in_progress').length} active</span>
+              <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>{tasks.filter(t => ['open', 'accepted', 'in_progress', 'pending_review', 'disputed'].includes(t.status)).length} active</span>
             </div>
 
             {/* Quick Stats */}
@@ -2440,61 +2426,103 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                 </div>
               </div>
-            ) : (
-              <div>
-                {tasks.map(task => (
-                  <div key={task.id} className="dashboard-v4-task-card">
-                    <div className="dashboard-v4-task-header">
-                      <div>
-                        <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
-                          {getStatusLabel(task.status)}
-                        </span>
-                        <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
-                      </div>
-                      <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
-                    </div>
+            ) : ((() => {
+              const getStatusClass = (status) => {
+                if (status === 'disputed') return 'disputed'
+                if (status === 'open') return 'open'
+                if (status === 'in_progress') return 'in-progress'
+                if (status === 'completed' || status === 'paid') return 'completed'
+                return 'pending'
+              }
 
-                    {task.description && (
-                      <p className="dashboard-v4-task-description">{task.description}</p>
-                    )}
+              const activeTasks = tasks.filter(t => ['open', 'accepted', 'in_progress', 'pending_review', 'disputed'].includes(t.status))
+              const completedTasks = tasks.filter(t => ['completed', 'paid'].includes(t.status))
 
-                    <div className="dashboard-v4-task-meta">
-                      <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                      <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
-                      <span className="dashboard-v4-task-meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
-                      {task.agent_name && <span className="dashboard-v4-task-meta-item">🤖 {task.agent_name}</span>}
+              const renderTaskCard = (task) => (
+                <div
+                  key={task.id}
+                  className="dashboard-v4-task-card dashboard-v4-task-card-clickable"
+                  onClick={() => { window.location.href = `/tasks/${task.id}` }}
+                  role="link"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter') window.location.href = `/tasks/${task.id}` }}
+                >
+                  <div className="dashboard-v4-task-header">
+                    <div>
+                      <span className={`dashboard-v4-task-status ${getStatusClass(task.status)}`}>
+                        {getStatusLabel(task.status)}
+                      </span>
+                      <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
                     </div>
-
-                    <div className="dashboard-v4-task-actions">
-                      {task.status === 'open' && (
-                        <button className="v4-btn v4-btn-primary" onClick={() => acceptTask(task.id)}>Accept Task</button>
-                      )}
-                      {task.status === 'accepted' && (
-                        <button className="v4-btn v4-btn-primary" onClick={() => {
-                          fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
-                            .then(() => fetchTasks())
-                        }}>▶️ Start Work</button>
-                      )}
-                      {task.status === 'in_progress' && (
-                        <button className="v4-btn v4-btn-primary" onClick={() => setShowProofSubmit(task.id)}>✓ Submit Proof</button>
-                      )}
-                      {task.status === 'pending_review' && (
-                        <button className="v4-btn v4-btn-secondary" disabled>Waiting for approval...</button>
-                      )}
-                      {task.status === 'completed' && (
-                        <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 8 }}>✓ Payment pending</span>
-                      )}
-                      {task.status === 'paid' && (
-                        <span style={{ color: 'var(--orange-600)', display: 'flex', alignItems: 'center', gap: 8 }}>💰 Paid!</span>
-                      )}
-                    </div>
+                    <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
                   </div>
-                ))}
-              </div>
-            )}
 
-            {/* Activity Feed */}
-            <ActivityFeed activities={activities} />
+                  {task.description && (
+                    <p className="dashboard-v4-task-description">{task.description}</p>
+                  )}
+
+                  <div className="dashboard-v4-task-meta">
+                    <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
+                    <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
+                    <span className="dashboard-v4-task-meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+                    {task.agent_name && <span className="dashboard-v4-task-meta-item">🤖 {task.agent_name}</span>}
+                  </div>
+
+                  <div className="dashboard-v4-task-actions">
+                    {task.status === 'open' && (
+                      <button className="v4-btn v4-btn-primary" onClick={(e) => { e.stopPropagation(); acceptTask(task.id) }}>Accept Task</button>
+                    )}
+                    {task.status === 'accepted' && (
+                      <button className="v4-btn v4-btn-primary" onClick={(e) => {
+                        e.stopPropagation()
+                        fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
+                          .then(() => fetchTasks())
+                      }}>Start Work</button>
+                    )}
+                    {task.status === 'in_progress' && (
+                      <button className="v4-btn v4-btn-primary" onClick={(e) => { e.stopPropagation(); setShowProofSubmit(task.id) }}>Submit Proof</button>
+                    )}
+                    {task.status === 'pending_review' && (
+                      <span className="dashboard-v4-task-status-hint">Waiting for approval...</span>
+                    )}
+                    {task.status === 'completed' && (
+                      <span className="dashboard-v4-task-status-hint success">Payment pending</span>
+                    )}
+                    {task.status === 'paid' && (
+                      <span className="dashboard-v4-task-status-hint paid">Paid</span>
+                    )}
+                    {task.status === 'disputed' && (
+                      <span className="dashboard-v4-task-status-hint disputed">Under review</span>
+                    )}
+                    <span className="dashboard-v4-task-open-arrow">→</span>
+                  </div>
+                </div>
+              )
+
+              return (
+                <div>
+                  {/* Active Tasks */}
+                  {activeTasks.length > 0 && (
+                    <div>
+                      <h2 className="dashboard-v4-section-heading">Active ({activeTasks.length})</h2>
+                      {activeTasks.map(renderTaskCard)}
+                    </div>
+                  )}
+
+                  {/* Completed Tasks */}
+                  {completedTasks.length > 0 && (
+                    <div style={{ marginTop: activeTasks.length > 0 ? 32 : 0 }}>
+                      <h2 className="dashboard-v4-section-heading muted">Completed ({completedTasks.length})</h2>
+                      {completedTasks.map(renderTaskCard)}
+                    </div>
+                  )}
+
+                  {activeTasks.length === 0 && completedTasks.length === 0 && (
+                    <p style={{ color: 'var(--text-tertiary)', textAlign: 'center', padding: 24 }}>No tasks found</p>
+                  )}
+                </div>
+              )
+            })())}
           </div>
         )}
 

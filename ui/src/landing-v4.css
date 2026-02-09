@@ -4741,6 +4741,11 @@
   color: #8B5CF6;
 }
 
+.dashboard-v4-task-status.disputed {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+}
+
 .dashboard-v4-task-description {
   font-size: 14px;
   color: var(--text-secondary);
@@ -4764,6 +4769,68 @@
   gap: var(--space-2);
 }
 
+/* Clickable task cards */
+.dashboard-v4-task-card-clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.dashboard-v4-task-card-clickable:hover {
+  transform: translateY(-1px);
+  border-color: rgba(26, 26, 26, 0.14);
+}
+
+.dashboard-v4-task-card-clickable:active {
+  transform: translateY(0);
+}
+
+/* Section headings for Active / Completed groups */
+.dashboard-v4-section-heading {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.dashboard-v4-section-heading.muted {
+  color: var(--text-tertiary);
+}
+
+/* Status hints in actions row */
+.dashboard-v4-task-status-hint {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.dashboard-v4-task-status-hint.success {
+  color: var(--success);
+}
+
+.dashboard-v4-task-status-hint.paid {
+  color: var(--orange-600);
+}
+
+.dashboard-v4-task-status-hint.disputed {
+  color: #DC2626;
+}
+
+/* Arrow indicator on clickable cards */
+.dashboard-v4-task-open-arrow {
+  margin-left: auto;
+  font-size: 18px;
+  color: var(--text-tertiary);
+  transition: transform 0.15s ease;
+}
+
+.dashboard-v4-task-card-clickable:hover .dashboard-v4-task-open-arrow {
+  transform: translateX(3px);
+  color: var(--text-secondary);
+}
+
 .dashboard-v4-task-meta-item svg {
   width: 16px;
   height: 16px;
@@ -4776,6 +4843,7 @@
 
 .dashboard-v4-task-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-3);
   margin-top: var(--space-4);
 }
@@ -5118,7 +5186,7 @@
   }
 
   .dashboard-v4-task-actions {
-    flex-direction: column;
+    flex-wrap: wrap;
   }
 
   .dashboard-v4-empty-actions {
