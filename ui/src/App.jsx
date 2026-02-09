@@ -18,6 +18,7 @@ import AdminDashboard from './pages/AdminDashboard'
 // Admin user IDs - must match ADMIN_USER_IDS in backend
 const ADMIN_USER_IDS = ['b49dc7ef-38b5-40ce-936b-e5fddebc4cb7']
 import CityAutocomplete from './components/CityAutocomplete'
+import { TASK_CATEGORIES } from './components/CategoryPills'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
@@ -89,7 +90,10 @@ function Loading() {
 }
 
 // Old LandingPage component removed - now using LandingPageV4
-function Onboarding({ onComplete }) {
+// Onboarding skill categories (exclude "All" filter option)
+const ONBOARDING_CATEGORIES = TASK_CATEGORIES.filter(c => c.value !== '')
+
+function Onboarding({ onComplete, user }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     city: '',
@@ -97,27 +101,73 @@ function Onboarding({ onComplete }) {
     longitude: null,
     country: '',
     country_code: '',
-    skills: '',
+    selectedCategories: [],
+    otherSkills: '',
+    bio: '',
     travel_radius: 10,
     hourly_rate: 25
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [nearbyTasks, setNearbyTasks] = useState([])
+  const [loadingTasks, setLoadingTasks] = useState(false)
+
+  const userName = user?.name?.split(' ')[0] || 'there'
+  const userAvatar = user?.avatar_url
 
   const totalSteps = 4
   const progress = (step / totalSteps) * 100
+
+  // Fetch nearby tasks after city selection
+  const fetchNearbyTasks = async (lat, lng, city) => {
+    setLoadingTasks(true)
+    try {
+      const params = new URLSearchParams()
+      if (lat && lng) {
+        params.set('user_lat', lat)
+        params.set('user_lng', lng)
+        params.set('radius_km', '80')
+      } else if (city) {
+        params.set('city', city)
+      }
+      const res = await fetch(`${API_URL}/tasks/available?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setNearbyTasks((data || []).slice(0, 3))
+      }
+    } catch (e) {
+      // Silently fail - task preview is optional
+    } finally {
+      setLoadingTasks(false)
+    }
+  }
+
+  const toggleCategory = (value) => {
+    setForm(prev => ({
+      ...prev,
+      selectedCategories: prev.selectedCategories.includes(value)
+        ? prev.selectedCategories.filter(c => c !== value)
+        : [...prev.selectedCategories, value]
+    }))
+  }
 
   const handleSubmit = async () => {
     setLoading(true)
     setError('')
     try {
+      // Combine selected categories with any freeform "other" skills
+      const skills = [
+        ...form.selectedCategories,
+        ...form.otherSkills.split(',').map(s => s.trim()).filter(Boolean)
+      ]
       await onComplete({
         city: form.city,
         latitude: form.latitude,
         longitude: form.longitude,
         country: form.country,
         country_code: form.country_code,
-        skills: form.skills.split(',').map(s => s.trim()).filter(Boolean),
+        skills,
+        bio: form.bio,
         travel_radius: form.travel_radius,
         hourly_rate: form.hourly_rate
       })
@@ -131,6 +181,20 @@ function Onboarding({ onComplete }) {
   return (
     <div className="onboarding-v4">
       <div className="onboarding-v4-container">
+        {/* Header with greeting and optional avatar */}
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          {userAvatar && (
+            <img
+              src={userAvatar}
+              alt=""
+              style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: 8, objectFit: 'cover' }}
+            />
+          )}
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+            Hey {userName}, let's set up your profile
+          </p>
+        </div>
+
         {/* Progress */}
         <div className="onboarding-v4-progress">
           <div className="onboarding-v4-progress-header">
@@ -152,17 +216,52 @@ function Onboarding({ onComplete }) {
             <p className="onboarding-v4-subtitle">This helps show you relevant tasks in your area</p>
             <CityAutocomplete
               value={form.city}
-              onChange={(locationData) => setForm({
-                ...form,
-                city: locationData.city,
-                latitude: locationData.latitude,
-                longitude: locationData.longitude,
-                country: locationData.country,
-                country_code: locationData.country_code
-              })}
+              onChange={(locationData) => {
+                setForm({
+                  ...form,
+                  city: locationData.city,
+                  latitude: locationData.latitude,
+                  longitude: locationData.longitude,
+                  country: locationData.country,
+                  country_code: locationData.country_code
+                })
+                fetchNearbyTasks(locationData.latitude, locationData.longitude, locationData.city)
+              }}
               placeholder="Search for your city..."
               className="onboarding-v4-city-input"
             />
+
+            {/* Task preview after city selection */}
+            {form.city && (
+              <div style={{ marginTop: '1rem' }}>
+                {loadingTasks ? (
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                    Checking for tasks near {form.city}...
+                  </p>
+                ) : nearbyTasks.length > 0 ? (
+                  <div>
+                    <p style={{ fontSize: 13, color: '#10B981', fontWeight: 500, marginBottom: 8 }}>
+                      {nearbyTasks.length} task{nearbyTasks.length !== 1 ? 's' : ''} near {form.city} — complete setup to apply
+                    </p>
+                    {nearbyTasks.map((task, i) => (
+                      <div key={task.id || i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: 8,
+                        marginBottom: 4, fontSize: 13
+                      }}>
+                        <span style={{ color: 'rgba(255,255,255,0.9)' }}>{task.title}</span>
+                        <span style={{ color: '#10B981', fontWeight: 600 }}>${task.budget}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                    No tasks near {form.city} yet — be one of the first workers in your area
+                  </p>
+                )}
+              </div>
+            )}
+
             <button
               className="onboarding-v4-btn-next"
               style={{ width: '100%', marginTop: '1rem' }}
@@ -174,20 +273,42 @@ function Onboarding({ onComplete }) {
           </div>
         )}
 
-        {/* Step 2: Skills */}
+        {/* Step 2: Skills (Category Pills) */}
         {step === 2 && (
           <div>
             <h1 className="onboarding-v4-title">What can you help with?</h1>
-            <p className="onboarding-v4-subtitle">Add your skills so agents know what you're great at</p>
+            <p className="onboarding-v4-subtitle">Select the categories that match your skills</p>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12
+            }}>
+              {ONBOARDING_CATEGORIES.map(cat => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => toggleCategory(cat.value)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 12px', borderRadius: 10,
+                    border: form.selectedCategories.includes(cat.value) ? '2px solid #10B981' : '2px solid rgba(255,255,255,0.1)',
+                    background: form.selectedCategories.includes(cat.value) ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: form.selectedCategories.includes(cat.value) ? '#10B981' : 'rgba(255,255,255,0.8)',
+                    cursor: 'pointer', fontSize: 14, transition: 'all 0.15s',
+                    textAlign: 'left'
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
             <input
               type="text"
-              placeholder="Skills (comma separated)"
-              value={form.skills}
-              onChange={e => setForm({ ...form, skills: e.target.value })}
+              placeholder="Other skills (comma separated, optional)"
+              value={form.otherSkills}
+              onChange={e => setForm({ ...form, otherSkills: e.target.value })}
               className="onboarding-v4-input"
-              autoFocus
+              style={{ marginTop: 4 }}
             />
-            <p className="onboarding-v4-hint">e.g. delivery, photography, coding, translation</p>
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(1)}>Back</button>
               <button className="onboarding-v4-btn-next" onClick={() => setStep(3)}>Continue</button>
@@ -195,22 +316,20 @@ function Onboarding({ onComplete }) {
           </div>
         )}
 
-        {/* Step 3: Travel Radius */}
+        {/* Step 3: Bio */}
         {step === 3 && (
           <div>
-            <h1 className="onboarding-v4-title">How far can you travel?</h1>
-            <p className="onboarding-v4-subtitle">Maximum distance you're willing to travel for tasks</p>
-            <input
-              type="range"
-              min="1"
-              max="100"
-              value={form.travel_radius}
-              onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
-              className="onboarding-v4-slider"
+            <h1 className="onboarding-v4-title">Tell agents about yourself</h1>
+            <p className="onboarding-v4-subtitle">A short bio helps you stand out and get more task offers</p>
+            <textarea
+              placeholder="e.g. Experienced handyman with 5 years of home repair work. Reliable and detail-oriented."
+              value={form.bio}
+              onChange={e => setForm({ ...form, bio: e.target.value })}
+              className="onboarding-v4-input"
+              style={{ minHeight: 100, resize: 'vertical', fontFamily: 'inherit' }}
+              autoFocus
             />
-            <p className="onboarding-v4-slider-value">
-              {form.travel_radius} miles
-            </p>
+            <p className="onboarding-v4-hint">2-3 sentences about your experience (optional but recommended)</p>
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(2)}>Back</button>
               <button className="onboarding-v4-btn-next" onClick={() => setStep(4)}>Continue</button>
@@ -218,19 +337,42 @@ function Onboarding({ onComplete }) {
           </div>
         )}
 
-        {/* Step 4: Hourly Rate */}
+        {/* Step 4: Travel Radius + Hourly Rate */}
         {step === 4 && (
           <div>
-            <h1 className="onboarding-v4-title">What's your rate?</h1>
-            <p className="onboarding-v4-subtitle">Minimum hourly rate for your work</p>
-            <input
-              type="number"
-              placeholder="Hourly rate"
-              value={form.hourly_rate}
-              onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
-              className="onboarding-v4-input"
-              autoFocus
-            />
+            <h1 className="onboarding-v4-title">Almost done!</h1>
+            <p className="onboarding-v4-subtitle">Set your travel distance and hourly rate</p>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
+                How far can you travel?
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={form.travel_radius}
+                onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
+                className="onboarding-v4-slider"
+              />
+              <p className="onboarding-v4-slider-value">
+                {form.travel_radius} miles
+              </p>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
+                Minimum hourly rate ($)
+              </label>
+              <input
+                type="number"
+                placeholder="Hourly rate"
+                value={form.hourly_rate}
+                onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
+                className="onboarding-v4-input"
+              />
+            </div>
+
             {error && (
               <div className="auth-v4-error">{error}</div>
             )}
@@ -3579,6 +3721,8 @@ function App() {
           hourly_rate: profile.hourly_rate,
           skills: profile.skills,
           travel_radius: profile.travel_radius,
+          bio: profile.bio,
+          avatar_url: user.avatar_url || null,
           role: 'human'
         })
       })
@@ -3589,7 +3733,7 @@ function App() {
         console.log('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
-        window.location.href = '/dashboard'
+        window.location.href = '/dashboard?tab=browse'
       } else {
         const errorData = await res.json().catch(() => ({}))
         console.error('[Onboarding] Failed:', errorData)
@@ -3639,7 +3783,7 @@ function App() {
       window.location.href = '/dashboard'
       return <Loading />
     }
-    return <Onboarding onComplete={handleOnboardingComplete} />
+    return <Onboarding onComplete={handleOnboardingComplete} user={user} />
   }
 
   // Dashboard route - requires auth

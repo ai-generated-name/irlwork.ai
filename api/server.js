@@ -725,7 +725,7 @@ app.post('/api/auth/onboard', async (req, res) => {
   }
 
   const { email, name, city, latitude, longitude, country, country_code,
-          hourly_rate, skills, travel_radius, role } = req.body;
+          hourly_rate, skills, travel_radius, role, bio, avatar_url } = req.body;
 
   // Validate required fields
   if (!city || !latitude || !longitude) {
@@ -733,6 +733,15 @@ app.post('/api/auth/onboard', async (req, res) => {
   }
 
   try {
+    // Calculate profile completeness based on provided data
+    const skillsArray = skills || [];
+    const profile_completeness = 0.2
+      + (city ? 0.1 : 0)
+      + (skillsArray.length > 0 ? 0.2 : 0)
+      + (hourly_rate ? 0.1 : 0)
+      + (bio ? 0.1 : 0)
+      + (avatar_url ? 0.1 : 0);
+
     // Upsert user with onboarding data
     const { data, error } = await supabase
       .from('users')
@@ -746,9 +755,12 @@ app.post('/api/auth/onboard', async (req, res) => {
         country,
         country_code,
         hourly_rate: hourly_rate || null,
-        skills: JSON.stringify(skills || []),
+        skills: JSON.stringify(skillsArray),
         travel_radius: travel_radius || 25,
         role: role || 'human',
+        bio: bio || null,
+        avatar_url: avatar_url || null,
+        profile_completeness,
         needs_onboarding: false,
         onboarding_completed_at: new Date().toISOString()
       }, { onConflict: 'id' })
