@@ -789,6 +789,7 @@ app.get('/api/auth/verify', async (req, res) => {
       wallet_address: user.wallet_address,
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
+      social_links: user.social_links || {},
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
       verified: user.verified,
@@ -1377,7 +1378,7 @@ app.put('/api/humans/profile', async (req, res) => {
     }
   }
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code } = req.body;
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
 
@@ -1396,6 +1397,18 @@ app.put('/api/humans/profile', async (req, res) => {
   if (country !== undefined) updates.country = country;
   if (country_code !== undefined) updates.country_code = country_code;
   if (travel_radius) updates.travel_radius = travel_radius;
+  if (social_links !== undefined) {
+    const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
+    const cleaned = {};
+    if (typeof social_links === 'object' && social_links !== null) {
+      for (const [key, value] of Object.entries(social_links)) {
+        if (allowedPlatforms.includes(key) && typeof value === 'string' && value.trim()) {
+          cleaned[key] = value.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+        }
+      }
+    }
+    updates.social_links = cleaned;
+  }
 
   const { data, error } = await supabase
     .from('users')
@@ -1477,7 +1490,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1498,6 +1511,7 @@ app.post('/api/tasks', async (req, res) => {
       task_type: 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
+      is_remote: !!is_remote,
       created_at: new Date().toISOString()
     })
     .select()
@@ -3437,6 +3451,7 @@ app.post('/api/mcp', async (req, res) => {
             task_type: 'direct',
             human_ids: [],
             escrow_amount: budgetAmount,
+            is_remote: !!params.is_remote,
             created_at: new Date().toISOString()
           })
           .select()
@@ -4280,8 +4295,35 @@ app.get('/api/tasks/available', async (req, res) => {
     radius,
     radius_km,
     search,
-    sort = 'distance'
+    sort = 'distance',
+    include_remote = 'true'
   } = req.query;
+
+  const includeRemote = include_remote !== 'false';
+
+  // Helper: fetch remote tasks matching current filters
+  async function fetchRemoteTasks(existingIds) {
+    if (!includeRemote) return [];
+    let remoteQuery = supabase
+      .from('tasks')
+      .select('*')
+      .eq('status', 'open')
+      .eq('is_remote', true);
+    if (category) remoteQuery = remoteQuery.eq('category', category);
+    if (search) remoteQuery = remoteQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    if (sort === 'pay_high') {
+      remoteQuery = remoteQuery.order('budget', { ascending: false, nullsFirst: false });
+    } else if (sort === 'pay_low') {
+      remoteQuery = remoteQuery.order('budget', { ascending: true, nullsFirst: false });
+    } else {
+      remoteQuery = remoteQuery.order('created_at', { ascending: false });
+    }
+    const { data: remoteTasks } = await remoteQuery.limit(20);
+    if (!remoteTasks) return [];
+    return remoteTasks
+      .filter(t => !existingIds.has(t.id))
+      .map(t => ({ ...t, distance_km: null }));
+  }
 
   try {
     // If lat/lng provided, use RPC function for optimized distance-based search
@@ -4324,6 +4366,11 @@ app.get('/api/tasks/available', async (req, res) => {
             });
           }
         }
+
+        // Merge in remote tasks (visible to all users regardless of location)
+        const existingIds = new Set(results.map(r => r.id));
+        const remoteTasks = await fetchRemoteTasks(existingIds);
+        results = results.concat(remoteTasks);
 
         return res.json({
           tasks: results,
@@ -4368,22 +4415,28 @@ app.get('/api/tasks/available', async (req, res) => {
       const userLatitude = parseFloat(user_lat);
       const userLongitude = parseFloat(user_lng);
 
+      // Keep remote tasks — they bypass distance filtering
+      const remoteTasks = results.filter(t => t.is_remote);
+      let localTasks = results.filter(t => !t.is_remote);
+
       if (radius_km) {
         const radiusKm = parseFloat(radius_km) || 50;
         if (radiusKm === 0) {
-          results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
+          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, 5);
         } else {
-          results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
+          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, radiusKm);
         }
       } else if (radius) {
         const maxRadius = parseFloat(radius);
-        results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+        localTasks = filterByDistance(localTasks, userLatitude, userLongitude, maxRadius);
       }
+
+      results = [...localTasks];
 
       // Fallback: include tasks without coords that match city string
       if (city) {
         const tasksWithoutCoords = (tasks || []).filter(t =>
-          !t.latitude && !t.longitude &&
+          !t.latitude && !t.longitude && !t.is_remote &&
           t.location?.toLowerCase().includes(city.toLowerCase())
         );
         const resultIds = new Set(results.map(r => r.id));
@@ -4391,10 +4444,32 @@ app.get('/api/tasks/available', async (req, res) => {
           if (!resultIds.has(t.id)) results.push(t);
         });
       }
+
+      // Add remote tasks back (they are not filtered by distance)
+      if (includeRemote) {
+        const resultIds = new Set(results.map(r => r.id));
+        remoteTasks.forEach(t => {
+          if (!resultIds.has(t.id)) results.push(t);
+        });
+      }
     } else if (city) {
-      results = results.filter(t =>
-        t.location?.toLowerCase().includes(city.toLowerCase())
+      // When filtering by city only, keep remote tasks + city-matching tasks
+      const remoteTasks = includeRemote ? results.filter(t => t.is_remote) : [];
+      const cityTasks = results.filter(t =>
+        !t.is_remote && t.location?.toLowerCase().includes(city.toLowerCase())
       );
+      const resultIds = new Set(cityTasks.map(r => r.id));
+      remoteTasks.forEach(t => {
+        if (!resultIds.has(t.id)) cityTasks.push(t);
+      });
+      results = cityTasks;
+    }
+
+    // Merge in remote tasks for fallback path (mirrors RPC path at line 4013)
+    if (includeRemote) {
+      const existingIds = new Set(results.map(r => r.id));
+      const remoteTasks = await fetchRemoteTasks(existingIds);
+      results = results.concat(remoteTasks);
     }
 
     res.json({ tasks: results, total: results.length, hasMore: false });
@@ -4412,7 +4487,7 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
@@ -4442,7 +4517,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
       verified, availability, wallet_address, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at
+      total_disputes_filed, total_usdc_paid, last_active_at, social_links
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')

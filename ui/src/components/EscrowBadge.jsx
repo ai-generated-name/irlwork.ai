@@ -55,9 +55,9 @@ export default function EscrowBadge({
         {config.icon} {config.label}
       </span>
 
-      {showDetails && amount && (
+      {showDetails && amount != null && (
         <span className="text-[#1A1A1A] font-mono ml-2">
-          {amount.toFixed(2)} {currencyLabel}
+          {Number(amount).toFixed(2)} {currencyLabel}
         </span>
       )}
     </div>
@@ -68,6 +68,7 @@ export default function EscrowBadge({
 export function EscrowStatusCard({
   status,
   amount,
+  showDetails = false,
   depositedAt,
   releasedAt,
   txHash,
@@ -89,9 +90,9 @@ export function EscrowStatusCard({
           </div>
         </div>
 
-        {amount && (
+        {amount != null && (
           <div className="text-right">
-            <p className="text-2xl font-bold text-[#1A1A1A] font-mono">{amount.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-[#1A1A1A] font-mono">{Number(amount).toFixed(2)}</p>
             <p className="text-[#8A8A8A] text-sm">{currencyLabel}</p>
           </div>
         )}

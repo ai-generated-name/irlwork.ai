@@ -12,6 +12,7 @@ import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
 import BrowsePage from './pages/BrowsePage'
 import BrowseTasksV2 from './pages/BrowseTasksV2'
+import MyTasksPage from './pages/MyTasksPage'
 import LandingPageV4 from './pages/LandingPageV4'
 import AdminDashboard from './pages/AdminDashboard'
 import DisputePanel from './components/DisputePanel'
@@ -21,13 +22,46 @@ import FeedbackButton from './components/FeedbackButton'
 import StripeProvider from './components/StripeProvider'
 import PaymentMethodForm from './components/PaymentMethodForm'
 import PaymentMethodList from './components/PaymentMethodList'
+import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
 import { TASK_CATEGORIES } from './components/CategoryPills'
 
+// Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
+class TabErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('[TabError]', error, errorInfo?.componentStack)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
+          <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>This section encountered an error</h3>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>Try switching to another tab or refreshing the page.</p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="v4-btn v4-btn-secondary"
+          >
+            Try Again
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-export const supabase = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -1394,7 +1428,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     latitude: null,
     longitude: null,
     country: '',
-    country_code: ''
+    country_code: '',
+    is_remote: false
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
@@ -1840,7 +1875,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           latitude: taskForm.latitude,
           longitude: taskForm.longitude,
           country: taskForm.country,
-          country_code: taskForm.country_code
+          country_code: taskForm.country_code,
+          is_remote: taskForm.is_remote
         })
       })
 
@@ -1849,7 +1885,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '' })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false })
         // Switch to posted tab
         setActiveTab('posted')
       } else {
@@ -1889,13 +1925,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   const acceptTask = async (taskId) => {
     try {
-      await fetch(`${API_URL}/tasks/${taskId}/accept`, { 
+      await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
         headers: { Authorization: user.id }
       })
       fetchTasks()
     } catch (e) {
       console.log('Could not accept task')
+    }
+  }
+
+  const startWork = async (taskId) => {
+    try {
+      await fetch(`${API_URL}/tasks/${taskId}/start`, {
+        method: 'POST',
+        headers: { Authorization: user.id }
+      })
+      fetchTasks()
+    } catch (e) {
+      console.log('Could not start work')
     }
   }
 
@@ -2333,7 +2381,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                   />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Category</label>
                     <CustomDropdown
@@ -2362,21 +2410,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                 </div>
                 <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">City</label>
-                  <CityAutocomplete
-                    value={taskForm.city}
-                    onChange={(locationData) => setTaskForm(prev => ({
-                      ...prev,
-                      city: locationData.city,
-                      latitude: locationData.latitude,
-                      longitude: locationData.longitude,
-                      country: locationData.country,
-                      country_code: locationData.country_code
-                    }))}
-                    placeholder="Where should this be done?"
-                    className="dashboard-v4-city-input"
-                  />
+                  <label style={{
+                    display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                    fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={taskForm.is_remote}
+                      onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                    🌐 This task can be done remotely
+                  </label>
                 </div>
+                {!taskForm.is_remote && (
+                  <div className="dashboard-v4-form-group">
+                    <label className="dashboard-v4-form-label">City</label>
+                    <CityAutocomplete
+                      value={taskForm.city}
+                      onChange={(locationData) => setTaskForm(prev => ({
+                        ...prev,
+                        city: locationData.city,
+                        latitude: locationData.latitude,
+                        longitude: locationData.longitude,
+                        country: locationData.country,
+                        country_code: locationData.country_code
+                      }))}
+                      placeholder="Where should this be done?"
+                      className="dashboard-v4-city-input"
+                    />
+                  </div>
+                )}
                 {createTaskError && (
                   <div className="dashboard-v4-form-error">{createTaskError}</div>
                 )}
@@ -2402,175 +2466,31 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>{tasks.filter(t => ['open', 'accepted', 'in_progress', 'pending_review', 'disputed'].includes(t.status)).length} active</span>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="dashboard-v4-stats">
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Total Earned</div>
-                <div className="dashboard-v4-stat-value orange">${tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}</div>
-              </div>
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Tasks Completed</div>
-                <div className="dashboard-v4-stat-value">{tasks.filter(t => t.status === 'completed' || t.status === 'paid').length}</div>
-              </div>
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Rating</div>
-                <div className="dashboard-v4-stat-value">⭐ {user?.rating?.toFixed(1) || 'New'}</div>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">⏳</div>
-                <p className="dashboard-v4-empty-text">Loading...</p>
-              </div>
-            ) : tasks.length === 0 ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
-                <p className="dashboard-v4-empty-title">No tasks yet</p>
-                <p className="dashboard-v4-empty-text">Browse available tasks to start earning money</p>
-
-                {/* Suggested Actions */}
-                <div className="dashboard-v4-empty-actions">
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('browse')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.search}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Browse tasks near you</p>
-                      <p className="dashboard-v4-empty-action-text">Find tasks in your area</p>
-                    </div>
-                  </div>
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('profile')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.profile}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Complete your profile</p>
-                      <p className="dashboard-v4-empty-action-text">Add skills and location</p>
-                    </div>
-                  </div>
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('payments')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.wallet}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Set up your wallet</p>
-                      <p className="dashboard-v4-empty-action-text">Get paid in USDC</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : ((() => {
-              const getStatusClass = (status) => {
-                if (status === 'disputed') return 'disputed'
-                if (status === 'open') return 'open'
-                if (status === 'in_progress') return 'in-progress'
-                if (status === 'completed' || status === 'paid') return 'completed'
-                return 'pending'
-              }
-
-              const activeTasks = tasks.filter(t => ['open', 'accepted', 'in_progress', 'pending_review', 'disputed'].includes(t.status))
-              const completedTasks = tasks.filter(t => ['completed', 'paid'].includes(t.status))
-
-              const renderTaskCard = (task) => (
-                <div
-                  key={task.id}
-                  className="dashboard-v4-task-card dashboard-v4-task-card-clickable"
-                  onClick={() => { window.location.href = `/tasks/${task.id}` }}
-                  role="link"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter') window.location.href = `/tasks/${task.id}` }}
-                >
-                  <div className="dashboard-v4-task-header">
-                    <div>
-                      <span className={`dashboard-v4-task-status ${getStatusClass(task.status)}`}>
-                        {getStatusLabel(task.status)}
-                      </span>
-                      <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
-                    </div>
-                    <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
-                  </div>
-
-                  {task.description && (
-                    <p className="dashboard-v4-task-description">{task.description}</p>
-                  )}
-
-                  <div className="dashboard-v4-task-meta">
-                    <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                    <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
-                    <span className="dashboard-v4-task-meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
-                    {task.agent_name && <span className="dashboard-v4-task-meta-item">🤖 {task.agent_name}</span>}
-                  </div>
-
-                  <div className="dashboard-v4-task-actions">
-                    {task.status === 'open' && (
-                      <button className="v4-btn v4-btn-primary" onClick={(e) => { e.stopPropagation(); acceptTask(task.id) }}>Accept Task</button>
-                    )}
-                    {task.status === 'accepted' && (
-                      <button className="v4-btn v4-btn-primary" onClick={(e) => {
-                        e.stopPropagation()
-                        fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
-                          .then(() => fetchTasks())
-                      }}>Start Work</button>
-                    )}
-                    {task.status === 'in_progress' && (
-                      <button className="v4-btn v4-btn-primary" onClick={(e) => { e.stopPropagation(); setShowProofSubmit(task.id) }}>Submit Proof</button>
-                    )}
-                    {task.status === 'pending_review' && (
-                      <span className="dashboard-v4-task-status-hint">Waiting for approval...</span>
-                    )}
-                    {task.status === 'completed' && (
-                      <span className="dashboard-v4-task-status-hint success">Payment pending</span>
-                    )}
-                    {task.status === 'paid' && (
-                      <span className="dashboard-v4-task-status-hint paid">Paid</span>
-                    )}
-                    {task.status === 'disputed' && (
-                      <span className="dashboard-v4-task-status-hint disputed">Under review</span>
-                    )}
-                    <span className="dashboard-v4-task-open-arrow">→</span>
-                  </div>
-                </div>
-              )
-
-              return (
-                <div>
-                  {/* Active Tasks */}
-                  {activeTasks.length > 0 && (
-                    <div>
-                      <h2 className="dashboard-v4-section-heading">Active ({activeTasks.length})</h2>
-                      {activeTasks.map(renderTaskCard)}
-                    </div>
-                  )}
-
-                  {/* Completed Tasks */}
-                  {completedTasks.length > 0 && (
-                    <div style={{ marginTop: activeTasks.length > 0 ? 32 : 0 }}>
-                      <h2 className="dashboard-v4-section-heading muted">Completed ({completedTasks.length})</h2>
-                      {completedTasks.map(renderTaskCard)}
-                    </div>
-                  )}
-
-                  {activeTasks.length === 0 && completedTasks.length === 0 && (
-                    <p style={{ color: 'var(--text-tertiary)', textAlign: 'center', padding: 24 }}>No tasks found</p>
-                  )}
-                </div>
-              )
-            })())}
-          </div>
+          <TabErrorBoundary>
+            <MyTasksPage
+              user={user}
+              tasks={tasks}
+              loading={loading}
+              acceptTask={acceptTask}
+              onStartWork={startWork}
+              setShowProofSubmit={setShowProofSubmit}
+            />
+          </TabErrorBoundary>
         )}
 
         {/* Working Mode: Browse Tasks Tab - Shows available tasks to claim */}
         {!hiringMode && activeTab === 'browse' && (
-          <BrowseTasksV2
-            user={user}
-            initialLocation={{
-              lat: filterCoords?.lat || user?.latitude,
-              lng: filterCoords?.lng || user?.longitude,
-              city: locationFilter || user?.city
-            }}
-            initialRadius={radiusFilter || '25'}
-          />
+          <TabErrorBoundary>
+            <BrowseTasksV2
+              user={user}
+              initialLocation={{
+                lat: filterCoords?.lat || user?.latitude,
+                lng: filterCoords?.lng || user?.longitude,
+                city: locationFilter || user?.city
+              }}
+              initialRadius={radiusFilter || '25'}
+            />
+          </TabErrorBoundary>
         )}
 
         {/* Hiring Mode: Browse Humans Tab - Shows available humans */}
@@ -2579,7 +2499,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             <h1 className="dashboard-v4-page-title">Browse Humans</h1>
 
             {/* Search & Filter */}
-            <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+            <div className="browse-humans-filters">
               <div style={{ flex: 1, position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
                 <input
@@ -2591,7 +2511,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <div style={{ width: 180 }}>
+              <div>
                 <CustomDropdown
                   value={filterCategory}
                   onChange={setFilterCategory}
@@ -2614,7 +2534,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+              <div className="browse-humans-grid">
                 {humans
                   .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
                   .filter(h => !filterCategory || h.skills?.includes(filterCategory))
@@ -2720,6 +2640,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <span style={{ color: 'var(--text-tertiary)' }}>Jobs Completed</span>
                   <span style={{ color: 'var(--text-primary)' }}>{user?.jobs_completed || 0}</span>
                 </div>
+                {user?.social_links && typeof user.social_links === 'object' && Object.keys(user.social_links).length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid rgba(26,26,26,0.06)' }}>
+                    <span style={{ color: 'var(--text-tertiary)' }}>Socials</span>
+                    <SocialIconsRow socialLinks={user.social_links} size={18} gap={10} />
+                  </div>
+                )}
               </div>
 
               <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
@@ -2775,7 +2701,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   toast.error('Error saving profile')
                 }
               }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Full Name</label>
                     <input type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
@@ -2791,7 +2717,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
                     <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
@@ -2845,6 +2771,65 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
                 </div>
                 <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
+              </form>
+            </div>
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Social Links</h2>
+              <form onSubmit={async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const social_links = {}
+                PLATFORM_ORDER.forEach(p => {
+                  const val = formData.get(p)?.trim()
+                  if (val) social_links[p] = val
+                })
+                try {
+                  const res = await fetch(`${API_URL}/humans/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    body: JSON.stringify({ social_links })
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    if (data.user) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      localStorage.setItem('user', JSON.stringify(updatedUser))
+                    }
+                    toast.success('Social links updated!')
+                    setTimeout(() => window.location.reload(), 1000)
+                  } else {
+                    const err = await res.json()
+                    toast.error(err.error || 'Unknown error')
+                  }
+                } catch (err) {
+                  toast.error('Error saving social links')
+                }
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {PLATFORM_ORDER.map(platform => {
+                    const config = PLATFORMS[platform]
+                    return (
+                      <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', flexShrink: 0, width: 20 }}>
+                          {config.icon(18)}
+                        </div>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', width: 80, flexShrink: 0 }}>{config.label}</label>
+                        <input
+                          type="text"
+                          name={platform}
+                          defaultValue={user?.social_links?.[platform] || ''}
+                          placeholder={config.placeholder}
+                          maxLength={100}
+                          className="dashboard-v4-form-input"
+                          style={{ marginBottom: 0 }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or handle, not the full URL</p>
+                <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
               </form>
             </div>
 
@@ -2924,7 +2909,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 {selectedConversation ? (
                   <>
                     {/* Mobile Back Button */}
-                    <div style={{ display: 'none', padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)', alignItems: 'center', gap: 8 }} className="md:hidden">
+                    <div className="flex md:hidden items-center gap-2" style={{ padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
                       <button onClick={() => setSelectedConversation(null)} style={{ padding: 8, background: 'none', border: 'none', cursor: 'pointer' }}>
                         ← Back
                       </button>
@@ -3129,8 +3114,8 @@ function TaskDetailPage({ taskId, user, onLogout }) {
         </div>
 
         {/* Task Card */}
-        <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: 32, border: '1px solid rgba(26,26,26,0.08)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div className="task-detail-card" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: 32, border: '1px solid rgba(26,26,26,0.08)' }}>
+          <div className="task-detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
             <div>
               <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
                 {getStatusLabel(task.status)}

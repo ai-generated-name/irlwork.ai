@@ -404,7 +404,7 @@ export default function AdminDashboard({ user }) {
           />
           <div className="md:col-span-2 lg:col-span-3 bg-white rounded-xl border-2 border-gray-100 p-6">
             <h3 className="font-bold text-gray-900 mb-4">Totals</h3>
-            <div className="flex gap-8">
+            <div className="flex gap-8 flex-wrap">
               <div>
                 <p className="text-sm text-gray-500">Platform Fees Earned</p>
                 <p className="text-2xl font-bold text-green-600">${dashboard?.totals?.platform_fees_earned?.toFixed(2) || '0.00'}</p>
@@ -591,7 +591,7 @@ function QueueItem({ item, queue, onConfirmDeposit, onReleasePayment, onConfirmW
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
           {queue === 'pending-deposits' && (
             <>
               <button
@@ -816,7 +816,7 @@ function ReportQueueItem({ report, onResolve, loading }) {
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
           <button
             onClick={() => onResolve(report)}
             disabled={loading}
