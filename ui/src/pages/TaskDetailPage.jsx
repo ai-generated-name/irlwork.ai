@@ -87,7 +87,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
   // Real-time subscription for task changes
   useEffect(() => {
-    if (!taskId) return;
+    if (!taskId || !supabase) return;
 
     const channel = supabase
       .channel(`task-detail-${taskId}`)

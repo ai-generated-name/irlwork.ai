@@ -11,10 +11,18 @@ function EarningsDashboard({ user }) {
   const [withdrawResult, setWithdrawResult] = useState(null)
 
   useEffect(() => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     fetchBalance()
   }, [user])
 
   const fetchBalance = async () => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       const res = await fetch(`${API_URL}/wallet/balance`, {
@@ -42,7 +50,7 @@ function EarningsDashboard({ user }) {
       return
     }
 
-    if (!user.wallet_address) {
+    if (!user?.wallet_address) {
       toast.error('Please add a wallet address in your profile settings first')
       return
     }

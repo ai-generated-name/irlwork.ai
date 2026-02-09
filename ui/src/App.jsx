@@ -26,6 +26,13 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwx
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const supabase = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
 
+// Safe no-op channel for when supabase is null
+const noopChannel = { on: () => noopChannel, subscribe: () => noopChannel }
+const safeSupabase = {
+  channel: (...args) => supabase ? supabase.channel(...args) : noopChannel,
+  removeChannel: (...args) => supabase ? supabase.removeChannel(...args) : undefined,
+}
+
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
 // === Styles ===
@@ -402,16 +409,22 @@ function AuthPage({ onLogin }) {
     e.preventDefault()
     setLoading(true)
     setError('')
-    
+
+    if (!supabase) {
+      setError('Authentication service not configured')
+      setLoading(false)
+      return
+    }
+
     try {
-      const { error } = isLogin 
+      const { error } = isLogin
         ? await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
-        : await supabase.auth.signUp({ 
-            email: form.email, 
+        : await supabase.auth.signUp({
+            email: form.email,
             password: form.password,
             options: { data: { name: form.name } }
           })
-      
+
       if (error) throw error
       window.location.href = '/dashboard'
     } catch (err) {
@@ -424,6 +437,11 @@ function AuthPage({ onLogin }) {
   const handleGoogle = async () => {
     setLoading(true)
     setError('')
+    if (!supabase) {
+      setError('Authentication service not configured')
+      setLoading(false)
+      return
+    }
     try {
       console.log('[Auth] Starting Google OAuth...')
       const { error } = await supabase.auth.signInWithOAuth({
@@ -490,17 +508,17 @@ function AuthPage({ onLogin }) {
     }
     
     // Check for successful OAuth
-    if (hash.includes('access_token')) {
+    if (hash.includes('access_token') && supabase) {
       setLoading(true)
       try {
         const params = new URLSearchParams(hash.slice(1))
         const accessToken = params.get('access_token')
         const refreshToken = params.get('refresh_token')
-        
+
         if (accessToken) {
-          const { error } = await supabase.auth.setSession({ 
-            access_token: accessToken, 
-            refresh_token: refreshToken || undefined 
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || undefined
           })
           if (error) throw error
           
@@ -1527,7 +1545,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     if (!hiringMode || !user) return
 
     // Subscribe to changes on agent's tasks
-    const tasksChannel = supabase
+    const tasksChannel = safeSupabase
       .channel(`agent-tasks-${user.id}`)
       .on(
         'postgres_changes',
@@ -1542,7 +1560,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       .subscribe()
 
     // Subscribe to new applications
-    const applicationsChannel = supabase
+    const applicationsChannel = safeSupabase
       .channel(`task-applications-${user.id}`)
       .on(
         'postgres_changes',
@@ -1557,8 +1575,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       .subscribe()
 
     return () => {
-      supabase.removeChannel(tasksChannel)
-      supabase.removeChannel(applicationsChannel)
+      safeSupabase.removeChannel(tasksChannel)
+      safeSupabase.removeChannel(applicationsChannel)
     }
   }, [hiringMode, user, expandedTask])
 
@@ -2623,6 +2641,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           <ApiKeysTab user={user} />
         )}
 
+        {/* Hiring Mode: Payments Tab */}
+        {hiringMode && activeTab === 'payments' && (
+          <div>
+            <h1 className="dashboard-v4-page-title">Payments</h1>
+            <EarningsDashboard user={user} />
+          </div>
+        )}
+
         {/* Working Mode: Payments Tab */}
         {!hiringMode && activeTab === 'payments' && (
           <div>
@@ -3171,6 +3197,10 @@ function MCPPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) {
+        setLoading(false)
+        return
+      }
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
@@ -3655,9 +3685,15 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!supabase) {
+      console.error('[Auth] Supabase not configured - missing VITE_SUPABASE_ANON_KEY')
+      setLoading(false)
+      return
+    }
+
     async function init() {
       console.log('[Auth] Initializing...')
-      
+
       // Check for OAuth callback first
       const hash = window.location.hash
       if (hash.includes('access_token')) {
@@ -3666,11 +3702,11 @@ function App() {
           const params = new URLSearchParams(hash.slice(1))
           const accessToken = params.get('access_token')
           const refreshToken = params.get('refresh_token')
-          
+
           if (accessToken) {
-            const { error } = await supabase.auth.setSession({ 
-              access_token: accessToken, 
-              refresh_token: refreshToken || undefined 
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || undefined
             })
             if (error) {
               console.error('[Auth] Session set error:', error)
@@ -3687,7 +3723,7 @@ function App() {
       // Get session and user
       const { data: { session } } = await supabase.auth.getSession()
       console.log('[Auth] Session:', session ? 'found' : 'none')
-      
+
       if (session?.user) {
         await fetchUserProfile(session.user)
       } else {
@@ -3767,8 +3803,8 @@ function App() {
     }
   }
 
-  const logout = async () => { 
-    await supabase.auth.signOut() 
+  const logout = async () => {
+    if (supabase) await supabase.auth.signOut()
     setUser(null)
     window.location.href = '/'
   }
