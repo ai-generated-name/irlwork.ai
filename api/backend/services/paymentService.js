@@ -58,7 +58,6 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   const clearsAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
   // Insert into pending_transactions (funds held for 48-hour dispute window)
-  // USDC stays in platform wallet until human withdraws after dispute period
   const { data: pendingTx, error: pendingError } = await supabase
     .from('pending_transactions')
     .insert({
@@ -67,6 +66,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
       task_id: taskId,
       amount_cents: netAmountCents,
       status: 'pending',
+      payout_method: task.payment_method || 'usdc',
       clears_at: clearsAt.toISOString(),
       created_at: new Date().toISOString()
     })

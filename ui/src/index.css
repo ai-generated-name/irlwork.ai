@@ -635,6 +635,33 @@ code, pre {
   border-color: var(--orange-500);
 }
 
+.browse-tasks-v2-remote-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(26, 26, 26, 0.1);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+  white-space: nowrap;
+}
+
+.browse-tasks-v2-remote-toggle:hover {
+  border-color: var(--teal-500, #0d9488);
+  color: var(--teal-600, #0d9488);
+}
+
+.browse-tasks-v2-remote-toggle.active {
+  background: rgba(13, 148, 136, 0.1);
+  border-color: var(--teal-500, #0d9488);
+  color: var(--teal-600, #0d9488);
+  font-weight: 500;
+}
+
 /* Main Content */
 .browse-tasks-v2-content {
   display: flex;
@@ -723,6 +750,18 @@ code, pre {
   padding: 2px var(--space-2);
   background: rgba(244, 132, 95, 0.1);
   color: var(--orange-600);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.task-card-v2-remote-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  background: rgba(13, 148, 136, 0.1);
+  color: var(--teal-600, #0d9488);
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
@@ -1306,5 +1345,25 @@ code, pre {
   .quick-apply-modal-btn {
     justify-content: center;
     width: 100%;
+  }
+}
+
+/* ─── REPORT MODAL RESPONSIVE GRID ─── */
+.report-reason-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  .report-reason-grid {
+    grid-template-columns: 1fr;
+  }
+  .modal-v4-content {
+    padding: var(--space-5) !important;
+  }
+  .modal-v4-overlay {
+    padding: var(--space-3) !important;
   }
 }

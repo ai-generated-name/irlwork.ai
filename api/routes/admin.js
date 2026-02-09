@@ -142,6 +142,12 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         .select('deposit_amount')
         .in('status', ['deposited', 'released', 'pending_withdrawal', 'withdrawn']);
 
+      // Pending feedback
+      const { data: pendingFeedback } = await supabase
+        .from('feedback')
+        .select('id')
+        .in('status', ['new', 'in_review']);
+
       // Calculate totals
       const pendingDepositsTotal = (pendingDeposits || []).reduce((sum, t) => sum + (t.escrow_amount || 0), 0);
       const inProgressTotal = (inProgress || []).reduce((sum, t) => sum + (t.escrow_amount || 0), 0);
@@ -180,6 +186,9 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         totals: {
           platform_fees_earned: platformFeesTotal,
           total_usdc_processed: totalProcessed
+        },
+        feedback: {
+          count: (pendingFeedback || []).length
         }
       });
     } catch (error) {
@@ -937,6 +946,45 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
   });
 
   // ============================================================================
+  // GET /api/admin/feedback - List all feedback
+  // ============================================================================
+  router.get('/feedback', async (req, res) => {
+    try {
+      const { status, urgency, type, limit = 50, offset = 0 } = req.query;
+
+      let query = supabase
+        .from('feedback')
+        .select('*', { count: 'exact' });
+
+      if (status) query = query.eq('status', status);
+      if (urgency) query = query.eq('urgency', urgency);
+      if (type) query = query.eq('type', type);
+
+      query = query
+        .order('created_at', { ascending: false })
+        .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+
+      const { data, error, count } = await query;
+
+      if (error) throw error;
+
+      // Sort with urgency priority: critical > high > normal > low
+      const urgencyRank = { critical: 0, high: 1, normal: 2, low: 3 };
+      const sorted = (data || []).sort((a, b) => {
+        const ua = urgencyRank[a.urgency] ?? 4;
+        const ub = urgencyRank[b.urgency] ?? 4;
+        if (ua !== ub) return ua - ub;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
+      res.json({ items: sorted, total: count || 0 });
+    } catch (error) {
+      console.error('[Admin] Feedback list error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
   // POST /api/admin/reports/:id/resolve - Resolve a task report
   // ============================================================================
   router.post('/reports/:id/resolve', async (req, res) => {
@@ -1138,6 +1186,49 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       res.json(response);
     } catch (error) {
       console.error('[Admin] Resolve report error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PUT /api/admin/feedback/:id/status - Update feedback status
+  // ============================================================================
+  router.put('/feedback/:id/status', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, admin_notes } = req.body;
+
+      const validStatuses = ['new', 'in_review', 'resolved', 'dismissed'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: `Status must be one of: ${validStatuses.join(', ')}` });
+      }
+
+      const updates = {
+        status,
+        updated_at: new Date().toISOString()
+      };
+
+      if (admin_notes !== undefined) {
+        updates.admin_notes = admin_notes;
+      }
+
+      if (status === 'resolved') {
+        updates.resolved_by = req.user.id;
+        updates.resolved_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('feedback')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await logAdminAction(req.user.id, 'update_feedback_status', null, null, { feedback_id: id, status, admin_notes });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Admin] Feedback status update error:', error);
       res.status(500).json({ error: error.message });
     }
   });

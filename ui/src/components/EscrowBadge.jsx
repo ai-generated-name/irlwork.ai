@@ -37,9 +37,11 @@ export default function EscrowBadge({
   status = 'pending',
   amount,
   showDetails = false,
-  onClick
+  onClick,
+  paymentMethod
 }) {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+  const currencyLabel = paymentMethod === 'stripe' ? 'USD' : 'USDC';
 
   return (
     <div
@@ -53,9 +55,9 @@ export default function EscrowBadge({
         {config.icon} {config.label}
       </span>
 
-      {showDetails && amount && (
+      {showDetails && amount != null && (
         <span className="text-[#1A1A1A] font-mono ml-2">
-          {amount.toFixed(2)} USDC
+          {Number(amount).toFixed(2)} {currencyLabel}
         </span>
       )}
     </div>
@@ -66,11 +68,14 @@ export default function EscrowBadge({
 export function EscrowStatusCard({
   status,
   amount,
+  showDetails = false,
   depositedAt,
   releasedAt,
-  txHash
+  txHash,
+  paymentMethod
 }) {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+  const currencyLabel = paymentMethod === 'stripe' ? 'USD' : 'USDC';
 
   return (
     <div className="bg-white rounded-xl border-2 border-[rgba(26,26,26,0.08)] p-4 shadow-sm">
@@ -85,10 +90,10 @@ export function EscrowStatusCard({
           </div>
         </div>
 
-        {amount && (
+        {amount != null && (
           <div className="text-right">
-            <p className="text-2xl font-bold text-[#1A1A1A] font-mono">{amount.toFixed(2)}</p>
-            <p className="text-[#8A8A8A] text-sm">USDC</p>
+            <p className="text-2xl font-bold text-[#1A1A1A] font-mono">{Number(amount).toFixed(2)}</p>
+            <p className="text-[#8A8A8A] text-sm">{currencyLabel}</p>
           </div>
         )}
       </div>

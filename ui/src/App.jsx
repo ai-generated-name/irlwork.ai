@@ -10,20 +10,58 @@ import TopFilterBar from './components/TopFilterBar'
 import CustomDropdown from './components/CustomDropdown'
 import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
-import ActivityFeed from './components/ActivityFeed'
 import BrowsePage from './pages/BrowsePage'
 import BrowseTasksV2 from './pages/BrowseTasksV2'
+import MyTasksPage from './pages/MyTasksPage'
 import LandingPageV4 from './pages/LandingPageV4'
 import AdminDashboard from './pages/AdminDashboard'
 import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
+import FeedbackButton from './components/FeedbackButton'
+import StripeProvider from './components/StripeProvider'
+import PaymentMethodForm from './components/PaymentMethodForm'
+import PaymentMethodList from './components/PaymentMethodList'
+import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
+import { TASK_CATEGORIES } from './components/CategoryPills'
+
+// Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
+class TabErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('[TabError]', error, errorInfo?.componentStack)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
+          <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>This section encountered an error</h3>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>Try switching to another tab or refreshing the page.</p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="v4-btn v4-btn-secondary"
+          >
+            Try Again
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-export const supabase = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -94,7 +132,10 @@ function Loading() {
 }
 
 // Old LandingPage component removed - now using LandingPageV4
-function Onboarding({ onComplete }) {
+// Onboarding skill categories (exclude "All" filter option)
+const ONBOARDING_CATEGORIES = TASK_CATEGORIES.filter(c => c.value !== '')
+
+function Onboarding({ onComplete, user }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     city: '',
@@ -102,27 +143,73 @@ function Onboarding({ onComplete }) {
     longitude: null,
     country: '',
     country_code: '',
-    skills: '',
+    selectedCategories: [],
+    otherSkills: '',
+    bio: '',
     travel_radius: 10,
     hourly_rate: 25
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [nearbyTasks, setNearbyTasks] = useState([])
+  const [loadingTasks, setLoadingTasks] = useState(false)
+
+  const userName = user?.name?.split(' ')[0] || 'there'
+  const userAvatar = user?.avatar_url
 
   const totalSteps = 4
   const progress = (step / totalSteps) * 100
+
+  // Fetch nearby tasks after city selection
+  const fetchNearbyTasks = async (lat, lng, city) => {
+    setLoadingTasks(true)
+    try {
+      const params = new URLSearchParams()
+      if (lat && lng) {
+        params.set('user_lat', lat)
+        params.set('user_lng', lng)
+        params.set('radius_km', '80')
+      } else if (city) {
+        params.set('city', city)
+      }
+      const res = await fetch(`${API_URL}/tasks/available?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setNearbyTasks((data || []).slice(0, 3))
+      }
+    } catch (e) {
+      // Silently fail - task preview is optional
+    } finally {
+      setLoadingTasks(false)
+    }
+  }
+
+  const toggleCategory = (value) => {
+    setForm(prev => ({
+      ...prev,
+      selectedCategories: prev.selectedCategories.includes(value)
+        ? prev.selectedCategories.filter(c => c !== value)
+        : [...prev.selectedCategories, value]
+    }))
+  }
 
   const handleSubmit = async () => {
     setLoading(true)
     setError('')
     try {
+      // Combine selected categories with any freeform "other" skills
+      const skills = [
+        ...form.selectedCategories,
+        ...form.otherSkills.split(',').map(s => s.trim()).filter(Boolean)
+      ]
       await onComplete({
         city: form.city,
         latitude: form.latitude,
         longitude: form.longitude,
         country: form.country,
         country_code: form.country_code,
-        skills: form.skills.split(',').map(s => s.trim()).filter(Boolean),
+        skills,
+        bio: form.bio,
         travel_radius: form.travel_radius,
         hourly_rate: form.hourly_rate
       })
@@ -136,6 +223,20 @@ function Onboarding({ onComplete }) {
   return (
     <div className="onboarding-v4">
       <div className="onboarding-v4-container">
+        {/* Header with greeting and optional avatar */}
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          {userAvatar && (
+            <img
+              src={userAvatar}
+              alt=""
+              style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: 8, objectFit: 'cover' }}
+            />
+          )}
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+            Hey {userName}, let's set up your profile
+          </p>
+        </div>
+
         {/* Progress */}
         <div className="onboarding-v4-progress">
           <div className="onboarding-v4-progress-header">
@@ -157,17 +258,52 @@ function Onboarding({ onComplete }) {
             <p className="onboarding-v4-subtitle">This helps show you relevant tasks in your area</p>
             <CityAutocomplete
               value={form.city}
-              onChange={(locationData) => setForm({
-                ...form,
-                city: locationData.city,
-                latitude: locationData.latitude,
-                longitude: locationData.longitude,
-                country: locationData.country,
-                country_code: locationData.country_code
-              })}
+              onChange={(locationData) => {
+                setForm({
+                  ...form,
+                  city: locationData.city,
+                  latitude: locationData.latitude,
+                  longitude: locationData.longitude,
+                  country: locationData.country,
+                  country_code: locationData.country_code
+                })
+                fetchNearbyTasks(locationData.latitude, locationData.longitude, locationData.city)
+              }}
               placeholder="Search for your city..."
               className="onboarding-v4-city-input"
             />
+
+            {/* Task preview after city selection */}
+            {form.city && (
+              <div style={{ marginTop: '1rem' }}>
+                {loadingTasks ? (
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                    Checking for tasks near {form.city}...
+                  </p>
+                ) : nearbyTasks.length > 0 ? (
+                  <div>
+                    <p style={{ fontSize: 13, color: '#10B981', fontWeight: 500, marginBottom: 8 }}>
+                      {nearbyTasks.length} task{nearbyTasks.length !== 1 ? 's' : ''} near {form.city} — complete setup to apply
+                    </p>
+                    {nearbyTasks.map((task, i) => (
+                      <div key={task.id || i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: 8,
+                        marginBottom: 4, fontSize: 13
+                      }}>
+                        <span style={{ color: 'rgba(255,255,255,0.9)' }}>{task.title}</span>
+                        <span style={{ color: '#10B981', fontWeight: 600 }}>${task.budget}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                    No tasks near {form.city} yet — be one of the first workers in your area
+                  </p>
+                )}
+              </div>
+            )}
+
             <button
               className="onboarding-v4-btn-next"
               style={{ width: '100%', marginTop: '1rem' }}
@@ -179,20 +315,42 @@ function Onboarding({ onComplete }) {
           </div>
         )}
 
-        {/* Step 2: Skills */}
+        {/* Step 2: Skills (Category Pills) */}
         {step === 2 && (
           <div>
             <h1 className="onboarding-v4-title">What can you help with?</h1>
-            <p className="onboarding-v4-subtitle">Add your skills so agents know what you're great at</p>
+            <p className="onboarding-v4-subtitle">Select the categories that match your skills</p>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12
+            }}>
+              {ONBOARDING_CATEGORIES.map(cat => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => toggleCategory(cat.value)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 12px', borderRadius: 10,
+                    border: form.selectedCategories.includes(cat.value) ? '2px solid #10B981' : '2px solid rgba(255,255,255,0.1)',
+                    background: form.selectedCategories.includes(cat.value) ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: form.selectedCategories.includes(cat.value) ? '#10B981' : 'rgba(255,255,255,0.8)',
+                    cursor: 'pointer', fontSize: 14, transition: 'all 0.15s',
+                    textAlign: 'left'
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
             <input
               type="text"
-              placeholder="Skills (comma separated)"
-              value={form.skills}
-              onChange={e => setForm({ ...form, skills: e.target.value })}
+              placeholder="Other skills (comma separated, optional)"
+              value={form.otherSkills}
+              onChange={e => setForm({ ...form, otherSkills: e.target.value })}
               className="onboarding-v4-input"
-              autoFocus
+              style={{ marginTop: 4 }}
             />
-            <p className="onboarding-v4-hint">e.g. delivery, photography, coding, translation</p>
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(1)}>Back</button>
               <button className="onboarding-v4-btn-next" onClick={() => setStep(3)}>Continue</button>
@@ -200,22 +358,20 @@ function Onboarding({ onComplete }) {
           </div>
         )}
 
-        {/* Step 3: Travel Radius */}
+        {/* Step 3: Bio */}
         {step === 3 && (
           <div>
-            <h1 className="onboarding-v4-title">How far can you travel?</h1>
-            <p className="onboarding-v4-subtitle">Maximum distance you're willing to travel for tasks</p>
-            <input
-              type="range"
-              min="1"
-              max="100"
-              value={form.travel_radius}
-              onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
-              className="onboarding-v4-slider"
+            <h1 className="onboarding-v4-title">Tell agents about yourself</h1>
+            <p className="onboarding-v4-subtitle">A short bio helps you stand out and get more task offers</p>
+            <textarea
+              placeholder="e.g. Experienced handyman with 5 years of home repair work. Reliable and detail-oriented."
+              value={form.bio}
+              onChange={e => setForm({ ...form, bio: e.target.value })}
+              className="onboarding-v4-input"
+              style={{ minHeight: 100, resize: 'vertical', fontFamily: 'inherit' }}
+              autoFocus
             />
-            <p className="onboarding-v4-slider-value">
-              {form.travel_radius} miles
-            </p>
+            <p className="onboarding-v4-hint">2-3 sentences about your experience (optional but recommended)</p>
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(2)}>Back</button>
               <button className="onboarding-v4-btn-next" onClick={() => setStep(4)}>Continue</button>
@@ -223,19 +379,42 @@ function Onboarding({ onComplete }) {
           </div>
         )}
 
-        {/* Step 4: Hourly Rate */}
+        {/* Step 4: Travel Radius + Hourly Rate */}
         {step === 4 && (
           <div>
-            <h1 className="onboarding-v4-title">What's your rate?</h1>
-            <p className="onboarding-v4-subtitle">Minimum hourly rate for your work</p>
-            <input
-              type="number"
-              placeholder="Hourly rate"
-              value={form.hourly_rate}
-              onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
-              className="onboarding-v4-input"
-              autoFocus
-            />
+            <h1 className="onboarding-v4-title">Almost done!</h1>
+            <p className="onboarding-v4-subtitle">Set your travel distance and hourly rate</p>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
+                How far can you travel?
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={form.travel_radius}
+                onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
+                className="onboarding-v4-slider"
+              />
+              <p className="onboarding-v4-slider-value">
+                {form.travel_radius} miles
+              </p>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
+                Minimum hourly rate ($)
+              </label>
+              <input
+                type="number"
+                placeholder="Hourly rate"
+                value={form.hourly_rate}
+                onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
+                className="onboarding-v4-input"
+              />
+            </div>
+
             {error && (
               <div className="auth-v4-error">{error}</div>
             )}
@@ -1231,9 +1410,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [filterCoords, setFilterCoords] = useState({ lat: null, lng: null })
   const [radiusFilter, setRadiusFilter] = useState('50')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
-  const [activities, setActivities] = useState([])
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
 
   // Profile edit location state
@@ -1252,7 +1431,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     latitude: null,
     longitude: null,
     country: '',
-    country_code: ''
+    country_code: '',
+    is_remote: false
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
@@ -1297,7 +1477,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
-    { id: 'disputes', label: 'Disputes', icon: '⚖️' },
   ]
 
   // Hiring mode: Create Task, My Tasks, Browse Humans, Hired, Messages, Payments, API Keys
@@ -1375,7 +1554,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     fetchConversations()
     fetchNotifications()
     fetchUnreadMessages()
-    fetchActivities()
   }, [hiringMode])
 
   // Re-fetch tasks when location/radius filters change
@@ -1516,13 +1694,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         body: JSON.stringify({ human_id: humanId })
       })
       if (res.ok) {
-        // Refresh tasks and applications
+        const data = await res.json()
         fetchPostedTasks()
         setExpandedTask(null)
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
+
+        // Show appropriate toast based on payment method
+        if (data.payment_method === 'stripe') {
+          toast.success(`Worker assigned! $${data.amount_charged?.toFixed(2)} charged to your card.`)
+        } else {
+          toast.success('Worker assigned! Send USDC to fund the escrow.')
+        }
       } else {
         const err = await res.json()
-        toast.error(err.error || 'Failed to assign human')
+        if (err.code === 'payment_failed') {
+          toast.error(`Payment failed: ${err.details || err.error}`)
+        } else {
+          toast.error(err.error || 'Failed to assign human')
+        }
       }
     } catch (e) {
       toast.error('Network error. Please try again.')
@@ -1654,18 +1843,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     } catch (e) {}
   }
 
-  const fetchActivities = async () => {
-    try {
-      const res = await fetch(`${API_URL}/activity/feed`, { headers: { Authorization: user.id } })
-      if (res.ok) {
-        const data = await res.json()
-        setActivities(data || [])
-      }
-    } catch (e) {
-      debug('Could not fetch activity feed')
-    }
-  }
-
   const handleCreateTask = async (e) => {
     e.preventDefault()
     setCreateTaskError('')
@@ -1701,7 +1878,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           latitude: taskForm.latitude,
           longitude: taskForm.longitude,
           country: taskForm.country,
-          country_code: taskForm.country_code
+          country_code: taskForm.country_code,
+          is_remote: taskForm.is_remote
         })
       })
 
@@ -1710,7 +1888,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '' })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false })
         // Switch to posted tab
         setActiveTab('posted')
       } else {
@@ -1750,13 +1928,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   const acceptTask = async (taskId) => {
     try {
-      await fetch(`${API_URL}/tasks/${taskId}/accept`, { 
+      await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
         headers: { Authorization: user.id }
       })
       fetchTasks()
     } catch (e) {
       debug('Could not accept task')
+    }
+  }
+
+  const startWork = async (taskId) => {
+    try {
+      await fetch(`${API_URL}/tasks/${taskId}/start`, {
+        method: 'POST',
+        headers: { Authorization: user.id }
+      })
+      fetchTasks()
+    } catch (e) {
+      debug('Could not start work')
     }
   }
 
@@ -1832,6 +2022,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       pending_review: 'bg-coral/10 text-coral',
       completed: 'bg-green-100 text-green-600',
       paid: 'bg-gray-100 text-gray-500',
+      disputed: 'bg-red-100 text-red-600',
     }
     return colors[status] || 'bg-gray-100 text-gray-500'
   }
@@ -1844,6 +2035,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       pending_review: 'Pending Review',
       completed: 'Completed',
       paid: 'Paid',
+      disputed: 'Disputed',
     }
     return labels[status] || status
   }
@@ -1904,7 +2096,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           ))}
         </nav>
 
+        {/* Feedback Button - pinned to bottom */}
+        <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
+          <button
+            onClick={() => setFeedbackOpen(!feedbackOpen)}
+            className="dashboard-v4-nav-item"
+            style={{ width: '100%', background: feedbackOpen ? 'linear-gradient(135deg, rgba(15, 76, 92, 0.1), rgba(15, 76, 92, 0.04))' : undefined }}
+          >
+            <div className="dashboard-v4-nav-item-content">
+              <span className="dashboard-v4-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </span>
+              <span className="dashboard-v4-nav-label">Feedback</span>
+            </div>
+          </button>
+        </div>
+
       </aside>
+
+      {/* Sidebar Feedback Panel */}
+      <FeedbackButton user={user} variant="sidebar" isOpen={feedbackOpen} onToggle={(v) => setFeedbackOpen(typeof v === 'boolean' ? v : !feedbackOpen)} />
 
       {/* Main */}
       <main className="dashboard-v4-main">
@@ -1921,48 +2134,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               <div className="logo-mark-v4">irl</div>
               <span className="logo-name-v4">irlwork.ai</span>
             </a>
-          </div>
-
-          {/* Center: Search + Filters */}
-          <div className="dashboard-v4-topbar-center">
-            <div className="dashboard-v4-search">
-              <svg className="dashboard-v4-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search tasks..."
-                className="dashboard-v4-search-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="dashboard-v4-filters">
-              <CustomDropdown
-                value={locationFilter}
-                onChange={setLocationFilter}
-                options={[
-                  { value: '', label: 'All Locations' },
-                  { value: 'san-francisco', label: 'San Francisco' },
-                  { value: 'new-york', label: 'New York' },
-                  { value: 'los-angeles', label: 'Los Angeles' }
-                ]}
-                placeholder="All Locations"
-              />
-              <CustomDropdown
-                value={filterCategory}
-                onChange={setFilterCategory}
-                options={[
-                  { value: '', label: 'All Categories' },
-                  { value: 'delivery', label: 'Delivery' },
-                  { value: 'photography', label: 'Photography' },
-                  { value: 'errands', label: 'Errands' },
-                  { value: 'cleaning', label: 'Cleaning' },
-                  { value: 'tech', label: 'Tech' }
-                ]}
-                placeholder="All Categories"
-              />
-            </div>
           </div>
 
           {/* Right: Notifications + User */}
@@ -2213,7 +2384,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                   />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Category</label>
                     <CustomDropdown
@@ -2242,21 +2413,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                 </div>
                 <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">City</label>
-                  <CityAutocomplete
-                    value={taskForm.city}
-                    onChange={(locationData) => setTaskForm(prev => ({
-                      ...prev,
-                      city: locationData.city,
-                      latitude: locationData.latitude,
-                      longitude: locationData.longitude,
-                      country: locationData.country,
-                      country_code: locationData.country_code
-                    }))}
-                    placeholder="Where should this be done?"
-                    className="dashboard-v4-city-input"
-                  />
+                  <label style={{
+                    display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                    fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={taskForm.is_remote}
+                      onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                    🌐 This task can be done remotely
+                  </label>
                 </div>
+                {!taskForm.is_remote && (
+                  <div className="dashboard-v4-form-group">
+                    <label className="dashboard-v4-form-label">City</label>
+                    <CityAutocomplete
+                      value={taskForm.city}
+                      onChange={(locationData) => setTaskForm(prev => ({
+                        ...prev,
+                        city: locationData.city,
+                        latitude: locationData.latitude,
+                        longitude: locationData.longitude,
+                        country: locationData.country,
+                        country_code: locationData.country_code
+                      }))}
+                      placeholder="Where should this be done?"
+                      className="dashboard-v4-city-input"
+                    />
+                  </div>
+                )}
                 {createTaskError && (
                   <div className="dashboard-v4-form-error">{createTaskError}</div>
                 )}
@@ -2282,133 +2469,31 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>{tasks.filter(t => t.status === 'in_progress').length} active</span>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="dashboard-v4-stats">
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Total Earned</div>
-                <div className="dashboard-v4-stat-value orange">${tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}</div>
-              </div>
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Tasks Completed</div>
-                <div className="dashboard-v4-stat-value">{tasks.filter(t => t.status === 'completed' || t.status === 'paid').length}</div>
-              </div>
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Rating</div>
-                <div className="dashboard-v4-stat-value">⭐ {user?.rating?.toFixed(1) || 'New'}</div>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">⏳</div>
-                <p className="dashboard-v4-empty-text">Loading...</p>
-              </div>
-            ) : tasks.length === 0 ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
-                <p className="dashboard-v4-empty-title">No tasks yet</p>
-                <p className="dashboard-v4-empty-text">Browse available tasks to start earning money</p>
-
-                {/* Suggested Actions */}
-                <div className="dashboard-v4-empty-actions">
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('browse')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.search}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Browse tasks near you</p>
-                      <p className="dashboard-v4-empty-action-text">Find tasks in your area</p>
-                    </div>
-                  </div>
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('profile')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.profile}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Complete your profile</p>
-                      <p className="dashboard-v4-empty-action-text">Add skills and location</p>
-                    </div>
-                  </div>
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('payments')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.wallet}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Set up your wallet</p>
-                      <p className="dashboard-v4-empty-action-text">Get paid in USDC</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div>
-                {tasks.map(task => (
-                  <div key={task.id} className="dashboard-v4-task-card">
-                    <div className="dashboard-v4-task-header">
-                      <div>
-                        <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
-                          {getStatusLabel(task.status)}
-                        </span>
-                        <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
-                      </div>
-                      <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
-                    </div>
-
-                    {task.description && (
-                      <p className="dashboard-v4-task-description">{task.description}</p>
-                    )}
-
-                    <div className="dashboard-v4-task-meta">
-                      <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                      <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
-                      <span className="dashboard-v4-task-meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
-                      {task.agent_name && <span className="dashboard-v4-task-meta-item">🤖 {task.agent_name}</span>}
-                    </div>
-
-                    <div className="dashboard-v4-task-actions">
-                      {task.status === 'open' && (
-                        <button className="v4-btn v4-btn-primary" onClick={() => acceptTask(task.id)}>Accept Task</button>
-                      )}
-                      {task.status === 'accepted' && (
-                        <button className="v4-btn v4-btn-primary" onClick={() => {
-                          fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
-                            .then(() => fetchTasks())
-                        }}>▶️ Start Work</button>
-                      )}
-                      {task.status === 'in_progress' && (
-                        <button className="v4-btn v4-btn-primary" onClick={() => setShowProofSubmit(task.id)}>✓ Submit Proof</button>
-                      )}
-                      {task.status === 'pending_review' && (
-                        <button className="v4-btn v4-btn-secondary" disabled>Waiting for approval...</button>
-                      )}
-                      {task.status === 'completed' && (
-                        <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 8 }}>✓ Payment pending</span>
-                      )}
-                      {task.status === 'paid' && (
-                        <span style={{ color: 'var(--orange-600)', display: 'flex', alignItems: 'center', gap: 8 }}>💰 Paid!</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Activity Feed */}
-            <ActivityFeed activities={activities} />
-          </div>
+          <TabErrorBoundary>
+            <MyTasksPage
+              user={user}
+              tasks={tasks}
+              loading={loading}
+              acceptTask={acceptTask}
+              onStartWork={startWork}
+              setShowProofSubmit={setShowProofSubmit}
+            />
+          </TabErrorBoundary>
         )}
 
         {/* Working Mode: Browse Tasks Tab - Shows available tasks to claim */}
         {!hiringMode && activeTab === 'browse' && (
-          <BrowseTasksV2
-            user={user}
-            initialLocation={{
-              lat: filterCoords?.lat || user?.latitude,
-              lng: filterCoords?.lng || user?.longitude,
-              city: locationFilter || user?.city
-            }}
-            initialRadius={radiusFilter || '25'}
-          />
+          <TabErrorBoundary>
+            <BrowseTasksV2
+              user={user}
+              initialLocation={{
+                lat: filterCoords?.lat || user?.latitude,
+                lng: filterCoords?.lng || user?.longitude,
+                city: locationFilter || user?.city
+              }}
+              initialRadius={radiusFilter || '25'}
+            />
+          </TabErrorBoundary>
         )}
 
         {/* Hiring Mode: Browse Humans Tab - Shows available humans */}
@@ -2417,7 +2502,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             <h1 className="dashboard-v4-page-title">Browse Humans</h1>
 
             {/* Search & Filter */}
-            <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+            <div className="browse-humans-filters">
               <div style={{ flex: 1, position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
                 <input
@@ -2429,7 +2514,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <div style={{ width: 180 }}>
+              <div>
                 <CustomDropdown
                   value={filterCategory}
                   onChange={setFilterCategory}
@@ -2452,7 +2537,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+              <div className="browse-humans-grid">
                 {humans
                   .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
                   .filter(h => !filterCategory || h.skills?.includes(filterCategory))
@@ -2473,6 +2558,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: API Keys Tab */}
         {hiringMode && activeTab === 'api-keys' && (
           <ApiKeysTab user={user} />
+        )}
+
+        {/* Hiring Mode: Payments Tab */}
+        {hiringMode && activeTab === 'payments' && (
+          <div>
+            <h1 className="dashboard-v4-page-title">Payment Methods</h1>
+            <StripeProvider>
+              <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
+                  <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
+                  <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
+                </div>
+                <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                  When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
+                </div>
+              </div>
+            </StripeProvider>
+          </div>
         )}
 
         {/* Working Mode: Payments Tab */}
@@ -2536,6 +2643,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <span style={{ color: 'var(--text-tertiary)' }}>Jobs Completed</span>
                   <span style={{ color: 'var(--text-primary)' }}>{user?.jobs_completed || 0}</span>
                 </div>
+                {user?.social_links && typeof user.social_links === 'object' && Object.keys(user.social_links).length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid rgba(26,26,26,0.06)' }}>
+                    <span style={{ color: 'var(--text-tertiary)' }}>Socials</span>
+                    <SocialIconsRow socialLinks={user.social_links} size={18} gap={10} />
+                  </div>
+                )}
               </div>
 
               <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
@@ -2591,7 +2704,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   toast.error('Error saving profile')
                 }
               }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Full Name</label>
                     <input type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
@@ -2607,7 +2720,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
                     <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
@@ -2661,6 +2774,65 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
                 </div>
                 <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
+              </form>
+            </div>
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Social Links</h2>
+              <form onSubmit={async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const social_links = {}
+                PLATFORM_ORDER.forEach(p => {
+                  const val = formData.get(p)?.trim()
+                  if (val) social_links[p] = val
+                })
+                try {
+                  const res = await fetch(`${API_URL}/humans/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    body: JSON.stringify({ social_links })
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    if (data.user) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      localStorage.setItem('user', JSON.stringify(updatedUser))
+                    }
+                    toast.success('Social links updated!')
+                    setTimeout(() => window.location.reload(), 1000)
+                  } else {
+                    const err = await res.json()
+                    toast.error(err.error || 'Unknown error')
+                  }
+                } catch (err) {
+                  toast.error('Error saving social links')
+                }
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {PLATFORM_ORDER.map(platform => {
+                    const config = PLATFORMS[platform]
+                    return (
+                      <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', flexShrink: 0, width: 20 }}>
+                          {config.icon(18)}
+                        </div>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', width: 80, flexShrink: 0 }}>{config.label}</label>
+                        <input
+                          type="text"
+                          name={platform}
+                          defaultValue={user?.social_links?.[platform] || ''}
+                          placeholder={config.placeholder}
+                          maxLength={100}
+                          className="dashboard-v4-form-input"
+                          style={{ marginBottom: 0 }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or handle, not the full URL</p>
+                <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
               </form>
             </div>
 
@@ -2740,7 +2912,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 {selectedConversation ? (
                   <>
                     {/* Mobile Back Button */}
-                    <div style={{ display: 'none', padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)', alignItems: 'center', gap: 8 }} className="md:hidden">
+                    <div className="flex md:hidden items-center gap-2" style={{ padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
                       <button onClick={() => setSelectedConversation(null)} style={{ padding: 8, background: 'none', border: 'none', cursor: 'pointer' }}>
                         ← Back
                       </button>
@@ -2945,8 +3117,8 @@ function TaskDetailPage({ taskId, user, onLogout }) {
         </div>
 
         {/* Task Card */}
-        <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: 32, border: '1px solid rgba(26,26,26,0.08)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div className="task-detail-card" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: 32, border: '1px solid rgba(26,26,26,0.08)' }}>
+          <div className="task-detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
             <div>
               <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
                 {getStatusLabel(task.status)}
@@ -3647,6 +3819,8 @@ function App() {
           hourly_rate: profile.hourly_rate,
           skills: profile.skills,
           travel_radius: profile.travel_radius,
+          bio: profile.bio,
+          avatar_url: user.avatar_url || null,
           role: 'human'
         })
       })
@@ -3657,7 +3831,7 @@ function App() {
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
-        window.location.href = '/dashboard'
+        window.location.href = '/dashboard?tab=browse'
       } else {
         const errorData = await res.json().catch(() => ({}))
         console.error('[Onboarding] Failed:', errorData)
@@ -3679,60 +3853,74 @@ function App() {
   const path = window.location.pathname
   debug('[Auth] Rendering route:', path, 'user:', user ? user.email : 'none')
 
-  // If on auth page and already logged in, redirect to dashboard
-  if (path === '/auth' && user) {
-    debug('[Auth] Already logged in, redirecting to dashboard')
-    window.location.href = '/dashboard'
-    return <Loading />
-  }
-
-  // Task detail route - /tasks/:id
-  if (path.startsWith('/tasks/')) {
-    const taskId = path.split('/tasks/')[1]
-    if (taskId) {
-      return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
-    }
-  }
-
-  // Onboarding route - dedicated route for onboarding wizard
-  if (path === '/onboard') {
-    if (!user) {
-      debug('[Auth] No user for onboard, redirecting to auth')
-      window.location.href = '/auth'
-      return <Loading />
-    }
-    // If user doesn't need onboarding, redirect to dashboard
-    if (!user.needs_onboarding) {
-      debug('[Auth] User already onboarded, redirecting to dashboard')
+  // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
+  const routeContent = (() => {
+    // If on auth page and already logged in, redirect to dashboard
+    if (path === '/auth' && user) {
+      debug('[Auth] Already logged in, redirecting to dashboard')
       window.location.href = '/dashboard'
       return <Loading />
     }
-    return <Onboarding onComplete={handleOnboardingComplete} />
-  }
 
-  // Dashboard route - requires auth
-  if (path === '/dashboard') {
-    if (!user) {
-      debug('[Auth] No user, redirecting to auth')
-      window.location.href = '/auth'
-      return <Loading />
+    // Task detail route - /tasks/:id
+    if (path.startsWith('/tasks/')) {
+      const taskId = path.split('/tasks/')[1]
+      if (taskId) {
+        return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
+      }
     }
 
-    // If user needs onboarding, redirect to /onboard
-    if (user.needs_onboarding) {
-      debug('[Auth] User needs onboarding, redirecting to /onboard')
-      window.location.href = '/onboard'
-      return <Loading />
+    // Onboarding route - dedicated route for onboarding wizard
+    if (path === '/onboard') {
+      if (!user) {
+        debug('[Auth] No user for onboard, redirecting to auth')
+        window.location.href = '/auth'
+        return <Loading />
+      }
+      // If user doesn't need onboarding, redirect to dashboard
+      if (!user.needs_onboarding) {
+        debug('[Auth] User already onboarded, redirecting to dashboard')
+        window.location.href = '/dashboard'
+        return <Loading />
+      }
+      return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
-    return <Dashboard user={user} onLogout={logout} />
-  }
+    // Dashboard route - requires auth
+    if (path === '/dashboard') {
+      if (!user) {
+        debug('[Auth] No user, redirecting to auth')
+        window.location.href = '/auth'
+        return <Loading />
+      }
 
-  if (path === '/auth') return <AuthPage />
-  if (path === '/mcp') return <MCPPage />
-  if (path === '/browse') return <BrowsePage user={user} />
+      // If user needs onboarding, redirect to /onboard
+      if (user.needs_onboarding) {
+        debug('[Auth] User needs onboarding, redirecting to /onboard')
+        window.location.href = '/onboard'
+        return <Loading />
+      }
 
-  return <LandingPageV4 />}
+      return <Dashboard user={user} onLogout={logout} />
+    }
+
+    if (path === '/auth') return <AuthPage />
+    if (path === '/mcp') return <MCPPage />
+    if (path === '/browse') return <BrowsePage user={user} />
+
+    return <LandingPageV4 />
+  })()
+
+  // Dashboard has feedback in sidebar, other pages use floating button
+  const isDashboard = path === '/dashboard'
+
+  return (
+    <>
+      {routeContent}
+      {!isDashboard && <FeedbackButton user={user} />}
+    </>
+  )
+}
 
 export default function AppWrapper() {
   return (

@@ -54,7 +54,11 @@ export default function TaskCardV2({
           <span className="task-card-v2-category-label">{categoryLabel}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {task.distance_km != null && (
+          {task.is_remote ? (
+            <div className="task-card-v2-remote-badge">
+              🌐 Remote
+            </div>
+          ) : task.distance_km != null ? (
             <div className="task-card-v2-distance">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
@@ -62,7 +66,7 @@ export default function TaskCardV2({
               </svg>
               {task.distance_km.toFixed(1)} km
             </div>
-          )}
+          ) : null}
           {showReport && (
             <button
               className="task-card-v2-report-btn"
@@ -119,11 +123,20 @@ export default function TaskCardV2({
       {/* Location + Escrow row */}
       <div className="task-card-v2-meta-row">
         <div className="task-card-v2-location">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          {task.location || task.city || 'Location not specified'}
+          {task.is_remote ? (
+            <>
+              <span>🌐</span>
+              {task.location || task.city ? `Remote · ${task.location || task.city}` : 'Remote — work from anywhere'}
+            </>
+          ) : (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              {task.location || task.city || 'Location not specified'}
+            </>
+          )}
         </div>
         <div className={`task-card-v2-escrow ${task.escrow_status === 'funded' ? 'funded' : 'unfunded'}`}>
           {task.escrow_status === 'funded' ? (

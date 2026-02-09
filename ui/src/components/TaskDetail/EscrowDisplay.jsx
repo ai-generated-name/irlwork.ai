@@ -57,6 +57,7 @@ export default function EscrowDisplay({ task }) {
           status={escrowStatus}
           amount={escrowAmount}
           showDetails={true}
+          paymentMethod={task.payment_method}
         />
       </div>
 
