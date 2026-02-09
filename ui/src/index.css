@@ -1347,3 +1347,23 @@ code, pre {
     width: 100%;
   }
 }
+
+/* ─── REPORT MODAL RESPONSIVE GRID ─── */
+.report-reason-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  .report-reason-grid {
+    grid-template-columns: 1fr;
+  }
+  .modal-v4-content {
+    padding: var(--space-5) !important;
+  }
+  .modal-v4-overlay {
+    padding: var(--space-3) !important;
+  }
+}
