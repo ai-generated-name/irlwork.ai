@@ -1,0 +1,120 @@
+import React from 'react';
+import EscrowBadge from './EscrowBadge';
+
+const CATEGORY_ICONS = {
+  delivery: '📦',
+  photography: '📸',
+  'data-collection': '📊',
+  errands: '🏃',
+  'tech-setup': '💻',
+  translation: '🌐',
+  verification: '✅',
+  other: '📋',
+};
+
+const STATUS_CONFIG = {
+  open: { label: 'Open', className: 'mytasks-status--open' },
+  accepted: { label: 'Accepted', className: 'mytasks-status--accepted' },
+  assigned: { label: 'Assigned', className: 'mytasks-status--accepted' },
+  in_progress: { label: 'In Progress', className: 'mytasks-status--in-progress' },
+  pending_review: { label: 'Pending Review', className: 'mytasks-status--pending' },
+  approved: { label: 'Approved', className: 'mytasks-status--pending' },
+  completed: { label: 'Completed', className: 'mytasks-status--completed' },
+  paid: { label: 'Paid', className: 'mytasks-status--paid' },
+  disputed: { label: 'Disputed', className: 'mytasks-status--disputed' },
+  cancelled: { label: 'Cancelled', className: 'mytasks-status--cancelled' },
+};
+
+export default function MyTaskCard({
+  task,
+  variant = 'active', // 'active' | 'review' | 'compact'
+  onAccept,
+  onStartWork,
+  onSubmitProof,
+  onClick,
+}) {
+  const status = STATUS_CONFIG[task.status] || { label: task.status, className: '' };
+  const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
+  const categoryLabel = task.category?.replace('-', ' ') || 'General';
+
+  const handleClick = () => {
+    if (onClick) onClick(task);
+  };
+
+  const handleAction = (e, action) => {
+    e.stopPropagation();
+    action(task.id);
+  };
+
+  // Compact variant for completed/paid tasks
+  if (variant === 'compact') {
+    return (
+      <div className="mytasks-card mytasks-card--compact" onClick={handleClick}>
+        <div className="mytasks-card__row">
+          <div className="mytasks-card__row-left">
+            <span className={`mytasks-status ${status.className}`}>{status.label}</span>
+            <h3 className="mytasks-card__title mytasks-card__title--compact">{task.title}</h3>
+          </div>
+          <span className="mytasks-card__budget">${task.budget || 0}</span>
+        </div>
+        <div className="mytasks-card__meta">
+          <span className="mytasks-card__meta-item">{categoryIcon} {categoryLabel}</span>
+          <span className="mytasks-card__meta-item">📍 {task.city || 'Remote'}</span>
+          <span className="mytasks-card__meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+          <span className="mytasks-card__arrow">→</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Full variant for active and review
+  return (
+    <div className="mytasks-card" onClick={handleClick}>
+      <div className="mytasks-card__header">
+        <div>
+          <span className={`mytasks-status ${status.className}`}>{status.label}</span>
+          <h3 className="mytasks-card__title">{task.title}</h3>
+        </div>
+        <span className="mytasks-card__budget">${task.budget || 0}</span>
+      </div>
+
+      {task.description && (
+        <p className="mytasks-card__description">{task.description}</p>
+      )}
+
+      <div className="mytasks-card__meta">
+        <span className="mytasks-card__meta-item">{categoryIcon} {categoryLabel}</span>
+        <span className="mytasks-card__meta-item">📍 {task.city || 'Remote'}</span>
+        <span className="mytasks-card__meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+        {task.agent_name && <span className="mytasks-card__meta-item">🤖 {task.agent_name}</span>}
+      </div>
+
+      <div className="mytasks-card__footer">
+        <div className="mytasks-card__actions">
+          {task.status === 'open' && onAccept && (
+            <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onAccept)}>Accept Task</button>
+          )}
+          {(task.status === 'accepted' || task.status === 'assigned') && onStartWork && (
+            <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onStartWork)}>Start Work</button>
+          )}
+          {task.status === 'in_progress' && onSubmitProof && (
+            <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onSubmitProof)}>Submit Proof</button>
+          )}
+          {task.status === 'pending_review' && (
+            <button className="v4-btn v4-btn-secondary" disabled>Waiting for approval...</button>
+          )}
+          {task.status === 'approved' && (
+            <span className="mytasks-card__info-label">Work approved — payment pending</span>
+          )}
+          {task.status === 'completed' && (
+            <span className="mytasks-card__info-label mytasks-card__info-label--success">Payment pending</span>
+          )}
+        </div>
+
+        {variant === 'review' && task.escrow_status && (
+          <EscrowBadge status={task.escrow_status} amount={task.budget} />
+        )}
+      </div>
+    </div>
+  );
+}

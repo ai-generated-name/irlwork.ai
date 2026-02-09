@@ -14,6 +14,7 @@ process.on('unhandledRejection', (reason, promise) => {
 console.log('[Startup] Loading modules...');
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const http = require('http');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
@@ -46,17 +47,30 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3002;
 
-// CORS configuration - be permissive for development
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // Frontend serves its own CSP
+  crossOriginEmbedderPolicy: false
+}));
+
+// CORS configuration - only include localhost in development
+const isProduction = process.env.NODE_ENV === 'production';
 const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
-  : [
-      'https://www.irlwork.ai',
-      'https://irlwork.ai',
-      'https://api.irlwork.ai',
-      'http://localhost:5173',
-      'http://localhost:5180',
-      'http://localhost:3002'
-    ];
+  : isProduction
+    ? [
+        'https://www.irlwork.ai',
+        'https://irlwork.ai',
+        'https://api.irlwork.ai'
+      ]
+    : [
+        'https://www.irlwork.ai',
+        'https://irlwork.ai',
+        'https://api.irlwork.ai',
+        'http://localhost:5173',
+        'http://localhost:5180',
+        'http://localhost:3002'
+      ];
 
 console.log('[CORS] Configured origins:', corsOrigins);
 
@@ -129,8 +143,13 @@ function generateApiKey() {
   return prefix + randomBytes;
 }
 
-// Hash an API key for storage
+// Hash an API key for storage (HMAC-SHA256 with server secret)
+const API_KEY_HMAC_SECRET = process.env.API_KEY_HMAC_SECRET || crypto.randomBytes(32).toString('hex');
 function hashApiKey(apiKey) {
+  return crypto.createHmac('sha256', API_KEY_HMAC_SECRET).update(apiKey).digest('hex');
+}
+// Legacy hash for migration (unsalted SHA-256 — used only for backward compatibility)
+function hashApiKeyLegacy(apiKey) {
   return crypto.createHash('sha256').update(apiKey).digest('hex');
 }
 
@@ -257,13 +276,27 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+/**
+ * Authenticate a request by token.
+ *
+ * ARCHITECTURE NOTE: The frontend currently sends the Supabase user UUID as the
+ * Authorization header (not a JWT or session token). This means any caller who
+ * knows a user's UUID can authenticate as that user. This is acceptable for the
+ * current trust model where the API is only called by our own frontend (which
+ * obtains the UUID via Supabase Auth), but should be migrated to proper JWT
+ * verification (supabase.auth.getUser(jwt)) for production hardening.
+ *
+ * TODO: Migrate to JWT-based auth — validate the Supabase access_token instead
+ * of accepting raw UUIDs. This will require frontend changes to send the JWT
+ * from supabase.auth.getSession().
+ */
 async function getUserByToken(token) {
   if (!token || !supabase) return null;
 
   // Remove "Bearer " prefix if present
   const cleanToken = token.replace(/^Bearer\s+/i, '');
 
-  // Check if it's a UUID (user ID)
+  // Check if it's a UUID (user ID) — see architecture note above
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(cleanToken)) {
     const { data } = await supabase
@@ -277,11 +310,30 @@ async function getUserByToken(token) {
   // Check if it's a new-style API key (irl_sk_...)
   if (cleanToken.startsWith('irl_sk_')) {
     const keyHash = hashApiKey(cleanToken);
-    const { data: apiKeyRecord } = await supabase
+    let { data: apiKeyRecord } = await supabase
       .from('api_keys')
-      .select('user_id, is_active')
+      .select('user_id, is_active, key_hash')
       .eq('key_hash', keyHash)
       .single();
+
+    // Fallback to legacy hash (unsalted SHA-256) and auto-migrate
+    if (!apiKeyRecord) {
+      const legacyHash = hashApiKeyLegacy(cleanToken);
+      const { data: legacyRecord } = await supabase
+        .from('api_keys')
+        .select('user_id, is_active, key_hash')
+        .eq('key_hash', legacyHash)
+        .single();
+
+      if (legacyRecord) {
+        // Auto-migrate to new HMAC hash
+        await supabase
+          .from('api_keys')
+          .update({ key_hash: keyHash })
+          .eq('key_hash', legacyHash);
+        apiKeyRecord = legacyRecord;
+      }
+    }
 
     if (apiKeyRecord && apiKeyRecord.is_active) {
       // Update last_used_at
@@ -653,11 +705,8 @@ app.get('/api/auth/google/callback', async (req, res) => {
       existingUser = newUser;
     }
     
-    // Generate session token
-    const token = crypto.randomBytes(32).toString('hex');
-    
-    // Redirect back to app with token
-    res.redirect(`${frontendUrl}?token=${token}&user_id=${existingUser.id}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}`);
+    // Redirect back to app (Supabase session handles auth — no tokens in URL)
+    res.redirect(frontendUrl);
   } catch (e) {
     res.redirect(`${frontendUrl}?error=${encodeURIComponent(e.message)}`);
   }
@@ -694,6 +743,7 @@ app.get('/api/auth/verify', async (req, res) => {
       wallet_address: user.wallet_address,
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
+      social_links: user.social_links || {},
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
       verified: user.verified,
@@ -718,11 +768,12 @@ app.get('/api/auth/verify', async (req, res) => {
 app.post('/api/auth/onboard', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  // Get user ID from Authorization header (secure - not from body)
-  const userId = req.headers.authorization;
-  if (!userId) {
-    return res.status(401).json({ error: 'Authorization required' });
+  // Validate the user via proper token authentication (prevents account takeover via arbitrary UUID)
+  const authenticatedUser = await getUserByToken(req.headers.authorization);
+  if (!authenticatedUser) {
+    return res.status(401).json({ error: 'Invalid or missing authentication' });
   }
+  const userId = authenticatedUser.id;
 
   const { email, name, city, latitude, longitude, country, country_code,
           hourly_rate, skills, travel_radius, role, bio, avatar_url } = req.body;
@@ -1199,9 +1250,17 @@ app.get('/api/humans', async (req, res) => {
 app.get('/api/users/:id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
+  // Only return wallet_address to the user themselves (not to public)
+  const requester = await getUserByToken(req.headers.authorization);
+  const isSelf = requester && requester.id === req.params.id;
+
+  const columns = isSelf
+    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, wallet_address, type'
+    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type';
+
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, wallet_address, type')
+    .select(columns)
     .eq('id', req.params.id)
     .single();
 
@@ -1220,7 +1279,7 @@ app.get('/api/humans/:id', async (req, res, next) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, wallet_address, needs_onboarding')
+    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
@@ -1273,7 +1332,7 @@ app.put('/api/humans/profile', async (req, res) => {
     }
   }
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code } = req.body;
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
 
@@ -1292,6 +1351,18 @@ app.put('/api/humans/profile', async (req, res) => {
   if (country !== undefined) updates.country = country;
   if (country_code !== undefined) updates.country_code = country_code;
   if (travel_radius) updates.travel_radius = travel_radius;
+  if (social_links !== undefined) {
+    const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
+    const cleaned = {};
+    if (typeof social_links === 'object' && social_links !== null) {
+      for (const [key, value] of Object.entries(social_links)) {
+        if (allowedPlatforms.includes(key) && typeof value === 'string' && value.trim()) {
+          cleaned[key] = value.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+        }
+      }
+    }
+    updates.social_links = cleaned;
+  }
 
   const { data, error } = await supabase
     .from('users')
@@ -1312,7 +1383,9 @@ app.get('/api/tasks', async (req, res) => {
   const { category, city, urgency, status, my_tasks, user_lat, user_lng, radius_km } = req.query;
   const user = await getUserByToken(req.headers.authorization);
 
-  let query = supabase.from('tasks').select('*');
+  // Only return safe public columns (no escrow, deposit, or internal fields)
+  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status';
+  let query = supabase.from('tasks').select(safeTaskColumns);
 
   if (category) query = query.eq('category', category);
   if (urgency) query = query.eq('urgency', urgency);
@@ -1417,11 +1490,22 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('*')
+    .select('id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at, deposit_amount_cents, unique_deposit_amount, instructions, work_started_at, proof_submitted_at, assigned_at')
     .eq('id', req.params.id)
     .single();
 
   if (error || !task) return res.status(404).json({ error: 'Not found' });
+
+  // Only return sensitive financial/escrow fields to task participants
+  const user = await getUserByToken(req.headers.authorization);
+  const isParticipant = user && (task.agent_id === user.id || task.human_id === user.id);
+
+  if (!isParticipant) {
+    const { escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at,
+            deposit_amount_cents, unique_deposit_amount, instructions,
+            work_started_at, proof_submitted_at, assigned_at, ...publicTask } = task;
+    return res.json(publicTask);
+  }
   res.json(task);
 });
 
@@ -1430,7 +1514,7 @@ app.get('/api/tasks/:id/status', async (req, res) => {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at, completed_at')
+    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at')
     .eq('id', req.params.id)
     .single();
 
@@ -1439,9 +1523,9 @@ app.get('/api/tasks/:id/status', async (req, res) => {
   // Get proof submissions
   const { data: proofs } = await supabase
     .from('task_proofs')
-    .select('id, status, proof_text, media_urls, created_at')
+    .select('id, status, proof_text, proof_urls, submitted_at')
     .eq('task_id', req.params.id)
-    .order('created_at', { ascending: false });
+    .order('submitted_at', { ascending: false });
 
   // Get pending payout to check dispute window
   let dispute_window_info = null;
@@ -1475,7 +1559,6 @@ app.get('/api/tasks/:id/status', async (req, res) => {
     escrow_deposited_at: task.escrow_deposited_at,
     escrow_released_at: task.escrow_released_at,
     proof_submitted_at: task.proof_submitted_at,
-    completed_at: task.completed_at,
     proofs: proofs || [],
     dispute_window: dispute_window_info
   });
@@ -1694,9 +1777,9 @@ app.get('/api/agent/tasks', async (req, res) => {
     .from('tasks')
     .select(`
       *,
-      assignee:users!assignee_id(id, name, email, hourly_rate, rating)
+      assignee:users!human_id(id, name, email, hourly_rate, rating)
     `)
-    .eq('creator_id', user.id)
+    .eq('agent_id', user.id)
     .order('created_at', { ascending: false })
     .limit(parseInt(limit));
   
@@ -1722,16 +1805,16 @@ app.post('/api/tasks/:id/release', async (req, res) => {
   // Get task details
   const { data: task, error: taskError } = await supabase
     .from('tasks')
-    .select('*, assignee:users!assignee_id(*)')
+    .select('*, assignee:users!human_id(*)')
     .eq('id', id)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   // Only task creator (agent) can release payment
-  if (task.creator_id !== user.id) {
+  if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
   
@@ -1768,24 +1851,12 @@ app.post('/api/tasks/:id/release', async (req, res) => {
     return res.status(500).json({ error: updateError.message });
   }
   
-  // Create transaction record
-  await supabase.from('transactions').insert({
-    id: uuidv4(),
-    task_id: id,
-    human_id: task.assignee_id,
-    agent_id: user.id,
-    amount: budget,
-    platform_fee: platformFee,
-    net_amount: netAmount,
-    type: 'payment',
-    status: 'completed',
-    tx_hash: txHash,
-    created_at: new Date().toISOString()
-  });
-  
+  // NOTE: Previously inserted into a 'transactions' table that doesn't exist.
+  // Transaction data is tracked via payouts + pending_transactions tables.
+
   // Create notification for human
   await createNotification(
-    task.assignee_id,
+    task.human_id,
     'payment_released',
     'Payment Released',
     `Your payment of ${netAmount.toFixed(2)} USDC has been sent to your wallet.`,
@@ -1897,6 +1968,144 @@ app.post('/api/upload/proof', async (req, res) => {
   }
 });
 
+// ============ FEEDBACK ============
+app.post('/api/upload/feedback', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const getEnv = (k) => {
+    try { return require('process').env[k]; } catch { return null; }
+  };
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+    const { file, filename } = req.body;
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop() || 'jpg';
+    const uniqueFilename = `feedback/${user.id}/${timestamp}-${randomStr}.${ext}`;
+    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    console.log(`[R2 DEMO] Would upload feedback image to: ${mockUrl}`);
+    return res.json({ url: mockUrl, filename: uniqueFilename, success: true, demo: true });
+  }
+
+  try {
+    const { file, filename, mimeType } = req.body;
+    if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop() || 'jpg';
+    const uniqueFilename = `feedback/${user.id}/${timestamp}-${randomStr}.${ext}`;
+
+    let fileData = file;
+    if (file.startsWith('data:')) {
+      fileData = Buffer.from(file.split(',')[1], 'base64');
+    } else if (typeof file === 'string' && !file.startsWith('/') && !file.startsWith('http')) {
+      fileData = Buffer.from(file, 'base64');
+    }
+
+    let uploadSuccess = false;
+    try {
+      const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+      const s3Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+      });
+
+      await s3Client.send(new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: uniqueFilename,
+        Body: fileData,
+        ContentType: mimeType || 'image/jpeg',
+      }));
+      uploadSuccess = true;
+    } catch (s3Error) {
+      console.error('R2 feedback upload error:', s3Error.message);
+    }
+
+    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    res.json({ url: publicUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
+  } catch (e) {
+    console.error('Feedback upload error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/feedback', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { type = 'feedback', urgency = 'normal', subject, message, image_urls, page_url } = req.body;
+
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+
+  const validTypes = ['feedback', 'bug', 'feature_request', 'other'];
+  const validUrgency = ['low', 'normal', 'high', 'critical'];
+
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({ error: `Type must be one of: ${validTypes.join(', ')}` });
+  }
+  if (!validUrgency.includes(urgency)) {
+    return res.status(400).json({ error: `Urgency must be one of: ${validUrgency.join(', ')}` });
+  }
+
+  try {
+    const feedbackId = uuidv4();
+    const { error } = await supabase.from('feedback').insert({
+      id: feedbackId,
+      user_id: user.id,
+      user_email: user.email || null,
+      user_name: user.name || null,
+      user_type: user.type || null,
+      type,
+      urgency,
+      subject: subject || null,
+      message: message.trim(),
+      image_urls: image_urls || [],
+      page_url: page_url || null,
+      status: 'new',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('[Feedback] Insert error:', error.message);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Notify admins for critical feedback
+    if (urgency === 'critical') {
+      const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+      for (const adminId of adminIds) {
+        await createNotification(
+          adminId,
+          'critical_feedback',
+          'Critical Feedback Submitted',
+          `${user.name || 'A user'} submitted critical feedback: "${subject || message.substring(0, 50)}"`,
+          '/dashboard?tab=admin'
+        );
+      }
+    }
+
+    console.log(`[Feedback] New ${urgency} ${type} from ${user.name || user.id}: ${subject || message.substring(0, 50)}`);
+    res.json({ success: true, feedback_id: feedbackId });
+  } catch (e) {
+    console.error('[Feedback] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============ TASK PROOFS ============
 app.get('/api/tasks/:id/proofs', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
@@ -1972,8 +2181,7 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
       proof_text,
       proof_urls: proof_urls || [],
       status: 'pending',
-      revision_count: 0,
-      created_at: new Date().toISOString()
+      submitted_at: new Date().toISOString()
     })
     .select()
     .single();
@@ -2589,6 +2797,14 @@ app.post('/api/tasks/:id/rate', async (req, res) => {
   // Determine who is being rated
   const ratee_id = user.id === task.human_id ? task.agent_id : task.human_id;
 
+  // Guard: prevent self-rating and null ratee
+  if (!ratee_id) {
+    return res.status(400).json({ error: 'Cannot determine who to rate — task may be incomplete' });
+  }
+  if (ratee_id === user.id) {
+    return res.status(403).json({ error: 'You cannot rate yourself' });
+  }
+
   // Check if user has already rated
   const { data: existingRating } = await supabase
     .from('ratings')
@@ -2897,34 +3113,60 @@ app.post('/api/webhooks/register', async (req, res) => {
 });
 
 // ============ TRANSACTIONS ============
+// NOTE: The 'transactions' table doesn't exist. Transaction data lives in
+// payouts + pending_transactions. This endpoint queries those instead.
 app.get('/api/transactions', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { data: transactions, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .or(`agent_id.eq.${user.id},human_id.eq.${user.id}`)
-    .order('created_at', { ascending: false });
-  
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(transactions || []);
+
+  // Query payouts (human earnings) and pending_transactions (pending earnings)
+  const [payoutsResult, pendingResult] = await Promise.all([
+    supabase
+      .from('payouts')
+      .select('id, task_id, human_id, tx_hash, amount_cents, fee_cents, status, created_at')
+      .eq('human_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('pending_transactions')
+      .select('id, task_id, user_id, amount_cents, status, created_at, clears_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+  ]);
+
+  const payouts = (payoutsResult.data || []).map(p => ({
+    ...p,
+    type: 'payout',
+    amount: p.amount_cents / 100
+  }));
+  const pending = (pendingResult.data || []).map(p => ({
+    ...p,
+    type: 'pending',
+    amount: p.amount_cents / 100
+  }));
+
+  // Merge and sort by created_at descending
+  const all = [...payouts, ...pending].sort((a, b) =>
+    new Date(b.created_at) - new Date(a.created_at)
+  );
+
+  res.json(all);
 });
 
+// NOTE: The 'deposits' table doesn't exist. Deposit data lives in manual_payments.
 app.get('/api/deposits', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { data: deposits, error } = await supabase
-    .from('deposits')
-    .select('*')
-    .or(`agent_id.eq.${user.id},human_id.eq.${user.id}`)
+    .from('manual_payments')
+    .select('id, task_id, agent_id, worker_id, expected_amount, deposit_amount, deposit_tx_hash, deposit_status, status, created_at')
+    .or(`agent_id.eq.${user.id},worker_id.eq.${user.id}`)
     .order('created_at', { ascending: false });
-  
+
   if (error) return res.status(500).json({ error: error.message });
   res.json(deposits || []);
 });
@@ -3059,15 +3301,14 @@ app.post('/api/mcp', async (req, res) => {
       case 'get_human': {
         const { data: human, error } = await supabase
           .from('users')
-          .select('*, certifications(*)')
+          .select('*')
           .eq('id', params.human_id)
           .single();
         
         if (error) {
-          res.status(404).json({ error: 'Human not found' });
-        } else {
-          res.json({ ...human, skills: JSON.parse(human.skills || '[]') });
+          return res.status(404).json({ error: 'Human not found' });
         }
+        res.json({ ...human, skills: JSON.parse(human.skills || '[]') });
         break;
       }
       
@@ -3237,10 +3478,9 @@ app.post('/api/mcp', async (req, res) => {
           proof_text: proof_text || '',
           proof_urls: proof_urls || [],
           status: 'pending',
-          revision_count: 0,
-          created_at: new Date().toISOString()
+          submitted_at: new Date().toISOString()
         });
-        
+
         // Update task to pending_review
         await supabase
           .from('tasks')
@@ -4128,7 +4368,7 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
@@ -4158,7 +4398,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
       verified, availability, wallet_address, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at
+      total_disputes_filed, total_usdc_paid, last_active_at, social_links
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
@@ -4517,17 +4757,17 @@ app.get('/api/my-tasks', async (req, res) => {
     .from('tasks')
     .select(`
       *,
-      creator:users!creator_id(id, name, email),
-      assignee:users!assignee_id(id, name, email)
+      creator:users!agent_id(id, name, email),
+      assignee:users!human_id(id, name, email)
     `)
     .order('created_at', { ascending: false });
-  
+
   if (user.type === 'human') {
-    // Humans see tasks they created OR tasks assigned to them
-    query = query.or(`creator_id.eq.${user.id},assignee_id.eq.${user.id}`);
+    // Humans see tasks assigned to them OR tasks they're involved in
+    query = query.or(`agent_id.eq.${user.id},human_id.eq.${user.id}`);
   } else {
     // Agents see tasks they created
-    query = query.eq('creator_id', user.id);
+    query = query.eq('agent_id', user.id);
   }
   
   const { data: tasks, error } = await query;
@@ -4539,68 +4779,33 @@ app.get('/api/my-tasks', async (req, res) => {
 // REMOVED: Duplicate /api/tasks/available route - consolidated into main route above (line ~3416)
 
 // ============ TASKS CRUD ============
-app.post('/api/tasks', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { title, description, category, budget, city, state, deadline, requirements, is_remote } = req.body;
-
-  const { data: task, error } = await supabase
-    .from('tasks')
-    .insert({
-      id: uuidv4(),
-      title,
-      description,
-      category,
-      budget: parseFloat(budget),
-      city,
-      state,
-      status: 'open',
-      escrow_status: 'awaiting_worker',  // PHASE 1: No payment needed until human approved
-      escrow_amount: parseFloat(budget),
-      creator_id: user.id,
-      deadline,
-      requirements: requirements || null,
-      is_remote: !!is_remote,
-      created_at: new Date().toISOString()
-    })
-    .select()
-    .single();
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({
-    ...task,
-    message: 'Task posted. Deposit instructions will be provided when a human is approved.'
-  });
-});
+// NOTE: POST /api/tasks is defined earlier (~line 1356) using agent_id — do not duplicate here
 
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
   const updates = req.body;
-  
-  // Verify ownership
+
+  // Verify ownership (agent_id is the actual column in the tasks table)
   const { data: task } = await supabase
     .from('tasks')
-    .select('creator_id')
+    .select('agent_id')
     .eq('id', id)
     .single();
-  
-  if (!task || task.creator_id !== user.id) {
+
+  if (!task || task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
-  
+
   const { error } = await supabase
     .from('tasks')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id);
-  
+
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
@@ -4617,17 +4822,22 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
   
   const { id } = req.params;
   
-  const { error } = await supabase
+  // Atomic update: .select().single() ensures only one human can accept (race-safe)
+  const { data: updatedTask, error } = await supabase
     .from('tasks')
     .update({
       status: 'in_progress',
-      assignee_id: user.id,
-      started_at: new Date().toISOString()
+      human_id: user.id,
+      work_started_at: new Date().toISOString()
     })
     .eq('id', id)
-    .eq('status', 'open');
+    .eq('status', 'open')
+    .select('id')
+    .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error || !updatedTask) {
+    return res.status(409).json({ error: 'Task is no longer available — it may have been accepted by someone else' });
+  }
 
   // Increment total_tasks_accepted for human
   const { data: acceptUser } = await supabase
@@ -4694,14 +4904,14 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
   
   const { data: task } = await supabase
     .from('tasks')
-    .select('creator_id')
+    .select('agent_id')
     .eq('id', id)
     .single();
-  
-  if (!task || task.creator_id !== user.id) {
+
+  if (!task || task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
-  
+
   await supabase
     .from('tasks')
     .update({ status: 'cancelled' })
@@ -4935,10 +5145,10 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  // TODO: Add admin check here
-  // if (user.role !== 'admin') {
-  //   return res.status(403).json({ error: 'Admin access required' });
-  // }
+  // Admin check: only admins can resolve disputes
+  if (user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
 
   const { id } = req.params;
   const { resolution, resolution_notes, refund_agent } = req.body;

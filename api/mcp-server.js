@@ -274,6 +274,29 @@ const handlers = {
       headers: { 'Authorization': API_KEY }
     })
     return await res.json()
+  },
+
+  // Submit feedback or bug report
+  async submit_feedback(params) {
+    if (!params.message) {
+      return { error: 'message parameter is required' }
+    }
+    const res = await fetch(`${API_URL}/feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({
+        type: params.type || 'feedback',
+        urgency: params.urgency || 'normal',
+        subject: params.subject,
+        message: params.message,
+        image_urls: params.image_urls || [],
+        page_url: params.page_url || 'mcp-client'
+      })
+    })
+    return await res.json()
   }
 }
 
@@ -336,7 +359,7 @@ const PORT = process.env.MCP_PORT || 3004
 server.listen(PORT, () => {
   console.log(`🤖 Humanwork.ai MCP Server running on port ${PORT}`)
   console.log(`   API: ${API_URL}`)
-  console.log(`   Available Methods (21):`)
+  console.log(`   Available Methods (22):`)
   console.log(``)
   console.log(`   Core:`)
   console.log(`   - list_humans(params)`)
@@ -368,4 +391,7 @@ server.listen(PORT, () => {
   console.log(`   - notifications()`)
   console.log(`   - mark_notification_read(notification_id)`)
   console.log(`   - set_webhook(url, secret?) [NEW]`)
+  console.log(``)
+  console.log(`   Feedback:`)
+  console.log(`   - submit_feedback(message, type?, urgency?, subject?) [NEW]`)
 })

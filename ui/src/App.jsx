@@ -10,17 +10,17 @@ import TopFilterBar from './components/TopFilterBar'
 import CustomDropdown from './components/CustomDropdown'
 import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
-import ActivityFeed from './components/ActivityFeed'
 import BrowsePage from './pages/BrowsePage'
 import BrowseTasksV2 from './pages/BrowseTasksV2'
+import MyTasksPage from './pages/MyTasksPage'
 import LandingPageV4 from './pages/LandingPageV4'
 import AdminDashboard from './pages/AdminDashboard'
 import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
+import FeedbackButton from './components/FeedbackButton'
+import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
 
-// Admin user IDs - must match ADMIN_USER_IDS in backend
-const ADMIN_USER_IDS = ['b49dc7ef-38b5-40ce-936b-e5fddebc4cb7']
 import CityAutocomplete from './components/CityAutocomplete'
 import { TASK_CATEGORIES } from './components/CategoryPills'
 
@@ -1372,9 +1372,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [filterCoords, setFilterCoords] = useState({ lat: null, lng: null })
   const [radiusFilter, setRadiusFilter] = useState('50')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
-  const [activities, setActivities] = useState([])
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
 
   // Profile edit location state
@@ -1430,8 +1430,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
-  // Check if current user is admin
-  const isAdmin = user && ADMIN_USER_IDS.includes(user.id)
+  // Check if current user is admin (from API profile response)
+  const isAdmin = user && user.type === 'admin'
 
   // Working mode: My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
@@ -1439,7 +1439,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
-    { id: 'disputes', label: 'Disputes', icon: '⚖️' },
   ]
 
   // Hiring mode: Create Task, My Tasks, Browse Humans, Hired, Messages, Payments, API Keys
@@ -1517,7 +1516,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     fetchConversations()
     fetchNotifications()
     fetchUnreadMessages()
-    fetchActivities()
   }, [hiringMode])
 
   // Re-fetch tasks when location/radius filters change
@@ -1796,18 +1794,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     } catch (e) {}
   }
 
-  const fetchActivities = async () => {
-    try {
-      const res = await fetch(`${API_URL}/activity/feed`, { headers: { Authorization: user.id } })
-      if (res.ok) {
-        const data = await res.json()
-        setActivities(data || [])
-      }
-    } catch (e) {
-      console.log('Could not fetch activity feed')
-    }
-  }
-
   const handleCreateTask = async (e) => {
     e.preventDefault()
     setCreateTaskError('')
@@ -1893,13 +1879,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   const acceptTask = async (taskId) => {
     try {
-      await fetch(`${API_URL}/tasks/${taskId}/accept`, { 
+      await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
         headers: { Authorization: user.id }
       })
       fetchTasks()
     } catch (e) {
       console.log('Could not accept task')
+    }
+  }
+
+  const startWork = async (taskId) => {
+    try {
+      await fetch(`${API_URL}/tasks/${taskId}/start`, {
+        method: 'POST',
+        headers: { Authorization: user.id }
+      })
+      fetchTasks()
+    } catch (e) {
+      console.log('Could not start work')
     }
   }
 
@@ -1975,6 +1973,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       pending_review: 'bg-coral/10 text-coral',
       completed: 'bg-green-100 text-green-600',
       paid: 'bg-gray-100 text-gray-500',
+      disputed: 'bg-red-100 text-red-600',
     }
     return colors[status] || 'bg-gray-100 text-gray-500'
   }
@@ -1987,6 +1986,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       pending_review: 'Pending Review',
       completed: 'Completed',
       paid: 'Paid',
+      disputed: 'Disputed',
     }
     return labels[status] || status
   }
@@ -2047,7 +2047,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           ))}
         </nav>
 
+        {/* Feedback Button - pinned to bottom */}
+        <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
+          <button
+            onClick={() => setFeedbackOpen(!feedbackOpen)}
+            className="dashboard-v4-nav-item"
+            style={{ width: '100%', background: feedbackOpen ? 'linear-gradient(135deg, rgba(15, 76, 92, 0.1), rgba(15, 76, 92, 0.04))' : undefined }}
+          >
+            <div className="dashboard-v4-nav-item-content">
+              <span className="dashboard-v4-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </span>
+              <span className="dashboard-v4-nav-label">Feedback</span>
+            </div>
+          </button>
+        </div>
+
       </aside>
+
+      {/* Sidebar Feedback Panel */}
+      <FeedbackButton user={user} variant="sidebar" isOpen={feedbackOpen} onToggle={(v) => setFeedbackOpen(typeof v === 'boolean' ? v : !feedbackOpen)} />
 
       {/* Main */}
       <main className="dashboard-v4-main">
@@ -2399,120 +2420,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>{tasks.filter(t => t.status === 'in_progress').length} active</span>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="dashboard-v4-stats">
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Total Earned</div>
-                <div className="dashboard-v4-stat-value orange">${tasks.filter(t => t.status === 'paid').reduce((a, t) => a + (t.budget || 0), 0)}</div>
-              </div>
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Tasks Completed</div>
-                <div className="dashboard-v4-stat-value">{tasks.filter(t => t.status === 'completed' || t.status === 'paid').length}</div>
-              </div>
-              <div className="dashboard-v4-stat-card">
-                <div className="dashboard-v4-stat-label">Rating</div>
-                <div className="dashboard-v4-stat-value">⭐ {user?.rating?.toFixed(1) || 'New'}</div>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">⏳</div>
-                <p className="dashboard-v4-empty-text">Loading...</p>
-              </div>
-            ) : tasks.length === 0 ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
-                <p className="dashboard-v4-empty-title">No tasks yet</p>
-                <p className="dashboard-v4-empty-text">Browse available tasks to start earning money</p>
-
-                {/* Suggested Actions */}
-                <div className="dashboard-v4-empty-actions">
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('browse')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.search}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Browse tasks near you</p>
-                      <p className="dashboard-v4-empty-action-text">Find tasks in your area</p>
-                    </div>
-                  </div>
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('profile')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.profile}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Complete your profile</p>
-                      <p className="dashboard-v4-empty-action-text">Add skills and location</p>
-                    </div>
-                  </div>
-                  <div className="dashboard-v4-empty-action" onClick={() => setActiveTab('payments')}>
-                    <span className="dashboard-v4-empty-action-icon">{Icons.wallet}</span>
-                    <div>
-                      <p className="dashboard-v4-empty-action-title">Set up your wallet</p>
-                      <p className="dashboard-v4-empty-action-text">Get paid in USDC</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div>
-                {tasks.map(task => (
-                  <div key={task.id} className="dashboard-v4-task-card">
-                    <div className="dashboard-v4-task-header">
-                      <div>
-                        <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
-                          {getStatusLabel(task.status)}
-                        </span>
-                        <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
-                      </div>
-                      <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
-                    </div>
-
-                    {task.description && (
-                      <p className="dashboard-v4-task-description">{task.description}</p>
-                    )}
-
-                    <div className="dashboard-v4-task-meta">
-                      <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                      <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
-                      <span className="dashboard-v4-task-meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
-                      {task.agent_name && <span className="dashboard-v4-task-meta-item">🤖 {task.agent_name}</span>}
-                    </div>
-
-                    <div className="dashboard-v4-task-actions">
-                      {task.status === 'open' && (
-                        <button className="v4-btn v4-btn-primary" onClick={() => acceptTask(task.id)}>Accept Task</button>
-                      )}
-                      {task.status === 'accepted' && (
-                        <button className="v4-btn v4-btn-primary" onClick={() => {
-                          fetch(`${API_URL}/tasks/${task.id}/start`, { method: 'POST', headers: { Authorization: user.id } })
-                            .then(() => fetchTasks())
-                        }}>▶️ Start Work</button>
-                      )}
-                      {task.status === 'in_progress' && (
-                        <button className="v4-btn v4-btn-primary" onClick={() => setShowProofSubmit(task.id)}>✓ Submit Proof</button>
-                      )}
-                      {task.status === 'pending_review' && (
-                        <button className="v4-btn v4-btn-secondary" disabled>Waiting for approval...</button>
-                      )}
-                      {task.status === 'completed' && (
-                        <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 8 }}>✓ Payment pending</span>
-                      )}
-                      {task.status === 'paid' && (
-                        <span style={{ color: 'var(--orange-600)', display: 'flex', alignItems: 'center', gap: 8 }}>💰 Paid!</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Activity Feed */}
-            <ActivityFeed activities={activities} />
-          </div>
+          <MyTasksPage
+            user={user}
+            tasks={tasks}
+            loading={loading}
+            acceptTask={acceptTask}
+            onStartWork={startWork}
+            setShowProofSubmit={setShowProofSubmit}
+            activities={activities}
+          />
         )}
 
         {/* Working Mode: Browse Tasks Tab - Shows available tasks to claim */}
@@ -2653,6 +2569,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <span style={{ color: 'var(--text-tertiary)' }}>Jobs Completed</span>
                   <span style={{ color: 'var(--text-primary)' }}>{user?.jobs_completed || 0}</span>
                 </div>
+                {user?.social_links && Object.keys(user.social_links).length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid rgba(26,26,26,0.06)' }}>
+                    <span style={{ color: 'var(--text-tertiary)' }}>Socials</span>
+                    <SocialIconsRow socialLinks={user.social_links} size={18} gap={10} />
+                  </div>
+                )}
               </div>
 
               <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
@@ -2778,6 +2700,65 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
                 </div>
                 <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
+              </form>
+            </div>
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Social Links</h2>
+              <form onSubmit={async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const social_links = {}
+                PLATFORM_ORDER.forEach(p => {
+                  const val = formData.get(p)?.trim()
+                  if (val) social_links[p] = val
+                })
+                try {
+                  const res = await fetch(`${API_URL}/humans/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    body: JSON.stringify({ social_links })
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    if (data.user) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      localStorage.setItem('user', JSON.stringify(updatedUser))
+                    }
+                    toast.success('Social links updated!')
+                    setTimeout(() => window.location.reload(), 1000)
+                  } else {
+                    const err = await res.json()
+                    toast.error(err.error || 'Unknown error')
+                  }
+                } catch (err) {
+                  toast.error('Error saving social links')
+                }
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {PLATFORM_ORDER.map(platform => {
+                    const config = PLATFORMS[platform]
+                    return (
+                      <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', flexShrink: 0, width: 20 }}>
+                          {config.icon(18)}
+                        </div>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', width: 80, flexShrink: 0 }}>{config.label}</label>
+                        <input
+                          type="text"
+                          name={platform}
+                          defaultValue={user?.social_links?.[platform] || ''}
+                          placeholder={config.placeholder}
+                          maxLength={100}
+                          className="dashboard-v4-form-input"
+                          style={{ marginBottom: 0 }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or handle, not the full URL</p>
+                <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
               </form>
             </div>
 
@@ -3798,60 +3779,74 @@ function App() {
   const path = window.location.pathname
   console.log('[Auth] Rendering route:', path, 'user:', user ? user.email : 'none')
 
-  // If on auth page and already logged in, redirect to dashboard
-  if (path === '/auth' && user) {
-    console.log('[Auth] Already logged in, redirecting to dashboard')
-    window.location.href = '/dashboard'
-    return <Loading />
-  }
-
-  // Task detail route - /tasks/:id
-  if (path.startsWith('/tasks/')) {
-    const taskId = path.split('/tasks/')[1]
-    if (taskId) {
-      return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
-    }
-  }
-
-  // Onboarding route - dedicated route for onboarding wizard
-  if (path === '/onboard') {
-    if (!user) {
-      console.log('[Auth] No user for onboard, redirecting to auth')
-      window.location.href = '/auth'
-      return <Loading />
-    }
-    // If user doesn't need onboarding, redirect to dashboard
-    if (!user.needs_onboarding) {
-      console.log('[Auth] User already onboarded, redirecting to dashboard')
+  // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
+  const routeContent = (() => {
+    // If on auth page and already logged in, redirect to dashboard
+    if (path === '/auth' && user) {
+      console.log('[Auth] Already logged in, redirecting to dashboard')
       window.location.href = '/dashboard'
       return <Loading />
     }
-    return <Onboarding onComplete={handleOnboardingComplete} user={user} />
-  }
 
-  // Dashboard route - requires auth
-  if (path === '/dashboard') {
-    if (!user) {
-      console.log('[Auth] No user, redirecting to auth')
-      window.location.href = '/auth'
-      return <Loading />
+    // Task detail route - /tasks/:id
+    if (path.startsWith('/tasks/')) {
+      const taskId = path.split('/tasks/')[1]
+      if (taskId) {
+        return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
+      }
     }
 
-    // If user needs onboarding, redirect to /onboard
-    if (user.needs_onboarding) {
-      console.log('[Auth] User needs onboarding, redirecting to /onboard')
-      window.location.href = '/onboard'
-      return <Loading />
+    // Onboarding route - dedicated route for onboarding wizard
+    if (path === '/onboard') {
+      if (!user) {
+        console.log('[Auth] No user for onboard, redirecting to auth')
+        window.location.href = '/auth'
+        return <Loading />
+      }
+      // If user doesn't need onboarding, redirect to dashboard
+      if (!user.needs_onboarding) {
+        console.log('[Auth] User already onboarded, redirecting to dashboard')
+        window.location.href = '/dashboard'
+        return <Loading />
+      }
+      return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
-    return <Dashboard user={user} onLogout={logout} />
-  }
+    // Dashboard route - requires auth
+    if (path === '/dashboard') {
+      if (!user) {
+        console.log('[Auth] No user, redirecting to auth')
+        window.location.href = '/auth'
+        return <Loading />
+      }
 
-  if (path === '/auth') return <AuthPage />
-  if (path === '/mcp') return <MCPPage />
-  if (path === '/browse') return <BrowsePage user={user} />
+      // If user needs onboarding, redirect to /onboard
+      if (user.needs_onboarding) {
+        console.log('[Auth] User needs onboarding, redirecting to /onboard')
+        window.location.href = '/onboard'
+        return <Loading />
+      }
 
-  return <LandingPageV4 />}
+      return <Dashboard user={user} onLogout={logout} />
+    }
+
+    if (path === '/auth') return <AuthPage />
+    if (path === '/mcp') return <MCPPage />
+    if (path === '/browse') return <BrowsePage user={user} />
+
+    return <LandingPageV4 />
+  })()
+
+  // Dashboard has feedback in sidebar, other pages use floating button
+  const isDashboard = path === '/dashboard'
+
+  return (
+    <>
+      {routeContent}
+      {!isDashboard && <FeedbackButton user={user} />}
+    </>
+  )
+}
 
 export default function AppWrapper() {
   return (

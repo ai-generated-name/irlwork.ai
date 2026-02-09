@@ -101,36 +101,37 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     created_at: new Date().toISOString()
   });
 
-  // Record transaction
-  await supabase.from('transactions').insert({
-    id: uuidv4(),
-    task_id: taskId,
-    agent_id: agentId,
-    human_id: humanId,
-    amount: escrowAmount,
-    platform_fee: platformFee,
-    net_amount: netAmount,
-    status: 'pending',
-    release_tx: null,
-    created_at: new Date().toISOString()
-  });
+  // NOTE: Previously inserted into a 'transactions' table that doesn't exist.
+  // Transaction data is already tracked via payouts + pending_transactions tables.
 
-  // Update human stats
+  // Update human stats (fetch current values then increment — supabase-js doesn't support .raw())
+  const { data: currentHuman } = await supabase
+    .from('users')
+    .select('jobs_completed, total_tasks_completed')
+    .eq('id', humanId)
+    .single();
+
   await supabase
     .from('users')
     .update({
-      jobs_completed: supabase.raw('jobs_completed + 1'),
-      total_tasks_completed: supabase.raw('COALESCE(total_tasks_completed, 0) + 1'),
+      jobs_completed: (currentHuman?.jobs_completed || 0) + 1,
+      total_tasks_completed: (currentHuman?.total_tasks_completed || 0) + 1,
       last_active_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', humanId);
 
-  // Update agent's total_usdc_paid
+  // Update agent's total_usdc_paid (fetch current value then increment)
+  const { data: currentAgent } = await supabase
+    .from('users')
+    .select('total_usdc_paid')
+    .eq('id', agentId)
+    .single();
+
   await supabase
     .from('users')
     .update({
-      total_usdc_paid: supabase.raw(`COALESCE(total_usdc_paid, 0) + ${netAmount}`),
+      total_usdc_paid: (currentAgent?.total_usdc_paid || 0) + netAmount,
       last_active_at: new Date().toISOString()
     })
     .eq('id', agentId);
