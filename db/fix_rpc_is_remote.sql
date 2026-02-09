@@ -1,6 +1,9 @@
 -- Fix: Add is_remote to search_tasks_nearby RPC function
 -- Run this in Supabase Dashboard > SQL Editor
 
+-- Must drop first because return type changed (added is_remote column)
+DROP FUNCTION IF EXISTS search_tasks_nearby(double precision, double precision, double precision, text, text, text, integer, integer);
+
 CREATE OR REPLACE FUNCTION search_tasks_nearby(
   user_lat DOUBLE PRECISION,
   user_lng DOUBLE PRECISION,
