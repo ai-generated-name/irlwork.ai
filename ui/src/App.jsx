@@ -2064,48 +2064,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             </a>
           </div>
 
-          {/* Center: Search + Filters */}
-          <div className="dashboard-v4-topbar-center">
-            <div className="dashboard-v4-search">
-              <svg className="dashboard-v4-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search tasks..."
-                className="dashboard-v4-search-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="dashboard-v4-filters">
-              <CustomDropdown
-                value={locationFilter}
-                onChange={setLocationFilter}
-                options={[
-                  { value: '', label: 'All Locations' },
-                  { value: 'san-francisco', label: 'San Francisco' },
-                  { value: 'new-york', label: 'New York' },
-                  { value: 'los-angeles', label: 'Los Angeles' }
-                ]}
-                placeholder="All Locations"
-              />
-              <CustomDropdown
-                value={filterCategory}
-                onChange={setFilterCategory}
-                options={[
-                  { value: '', label: 'All Categories' },
-                  { value: 'delivery', label: 'Delivery' },
-                  { value: 'photography', label: 'Photography' },
-                  { value: 'errands', label: 'Errands' },
-                  { value: 'cleaning', label: 'Cleaning' },
-                  { value: 'tech', label: 'Tech' }
-                ]}
-                placeholder="All Categories"
-              />
-            </div>
-          </div>
-
           {/* Right: Notifications + User */}
           <div className="dashboard-v4-topbar-right">
             {/* Notifications Bell */}
