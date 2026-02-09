@@ -67,6 +67,7 @@ export default function BrowseTasksV2({
   const [category, setCategory] = useState('');
   const [sort, setSort] = useState('distance');
   const [radius, setRadius] = useState(initialRadius || '25');
+  const [includeRemote, setIncludeRemote] = useState(true);
 
   // Location state
   const [location, setLocation] = useState({
@@ -119,6 +120,7 @@ export default function BrowseTasksV2({
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (sort) params.set('sort', sort);
       if (location.city) params.set('city', location.city);
+      params.set('include_remote', includeRemote ? 'true' : 'false');
 
       params.set('limit', '50');
 
@@ -138,7 +140,7 @@ export default function BrowseTasksV2({
     } finally {
       setLoading(false);
     }
-  }, [location, radius, category, debouncedSearch, sort]);
+  }, [location, radius, category, debouncedSearch, sort, includeRemote]);
 
   // Fetch on mount and when filters change
   useEffect(() => {
@@ -319,6 +321,14 @@ export default function BrowseTasksV2({
               Use my location
             </button>
           )}
+          <button
+            className={`browse-tasks-v2-remote-toggle ${includeRemote ? 'active' : ''}`}
+            onClick={() => setIncludeRemote(!includeRemote)}
+            type="button"
+            title={includeRemote ? 'Remote tasks shown' : 'Remote tasks hidden'}
+          >
+            <span>🌐</span> Remote
+          </button>
         </div>
       </div>
 
