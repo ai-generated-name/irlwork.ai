@@ -12,10 +12,18 @@ function EarningsDashboard({ user }) {
   const [withdrawResult, setWithdrawResult] = useState(null)
 
   useEffect(() => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     fetchBalance()
   }, [user])
 
   const fetchBalance = async () => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       const res = await fetch(`${API_URL}/wallet/balance`, {
@@ -43,7 +51,12 @@ function EarningsDashboard({ user }) {
       return
     }
 
-    const dest = method === 'stripe' ? 'your bank account' : user.wallet_address
+    const dest = method === 'stripe' ? 'your bank account' : user?.wallet_address
+    if (method !== 'stripe' && !user?.wallet_address) {
+      toast.error('Please add a wallet address in your profile settings first')
+      return
+    }
+
     if (!confirm(`Withdraw $${balanceData.available.toFixed(2)} to ${dest}?`)) {
       return
     }
