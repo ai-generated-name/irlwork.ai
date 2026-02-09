@@ -1558,6 +1558,78 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     } catch (e) {}
   }
 
+  // Notification icon map for all notification types
+  const NOTIFICATION_ICONS = {
+    task_assigned: '📋',
+    proof_submitted: '📝',
+    proof_approved: '✅',
+    proof_rejected: '❌',
+    payment_released: '💰',
+    payment_approved: '💰',
+    payment_sent: '💸',
+    deposit_confirmed: '🏦',
+    dispute_opened: '⚖️',
+    dispute_filed: '⚖️',
+    dispute_created: '⚖️',
+    dispute_resolved: '✅',
+    rating_received: '⭐',
+    rating_visible: '⭐',
+    new_message: '💬',
+    assignment_cancelled: '🚫',
+    refund_processed: '💸',
+  }
+
+  // Navigate to a notification's linked page
+  const navigateToNotification = (notification) => {
+    markNotificationRead(notification.id)
+    setNotificationDropdownOpen(false)
+
+    const link = notification.link
+    if (!link) return
+
+    // External links (basescan, etc.)
+    if (link.startsWith('http')) {
+      window.open(link, '_blank')
+      return
+    }
+
+    // Task detail page
+    if (link.startsWith('/tasks/')) {
+      window.location.href = link
+      return
+    }
+
+    // Dashboard with query params (e.g. /dashboard?task=xxx)
+    if (link.startsWith('/dashboard')) {
+      const params = new URLSearchParams(link.split('?')[1] || '')
+      const taskId = params.get('task')
+      if (taskId) {
+        window.location.href = `/tasks/${taskId}`
+        return
+      }
+      const tab = params.get('tab')
+      if (tab) {
+        setActiveTab(tab)
+      }
+      return
+    }
+
+    // Browse page
+    if (link.startsWith('/browse')) {
+      window.location.href = link
+      return
+    }
+
+    // Disputes tab
+    if (link.startsWith('/disputes')) {
+      setActiveTab('disputes')
+      return
+    }
+
+    // Fallback
+    window.location.href = link
+  }
+
   const fetchConversations = async () => {
     try {
       const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.id } })
@@ -1927,14 +1999,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         <div
                           key={n.id}
                           className={`dashboard-v4-notification-dropdown-item ${!n.read_at ? 'unread' : ''}`}
-                          onClick={() => {
-                            markNotificationRead(n.id)
-                            setNotificationDropdownOpen(false)
-                            if (n.link) window.location.href = n.link
-                          }}
+                          onClick={() => navigateToNotification(n)}
                         >
                           <div className="dashboard-v4-notification-dropdown-icon">
-                            {n.type === 'task_assigned' ? '📋' : n.type === 'payment_received' ? '💰' : n.type === 'message' ? '💬' : '🔔'}
+                            {NOTIFICATION_ICONS[n.type] || '🔔'}
                           </div>
                           <div className="dashboard-v4-notification-dropdown-content">
                             <p className="dashboard-v4-notification-dropdown-title">{n.title}</p>
@@ -2753,10 +2821,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <div
                     key={n.id}
                     className={`dashboard-v4-notification ${!n.read_at ? 'unread' : ''}`}
-                    onClick={() => { markNotificationRead(n.id); if (n.link) window.location.href = n.link }}
+                    onClick={() => navigateToNotification(n)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <div className="dashboard-v4-notification-icon">🔔</div>
+                    <div className="dashboard-v4-notification-icon">{NOTIFICATION_ICONS[n.type] || '🔔'}</div>
                     <div className="dashboard-v4-notification-content">
                       <p className="dashboard-v4-notification-title">{n.title}</p>
                       <p className="dashboard-v4-notification-text">{n.message}</p>
