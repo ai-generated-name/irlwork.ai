@@ -1444,7 +1444,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1465,6 +1465,7 @@ app.post('/api/tasks', async (req, res) => {
       task_type: 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
+      is_remote: !!is_remote,
       created_at: new Date().toISOString()
     })
     .select()
@@ -3331,6 +3332,7 @@ app.post('/api/mcp', async (req, res) => {
             task_type: 'direct',
             human_ids: [],
             escrow_amount: budgetAmount,
+            is_remote: !!params.is_remote,
             created_at: new Date().toISOString()
           })
           .select()
@@ -4174,8 +4176,35 @@ app.get('/api/tasks/available', async (req, res) => {
     radius,
     radius_km,
     search,
-    sort = 'distance'
+    sort = 'distance',
+    include_remote = 'true'
   } = req.query;
+
+  const includeRemote = include_remote !== 'false';
+
+  // Helper: fetch remote tasks matching current filters
+  async function fetchRemoteTasks(existingIds) {
+    if (!includeRemote) return [];
+    let remoteQuery = supabase
+      .from('tasks')
+      .select('*')
+      .eq('status', 'open')
+      .eq('is_remote', true);
+    if (category) remoteQuery = remoteQuery.eq('category', category);
+    if (search) remoteQuery = remoteQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    if (sort === 'pay_high') {
+      remoteQuery = remoteQuery.order('budget', { ascending: false, nullsFirst: false });
+    } else if (sort === 'pay_low') {
+      remoteQuery = remoteQuery.order('budget', { ascending: true, nullsFirst: false });
+    } else {
+      remoteQuery = remoteQuery.order('created_at', { ascending: false });
+    }
+    const { data: remoteTasks } = await remoteQuery.limit(20);
+    if (!remoteTasks) return [];
+    return remoteTasks
+      .filter(t => !existingIds.has(t.id))
+      .map(t => ({ ...t, distance_km: null }));
+  }
 
   try {
     // If lat/lng provided, use RPC function for optimized distance-based search
@@ -4218,6 +4247,11 @@ app.get('/api/tasks/available', async (req, res) => {
             });
           }
         }
+
+        // Merge in remote tasks (visible to all users regardless of location)
+        const existingIds = new Set(results.map(r => r.id));
+        const remoteTasks = await fetchRemoteTasks(existingIds);
+        results = results.concat(remoteTasks);
 
         return res.json({
           tasks: results,
@@ -4262,22 +4296,28 @@ app.get('/api/tasks/available', async (req, res) => {
       const userLatitude = parseFloat(user_lat);
       const userLongitude = parseFloat(user_lng);
 
+      // Keep remote tasks — they bypass distance filtering
+      const remoteTasks = results.filter(t => t.is_remote);
+      let localTasks = results.filter(t => !t.is_remote);
+
       if (radius_km) {
         const radiusKm = parseFloat(radius_km) || 50;
         if (radiusKm === 0) {
-          results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
+          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, 5);
         } else {
-          results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
+          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, radiusKm);
         }
       } else if (radius) {
         const maxRadius = parseFloat(radius);
-        results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+        localTasks = filterByDistance(localTasks, userLatitude, userLongitude, maxRadius);
       }
+
+      results = [...localTasks];
 
       // Fallback: include tasks without coords that match city string
       if (city) {
         const tasksWithoutCoords = (tasks || []).filter(t =>
-          !t.latitude && !t.longitude &&
+          !t.latitude && !t.longitude && !t.is_remote &&
           t.location?.toLowerCase().includes(city.toLowerCase())
         );
         const resultIds = new Set(results.map(r => r.id));
@@ -4285,10 +4325,32 @@ app.get('/api/tasks/available', async (req, res) => {
           if (!resultIds.has(t.id)) results.push(t);
         });
       }
+
+      // Add remote tasks back (they are not filtered by distance)
+      if (includeRemote) {
+        const resultIds = new Set(results.map(r => r.id));
+        remoteTasks.forEach(t => {
+          if (!resultIds.has(t.id)) results.push(t);
+        });
+      }
     } else if (city) {
-      results = results.filter(t =>
-        t.location?.toLowerCase().includes(city.toLowerCase())
+      // When filtering by city only, keep remote tasks + city-matching tasks
+      const remoteTasks = includeRemote ? results.filter(t => t.is_remote) : [];
+      const cityTasks = results.filter(t =>
+        !t.is_remote && t.location?.toLowerCase().includes(city.toLowerCase())
       );
+      const resultIds = new Set(cityTasks.map(r => r.id));
+      remoteTasks.forEach(t => {
+        if (!resultIds.has(t.id)) cityTasks.push(t);
+      });
+      results = cityTasks;
+    }
+
+    // Merge in remote tasks for fallback path (mirrors RPC path at line 4013)
+    if (includeRemote) {
+      const existingIds = new Set(results.map(r => r.id));
+      const remoteTasks = await fetchRemoteTasks(existingIds);
+      results = results.concat(remoteTasks);
     }
 
     res.json({ tasks: results, total: results.length, hasMore: false });

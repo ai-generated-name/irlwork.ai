@@ -1393,7 +1393,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     latitude: null,
     longitude: null,
     country: '',
-    country_code: ''
+    country_code: '',
+    is_remote: false
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
@@ -1828,7 +1829,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           latitude: taskForm.latitude,
           longitude: taskForm.longitude,
           country: taskForm.country,
-          country_code: taskForm.country_code
+          country_code: taskForm.country_code,
+          is_remote: taskForm.is_remote
         })
       })
 
@@ -1837,7 +1839,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '' })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false })
         // Switch to posted tab
         setActiveTab('posted')
       } else {
@@ -2362,21 +2364,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                 </div>
                 <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">City</label>
-                  <CityAutocomplete
-                    value={taskForm.city}
-                    onChange={(locationData) => setTaskForm(prev => ({
-                      ...prev,
-                      city: locationData.city,
-                      latitude: locationData.latitude,
-                      longitude: locationData.longitude,
-                      country: locationData.country,
-                      country_code: locationData.country_code
-                    }))}
-                    placeholder="Where should this be done?"
-                    className="dashboard-v4-city-input"
-                  />
+                  <label style={{
+                    display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                    fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={taskForm.is_remote}
+                      onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                    🌐 This task can be done remotely
+                  </label>
                 </div>
+                {!taskForm.is_remote && (
+                  <div className="dashboard-v4-form-group">
+                    <label className="dashboard-v4-form-label">City</label>
+                    <CityAutocomplete
+                      value={taskForm.city}
+                      onChange={(locationData) => setTaskForm(prev => ({
+                        ...prev,
+                        city: locationData.city,
+                        latitude: locationData.latitude,
+                        longitude: locationData.longitude,
+                        country: locationData.country,
+                        country_code: locationData.country_code
+                      }))}
+                      placeholder="Where should this be done?"
+                      className="dashboard-v4-city-input"
+                    />
+                  </div>
+                )}
                 {createTaskError && (
                   <div className="dashboard-v4-form-error">{createTaskError}</div>
                 )}
