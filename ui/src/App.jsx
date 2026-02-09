@@ -2460,7 +2460,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               acceptTask={acceptTask}
               onStartWork={startWork}
               setShowProofSubmit={setShowProofSubmit}
-              activities={activities}
             />
           </TabErrorBoundary>
         )}
