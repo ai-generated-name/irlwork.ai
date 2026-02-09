@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { createClient } from '@supabase/supabase-js'
 import API_URL from '../config/api'
 
+// Only log auth diagnostics in development
+const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 if (!supabaseAnonKey) {
@@ -17,12 +20,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    console.log('[Auth] Initializing auth, API_URL:', API_URL)
+    debug('[Auth] Initializing auth, API_URL:', API_URL)
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
-        console.log('[Auth] Got session:', session ? 'exists' : 'none')
+        debug('[Auth] Got session:', session ? 'exists' : 'none')
         if (session?.user) {
-          console.log('[Auth] User ID:', session.user.id)
+          debug('[Auth] User ID:', session.user.id)
           fetchUserProfile(session.user.id)
         } else {
           setLoading(false)
@@ -50,25 +53,25 @@ export function AuthProvider({ children }) {
   }, [])
 
   const fetchUserProfile = async (userId) => {
-    console.log('[Auth] Fetching profile for user:', userId)
+    debug('[Auth] Fetching profile for user:', userId)
 
     try {
-      console.log('[Auth] Calling API:', API_URL + '/auth/verify')
+      debug('[Auth] Calling API:', API_URL + '/auth/verify')
 
       const res = await fetch(API_URL + '/auth/verify', {
         headers: { Authorization: userId }
       })
 
-      console.log('[Auth] API response status:', res.status)
+      debug('[Auth] API response status:', res.status)
       if (res.ok) {
         const data = await res.json()
-        console.log('[Auth] Got user from API:', data.user?.id)
+        debug('[Auth] Got user from API:', data.user?.id)
         setUser({ ...data.user, supabase_user: true })
       } else {
-        console.log('[Auth] API returned non-OK status, using fallback')
+        debug('[Auth] API returned non-OK status, using fallback')
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          console.log('[Auth] Setting user from session (needs onboarding)')
+          debug('[Auth] Setting user from session (needs onboarding)')
           setUser({
             id: session.user.id,
             email: session.user.email,
@@ -81,11 +84,11 @@ export function AuthProvider({ children }) {
       }
     } catch (e) {
       // API unreachable - fall back to Supabase session data
-      console.warn('[Auth] API unreachable, using session data:', e.message)
+      debug('[Auth] API unreachable, using session data:', e.message)
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('[Auth] Fallback session:', session ? 'exists' : 'none')
+      debug('[Auth] Fallback session:', session ? 'exists' : 'none')
       if (session?.user) {
-        console.log('[Auth] Setting user from fallback session (needs onboarding)')
+        debug('[Auth] Setting user from fallback session (needs onboarding)')
         setUser({
           id: session.user.id,
           email: session.user.email,
@@ -98,7 +101,7 @@ export function AuthProvider({ children }) {
         console.error('[Auth] No session available for fallback!')
       }
     } finally {
-      console.log('[Auth] Setting loading to false')
+      debug('[Auth] Setting loading to false')
       setLoading(false)
     }
   }
@@ -124,7 +127,7 @@ export function AuthProvider({ children }) {
       })
       if (!res.ok) throw new Error('Failed to complete registration')
     } catch (e) {
-      console.warn('Backend registration failed, continuing:', e.message)
+      debug('Backend registration failed, continuing:', e.message)
     }
     return data.user
   }
@@ -147,7 +150,7 @@ export function AuthProvider({ children }) {
       })
       if (!res.ok) throw new Error('Failed to complete registration')
     } catch (e) {
-      console.warn('Backend registration failed, continuing:', e.message)
+      debug('Backend registration failed, continuing:', e.message)
     }
     return data.user
   }
@@ -168,7 +171,7 @@ export function AuthProvider({ children }) {
     })
 
     if (res.status === 401 && user) {
-      console.warn('[Auth] Received 401, clearing stale auth state')
+      debug('[Auth] Received 401, clearing stale auth state')
       await logout()
     }
 
