@@ -29,9 +29,14 @@ const { createClient } = require('@supabase/supabase-js');
 // Payment and wallet services
 console.log('[Startup] Loading payment services...');
 const { releasePaymentToPending, getWalletBalance } = require('./backend/services/paymentService');
-// DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
-// const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
-// const { startBalancePromoter } = require('./backend/services/balancePromoter');
+const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
+const { startBalancePromoter } = require('./backend/services/balancePromoter');
+
+// Stripe services
+console.log('[Startup] Loading Stripe services...');
+const { stripe } = require('./backend/lib/stripe');
+const { chargeAgentForTask, listPaymentMethods, handleWebhookEvent } = require('./backend/services/stripeService');
+const initStripeRoutes = require('./routes/stripe');
 
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
@@ -98,6 +103,40 @@ if (process.env.NODE_ENV !== 'production') {
     next()
   })
 }
+
+// Stripe webhook endpoint — MUST be before express.json() because Stripe
+// needs the raw body for signature verification
+app.post('/api/stripe/webhooks',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured');
+      return res.status(500).json({ error: 'Webhook secret not configured' });
+    }
+
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+      console.error('[Stripe Webhook] Signature verification failed:', err.message);
+      return res.status(400).json({ error: `Webhook signature verification failed` });
+    }
+
+    try {
+      await handleWebhookEvent(event, supabase, createNotification);
+      res.json({ received: true });
+    } catch (err) {
+      console.error('[Stripe Webhook] Processing error:', err.message);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  }
+);
+
 app.use(express.json({ limit: '10mb' }));
 
 // Rate limiting middleware (applied after JSON parsing)
@@ -426,6 +465,13 @@ if (supabase) {
   console.log('[Startup] Admin routes mounted at /api/admin');
 }
 
+// ============ STRIPE ROUTES ============
+if (supabase) {
+  const stripeRoutes = initStripeRoutes(supabase, getUserByToken, createNotification);
+  app.use('/api/stripe', stripeRoutes);
+  console.log('[Startup] Stripe routes mounted at /api/stripe');
+}
+
 // ============ MIDDLEWARE ============
 // Middleware to update last_active_at on authenticated requests
 app.use(async (req, res, next) => {
@@ -743,6 +789,7 @@ app.get('/api/auth/verify', async (req, res) => {
       wallet_address: user.wallet_address,
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
+      social_links: user.social_links || {},
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
       verified: user.verified,
@@ -1331,7 +1378,7 @@ app.put('/api/humans/profile', async (req, res) => {
     }
   }
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code } = req.body;
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
 
@@ -1350,6 +1397,18 @@ app.put('/api/humans/profile', async (req, res) => {
   if (country !== undefined) updates.country = country;
   if (country_code !== undefined) updates.country_code = country_code;
   if (travel_radius) updates.travel_radius = travel_radius;
+  if (social_links !== undefined) {
+    const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
+    const cleaned = {};
+    if (typeof social_links === 'object' && social_links !== null) {
+      for (const [key, value] of Object.entries(social_links)) {
+        if (allowedPlatforms.includes(key) && typeof value === 'string' && value.trim()) {
+          cleaned[key] = value.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+        }
+      }
+    }
+    updates.social_links = cleaned;
+  }
 
   const { data, error } = await supabase
     .from('users')
@@ -1431,7 +1490,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1452,6 +1511,7 @@ app.post('/api/tasks', async (req, res) => {
       task_type: 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
+      is_remote: !!is_remote,
       created_at: new Date().toISOString()
     })
     .select()
@@ -1632,7 +1692,8 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
 });
 
 // Agent assigns a human to a task
-// PHASE 1: This triggers escrow deposit flow - human cannot start until deposit confirmed
+// Stripe path: charges agent immediately, task goes to in_progress
+// USDC path: sets pending_deposit, agent must send USDC manually
 app.post('/api/tasks/:id/assign', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
@@ -1640,7 +1701,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   const { id: taskId } = req.params;
-  const { human_id } = req.body;
+  const { human_id, payment_method_id } = req.body;
 
   if (!human_id) {
     return res.status(400).json({ error: 'human_id is required' });
@@ -1680,62 +1741,121 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     .eq('id', human_id)
     .single();
 
-  // PHASE 1: Generate unique deposit amount NOW (budget + random cents for matching)
   const budgetAmount = task.escrow_amount || task.budget || 50;
+
+  // Check if agent has a Stripe payment method
+  let agentPaymentMethods = [];
+  if (user.stripe_customer_id && stripe) {
+    try {
+      agentPaymentMethods = await listPaymentMethods(user.stripe_customer_id);
+    } catch (e) {
+      console.log('[Assign] Could not list agent payment methods:', e.message);
+    }
+  }
+
+  // Helper: accept application, reject others, notify human
+  const finalizeAssignment = async (notificationMessage) => {
+    await supabase
+      .from('task_applications')
+      .update({ status: 'accepted' })
+      .eq('id', application.id);
+
+    await supabase
+      .from('task_applications')
+      .update({ status: 'rejected' })
+      .eq('task_id', taskId)
+      .neq('human_id', human_id);
+
+    await createNotification(
+      human_id,
+      'task_assigned',
+      'You\'ve Been Selected!',
+      notificationMessage,
+      `/tasks/${taskId}`
+    );
+  };
+
+  // ============ STRIPE PATH: Charge immediately ============
+  if (agentPaymentMethods.length > 0) {
+    const amountCents = Math.round(budgetAmount * 100);
+
+    try {
+      const charge = await chargeAgentForTask(
+        supabase, user.id, taskId, amountCents, payment_method_id || null
+      );
+
+      // Task goes straight to in_progress — no waiting for manual deposit
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          human_id: human_id,
+          status: 'in_progress',
+          escrow_status: 'deposited',
+          escrow_amount: budgetAmount,
+          escrow_deposited_at: new Date().toISOString(),
+          work_started_at: new Date().toISOString(),
+          stripe_payment_intent_id: charge.payment_intent_id,
+          payment_method: 'stripe',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskId);
+
+      if (error) return res.status(500).json({ error: error.message });
+
+      await finalizeAssignment(
+        `You've been selected for "${task.title}". Payment is confirmed — you can begin work now!`
+      );
+
+      return res.json({
+        success: true,
+        task_id: taskId,
+        worker: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
+        human: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
+        escrow_status: 'deposited',
+        payment_method: 'stripe',
+        amount_charged: budgetAmount,
+        message: 'Worker assigned and payment charged. Work can begin immediately.'
+      });
+    } catch (stripeError) {
+      console.error('[Assign] Stripe charge failed:', stripeError.message);
+      return res.status(402).json({
+        error: 'Payment failed',
+        details: stripeError.message,
+        code: 'payment_failed'
+      });
+    }
+  }
+
+  // ============ USDC PATH: Manual deposit flow (existing) ============
   const randomCents = (Math.random() * 99 + 1) / 100;
   const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
 
-  // Assign the human but set status to 'assigned' (not 'in_progress')
-  // Human cannot start until escrow is deposited (escrow_status = 'deposited')
   const { error } = await supabase
     .from('tasks')
     .update({
       human_id: human_id,
-      status: 'assigned',  // PHASE 1: Not in_progress - must wait for deposit
-      escrow_status: 'pending_deposit',  // PHASE 1: Trigger deposit flow
+      status: 'assigned',
+      escrow_status: 'pending_deposit',
       unique_deposit_amount: uniqueDepositAmount,
       deposit_amount_cents: Math.round(uniqueDepositAmount * 100),
+      payment_method: 'usdc',
       updated_at: new Date().toISOString()
     })
     .eq('id', taskId);
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // Update application status to accepted
-  await supabase
-    .from('task_applications')
-    .update({ status: 'accepted' })
-    .eq('id', application.id);
-
-  // Reject all other applications for this task
-  await supabase
-    .from('task_applications')
-    .update({ status: 'rejected' })
-    .eq('task_id', taskId)
-    .neq('human_id', human_id);
-
-  // Notify human: "You've been selected! Funding is in progress."
-  await createNotification(
-    human_id,
-    'task_assigned',
-    'You\'ve Been Selected!',
-    `You've been selected for "${task.title}". Funding is in progress — you'll be notified when work can begin.`,
-    `/tasks/${taskId}`
+  await finalizeAssignment(
+    `You've been selected for "${task.title}". Funding is in progress — you'll be notified when work can begin.`
   );
 
-  // PHASE 1: Return deposit instructions to agent
   res.json({
     success: true,
     task_id: taskId,
-    worker: {
-      id: humanUser?.id || human_id,
-      name: humanUser?.name || 'Human'
-    },
-    human: {
-      id: humanUser?.id || human_id,
-      name: humanUser?.name || 'Human'
-    },
+    worker: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
+    human: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
     escrow_status: 'pending_deposit',
+    payment_method: 'usdc',
     deposit_instructions: {
       wallet_address: process.env.PLATFORM_WALLET_ADDRESS,
       amount_usdc: uniqueDepositAmount,
@@ -2343,22 +2463,21 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     })
     .eq('id', latestProof.id);
 
-  // PHASE 1: Update task to 'approved' status (NOT 'paid')
-  // escrow_status stays as 'deposited' until admin releases payment
+  // Update task to 'approved' status
   await supabase
     .from('tasks')
     .update({
-      status: 'approved',  // PHASE 1: Intermediate status - proof approved, awaiting admin release
+      status: 'approved',
       updated_at: new Date().toISOString()
     })
     .eq('id', taskId);
 
-  // Notify human: "Your proof has been approved! Payment is being processed."
+  // Notify human
   await createNotification(
     task.human_id,
     'proof_approved',
     'Proof Approved!',
-    `Your proof for "${task.title}" has been approved! Payment is being processed by the platform.`,
+    `Your proof for "${task.title}" has been approved! Payment is being processed.`,
     `/tasks/${taskId}`
   );
 
@@ -2367,14 +2486,28 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     event: 'proof_approved',
     task_id: taskId,
     proof_id: latestProof.id,
-    message: 'Proof approved. Payment will be processed by the platform.',
+    message: 'Proof approved. Payment will be processed.',
     timestamp: new Date().toISOString()
   });
+
+  // Stripe-paid tasks: auto-release to pending balance (no admin step needed)
+  if (task.payment_method === 'stripe' && task.stripe_payment_intent_id) {
+    try {
+      await releasePaymentToPending(supabase, taskId, task.human_id, task.agent_id, createNotification);
+      console.log(`[Approve] Auto-released payment for Stripe task ${taskId}`);
+    } catch (releaseError) {
+      console.error('[Approve] Auto-release failed for Stripe task:', releaseError.message);
+      // Don't fail the approve — admin can manually release if auto-release fails
+    }
+  }
 
   res.json({
     success: true,
     status: 'approved',
-    message: 'Proof approved. Payment will be processed manually by the platform.'
+    payment_method: task.payment_method || 'usdc',
+    message: task.payment_method === 'stripe'
+      ? 'Proof approved. Payment released to pending balance with 48-hour hold.'
+      : 'Proof approved. Payment will be processed by the platform.'
   });
 });
 
@@ -3318,6 +3451,7 @@ app.post('/api/mcp', async (req, res) => {
             task_type: 'direct',
             human_ids: [],
             escrow_amount: budgetAmount,
+            is_remote: !!params.is_remote,
             created_at: new Date().toISOString()
           })
           .select()
@@ -4161,8 +4295,35 @@ app.get('/api/tasks/available', async (req, res) => {
     radius,
     radius_km,
     search,
-    sort = 'distance'
+    sort = 'distance',
+    include_remote = 'true'
   } = req.query;
+
+  const includeRemote = include_remote !== 'false';
+
+  // Helper: fetch remote tasks matching current filters
+  async function fetchRemoteTasks(existingIds) {
+    if (!includeRemote) return [];
+    let remoteQuery = supabase
+      .from('tasks')
+      .select('*')
+      .eq('status', 'open')
+      .eq('is_remote', true);
+    if (category) remoteQuery = remoteQuery.eq('category', category);
+    if (search) remoteQuery = remoteQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    if (sort === 'pay_high') {
+      remoteQuery = remoteQuery.order('budget', { ascending: false, nullsFirst: false });
+    } else if (sort === 'pay_low') {
+      remoteQuery = remoteQuery.order('budget', { ascending: true, nullsFirst: false });
+    } else {
+      remoteQuery = remoteQuery.order('created_at', { ascending: false });
+    }
+    const { data: remoteTasks } = await remoteQuery.limit(20);
+    if (!remoteTasks) return [];
+    return remoteTasks
+      .filter(t => !existingIds.has(t.id))
+      .map(t => ({ ...t, distance_km: null }));
+  }
 
   try {
     // If lat/lng provided, use RPC function for optimized distance-based search
@@ -4205,6 +4366,11 @@ app.get('/api/tasks/available', async (req, res) => {
             });
           }
         }
+
+        // Merge in remote tasks (visible to all users regardless of location)
+        const existingIds = new Set(results.map(r => r.id));
+        const remoteTasks = await fetchRemoteTasks(existingIds);
+        results = results.concat(remoteTasks);
 
         return res.json({
           tasks: results,
@@ -4249,22 +4415,28 @@ app.get('/api/tasks/available', async (req, res) => {
       const userLatitude = parseFloat(user_lat);
       const userLongitude = parseFloat(user_lng);
 
+      // Keep remote tasks — they bypass distance filtering
+      const remoteTasks = results.filter(t => t.is_remote);
+      let localTasks = results.filter(t => !t.is_remote);
+
       if (radius_km) {
         const radiusKm = parseFloat(radius_km) || 50;
         if (radiusKm === 0) {
-          results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
+          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, 5);
         } else {
-          results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
+          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, radiusKm);
         }
       } else if (radius) {
         const maxRadius = parseFloat(radius);
-        results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+        localTasks = filterByDistance(localTasks, userLatitude, userLongitude, maxRadius);
       }
+
+      results = [...localTasks];
 
       // Fallback: include tasks without coords that match city string
       if (city) {
         const tasksWithoutCoords = (tasks || []).filter(t =>
-          !t.latitude && !t.longitude &&
+          !t.latitude && !t.longitude && !t.is_remote &&
           t.location?.toLowerCase().includes(city.toLowerCase())
         );
         const resultIds = new Set(results.map(r => r.id));
@@ -4272,10 +4444,32 @@ app.get('/api/tasks/available', async (req, res) => {
           if (!resultIds.has(t.id)) results.push(t);
         });
       }
+
+      // Add remote tasks back (they are not filtered by distance)
+      if (includeRemote) {
+        const resultIds = new Set(results.map(r => r.id));
+        remoteTasks.forEach(t => {
+          if (!resultIds.has(t.id)) results.push(t);
+        });
+      }
     } else if (city) {
-      results = results.filter(t =>
-        t.location?.toLowerCase().includes(city.toLowerCase())
+      // When filtering by city only, keep remote tasks + city-matching tasks
+      const remoteTasks = includeRemote ? results.filter(t => t.is_remote) : [];
+      const cityTasks = results.filter(t =>
+        !t.is_remote && t.location?.toLowerCase().includes(city.toLowerCase())
       );
+      const resultIds = new Set(cityTasks.map(r => r.id));
+      remoteTasks.forEach(t => {
+        if (!resultIds.has(t.id)) cityTasks.push(t);
+      });
+      results = cityTasks;
+    }
+
+    // Merge in remote tasks for fallback path (mirrors RPC path at line 4013)
+    if (includeRemote) {
+      const existingIds = new Set(results.map(r => r.id));
+      const remoteTasks = await fetchRemoteTasks(existingIds);
+      results = results.concat(remoteTasks);
     }
 
     res.json({ tasks: results, total: results.length, hasMore: false });
@@ -4293,7 +4487,7 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
@@ -4323,7 +4517,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
       verified, availability, wallet_address, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at
+      total_disputes_filed, total_usdc_paid, last_active_at, social_links
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
@@ -4517,15 +4711,62 @@ app.get('/api/wallet/balance', async (req, res) => {
 // DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
 // Withdrawals are now handled manually by admin
 app.post('/api/wallet/withdraw', async (req, res) => {
-  res.status(410).json({
-    error: 'Self-service withdrawals are disabled for Phase 1. Payments are processed manually by the platform.'
-  });
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { amount_cents, method } = req.body; // method: 'stripe' | 'usdc'
+
+  if (!method || !['stripe', 'usdc'].includes(method)) {
+    return res.status(400).json({ error: 'Invalid method. Use "stripe" or "usdc".' });
+  }
+
+  try {
+    if (method === 'stripe') {
+      if (!user.stripe_account_id) {
+        return res.status(400).json({
+          error: 'No bank account connected',
+          action: 'connect_stripe',
+          message: 'Connect your bank account to withdraw via Stripe.'
+        });
+      }
+
+      const { processStripeWithdrawal } = require('./backend/services/withdrawalService');
+      const result = await processStripeWithdrawal(supabase, user.id, amount_cents || null, createNotification);
+      return res.json(result);
+    } else {
+      // USDC path
+      if (!user.wallet_address) {
+        return res.status(400).json({
+          error: 'No wallet address configured',
+          message: 'Add a Base network wallet address in your profile to withdraw USDC.'
+        });
+      }
+
+      const { sendUSDC } = require('./backend/lib/wallet');
+      const result = await processWithdrawal(supabase, user.id, amount_cents || null, sendUSDC, createNotification);
+      return res.json(result);
+    }
+  } catch (error) {
+    console.error('[Withdraw] Error:', error.message);
+    return res.status(400).json({ error: error.message });
+  }
 });
 
 app.get('/api/wallet/withdrawals', async (req, res) => {
-  res.status(410).json({
-    error: 'Self-service withdrawal history is disabled for Phase 1. Contact support for payment status.'
-  });
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const history = await getWithdrawalHistory(supabase, user.id);
+    res.json(history);
+  } catch (error) {
+    console.error('[Withdrawals] Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get('/api/wallet/status', async (req, res) => {
@@ -4653,8 +4894,8 @@ async function start() {
     // console.log('   ✅ Auto-release service started (48h threshold)');
 
     // Start balance promoter (promotes pending → available after 48 hours)
-    // startBalancePromoter(supabase, createNotification);
-    // console.log('   ✅ Balance promoter started (15min interval)');
+    startBalancePromoter(supabase, createNotification);
+    console.log('   ✅ Balance promoter started (15min interval)');
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }

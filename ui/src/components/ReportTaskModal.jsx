@@ -119,7 +119,7 @@ export default function ReportTaskModal({
               {/* Reason selection */}
               <div className="quick-apply-modal-field">
                 <label>Reason *</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                <div className="report-reason-grid">
                   {REPORT_REASONS.map((r) => (
                     <button
                       key={r.value}

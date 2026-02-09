@@ -1,7 +1,7 @@
 // V4 Design System - Shared Layout Components
 // Provides consistent navbar, footer, and styling across all pages
 
-import React from 'react'
+import React, { useState } from 'react'
 
 // V4 Design Tokens as CSS-in-JS for non-landing pages
 export const v4 = {
@@ -39,8 +39,10 @@ export const v4 = {
 
 // Shared Navbar Component
 export function NavbarV4({ user, onLogout }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
-    <nav style={{
+    <nav className="navbar-v4" style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -60,7 +62,24 @@ export function NavbarV4({ user, onLogout }) {
         <span className="logo-name-v4">irlwork.ai</span>
       </a>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+      {/* Mobile hamburger toggle */}
+      <button
+        className="navbar-v4-mobile-toggle"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        aria-label="Toggle navigation menu"
+      >
+        {mobileMenuOpen ? (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          </svg>
+        )}
+      </button>
+
+      <div className={`navbar-v4-links${mobileMenuOpen ? ' open' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
         <a href="/mcp" style={{
           color: v4.colors.textSecondary,
           textDecoration: 'none',
@@ -124,21 +143,21 @@ export function NavbarV4({ user, onLogout }) {
 // Shared Footer Component
 export function FooterV4() {
   return (
-    <footer style={{
+    <footer className="footer-v4" style={{
       background: v4.colors.teal900,
       color: 'white',
       padding: '64px 32px 48px',
       fontFamily: v4.fonts.display,
     }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{
+        <div className="footer-v4-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: 48,
           marginBottom: 48,
         }}>
           {/* Brand */}
-          <div style={{ gridColumn: 'span 2' }}>
+          <div className="footer-v4-brand" style={{ gridColumn: 'span 2' }}>
             <a href="/" className="logo-v4" style={{ marginBottom: 16 }}>
               <div className="logo-mark-v4">irl</div>
               <span className="logo-name-v4">irlwork.ai</span>
@@ -188,7 +207,7 @@ export function FooterV4() {
         </div>
 
         {/* Bottom */}
-        <div style={{
+        <div className="footer-v4-bottom" style={{
           borderTop: '1px solid rgba(255,255,255,0.1)',
           paddingTop: 32,
           display: 'flex',
