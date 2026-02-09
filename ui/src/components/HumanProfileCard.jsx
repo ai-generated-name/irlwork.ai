@@ -21,13 +21,11 @@ function StarRating({ rating, count }) {
           />
         ))}
       </div>
-      {numRating > 0 ? (
+      {numRating > 0 && (
         <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
           {numRating.toFixed(1)}
           {count > 0 && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> ({count} {count === 1 ? 'review' : 'reviews'})</span>}
         </span>
-      ) : (
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No reviews yet</span>
       )}
     </div>
   )
@@ -125,26 +123,34 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               {human.city}{human.state ? `, ${human.state}` : ''}
             </span>
           )}
-          <StarRating rating={human.rating} count={human.total_ratings_count || 0} />
+          {parseFloat(human.rating) > 0 && (
+            <StarRating rating={human.rating} count={human.total_ratings_count || 0} />
+          )}
+          {human.social_links && Object.keys(human.social_links).length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              <SocialIconsRow socialLinks={human.social_links} size={15} gap={7} />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Bio */}
-      <p style={{
-        fontSize: 14,
-        color: 'var(--text-secondary)',
-        marginBottom: 14,
-        lineHeight: 1.55,
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden',
-        minHeight: 43,
-        flex: '0 0 auto',
-        margin: '0 0 14px 0'
-      }}>
-        {human.bio || 'No bio provided'}
-      </p>
+      {human.bio && (
+        <p style={{
+          fontSize: 14,
+          color: 'var(--text-secondary)',
+          marginBottom: 14,
+          lineHeight: 1.55,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          flex: '0 0 auto',
+          margin: '0 0 14px 0'
+        }}>
+          {human.bio}
+        </p>
+      )}
 
       {/* Skills */}
       <div style={{
@@ -181,13 +187,6 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
           </span>
         )}
       </div>
-
-      {/* Social Links */}
-      {human.social_links && Object.keys(human.social_links).length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <SocialIconsRow socialLinks={human.social_links} size={16} gap={8} />
-        </div>
-      )}
 
       {/* Footer: Rate + Hire Button */}
       <div style={{
