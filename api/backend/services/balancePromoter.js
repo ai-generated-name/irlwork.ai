@@ -31,7 +31,7 @@ async function promotePendingBalances(supabase, createNotification) {
     // Get all pending transactions that have passed their clears_at time
     const { data: cleared, error: selectError } = await supabase
       .from('pending_transactions')
-      .select('id, user_id, amount_cents, task_id, clears_at')
+      .select('id, user_id, amount_cents, task_id, clears_at, payout_method')
       .eq('status', 'pending')
       .lt('clears_at', new Date().toISOString());
 
@@ -70,11 +70,12 @@ async function promotePendingBalances(supabase, createNotification) {
 
         // Send notification to human
         if (createNotification) {
+          const currencyLabel = tx.payout_method === 'stripe' ? 'USD' : 'USDC';
           await createNotification(
             tx.user_id,
             'balance_available',
             'Payment Available!',
-            `$${amount.toFixed(2)} USDC is now available for withdrawal. The 48-hour dispute window has passed.`,
+            `$${amount.toFixed(2)} ${currencyLabel} is now available for withdrawal. The 48-hour dispute window has passed.`,
             `/wallet`
           );
         }
@@ -85,6 +86,41 @@ async function promotePendingBalances(supabase, createNotification) {
           .update({ status: 'available' })
           .eq('task_id', tx.task_id)
           .eq('status', 'pending');
+
+        // Stripe-paid tasks: auto-transfer to worker's connected account if they have one
+        if (tx.payout_method === 'stripe') {
+          try {
+            const { transferToWorker, getConnectAccountStatus } = require('./stripeService');
+            const { data: worker } = await supabase
+              .from('users')
+              .select('stripe_account_id, stripe_onboarding_complete')
+              .eq('id', tx.user_id)
+              .single();
+
+            if (worker?.stripe_account_id && worker?.stripe_onboarding_complete) {
+              const status = await getConnectAccountStatus(worker.stripe_account_id);
+              if (status.payouts_enabled) {
+                const result = await transferToWorker(supabase, tx.id, worker.stripe_account_id, tx.amount_cents, tx.task_id);
+                console.log(`[BalancePromoter] Auto-transferred $${amount.toFixed(2)} to Stripe account ${worker.stripe_account_id} (transfer: ${result.transfer_id})`);
+
+                // Mark as withdrawn since transfer is initiated
+                await supabase
+                  .from('pending_transactions')
+                  .update({
+                    status: 'withdrawn',
+                    stripe_transfer_id: result.transfer_id,
+                    withdrawn_at: new Date().toISOString()
+                  })
+                  .eq('id', tx.id);
+              }
+            }
+            // If worker doesn't have Connect set up, funds stay as 'available'
+            // and they'll be prompted to connect when they try to withdraw
+          } catch (transferError) {
+            console.error(`[BalancePromoter] Stripe auto-transfer failed for tx ${tx.id}:`, transferError.message);
+            // Funds stay as 'available' — worker can manually withdraw later
+          }
+        }
 
       } catch (error) {
         console.error(`[BalancePromoter] Error processing transaction ${tx.id}:`, error);

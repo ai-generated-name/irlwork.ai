@@ -19,6 +19,9 @@ import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
 import FeedbackButton from './components/FeedbackButton'
+import StripeProvider from './components/StripeProvider'
+import PaymentMethodForm from './components/PaymentMethodForm'
+import PaymentMethodList from './components/PaymentMethodList'
 import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
@@ -1688,13 +1691,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         body: JSON.stringify({ human_id: humanId })
       })
       if (res.ok) {
-        // Refresh tasks and applications
+        const data = await res.json()
         fetchPostedTasks()
         setExpandedTask(null)
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
+
+        // Show appropriate toast based on payment method
+        if (data.payment_method === 'stripe') {
+          toast.success(`Worker assigned! $${data.amount_charged?.toFixed(2)} charged to your card.`)
+        } else {
+          toast.success('Worker assigned! Send USDC to fund the escrow.')
+        }
       } else {
         const err = await res.json()
-        toast.error(err.error || 'Failed to assign human')
+        if (err.code === 'payment_failed') {
+          toast.error(`Payment failed: ${err.details || err.error}`)
+        } else {
+          toast.error(err.error || 'Failed to assign human')
+        }
       }
     } catch (e) {
       toast.error('Network error. Please try again.')
@@ -2541,6 +2555,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: API Keys Tab */}
         {hiringMode && activeTab === 'api-keys' && (
           <ApiKeysTab user={user} />
+        )}
+
+        {/* Hiring Mode: Payments Tab */}
+        {hiringMode && activeTab === 'payments' && (
+          <div>
+            <h1 className="dashboard-v4-page-title">Payment Methods</h1>
+            <StripeProvider>
+              <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
+                  <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
+                  <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
+                </div>
+                <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                  When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
+                </div>
+              </div>
+            </StripeProvider>
+          </div>
         )}
 
         {/* Working Mode: Payments Tab */}
