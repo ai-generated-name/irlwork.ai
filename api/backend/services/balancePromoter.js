@@ -68,7 +68,7 @@ async function promotePendingBalances(supabase, createNotification) {
 
         console.log(`[BalancePromoter] Promoted transaction ${tx.id} - $${amount.toFixed(2)} now available for ${tx.user_id}`);
 
-        // Send notification to worker
+        // Send notification to human
         if (createNotification) {
           await createNotification(
             tx.user_id,

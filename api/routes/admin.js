@@ -322,7 +322,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       if (updateError) throw updateError;
 
-      // Notify worker
+      // Notify human
       await createNotification(
         task.human_id,
         'deposit_confirmed',
@@ -348,8 +348,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         payment_id: paymentId,
         deposit_status: depositStatus,
         message: depositStatus === 'confirmed'
-          ? 'Deposit confirmed. Worker has been notified to begin work.'
-          : 'Deposit confirmed with mismatch noted. Worker has been notified to begin work.'
+          ? 'Deposit confirmed. Human has been notified to begin work.'
+          : 'Deposit confirmed with mismatch noted. Human has been notified to begin work.'
       });
     } catch (error) {
       console.error('[Admin] Confirm deposit error:', error);
@@ -380,7 +380,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         return res.status(400).json({ error: `Task escrow_status is ${task.escrow_status}, expected pending_deposit` });
       }
 
-      const workerId = task.human_id;
+      const humanId = task.human_id;
       const agentId = task.agent_id;
 
       // Reset task
@@ -399,18 +399,18 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       if (updateError) throw updateError;
 
       // Reset application status
-      if (workerId) {
+      if (humanId) {
         await supabase
           .from('task_applications')
           .update({ status: 'cancelled' })
           .eq('task_id', id)
-          .eq('human_id', workerId);
+          .eq('human_id', humanId);
       }
 
-      // Notify worker
-      if (workerId) {
+      // Notify human
+      if (humanId) {
         await createNotification(
-          workerId,
+          humanId,
           'assignment_cancelled',
           'Assignment Cancelled',
           `Your assignment for "${task.title}" was cancelled due to unfunded escrow. The task is now open for new applications.`,
@@ -430,7 +430,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       }
 
       // Log admin action
-      await logAdminAction(req.user.id, 'cancel_assignment', id, null, { reason, worker_id: workerId });
+      await logAdminAction(req.user.id, 'cancel_assignment', id, null, { reason, worker_id: humanId });
 
       res.json({
         success: true,
@@ -602,14 +602,14 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       // Calculate fees server-side
       const depositAmount = parseFloat(payment.deposit_amount);
-      const workerAmount = (depositAmount * (1 - PLATFORM_FEE_PERCENT)).toFixed(2);
+      const humanAmount = (depositAmount * (1 - PLATFORM_FEE_PERCENT)).toFixed(2);
       const platformFee = (depositAmount * PLATFORM_FEE_PERCENT).toFixed(2);
 
       // Update manual_payments
       const { error: updatePaymentError } = await supabase
         .from('manual_payments')
         .update({
-          worker_amount: workerAmount,
+          worker_amount: humanAmount,
           platform_fee: platformFee,
           status: 'pending_withdrawal',
           released_at: new Date().toISOString(),
@@ -631,23 +631,23 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       if (updateTaskError) throw updateTaskError;
 
-      // Notify worker
+      // Notify human
       await createNotification(
         task.human_id,
         'payment_approved',
         'Payment Approved!',
-        `Your payment of $${workerAmount} USDC for "${task.title}" has been approved. Withdrawal is being processed.`,
+        `Your payment of $${humanAmount} USDC for "${task.title}" has been approved. Withdrawal is being processed.`,
         `/tasks/${id}`
       );
 
       // Log admin action
-      await logAdminAction(req.user.id, 'release_payment', id, payment.id, { notes, worker_amount: workerAmount, platform_fee: platformFee });
+      await logAdminAction(req.user.id, 'release_payment', id, payment.id, { notes, worker_amount: humanAmount, platform_fee: platformFee });
 
       res.json({
         success: true,
         payment_id: payment.id,
         deposit_amount: depositAmount,
-        worker_amount: parseFloat(workerAmount),
+        worker_amount: parseFloat(humanAmount),
         platform_fee: parseFloat(platformFee),
         worker_wallet: task.human?.circle_wallet_id || null,
         message: 'Payment released. Ready for withdrawal confirmation.'
@@ -734,16 +734,21 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       if (updateTaskError) throw updateTaskError;
 
-      // Update worker stats
+      // Update human stats (fetch then increment - supabase.raw() not available in JS client)
+      const { data: humanStats } = await supabase
+        .from('users')
+        .select('jobs_completed')
+        .eq('id', payment.worker_id)
+        .single();
       await supabase
         .from('users')
         .update({
-          jobs_completed: supabase.raw('COALESCE(jobs_completed, 0) + 1'),
+          jobs_completed: (humanStats?.jobs_completed || 0) + 1,
           updated_at: new Date().toISOString()
         })
         .eq('id', payment.worker_id);
 
-      // Notify worker
+      // Notify human
       await createNotification(
         payment.worker_id,
         'payment_sent',
@@ -759,7 +764,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         success: true,
         tx_hash,
         basescan_url: `https://basescan.org/tx/${tx_hash}`,
-        message: 'Withdrawal confirmed. Worker has been notified.'
+        message: 'Withdrawal confirmed. Human has been notified.'
       });
     } catch (error) {
       console.error('[Admin] Confirm withdrawal error:', error);

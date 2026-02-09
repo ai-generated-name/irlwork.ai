@@ -7,14 +7,14 @@ const { v4: uuidv4 } = require('uuid');
  * 1. Task approved → funds go to pending_transactions (status='pending')
  * 2. 48-hour wait period for disputes
  * 3. Cron job promotes to 'available' status
- * 4. Worker can withdraw once status='available'
+ * 4. Human can withdraw once status='available'
  */
 
 /**
  * Release payment to pending balance with 48-hour dispute window
  * @param {object} supabase - Supabase client
  * @param {string} taskId - Task ID
- * @param {string} humanId - Worker user ID
+ * @param {string} humanId - Human user ID
  * @param {string} agentId - Agent user ID
  * @param {function} createNotification - Notification function
  * @returns {object} Payment release result
@@ -58,7 +58,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   const clearsAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
   // Insert into pending_transactions (funds held for 48-hour dispute window)
-  // USDC stays in platform wallet until worker withdraws after dispute period
+  // USDC stays in platform wallet until human withdraws after dispute period
   const { data: pendingTx, error: pendingError } = await supabase
     .from('pending_transactions')
     .insert({
