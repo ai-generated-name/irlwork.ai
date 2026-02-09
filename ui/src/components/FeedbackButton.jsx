@@ -51,8 +51,10 @@ const toBase64 = (file) =>
     reader.onerror = reject
   })
 
-export default function FeedbackButton({ user }) {
-  const [isOpen, setIsOpen] = useState(false)
+export default function FeedbackButton({ user, variant = 'floating', isOpen: controlledOpen, onToggle }) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = variant === 'sidebar' ? (controlledOpen || false) : internalOpen
+  const setIsOpen = variant === 'sidebar' ? (onToggle || (() => {})) : setInternalOpen
   const [type, setType] = useState('feedback')
   const [urgency, setUrgency] = useState('normal')
   const [subject, setSubject] = useState('')
@@ -199,8 +201,8 @@ export default function FeedbackButton({ user }) {
         />
       )}
 
-      {/* Floating Button */}
-      {!isOpen && (
+      {/* Floating Button (only in floating mode) */}
+      {variant === 'floating' && !isOpen && (
         <button
           onClick={() => setIsOpen(true)}
           aria-label="Send feedback"

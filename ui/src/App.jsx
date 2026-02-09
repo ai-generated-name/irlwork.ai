@@ -1373,6 +1373,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [filterCoords, setFilterCoords] = useState({ lat: null, lng: null })
   const [radiusFilter, setRadiusFilter] = useState('50')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
   const [activities, setActivities] = useState([])
@@ -2046,7 +2047,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           ))}
         </nav>
 
+        {/* Feedback Button - pinned to bottom */}
+        <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
+          <button
+            onClick={() => setFeedbackOpen(!feedbackOpen)}
+            className="dashboard-v4-nav-item"
+            style={{ width: '100%', background: feedbackOpen ? 'linear-gradient(135deg, rgba(15, 76, 92, 0.1), rgba(15, 76, 92, 0.04))' : undefined }}
+          >
+            <div className="dashboard-v4-nav-item-content">
+              <span className="dashboard-v4-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </span>
+              <span className="dashboard-v4-nav-label">Feedback</span>
+            </div>
+          </button>
+        </div>
+
       </aside>
+
+      {/* Sidebar Feedback Panel */}
+      <FeedbackButton user={user} variant="sidebar" isOpen={feedbackOpen} onToggle={(v) => setFeedbackOpen(typeof v === 'boolean' ? v : !feedbackOpen)} />
 
       {/* Main */}
       <main className="dashboard-v4-main">
@@ -3839,10 +3861,13 @@ function App() {
     return <LandingPageV4 />
   })()
 
+  // Dashboard has feedback in sidebar, other pages use floating button
+  const isDashboard = path === '/dashboard'
+
   return (
     <>
       {routeContent}
-      <FeedbackButton user={user} />
+      {!isDashboard && <FeedbackButton user={user} />}
     </>
   )
 }
