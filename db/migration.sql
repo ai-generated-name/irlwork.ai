@@ -35,7 +35,10 @@ CREATE TABLE users (
     
     -- Skills stored as JSONB
     skills JSONB DEFAULT '[]',
-    
+
+    -- Social profile links stored as JSONB
+    social_links JSONB DEFAULT '{}',
+
     -- Profile
     profile_completeness DECIMAL(3,2) DEFAULT 0.20,
     availability VARCHAR(50) DEFAULT 'available',

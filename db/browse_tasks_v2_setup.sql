@@ -28,6 +28,7 @@ RETURNS TABLE (
   agent_id UUID,
   human_id UUID,
   created_at TIMESTAMPTZ,
+  is_remote BOOLEAN,
   distance_km DOUBLE PRECISION
 ) AS $$
 BEGIN
@@ -35,7 +36,7 @@ BEGIN
   SELECT
     t.id, t.title, t.description, t.category, t.budget, t.duration,
     t.location, t.latitude, t.longitude, t.status, t.agent_id, t.human_id,
-    t.created_at,
+    t.created_at, t.is_remote,
     (6371 * acos(
       LEAST(1.0, cos(radians(user_lat)) * cos(radians(t.latitude)) *
       cos(radians(t.longitude) - radians(user_lng)) +

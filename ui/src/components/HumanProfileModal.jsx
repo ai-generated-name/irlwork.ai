@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, MapPin, Check, Star, Briefcase, Clock, Shield, Calendar, TrendingUp, Loader2 } from 'lucide-react'
 import { StarRating } from './HumanProfileCard'
+import { SocialIconsRow } from './SocialIcons'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -182,6 +183,13 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   }}>
                     <Calendar size={12} />
                     Member since {memberSince}
+                  </div>
+                )}
+
+                {/* Social Links */}
+                {profile.social_links && Object.keys(profile.social_links).length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <SocialIconsRow socialLinks={profile.social_links} size={18} gap={10} />
                   </div>
                 )}
               </div>

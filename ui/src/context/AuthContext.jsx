@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import API_URL from '../config/api'
 
@@ -127,9 +127,12 @@ export function AuthProvider({ children }) {
   }
 
   const registerAgent = async (form) => {
+    if (!form.password || form.password.length < 8) {
+      throw new Error('Password must be at least 8 characters')
+    }
     const { data, error } = await supabase.auth.signUp({
       email: form.email,
-      password: form.password || 'agent-placeholder',
+      password: form.password,
       options: { data: { name: form.name || form.organization, account_type: 'agent' } }
     })
     if (error) throw new Error(error.message)
@@ -151,6 +154,24 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  // Authenticated fetch wrapper — auto-logs-out on 401 responses
+  const authenticatedFetch = useCallback(async (url, options = {}) => {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: user?.id || ''
+      }
+    })
+
+    if (res.status === 401 && user) {
+      console.warn('[Auth] Received 401, clearing stale auth state')
+      await logout()
+    }
+
+    return res
+  }, [user])
+
   const value = {
     user,
     setUser,
@@ -159,6 +180,7 @@ export function AuthProvider({ children }) {
     registerHuman,
     registerAgent,
     logout,
+    authenticatedFetch,
     supabase,
     API_URL
   }

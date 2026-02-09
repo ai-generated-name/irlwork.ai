@@ -1,5 +1,6 @@
 import React from 'react'
 import { MapPin, Star, Check } from 'lucide-react'
+import { SocialIconsRow } from './SocialIcons'
 
 function StarRating({ rating, count }) {
   const numRating = parseFloat(rating) || 0
@@ -180,6 +181,13 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
           </span>
         )}
       </div>
+
+      {/* Social Links */}
+      {human.social_links && Object.keys(human.social_links).length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <SocialIconsRow socialLinks={human.social_links} size={16} gap={8} />
+        </div>
+      )}
 
       {/* Footer: Rate + Hire Button */}
       <div style={{
