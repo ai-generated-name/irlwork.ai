@@ -2335,7 +2335,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                   />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Category</label>
                     <CustomDropdown
@@ -2539,7 +2539,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             <h1 className="dashboard-v4-page-title">Browse Humans</h1>
 
             {/* Search & Filter */}
-            <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+            <div className="browse-humans-filters">
               <div style={{ flex: 1, position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
                 <input
@@ -2551,7 +2551,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <div style={{ width: 180 }}>
+              <div>
                 <CustomDropdown
                   value={filterCategory}
                   onChange={setFilterCategory}
@@ -2574,7 +2574,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+              <div className="browse-humans-grid">
                 {humans
                   .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
                   .filter(h => !filterCategory || h.skills?.includes(filterCategory))
@@ -2713,7 +2713,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   toast.error('Error saving profile')
                 }
               }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Full Name</label>
                     <input type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
@@ -2729,7 +2729,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
                     <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
@@ -2862,7 +2862,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 {selectedConversation ? (
                   <>
                     {/* Mobile Back Button */}
-                    <div style={{ display: 'none', padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)', alignItems: 'center', gap: 8 }} className="md:hidden">
+                    <div className="flex md:hidden items-center gap-2" style={{ padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
                       <button onClick={() => setSelectedConversation(null)} style={{ padding: 8, background: 'none', border: 'none', cursor: 'pointer' }}>
                         ← Back
                       </button>
@@ -3067,8 +3067,8 @@ function TaskDetailPage({ taskId, user, onLogout }) {
         </div>
 
         {/* Task Card */}
-        <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: 32, border: '1px solid rgba(26,26,26,0.08)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div className="task-detail-card" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: 32, border: '1px solid rgba(26,26,26,0.08)' }}>
+          <div className="task-detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
             <div>
               <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
                 {getStatusLabel(task.status)}
