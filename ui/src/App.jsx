@@ -18,6 +18,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
+import FeedbackButton from './components/FeedbackButton'
 
 // Admin user IDs - must match ADMIN_USER_IDS in backend
 const ADMIN_USER_IDS = ['b49dc7ef-38b5-40ce-936b-e5fddebc4cb7']
@@ -3780,60 +3781,71 @@ function App() {
   const path = window.location.pathname
   console.log('[Auth] Rendering route:', path, 'user:', user ? user.email : 'none')
 
-  // If on auth page and already logged in, redirect to dashboard
-  if (path === '/auth' && user) {
-    console.log('[Auth] Already logged in, redirecting to dashboard')
-    window.location.href = '/dashboard'
-    return <Loading />
-  }
-
-  // Task detail route - /tasks/:id
-  if (path.startsWith('/tasks/')) {
-    const taskId = path.split('/tasks/')[1]
-    if (taskId) {
-      return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
-    }
-  }
-
-  // Onboarding route - dedicated route for onboarding wizard
-  if (path === '/onboard') {
-    if (!user) {
-      console.log('[Auth] No user for onboard, redirecting to auth')
-      window.location.href = '/auth'
-      return <Loading />
-    }
-    // If user doesn't need onboarding, redirect to dashboard
-    if (!user.needs_onboarding) {
-      console.log('[Auth] User already onboarded, redirecting to dashboard')
+  // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
+  const routeContent = (() => {
+    // If on auth page and already logged in, redirect to dashboard
+    if (path === '/auth' && user) {
+      console.log('[Auth] Already logged in, redirecting to dashboard')
       window.location.href = '/dashboard'
       return <Loading />
     }
-    return <Onboarding onComplete={handleOnboardingComplete} user={user} />
-  }
 
-  // Dashboard route - requires auth
-  if (path === '/dashboard') {
-    if (!user) {
-      console.log('[Auth] No user, redirecting to auth')
-      window.location.href = '/auth'
-      return <Loading />
+    // Task detail route - /tasks/:id
+    if (path.startsWith('/tasks/')) {
+      const taskId = path.split('/tasks/')[1]
+      if (taskId) {
+        return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
+      }
     }
 
-    // If user needs onboarding, redirect to /onboard
-    if (user.needs_onboarding) {
-      console.log('[Auth] User needs onboarding, redirecting to /onboard')
-      window.location.href = '/onboard'
-      return <Loading />
+    // Onboarding route - dedicated route for onboarding wizard
+    if (path === '/onboard') {
+      if (!user) {
+        console.log('[Auth] No user for onboard, redirecting to auth')
+        window.location.href = '/auth'
+        return <Loading />
+      }
+      // If user doesn't need onboarding, redirect to dashboard
+      if (!user.needs_onboarding) {
+        console.log('[Auth] User already onboarded, redirecting to dashboard')
+        window.location.href = '/dashboard'
+        return <Loading />
+      }
+      return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
-    return <Dashboard user={user} onLogout={logout} />
-  }
+    // Dashboard route - requires auth
+    if (path === '/dashboard') {
+      if (!user) {
+        console.log('[Auth] No user, redirecting to auth')
+        window.location.href = '/auth'
+        return <Loading />
+      }
 
-  if (path === '/auth') return <AuthPage />
-  if (path === '/mcp') return <MCPPage />
-  if (path === '/browse') return <BrowsePage user={user} />
+      // If user needs onboarding, redirect to /onboard
+      if (user.needs_onboarding) {
+        console.log('[Auth] User needs onboarding, redirecting to /onboard')
+        window.location.href = '/onboard'
+        return <Loading />
+      }
 
-  return <LandingPageV4 />}
+      return <Dashboard user={user} onLogout={logout} />
+    }
+
+    if (path === '/auth') return <AuthPage />
+    if (path === '/mcp') return <MCPPage />
+    if (path === '/browse') return <BrowsePage user={user} />
+
+    return <LandingPageV4 />
+  })()
+
+  return (
+    <>
+      {routeContent}
+      <FeedbackButton user={user} />
+    </>
+  )
+}
 
 export default function AppWrapper() {
   return (

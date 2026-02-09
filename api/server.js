@@ -1896,6 +1896,144 @@ app.post('/api/upload/proof', async (req, res) => {
   }
 });
 
+// ============ FEEDBACK ============
+app.post('/api/upload/feedback', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const getEnv = (k) => {
+    try { return require('process').env[k]; } catch { return null; }
+  };
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+    const { file, filename } = req.body;
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop() || 'jpg';
+    const uniqueFilename = `feedback/${user.id}/${timestamp}-${randomStr}.${ext}`;
+    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    console.log(`[R2 DEMO] Would upload feedback image to: ${mockUrl}`);
+    return res.json({ url: mockUrl, filename: uniqueFilename, success: true, demo: true });
+  }
+
+  try {
+    const { file, filename, mimeType } = req.body;
+    if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop() || 'jpg';
+    const uniqueFilename = `feedback/${user.id}/${timestamp}-${randomStr}.${ext}`;
+
+    let fileData = file;
+    if (file.startsWith('data:')) {
+      fileData = Buffer.from(file.split(',')[1], 'base64');
+    } else if (typeof file === 'string' && !file.startsWith('/') && !file.startsWith('http')) {
+      fileData = Buffer.from(file, 'base64');
+    }
+
+    let uploadSuccess = false;
+    try {
+      const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+      const s3Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+      });
+
+      await s3Client.send(new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: uniqueFilename,
+        Body: fileData,
+        ContentType: mimeType || 'image/jpeg',
+      }));
+      uploadSuccess = true;
+    } catch (s3Error) {
+      console.error('R2 feedback upload error:', s3Error.message);
+    }
+
+    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    res.json({ url: publicUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
+  } catch (e) {
+    console.error('Feedback upload error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/feedback', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { type = 'feedback', urgency = 'normal', subject, message, image_urls, page_url } = req.body;
+
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+
+  const validTypes = ['feedback', 'bug', 'feature_request', 'other'];
+  const validUrgency = ['low', 'normal', 'high', 'critical'];
+
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({ error: `Type must be one of: ${validTypes.join(', ')}` });
+  }
+  if (!validUrgency.includes(urgency)) {
+    return res.status(400).json({ error: `Urgency must be one of: ${validUrgency.join(', ')}` });
+  }
+
+  try {
+    const feedbackId = uuidv4();
+    const { error } = await supabase.from('feedback').insert({
+      id: feedbackId,
+      user_id: user.id,
+      user_email: user.email || null,
+      user_name: user.name || null,
+      user_type: user.type || null,
+      type,
+      urgency,
+      subject: subject || null,
+      message: message.trim(),
+      image_urls: image_urls || [],
+      page_url: page_url || null,
+      status: 'new',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('[Feedback] Insert error:', error.message);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Notify admins for critical feedback
+    if (urgency === 'critical') {
+      const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+      for (const adminId of adminIds) {
+        await createNotification(
+          adminId,
+          'critical_feedback',
+          'Critical Feedback Submitted',
+          `${user.name || 'A user'} submitted critical feedback: "${subject || message.substring(0, 50)}"`,
+          '/dashboard?tab=admin'
+        );
+      }
+    }
+
+    console.log(`[Feedback] New ${urgency} ${type} from ${user.name || user.id}: ${subject || message.substring(0, 50)}`);
+    res.json({ success: true, feedback_id: feedbackId });
+  } catch (e) {
+    console.error('[Feedback] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============ TASK PROOFS ============
 app.get('/api/tasks/:id/proofs', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });

@@ -14,6 +14,8 @@ export default function AdminDashboard({ user }) {
   const [actionLoading, setActionLoading] = useState(null)
   const [actionModal, setActionModal] = useState(null)
   const [reportResolveModal, setReportResolveModal] = useState(null)
+  const [feedbackData, setFeedbackData] = useState([])
+  const [feedbackFilter, setFeedbackFilter] = useState('all')
 
   // Fetch dashboard summary
   const fetchDashboard = useCallback(async () => {
@@ -44,6 +46,19 @@ export default function AdminDashboard({ user }) {
 
     setLoading(true)
     try {
+      if (queue === 'feedback') {
+        const statusParam = feedbackFilter !== 'all' ? `?status=${feedbackFilter}` : ''
+        const res = await fetch(`${API_URL}/admin/feedback${statusParam}`, {
+          headers: { Authorization: user.id }
+        })
+        if (!res.ok) throw new Error('Failed to fetch feedback')
+        const data = await res.json()
+        setFeedbackData(data.items || [])
+        setError(null)
+        setLoading(false)
+        return
+      }
+
       const endpoints = {
         'pending-deposits': '/admin/tasks/pending-deposits',
         'stale-deposits': '/admin/tasks/stale-deposits',
@@ -66,7 +81,7 @@ export default function AdminDashboard({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [user.id])
+  }, [user.id, feedbackFilter])
 
   useEffect(() => {
     fetchDashboard()
@@ -204,6 +219,37 @@ export default function AdminDashboard({ user }) {
     }
   }
 
+  const updateFeedbackStatus = async (feedbackId, status, adminNotes) => {
+    setActionLoading(feedbackId)
+    try {
+      const res = await fetch(`${API_URL}/admin/feedback/${feedbackId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
+        body: JSON.stringify({ status, admin_notes: adminNotes })
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to update feedback')
+      }
+      fetchQueue('feedback')
+      fetchDashboard()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Re-fetch feedback when filter changes
+  useEffect(() => {
+    if (activeQueue === 'feedback') {
+      fetchQueue('feedback')
+    }
+  }, [feedbackFilter])
+
   if (error === 'Access denied. Admin privileges required.') {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
@@ -224,6 +270,7 @@ export default function AdminDashboard({ user }) {
     { id: 'pending-agent-approval', label: 'Awaiting Agent', icon: '👤', count: dashboard?.pending_agent_approval?.count },
     { id: 'pending-release', label: 'Ready to Release', icon: '✅', count: dashboard?.pending_release?.count },
     { id: 'pending-withdrawals', label: 'Pending Withdrawals', icon: '💸', count: dashboard?.pending_withdrawals?.count },
+    { id: 'feedback', label: 'Feedback', icon: '📝', count: dashboard?.feedback?.count },
   ]
 
   return (
@@ -328,6 +375,13 @@ export default function AdminDashboard({ user }) {
             icon="💸"
             color="teal"
           />
+          <StatCard
+            title="Pending Feedback"
+            value={dashboard?.feedback?.count || 0}
+            subtitle="User reports & suggestions"
+            icon="📝"
+            color={dashboard?.feedback?.count > 0 ? 'yellow' : 'gray'}
+          />
           <div className="md:col-span-2 lg:col-span-3 bg-white rounded-xl border-2 border-gray-100 p-6">
             <h3 className="font-bold text-gray-900 mb-4">Totals</h3>
             <div className="flex gap-8">
@@ -342,6 +396,47 @@ export default function AdminDashboard({ user }) {
             </div>
           </div>
         </div>
+      ) : activeQueue === 'feedback' ? (
+        loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-gray-500">Loading...</div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Feedback Filters */}
+            <div className="flex gap-2">
+              {['all', 'new', 'in_review', 'resolved', 'dismissed'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFeedbackFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    feedbackFilter === f
+                      ? 'bg-teal text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {f === 'all' ? 'All' : f === 'in_review' ? 'In Review' : f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {feedbackData.length === 0 ? (
+              <div className="bg-white rounded-xl border-2 border-gray-100 p-12 text-center">
+                <div className="text-4xl mb-4">✨</div>
+                <p className="text-gray-500">No feedback items</p>
+              </div>
+            ) : (
+              feedbackData.map(item => (
+                <FeedbackItem
+                  key={item.id}
+                  item={item}
+                  onUpdateStatus={updateFeedbackStatus}
+                  loading={actionLoading === item.id}
+                />
+              ))
+            )}
+          </div>
+        )
       ) : loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-gray-500">Loading...</div>
@@ -834,6 +929,176 @@ function ReportResolveModal({ report, onClose, onConfirm, loading }) {
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+function FeedbackItem({ item, onUpdateStatus, loading }) {
+  const [expanded, setExpanded] = useState(false)
+  const [notes, setNotes] = useState(item.admin_notes || '')
+
+  const urgencyStyles = {
+    critical: 'bg-red-100 text-red-700',
+    high: 'bg-yellow-100 text-yellow-700',
+    normal: 'bg-teal/10 text-teal',
+    low: 'bg-gray-100 text-gray-500',
+  }
+
+  const statusStyles = {
+    new: 'bg-blue-100 text-blue-700',
+    in_review: 'bg-yellow-100 text-yellow-700',
+    resolved: 'bg-green-100 text-green-700',
+    dismissed: 'bg-gray-100 text-gray-500',
+  }
+
+  const typeLabels = {
+    feedback: 'Feedback',
+    bug: 'Bug Report',
+    feature_request: 'Feature Request',
+    other: 'Other',
+  }
+
+  const timeAgo = (dateStr) => {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    return `${days}d ago`
+  }
+
+  return (
+    <div className={`bg-white rounded-xl border-2 p-4 transition-shadow hover:shadow-md ${
+      item.urgency === 'critical' ? 'border-red-200' : 'border-gray-100'
+    }`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${urgencyStyles[item.urgency]}`}>
+              {item.urgency.toUpperCase()}
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[item.status]}`}>
+              {item.status === 'in_review' ? 'In Review' : item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
+              {typeLabels[item.type] || item.type}
+            </span>
+            <span className="text-xs text-gray-400">{timeAgo(item.created_at)}</span>
+          </div>
+
+          {item.subject && (
+            <h3 className="font-bold text-gray-900 mb-1">{item.subject}</h3>
+          )}
+          <p className="text-sm text-gray-700 line-clamp-2">{item.message}</p>
+
+          <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+            <span>{item.user_name || 'Unknown'}</span>
+            <span className="px-1.5 py-0.5 rounded bg-gray-100">{item.user_type || 'user'}</span>
+            {item.user_email && <span>{item.user_email}</span>}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {item.status === 'new' && (
+            <button
+              onClick={() => onUpdateStatus(item.id, 'in_review')}
+              disabled={loading}
+              className="px-3 py-1.5 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-lg hover:bg-yellow-200 disabled:opacity-50"
+            >
+              Review
+            </button>
+          )}
+          {(item.status === 'new' || item.status === 'in_review') && (
+            <>
+              <button
+                onClick={() => onUpdateStatus(item.id, 'resolved', notes)}
+                disabled={loading}
+                className="px-3 py-1.5 bg-green-100 text-green-700 text-xs font-medium rounded-lg hover:bg-green-200 disabled:opacity-50"
+              >
+                Resolve
+              </button>
+              <button
+                onClick={() => onUpdateStatus(item.id, 'dismissed', notes)}
+                disabled={loading}
+                className="px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-medium rounded-lg hover:bg-gray-200 disabled:opacity-50"
+              >
+                Dismiss
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="px-2 py-1.5 text-gray-400 hover:text-gray-600"
+          >
+            {expanded ? '\u25B2' : '\u25BC'}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+          {/* Full message */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1">Full Message</p>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.message}</p>
+          </div>
+
+          {/* Images */}
+          {item.image_urls && item.image_urls.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-2">Screenshots</p>
+              <div className="flex gap-2 flex-wrap">
+                {item.image_urls.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={url}
+                      alt={`Screenshot ${i + 1}`}
+                      className="w-24 h-24 object-cover rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Page URL */}
+          {item.page_url && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1">Page</p>
+              <p className="text-xs text-gray-400 font-mono break-all">{item.page_url}</p>
+            </div>
+          )}
+
+          {/* Admin Notes */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1">Admin Notes</p>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add notes..."
+              rows={2}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none resize-none"
+            />
+            {notes !== (item.admin_notes || '') && (
+              <button
+                onClick={() => onUpdateStatus(item.id, item.status, notes)}
+                disabled={loading}
+                className="mt-1 px-3 py-1 bg-teal text-white text-xs rounded-lg hover:bg-teal-dark disabled:opacity-50"
+              >
+                Save Notes
+              </button>
+            )}
+          </div>
+
+          {/* Metadata */}
+          {item.resolved_at && (
+            <p className="text-xs text-gray-400">
+              Resolved: {new Date(item.resolved_at).toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
