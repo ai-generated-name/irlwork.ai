@@ -4,43 +4,48 @@ const API_URL = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL + '/api'
   : 'https://api.irlwork.ai/api'
 
-const COLORS = {
+const C = {
   teal: '#0F4C5C',
   tealLight: '#1A6B7F',
   coral: '#E07A5F',
   coralDark: '#C45F4A',
+  coralBg: 'rgba(224, 122, 95, 0.08)',
+  orange: '#F48C5F',
+  orangeBg: 'rgba(244, 140, 95, 0.1)',
   cream: '#FAF8F5',
   creamDark: '#F5F2ED',
+  creamDeep: '#EDE8E1',
   white: '#FFFFFF',
   textPrimary: '#1A1A1A',
   textSecondary: '#525252',
   textTertiary: '#8A8A8A',
   border: 'rgba(26, 26, 26, 0.08)',
-  borderHover: 'rgba(26, 26, 26, 0.16)',
+  borderMed: 'rgba(26, 26, 26, 0.12)',
+  borderHover: 'rgba(26, 26, 26, 0.18)',
   success: '#059669',
   successBg: '#D1FAE5',
   error: '#DC2626',
   errorBg: '#FEE2E2',
   amber: '#D97706',
   amberBg: '#FEF3C7',
-  gray: '#6B7280',
-  grayBg: '#F3F4F6',
+  warmGray: '#78716C',
+  warmGrayBg: '#F5F0EB',
 }
 
 const FONT = "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 
 const TYPES = [
-  { id: 'feedback', label: 'Feedback' },
-  { id: 'bug', label: 'Bug' },
-  { id: 'feature_request', label: 'Feature' },
-  { id: 'other', label: 'Other' },
+  { id: 'feedback', label: 'Feedback', icon: '💬' },
+  { id: 'bug', label: 'Bug', icon: '🐛' },
+  { id: 'feature_request', label: 'Feature', icon: '✨' },
+  { id: 'other', label: 'Other', icon: '📌' },
 ]
 
 const URGENCY = [
-  { id: 'low', label: 'Low', color: COLORS.gray, bg: COLORS.grayBg },
-  { id: 'normal', label: 'Normal', color: COLORS.teal, bg: '#E8F4F7' },
-  { id: 'high', label: 'High', color: COLORS.amber, bg: COLORS.amberBg },
-  { id: 'critical', label: 'Critical', color: COLORS.coral, bg: COLORS.errorBg },
+  { id: 'low', label: 'Low', color: C.warmGray, bg: C.warmGrayBg, dot: '#A8A29E' },
+  { id: 'normal', label: 'Normal', color: C.teal, bg: C.creamDark, dot: C.teal },
+  { id: 'high', label: 'High', color: C.amber, bg: C.amberBg, dot: '#F59E0B' },
+  { id: 'critical', label: 'Critical', color: C.error, bg: C.errorBg, dot: C.error },
 ]
 
 const toBase64 = (file) =>
@@ -75,12 +80,10 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // Stop pulse after first open
   useEffect(() => {
     if (isOpen) setShowPulse(false)
   }, [isOpen])
 
-  // Close on Escape
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape' && isOpen) setIsOpen(false)
@@ -116,7 +119,6 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
     setSubmitting(true)
 
     try {
-      // Upload images first
       const urls = [...uploadedUrls]
       for (let i = urls.length; i < files.length; i++) {
         const base64 = await toBase64(files[i])
@@ -133,7 +135,6 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
         if (data.url) urls.push(data.url)
       }
 
-      // Submit feedback
       await fetch(`${API_URL}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.id },
@@ -159,15 +160,14 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
     }
   }
 
-  // Inject keyframes once
   useEffect(() => {
     if (document.getElementById('feedback-btn-styles')) return
     const style = document.createElement('style')
     style.id = 'feedback-btn-styles'
     style.textContent = `
       @keyframes feedbackPulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(15, 76, 92, 0.4); }
-        50% { box-shadow: 0 0 0 12px rgba(15, 76, 92, 0); }
+        0%, 100% { box-shadow: 0 0 0 0 rgba(224, 122, 95, 0.4); }
+        50% { box-shadow: 0 0 0 12px rgba(224, 122, 95, 0); }
       }
       @keyframes feedbackCheckIn {
         0% { transform: scale(0) rotate(-45deg); opacity: 0; }
@@ -185,6 +185,8 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
     document.head.appendChild(style)
   }, [])
 
+  const canSubmit = message.trim() && user && !submitting
+
   return (
     <>
       {/* Backdrop (mobile) */}
@@ -194,7 +196,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.3)',
+            background: 'rgba(26, 26, 26, 0.25)',
             zIndex: 9998,
             backdropFilter: 'blur(2px)',
           }}
@@ -213,15 +215,15 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
             width: 56,
             height: 56,
             borderRadius: '50%',
-            background: COLORS.teal,
-            color: COLORS.white,
+            background: `linear-gradient(135deg, ${C.coral}, ${C.orange})`,
+            color: C.white,
             border: 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9998,
-            boxShadow: '0 8px 24px rgba(15, 76, 92, 0.3), 0 2px 6px rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 6px 20px rgba(224, 122, 95, 0.35), 0 2px 6px rgba(0, 0, 0, 0.06)',
             transition: 'transform 0.2s ease, box-shadow 0.2s ease',
             animation: showPulse ? 'feedbackPulse 2s ease-in-out 3' : 'none',
             fontFamily: FONT,
@@ -229,17 +231,17 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.08)'
             e.currentTarget.style.boxShadow =
-              '0 16px 48px rgba(15, 76, 92, 0.35), 0 4px 12px rgba(0, 0, 0, 0.1)'
+              '0 12px 32px rgba(224, 122, 95, 0.4), 0 4px 10px rgba(0, 0, 0, 0.08)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)'
             e.currentTarget.style.boxShadow =
-              '0 8px 24px rgba(15, 76, 92, 0.3), 0 2px 6px rgba(0, 0, 0, 0.08)'
+              '0 6px 20px rgba(224, 122, 95, 0.35), 0 2px 6px rgba(0, 0, 0, 0.06)'
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            <path d="M8 10h.01M12 10h.01M16 10h.01" opacity="0.7" />
+            <path d="M8 10h.01M12 10h.01M16 10h.01" opacity="0.6" />
           </svg>
         </button>
       )}
@@ -253,13 +255,13 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           bottom: 0,
           width: isMobile ? '100vw' : 400,
           maxHeight: '85vh',
-          background: COLORS.white,
+          background: C.cream,
           zIndex: 9999,
-          borderLeft: `1px solid ${COLORS.border}`,
-          borderTop: `1px solid ${COLORS.border}`,
+          borderLeft: `1px solid ${C.borderMed}`,
+          borderTop: `1px solid ${C.borderMed}`,
           borderTopLeftRadius: 20,
           boxShadow: isOpen
-            ? '0 16px 48px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)'
+            ? '-8px -4px 40px rgba(26, 26, 26, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04)'
             : 'none',
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -275,36 +277,37 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '18px 20px',
-            borderBottom: `1px solid ${COLORS.border}`,
+            padding: '16px 20px',
+            borderBottom: `1px solid ${C.borderMed}`,
+            background: C.white,
             flexShrink: 0,
+            borderTopLeftRadius: 20,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
               style={{
-                width: 32,
-                height: 32,
-                borderRadius: 10,
-                background: `linear-gradient(135deg, ${COLORS.teal}, ${COLORS.tealLight})`,
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                background: C.orangeBg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                fontSize: 15,
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
+              💬
             </div>
-            <span style={{ fontWeight: 700, fontSize: 16, color: COLORS.textPrimary }}>
+            <span style={{ fontWeight: 700, fontSize: 15, color: C.textPrimary, letterSpacing: '-0.01em' }}>
               Send Feedback
             </span>
           </div>
           <button
             onClick={() => setIsOpen(false)}
             style={{
-              width: 32,
-              height: 32,
+              width: 30,
+              height: 30,
               borderRadius: 8,
               border: 'none',
               background: 'transparent',
@@ -312,61 +315,60 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: COLORS.textTertiary,
+              color: C.textTertiary,
               transition: 'background 0.15s, color 0.15s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = COLORS.creamDark
-              e.currentTarget.style.color = COLORS.textPrimary
+              e.currentTarget.style.background = C.creamDark
+              e.currentTarget.style.color = C.textPrimary
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = COLORS.textTertiary
+              e.currentTarget.style.color = C.textTertiary
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Body */}
-        <div style={{ padding: '20px', flex: 1 }}>
+        <div style={{ padding: '18px 20px', flex: 1 }}>
           {submitted ? (
-            /* Success State */
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '48px 20px',
+                padding: '44px 20px',
                 textAlign: 'center',
               }}
             >
               <div
                 style={{
-                  width: 64,
-                  height: 64,
+                  width: 60,
+                  height: 60,
                   borderRadius: '50%',
-                  background: COLORS.successBg,
+                  background: C.successBg,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: 16,
+                  marginBottom: 14,
                   animation: 'feedbackCheckIn 0.5s ease-out forwards',
                 }}
               >
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={COLORS.success} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.success} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
               <p
                 style={{
                   fontWeight: 700,
-                  fontSize: 18,
-                  color: COLORS.textPrimary,
-                  marginBottom: 6,
+                  fontSize: 17,
+                  color: C.textPrimary,
+                  marginBottom: 4,
                   animation: 'feedbackFadeUp 0.4s ease-out 0.2s both',
                 }}
               >
@@ -374,8 +376,8 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
               </p>
               <p
                 style={{
-                  fontSize: 14,
-                  color: COLORS.textSecondary,
+                  fontSize: 13,
+                  color: C.textSecondary,
                   animation: 'feedbackFadeUp 0.4s ease-out 0.35s both',
                 }}
               >
@@ -383,25 +385,24 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
               </p>
             </div>
           ) : (
-            /* Form */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Not logged in notice */}
               {!user && (
                 <div
                   style={{
-                    padding: '12px 14px',
-                    borderRadius: 12,
-                    background: COLORS.amberBg,
-                    border: `1px solid rgba(217, 119, 6, 0.2)`,
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    background: C.amberBg,
+                    border: `1px solid rgba(217, 119, 6, 0.15)`,
                     fontSize: 13,
-                    color: COLORS.amber,
+                    color: '#92400E',
                     lineHeight: 1.5,
                   }}
                 >
                   <a
                     href="/auth"
                     style={{
-                      color: COLORS.teal,
+                      color: C.coral,
                       fontWeight: 600,
                       textDecoration: 'underline',
                     }}
@@ -414,15 +415,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
 
               {/* Type Selector */}
               <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: COLORS.textSecondary,
-                    marginBottom: 8,
-                  }}
-                >
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textTertiary, marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Type
                 </label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -431,18 +424,22 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                       key={t.id}
                       onClick={() => setType(t.id)}
                       style={{
-                        padding: '7px 14px',
-                        borderRadius: 20,
-                        border: `1.5px solid ${type === t.id ? COLORS.teal : COLORS.border}`,
-                        background: type === t.id ? COLORS.teal : COLORS.cream,
-                        color: type === t.id ? COLORS.white : COLORS.teal,
+                        padding: '6px 13px',
+                        borderRadius: 8,
+                        border: `1.5px solid ${type === t.id ? C.coral : C.border}`,
+                        background: type === t.id ? C.coralBg : C.white,
+                        color: type === t.id ? C.coralDark : C.textSecondary,
                         fontSize: 13,
-                        fontWeight: 600,
+                        fontWeight: type === t.id ? 600 : 500,
                         cursor: 'pointer',
                         fontFamily: FONT,
                         transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
                       }}
                     >
+                      <span style={{ fontSize: 13 }}>{t.icon}</span>
                       {t.label}
                     </button>
                   ))}
@@ -451,15 +448,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
 
               {/* Urgency Selector */}
               <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: COLORS.textSecondary,
-                    marginBottom: 8,
-                  }}
-                >
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textTertiary, marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Urgency
                 </label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -468,11 +457,11 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                       key={u.id}
                       onClick={() => setUrgency(u.id)}
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: 20,
-                        border: `1.5px solid ${urgency === u.id ? u.color : COLORS.border}`,
-                        background: urgency === u.id ? u.bg : COLORS.white,
-                        color: urgency === u.id ? u.color : COLORS.textTertiary,
+                        padding: '5px 11px',
+                        borderRadius: 8,
+                        border: `1.5px solid ${urgency === u.id ? u.color : C.border}`,
+                        background: urgency === u.id ? u.bg : C.white,
+                        color: urgency === u.id ? u.color : C.textTertiary,
                         fontSize: 12,
                         fontWeight: 600,
                         cursor: 'pointer',
@@ -485,11 +474,11 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                     >
                       <span
                         style={{
-                          width: 7,
-                          height: 7,
+                          width: 6,
+                          height: 6,
                           borderRadius: '50%',
-                          background: u.color,
-                          opacity: urgency === u.id ? 1 : 0.4,
+                          background: u.dot,
+                          opacity: urgency === u.id ? 1 : 0.35,
                           transition: 'opacity 0.15s',
                         }}
                       />
@@ -501,15 +490,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
 
               {/* Subject */}
               <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: COLORS.textSecondary,
-                    marginBottom: 8,
-                  }}
-                >
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textTertiary, marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Subject
                 </label>
                 <input
@@ -517,81 +498,92 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="Brief summary (optional)"
-                  className="w-full bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] transition-colors text-sm"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: `1.5px solid ${C.borderMed}`,
+                    background: C.white,
+                    color: C.textPrimary,
+                    fontSize: 13,
+                    fontFamily: FONT,
+                    outline: 'none',
+                    transition: 'border-color 0.15s',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = C.coral}
+                  onBlur={(e) => e.currentTarget.style.borderColor = C.borderMed}
                 />
               </div>
 
               {/* Message */}
               <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: COLORS.textSecondary,
-                    marginBottom: 8,
-                  }}
-                >
-                  Message <span style={{ color: COLORS.coral }}>*</span>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textTertiary, marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Message <span style={{ color: C.coral, textTransform: 'none' }}>*</span>
                 </label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe the issue or feedback..."
                   rows={4}
-                  className="w-full bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] transition-colors text-sm resize-none"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: `1.5px solid ${C.borderMed}`,
+                    background: C.white,
+                    color: C.textPrimary,
+                    fontSize: 13,
+                    fontFamily: FONT,
+                    outline: 'none',
+                    resize: 'none',
+                    transition: 'border-color 0.15s',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = C.coral}
+                  onBlur={(e) => e.currentTarget.style.borderColor = C.borderMed}
                 />
               </div>
 
               {/* Image Upload */}
               <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: COLORS.textSecondary,
-                    marginBottom: 8,
-                  }}
-                >
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textTertiary, marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Screenshots{' '}
-                  <span style={{ fontWeight: 400, color: COLORS.textTertiary }}>
-                    (max 3)
-                  </span>
+                  <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(max 3)</span>
                 </label>
                 {files.length < 3 && (
                   <div
                     onClick={() => fileInputRef.current?.click()}
                     style={{
-                      border: `2px dashed ${COLORS.borderHover}`,
-                      borderRadius: 12,
-                      padding: '16px',
+                      border: `2px dashed ${C.borderHover}`,
+                      borderRadius: 10,
+                      padding: '14px',
                       textAlign: 'center',
                       cursor: 'pointer',
-                      background: COLORS.cream,
+                      background: C.white,
                       transition: 'border-color 0.15s, background 0.15s',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = COLORS.teal
-                      e.currentTarget.style.background = COLORS.creamDark
+                      e.currentTarget.style.borderColor = C.coral
+                      e.currentTarget.style.background = C.creamDark
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = COLORS.borderHover
-                      e.currentTarget.style.background = COLORS.cream
+                      e.currentTarget.style.borderColor = C.borderHover
+                      e.currentTarget.style.background = C.white
                     }}
                     onDragOver={(e) => {
                       e.preventDefault()
-                      e.currentTarget.style.borderColor = COLORS.teal
-                      e.currentTarget.style.background = COLORS.creamDark
+                      e.currentTarget.style.borderColor = C.coral
+                      e.currentTarget.style.background = C.creamDark
                     }}
                     onDragLeave={(e) => {
-                      e.currentTarget.style.borderColor = COLORS.borderHover
-                      e.currentTarget.style.background = COLORS.cream
+                      e.currentTarget.style.borderColor = C.borderHover
+                      e.currentTarget.style.background = C.white
                     }}
                     onDrop={(e) => {
                       e.preventDefault()
-                      e.currentTarget.style.borderColor = COLORS.borderHover
-                      e.currentTarget.style.background = COLORS.cream
+                      e.currentTarget.style.borderColor = C.borderHover
+                      e.currentTarget.style.background = C.white
                       const dropped = Array.from(e.dataTransfer.files).filter((f) =>
                         f.type.startsWith('image/')
                       )
@@ -609,27 +601,26 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                       style={{ display: 'none' }}
                     />
                     <svg
-                      width="22"
-                      height="22"
+                      width="20"
+                      height="20"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke={COLORS.textTertiary}
+                      stroke={C.textTertiary}
                       strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      style={{ margin: '0 auto 6px' }}
+                      style={{ margin: '0 auto 4px' }}
                     >
                       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                       <circle cx="8.5" cy="8.5" r="1.5" />
                       <polyline points="21 15 16 10 5 21" />
                     </svg>
-                    <p style={{ fontSize: 13, color: COLORS.textSecondary, margin: 0 }}>
+                    <p style={{ fontSize: 12, color: C.textSecondary, margin: 0 }}>
                       Click or drag images
                     </p>
                   </div>
                 )}
 
-                {/* File thumbnails */}
                 {files.length > 0 && (
                   <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                     {files.map((file, i) => (
@@ -637,21 +628,17 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                         key={i}
                         style={{
                           position: 'relative',
-                          width: 72,
-                          height: 72,
-                          borderRadius: 10,
+                          width: 68,
+                          height: 68,
+                          borderRadius: 8,
                           overflow: 'hidden',
-                          border: `1.5px solid ${COLORS.border}`,
+                          border: `1.5px solid ${C.borderMed}`,
                         }}
                       >
                         <img
                           src={URL.createObjectURL(file)}
                           alt=""
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                          }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                         <button
                           onClick={() => removeFile(i)}
@@ -659,17 +646,17 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                             position: 'absolute',
                             top: 3,
                             right: 3,
-                            width: 20,
-                            height: 20,
+                            width: 18,
+                            height: 18,
                             borderRadius: '50%',
-                            background: 'rgba(0,0,0,0.55)',
-                            color: COLORS.white,
+                            background: 'rgba(26, 26, 26, 0.55)',
+                            color: C.white,
                             border: 'none',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: 11,
+                            fontSize: 10,
                             lineHeight: 1,
                             fontFamily: FONT,
                           }}
@@ -685,55 +672,44 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
               {/* Submit */}
               <button
                 onClick={handleSubmit}
-                disabled={!message.trim() || !user || submitting}
+                disabled={!canSubmit}
                 style={{
                   width: '100%',
-                  padding: '13px 20px',
-                  borderRadius: 12,
+                  padding: '12px 20px',
+                  borderRadius: 10,
                   border: 'none',
-                  background:
-                    !message.trim() || !user
-                      ? COLORS.creamDark
-                      : COLORS.coral,
-                  color:
-                    !message.trim() || !user
-                      ? COLORS.textTertiary
-                      : COLORS.white,
-                  fontSize: 15,
+                  background: canSubmit
+                    ? `linear-gradient(135deg, ${C.coral}, ${C.orange})`
+                    : C.creamDeep,
+                  color: canSubmit ? C.white : C.textTertiary,
+                  fontSize: 14,
                   fontWeight: 700,
-                  cursor:
-                    !message.trim() || !user || submitting
-                      ? 'not-allowed'
-                      : 'pointer',
+                  cursor: canSubmit ? 'pointer' : 'not-allowed',
                   fontFamily: FONT,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 8,
-                  transition: 'background 0.15s, transform 0.1s',
-                  boxShadow:
-                    message.trim() && user
-                      ? '0 4px 14px rgba(224, 122, 95, 0.3)'
-                      : 'none',
+                  transition: 'opacity 0.15s, transform 0.1s',
+                  boxShadow: canSubmit
+                    ? '0 4px 14px rgba(224, 122, 95, 0.25)'
+                    : 'none',
+                  letterSpacing: '-0.01em',
                 }}
                 onMouseEnter={(e) => {
-                  if (message.trim() && user && !submitting) {
-                    e.currentTarget.style.background = COLORS.coralDark
-                  }
+                  if (canSubmit) e.currentTarget.style.opacity = '0.9'
                 }}
                 onMouseLeave={(e) => {
-                  if (message.trim() && user && !submitting) {
-                    e.currentTarget.style.background = COLORS.coral
-                  }
+                  if (canSubmit) e.currentTarget.style.opacity = '1'
                 }}
               >
                 {submitting && (
                   <span
                     style={{
-                      width: 16,
-                      height: 16,
+                      width: 15,
+                      height: 15,
                       border: '2px solid rgba(255,255,255,0.3)',
-                      borderTopColor: COLORS.white,
+                      borderTopColor: C.white,
                       borderRadius: '50%',
                       display: 'inline-block',
                       animation: 'feedbackSpin 0.6s linear infinite',
