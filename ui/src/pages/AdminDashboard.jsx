@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useToast } from '../context/ToastContext'
 import API_URL from '../config/api'
 
 /**
@@ -6,6 +7,7 @@ import API_URL from '../config/api'
  * Only accessible to users with admin privileges
  */
 export default function AdminDashboard({ user }) {
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeQueue, setActiveQueue] = useState('dashboard')
@@ -98,7 +100,7 @@ export default function AdminDashboard({ user }) {
       fetchQueue(activeQueue)
       fetchDashboard()
     } catch (err) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setActionLoading(null)
     }
@@ -122,7 +124,7 @@ export default function AdminDashboard({ user }) {
       fetchQueue(activeQueue)
       fetchDashboard()
     } catch (err) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setActionLoading(null)
     }
@@ -147,7 +149,7 @@ export default function AdminDashboard({ user }) {
       fetchQueue(activeQueue)
       fetchDashboard()
     } catch (err) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setActionLoading(null)
     }
@@ -173,7 +175,7 @@ export default function AdminDashboard({ user }) {
       fetchQueue(activeQueue)
       fetchDashboard()
     } catch (err) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setActionLoading(null)
     }
@@ -198,7 +200,7 @@ export default function AdminDashboard({ user }) {
       fetchQueue(activeQueue)
       fetchDashboard()
     } catch (err) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setActionLoading(null)
     }
@@ -211,6 +213,24 @@ export default function AdminDashboard({ user }) {
           <div className="text-6xl mb-4">🔒</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Access Denied</h2>
           <p className="text-gray-500">You don't have permission to access the admin dashboard.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !dashboard) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Failed to Load Dashboard</h2>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <button
+            onClick={() => { setError(null); fetchDashboard(); }}
+            className="px-4 py-2 bg-teal text-white rounded-lg hover:bg-teal-dark transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     )
@@ -345,6 +365,17 @@ export default function AdminDashboard({ user }) {
       ) : loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-gray-500">Loading...</div>
+        </div>
+      ) : error ? (
+        <div className="bg-white rounded-xl border-2 border-red-100 p-12 text-center">
+          <div className="text-4xl mb-4">⚠️</div>
+          <p className="text-red-600 font-medium mb-2">{error}</p>
+          <button
+            onClick={() => { setError(null); fetchQueue(activeQueue); }}
+            className="px-4 py-2 bg-teal text-white rounded-lg hover:bg-teal-dark transition-colors text-sm"
+          >
+            Retry
+          </button>
         </div>
       ) : queueData.length === 0 ? (
         <div className="bg-white rounded-xl border-2 border-gray-100 p-12 text-center">
@@ -544,13 +575,14 @@ function QueueItem({ item, queue, onConfirmDeposit, onReleasePayment, onConfirmW
 }
 
 function ActionModal({ type, item, onClose, onConfirm, loading }) {
+  const toast = useToast()
   const [txHash, setTxHash] = useState('')
   const [amount, setAmount] = useState(item.expected_deposit || item.worker_amount || '')
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!txHash) {
-      alert('Transaction hash is required')
+      toast.error('Transaction hash is required')
       return
     }
     onConfirm(txHash, amount)
@@ -719,6 +751,7 @@ const RESOLVE_ACTIONS = [
 ]
 
 function ReportResolveModal({ report, onClose, onConfirm, loading }) {
+  const toast = useToast()
   const [action, setAction] = useState('')
   const [notes, setNotes] = useState('')
   const [suspendDays, setSuspendDays] = useState(7)
@@ -726,7 +759,7 @@ function ReportResolveModal({ report, onClose, onConfirm, loading }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!action) {
-      alert('Please select an action')
+      toast.error('Please select an action')
       return
     }
     onConfirm({ action, notes, suspend_days: suspendDays })

@@ -605,8 +605,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       const humanAmount = (depositAmount * (1 - PLATFORM_FEE_PERCENT)).toFixed(2);
       const platformFee = (depositAmount * PLATFORM_FEE_PERCENT).toFixed(2);
 
-      // Update manual_payments
-      const { error: updatePaymentError } = await supabase
+      // Atomic update: include status check to prevent double-release race condition
+      const { data: updatedPayment, error: updatePaymentError } = await supabase
         .from('manual_payments')
         .update({
           worker_amount: humanAmount,
@@ -615,9 +615,14 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
           released_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
-        .eq('id', payment.id);
+        .eq('id', payment.id)
+        .eq('status', 'deposited')
+        .select('id')
+        .single();
 
-      if (updatePaymentError) throw updatePaymentError;
+      if (updatePaymentError || !updatedPayment) {
+        return res.status(409).json({ error: 'Payment has already been released or is being processed' });
+      }
 
       // Update task
       const { error: updateTaskError } = await supabase

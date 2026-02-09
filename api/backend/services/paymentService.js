@@ -101,19 +101,8 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     created_at: new Date().toISOString()
   });
 
-  // Record transaction
-  await supabase.from('transactions').insert({
-    id: uuidv4(),
-    task_id: taskId,
-    agent_id: agentId,
-    human_id: humanId,
-    amount: escrowAmount,
-    platform_fee: platformFee,
-    net_amount: netAmount,
-    status: 'pending',
-    release_tx: null,
-    created_at: new Date().toISOString()
-  });
+  // NOTE: Previously inserted into a 'transactions' table that doesn't exist.
+  // Transaction data is already tracked via payouts + pending_transactions tables.
 
   // Update human stats (fetch current values then increment — supabase-js doesn't support .raw())
   const { data: currentHuman } = await supabase

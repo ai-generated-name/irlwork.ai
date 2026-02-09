@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react'
 import API_URL from '../config/api'
 
-// Admin user IDs - must match ADMIN_USER_IDS in App.jsx and backend
-const ADMIN_USER_IDS = ['b49dc7ef-38b5-40ce-936b-e5fddebc4cb7']
-
 export default function DisputePanel({ user }) {
   const [disputes, setDisputes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -15,7 +12,7 @@ export default function DisputePanel({ user }) {
   const [submitting, setSubmitting] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
 
-  const isAdmin = user && ADMIN_USER_IDS.includes(user.id)
+  const isAdmin = user && user.type === 'admin'
 
   useEffect(() => {
     fetchDisputes()

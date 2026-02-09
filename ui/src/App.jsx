@@ -19,13 +19,11 @@ import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
 
-// Admin user IDs - must match ADMIN_USER_IDS in backend
-const ADMIN_USER_IDS = ['b49dc7ef-38b5-40ce-936b-e5fddebc4cb7']
 import CityAutocomplete from './components/CityAutocomplete'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+export const supabase = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -1287,8 +1285,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
-  // Check if current user is admin
-  const isAdmin = user && ADMIN_USER_IDS.includes(user.id)
+  // Check if current user is admin (from API profile response)
+  const isAdmin = user && user.type === 'admin'
 
   // Working mode: My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
