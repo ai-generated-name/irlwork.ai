@@ -4106,6 +4106,13 @@ app.get('/api/tasks/available', async (req, res) => {
       results = cityTasks;
     }
 
+    // Merge in remote tasks for fallback path (mirrors RPC path at line 4013)
+    if (includeRemote) {
+      const existingIds = new Set(results.map(r => r.id));
+      const remoteTasks = await fetchRemoteTasks(existingIds);
+      results = results.concat(remoteTasks);
+    }
+
     res.json({ tasks: results, total: results.length, hasMore: false });
   } catch (err) {
     console.error('Error fetching available tasks:', err);
