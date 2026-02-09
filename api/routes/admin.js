@@ -119,6 +119,12 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         .select('platform_fee')
         .eq('status', 'withdrawn');
 
+      // Pending reports
+      const { data: pendingReports } = await supabase
+        .from('task_reports')
+        .select('id')
+        .eq('status', 'pending');
+
       // Total USDC processed
       const { data: allPayments } = await supabase
         .from('manual_payments')
@@ -156,6 +162,9 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         pending_withdrawals: {
           count: (pendingWithdrawals || []).length,
           total_usdc_to_send: pendingWithdrawalsTotal
+        },
+        pending_reports: {
+          count: (pendingReports || []).length
         },
         totals: {
           platform_fees_earned: platformFeesTotal,
@@ -313,7 +322,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       if (updateError) throw updateError;
 
-      // Notify worker
+      // Notify human
       await createNotification(
         task.human_id,
         'deposit_confirmed',
@@ -339,8 +348,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         payment_id: paymentId,
         deposit_status: depositStatus,
         message: depositStatus === 'confirmed'
-          ? 'Deposit confirmed. Worker has been notified to begin work.'
-          : 'Deposit confirmed with mismatch noted. Worker has been notified to begin work.'
+          ? 'Deposit confirmed. Human has been notified to begin work.'
+          : 'Deposit confirmed with mismatch noted. Human has been notified to begin work.'
       });
     } catch (error) {
       console.error('[Admin] Confirm deposit error:', error);
@@ -371,7 +380,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         return res.status(400).json({ error: `Task escrow_status is ${task.escrow_status}, expected pending_deposit` });
       }
 
-      const workerId = task.human_id;
+      const humanId = task.human_id;
       const agentId = task.agent_id;
 
       // Reset task
@@ -390,18 +399,18 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       if (updateError) throw updateError;
 
       // Reset application status
-      if (workerId) {
+      if (humanId) {
         await supabase
           .from('task_applications')
           .update({ status: 'cancelled' })
           .eq('task_id', id)
-          .eq('human_id', workerId);
+          .eq('human_id', humanId);
       }
 
-      // Notify worker
-      if (workerId) {
+      // Notify human
+      if (humanId) {
         await createNotification(
-          workerId,
+          humanId,
           'assignment_cancelled',
           'Assignment Cancelled',
           `Your assignment for "${task.title}" was cancelled due to unfunded escrow. The task is now open for new applications.`,
@@ -421,7 +430,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       }
 
       // Log admin action
-      await logAdminAction(req.user.id, 'cancel_assignment', id, null, { reason, worker_id: workerId });
+      await logAdminAction(req.user.id, 'cancel_assignment', id, null, { reason, worker_id: humanId });
 
       res.json({
         success: true,
@@ -593,14 +602,14 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       // Calculate fees server-side
       const depositAmount = parseFloat(payment.deposit_amount);
-      const workerAmount = (depositAmount * (1 - PLATFORM_FEE_PERCENT)).toFixed(2);
+      const humanAmount = (depositAmount * (1 - PLATFORM_FEE_PERCENT)).toFixed(2);
       const platformFee = (depositAmount * PLATFORM_FEE_PERCENT).toFixed(2);
 
       // Update manual_payments
       const { error: updatePaymentError } = await supabase
         .from('manual_payments')
         .update({
-          worker_amount: workerAmount,
+          worker_amount: humanAmount,
           platform_fee: platformFee,
           status: 'pending_withdrawal',
           released_at: new Date().toISOString(),
@@ -622,23 +631,23 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       if (updateTaskError) throw updateTaskError;
 
-      // Notify worker
+      // Notify human
       await createNotification(
         task.human_id,
         'payment_approved',
         'Payment Approved!',
-        `Your payment of $${workerAmount} USDC for "${task.title}" has been approved. Withdrawal is being processed.`,
-        `/dashboard`
+        `Your payment of $${humanAmount} USDC for "${task.title}" has been approved. Withdrawal is being processed.`,
+        `/tasks/${id}`
       );
 
       // Log admin action
-      await logAdminAction(req.user.id, 'release_payment', id, payment.id, { notes, worker_amount: workerAmount, platform_fee: platformFee });
+      await logAdminAction(req.user.id, 'release_payment', id, payment.id, { notes, worker_amount: humanAmount, platform_fee: platformFee });
 
       res.json({
         success: true,
         payment_id: payment.id,
         deposit_amount: depositAmount,
-        worker_amount: parseFloat(workerAmount),
+        worker_amount: parseFloat(humanAmount),
         platform_fee: parseFloat(platformFee),
         worker_wallet: task.human?.circle_wallet_id || null,
         message: 'Payment released. Ready for withdrawal confirmation.'
@@ -725,16 +734,21 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       if (updateTaskError) throw updateTaskError;
 
-      // Update worker stats
+      // Update human stats (fetch then increment - supabase.raw() not available in JS client)
+      const { data: humanStats } = await supabase
+        .from('users')
+        .select('jobs_completed')
+        .eq('id', payment.worker_id)
+        .single();
       await supabase
         .from('users')
         .update({
-          jobs_completed: supabase.raw('COALESCE(jobs_completed, 0) + 1'),
+          jobs_completed: (humanStats?.jobs_completed || 0) + 1,
           updated_at: new Date().toISOString()
         })
         .eq('id', payment.worker_id);
 
-      // Notify worker
+      // Notify human
       await createNotification(
         payment.worker_id,
         'payment_sent',
@@ -750,7 +764,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         success: true,
         tx_hash,
         basescan_url: `https://basescan.org/tx/${tx_hash}`,
-        message: 'Withdrawal confirmed. Worker has been notified.'
+        message: 'Withdrawal confirmed. Human has been notified.'
       });
     } catch (error) {
       console.error('[Admin] Confirm withdrawal error:', error);
@@ -834,6 +848,294 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       });
     } catch (error) {
       console.error('[Admin] Refund error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // GET /api/admin/reports - List task reports for admin review
+  // ============================================================================
+  router.get('/reports', async (req, res) => {
+    try {
+      const { status = 'pending', reason, task_id, page = 1, limit = 20 } = req.query;
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+      const offset = (pageNum - 1) * limitNum;
+
+      let query = supabase
+        .from('task_reports')
+        .select('*', { count: 'exact' });
+
+      if (status && status !== 'all') query = query.eq('status', status);
+      if (reason) query = query.eq('reason', reason);
+      if (task_id) query = query.eq('task_id', task_id);
+
+      query = query.order('created_at', { ascending: false })
+        .range(offset, offset + limitNum - 1);
+
+      const { data: reports, error, count } = await query;
+      if (error) throw error;
+
+      // Fetch related data for each report
+      const enrichedReports = [];
+      for (const report of (reports || [])) {
+        // Get reporter info
+        const { data: reporter } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .eq('id', report.reporter_id)
+          .single();
+
+        // Get task + agent info
+        const { data: task } = await supabase
+          .from('tasks')
+          .select('id, title, status, moderation_status, report_count, agent_id, escrow_status, human_id')
+          .eq('id', report.task_id)
+          .single();
+
+        let agent = null;
+        if (task?.agent_id) {
+          const { data: agentData } = await supabase
+            .from('users')
+            .select('id, name, email, total_reports_received, moderation_status, warning_count')
+            .eq('id', task.agent_id)
+            .single();
+          agent = agentData;
+        }
+
+        // Get resolver info if resolved
+        let resolvedByUser = null;
+        if (report.resolved_by) {
+          const { data: resolver } = await supabase
+            .from('users')
+            .select('id, name, email')
+            .eq('id', report.resolved_by)
+            .single();
+          resolvedByUser = resolver;
+        }
+
+        enrichedReports.push({
+          ...report,
+          reporter,
+          task: task ? { ...task, agent } : null,
+          resolved_by_user: resolvedByUser
+        });
+      }
+
+      res.json({
+        reports: enrichedReports,
+        total: count || 0,
+        page: pageNum,
+        limit: limitNum
+      });
+    } catch (error) {
+      console.error('[Admin] Reports list error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // POST /api/admin/reports/:id/resolve - Resolve a task report
+  // ============================================================================
+  router.post('/reports/:id/resolve', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { action, notes, suspend_days } = req.body;
+
+      const VALID_ACTIONS = ['no_action', 'warning_issued', 'task_hidden', 'task_removed', 'user_suspended', 'user_banned'];
+      if (!action || !VALID_ACTIONS.includes(action)) {
+        return res.status(400).json({ error: 'Invalid action. Must be one of: ' + VALID_ACTIONS.join(', ') });
+      }
+
+      // Get report
+      const { data: report, error: reportError } = await supabase
+        .from('task_reports')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (reportError || !report) {
+        return res.status(404).json({ error: 'Report not found' });
+      }
+
+      if (report.status === 'resolved' || report.status === 'dismissed') {
+        return res.status(400).json({ error: 'Report has already been resolved' });
+      }
+
+      // Get task with creator info
+      const { data: task } = await supabase
+        .from('tasks')
+        .select('id, title, agent_id, status, escrow_status, human_id')
+        .eq('id', report.task_id)
+        .single();
+
+      if (!task) {
+        return res.status(404).json({ error: 'Associated task not found' });
+      }
+
+      const taskCreatorId = task.agent_id;
+
+      // Get creator info for warning_count
+      const { data: creator } = await supabase
+        .from('users')
+        .select('id, warning_count, total_reports_upheld')
+        .eq('id', taskCreatorId)
+        .single();
+
+      // 1. Update report record
+      await supabase.from('task_reports').update({
+        status: action === 'no_action' ? 'dismissed' : 'resolved',
+        resolved_by: req.user.id,
+        resolution_action: action,
+        resolution_notes: notes || null,
+        resolved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }).eq('id', id);
+
+      // 2. Apply action to task
+      if (action === 'task_hidden') {
+        await supabase.from('tasks').update({
+          moderation_status: 'hidden',
+          hidden_at: new Date().toISOString(),
+          hidden_reason: notes || 'Hidden by admin review',
+          updated_at: new Date().toISOString()
+        }).eq('id', task.id);
+      } else if (action === 'task_removed') {
+        await supabase.from('tasks').update({
+          moderation_status: 'removed',
+          status: 'cancelled',
+          hidden_at: new Date().toISOString(),
+          hidden_reason: notes || 'Removed by admin review',
+          updated_at: new Date().toISOString()
+        }).eq('id', task.id);
+      }
+
+      // 3. Apply action to user
+      if (action === 'warning_issued') {
+        await supabase.from('users').update({
+          warning_count: ((creator?.warning_count) || 0) + 1,
+          moderation_status: 'warned',
+          updated_at: new Date().toISOString()
+        }).eq('id', taskCreatorId);
+      } else if (action === 'user_suspended') {
+        const suspendUntil = new Date(Date.now() + (suspend_days || 7) * 24 * 60 * 60 * 1000);
+        await supabase.from('users').update({
+          moderation_status: 'suspended',
+          suspended_until: suspendUntil.toISOString(),
+          updated_at: new Date().toISOString()
+        }).eq('id', taskCreatorId);
+      } else if (action === 'user_banned') {
+        await supabase.from('users').update({
+          moderation_status: 'banned',
+          updated_at: new Date().toISOString()
+        }).eq('id', taskCreatorId);
+      }
+
+      // 4. Increment total_reports_upheld if action was taken
+      if (action !== 'no_action') {
+        await supabase.from('users').update({
+          total_reports_upheld: ((creator?.total_reports_upheld) || 0) + 1
+        }).eq('id', taskCreatorId);
+      }
+
+      // 5. Notify task creator (without revealing reporter)
+      if (action !== 'no_action') {
+        const actionMessages = {
+          'warning_issued': `Your task "${task.title}" was flagged for review and a warning has been issued. Please review our community guidelines.`,
+          'task_hidden': `Your task "${task.title}" has been hidden from search results due to a policy violation. Please contact support for details.`,
+          'task_removed': `Your task "${task.title}" has been removed for violating platform rules.${notes ? ' Reason: ' + notes : ''}`,
+          'user_suspended': `Your account has been temporarily suspended due to violations on task "${task.title}". Suspension ends on ${new Date(Date.now() + (suspend_days || 7) * 86400000).toLocaleDateString()}.`,
+          'user_banned': 'Your account has been permanently banned due to severe violations.'
+        };
+
+        await createNotification(
+          taskCreatorId,
+          'moderation_action',
+          'Moderation Action Taken',
+          actionMessages[action],
+          action === 'task_removed' ? null : `/tasks/${task.id}`
+        );
+
+        // Notify worker if task is in-progress and being removed
+        if (task.human_id && ['task_removed', 'task_hidden'].includes(action) && ['in_progress', 'pending_review'].includes(task.status)) {
+          await createNotification(
+            task.human_id,
+            'task_under_review',
+            'Task Under Review',
+            `The task "${task.title}" you are working on is under moderation review. Your work and payment are protected.`,
+            `/tasks/${task.id}`
+          );
+        }
+      }
+
+      // 6. Notify reporter
+      await createNotification(
+        report.reporter_id,
+        'report_reviewed',
+        'Report Reviewed',
+        action === 'no_action'
+          ? 'We reviewed your report and determined no action was needed at this time. Thank you for helping keep the platform safe.'
+          : 'Thank you for your report. We have taken action based on your feedback.',
+        null
+      );
+
+      // 7. Batch-resolve other pending reports for same task (if task-level action taken)
+      if (['task_hidden', 'task_removed'].includes(action)) {
+        const { data: otherReports } = await supabase
+          .from('task_reports')
+          .select('id, reporter_id')
+          .eq('task_id', task.id)
+          .eq('status', 'pending')
+          .neq('id', id);
+
+        if (otherReports && otherReports.length > 0) {
+          await supabase.from('task_reports').update({
+            status: 'resolved',
+            resolved_by: req.user.id,
+            resolution_action: action,
+            resolution_notes: `Batch resolved: ${notes || 'Task-level action taken'}`,
+            resolved_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('task_id', task.id)
+          .eq('status', 'pending')
+          .neq('id', id);
+
+          // Notify other reporters
+          for (const other of otherReports) {
+            await createNotification(
+              other.reporter_id,
+              'report_reviewed',
+              'Report Reviewed',
+              'Thank you for your report. We have taken action based on community feedback.',
+              null
+            );
+          }
+        }
+      }
+
+      // 8. Log admin action
+      await logAdminAction(req.user.id, 'resolve_report', task.id, null, {
+        report_id: id,
+        action,
+        notes,
+        suspend_days
+      });
+
+      // Build response with escrow warning if applicable
+      const response = {
+        success: true,
+        action,
+        message: `Report resolved with action: ${action.replace(/_/g, ' ')}`
+      };
+
+      if (action === 'task_removed' && task.escrow_status === 'deposited') {
+        response.escrow_warning = `This task has active escrow. Please process a refund separately via POST /api/admin/tasks/${task.id}/refund`;
+      }
+
+      res.json(response);
+    } catch (error) {
+      console.error('[Admin] Resolve report error:', error);
       res.status(500).json({ error: error.message });
     }
   });

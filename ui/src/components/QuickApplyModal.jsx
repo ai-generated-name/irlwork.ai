@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.irlwork.ai';
+import API_URL from '../config/api';
 
 const CATEGORY_ICONS = {
   delivery: '📦',
@@ -33,7 +33,7 @@ export default function QuickApplyModal({
     setError(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/tasks/${task.id}/apply`, {
+      const res = await fetch(`${API_URL}/tasks/${task.id}/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

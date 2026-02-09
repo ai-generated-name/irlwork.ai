@@ -34,6 +34,8 @@ export default function TaskCardV2({
   onHover = () => {},
   onApply = () => {},
   hasApplied = false,
+  onReport = () => {},
+  showReport = false,
 }) {
   const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
   const categoryLabel = task.category?.replace('-', ' ') || 'General';
@@ -51,19 +53,46 @@ export default function TaskCardV2({
           <span className="task-card-v2-category-icon">{categoryIcon}</span>
           <span className="task-card-v2-category-label">{categoryLabel}</span>
         </div>
-        {task.is_remote ? (
-          <div className="task-card-v2-remote-badge">
-            🌐 Remote
-          </div>
-        ) : task.distance_km != null ? (
-          <div className="task-card-v2-distance">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            {task.distance_km.toFixed(1)} km
-          </div>
-        ) : null}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {task.is_remote ? (
+            <div className="task-card-v2-remote-badge">
+              🌐 Remote
+            </div>
+          ) : task.distance_km != null ? (
+            <div className="task-card-v2-distance">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              {task.distance_km.toFixed(1)} km
+            </div>
+          ) : null}
+          {showReport && (
+            <button
+              className="task-card-v2-report-btn"
+              onClick={(e) => { e.stopPropagation(); onReport(task); }}
+              title="Report this task"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '6px',
+                color: '#8A8A8A',
+                transition: 'color 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#DC2626'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#8A8A8A'; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                <line x1="4" y1="22" x2="4" y2="15" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Title */}

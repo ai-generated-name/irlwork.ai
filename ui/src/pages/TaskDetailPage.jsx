@@ -1,7 +1,8 @@
 // Task Detail Page
-// Central hub for workers to view task info, communicate with agents, and submit proof
+// Central hub for humans to view task info, communicate with agents, and submit proof
 
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../App';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
@@ -11,6 +12,7 @@ import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
 import { v4 } from '../components/V4Layout';
 import { trackView } from '../utils/trackView';
+import ReportTaskModal from '../components/ReportTaskModal';
 import API_URL from '../config/api';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
@@ -23,6 +25,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Fetch initial data
   useEffect(() => {
@@ -81,6 +84,42 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       trackView('task', taskId);
     }
   }, [taskId]);
+
+  // Real-time subscription for task changes
+  useEffect(() => {
+    if (!taskId) return;
+
+    const channel = supabase
+      .channel(`task-detail-${taskId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tasks', filter: `id=eq.${taskId}` },
+        async (payload) => {
+          // Update task data with the real-time change
+          setTask(prev => prev ? { ...prev, ...payload.new } : payload.new);
+
+          // If status changed, also refresh the task status endpoint for full details
+          if (user) {
+            try {
+              const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
+                headers: { Authorization: user.id }
+              });
+              if (statusRes.ok) {
+                const statusData = await statusRes.json();
+                setTaskStatus(statusData);
+              }
+            } catch (err) {
+              console.error('Error refreshing task status:', err);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [taskId, user]);
 
   // Load conversation and messages
   const loadConversation = async (taskData) => {
@@ -325,8 +364,22 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             <span>←</span>
             <span>Back to Dashboard</span>
           </button>
-          <div className="text-[#8A8A8A] text-sm">
-            Task ID: {taskId.slice(0, 8)}...
+          <div className="flex items-center gap-4">
+            {user && task && task.agent_id !== user.id && (
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="flex items-center gap-1.5 text-[#8A8A8A] hover:text-[#DC2626] transition-colors text-sm"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                  <line x1="4" y1="22" x2="4" y2="15" />
+                </svg>
+                Report
+              </button>
+            )}
+            <div className="text-[#8A8A8A] text-sm">
+              Task ID: {taskId.slice(0, 8)}...
+            </div>
           </div>
         </div>
       </header>
@@ -346,7 +399,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
             {/* Show proof section if in progress, or status badge if submitted */}
             {task.status === 'in_progress' ? (
-              <ProofSection task={task} onSubmit={handleSubmitProof} />
+              <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
             ) : (
               <ProofStatusBadge task={task} proofs={taskStatus?.proofs} />
             )}
@@ -366,6 +419,14 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           </div>
         </div>
       </main>
+
+      {/* Report Modal */}
+      <ReportTaskModal
+        task={task}
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        userToken={user?.id}
+      />
     </div>
   );
 }

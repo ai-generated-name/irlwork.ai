@@ -1,0 +1,17 @@
+# Cloudflare Workers configuration for irlwork.ai
+# Serves the React SPA frontend as static assets
+
+name = "irlwork"
+compatibility_date = "2024-12-01"
+
+# Build the React frontend before deploying
+[build]
+command = "cd ui && npm install && npm run build"
+
+# Static assets configuration - serves the Vite build output
+[assets]
+directory = "./ui/dist"
+
+# SPA routing - serve index.html for all unmatched routes
+[assets.routing]
+has_user_worker = false

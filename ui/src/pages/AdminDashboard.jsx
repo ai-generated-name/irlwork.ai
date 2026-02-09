@@ -13,6 +13,7 @@ export default function AdminDashboard({ user }) {
   const [queueData, setQueueData] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
   const [actionModal, setActionModal] = useState(null)
+  const [reportResolveModal, setReportResolveModal] = useState(null)
 
   // Fetch dashboard summary
   const fetchDashboard = useCallback(async () => {
@@ -48,7 +49,8 @@ export default function AdminDashboard({ user }) {
         'stale-deposits': '/admin/tasks/stale-deposits',
         'pending-agent-approval': '/admin/tasks/pending-agent-approval',
         'pending-release': '/admin/tasks/pending-release',
-        'pending-withdrawals': '/admin/payments/pending-withdrawals'
+        'pending-withdrawals': '/admin/payments/pending-withdrawals',
+        'reports': '/admin/reports?status=pending'
       }
 
       const res = await fetch(`${API_URL}${endpoints[queue]}`, {
@@ -56,7 +58,8 @@ export default function AdminDashboard({ user }) {
       })
       if (!res.ok) throw new Error('Failed to fetch queue')
       const data = await res.json()
-      setQueueData(data)
+      // Reports endpoint returns { reports: [], total, page, limit }
+      setQueueData(queue === 'reports' ? (data.reports || []) : data)
       setError(null)
     } catch (err) {
       setError(err.message)
@@ -176,6 +179,31 @@ export default function AdminDashboard({ user }) {
     }
   }
 
+  const resolveReport = async (reportId, { action, notes, suspend_days }) => {
+    setActionLoading(reportId)
+    try {
+      const res = await fetch(`${API_URL}/admin/reports/${reportId}/resolve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
+        body: JSON.stringify({ action, notes, suspend_days })
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to resolve report')
+      }
+      setReportResolveModal(null)
+      fetchQueue(activeQueue)
+      fetchDashboard()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   if (error === 'Access denied. Admin privileges required.') {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
@@ -190,6 +218,7 @@ export default function AdminDashboard({ user }) {
 
   const queues = [
     { id: 'dashboard', label: 'Overview', icon: '📊' },
+    { id: 'reports', label: 'Reports', icon: '🚩', count: dashboard?.pending_reports?.count, alert: dashboard?.pending_reports?.count > 0 },
     { id: 'pending-deposits', label: 'Pending Deposits', icon: '💰', count: dashboard?.pending_deposits?.count },
     { id: 'stale-deposits', label: 'Stale (>48h)', icon: '⚠️', count: dashboard?.stale_deposits_48h?.count, alert: dashboard?.stale_deposits_48h?.alert },
     { id: 'pending-agent-approval', label: 'Awaiting Agent', icon: '👤', count: dashboard?.pending_agent_approval?.count },
@@ -248,6 +277,14 @@ export default function AdminDashboard({ user }) {
       ) : activeQueue === 'dashboard' ? (
         /* Dashboard Overview */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StatCard
+            title="Pending Reports"
+            value={dashboard?.pending_reports?.count || 0}
+            subtitle="Needs review"
+            icon="🚩"
+            color={dashboard?.pending_reports?.count > 0 ? 'red' : 'gray'}
+            alert={dashboard?.pending_reports?.count > 0}
+          />
           <StatCard
             title="Pending Deposits"
             value={dashboard?.pending_deposits?.count || 0}
@@ -314,6 +351,18 @@ export default function AdminDashboard({ user }) {
           <div className="text-4xl mb-4">✨</div>
           <p className="text-gray-500">No items in this queue</p>
         </div>
+      ) : activeQueue === 'reports' ? (
+        /* Report Queue Items */
+        <div className="space-y-3">
+          {queueData.map(item => (
+            <ReportQueueItem
+              key={item.id}
+              report={item}
+              onResolve={(report) => setReportResolveModal(report)}
+              loading={actionLoading === item.id}
+            />
+          ))}
+        </div>
       ) : (
         /* Queue Items */
         <div className="space-y-3">
@@ -341,6 +390,16 @@ export default function AdminDashboard({ user }) {
           onClose={() => setActionModal(null)}
           onConfirm={actionModal.onConfirm}
           loading={actionLoading === actionModal.item.id}
+        />
+      )}
+
+      {/* Report Resolve Modal */}
+      {reportResolveModal && (
+        <ReportResolveModal
+          report={reportResolveModal}
+          onClose={() => setReportResolveModal(null)}
+          onConfirm={(data) => resolveReport(reportResolveModal.id, data)}
+          loading={actionLoading === reportResolveModal.id}
         />
       )}
     </div>
@@ -393,8 +452,8 @@ function QueueItem({ item, queue, onConfirmDeposit, onReleasePayment, onConfirmW
 
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
             {item.agent && <span>Agent: {item.agent.name || item.agent.email}</span>}
-            {item.human && <span>Worker: {item.human.name || item.human.email}</span>}
-            {item.worker && <span>Worker: {item.worker.name || item.worker.email}</span>}
+            {item.human && <span>Human: {item.human.name || item.human.email}</span>}
+            {item.worker && <span>Human: {item.worker.name || item.worker.email}</span>}
             {item.expected_deposit && <span>Expected: ${item.expected_deposit.toFixed(2)}</span>}
             {item.worker_amount && <span>Amount: ${item.worker_amount}</span>}
           </div>
@@ -561,6 +620,219 @@ function ActionModal({ type, item, onClose, onConfirm, loading }) {
             Open BaseScan
           </a>
         </p>
+      </div>
+    </div>
+  )
+}
+
+const REASON_LABELS = {
+  scam_fraud: 'Scam/Fraud',
+  misleading: 'Misleading',
+  inappropriate: 'Inappropriate',
+  spam: 'Spam',
+  illegal: 'Illegal Activity',
+  harassment: 'Harassment',
+  other: 'Other'
+}
+
+function ReportQueueItem({ report, onResolve, loading }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const isSevere = ['scam_fraud', 'illegal'].includes(report.reason)
+
+  return (
+    <div className="bg-white rounded-xl border-2 border-gray-100 p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              isSevere ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+            }`}>
+              {REASON_LABELS[report.reason] || report.reason}
+            </span>
+            <h3 className="font-bold text-gray-900 truncate">
+              {report.task?.title || 'Unknown Task'}
+            </h3>
+            {report.task?.report_count > 1 && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 font-medium">
+                {report.task.report_count} reports
+              </span>
+            )}
+            {report.task?.escrow_status === 'deposited' && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">
+                Active Escrow
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
+            <span>Task by: {report.task?.agent?.name || report.task?.agent?.email || 'Unknown'}</span>
+            <span>Reporter: {report.reporter?.name || report.reporter?.email || 'Unknown'}</span>
+            <span>{new Date(report.created_at).toLocaleDateString()}</span>
+            {report.task?.agent?.total_reports_received > 1 && (
+              <span className="text-red-500 font-medium">
+                Creator has {report.task.agent.total_reports_received} total reports
+              </span>
+            )}
+          </div>
+
+          {expanded && (
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+              <p className="font-medium text-gray-700 mb-1">Reporter's description:</p>
+              <p className="whitespace-pre-wrap">{report.description}</p>
+              {report.task?.agent?.warning_count > 0 && (
+                <p className="mt-2 text-orange-600 text-xs font-medium">
+                  Creator has {report.task.agent.warning_count} previous warning(s)
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => onResolve(report)}
+            disabled={loading}
+            className="px-3 py-1.5 bg-teal text-white text-sm rounded-lg hover:bg-teal-dark disabled:opacity-50"
+          >
+            {loading ? '...' : 'Review'}
+          </button>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="px-2 py-1.5 text-gray-400 hover:text-gray-600"
+          >
+            {expanded ? '\u25B2' : '\u25BC'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const RESOLVE_ACTIONS = [
+  { value: 'no_action', label: 'No Action (Dismiss)', color: 'gray' },
+  { value: 'warning_issued', label: 'Issue Warning to Creator', color: 'yellow' },
+  { value: 'task_hidden', label: 'Hide Task from Browse', color: 'orange' },
+  { value: 'task_removed', label: 'Remove Task + Cancel', color: 'red' },
+  { value: 'user_suspended', label: 'Suspend User', color: 'red' },
+  { value: 'user_banned', label: 'Ban User', color: 'red' },
+]
+
+function ReportResolveModal({ report, onClose, onConfirm, loading }) {
+  const [action, setAction] = useState('')
+  const [notes, setNotes] = useState('')
+  const [suspendDays, setSuspendDays] = useState(7)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!action) {
+      alert('Please select an action')
+      return
+    }
+    onConfirm({ action, notes, suspend_days: suspendDays })
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Resolve Report</h2>
+        <p className="text-sm text-gray-500 mb-4">Task: {report.task?.title}</p>
+
+        {/* Report details */}
+        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              ['scam_fraud', 'illegal'].includes(report.reason) ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+            }`}>
+              {REASON_LABELS[report.reason] || report.reason}
+            </span>
+          </div>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{report.description}</p>
+          <div className="flex flex-wrap gap-x-4 mt-2 text-xs text-gray-400">
+            <span>{report.task?.report_count || 1} total report(s) on this task</span>
+            <span>Creator: {report.task?.agent?.name || report.task?.agent?.email}</span>
+            {report.task?.agent?.total_reports_received > 0 && (
+              <span className="text-orange-500">{report.task.agent.total_reports_received} total reports on creator</span>
+            )}
+            {report.task?.agent?.warning_count > 0 && (
+              <span className="text-orange-500">{report.task.agent.warning_count} warning(s)</span>
+            )}
+          </div>
+        </div>
+
+        {/* Escrow warning */}
+        {report.task?.escrow_status === 'deposited' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-700">
+            This task has active escrow. If you remove the task, you'll need to process a refund separately.
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          {/* Action selection */}
+          <div className="space-y-2 mb-4">
+            <label className="block text-sm font-medium text-gray-700">Action</label>
+            {RESOLVE_ACTIONS.map(a => (
+              <label
+                key={a.value}
+                className={`flex items-center gap-3 p-2.5 rounded-lg border-2 cursor-pointer transition-all ${
+                  action === a.value ? 'border-teal bg-teal/5' : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="action"
+                  value={a.value}
+                  checked={action === a.value}
+                  onChange={() => setAction(a.value)}
+                  className="sr-only"
+                />
+                <span className="text-sm font-medium text-gray-700">{a.label}</span>
+              </label>
+            ))}
+          </div>
+
+          {action === 'user_suspended' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Suspension Duration (days)</label>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={suspendDays}
+                onChange={e => setSuspendDays(parseInt(e.target.value) || 7)}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none"
+              />
+            </div>
+          )}
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Admin Notes</label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none resize-none"
+              placeholder="Internal notes about this resolution..."
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!action || loading}
+              className="flex-1 px-4 py-2 bg-teal text-white rounded-lg hover:bg-teal-dark disabled:opacity-50"
+            >
+              {loading ? 'Resolving...' : 'Resolve'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

@@ -7,3 +7,6 @@ ui/node_modules/
 .env.local
 .env.*.local
 ui/irlwork.ai/
+
+# MCP config (contains tokens)
+.mcp.json

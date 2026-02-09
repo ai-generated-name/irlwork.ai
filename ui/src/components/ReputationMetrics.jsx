@@ -136,7 +136,7 @@ export default function ReputationMetrics({ user, isHiringMode }) {
         )}
       </div>
 
-      {/* Worker Stats */}
+      {/* Human Stats */}
       {!isHiringMode && (
         <>
           {/* Key Metrics */}
@@ -217,7 +217,7 @@ export default function ReputationMetrics({ user, isHiringMode }) {
               icon={Icons.money}
               label="Total Paid"
               value={formatUSDC(total_usdc_paid)}
-              subtitle="To workers"
+              subtitle="To humans"
             />
             <StatCard
               icon={Icons.disputes}
