@@ -694,6 +694,7 @@ app.get('/api/auth/verify', async (req, res) => {
       wallet_address: user.wallet_address,
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
+      social_links: user.social_links || {},
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
       verified: user.verified,
@@ -1273,7 +1274,7 @@ app.put('/api/humans/profile', async (req, res) => {
     }
   }
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code } = req.body;
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
 
@@ -1292,6 +1293,18 @@ app.put('/api/humans/profile', async (req, res) => {
   if (country !== undefined) updates.country = country;
   if (country_code !== undefined) updates.country_code = country_code;
   if (travel_radius) updates.travel_radius = travel_radius;
+  if (social_links !== undefined) {
+    const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
+    const cleaned = {};
+    if (typeof social_links === 'object' && social_links !== null) {
+      for (const [key, value] of Object.entries(social_links)) {
+        if (allowedPlatforms.includes(key) && typeof value === 'string' && value.trim()) {
+          cleaned[key] = value.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+        }
+      }
+    }
+    updates.social_links = cleaned;
+  }
 
   const { data, error } = await supabase
     .from('users')
@@ -4200,7 +4213,7 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
@@ -4230,7 +4243,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
       verified, availability, wallet_address, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at
+      total_disputes_filed, total_usdc_paid, last_active_at, social_links
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
