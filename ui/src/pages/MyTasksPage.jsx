@@ -50,14 +50,15 @@ export default function MyTasksPage({
   setShowProofSubmit,
   activities,
 }) {
-  const activeTasks = tasks.filter(t => ACTIVE_STATUSES.includes(t.status));
-  const reviewTasks = tasks.filter(t => REVIEW_STATUSES.includes(t.status));
-  const completedTasks = tasks.filter(t => COMPLETED_STATUSES.includes(t.status));
-  const otherTasks = tasks.filter(t => OTHER_STATUSES.includes(t.status));
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const activeTasks = safeTasks.filter(t => ACTIVE_STATUSES.includes(t.status));
+  const reviewTasks = safeTasks.filter(t => REVIEW_STATUSES.includes(t.status));
+  const completedTasks = safeTasks.filter(t => COMPLETED_STATUSES.includes(t.status));
+  const otherTasks = safeTasks.filter(t => OTHER_STATUSES.includes(t.status));
 
-  const totalEarned = tasks
+  const totalEarned = safeTasks
     .filter(t => t.status === 'paid')
-    .reduce((sum, t) => sum + (t.budget || 0), 0);
+    .reduce((sum, t) => sum + (Number(t.budget) || 0), 0);
 
   const handleCardClick = (task) => {
     window.location.href = '/tasks/' + task.id;
@@ -99,7 +100,7 @@ export default function MyTasksPage({
           <div className="dashboard-v4-empty-icon">⏳</div>
           <p className="dashboard-v4-empty-text">Loading...</p>
         </div>
-      ) : tasks.length === 0 ? (
+      ) : safeTasks.length === 0 ? (
         <div className="dashboard-v4-empty">
           <div className="dashboard-v4-empty-icon">📋</div>
           <p className="dashboard-v4-empty-title">No tasks yet</p>

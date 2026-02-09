@@ -33,7 +33,9 @@ export default function MyTaskCard({
   onSubmitProof,
   onClick,
 }) {
-  const status = STATUS_CONFIG[task.status] || { label: task.status, className: '' };
+  if (!task) return null;
+
+  const status = STATUS_CONFIG[task.status] || { label: task.status || 'Unknown', className: '' };
   const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
   const categoryLabel = task.category?.replace('-', ' ') || 'General';
 

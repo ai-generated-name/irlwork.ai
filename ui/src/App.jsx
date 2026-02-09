@@ -24,6 +24,38 @@ import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIc
 import CityAutocomplete from './components/CityAutocomplete'
 import { TASK_CATEGORIES } from './components/CategoryPills'
 
+// Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
+class TabErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('[TabError]', error, errorInfo?.componentStack)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
+          <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>This section encountered an error</h3>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>Try switching to another tab or refreshing the page.</p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="v4-btn v4-btn-secondary"
+          >
+            Try Again
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
@@ -2420,28 +2452,32 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
-          <MyTasksPage
-            user={user}
-            tasks={tasks}
-            loading={loading}
-            acceptTask={acceptTask}
-            onStartWork={startWork}
-            setShowProofSubmit={setShowProofSubmit}
-            activities={activities}
-          />
+          <TabErrorBoundary>
+            <MyTasksPage
+              user={user}
+              tasks={tasks}
+              loading={loading}
+              acceptTask={acceptTask}
+              onStartWork={startWork}
+              setShowProofSubmit={setShowProofSubmit}
+              activities={activities}
+            />
+          </TabErrorBoundary>
         )}
 
         {/* Working Mode: Browse Tasks Tab - Shows available tasks to claim */}
         {!hiringMode && activeTab === 'browse' && (
-          <BrowseTasksV2
-            user={user}
-            initialLocation={{
-              lat: filterCoords?.lat || user?.latitude,
-              lng: filterCoords?.lng || user?.longitude,
-              city: locationFilter || user?.city
-            }}
-            initialRadius={radiusFilter || '25'}
-          />
+          <TabErrorBoundary>
+            <BrowseTasksV2
+              user={user}
+              initialLocation={{
+                lat: filterCoords?.lat || user?.latitude,
+                lng: filterCoords?.lng || user?.longitude,
+                city: locationFilter || user?.city
+              }}
+              initialRadius={radiusFilter || '25'}
+            />
+          </TabErrorBoundary>
         )}
 
         {/* Hiring Mode: Browse Humans Tab - Shows available humans */}
@@ -2569,7 +2605,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <span style={{ color: 'var(--text-tertiary)' }}>Jobs Completed</span>
                   <span style={{ color: 'var(--text-primary)' }}>{user?.jobs_completed || 0}</span>
                 </div>
-                {user?.social_links && Object.keys(user.social_links).length > 0 && (
+                {user?.social_links && typeof user.social_links === 'object' && Object.keys(user.social_links).length > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid rgba(26,26,26,0.06)' }}>
                     <span style={{ color: 'var(--text-tertiary)' }}>Socials</span>
                     <SocialIconsRow socialLinks={user.social_links} size={18} gap={10} />

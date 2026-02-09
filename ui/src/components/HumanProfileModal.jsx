@@ -187,7 +187,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                 )}
 
                 {/* Social Links */}
-                {profile.social_links && Object.keys(profile.social_links).length > 0 && (
+                {profile.social_links && typeof profile.social_links === 'object' && Object.keys(profile.social_links).length > 0 && (
                   <div style={{ marginTop: 8 }}>
                     <SocialIconsRow socialLinks={profile.social_links} size={18} gap={10} />
                   </div>

@@ -183,7 +183,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
       </div>
 
       {/* Social Links */}
-      {human.social_links && Object.keys(human.social_links).length > 0 && (
+      {human.social_links && typeof human.social_links === 'object' && Object.keys(human.social_links).length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <SocialIconsRow socialLinks={human.social_links} size={16} gap={8} />
         </div>
