@@ -4285,11 +4285,15 @@ function App() {
   // Must be before any early returns to satisfy React's rules of hooks.
   const path = currentPath
   useEffect(() => {
-    if (loading) return
+    // Redirect logged-in users away from /auth immediately (even while loading)
+    // — we have a cached user from localStorage, no need to wait for auth init
     if (path === '/auth' && user) {
       debug('[Auth] Already logged in, redirecting to dashboard')
       navigate('/dashboard')
-    } else if (path === '/onboard' && !user) {
+      return
+    }
+    if (loading) return
+    if (path === '/onboard' && !user) {
       debug('[Auth] No user for onboard, redirecting to auth')
       navigate('/auth')
     } else if (path === '/onboard' && user && !user.needs_onboarding) {
