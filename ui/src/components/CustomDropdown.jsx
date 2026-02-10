@@ -31,7 +31,11 @@ const CustomDropdown = ({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   // Keyboard navigation
@@ -117,7 +121,7 @@ const CustomDropdown = ({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className={`custom-dropdown-trigger ${isOpen ? 'open' : ''} ${!value ? 'placeholder' : ''}`}
+        className={`custom-dropdown-trigger ${isOpen ? 'open' : ''} ${!selectedOption ? 'placeholder' : ''}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         disabled={disabled}

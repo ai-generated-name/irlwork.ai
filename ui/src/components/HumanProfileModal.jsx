@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { X, MapPin, Check, Star, Briefcase, Clock, Shield, Calendar, TrendingUp, Loader2 } from 'lucide-react'
+import { X, MapPin, Check, Star, Briefcase, Clock, Shield, Calendar, TrendingUp, Loader2, Globe } from 'lucide-react'
 import { StarRating } from './HumanProfileCard'
 import { SocialIconsRow } from './SocialIcons'
+import ForAgentsBox from './ForAgentsBox'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -37,6 +38,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
   }, [onClose])
 
   const skills = profile ? (Array.isArray(profile.skills) ? profile.skills : []) : []
+  const languages = profile ? (Array.isArray(profile.languages) ? profile.languages : []) : []
   const memberSince = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : null
@@ -115,13 +117,10 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
-                  alt={profile.name || 'User'}
+                  alt={profile.name || ''}
                   style={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    flexShrink: 0,
+                    width: 80, height: 80, borderRadius: '50%',
+                    objectFit: 'cover', flexShrink: 0,
                     boxShadow: '0 4px 16px rgba(244,132,95,0.3)'
                   }}
                 />
@@ -172,7 +171,14 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   )}
                 </div>
 
-                {/* Location */}
+                {/* Headline */}
+                {profile.headline && (
+                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '2px 0 4px', lineHeight: 1.3 }}>
+                    {profile.headline}
+                  </p>
+                )}
+
+                {/* Location + Timezone */}
                 {profile.city && (
                   <div style={{
                     display: 'flex',
@@ -184,6 +190,12 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   }}>
                     <MapPin size={14} style={{ color: '#F4845F' }} />
                     {profile.city}{profile.state ? `, ${profile.state}` : ''}
+                    {profile.timezone && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 8, color: 'var(--text-tertiary)', fontSize: 13 }}>
+                        <Clock size={12} />
+                        {profile.timezone.replace(/_/g, ' ')}
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -220,7 +232,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <StarRating rating={profile.rating} count={profile.total_ratings_count || 0} />
+              <StarRating rating={profile.rating} count={profile.total_ratings_count || 0} showNewBadge={true} />
               <span style={{
                 fontSize: 28,
                 fontWeight: 700,
@@ -260,7 +272,51 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                       fontWeight: 500,
                       border: '1px solid rgba(244,132,95,0.12)'
                     }}>
-                      {skill.replace('_', ' ')}
+                      {skill.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Languages */}
+            {languages.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px 0' }}>Languages</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {languages.map((lang, idx) => (
+                    <span key={idx} style={{
+                      padding: '6px 14px',
+                      background: 'rgba(59,130,246,0.08)',
+                      borderRadius: 999,
+                      fontSize: 13,
+                      color: '#3B82F6',
+                      fontWeight: 500,
+                      border: '1px solid rgba(59,130,246,0.12)'
+                    }}>
+                      {lang}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Languages */}
+            {profile.languages && profile.languages.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px 0' }}>Languages</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {profile.languages.map((lang, idx) => (
+                    <span key={idx} style={{
+                      padding: '6px 14px',
+                      background: 'rgba(59,130,246,0.08)',
+                      borderRadius: 999,
+                      fontSize: 13,
+                      color: '#3B82F6',
+                      fontWeight: 500,
+                      border: '1px solid rgba(59,130,246,0.12)'
+                    }}>
+                      {lang}
                     </span>
                   ))}
                 </div>
@@ -347,6 +403,9 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               )}
             </div>
 
+            {/* For Agents Box */}
+            <ForAgentsBox human={profile} />
+
             {/* Hire Button */}
             {onHire && (
               <button
@@ -362,7 +421,8 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  boxShadow: '0 4px 16px rgba(244,132,95,0.3)'
+                  boxShadow: '0 4px 16px rgba(244,132,95,0.3)',
+                  marginTop: 16
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.boxShadow = '0 6px 24px rgba(244,132,95,0.4)'

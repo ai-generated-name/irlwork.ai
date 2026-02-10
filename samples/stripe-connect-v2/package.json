@@ -1,0 +1,18 @@
+{
+  "name": "stripe-connect-v2-sample",
+  "version": "1.0.0",
+  "description": "Stripe Connect V2 sample integration with onboarding, products, storefront, and destination charges",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "stripe": "^20.3.1",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

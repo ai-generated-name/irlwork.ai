@@ -510,6 +510,10 @@ code, pre {
   align-items: center;
 }
 
+.browse-tasks-v2-category-dropdown {
+  min-width: 150px;
+}
+
 .browse-tasks-v2-view-toggle {
   display: flex;
   background: var(--bg-tertiary);
@@ -1310,6 +1314,20 @@ code, pre {
   .browse-tasks-v2-location-bar {
     flex-wrap: wrap;
     gap: var(--space-3);
+  }
+
+  .browse-tasks-v2-city-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .city-autocomplete-v4-dropdown {
+    position: fixed;
+    left: var(--space-4);
+    right: var(--space-4);
+    top: auto;
+    max-height: 240px;
+    z-index: 1001;
   }
 
   .browse-tasks-v2-use-location-btn {

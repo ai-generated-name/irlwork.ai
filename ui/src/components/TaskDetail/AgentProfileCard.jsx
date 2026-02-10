@@ -42,7 +42,11 @@ export default function AgentProfileCard({ agent }) {
             <span>Rating</span>
           </span>
           <span className="font-bold text-[#1A1A1A]">
-            {agent.rating ? `${agent.rating.toFixed(1)} / 5.0` : 'No ratings yet'}
+            {agent.rating ? `${agent.rating.toFixed(1)} / 5.0` : (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#D97706]">
+                New
+              </span>
+            )}
           </span>
         </div>
 
