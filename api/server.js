@@ -838,6 +838,7 @@ app.get('/api/auth/verify', async (req, res) => {
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
       social_links: user.social_links || {},
+      languages: JSON.parse(user.languages || '[]'),
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
       verified: user.verified,
@@ -917,10 +918,11 @@ app.post('/api/auth/onboard', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    // Parse skills back to array for response
+    // Parse skills and languages back to arrays for response
     const userData = {
       ...data,
       skills: JSON.parse(data.skills || '[]'),
+      languages: JSON.parse(data.languages || '[]'),
       needs_onboarding: false
     };
 
@@ -1373,7 +1375,7 @@ app.get('/api/humans/:id', async (req, res, next) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, headline, languages, timezone')
+    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, headline, languages, timezone, social_links, travel_radius')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
@@ -1444,7 +1446,11 @@ app.put('/api/humans/profile', async (req, res) => {
   if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
   if (country !== undefined) updates.country = country;
   if (country_code !== undefined) updates.country_code = country_code;
-  if (travel_radius) updates.travel_radius = travel_radius;
+  if (travel_radius) {
+    updates.travel_radius = travel_radius;
+    updates.service_radius = travel_radius;
+  }
+  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
   if (social_links !== undefined) {
     const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
     const cleaned = {};
@@ -4654,7 +4660,7 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
@@ -4686,7 +4692,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       verified, availability, wallet_address, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
       total_disputes_filed, total_usdc_paid, last_active_at, social_links,
-      headline, languages, timezone
+      headline, languages, timezone, travel_radius
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
@@ -4805,6 +4811,9 @@ app.get('/api/profile', async (req, res) => {
     hourly_rate: profile.hourly_rate,
     wallet_address: profile.wallet_address,
     skills: JSON.parse(profile.skills || '[]'),
+    languages: JSON.parse(profile.languages || '[]'),
+    travel_radius: profile.travel_radius || 25,
+    social_links: profile.social_links || {},
     rating: profile.rating,
     jobs_completed: profile.jobs_completed,
     verified: profile.verified,
@@ -4830,8 +4839,8 @@ app.put('/api/profile', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address } = req.body;
-  
+  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address, languages, travel_radius, social_links } = req.body;
+
   const updates = { updated_at: new Date().toISOString(), verified: true };
 
   if (name) updates.name = name;
@@ -4842,6 +4851,12 @@ app.put('/api/profile', async (req, res) => {
   if (availability) updates.availability = availability;
   if (wallet_address) updates.wallet_address = wallet_address;
   if (skills) updates.skills = JSON.stringify(skills);
+  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
+  if (travel_radius) {
+    updates.travel_radius = travel_radius;
+    updates.service_radius = travel_radius;
+  }
+  if (social_links !== undefined) updates.social_links = social_links;
   
   const { data: profile, error } = await supabase
     .from('users')
