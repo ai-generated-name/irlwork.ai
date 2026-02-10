@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stripe Connect V2 — Onboarding Status</title>
+  <style>
+    :root {
+      --bg: #FAF8F5;
+      --bg-card: #FFFFFF;
+      --text: #1a1a1a;
+      --text-muted: #6b7280;
+      --border: #e5e5e5;
+      --accent: #E07A5F;
+      --accent-hover: #c96a51;
+      --success: #059669;
+      --success-bg: #ecfdf5;
+      --warning: #d97706;
+      --warning-bg: #fffbeb;
+      --danger: #dc2626;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --font: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    nav {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    nav .logo { font-weight: 700; font-size: 18px; color: var(--accent); }
+    nav a { color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 500; }
+    nav a:hover { color: var(--text); }
+    .container { max-width: 640px; margin: 0 auto; padding: 48px 24px; }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      box-shadow: var(--shadow);
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .status-row:last-child { border-bottom: none; }
+    .status-label { font-size: 14px; color: var(--text-muted); }
+    .status-value { font-size: 14px; font-weight: 600; }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 100px;
+    }
+    .badge-success { background: var(--success-bg); color: var(--success); }
+    .badge-warning { background: var(--warning-bg); color: var(--warning); }
+    .badge-neutral { background: #f3f4f6; color: var(--text-muted); }
+    .badge-danger { background: #fef2f2; color: var(--danger); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .btn-outline:hover { background: #fef2ee; }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .loading { text-align: center; padding: 32px; color: var(--text-muted); }
+    .account-id { font-family: monospace; font-size: 13px; color: var(--text-muted); }
+    .hero-status {
+      text-align: center;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .hero-status .icon { font-size: 48px; margin-bottom: 12px; }
+    .hero-status h2 { font-size: 20px; margin-bottom: 4px; }
+    .hero-status p { font-size: 14px; color: var(--text-muted); }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <nav>
+    <span class="logo">Connect V2 Demo</span>
+    <a href="/">Dashboard</a>
+    <a href="/storefront">Storefront</a>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <div id="content" class="loading">Loading account status...</div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // Onboarding Return Page
+    // =========================================================================
+    //
+    // The seller is redirected here after completing (or refreshing) the
+    // Stripe onboarding flow. We read the accountId from the URL and fetch
+    // the current status from our API.
+    //
+    // If `refresh=true` is in the URL, the onboarding link expired and the
+    // seller needs a new one. We show a button to restart onboarding.
+    // =========================================================================
+
+    const params = new URLSearchParams(window.location.search);
+    const accountId = params.get('accountId');
+    const isRefresh = params.get('refresh') === 'true';
+
+    async function loadStatus() {
+      const container = document.getElementById('content');
+
+      if (!accountId) {
+        container.innerHTML = `
+          <div class="hero-status">
+            <h2>No account specified</h2>
+            <p>Return to the dashboard to manage your accounts.</p>
+          </div>
+          <div class="actions" style="justify-content:center;">
+            <a href="/" class="btn btn-primary">Go to Dashboard</a>
+          </div>`;
+        return;
+      }
+
+      // If this is a refresh (link expired), show a message and let
+      // the seller restart onboarding
+      if (isRefresh) {
+        container.innerHTML = `
+          <div class="hero-status">
+            <div class="icon">&#x1F504;</div>
+            <h2>Onboarding Link Expired</h2>
+            <p>The previous onboarding link has expired. Click below to generate a new one.</p>
+            <p class="account-id" style="margin-top:8px;">${escapeHtml(accountId)}</p>
+          </div>
+          <div class="actions" style="justify-content:center;">
+            <button class="btn btn-primary" onclick="restartOnboarding()">Restart Onboarding</button>
+            <a href="/" class="btn btn-outline">Back to Dashboard</a>
+          </div>`;
+        return;
+      }
+
+      // Fetch the account status from our API.
+      // The API calls Stripe's V2 accounts.retrieve() with includes to get
+      // the latest onboarding and capability status.
+      try {
+        const res = await fetch(`/api/accounts/${accountId}/status`);
+        const status = await res.json();
+        if (!res.ok) throw new Error(status.error);
+
+        // Determine the hero state based on readiness
+        let icon, title, subtitle;
+        if (status.readyToReceivePayments) {
+          icon = '&#x2705;';
+          title = 'Ready to Receive Payments';
+          subtitle = 'This account is fully onboarded and can accept destination charges.';
+        } else if (status.onboardingComplete) {
+          icon = '&#x23F3;';
+          title = 'Onboarding Complete — Activating';
+          subtitle = 'Stripe is reviewing the account. Payments will be enabled shortly.';
+        } else {
+          icon = '&#x1F4CB;';
+          title = 'Onboarding Incomplete';
+          subtitle = 'Additional information is required before this account can receive payments.';
+        }
+
+        container.innerHTML = `
+          <div class="hero-status">
+            <div class="icon">${icon}</div>
+            <h2>${title}</h2>
+            <p>${subtitle}</p>
+          </div>
+
+          <div class="status-row">
+            <span class="status-label">Account ID</span>
+            <span class="account-id">${escapeHtml(status.accountId)}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Display Name</span>
+            <span class="status-value">${escapeHtml(status.displayName || 'Not set')}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Contact Email</span>
+            <span class="status-value">${escapeHtml(status.contactEmail || 'Not set')}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Onboarding</span>
+            <span>${status.onboardingComplete
+              ? '<span class="badge badge-success">Complete</span>'
+              : '<span class="badge badge-warning">Incomplete</span>'}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Payments</span>
+            <span>${status.readyToReceivePayments
+              ? '<span class="badge badge-success">Active</span>'
+              : '<span class="badge badge-neutral">Inactive</span>'}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Requirements</span>
+            <span class="badge ${
+              status.requirementsStatus === 'none' ? 'badge-success' :
+              status.requirementsStatus === 'currently_due' ? 'badge-warning' :
+              status.requirementsStatus === 'past_due' ? 'badge-danger' :
+              'badge-neutral'
+            }">${escapeHtml(status.requirementsStatus)}</span>
+          </div>
+
+          <div class="actions">
+            ${!status.onboardingComplete
+              ? `<button class="btn btn-primary" onclick="restartOnboarding()">Complete Onboarding</button>`
+              : ''}
+            <a href="/" class="btn btn-outline">Back to Dashboard</a>
+          </div>`;
+
+      } catch (err) {
+        container.innerHTML = `
+          <div class="hero-status">
+            <h2>Error Loading Status</h2>
+            <p style="color:var(--danger)">${escapeHtml(err.message)}</p>
+          </div>
+          <div class="actions" style="justify-content:center;">
+            <a href="/" class="btn btn-outline">Back to Dashboard</a>
+          </div>`;
+      }
+    }
+
+    // Restart onboarding by generating a new Account Link
+    async function restartOnboarding() {
+      try {
+        const res = await fetch(`/api/accounts/${accountId}/onboard`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        window.location.href = data.url;
+      } catch (err) {
+        window.alert('Failed to restart onboarding: ' + err.message);
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
+    }
+
+    loadStatus();
+  </script>
+</body>
+</html>
