@@ -2063,7 +2063,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 md:hidden"
+          style={{ zIndex: 9989 }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -2114,8 +2115,26 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           ))}
         </nav>
 
-        {/* Feedback Button - pinned to bottom */}
-        <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
+        {/* Social & Feedback - pinned to bottom */}
+        <div style={{ borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
+          {/* X / Twitter */}
+          <a
+            href="https://x.com/irlworkai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
+            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
+          >
+            <div className="dashboard-v4-nav-item-content">
+              <span className="dashboard-v4-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </span>
+              <span className="dashboard-v4-nav-label">Follow us on X</span>
+            </div>
+          </a>
+          {/* Feedback */}
           <button
             onClick={() => setFeedbackOpen(!feedbackOpen)}
             className="dashboard-v4-nav-item"

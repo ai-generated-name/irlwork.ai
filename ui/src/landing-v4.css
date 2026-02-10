@@ -4050,7 +4050,7 @@
   top: 0;
   left: 0;
   bottom: 0;
-  z-index: 50;
+  z-index: 9990;
   transition: transform 0.3s var(--ease-smooth);
 }
 
@@ -4176,6 +4176,15 @@
   font-size: 14px;
   font-weight: 500;
   color: inherit;
+}
+
+.dashboard-v4-sidebar-social-link {
+  color: var(--text-secondary);
+}
+
+.dashboard-v4-sidebar-social-link:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .dashboard-v4-nav-item.active .dashboard-v4-nav-label {
