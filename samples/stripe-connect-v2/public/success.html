@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stripe Connect V2 — Payment Successful</title>
+  <style>
+    :root {
+      --bg: #FAF8F5;
+      --bg-card: #FFFFFF;
+      --text: #1a1a1a;
+      --text-muted: #6b7280;
+      --border: #e5e5e5;
+      --accent: #E07A5F;
+      --accent-hover: #c96a51;
+      --success: #059669;
+      --success-bg: #ecfdf5;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --font: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    nav {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    nav .logo { font-weight: 700; font-size: 18px; color: var(--accent); }
+    nav a { color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 500; }
+    nav a:hover { color: var(--text); }
+    .container { max-width: 640px; margin: 0 auto; padding: 48px 24px; }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .icon { font-size: 56px; margin-bottom: 16px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+    .details {
+      text-align: left;
+      margin: 24px 0;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: var(--text-muted); }
+    .detail-value { font-weight: 600; }
+    .detail-value.mono { font-family: monospace; font-size: 12px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .btn-outline:hover { background: #fef2ee; }
+    .actions { display: flex; gap: 12px; justify-content: center; margin-top: 24px; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <nav>
+    <span class="logo">Connect V2 Demo</span>
+    <a href="/">Dashboard</a>
+    <a href="/storefront">Storefront</a>
+  </nav>
+
+  <div class="container">
+    <div class="card" id="content">
+      <div class="icon">&#x23F3;</div>
+      <h1>Loading payment details...</h1>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // Success Page
+    // =========================================================================
+    //
+    // After a successful Checkout Session, the customer is redirected here
+    // with the session_id in the URL. We fetch the session details from our
+    // API to show a payment confirmation.
+    //
+    // In production, this is where you'd:
+    //   - Mark the order as paid in your database
+    //   - Send a confirmation email
+    //   - Show order/shipping details
+    // =========================================================================
+
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+
+    async function loadSuccess() {
+      const container = document.getElementById('content');
+
+      if (!sessionId) {
+        container.innerHTML = `
+          <div class="icon">&#x2753;</div>
+          <h1>No session found</h1>
+          <p class="subtitle">Return to the storefront to make a purchase.</p>
+          <div class="actions">
+            <a href="/storefront" class="btn btn-primary">Go to Storefront</a>
+          </div>`;
+        return;
+      }
+
+      try {
+        // Fetch the Checkout Session details from our server.
+        // Our API retrieves the session with the expanded payment_intent
+        // to get charge and transfer information.
+        const res = await fetch(`/api/checkout/success?session_id=${sessionId}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        const currencySymbol = data.currency === 'usd' ? '$' : data.currency.toUpperCase() + ' ';
+        const amount = (data.amountTotal / 100).toFixed(2);
+
+        container.innerHTML = `
+          <div class="icon">&#x2705;</div>
+          <h1>Payment Successful!</h1>
+          <p class="subtitle">Thank you for your purchase. Your payment has been processed.</p>
+
+          <div class="details">
+            <div class="detail-row">
+              <span class="detail-label">Status</span>
+              <span class="detail-value" style="color:var(--success);">${escapeHtml(data.status)}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Amount</span>
+              <span class="detail-value">${currencySymbol}${amount}</span>
+            </div>
+            ${data.customerEmail ? `
+            <div class="detail-row">
+              <span class="detail-label">Email</span>
+              <span class="detail-value">${escapeHtml(data.customerEmail)}</span>
+            </div>` : ''}
+            <div class="detail-row">
+              <span class="detail-label">Payment Intent</span>
+              <span class="detail-value mono">${escapeHtml(data.paymentIntentId || 'N/A')}</span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <a href="/storefront" class="btn btn-primary">Continue Shopping</a>
+            <a href="/" class="btn btn-outline">Dashboard</a>
+          </div>`;
+
+      } catch (err) {
+        container.innerHTML = `
+          <div class="icon">&#x26A0;</div>
+          <h1>Something went wrong</h1>
+          <p class="subtitle" style="color:var(--danger)">${escapeHtml(err.message)}</p>
+          <div class="actions">
+            <a href="/storefront" class="btn btn-primary">Back to Storefront</a>
+          </div>`;
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
+    }
+
+    loadSuccess();
+  </script>
+</body>
+</html>
