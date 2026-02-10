@@ -78,6 +78,7 @@ const CityAutocomplete = ({
   const dropdownRef = useRef(null);
   const lastValidCity = useRef(value || null);
   const queryRef = useRef(query);
+  const isSelectingRef = useRef(false);
 
   // Load cities data lazily on first focus
   const loadCities = async () => {
@@ -188,6 +189,7 @@ const CityAutocomplete = ({
 
   // Handle city selection
   const handleSelect = (city) => {
+    isSelectingRef.current = false;
     setQuery(city.displayName);
     lastValidCity.current = city.displayName;
     setShowDropdown(false);
@@ -269,6 +271,11 @@ const CityAutocomplete = ({
   // Revert to last valid city on blur (prevents free-text entry)
   const handleBlur = () => {
     setTimeout(() => {
+      // If user is tapping a dropdown item, don't revert — let the click complete
+      if (isSelectingRef.current) {
+        isSelectingRef.current = false;
+        return;
+      }
       setShowDropdown(false);
       // Use ref to get current query value (state may be stale in timeout)
       const currentQuery = queryRef.current;
@@ -318,7 +325,7 @@ const CityAutocomplete = ({
           ref={dropdownRef}
           className="city-autocomplete-v4-dropdown"
           onMouseDown={(e) => e.preventDefault()}
-          onTouchStart={(e) => e.preventDefault()}
+          onTouchStart={() => { isSelectingRef.current = true; }}
         >
           {results.map((city, index) => (
             <button
@@ -352,7 +359,7 @@ const CityAutocomplete = ({
           ref={dropdownRef}
           className="city-autocomplete-v4-dropdown"
           onMouseDown={(e) => e.preventDefault()}
-          onTouchStart={(e) => e.preventDefault()}
+          onTouchStart={() => { isSelectingRef.current = true; }}
         >
           <div className="city-autocomplete-v4-empty">
             No cities found for "{query}"
