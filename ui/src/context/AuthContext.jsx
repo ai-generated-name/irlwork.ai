@@ -23,7 +23,7 @@ export function AuthProvider({ children }) {
         debug('[Auth] Got session:', session ? 'exists' : 'none')
         if (session?.user) {
           debug('[Auth] User ID:', session.user.id)
-          fetchUserProfile(session.user.id)
+          fetchUserProfile(session.user.id, session.user.email)
         } else {
           setLoading(false)
         }
@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
         if (session?.user) {
-          await fetchUserProfile(session.user.id)
+          await fetchUserProfile(session.user.id, session.user.email)
         } else {
           setUser(null)
           setLoading(false)
@@ -49,7 +49,7 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchUserProfile = async (userId) => {
+  const fetchUserProfile = async (userId, supabaseEmail) => {
     debug('[Auth] Fetching profile for user:', userId)
 
     try {
@@ -63,7 +63,8 @@ export function AuthProvider({ children }) {
       if (res.ok) {
         const data = await res.json()
         debug('[Auth] Got user from API:', data.user?.id)
-        setUser({ ...data.user, supabase_user: true })
+        // Always use Supabase auth email (source of truth for sign-in email)
+        setUser({ ...data.user, email: supabaseEmail || data.user.email, supabase_user: true })
       } else {
         debug('[Auth] API returned non-OK status, using fallback')
         const { data: { session } } = await supabase.auth.getSession()
