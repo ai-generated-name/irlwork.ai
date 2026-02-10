@@ -3661,17 +3661,25 @@ app.post('/api/mcp', async (req, res) => {
       case 'list_humans': {
         let query = supabase
           .from('users')
-          .select('id, name, city, hourly_rate, skills, rating, jobs_completed, bio')
+          .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, bio, languages, travel_radius, availability, headline, timezone')
           .eq('type', 'human')
           .eq('verified', true);
-        
+
         if (params.category) query = query.like('skills', `%${params.category}%`);
         if (params.city) query = query.like('city', `%${params.city}%`);
-        
+        if (params.state) query = query.ilike('state', `%${params.state}%`);
+        if (params.min_rating) query = query.gte('rating', parseFloat(params.min_rating));
+        if (params.availability) query = query.eq('availability', params.availability);
+        if (params.language) query = query.contains('languages', JSON.stringify([params.language]));
+
         const { data: humans, error } = await query.limit(params.limit || 100);
         if (error) throw error;
-        
-        res.json(humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || []);
+
+        res.json(humans?.map(h => ({
+          ...h,
+          skills: JSON.parse(h.skills || '[]'),
+          languages: JSON.parse(h.languages || '[]')
+        })) || []);
         break;
       }
       
