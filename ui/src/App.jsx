@@ -4078,7 +4078,6 @@ function App() {
   })
   const [loading, setLoading] = useState(true)
   const [currentPath, setCurrentPath] = useState(window.location.pathname)
-  const initDoneRef = useRef(false)
 
   // Navigate without full page reload — updates URL + React state only
   const navigate = useCallback((url) => {
@@ -4146,18 +4145,17 @@ function App() {
         console.error('[Auth] getSession error:', e)
         setLoading(false)
       }
-      initDoneRef.current = true
     }
 
     init()
 
-    // Listen for auth changes — skip redundant fetchUserProfile if init() already handled it
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       debug('[Auth] State change:', event, session ? 'with session' : 'no session')
-      // Only react to SIGNED_IN / TOKEN_REFRESHED after init is done,
-      // to avoid double-fetching the user profile during the initial load
-      if (!initDoneRef.current && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        debug('[Auth] Skipping duplicate fetch — init() still running')
+      if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('user')
+        setUser(null)
+        setLoading(false)
         return
       }
       if (session?.user) {
@@ -4229,6 +4227,7 @@ function App() {
   }
 
   const logout = async () => {
+    localStorage.removeItem('user')
     if (supabase) await supabase.auth.signOut()
     setUser(null)
     navigate('/')
