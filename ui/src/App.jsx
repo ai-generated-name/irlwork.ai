@@ -11,6 +11,7 @@ import CustomDropdown from './components/CustomDropdown'
 import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
 import BrowsePage from './pages/BrowsePage'
+import HumanProfilePage from './pages/HumanProfilePage'
 import BrowseTasksV2 from './pages/BrowseTasksV2'
 import MyTasksPage from './pages/MyTasksPage'
 import LandingPageV4 from './pages/LandingPageV4'
@@ -1435,6 +1436,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
+  const [skillsList, setSkillsList] = useState(user?.skills || [])
+  const [newSkillInput, setNewSkillInput] = useState('')
+  const [languagesList, setLanguagesList] = useState(user?.languages || [])
+  const [newLanguageInput, setNewLanguageInput] = useState('')
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
   const [assigningHuman, setAssigningHuman] = useState(null) // loading state
   const [expandedHumanId, setExpandedHumanId] = useState(null) // expanded profile modal
@@ -2564,7 +2569,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                       key={human.id}
                       human={human}
                       variant="dashboard"
-                      onExpand={(h) => setExpandedHumanId(h.id)}
+                      onExpand={(h) => window.location.href = `/humans/${h.id}`}
                       onHire={() => setActiveTab('create')}
                     />
                   ))}
@@ -2689,26 +2694,31 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 const formData = new FormData(e.target)
                 try {
                   const locationData = profileLocation || {}
+                  const timezoneVal = formData.get('timezone')?.trim()
+                  const payload = {
+                    name: formData.get('name'),
+                    headline: formData.get('headline'),
+                    city: locationData.city || user?.city,
+                    latitude: locationData.latitude ?? user?.latitude,
+                    longitude: locationData.longitude ?? user?.longitude,
+                    country: locationData.country || user?.country,
+                    country_code: locationData.country_code || user?.country_code,
+                    hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
+                    bio: formData.get('bio'),
+                    travel_radius: parseInt(formData.get('travel_radius')) || 25
+                  }
+                  // Only include timezone if explicitly set (otherwise server auto-derives from location)
+                  if (timezoneVal) payload.timezone = timezoneVal
                   const res = await fetch(`${API_URL}/humans/profile`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                    body: JSON.stringify({
-                      name: formData.get('name'),
-                      city: locationData.city || user?.city,
-                      latitude: locationData.latitude ?? user?.latitude,
-                      longitude: locationData.longitude ?? user?.longitude,
-                      country: locationData.country || user?.country,
-                      country_code: locationData.country_code || user?.country_code,
-                      hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
-                      bio: formData.get('bio'),
-                      travel_radius: parseInt(formData.get('travel_radius')) || 25
-                    })
+                    body: JSON.stringify(payload)
                   })
                   if (res.ok) {
                     const data = await res.json()
                     // Update localStorage with new user data
                     if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Profile updated!')
@@ -2738,6 +2748,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   </div>
                 </div>
 
+                <div className="dashboard-v4-form-group">
+                  <label className="dashboard-v4-form-label">Headline</label>
+                  <input type="text" name="headline" defaultValue={user?.headline || ''} maxLength={120} className="dashboard-v4-form-input" placeholder="e.g. Professional Photographer & Drone Pilot" />
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>A short tagline that appears on your profile card</p>
+                </div>
+
                 <div className="dashboard-form-grid-2col">
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
@@ -2747,6 +2763,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
                     <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className="dashboard-v4-form-input" />
                   </div>
+                </div>
+
+                <div className="dashboard-v4-form-group">
+                  <label className="dashboard-v4-form-label">Timezone</label>
+                  <input type="text" name="timezone" defaultValue={user?.timezone || ''} className="dashboard-v4-form-input" placeholder="Auto-detected from city (e.g. America/New_York)" />
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Auto-set when you select a city. You can override manually.</p>
                 </div>
 
                 <div className="dashboard-v4-form-group">
@@ -2760,39 +2782,198 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Skills</h2>
-              <form onSubmit={async (e) => {
-                e.preventDefault()
-                const formData = new FormData(e.target)
-                const skills = formData.get('skills').split(',').map(s => s.trim()).filter(Boolean)
-                try {
-                  const res = await fetch(`${API_URL}/humans/profile`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                    body: JSON.stringify({ skills })
-                  })
-                  if (res.ok) {
-                    const data = await res.json()
-                    // Update localStorage with new user data
-                    if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
-                      localStorage.setItem('user', JSON.stringify(updatedUser))
+              {/* Current skills as removable blocks */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                {skillsList.map((skill, idx) => (
+                  <span key={idx} style={{
+                    padding: '6px 12px',
+                    background: 'rgba(244,132,95,0.08)',
+                    borderRadius: 999,
+                    fontSize: 13,
+                    color: '#E07A5F',
+                    fontWeight: 500,
+                    border: '1px solid rgba(244,132,95,0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    {skill.replace(/_/g, ' ')}
+                    <button
+                      type="button"
+                      onClick={() => setSkillsList(prev => prev.filter((_, i) => i !== idx))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#E07A5F', display: 'flex', alignItems: 'center' }}
+                    >
+                      <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
+                    </button>
+                  </span>
+                ))}
+                {skillsList.length === 0 && (
+                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No skills added yet</span>
+                )}
+              </div>
+              {/* Add skill input */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <input
+                  type="text"
+                  value={newSkillInput}
+                  onChange={(e) => setNewSkillInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const val = newSkillInput.trim()
+                      if (val && !skillsList.includes(val)) {
+                        setSkillsList(prev => [...prev, val])
+                        setNewSkillInput('')
+                      }
                     }
-                    toast.success('Skills updated!')
-                    setTimeout(() => window.location.reload(), 1000)
-                  } else {
-                    const err = await res.json()
-                    toast.error(err.error || 'Unknown error')
+                  }}
+                  className="dashboard-v4-form-input"
+                  placeholder="Type a skill and press Enter"
+                  style={{ flex: 1, marginBottom: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = newSkillInput.trim()
+                    if (val && !skillsList.includes(val)) {
+                      setSkillsList(prev => [...prev, val])
+                      setNewSkillInput('')
+                    }
+                  }}
+                  className="dashboard-v4-form-submit"
+                  style={{ width: 'auto', margin: 0, padding: '10px 20px' }}
+                >
+                  Add
+                </button>
+              </div>
+              {/* Save skills button */}
+              <button
+                type="button"
+                className="dashboard-v4-form-submit"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`${API_URL}/humans/profile`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                      body: JSON.stringify({ skills: skillsList })
+                    })
+                    if (res.ok) {
+                      const data = await res.json()
+                      if (data.user) {
+                        const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                        localStorage.setItem('user', JSON.stringify(updatedUser))
+                      }
+                      toast.success('Skills updated!')
+                      setTimeout(() => window.location.reload(), 1000)
+                    } else {
+                      const err = await res.json()
+                      toast.error(err.error || 'Unknown error')
+                    }
+                  } catch (err) {
+                    toast.error('Error saving skills')
                   }
-                } catch (err) {
-                  toast.error('Error saving skills')
-                }
-              }}>
-                <div className="dashboard-v4-form-group">
-                  <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className="dashboard-v4-form-input" placeholder="delivery, photography, moving, cleaning" />
-                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
-                </div>
-                <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
-              </form>
+                }}
+              >
+                Update Skills
+              </button>
+            </div>
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Languages</h2>
+              {/* Current languages as removable blocks */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                {languagesList.map((lang, idx) => (
+                  <span key={idx} style={{
+                    padding: '6px 12px',
+                    background: 'rgba(59,130,246,0.08)',
+                    borderRadius: 999,
+                    fontSize: 13,
+                    color: '#3B82F6',
+                    fontWeight: 500,
+                    border: '1px solid rgba(59,130,246,0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    {lang}
+                    <button
+                      type="button"
+                      onClick={() => setLanguagesList(prev => prev.filter((_, i) => i !== idx))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#3B82F6', display: 'flex', alignItems: 'center' }}
+                    >
+                      <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
+                    </button>
+                  </span>
+                ))}
+                {languagesList.length === 0 && (
+                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No languages added yet</span>
+                )}
+              </div>
+              {/* Add language input */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <input
+                  type="text"
+                  value={newLanguageInput}
+                  onChange={(e) => setNewLanguageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const val = newLanguageInput.trim()
+                      if (val && !languagesList.includes(val)) {
+                        setLanguagesList(prev => [...prev, val])
+                        setNewLanguageInput('')
+                      }
+                    }
+                  }}
+                  className="dashboard-v4-form-input"
+                  placeholder="Type a language and press Enter"
+                  style={{ flex: 1, marginBottom: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = newLanguageInput.trim()
+                    if (val && !languagesList.includes(val)) {
+                      setLanguagesList(prev => [...prev, val])
+                      setNewLanguageInput('')
+                    }
+                  }}
+                  className="dashboard-v4-form-submit"
+                  style={{ width: 'auto', margin: 0, padding: '10px 20px' }}
+                >
+                  Add
+                </button>
+              </div>
+              {/* Save languages button */}
+              <button
+                type="button"
+                className="dashboard-v4-form-submit"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`${API_URL}/humans/profile`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                      body: JSON.stringify({ languages: languagesList })
+                    })
+                    if (res.ok) {
+                      const data = await res.json()
+                      if (data.user) {
+                        const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                        localStorage.setItem('user', JSON.stringify(updatedUser))
+                      }
+                      toast.success('Languages updated!')
+                      setTimeout(() => window.location.reload(), 1000)
+                    } else {
+                      const err = await res.json()
+                      toast.error(err.error || 'Unknown error')
+                    }
+                  } catch (err) {
+                    toast.error('Error saving languages')
+                  }
+                }}
+              >
+                Update Languages
+              </button>
             </div>
 
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
@@ -2814,7 +2995,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   if (res.ok) {
                     const data = await res.json()
                     if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Social links updated!')
@@ -3895,6 +4076,14 @@ function App() {
       const taskId = path.split('/tasks/')[1]
       if (taskId) {
         return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
+      }
+    }
+
+    // Human profile route - /humans/:id
+    if (path.startsWith('/humans/')) {
+      const humanId = path.split('/humans/')[1]
+      if (humanId) {
+        return <HumanProfilePage humanId={humanId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
       }
     }
 

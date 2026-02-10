@@ -43,6 +43,7 @@ const initStripeRoutes = require('./routes/stripe');
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
 const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./utils/distance');
+const { find: findTimezone } = require('geo-tz');
 
 // Phase 1 Admin Routes
 console.log('[Startup] Loading admin routes...');
@@ -1312,7 +1313,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude')
+    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude, headline, languages, timezone')
     .eq('type', 'human')
     .eq('verified', true);
 
@@ -1325,8 +1326,8 @@ app.get('/api/humans', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // Parse skills for all humans
-  let results = humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || [];
+  // Parse skills and languages for all humans
+  let results = humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]'), languages: JSON.parse(h.languages || '[]') })) || [];
 
   // Apply distance filtering if coordinates provided
   if (user_lat && user_lng && radius) {
@@ -1372,13 +1373,13 @@ app.get('/api/humans/:id', async (req, res, next) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness')
+    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, headline, languages, timezone')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
 
   if (error || !user) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...user, skills: JSON.parse(user.skills || '[]') });
+  res.json({ ...user, skills: JSON.parse(user.skills || '[]'), languages: JSON.parse(user.languages || '[]') });
 });
 
 // ============ PROFILE ============
@@ -1425,7 +1426,7 @@ app.put('/api/humans/profile', async (req, res) => {
     }
   }
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links } = req.body;
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
 
@@ -1455,6 +1456,21 @@ app.put('/api/humans/profile', async (req, res) => {
       }
     }
     updates.social_links = cleaned;
+  }
+  if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
+  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
+  if (timezone !== undefined) updates.timezone = timezone;
+
+  // Auto-derive timezone from coordinates when location changes but timezone not explicitly set
+  if (updates.latitude != null && updates.longitude != null && timezone === undefined) {
+    try {
+      const tzResults = findTimezone(updates.latitude, updates.longitude);
+      if (tzResults && tzResults.length > 0) {
+        updates.timezone = tzResults[0];
+      }
+    } catch (e) {
+      console.error('[Profile] Failed to derive timezone:', e.message);
+    }
   }
 
   const { data, error } = await supabase
@@ -4603,24 +4619,25 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
     .limit(parseInt(limit));
-  
+
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
-  
+
   const { data: humans, error } = await query;
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
+
   res.json(humans?.map(h => ({
     ...h,
-    skills: JSON.parse(h.skills || '[]')
+    skills: JSON.parse(h.skills || '[]'),
+    languages: JSON.parse(h.languages || '[]')
   })) || []);
 });
 
@@ -4633,7 +4650,8 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
       verified, availability, wallet_address, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at, social_links
+      total_disputes_filed, total_usdc_paid, last_active_at, social_links,
+      headline, languages, timezone
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
@@ -4663,6 +4681,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
   res.json({
     ...user,
     skills: JSON.parse(user.skills || '[]'),
+    languages: JSON.parse(user.languages || '[]'),
     reviews: reviews || [],
     // Derived metrics
     completion_rate: completionRate,
