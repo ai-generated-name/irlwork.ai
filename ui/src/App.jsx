@@ -15,6 +15,7 @@ const HumanProfilePage = lazy(() => import('./pages/HumanProfilePage'))
 const BrowseTasksV2 = lazy(() => import('./pages/BrowseTasksV2'))
 const MyTasksPage = lazy(() => import('./pages/MyTasksPage'))
 import LandingPageV4 from './pages/LandingPageV4'
+import NotFoundPage from './pages/NotFoundPage'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
@@ -4523,7 +4524,11 @@ function App() {
     if (path === '/mcp') return <MCPPage />
     if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
 
-    return <LandingPageV4 />
+    // Homepage
+    if (path === '/') return <LandingPageV4 />
+
+    // 404 for any unmatched route
+    return <NotFoundPage />
   })()
 
   // Dashboard has feedback in sidebar, other pages use floating button
