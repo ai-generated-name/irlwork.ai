@@ -3241,6 +3241,177 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
             {/* Notification Preferences */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <form onSubmit={async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                try {
+                  const locationData = profileLocation || {}
+                  const res = await fetch(`${API_URL}/humans/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    body: JSON.stringify({
+                      name: formData.get('name'),
+                      city: locationData.city || user?.city,
+                      latitude: locationData.latitude ?? user?.latitude,
+                      longitude: locationData.longitude ?? user?.longitude,
+                      country: locationData.country || user?.country,
+                      country_code: locationData.country_code || user?.country_code,
+                      hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
+                      bio: formData.get('bio'),
+                      travel_radius: parseInt(formData.get('travel_radius')) || 25
+                    })
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    // Update localStorage with new user data
+                    if (data.user) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      localStorage.setItem('user', JSON.stringify(updatedUser))
+                    }
+                    toast.success('Profile updated!')
+                    setProfileLocation(null)
+                    setTimeout(() => window.location.reload(), 1000)
+                  } else {
+                    const err = await res.json()
+                    toast.error(err.error || 'Unknown error')
+                  }
+                } catch (err) {
+                  toast.error('Error saving profile')
+                }
+              }}>
+                <div className="dashboard-form-grid-2col">
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Full Name</label>
+                    <input type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
+                  </div>
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">City</label>
+                    <CityAutocomplete
+                      value={profileLocation?.city || user?.city || ''}
+                      onChange={setProfileLocation}
+                      placeholder="San Francisco"
+                      className="dashboard-v4-city-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="dashboard-form-grid-2col">
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
+                    <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
+                  </div>
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
+                    <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className="dashboard-v4-form-input" />
+                  </div>
+                </div>
+
+                <div className="dashboard-v4-form-group">
+                  <label className="dashboard-v4-form-label">Bio</label>
+                  <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" placeholder="Tell agents about yourself..." />
+                </div>
+
+                <button type="submit" className="dashboard-v4-form-submit">Save Changes</button>
+              </form>
+            </div>
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Skills</h2>
+              <form onSubmit={async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const skills = formData.get('skills').split(',').map(s => s.trim()).filter(Boolean)
+                try {
+                  const res = await fetch(`${API_URL}/humans/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    body: JSON.stringify({ skills })
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    // Update localStorage with new user data
+                    if (data.user) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      localStorage.setItem('user', JSON.stringify(updatedUser))
+                    }
+                    toast.success('Skills updated!')
+                    setTimeout(() => window.location.reload(), 1000)
+                  } else {
+                    const err = await res.json()
+                    toast.error(err.error || 'Unknown error')
+                  }
+                } catch (err) {
+                  toast.error('Error saving skills')
+                }
+              }}>
+                <div className="dashboard-v4-form-group">
+                  <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className="dashboard-v4-form-input" placeholder="delivery, photography, moving, cleaning" />
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
+                </div>
+                <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
+              </form>
+            </div>
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Social Links</h2>
+              <form onSubmit={async (e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const social_links = {}
+                PLATFORM_ORDER.forEach(p => {
+                  const val = formData.get(p)?.trim()
+                  if (val) social_links[p] = val
+                })
+                try {
+                  const res = await fetch(`${API_URL}/humans/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    body: JSON.stringify({ social_links })
+                  })
+                  if (res.ok) {
+                    const data = await res.json()
+                    if (data.user) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      localStorage.setItem('user', JSON.stringify(updatedUser))
+                    }
+                    toast.success('Social links updated!')
+                    setTimeout(() => window.location.reload(), 1000)
+                  } else {
+                    const err = await res.json()
+                    toast.error(err.error || 'Unknown error')
+                  }
+                } catch (err) {
+                  toast.error('Error saving social links')
+                }
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {PLATFORM_ORDER.map(platform => {
+                    const config = PLATFORMS[platform]
+                    return (
+                      <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', flexShrink: 0, width: 20 }}>
+                          {config.icon(18)}
+                        </div>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', width: 80, flexShrink: 0 }}>{config.label}</label>
+                        <input
+                          type="text"
+                          name={platform}
+                          defaultValue={user?.social_links?.[platform] || ''}
+                          placeholder={config.placeholder}
+                          maxLength={100}
+                          className="dashboard-v4-form-input"
+                          style={{ marginBottom: 0 }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or handle, not the full URL</p>
+                <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
+              </form>
+            </div>
+
+            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notification Preferences</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>

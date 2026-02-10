@@ -830,6 +830,7 @@ app.get('/api/auth/verify', async (req, res) => {
       avatar_url: user.avatar_url || null,
       city: user.city, hourly_rate: user.hourly_rate,
       bio: user.bio || '',
+      avatar_url: user.avatar_url || '',
       travel_radius: user.travel_radius || 25,
       latitude: user.latitude,
       longitude: user.longitude,
@@ -1316,7 +1317,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude, headline, languages, timezone')
+    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude, avatar_url, headline, languages, timezone')
     .eq('type', 'human')
     .eq('verified', true);
 
@@ -1352,8 +1353,8 @@ app.get('/api/users/:id', async (req, res) => {
   const isSelf = requester && requester.id === req.params.id;
 
   const columns = isSelf
-    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, wallet_address, type'
-    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type';
+    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, wallet_address, type, avatar_url'
+    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url';
 
   const { data: user, error } = await supabase
     .from('users')
@@ -1376,7 +1377,7 @@ app.get('/api/humans/:id', async (req, res, next) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, headline, languages, timezone, social_links, travel_radius')
+    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, avatar_url, headline, languages, timezone, social_links, travel_radius')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
@@ -1432,6 +1433,7 @@ app.put('/api/humans/profile', async (req, res) => {
   const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
   if (name) updates.name = name;
   if (wallet_address) updates.wallet_address = wallet_address;
@@ -2185,6 +2187,84 @@ app.post('/api/upload/proof', async (req, res) => {
     });
   } catch (e) {
     console.error('Upload error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============ AVATAR UPLOAD ============
+app.post('/api/upload/avatar', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const getEnv = (k) => {
+    try { return require('process').env[k]; } catch { return null; }
+  };
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+    const { file, filename } = req.body;
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop() || 'jpg';
+    const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
+    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    console.log(`[R2 DEMO] Would upload avatar to: ${mockUrl}`);
+
+    // Still update the user's avatar_url in the database with the mock URL
+    await supabase.from('users').update({ avatar_url: mockUrl, updated_at: new Date().toISOString() }).eq('id', user.id);
+
+    return res.json({ url: mockUrl, filename: uniqueFilename, success: true, demo: true });
+  }
+
+  try {
+    const { file, filename, mimeType } = req.body;
+    if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop() || 'jpg';
+    const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
+
+    let fileData = file;
+    if (file.startsWith('data:')) {
+      fileData = Buffer.from(file.split(',')[1], 'base64');
+    } else if (typeof file === 'string' && !file.startsWith('/') && !file.startsWith('http')) {
+      fileData = Buffer.from(file, 'base64');
+    }
+
+    let uploadSuccess = false;
+    try {
+      const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+      const s3Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+      });
+
+      await s3Client.send(new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: uniqueFilename,
+        Body: fileData,
+        ContentType: mimeType || 'image/jpeg',
+      }));
+      uploadSuccess = true;
+    } catch (s3Error) {
+      console.error('R2 avatar upload error:', s3Error.message);
+    }
+
+    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+
+    // Update the user's avatar_url in the database
+    await supabase.from('users').update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', user.id);
+
+    res.json({ url: publicUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
+  } catch (e) {
+    console.error('Avatar upload error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -4908,6 +4988,7 @@ app.get('/api/profile', async (req, res) => {
     city: profile.city,
     state: profile.state,
     bio: profile.bio,
+    avatar_url: profile.avatar_url || '',
     hourly_rate: profile.hourly_rate,
     wallet_address: profile.wallet_address,
     skills: JSON.parse(profile.skills || '[]'),
@@ -4939,7 +5020,7 @@ app.put('/api/profile', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address, languages, travel_radius, social_links } = req.body;
+  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address, avatar_url, languages, travel_radius, social_links } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), verified: true };
 
@@ -4951,6 +5032,7 @@ app.put('/api/profile', async (req, res) => {
   if (availability) updates.availability = availability;
   if (wallet_address) updates.wallet_address = wallet_address;
   if (skills) updates.skills = JSON.stringify(skills);
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
   if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
   if (travel_radius) {
     updates.travel_radius = travel_radius;
