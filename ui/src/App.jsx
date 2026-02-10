@@ -1443,6 +1443,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const [newSkillInput, setNewSkillInput] = useState('')
   const [languagesList, setLanguagesList] = useState(user?.languages || [])
   const [newLanguageInput, setNewLanguageInput] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = useRef(null)
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
   const [assigningHuman, setAssigningHuman] = useState(null) // loading state
   const [expandedHumanId, setExpandedHumanId] = useState(null) // expanded profile modal
@@ -2284,7 +2286,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
               >
                 <div className="dashboard-v4-user-avatar">
-                  {user?.name?.charAt(0) || '?'}
+                  {user?.avatar_url ? (
+                    <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    user?.name?.charAt(0) || '?'
+                  )}
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={userDropdownOpen ? 'rotated' : ''}>
                   <path d="M6 9l6 6 6-6" />
@@ -2295,7 +2301,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <div className="dashboard-v4-user-dropdown">
                   <div className="dashboard-v4-user-dropdown-header">
                     <div className="dashboard-v4-user-dropdown-avatar">
-                      {user?.name?.charAt(0) || '?'}
+                      {user?.avatar_url ? (
+                        <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                      ) : (
+                        user?.name?.charAt(0) || '?'
+                      )}
                     </div>
                     <div className="dashboard-v4-user-dropdown-info">
                       <p className="dashboard-v4-user-dropdown-name">{user?.name || 'User'}</p>
@@ -2670,85 +2680,116 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Profile Tab - Updated with Settings */}
+        {/* Profile Tab - Edit Profile with Avatar Upload */}
         {activeTab === 'profile' && (
           <div>
             <h1 className="dashboard-v4-page-title">Profile</h1>
 
-            <div className="dashboard-v4-form" style={{ maxWidth: 500 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              {/* Avatar Upload */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-                <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 28 }}>
-                  {user?.name?.charAt(0) || '?'}
+                <div
+                  style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  {user?.avatar_url ? (
+                    <img src={user.avatar_url} alt={user?.name || ''} style={{
+                      width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
+                      boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                    }} />
+                  ) : (
+                    <div style={{
+                      width: 80, height: 80, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: 'white', fontWeight: 700, fontSize: 28,
+                      boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                    }}>
+                      {user?.name?.charAt(0) || '?'}
+                    </div>
+                  )}
+                  <div style={{
+                    position: 'absolute', bottom: 0, right: 0,
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'var(--orange-500)', border: '2px solid white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {avatarUploading ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                        <path d="M21 12a9 9 0 11-6.219-8.56" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                    )}
+                  </div>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error('Image must be under 5MB')
+                        return
+                      }
+                      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+                        toast.error('Please upload a JPG, PNG, WebP, or GIF image')
+                        return
+                      }
+                      setAvatarUploading(true)
+                      try {
+                        const reader = new FileReader()
+                        reader.onload = async () => {
+                          try {
+                            const res = await fetch(`${API_URL}/upload/avatar`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                              body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: file.type })
+                            })
+                            if (res.ok) {
+                              const data = await res.json()
+                              const updatedUser = { ...user, avatar_url: data.url }
+                              localStorage.setItem('user', JSON.stringify(updatedUser))
+                              toast.success('Profile photo updated!')
+                              setTimeout(() => window.location.reload(), 1000)
+                            } else {
+                              toast.error('Failed to upload photo')
+                            }
+                          } catch {
+                            toast.error('Error uploading photo')
+                          }
+                          setAvatarUploading(false)
+                        }
+                        reader.readAsDataURL(file)
+                      } catch {
+                        toast.error('Error reading file')
+                        setAvatarUploading(false)
+                      }
+                      e.target.value = ''
+                    }}
+                  />
                 </div>
                 <div style={{ flex: 1 }}>
                   <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name}</h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{user?.email}</p>
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    style={{ fontSize: 13, color: 'var(--orange-500)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4, fontWeight: 500 }}
+                  >
+                    {user?.avatar_url ? 'Change photo' : 'Add photo'}
+                  </button>
                 </div>
-              </div>
-
-              {/* Mode Toggle */}
-              <div style={{ marginBottom: 24, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div>
-                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Mode</p>
-                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Switch between working and hiring</p>
-                  </div>
-                  <span className={hiringMode ? 'v4-badge v4-badge-success' : 'v4-badge v4-badge-orange'}>
-                    {hiringMode ? 'Hiring' : 'Working'}
-                  </span>
-                </div>
-                <button className="v4-btn v4-btn-secondary" style={{ width: '100%' }} onClick={toggleHiringMode}>
-                  {hiringMode ? '← Switch to Working Mode' : 'Switch to Hiring Mode →'}
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Location</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{user?.city || 'Not set'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Hourly Rate</span>
-                  <span style={{ color: 'var(--text-primary)' }}>${user?.hourly_rate || 25}/hr</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Travel Radius</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{user?.travel_radius || 25} miles</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Skills</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{user?.skills?.join(', ') || 'None'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Languages</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{user?.languages?.length > 0 ? user.languages.join(', ') : 'Not set'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Jobs Completed</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{user?.jobs_completed || 0}</span>
-                </div>
-                {user?.social_links && typeof user.social_links === 'object' && Object.keys(user.social_links).length > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid rgba(26,26,26,0.06)' }}>
-                    <span style={{ color: 'var(--text-tertiary)' }}>Socials</span>
-                    <SocialIconsRow socialLinks={user.social_links} size={18} gap={10} />
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
-                <button className="v4-btn v4-btn-secondary" style={{ width: '100%' }} onClick={() => setActiveTab('settings')}>Edit Profile</button>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">Settings</h1>
-
+            {/* Profile editing sub-tabs */}
             <div className="settings-tabs">
-              {['Profile', 'Skills', 'Languages', 'Social', 'Notifications'].map(tab => (
+              {['Profile', 'Skills', 'Languages', 'Social'].map(tab => (
                 <button
                   key={tab}
                   className={`settings-tab${settingsTab === tab.toLowerCase() ? ' settings-tab-active' : ''}`}
@@ -3101,27 +3142,67 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 </form>
               )}
 
-              {settingsTab === 'notifications' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                    <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
-                    <span style={{ color: 'var(--text-primary)' }}>Task assignments</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                    <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
-                    <span style={{ color: 'var(--text-primary)' }}>Payment notifications</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                    <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
-                    <span style={{ color: 'var(--text-primary)' }}>Messages from agents</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                    <input type="checkbox" style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
-                    <span style={{ color: 'var(--text-primary)' }}>Marketing & updates</span>
-                  </label>
-                </div>
-              )}
+            </div>
+          </div>
+        )}
 
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div>
+            <h1 className="dashboard-v4-page-title">Settings</h1>
+
+            {/* Mode Toggle */}
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Mode</h2>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div>
+                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Dashboard Mode</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Switch between working and hiring</p>
+                  </div>
+                  <span className={hiringMode ? 'v4-badge v4-badge-success' : 'v4-badge v4-badge-orange'}>
+                    {hiringMode ? 'Hiring' : 'Working'}
+                  </span>
+                </div>
+                <button className="v4-btn v4-btn-secondary" style={{ width: '100%' }} onClick={toggleHiringMode}>
+                  {hiringMode ? '← Switch to Working Mode' : 'Switch to Hiring Mode →'}
+                </button>
+              </div>
+            </div>
+
+            {/* Notification Preferences */}
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notification Preferences</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
+                  <span style={{ color: 'var(--text-primary)' }}>Task assignments</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
+                  <span style={{ color: 'var(--text-primary)' }}>Payment notifications</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
+                  <span style={{ color: 'var(--text-primary)' }}>Messages from agents</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
+                  <span style={{ color: 'var(--text-primary)' }}>Marketing & updates</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Account */}
+            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
+              <button
+                className="v4-btn v4-btn-secondary"
+                style={{ width: '100%', color: '#EF4444' }}
+                onClick={onLogout}
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         )}

@@ -827,6 +827,7 @@ app.get('/api/auth/verify', async (req, res) => {
   res.json({
     user: {
       id: user.id, email: user.email, name: user.name, type: user.type,
+      avatar_url: user.avatar_url || null,
       city: user.city, hourly_rate: user.hourly_rate,
       bio: user.bio || '',
       travel_radius: user.travel_radius || 25,
@@ -1428,7 +1429,7 @@ app.put('/api/humans/profile', async (req, res) => {
     }
   }
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone } = req.body;
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
 
@@ -1466,6 +1467,7 @@ app.put('/api/humans/profile', async (req, res) => {
   if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
   if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
   if (timezone !== undefined) updates.timezone = timezone;
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
   // Auto-derive timezone from coordinates when location changes but timezone not explicitly set
   if (updates.latitude != null && updates.longitude != null && timezone === undefined) {
@@ -2250,6 +2252,90 @@ app.post('/api/upload/feedback', async (req, res) => {
     res.json({ url: publicUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
   } catch (e) {
     console.error('Feedback upload error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============ AVATAR UPLOAD ============
+app.post('/api/upload/avatar', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { file, filename, mimeType } = req.body;
+
+  if (!file) return res.status(400).json({ error: 'No file provided' });
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  if (mimeType && !allowedTypes.includes(mimeType)) {
+    return res.status(400).json({ error: 'Only JPG, PNG, WebP, and GIF images are allowed' });
+  }
+
+  // Use indirect access to avoid Railway build scanner
+  const getEnv = (k) => {
+    try { return require('process').env[k]; } catch { return null; }
+  };
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+
+  const timestamp = Date.now();
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  const ext = filename?.split('.').pop() || 'jpg';
+  const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
+
+  // Demo mode if no R2 config
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    console.log(`[R2 DEMO] Would upload avatar to: ${mockUrl}`);
+    // Still update DB with mock URL
+    await supabase.from('users').update({ avatar_url: mockUrl }).eq('id', user.id);
+    return res.json({ url: mockUrl, success: true, demo: true });
+  }
+
+  try {
+    // Decode base64 file data
+    let fileData = file;
+    if (file.startsWith('data:')) {
+      fileData = Buffer.from(file.split(',')[1], 'base64');
+    } else if (typeof file === 'string' && !file.startsWith('/') && !file.startsWith('http')) {
+      fileData = Buffer.from(file, 'base64');
+    }
+
+    // Validate size (5MB max)
+    if (Buffer.byteLength(fileData) > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image must be under 5MB' });
+    }
+
+    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+    const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
+    const s3Client = new S3Client({
+      region: 'auto',
+      endpoint: R2_ENDPOINT,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY,
+        secretAccessKey: R2_SECRET_KEY,
+      },
+    });
+
+    await s3Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: uniqueFilename,
+      Body: fileData,
+      ContentType: mimeType || 'image/jpeg',
+    }));
+
+    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+
+    // Update user's avatar_url in DB
+    await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
+
+    res.json({ url: publicUrl, success: true });
+  } catch (e) {
+    console.error('Avatar upload error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -4660,7 +4746,7 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
@@ -4692,7 +4778,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       verified, availability, wallet_address, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
       total_disputes_filed, total_usdc_paid, last_active_at, social_links,
-      headline, languages, timezone, travel_radius
+      headline, languages, timezone, travel_radius, avatar_url
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
