@@ -4294,7 +4294,8 @@ function App() {
       }
 
       // If user needs onboarding, redirect to /onboard
-      if (user.needs_onboarding) {
+      // Re-check pathname to avoid overriding an in-flight navigation (e.g. task card click)
+      if (user.needs_onboarding && window.location.pathname === '/dashboard') {
         debug('[Auth] User needs onboarding, redirecting to /onboard')
         window.location.href = '/onboard'
         return <Loading />
