@@ -243,7 +243,11 @@ const CityAutocomplete = ({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   // Sync query with value prop
@@ -278,7 +282,7 @@ const CityAutocomplete = ({
           {results.map((city, index) => (
             <button
               key={`${city.name}-${city.countryCode}-${index}`}
-              onClick={() => handleSelect(city)}
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(city); }}
               className={`city-autocomplete-v4-item ${index === selectedIndex ? 'selected' : ''}`}
             >
               <div>

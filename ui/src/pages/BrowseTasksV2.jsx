@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import TaskMap from '../components/TaskMap';
-import CategoryPills, { TASK_CATEGORIES } from '../components/CategoryPills';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+const TaskMap = lazy(() => import('../components/TaskMap'));
+import { TASK_CATEGORIES } from '../components/CategoryPills';
 import TaskCardV2 from '../components/TaskCardV2';
 import QuickApplyModal from '../components/QuickApplyModal';
 import ReportTaskModal from '../components/ReportTaskModal';
@@ -24,6 +24,11 @@ const RADIUS_OPTIONS = [
   { value: '100', label: 'Within 100 km' },
   { value: 'anywhere', label: 'Anywhere' },
 ];
+
+const CATEGORY_OPTIONS = TASK_CATEGORIES.map(cat => ({
+  value: cat.value,
+  label: cat.label,
+}));
 
 // Loading skeleton component
 function TaskCardSkeleton() {
@@ -78,7 +83,10 @@ export default function BrowseTasksV2({
   });
 
   // UI state
-  const [viewMode, setViewMode] = useState('split'); // 'split', 'list', 'map'
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'list';
+    return 'split';
+  });
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
@@ -190,7 +198,15 @@ export default function BrowseTasksV2({
     : [10.8231, 106.6297]; // Default HCMC
 
   // Responsive view mode
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.innerWidth < 768
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div className="browse-tasks-v2">
@@ -226,6 +242,12 @@ export default function BrowseTasksV2({
           </div>
 
           <div className="browse-tasks-v2-filters">
+            <CustomDropdown
+              value={category}
+              onChange={setCategory}
+              options={CATEGORY_OPTIONS}
+              className="browse-tasks-v2-category-dropdown"
+            />
             <CustomDropdown
               value={sort}
               onChange={setSort}
@@ -274,9 +296,6 @@ export default function BrowseTasksV2({
             )}
           </div>
         </div>
-
-        {/* Category pills */}
-        <CategoryPills selected={category} onChange={setCategory} />
 
         {/* Location bar */}
         <div className="browse-tasks-v2-location-bar">
@@ -401,22 +420,24 @@ export default function BrowseTasksV2({
         {/* Map */}
         {(viewMode === 'split' || viewMode === 'map') && (
           <div className="browse-tasks-v2-map">
-            <TaskMap
-              tasks={tasks}
-              center={mapCenter}
-              zoom={12}
-              radius={radius !== 'anywhere' ? parseFloat(radius) : null}
-              selectedTaskId={selectedTaskId}
-              hoveredTaskId={hoveredTaskId}
-              onTaskSelect={handleTaskSelect}
-              onTaskHover={setHoveredTaskId}
-            />
+            <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>Loading map...</div>}>
+              <TaskMap
+                tasks={tasks}
+                center={mapCenter}
+                zoom={12}
+                radius={radius !== 'anywhere' ? parseFloat(radius) : null}
+                selectedTaskId={selectedTaskId}
+                hoveredTaskId={hoveredTaskId}
+                onTaskSelect={handleTaskSelect}
+                onTaskHover={setHoveredTaskId}
+              />
+            </Suspense>
           </div>
         )}
       </div>
 
       {/* Mobile map toggle */}
-      {isMobile && viewMode === 'list' && (
+      {isMobile && (
         <button
           className="browse-tasks-v2-map-fab"
           onClick={() => setShowMobileMap(true)}
@@ -442,19 +463,21 @@ export default function BrowseTasksV2({
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
-          <TaskMap
-            tasks={tasks}
-            center={mapCenter}
-            zoom={12}
-            radius={radius !== 'anywhere' ? parseFloat(radius) : null}
-            selectedTaskId={selectedTaskId}
-            hoveredTaskId={hoveredTaskId}
-            onTaskSelect={(id) => {
-              handleTaskSelect(id);
-              setShowMobileMap(false);
-            }}
-            onTaskHover={setHoveredTaskId}
-          />
+          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>Loading map...</div>}>
+            <TaskMap
+              tasks={tasks}
+              center={mapCenter}
+              zoom={12}
+              radius={radius !== 'anywhere' ? parseFloat(radius) : null}
+              selectedTaskId={selectedTaskId}
+              hoveredTaskId={hoveredTaskId}
+              onTaskSelect={(id) => {
+                handleTaskSelect(id);
+                setShowMobileMap(false);
+              }}
+              onTaskHover={setHoveredTaskId}
+            />
+          </Suspense>
         </div>
       )}
 

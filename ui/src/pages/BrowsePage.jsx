@@ -5,7 +5,6 @@ import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
-import '../landing-v4.css'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -638,7 +637,7 @@ export default function BrowsePage({ user }) {
                   key={human.id}
                   human={human}
                   variant="browse"
-                  onExpand={(h) => setExpandedHumanId(h.id)}
+                  onExpand={(h) => window.location.href = `/humans/${h.id}`}
                   onHire={(h) => setShowHireModal(h)}
                 />
               ))
