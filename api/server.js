@@ -1600,7 +1600,7 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, title, description, category, location, latitude, longitude, budget, budget_type, duration_hours, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at, deposit_amount_cents, unique_deposit_amount, instructions, work_started_at, proof_submitted_at, assigned_at, is_remote, is_anonymous')
+    .select('*')
     .eq('id', req.params.id)
     .single();
 
