@@ -1,5 +1,5 @@
 // Task Detail Page
-// Central hub for humans to view task info, communicate with agents, and submit proof
+// Handles both open tasks (browsing/applying) and assigned tasks (messaging/proof)
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../App';
@@ -10,6 +10,7 @@ import EscrowDisplay from '../components/TaskDetail/EscrowDisplay';
 import ProofSection from '../components/TaskDetail/ProofSection';
 import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
+import QuickApplyModal from '../components/QuickApplyModal';
 import { v4 } from '../components/V4Layout';
 import { trackView } from '../utils/trackView';
 import ReportTaskModal from '../components/ReportTaskModal';
@@ -21,51 +22,56 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [agentProfile, setAgentProfile] = useState(null);
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [lastMessageTime, setLastMessageTime] = useState(null); // For incremental polling
+  const [lastMessageTime, setLastMessageTime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
+
+  const isParticipant = user && task && (task.agent_id === user.id || task.human_id === user.id);
 
   // Fetch initial data
   useEffect(() => {
-    if (!taskId || !user) return;
+    if (!taskId) return;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch task details
-        const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, {
-          headers: { Authorization: user.id }
-        });
+        // Fetch task details (works with or without auth)
+        const headers = user ? { Authorization: user.id } : {};
+        const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
         if (!taskRes.ok) throw new Error('Task not found');
         const taskData = await taskRes.json();
         setTask(taskData);
 
-        // Fetch task status (includes proof info and dispute window)
-        const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
-          headers: { Authorization: user.id }
-        });
-        if (statusRes.ok) {
-          const statusData = await statusRes.json();
-          setTaskStatus(statusData);
-        }
+        const isTaskParticipant = user && (taskData.agent_id === user.id || taskData.human_id === user.id);
 
-        // Fetch agent profile (from users table)
+        // Fetch agent profile for all viewers
         if (taskData.agent_id) {
-          const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, {
-            headers: { Authorization: user.id }
-          });
+          const agentHeaders = user ? { Authorization: user.id } : {};
+          const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, { headers: agentHeaders });
           if (agentRes.ok) {
             const agentData = await agentRes.json();
             setAgentProfile(agentData);
           }
         }
 
-        // Fetch or create conversation for this task
-        await loadConversation(taskData);
+        // Only fetch status, conversation for authenticated participants
+        if (user && isTaskParticipant) {
+          const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
+            headers: { Authorization: user.id }
+          });
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            setTaskStatus(statusData);
+          }
+
+          await loadConversation(taskData);
+        }
 
       } catch (err) {
         console.error('Error fetching task data:', err);
@@ -95,10 +101,8 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'tasks', filter: `id=eq.${taskId}` },
         async (payload) => {
-          // Update task data with the real-time change
           setTask(prev => prev ? { ...prev, ...payload.new } : payload.new);
 
-          // If status changed, also refresh the task status endpoint for full details
           if (user) {
             try {
               const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
@@ -123,8 +127,8 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
   // Load conversation and messages
   const loadConversation = async (taskData) => {
+    if (!user) return;
     try {
-      // Try to get existing conversation for this task
       const convRes = await fetch(`${API_URL}/conversations`, {
         headers: { Authorization: user.id }
       });
@@ -137,19 +141,17 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           setConversation(taskConv);
           await loadMessages(taskConv.id);
         }
-        // If no conversation exists yet, it will be created when first message is sent
       }
     } catch (err) {
       console.error('Error loading conversation:', err);
     }
   };
 
-  // Load messages for a conversation (supports incremental polling with afterTime)
+  // Load messages for a conversation
   const loadMessages = async (conversationId, incremental = false) => {
-    if (!conversationId) return;
+    if (!conversationId || !user) return;
 
     try {
-      // Build URL with optional after_time for incremental polling
       let url = `${API_URL}/messages/${conversationId}?limit=50`;
       if (incremental && lastMessageTime) {
         url += `&after_time=${encodeURIComponent(lastMessageTime)}`;
@@ -164,27 +166,22 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         const newMessages = data || [];
 
         if (incremental && lastMessageTime) {
-          // Append new messages to existing ones
           if (newMessages.length > 0) {
             setMessages(prev => [...prev, ...newMessages]);
             setLastMessageTime(newMessages[newMessages.length - 1].created_at);
           }
         } else {
-          // Initial load - replace all messages
           setMessages(newMessages);
-          // Set lastMessageTime to enable incremental polling
           if (newMessages.length > 0) {
             setLastMessageTime(newMessages[newMessages.length - 1].created_at);
           } else {
-            // No messages yet - use current time so polling can still start
             setLastMessageTime(new Date().toISOString());
           }
 
-          // Mark all messages as read on initial conversation open
           fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
             method: 'PUT',
             headers: { Authorization: user.id }
-          }).catch(() => {}); // Fire-and-forget
+          }).catch(() => {});
         }
       }
     } catch (err) {
@@ -199,7 +196,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     try {
       let convId = conversation?.id;
 
-      // Create conversation if it doesn't exist
       if (!convId) {
         const createConvRes = await fetch(`${API_URL}/conversations`, {
           method: 'POST',
@@ -223,7 +219,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         }
       }
 
-      // Send message
       const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: {
@@ -237,7 +232,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       });
 
       if (res.ok) {
-        // Reload messages
         await loadMessages(convId);
       } else {
         throw new Error('Failed to send message');
@@ -266,7 +260,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       });
 
       if (res.ok) {
-        // Reload task data
         window.location.reload();
       } else {
         const errorData = await res.json();
@@ -348,9 +341,15 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         <div className="flex items-center gap-4 md:gap-6">
           <a href="/mcp" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">For Agents</a>
           <a href="/dashboard" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">Browse Tasks</a>
-          <a href="/dashboard" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
-            Dashboard
-          </a>
+          {user ? (
+            <a href="/dashboard" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
+              Dashboard
+            </a>
+          ) : (
+            <a href="/auth" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
+              Sign In
+            </a>
+          )}
         </div>
       </nav>
 
@@ -397,25 +396,55 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           <div className="lg:col-span-3 space-y-6">
             <TaskHeader task={task} />
 
-            {/* Show proof section if in progress, or status badge if submitted */}
-            {task.status === 'in_progress' ? (
+            {/* Apply button for open tasks (logged-in non-participant) */}
+            {task.status === 'open' && user && !isParticipant && (
+              <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 shadow-sm">
+                <button
+                  onClick={() => setShowApplyModal(true)}
+                  disabled={hasApplied}
+                  className="w-full bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-3 px-6 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {hasApplied ? '✓ Applied' : 'Apply for This Task'}
+                </button>
+              </div>
+            )}
+
+            {/* Sign in prompt for open tasks (guest) */}
+            {task.status === 'open' && !user && (
+              <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 shadow-sm">
+                <a
+                  href="/auth"
+                  className="block w-full bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-3 px-6 rounded-xl transition-colors text-center no-underline"
+                >
+                  Sign In to Apply
+                </a>
+              </div>
+            )}
+
+            {/* Show proof section if in progress, or status badge if submitted (participants only) */}
+            {isParticipant && task.status === 'in_progress' && (
               <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
-            ) : (
+            )}
+            {isParticipant && task.status !== 'in_progress' && (
               <ProofStatusBadge task={task} proofs={taskStatus?.proofs} />
             )}
           </div>
 
-          {/* Right Column - Actions & Messaging (40%) */}
+          {/* Right Column - Agent Profile & Actions (40%) */}
           <div className="lg:col-span-2 space-y-4">
             <AgentProfileCard agent={agentProfile} />
-            <EscrowDisplay task={task} />
-            <TaskMessageThread
-              conversation={conversation}
-              messages={messages}
-              user={user}
-              onSendMessage={handleSendMessage}
-              onLoadMessages={() => conversation && loadMessages(conversation.id, true)}
-            />
+            {isParticipant && (
+              <>
+                <EscrowDisplay task={task} />
+                <TaskMessageThread
+                  conversation={conversation}
+                  messages={messages}
+                  user={user}
+                  onSendMessage={handleSendMessage}
+                  onLoadMessages={() => conversation && loadMessages(conversation.id, true)}
+                />
+              </>
+            )}
           </div>
         </div>
       </main>
@@ -425,6 +454,15 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         task={task}
         isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
+        userToken={user?.id}
+      />
+
+      {/* Apply Modal */}
+      <QuickApplyModal
+        task={task}
+        isOpen={showApplyModal}
+        onClose={() => setShowApplyModal(false)}
+        onSuccess={() => setHasApplied(true)}
         userToken={user?.id}
       />
     </div>

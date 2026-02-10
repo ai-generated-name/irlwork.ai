@@ -1477,7 +1477,7 @@ app.get('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status';
+  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, duration_hours, is_remote';
   let query = supabase.from('tasks').select(safeTaskColumns);
 
   if (category) query = query.eq('category', category);
@@ -1537,7 +1537,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1559,6 +1559,9 @@ app.post('/api/tasks', async (req, res) => {
       human_ids: [],
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
+      duration_hours: duration_hours || null,
+      deadline: deadline || null,
+      requirements: requirements || null,
       created_at: new Date().toISOString()
     })
     .select()
@@ -1583,7 +1586,7 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at, deposit_amount_cents, unique_deposit_amount, instructions, work_started_at, proof_submitted_at, assigned_at')
+    .select('id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at, deposit_amount_cents, unique_deposit_amount, instructions, work_started_at, proof_submitted_at, assigned_at, duration_hours, is_remote')
     .eq('id', req.params.id)
     .single();
 
@@ -4679,7 +4682,7 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Agents only' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -4702,6 +4705,9 @@ app.post('/api/tasks/create', async (req, res) => {
       task_type: 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
+      duration_hours: duration_hours || null,
+      deadline: deadline || null,
+      requirements: requirements || null,
       created_at: new Date().toISOString()
     })
     .select()
