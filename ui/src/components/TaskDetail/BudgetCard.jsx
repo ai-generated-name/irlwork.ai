@@ -46,6 +46,15 @@ export default function BudgetCard({ task, user, onApply }) {
         <div className="text-center text-sm text-[#525252]">Fixed Price</div>
       )}
 
+      {/* Posted date */}
+      {task.created_at && (
+        <div className="border-t border-[rgba(26,26,26,0.08)] mt-4 pt-3 text-center">
+          <span className="text-xs text-[#8A8A8A]">
+            Posted {new Date(task.created_at).toLocaleDateString()}
+          </span>
+        </div>
+      )}
+
       {/* Apply button */}
       {canApply && (
         <button

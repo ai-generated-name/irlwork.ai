@@ -1,21 +1,18 @@
 // Task Detail Page
-// Central hub for viewing task info, agent profile, communication, and proof submission
+// Handles both open tasks (browsing/applying) and assigned tasks (messaging/proof)
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../App';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
-import PosterInfoBar from '../components/TaskDetail/PosterInfoBar';
-import DescriptionSection from '../components/TaskDetail/DescriptionSection';
-import LocationSection from '../components/TaskDetail/LocationSection';
-import RequirementsSection from '../components/TaskDetail/RequirementsSection';
-import StatsSection from '../components/TaskDetail/StatsSection';
-import BudgetCard from '../components/TaskDetail/BudgetCard';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
+import BudgetCard from '../components/TaskDetail/BudgetCard';
+import StatsSection from '../components/TaskDetail/StatsSection';
 import EscrowDisplay from '../components/TaskDetail/EscrowDisplay';
 import ProofSection from '../components/TaskDetail/ProofSection';
 import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
+import QuickApplyModal from '../components/QuickApplyModal';
 import { v4 } from '../components/V4Layout';
 import { trackView } from '../utils/trackView';
 import ReportTaskModal from '../components/ReportTaskModal';
@@ -32,6 +29,10 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
+
+  const isParticipant = user && task && (task.agent_id === user.id || task.human_id === user.id);
 
   // Fetch initial data
   useEffect(() => {
@@ -42,15 +43,27 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       setError(null);
 
       try {
-        // Fetch task details (now includes embedded poster data)
+        // Fetch task details (works with or without auth)
         const headers = user ? { Authorization: user.id } : {};
         const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
         if (!taskRes.ok) throw new Error('Task not found');
         const taskData = await taskRes.json();
         setTask(taskData);
 
-        // Fetch task status (includes proof info and dispute window) - only if logged in
-        if (user) {
+        const isTaskParticipant = user && (taskData.agent_id === user.id || taskData.human_id === user.id);
+
+        // Fetch agent profile for all viewers
+        if (taskData.agent_id) {
+          const agentHeaders = user ? { Authorization: user.id } : {};
+          const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, { headers: agentHeaders });
+          if (agentRes.ok) {
+            const agentData = await agentRes.json();
+            setAgentProfile(agentData);
+          }
+        }
+
+        // Only fetch status, conversation for authenticated participants
+        if (user && isTaskParticipant) {
           const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
             headers: { Authorization: user.id }
           });
@@ -58,21 +71,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             const statusData = await statusRes.json();
             setTaskStatus(statusData);
           }
-        }
 
-        // Fetch full agent profile for the detailed card (unless anonymous)
-        if (taskData.agent_id && !taskData.is_anonymous && user) {
-          const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, {
-            headers: { Authorization: user.id }
-          });
-          if (agentRes.ok) {
-            const agentData = await agentRes.json();
-            setAgentProfile(agentData);
-          }
-        }
-
-        // Fetch or create conversation for this task (only if logged in)
-        if (user) {
           await loadConversation(taskData);
         }
 
@@ -130,6 +129,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
   // Load conversation and messages
   const loadConversation = async (taskData) => {
+    if (!user) return;
     try {
       const convRes = await fetch(`${API_URL}/conversations`, {
         headers: { Authorization: user.id }
@@ -149,9 +149,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     }
   };
 
-  // Load messages (supports incremental polling)
+  // Load messages for a conversation
   const loadMessages = async (conversationId, incremental = false) => {
-    if (!conversationId) return;
+    if (!conversationId || !user) return;
 
     try {
       let url = `${API_URL}/messages/${conversationId}?limit=50`;
@@ -301,8 +301,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     return () => clearInterval(interval);
   }, [taskStatus]);
 
-  const isParticipant = user && task && (task.agent_id === user.id || task.human_id === user.id);
-
   // Loading state
   if (loading) {
     return (
@@ -316,13 +314,11 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   }
 
   // Error state
-  if (error || !task) {
+  if (error) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl mb-4">🔍</div>
-          <div className="text-[#1A1A1A] text-xl font-bold mb-2">Task Not Found</div>
-          <div className="text-[#525252] mb-6">{error || 'This task may have been removed.'}</div>
+          <div className="text-[#DC2626] text-xl mb-4">Error: {error}</div>
           <button
             onClick={() => onNavigate?.('/dashboard')}
             className="bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
@@ -335,24 +331,22 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1A1A]" style={{ fontFamily: v4.fonts.display }}>
-      {/* V4 Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-8 py-4 bg-[rgba(250,248,245,0.95)] backdrop-blur-lg border-b border-[rgba(26,26,26,0.1)]">
-        <a href="/" className="flex items-center gap-3 no-underline">
-          <div className="w-10 h-10 bg-[#0F4C5C] rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md">
-            irl
-          </div>
-          <span className="text-lg font-extrabold text-[#1A1A1A] tracking-tight hidden sm:inline">irlwork.ai</span>
+    <div className="landing-v4 min-h-screen" style={{ fontFamily: v4.fonts.display }}>
+      {/* Navbar — uses global navbar-v4 CSS classes */}
+      <nav className="navbar-v4">
+        <a href="/" className="logo-v4">
+          <div className="logo-mark-v4">irl</div>
+          <span className="logo-name-v4">irlwork.ai</span>
         </a>
-        <div className="flex items-center gap-4 md:gap-6">
-          <a href="/mcp" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">For Agents</a>
-          <a href="/dashboard?tab=browse" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">Browse Tasks</a>
+        <div className="nav-links-v4" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <a href="/mcp" className="nav-link-v4">For Agents</a>
+          <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
           {user ? (
-            <a href="/dashboard" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
+            <a href="/dashboard" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
               Dashboard
             </a>
           ) : (
-            <a href="/auth" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
+            <a href="/auth" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
               Sign In
             </a>
           )}
@@ -360,20 +354,27 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       </nav>
 
       {/* Sub-header with back button */}
-      <header className="border-b border-[rgba(26,26,26,0.08)] sticky top-[72px] bg-white z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+      <header style={{
+        borderBottom: '1px solid rgba(26,26,26,0.08)',
+        position: 'sticky',
+        top: 56,
+        background: 'white',
+        zIndex: 10,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+      }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 16px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button
-            onClick={() => onNavigate?.('/dashboard?tab=browse')}
-            className="flex items-center gap-2 text-[#E07A5F] hover:text-[#C45F4A] transition-colors text-sm font-medium"
+            onClick={() => onNavigate?.('/dashboard')}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E07A5F', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
           >
             <span>←</span>
             <span>Back to Tasks</span>
           </button>
-          <div className="flex items-center gap-4">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {user && task && task.agent_id !== user.id && (
               <button
                 onClick={() => setShowReportModal(true)}
-                className="flex items-center gap-1.5 text-[#8A8A8A] hover:text-[#DC2626] transition-colors text-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#8A8A8A', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
@@ -382,15 +383,15 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 Report
               </button>
             )}
-            <div className="text-[#8A8A8A] text-sm">
+            <span style={{ color: '#8A8A8A', fontSize: 13 }}>
               Task ID: {taskId.slice(0, 8)}...
-            </div>
+            </span>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8 mt-[72px]">
+      <main style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 16px', marginTop: 56 }}>
         {/* Countdown Banner (only when pending review) */}
         {taskStatus?.dispute_window_info && (
           <CountdownBanner disputeWindowInfo={taskStatus.dispute_window_info} />
@@ -399,45 +400,47 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         {/* Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Left Column - Task Details (60%) */}
-          <div className="lg:col-span-3">
-            <PosterInfoBar task={task} />
+          <div className="lg:col-span-3 space-y-6">
             <TaskHeader task={task} />
-            <DescriptionSection task={task} />
-            <LocationSection task={task} />
-            <RequirementsSection task={task} />
-            <StatsSection taskId={taskId} />
 
-            {/* Proof section - only for participants */}
-            {isParticipant && task.status === 'in_progress' && user && task.human_id === user.id && (
+            {/* Show proof section if in progress, or status badge if submitted (participants only) */}
+            {isParticipant && task.status === 'in_progress' && (
               <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
             )}
             {isParticipant && task.status !== 'in_progress' && (
               <ProofStatusBadge task={task} proofs={taskStatus?.proofs} />
             )}
+
+            {/* Messages - in left column beneath task info */}
+            {isParticipant && (
+              <TaskMessageThread
+                conversation={conversation}
+                messages={messages}
+                user={user}
+                onSendMessage={handleSendMessage}
+                onLoadMessages={() => conversation && loadMessages(conversation.id, true)}
+              />
+            )}
           </div>
 
-          {/* Right Column - Budget, Agent Info & Messaging (40%) */}
+          {/* Right Column - Budget, Stats, Agent Profile, Escrow (40%) */}
           <div className="lg:col-span-2 space-y-4">
+            {/* Budget Card with apply button */}
             <BudgetCard
               task={task}
               user={user}
-              onApply={() => onNavigate?.('/dashboard?tab=browse')}
+              onApply={() => setShowApplyModal(true)}
             />
-            <AgentProfileCard
-              agent={agentProfile || task.poster}
-              isAnonymous={task.is_anonymous}
-            />
+
+            {/* Stats (Applications & Views) */}
+            <StatsSection taskId={taskId} />
+
+            {/* Agent Profile Card */}
+            <AgentProfileCard agent={agentProfile} />
+
+            {/* Escrow Display (participants only) */}
             {isParticipant && (
-              <>
-                <EscrowDisplay task={task} />
-                <TaskMessageThread
-                  conversation={conversation}
-                  messages={messages}
-                  user={user}
-                  onSendMessage={handleSendMessage}
-                  onLoadMessages={() => conversation && loadMessages(conversation.id, true)}
-                />
-              </>
+              <EscrowDisplay task={task} />
             )}
           </div>
         </div>
@@ -448,6 +451,15 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         task={task}
         isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
+        userToken={user?.id}
+      />
+
+      {/* Apply Modal */}
+      <QuickApplyModal
+        task={task}
+        isOpen={showApplyModal}
+        onClose={() => setShowApplyModal(false)}
+        onSuccess={() => setHasApplied(true)}
         userToken={user?.id}
       />
     </div>

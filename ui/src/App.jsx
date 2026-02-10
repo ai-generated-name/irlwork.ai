@@ -16,6 +16,7 @@ import BrowseTasksV2 from './pages/BrowseTasksV2'
 import MyTasksPage from './pages/MyTasksPage'
 import LandingPageV4 from './pages/LandingPageV4'
 import AdminDashboard from './pages/AdminDashboard'
+import TaskDetailPage from './pages/TaskDetailPage'
 import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
@@ -1458,7 +1459,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     longitude: null,
     country: '',
     country_code: '',
-    is_remote: false
+    is_remote: false,
+    duration_hours: '',
+    deadline: '',
+    requirements: ''
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
@@ -1905,7 +1909,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           longitude: taskForm.longitude,
           country: taskForm.country,
           country_code: taskForm.country_code,
-          is_remote: taskForm.is_remote
+          is_remote: taskForm.is_remote,
+          duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
+          deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
+          requirements: taskForm.requirements.trim() || null
         })
       })
 
@@ -1914,7 +1921,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
         // Switch to posted tab
         setActiveTab('posted')
       } else {
@@ -2489,6 +2496,39 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                       min="5"
                     />
                   </div>
+                </div>
+                <div className="dashboard-form-grid-2col">
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Duration (hours)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 2"
+                      className="dashboard-v4-form-input"
+                      value={taskForm.duration_hours}
+                      onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                      min="0.5"
+                      step="0.5"
+                    />
+                  </div>
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Deadline</label>
+                    <input
+                      type="datetime-local"
+                      className="dashboard-v4-form-input"
+                      value={taskForm.deadline}
+                      onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="dashboard-v4-form-group">
+                  <label className="dashboard-v4-form-label">Requirements (optional)</label>
+                  <textarea
+                    placeholder="Any specific requirements or qualifications needed..."
+                    className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                    value={taskForm.requirements}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                    rows={2}
+                  />
                 </div>
                 <div className="dashboard-v4-form-group">
                   <label style={{
@@ -3291,7 +3331,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   )
 }
 
-// Task Detail Page - shareable link for individual tasks
+
 function MCPPage() {
   const [user, setUser] = useState(null)
   const [keys, setKeys] = useState([])
@@ -4115,7 +4155,7 @@ function App() {
     if (path.startsWith('/tasks/')) {
       const taskId = path.split('/tasks/')[1]
       if (taskId) {
-        return <StandaloneTaskDetailPage taskId={taskId} user={user} onNavigate={(path) => { window.location.href = path }} />
+        return <TaskDetailPage taskId={taskId} user={user} onNavigate={(path) => { window.location.href = path }} />
       }
     }
 

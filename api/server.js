@@ -1499,7 +1499,7 @@ app.get('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status';
+  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, duration_hours, is_remote';
   let query = supabase.from('tasks').select(safeTaskColumns);
 
   if (category) query = query.eq('category', category);
@@ -1559,7 +1559,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, is_anonymous } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, is_anonymous } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1581,6 +1581,9 @@ app.post('/api/tasks', async (req, res) => {
       human_ids: [],
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
+      duration_hours: duration_hours || null,
+      deadline: deadline || null,
+      requirements: requirements || null,
       is_anonymous: !!is_anonymous,
       created_at: new Date().toISOString()
     })
@@ -4739,7 +4742,7 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Agents only' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -4762,6 +4765,9 @@ app.post('/api/tasks/create', async (req, res) => {
       task_type: 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
+      duration_hours: duration_hours || null,
+      deadline: deadline || null,
+      requirements: requirements || null,
       created_at: new Date().toISOString()
     })
     .select()

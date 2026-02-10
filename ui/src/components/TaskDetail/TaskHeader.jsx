@@ -1,5 +1,5 @@
 // Task Header Component
-// Displays task title, status badge, category, and date metadata
+// Displays task title, description, requirements, and metadata
 
 import React from 'react';
 
@@ -13,36 +13,15 @@ const STATUS_CONFIG = {
   disputed: { label: 'Disputed', color: 'bg-[#FEE2E2] text-[#DC2626]' }
 };
 
-const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  errands: '🏃',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  other: '📋',
-};
-
 export default function TaskHeader({ task }) {
   if (!task) return null;
 
   const statusConfig = STATUS_CONFIG[task.status] || STATUS_CONFIG.open;
-  const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
 
   return (
     <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 mb-6 shadow-sm">
-      {/* Badges row */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        {/* Category badge */}
-        {task.category && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-[#F5F2ED] text-[#525252]">
-            <span>{categoryIcon}</span>
-            <span>{task.category}</span>
-          </span>
-        )}
-
-        {/* Status Badge */}
+      {/* Status Badge */}
+      <div className="mb-4">
         <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
         </span>
@@ -52,6 +31,33 @@ export default function TaskHeader({ task }) {
       <h1 className="text-3xl font-bold text-[#1A1A1A] mb-4">
         {task.title}
       </h1>
+
+      {/* Description */}
+      <div className="mb-6">
+        <p className="text-[#525252] text-base leading-relaxed whitespace-pre-wrap">
+          {task.description}
+        </p>
+      </div>
+
+      {/* Requirements */}
+      {task.requirements && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">Requirements</h3>
+          <p className="text-[#525252] text-sm leading-relaxed whitespace-pre-wrap">
+            {task.requirements}
+          </p>
+        </div>
+      )}
+
+      {/* Instructions (only visible to task participants - API strips for non-participants) */}
+      {task.instructions && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">Instructions</h3>
+          <p className="text-[#525252] text-sm leading-relaxed whitespace-pre-wrap">
+            {task.instructions}
+          </p>
+        </div>
+      )}
 
       {/* Metadata Row */}
       <div className="flex flex-wrap gap-4 text-sm text-[#525252]">
@@ -68,6 +74,39 @@ export default function TaskHeader({ task }) {
             <span>Due {new Date(task.deadline).toLocaleDateString()}</span>
           </div>
         )}
+
+        {/* Duration */}
+        {task.duration_hours && (
+          <div className="flex items-center gap-2">
+            <span>⏱️</span>
+            <span>~{task.duration_hours}h estimated</span>
+          </div>
+        )}
+
+        {/* Location */}
+        <div className="flex items-center gap-2">
+          <span>📍</span>
+          <span>{task.city || task.location || 'Remote'}</span>
+        </div>
+
+        {/* Category */}
+        {task.category && (
+          <div className="flex items-center gap-2">
+            <span>🏷️</span>
+            <span>{task.category}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Budget - Large and Prominent */}
+      <div className="mt-6 pt-6 border-t border-[rgba(26,26,26,0.08)]">
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-bold text-[#059669] font-mono">
+            ${task.budget}
+          </span>
+          <span className="text-xl text-[#525252]">USDC</span>
+        </div>
+        <p className="text-[#8A8A8A] text-sm mt-1">Payment for this task</p>
       </div>
     </div>
   );
