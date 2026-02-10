@@ -54,59 +54,60 @@ export default function BrowsePage({ user }) {
   useEffect(() => {
     fetchData()
 
-    // Real-time subscription for tasks
-    const tasksChannel = supabase
-      .channel('browse-tasks')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks' },
-        (payload) => {
-          if (viewMode !== 'tasks') return
+    // Real-time subscriptions (only if supabase is configured)
+    let tasksChannel = null
+    let humansChannel = null
 
-          if (payload.eventType === 'INSERT' && payload.new.status === 'open') {
-            // New open task - add to list
-            setTasks(prev => [payload.new, ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            if (payload.new.status !== 'open') {
-              // Task no longer open - remove from list
-              setTasks(prev => prev.filter(t => t.id !== payload.new.id))
-            } else {
-              // Update task in list
-              setTasks(prev => prev.map(t => t.id === payload.new.id ? payload.new : t))
-            }
-          } else if (payload.eventType === 'DELETE') {
-            setTasks(prev => prev.filter(t => t.id !== payload.old.id))
-          }
-        }
-      )
-      .subscribe()
+    if (supabase) {
+      tasksChannel = supabase
+        .channel('browse-tasks')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'tasks' },
+          (payload) => {
+            if (viewMode !== 'tasks') return
 
-    // Real-time subscription for humans
-    const humansChannel = supabase
-      .channel('browse-humans')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'users' },
-        (payload) => {
-          if (viewMode !== 'humans') return
-          if (payload.new?.type !== 'human') return
-
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            setHumans(prev => {
-              const exists = prev.find(w => w.id === payload.new.id)
-              if (exists) {
-                return prev.map(w => w.id === payload.new.id ? payload.new : w)
+            if (payload.eventType === 'INSERT' && payload.new.status === 'open') {
+              setTasks(prev => [payload.new, ...prev])
+            } else if (payload.eventType === 'UPDATE') {
+              if (payload.new.status !== 'open') {
+                setTasks(prev => prev.filter(t => t.id !== payload.new.id))
+              } else {
+                setTasks(prev => prev.map(t => t.id === payload.new.id ? payload.new : t))
               }
-              return [payload.new, ...prev]
-            })
+            } else if (payload.eventType === 'DELETE') {
+              setTasks(prev => prev.filter(t => t.id !== payload.old.id))
+            }
           }
-        }
-      )
-      .subscribe()
+        )
+        .subscribe()
+
+      humansChannel = supabase
+        .channel('browse-humans')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'users' },
+          (payload) => {
+            if (viewMode !== 'humans') return
+            if (payload.new?.type !== 'human') return
+
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              setHumans(prev => {
+                const exists = prev.find(w => w.id === payload.new.id)
+                if (exists) {
+                  return prev.map(w => w.id === payload.new.id ? payload.new : w)
+                }
+                return [payload.new, ...prev]
+              })
+            }
+          }
+        )
+        .subscribe()
+    }
 
     return () => {
-      supabase.removeChannel(tasksChannel)
-      supabase.removeChannel(humansChannel)
+      if (tasksChannel) supabase.removeChannel(tasksChannel)
+      if (humansChannel) supabase.removeChannel(humansChannel)
     }
   }, [viewMode, categoryFilter, cityFilter])
 

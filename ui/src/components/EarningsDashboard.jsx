@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import API_URL from '../config/api'
 import { useToast } from '../context/ToastContext'
+import WithdrawalMethodPicker from './WithdrawalMethodPicker'
+import ConnectBankButton from './ConnectBankButton'
 
 function EarningsDashboard({ user }) {
   const toast = useToast()
@@ -9,12 +11,21 @@ function EarningsDashboard({ user }) {
   const [error, setError] = useState(null)
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawResult, setWithdrawResult] = useState(null)
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false)
 
   useEffect(() => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     fetchBalance()
   }, [user])
 
   const fetchBalance = async () => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       const res = await fetch(`${API_URL}/wallet/balance`, {
@@ -36,20 +47,24 @@ function EarningsDashboard({ user }) {
     }
   }
 
-  const handleWithdraw = async () => {
+  const handleWithdraw = (method) => {
     if (!balanceData?.available_cents || balanceData.available_cents <= 0) {
       toast.error('No funds available to withdraw')
       return
     }
 
-    if (!user.wallet_address) {
+    // Require wallet address for non-stripe withdrawals
+    if (method !== 'stripe' && !user?.wallet_address) {
       toast.error('Please add a wallet address in your profile settings first')
       return
     }
 
-    if (!confirm(`Withdraw $${balanceData.available.toFixed(2)} to ${user.wallet_address}?`)) {
-      return
-    }
+    setShowWithdrawConfirm(method || 'usdc')
+  }
+
+  const executeWithdraw = async () => {
+    const method = showWithdrawConfirm
+    setShowWithdrawConfirm(false)
 
     try {
       setWithdrawing(true)
@@ -62,7 +77,8 @@ function EarningsDashboard({ user }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          amount_cents: balanceData.available_cents // Withdraw all available
+          amount_cents: balanceData.available_cents,
+          method: method || 'usdc'
         })
       })
 
@@ -72,7 +88,7 @@ function EarningsDashboard({ user }) {
         throw new Error(result.error || 'Withdrawal failed')
       }
 
-      setWithdrawResult(result)
+      setWithdrawResult({ ...result, method })
 
       // Refresh balance after successful withdrawal
       setTimeout(() => {
@@ -132,12 +148,18 @@ function EarningsDashboard({ user }) {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Payment Account Setup */}
+      <ConnectBankButton user={user} />
+
       {/* Success Message */}
       {withdrawResult && (
         <div className="bg-[#D1FAE5] border border-[#059669]/20 rounded-xl p-4">
           <p className="text-[#059669] font-semibold">Withdrawal Successful!</p>
           <p className="text-sm text-[#059669]/80 mt-1">
-            ${withdrawResult.amount_withdrawn} sent to {withdrawResult.wallet_address?.substring(0, 10)}...
+            {withdrawResult.method === 'stripe'
+              ? `$${withdrawResult.amount_withdrawn} is being transferred to your bank account`
+              : `$${withdrawResult.amount_withdrawn} sent to ${withdrawResult.wallet_address?.substring(0, 10)}...`
+            }
           </p>
           {withdrawResult.tx_hash && (
             <a
@@ -210,27 +232,19 @@ function EarningsDashboard({ user }) {
             ${balanceData?.available?.toFixed(2) || '0.00'}
           </p>
 
-          {!user.wallet_address && (
-            <div className="mt-3 md:mt-4 bg-[#FEF3C7] border border-[#D97706]/20 rounded-lg p-2.5 md:p-3">
-              <p className="text-[#D97706] text-xs md:text-sm">
-                ⚠️ Add wallet in profile to withdraw
-              </p>
+          {balanceData?.available_cents > 0 && (
+            <div className="mt-3 md:mt-4">
+              <WithdrawalMethodPicker
+                user={user}
+                availableBalance={balanceData?.available || 0}
+                onWithdraw={handleWithdraw}
+              />
             </div>
           )}
 
-          <button
-            onClick={handleWithdraw}
-            disabled={withdrawing || !balanceData?.available_cents || balanceData.available_cents <= 0 || !user.wallet_address}
-            className={`
-              mt-3 md:mt-4 w-full py-2.5 md:py-3 px-4 rounded-xl font-semibold transition-all text-sm md:text-base
-              ${withdrawing || !balanceData?.available_cents || balanceData.available_cents <= 0 || !user.wallet_address
-                ? 'bg-[#F5F2ED] text-[#8A8A8A] cursor-not-allowed'
-                : 'bg-[#059669] hover:bg-[#047857] text-white shadow-lg hover:shadow-xl'
-              }
-            `}
-          >
-            {withdrawing ? 'Processing...' : 'Withdraw to Wallet'}
-          </button>
+          {(!balanceData?.available_cents || balanceData.available_cents <= 0) && (
+            <p className="text-[#059669]/60 text-xs md:text-sm mt-3 md:mt-4">No funds available to withdraw yet</p>
+          )}
 
           {availableTransactions.length > 0 && (
             <div className="mt-3 md:mt-4 space-y-2">
@@ -322,7 +336,7 @@ function EarningsDashboard({ user }) {
             <div className="text-3xl md:text-4xl mb-3 md:mb-4">💸</div>
             <p className="text-[#525252] font-medium text-sm md:text-base">No transactions yet</p>
             <p className="text-xs md:text-sm text-[#8A8A8A] mt-2">
-              Complete tasks to start earning USDC
+              Complete tasks to start earning
             </p>
           </div>
         )}
@@ -335,6 +349,26 @@ function EarningsDashboard({ user }) {
           <p className="text-[#1A1A1A] font-mono text-xs md:text-sm break-all">
             {user.wallet_address}
           </p>
+        </div>
+      )}
+
+      {/* Withdrawal Confirmation Modal */}
+      {showWithdrawConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Withdrawal</h3>
+            <p className="text-gray-600 mb-4">
+              Withdraw ${balanceData?.available?.toFixed(2)} to {showWithdrawConfirm === 'stripe' ? 'your bank account' : `${user.wallet_address?.substring(0, 10)}...`}?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                Cancel
+              </button>
+              <button onClick={executeWithdraw} className="px-4 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857]">
+                Confirm Withdrawal
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

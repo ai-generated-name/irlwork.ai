@@ -15,6 +15,7 @@ export default function AdminDashboard({ user }) {
   const [queueData, setQueueData] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
   const [actionModal, setActionModal] = useState(null)
+  const [confirmModal, setConfirmModal] = useState(null)
   const [reportResolveModal, setReportResolveModal] = useState(null)
   const [feedbackData, setFeedbackData] = useState([])
   const [feedbackFilter, setFeedbackFilter] = useState('all')
@@ -170,9 +171,15 @@ export default function AdminDashboard({ user }) {
     }
   }
 
-  const cancelAssignment = async (taskId) => {
-    if (!confirm('Cancel this assignment? The task will become open again.')) return
+  const confirmCancelAssignment = (taskId) => {
+    setConfirmModal({
+      title: 'Cancel Assignment',
+      message: 'Cancel this assignment? The task will become open again.',
+      onConfirm: () => { setConfirmModal(null); executeCancelAssignment(taskId) }
+    })
+  }
 
+  const executeCancelAssignment = async (taskId) => {
     setActionLoading(taskId)
     try {
       const res = await fetch(`${API_URL}/admin/tasks/${taskId}/cancel-assignment`, {
@@ -500,11 +507,29 @@ export default function AdminDashboard({ user }) {
               onConfirmDeposit={(txHash, amount) => confirmDeposit(item.id, txHash, amount)}
               onReleasePayment={() => releasePayment(item.id)}
               onConfirmWithdrawal={(txHash, amount) => confirmWithdrawal(item.id, txHash, amount)}
-              onCancelAssignment={() => cancelAssignment(item.id)}
+              onCancelAssignment={() => confirmCancelAssignment(item.id)}
               loading={actionLoading === item.id}
               setActionModal={setActionModal}
             />
           ))}
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">{confirmModal.title}</h2>
+            <p className="text-gray-600 mb-6">{confirmModal.message}</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmModal(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                Cancel
+              </button>
+              <button onClick={confirmModal.onConfirm} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                Confirm
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

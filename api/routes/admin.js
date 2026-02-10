@@ -12,6 +12,17 @@ const router = express.Router();
 // Platform fee (15%)
 const PLATFORM_FEE_PERCENT = 0.15;
 
+// Cents-based fee calculation to avoid floating-point rounding errors
+function calculateFees(depositAmount) {
+  const depositCents = Math.round(parseFloat(depositAmount) * 100);
+  const platformFeeCents = Math.round(depositCents * PLATFORM_FEE_PERCENT);
+  const workerCents = depositCents - platformFeeCents;
+  return {
+    worker_amount: (workerCents / 100).toFixed(2),
+    platform_fee: (platformFeeCents / 100).toFixed(2)
+  };
+}
+
 /**
  * Initialize admin routes with dependencies
  * @param {Object} supabase - Supabase client
@@ -514,8 +525,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         ...task,
         deposit_amount: paymentMap[task.id]?.deposit_amount || task.escrow_amount,
         deposit_status: paymentMap[task.id]?.deposit_status || 'unknown',
-        worker_amount: ((paymentMap[task.id]?.deposit_amount || task.escrow_amount) * (1 - PLATFORM_FEE_PERCENT)).toFixed(2),
-        platform_fee: ((paymentMap[task.id]?.deposit_amount || task.escrow_amount) * PLATFORM_FEE_PERCENT).toFixed(2)
+        ...calculateFees(paymentMap[task.id]?.deposit_amount || task.escrow_amount)
       }));
 
       res.json(tasksWithPayment);
@@ -609,10 +619,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         return res.status(404).json({ error: 'Manual payment record not found' });
       }
 
-      // Calculate fees server-side
-      const depositAmount = parseFloat(payment.deposit_amount);
-      const humanAmount = (depositAmount * (1 - PLATFORM_FEE_PERCENT)).toFixed(2);
-      const platformFee = (depositAmount * PLATFORM_FEE_PERCENT).toFixed(2);
+      // Calculate fees server-side (cents-based to avoid rounding errors)
+      const { worker_amount: humanAmount, platform_fee: platformFee } = calculateFees(payment.deposit_amount);
 
       // Atomic update: include status check to prevent double-release race condition
       const { data: updatedPayment, error: updatePaymentError } = await supabase
@@ -748,19 +756,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       if (updateTaskError) throw updateTaskError;
 
-      // Update human stats (fetch then increment - supabase.raw() not available in JS client)
-      const { data: humanStats } = await supabase
-        .from('users')
-        .select('jobs_completed')
-        .eq('id', payment.worker_id)
-        .single();
-      await supabase
-        .from('users')
-        .update({
-          jobs_completed: (humanStats?.jobs_completed || 0) + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', payment.worker_id);
+      // Update human stats (atomic increment via RPC)
+      await supabase.rpc('increment_user_stat', { user_id_param: payment.worker_id, stat_name: 'jobs_completed', increment_by: 1 });
 
       // Notify human
       await createNotification(

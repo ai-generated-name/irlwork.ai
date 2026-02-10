@@ -58,7 +58,6 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   const clearsAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
   // Insert into pending_transactions (funds held for 48-hour dispute window)
-  // USDC stays in platform wallet until human withdraws after dispute period
   const { data: pendingTx, error: pendingError } = await supabase
     .from('pending_transactions')
     .insert({
@@ -67,6 +66,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
       task_id: taskId,
       amount_cents: netAmountCents,
       status: 'pending',
+      payout_method: task.payment_method || 'usdc',
       clears_at: clearsAt.toISOString(),
       created_at: new Date().toISOString()
     })
@@ -104,37 +104,14 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   // NOTE: Previously inserted into a 'transactions' table that doesn't exist.
   // Transaction data is already tracked via payouts + pending_transactions tables.
 
-  // Update human stats (fetch current values then increment — supabase-js doesn't support .raw())
-  const { data: currentHuman } = await supabase
-    .from('users')
-    .select('jobs_completed, total_tasks_completed')
-    .eq('id', humanId)
-    .single();
+  // Update human stats (atomic increment via RPC to prevent lost updates)
+  await supabase.rpc('increment_user_stat', { user_id_param: humanId, stat_name: 'jobs_completed', increment_by: 1 });
+  await supabase.rpc('increment_user_stat', { user_id_param: humanId, stat_name: 'total_tasks_completed', increment_by: 1 });
+  await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', humanId);
 
-  await supabase
-    .from('users')
-    .update({
-      jobs_completed: (currentHuman?.jobs_completed || 0) + 1,
-      total_tasks_completed: (currentHuman?.total_tasks_completed || 0) + 1,
-      last_active_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', humanId);
-
-  // Update agent's total_usdc_paid (fetch current value then increment)
-  const { data: currentAgent } = await supabase
-    .from('users')
-    .select('total_usdc_paid')
-    .eq('id', agentId)
-    .single();
-
-  await supabase
-    .from('users')
-    .update({
-      total_usdc_paid: (currentAgent?.total_usdc_paid || 0) + netAmount,
-      last_active_at: new Date().toISOString()
-    })
-    .eq('id', agentId);
+  // Update agent's total_usdc_paid (atomic increment)
+  await supabase.rpc('increment_user_stat', { user_id_param: agentId, stat_name: 'total_usdc_paid', increment_by: netAmount });
+  await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', agentId);
 
   // Notify human about pending payment with 48-hour hold
   if (createNotification) {
