@@ -636,7 +636,7 @@ export default function BrowsePage({ user }) {
                   key={human.id}
                   human={human}
                   variant="browse"
-                  onExpand={(h) => setExpandedHumanId(h.id)}
+                  onExpand={(h) => window.location.href = `/humans/${h.id}`}
                   onHire={(h) => setShowHireModal(h)}
                 />
               ))
