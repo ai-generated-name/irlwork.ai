@@ -6,6 +6,8 @@ import { supabase } from '../App';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
+import BudgetCard from '../components/TaskDetail/BudgetCard';
+import StatsSection from '../components/TaskDetail/StatsSection';
 import EscrowDisplay from '../components/TaskDetail/EscrowDisplay';
 import ProofSection from '../components/TaskDetail/ProofSection';
 import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
@@ -299,22 +301,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     return () => clearInterval(interval);
   }, [taskStatus]);
 
-  // Format relative time
-  const getTimeAgo = (dateStr) => {
-    if (!dateStr) return '';
-    const now = new Date();
-    const date = new Date(dateStr);
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 30) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   // Loading state
   if (loading) {
     return (
@@ -346,7 +332,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
   return (
     <div className="landing-v4 min-h-screen" style={{ fontFamily: v4.fonts.display }}>
-      {/* Navbar — same as dashboard */}
+      {/* Navbar — uses global navbar-v4 CSS classes */}
       <nav className="navbar-v4">
         <a href="/" className="logo-v4">
           <div className="logo-mark-v4">irl</div>
@@ -417,31 +403,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           <div className="lg:col-span-3 space-y-6">
             <TaskHeader task={task} />
 
-            {/* Apply button for open tasks (logged-in non-participant) */}
-            {task.status === 'open' && user && !isParticipant && (
-              <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 shadow-sm">
-                <button
-                  onClick={() => setShowApplyModal(true)}
-                  disabled={hasApplied}
-                  className="w-full bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-3 px-6 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {hasApplied ? '✓ Applied' : 'Apply for This Task'}
-                </button>
-              </div>
-            )}
-
-            {/* Sign in prompt for open tasks (guest) */}
-            {task.status === 'open' && !user && (
-              <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 shadow-sm">
-                <a
-                  href="/auth"
-                  className="block w-full bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-3 px-6 rounded-xl transition-colors text-center no-underline"
-                >
-                  Sign In to Apply
-                </a>
-              </div>
-            )}
-
             {/* Show proof section if in progress, or status badge if submitted (participants only) */}
             {isParticipant && task.status === 'in_progress' && (
               <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
@@ -464,21 +425,15 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
           {/* Right Column - Budget, Stats, Agent Profile, Escrow (40%) */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Budget Card with posted date */}
-            <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 shadow-sm text-center">
-              <div className="text-4xl font-bold text-[#059669] font-mono">
-                ${task.budget || 0}
-              </div>
-              <div className="text-[#525252] text-sm mt-1">USDC</div>
-              <div className="text-[#8A8A8A] text-xs mt-1">
-                {task.budget_type === 'hourly' ? 'Hourly Rate' : 'Fixed Price'}
-              </div>
-              <div className="border-t border-[rgba(26,26,26,0.08)] mt-4 pt-3">
-                <span className="text-[#8A8A8A] text-xs">
-                  Posted {getTimeAgo(task.created_at)}
-                </span>
-              </div>
-            </div>
+            {/* Budget Card with apply button */}
+            <BudgetCard
+              task={task}
+              user={user}
+              onApply={() => setShowApplyModal(true)}
+            />
+
+            {/* Stats (Applications & Views) */}
+            <StatsSection taskId={taskId} />
 
             {/* Agent Profile Card */}
             <AgentProfileCard agent={agentProfile} />

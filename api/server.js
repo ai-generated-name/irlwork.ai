@@ -43,6 +43,7 @@ const initStripeRoutes = require('./routes/stripe');
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
 const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./utils/distance');
+const { find: findTimezone } = require('geo-tz');
 
 // Phase 1 Admin Routes
 console.log('[Startup] Loading admin routes...');
@@ -837,6 +838,7 @@ app.get('/api/auth/verify', async (req, res) => {
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
       social_links: user.social_links || {},
+      languages: JSON.parse(user.languages || '[]'),
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
       verified: user.verified,
@@ -916,10 +918,11 @@ app.post('/api/auth/onboard', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    // Parse skills back to array for response
+    // Parse skills and languages back to arrays for response
     const userData = {
       ...data,
       skills: JSON.parse(data.skills || '[]'),
+      languages: JSON.parse(data.languages || '[]'),
       needs_onboarding: false
     };
 
@@ -1312,7 +1315,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude')
+    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude, headline, languages, timezone')
     .eq('type', 'human')
     .eq('verified', true);
 
@@ -1325,8 +1328,8 @@ app.get('/api/humans', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // Parse skills for all humans
-  let results = humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || [];
+  // Parse skills and languages for all humans
+  let results = humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]'), languages: JSON.parse(h.languages || '[]') })) || [];
 
   // Apply distance filtering if coordinates provided
   if (user_lat && user_lng && radius) {
@@ -1372,13 +1375,13 @@ app.get('/api/humans/:id', async (req, res, next) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness')
+    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, headline, languages, timezone, social_links, travel_radius')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
 
   if (error || !user) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...user, skills: JSON.parse(user.skills || '[]') });
+  res.json({ ...user, skills: JSON.parse(user.skills || '[]'), languages: JSON.parse(user.languages || '[]') });
 });
 
 // ============ PROFILE ============
@@ -1425,7 +1428,7 @@ app.put('/api/humans/profile', async (req, res) => {
     }
   }
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links } = req.body;
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
 
@@ -1443,7 +1446,11 @@ app.put('/api/humans/profile', async (req, res) => {
   if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
   if (country !== undefined) updates.country = country;
   if (country_code !== undefined) updates.country_code = country_code;
-  if (travel_radius) updates.travel_radius = travel_radius;
+  if (travel_radius) {
+    updates.travel_radius = travel_radius;
+    updates.service_radius = travel_radius;
+  }
+  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
   if (social_links !== undefined) {
     const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
     const cleaned = {};
@@ -1455,6 +1462,21 @@ app.put('/api/humans/profile', async (req, res) => {
       }
     }
     updates.social_links = cleaned;
+  }
+  if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
+  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
+  if (timezone !== undefined) updates.timezone = timezone;
+
+  // Auto-derive timezone from coordinates when location changes but timezone not explicitly set
+  if (updates.latitude != null && updates.longitude != null && timezone === undefined) {
+    try {
+      const tzResults = findTimezone(updates.latitude, updates.longitude);
+      if (tzResults && tzResults.length > 0) {
+        updates.timezone = tzResults[0];
+      }
+    } catch (e) {
+      console.error('[Profile] Failed to derive timezone:', e.message);
+    }
   }
 
   const { data, error } = await supabase
@@ -1537,7 +1559,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, is_anonymous } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1562,6 +1584,7 @@ app.post('/api/tasks', async (req, res) => {
       duration_hours: duration_hours || null,
       deadline: deadline || null,
       requirements: requirements || null,
+      is_anonymous: !!is_anonymous,
       created_at: new Date().toISOString()
     })
     .select()
@@ -1586,11 +1609,26 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at, deposit_amount_cents, unique_deposit_amount, instructions, work_started_at, proof_submitted_at, assigned_at, duration_hours, is_remote')
+    .select('*')
     .eq('id', req.params.id)
     .single();
 
   if (error || !task) return res.status(404).json({ error: 'Not found' });
+
+  // Embed poster (agent) public profile
+  let poster = null;
+  if (task.agent_id) {
+    if (task.is_anonymous) {
+      poster = { name: 'Anonymous', type: 'unknown' };
+    } else {
+      const { data: agentData } = await supabase
+        .from('users')
+        .select('id, name, type, city, state, total_tasks_posted, total_usdc_paid, rating, review_count, verified, created_at')
+        .eq('id', task.agent_id)
+        .single();
+      poster = agentData || null;
+    }
+  }
 
   // Only return sensitive financial/escrow fields to task participants
   const user = await getUserByToken(req.headers.authorization);
@@ -1600,9 +1638,9 @@ app.get('/api/tasks/:id', async (req, res, next) => {
     const { escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at,
             deposit_amount_cents, unique_deposit_amount, instructions,
             work_started_at, proof_submitted_at, assigned_at, ...publicTask } = task;
-    return res.json(publicTask);
+    return res.json({ ...publicTask, poster });
   }
-  res.json(task);
+  res.json({ ...task, poster });
 });
 
 app.get('/api/tasks/:id/status', async (req, res) => {
@@ -1657,6 +1695,28 @@ app.get('/api/tasks/:id/status', async (req, res) => {
     proof_submitted_at: task.proof_submitted_at,
     proofs: proofs || [],
     dispute_window: dispute_window_info
+  });
+});
+
+// Task stats (application count + view count) - public endpoint
+app.get('/api/tasks/:id/stats', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const [appResult, viewResult] = await Promise.all([
+    supabase
+      .from('task_applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('task_id', req.params.id),
+    supabase
+      .from('page_views')
+      .select('*', { count: 'exact', head: true })
+      .eq('page_type', 'task')
+      .eq('target_id', req.params.id)
+  ]);
+
+  res.json({
+    applications: appResult.count || 0,
+    views: viewResult.count || 0
   });
 });
 
@@ -3564,6 +3624,7 @@ app.post('/api/mcp', async (req, res) => {
             human_ids: [],
             escrow_amount: budgetAmount,
             is_remote: !!params.is_remote,
+            is_anonymous: !!params.is_anonymous,
             created_at: new Date().toISOString()
           })
           .select()
@@ -4461,6 +4522,7 @@ app.get('/api/tasks/available', async (req, res) => {
             .select('*')
             .eq('status', 'open')
             .is('latitude', null)
+            .eq('is_remote', false)
             .ilike('location', `%${city}%`)
             .limit(20);
 
@@ -4488,6 +4550,8 @@ app.get('/api/tasks/available', async (req, res) => {
     }
 
     // Fallback: no location or RPC failed - use legacy filtering
+    const willDistanceFilter = user_lat && user_lng && radius_km !== 'anywhere' && (radius_km || radius);
+
     let query = supabase
       .from('tasks')
       .select(`
@@ -4495,6 +4559,12 @@ app.get('/api/tasks/available', async (req, res) => {
         agent:users!tasks_agent_id_fkey(id, name)
       `)
       .eq('status', 'open');
+
+    // When distance filtering, exclude remote tasks from the initial query so they
+    // don't consume the limit — remote tasks are fetched separately via fetchRemoteTasks()
+    if (willDistanceFilter) {
+      query = query.or('is_remote.is.null,is_remote.eq.false');
+    }
 
     if (category) query = query.eq('category', category);
     if (urgency) query = query.eq('urgency', urgency);
@@ -4530,27 +4600,22 @@ app.get('/api/tasks/available', async (req, res) => {
       if (!includeRemote) {
         results = results.filter(t => !t.is_remote);
       }
-    } else if (user_lat && user_lng && (radius_km || radius)) {
+    } else if (willDistanceFilter) {
       const userLatitude = parseFloat(user_lat);
       const userLongitude = parseFloat(user_lng);
 
-      // Keep remote tasks — they bypass distance filtering
-      const remoteTasks = results.filter(t => t.is_remote);
-      let localTasks = results.filter(t => !t.is_remote);
-
+      // Remote tasks were excluded from the initial query, so all results here are local
       if (radius_km) {
         const radiusKm = parseFloat(radius_km) || 50;
         if (radiusKm === 0) {
-          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, 5);
+          results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
         } else {
-          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, radiusKm);
+          results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
         }
       } else if (radius) {
         const maxRadius = parseFloat(radius);
-        localTasks = filterByDistance(localTasks, userLatitude, userLongitude, maxRadius);
+        results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
       }
-
-      results = [...localTasks];
 
       // Fallback: include tasks without coords that match city string
       if (city) {
@@ -4560,14 +4625,6 @@ app.get('/api/tasks/available', async (req, res) => {
         );
         const resultIds = new Set(results.map(r => r.id));
         tasksWithoutCoords.forEach(t => {
-          if (!resultIds.has(t.id)) results.push(t);
-        });
-      }
-
-      // Add remote tasks back (they are not filtered by distance)
-      if (includeRemote) {
-        const resultIds = new Set(results.map(r => r.id));
-        remoteTasks.forEach(t => {
           if (!resultIds.has(t.id)) results.push(t);
         });
       }
@@ -4606,24 +4663,25 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
     .limit(parseInt(limit));
-  
+
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
-  
+
   const { data: humans, error } = await query;
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
+
   res.json(humans?.map(h => ({
     ...h,
-    skills: JSON.parse(h.skills || '[]')
+    skills: JSON.parse(h.skills || '[]'),
+    languages: JSON.parse(h.languages || '[]')
   })) || []);
 });
 
@@ -4636,7 +4694,8 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
       verified, availability, wallet_address, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at, social_links
+      total_disputes_filed, total_usdc_paid, last_active_at, social_links,
+      headline, languages, timezone, travel_radius
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
@@ -4666,6 +4725,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
   res.json({
     ...user,
     skills: JSON.parse(user.skills || '[]'),
+    languages: JSON.parse(user.languages || '[]'),
     reviews: reviews || [],
     // Derived metrics
     completion_rate: completionRate,
@@ -4757,6 +4817,9 @@ app.get('/api/profile', async (req, res) => {
     hourly_rate: profile.hourly_rate,
     wallet_address: profile.wallet_address,
     skills: JSON.parse(profile.skills || '[]'),
+    languages: JSON.parse(profile.languages || '[]'),
+    travel_radius: profile.travel_radius || 25,
+    social_links: profile.social_links || {},
     rating: profile.rating,
     jobs_completed: profile.jobs_completed,
     verified: profile.verified,
@@ -4782,8 +4845,8 @@ app.put('/api/profile', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address } = req.body;
-  
+  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address, languages, travel_radius, social_links } = req.body;
+
   const updates = { updated_at: new Date().toISOString(), verified: true };
 
   if (name) updates.name = name;
@@ -4794,6 +4857,12 @@ app.put('/api/profile', async (req, res) => {
   if (availability) updates.availability = availability;
   if (wallet_address) updates.wallet_address = wallet_address;
   if (skills) updates.skills = JSON.stringify(skills);
+  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
+  if (travel_radius) {
+    updates.travel_radius = travel_radius;
+    updates.service_radius = travel_radius;
+  }
+  if (social_links !== undefined) updates.social_links = social_links;
   
   const { data: profile, error } = await supabase
     .from('users')

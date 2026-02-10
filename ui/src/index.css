@@ -510,6 +510,10 @@ code, pre {
   align-items: center;
 }
 
+.browse-tasks-v2-category-dropdown {
+  min-width: 150px;
+}
+
 .browse-tasks-v2-view-toggle {
   display: flex;
   background: var(--bg-tertiary);
