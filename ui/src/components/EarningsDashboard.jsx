@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import API_URL from '../config/api'
 import { useToast } from '../context/ToastContext'
 import WithdrawalMethodPicker from './WithdrawalMethodPicker'
+import ConnectBankButton from './ConnectBankButton'
 
 function EarningsDashboard({ user }) {
   const toast = useToast()
@@ -239,7 +240,12 @@ function EarningsDashboard({ user }) {
           )}
 
           {(!balanceData?.available_cents || balanceData.available_cents <= 0) && (
-            <p className="text-[#059669]/60 text-xs md:text-sm mt-3 md:mt-4">No funds available to withdraw yet</p>
+            <div className="mt-3 md:mt-4">
+              <p className="text-[#059669]/60 text-xs md:text-sm">No funds available to withdraw yet</p>
+              <div className="mt-2">
+                <ConnectBankButton user={user} compact />
+              </div>
+            </div>
           )}
 
           {availableTransactions.length > 0 && (

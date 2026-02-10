@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API_URL from '../config/api';
 
-export default function ConnectBankButton({ user }) {
+export default function ConnectBankButton({ user, compact = false }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -59,8 +59,64 @@ export default function ConnectBankButton({ user }) {
   };
 
   if (loading) {
+    if (compact) return null;
     return <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Checking bank status...</span>;
   }
+
+  // ── Compact variant (for inline/zero-balance contexts) ──
+  if (compact) {
+    // Fully connected
+    if (status?.connected && status?.payouts_enabled) {
+      return (
+        <span style={{ fontSize: '0.75rem', color: '#059669' }}>
+          &#9989; Bank account connected
+        </span>
+      );
+    }
+
+    // Incomplete onboarding
+    if (status?.connected && !status?.payouts_enabled) {
+      return (
+        <button
+          onClick={handleConnect}
+          disabled={connecting}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            fontSize: '0.75rem',
+            color: '#D97706',
+            cursor: connecting ? 'not-allowed' : 'pointer',
+            textDecoration: 'underline',
+            textUnderlineOffset: '2px',
+          }}
+        >
+          {connecting ? 'Loading...' : 'Bank setup incomplete — Complete setup \u2192'}
+        </button>
+      );
+    }
+
+    // Not connected
+    return (
+      <button
+        onClick={handleConnect}
+        disabled={connecting}
+        style={{
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          fontSize: '0.75rem',
+          color: '#059669',
+          cursor: connecting ? 'not-allowed' : 'pointer',
+          opacity: connecting ? 0.6 : 0.8,
+        }}
+      >
+        {connecting ? 'Setting up...' : '\uD83C\uDFE6 Connect bank account for future withdrawals \u2192'}
+      </button>
+    );
+  }
+
+  // ── Standard variant (full-size, for WithdrawalMethodPicker) ──
 
   // Fully connected
   if (status?.connected && status?.payouts_enabled) {
