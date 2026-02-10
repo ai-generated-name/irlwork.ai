@@ -2223,9 +2223,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 className="dashboard-v4-user-trigger"
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
               >
-                <div className="dashboard-v4-user-avatar">
-                  {user?.name?.charAt(0) || '?'}
-                </div>
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.name || 'User'} className="dashboard-v4-user-avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div className="dashboard-v4-user-avatar">
+                    {user?.name?.charAt(0) || '?'}
+                  </div>
+                )}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={userDropdownOpen ? 'rotated' : ''}>
                   <path d="M6 9l6 6 6-6" />
                 </svg>
@@ -2234,9 +2238,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               {userDropdownOpen && (
                 <div className="dashboard-v4-user-dropdown">
                   <div className="dashboard-v4-user-dropdown-header">
-                    <div className="dashboard-v4-user-dropdown-avatar">
-                      {user?.name?.charAt(0) || '?'}
-                    </div>
+                    {user?.avatar_url ? (
+                      <img src={user.avatar_url} alt={user.name || 'User'} className="dashboard-v4-user-dropdown-avatar" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="dashboard-v4-user-dropdown-avatar">
+                        {user?.name?.charAt(0) || '?'}
+                      </div>
+                    )}
                     <div className="dashboard-v4-user-dropdown-info">
                       <p className="dashboard-v4-user-dropdown-name">{user?.name || 'User'}</p>
                       <p className="dashboard-v4-user-dropdown-email">{user?.email || ''}</p>
@@ -2615,9 +2623,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
             <div className="dashboard-v4-form" style={{ maxWidth: 500 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-                <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 28 }}>
-                  {user?.name?.charAt(0) || '?'}
-                </div>
+                {user?.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.name || 'User'}
+                    style={{ width: 80, height: 80, borderRadius: 'var(--radius-xl)', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 28 }}>
+                    {user?.name?.charAt(0) || '?'}
+                  </div>
+                )}
                 <div style={{ flex: 1 }}>
                   <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name}</h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{user?.email}</p>
@@ -2683,6 +2699,68 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Profile Settings</h2>
+
+              {/* Avatar Upload */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                {user?.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.name || 'User'}
+                    style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                  />
+                ) : (
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 24, flexShrink: 0 }}>
+                    {user?.name?.charAt(0) || '?'}
+                  </div>
+                )}
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Profile Photo</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>JPG or PNG, max 5MB</p>
+                  <label style={{ display: 'inline-block', padding: '6px 16px', background: 'white', border: '1px solid rgba(26,26,26,0.12)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                    Upload Photo
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error('Image must be under 5MB')
+                          return
+                        }
+                        try {
+                          toast.loading('Uploading photo...')
+                          const reader = new FileReader()
+                          reader.onload = async () => {
+                            try {
+                              const res = await fetch(`${API_URL}/upload/avatar`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                                body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: file.type })
+                              })
+                              const data = await res.json()
+                              toast.dismiss()
+                              if (res.ok && data.url) {
+                                toast.success('Photo uploaded!')
+                                setTimeout(() => window.location.reload(), 1000)
+                              } else {
+                                toast.error(data.error || 'Upload failed')
+                              }
+                            } catch (err) {
+                              toast.dismiss()
+                              toast.error('Upload failed')
+                            }
+                          }
+                          reader.readAsDataURL(file)
+                        } catch (err) {
+                          toast.error('Failed to read file')
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
 
               <form onSubmit={async (e) => {
                 e.preventDefault()

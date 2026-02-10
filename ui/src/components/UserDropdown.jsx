@@ -26,7 +26,16 @@ export default function UserDropdown({ user, onLogout, onNavigate }) {
         onClick={() => setIsOpen(!isOpen)}
         className={`user-dropdown-v4-trigger w-full ${isOpen ? 'open' : ''}`}
       >
-        <div className="user-dropdown-v4-avatar">
+        {user?.avatar_url ? (
+          <img
+            src={user.avatar_url}
+            alt={user.name || 'User'}
+            className="user-dropdown-v4-avatar"
+            style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
+            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+          />
+        ) : null}
+        <div className="user-dropdown-v4-avatar" style={{ display: user?.avatar_url ? 'none' : 'flex' }}>
           {getInitials(user?.name)}
         </div>
         <div className="user-dropdown-v4-info flex-1">

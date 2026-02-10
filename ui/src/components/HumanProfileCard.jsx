@@ -65,22 +65,37 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
       {/* Header: Avatar + Info */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
         {/* Avatar */}
-        <div style={{
-          width: 52,
-          height: 52,
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontWeight: 700,
-          fontSize: 20,
-          flexShrink: 0,
-          boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
-        }}>
-          {human.name?.[0]?.toUpperCase() || '?'}
-        </div>
+        {human.avatar_url ? (
+          <img
+            src={human.avatar_url}
+            alt={human.name || 'User'}
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              objectFit: 'cover',
+              flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+            }}
+          />
+        ) : (
+          <div style={{
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontWeight: 700,
+            fontSize: 20,
+            flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+          }}>
+            {human.name?.[0]?.toUpperCase() || '?'}
+          </div>
+        )}
 
         {/* Name + Location + Rating */}
         <div style={{ flex: 1, minWidth: 0 }}>
