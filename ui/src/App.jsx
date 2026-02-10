@@ -14,7 +14,7 @@ const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const HumanProfilePage = lazy(() => import('./pages/HumanProfilePage'))
 const BrowseTasksV2 = lazy(() => import('./pages/BrowseTasksV2'))
 const MyTasksPage = lazy(() => import('./pages/MyTasksPage'))
-const LandingPageV4 = lazy(() => import('./pages/LandingPageV4'))
+import LandingPageV4 from './pages/LandingPageV4'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
@@ -4227,14 +4227,16 @@ function App() {
     }
   }
 
-  if (loading) {
-    debug('[Auth] Loading...')
-    return <Loading />
-  }
-
   // Routes
   const path = window.location.pathname
   debug('[Auth] Rendering route:', path, 'user:', user ? user.email : 'none')
+
+  // Only block on auth loading for routes that require authentication
+  const authRequiredRoutes = ['/dashboard', '/onboard']
+  if (loading && authRequiredRoutes.some(r => path.startsWith(r))) {
+    debug('[Auth] Loading...')
+    return <Loading />
+  }
 
   // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
   const routeContent = (() => {
@@ -4299,7 +4301,7 @@ function App() {
     if (path === '/mcp') return <MCPPage />
     if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
 
-    return <Suspense fallback={<Loading />}><LandingPageV4 /></Suspense>
+    return <LandingPageV4 />
   })()
 
   // Dashboard has feedback in sidebar, other pages use floating button
