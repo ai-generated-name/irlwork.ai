@@ -5622,6 +5622,7 @@
 
   .dashboard-v4-main {
     margin-left: 0;
+    overflow-x: hidden;
   }
 
   .dashboard-v4-menu-btn {
@@ -5649,16 +5650,30 @@
   }
 
   .dashboard-v4-notification-dropdown {
-    width: calc(100vw - var(--space-8));
-    right: calc(-1 * var(--space-4));
+    position: fixed;
+    top: 56px;
+    right: var(--space-4);
+    left: var(--space-4);
+    width: auto;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .dashboard-v4-user-dropdown {
-    right: calc(-1 * var(--space-4));
+    position: fixed;
+    top: 56px;
+    right: var(--space-4);
+    width: 240px;
+    max-width: calc(100vw - var(--space-8));
   }
 }
 
 @media (max-width: 600px) {
+  .dashboard-v4-topbar {
+    padding: var(--space-3) var(--space-4);
+  }
+
   .dashboard-v4-page-title {
     font-size: 24px;
   }
