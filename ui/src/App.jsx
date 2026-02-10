@@ -3930,7 +3930,8 @@ function App() {
         debug('[Auth] User found in DB:', data.user?.email, 'needs_onboarding:', data.user?.needs_onboarding)
 
         // Trust backend completely - no localStorage merge
-        const finalUser = { ...data.user, supabase_user: true }
+        // Always use Supabase auth email (source of truth for sign-in email)
+        const finalUser = { ...data.user, email: supabaseUser.email || data.user.email, supabase_user: true }
         localStorage.setItem('user', JSON.stringify(finalUser)) // Cache for next load
         setUser(finalUser)
       } else if (res.status === 404) {
