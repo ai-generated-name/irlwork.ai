@@ -4046,7 +4046,13 @@ Signature required. Bring to our office at 123 Main St.",
 }
 
 function App() {
-  const [user, setUser] = useState(null)
+  // Initialize user from localStorage cache for instant render on /dashboard
+  const [user, setUser] = useState(() => {
+    try {
+      const cached = localStorage.getItem('user')
+      return cached ? JSON.parse(cached) : null
+    } catch { return null }
+  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -4232,8 +4238,8 @@ function App() {
   debug('[Auth] Rendering route:', path, 'user:', user ? user.email : 'none')
 
   // Only block on auth loading for routes that require authentication
-  const authRequiredRoutes = ['/dashboard', '/onboard']
-  if (loading && authRequiredRoutes.some(r => path.startsWith(r))) {
+  // Skip the gate if we have a cached user (renders instantly from localStorage)
+  if (loading && !user && ['/dashboard', '/onboard'].some(r => path.startsWith(r))) {
     debug('[Auth] Loading...')
     return <Loading />
   }
