@@ -869,7 +869,7 @@ app.post('/api/auth/onboard', async (req, res) => {
   const userId = authenticatedUser.id;
 
   const { email, name, city, latitude, longitude, country, country_code,
-          hourly_rate, skills, travel_radius, role, bio, avatar_url } = req.body;
+          hourly_rate, skills, travel_radius, role, bio } = req.body;
 
   // Validate required fields
   if (!city || !latitude || !longitude) {
@@ -883,8 +883,7 @@ app.post('/api/auth/onboard', async (req, res) => {
       + (city ? 0.1 : 0)
       + (skillsArray.length > 0 ? 0.2 : 0)
       + (hourly_rate ? 0.1 : 0)
-      + (bio ? 0.1 : 0)
-      + (avatar_url ? 0.1 : 0);
+      + (bio ? 0.1 : 0);
 
     // Upsert user with onboarding data
     const { data, error } = await supabase
@@ -903,7 +902,6 @@ app.post('/api/auth/onboard', async (req, res) => {
         travel_radius: travel_radius || 25,
         role: role || 'human',
         bio: bio || null,
-        avatar_url: avatar_url || null,
         profile_completeness,
         needs_onboarding: false,
         onboarding_completed_at: new Date().toISOString()

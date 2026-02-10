@@ -239,7 +239,7 @@ function Onboarding({ onComplete, user }) {
               style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: 8, objectFit: 'cover' }}
             />
           )}
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
             Hey {userName}, let's set up your profile
           </p>
         </div>
@@ -284,7 +284,7 @@ function Onboarding({ onComplete, user }) {
             {form.city && (
               <div style={{ marginTop: '1rem' }}>
                 {loadingTasks ? (
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>
                     Checking for tasks near {form.city}...
                   </p>
                 ) : nearbyTasks.length > 0 ? (
@@ -295,16 +295,16 @@ function Onboarding({ onComplete, user }) {
                     {nearbyTasks.map((task, i) => (
                       <div key={task.id || i} style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: 8,
+                        padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 8,
                         marginBottom: 4, fontSize: 13
                       }}>
-                        <span style={{ color: 'rgba(255,255,255,0.9)' }}>{task.title}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{task.title}</span>
                         <span style={{ color: '#10B981', fontWeight: 600 }}>${task.budget}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>
                     No tasks near {form.city} yet — be one of the first workers in your area
                   </p>
                 )}
@@ -338,9 +338,9 @@ function Onboarding({ onComplete, user }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 10,
-                    border: form.selectedCategories.includes(cat.value) ? '2px solid #10B981' : '2px solid rgba(255,255,255,0.1)',
-                    background: form.selectedCategories.includes(cat.value) ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
-                    color: form.selectedCategories.includes(cat.value) ? '#10B981' : 'rgba(255,255,255,0.8)',
+                    border: form.selectedCategories.includes(cat.value) ? '2px solid #10B981' : '2px solid rgba(26,26,26,0.1)',
+                    background: form.selectedCategories.includes(cat.value) ? 'rgba(16,185,129,0.1)' : 'var(--bg-secondary)',
+                    color: form.selectedCategories.includes(cat.value) ? '#10B981' : 'var(--text-primary)',
                     cursor: 'pointer', fontSize: 14, transition: 'all 0.15s',
                     textAlign: 'left'
                   }}
@@ -393,7 +393,7 @@ function Onboarding({ onComplete, user }) {
             <p className="onboarding-v4-subtitle">Set your travel distance and hourly rate</p>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
+              <label style={{ display: 'block', fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>
                 How far can you travel?
               </label>
               <input
@@ -409,25 +409,12 @@ function Onboarding({ onComplete, user }) {
               </p>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
-                Minimum hourly rate ($)
-              </label>
-              <input
-                type="number"
-                placeholder="Hourly rate"
-                value={form.hourly_rate}
-                onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
-                className="onboarding-v4-input"
-              />
-            </div>
-
             {error && (
               <div className="auth-v4-error">{error}</div>
             )}
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
+              <button className="onboarding-v4-btn-next" onClick={handleSubmit} disabled={loading}>
                 {loading ? 'Setting up...' : 'Complete Setup'}
               </button>
             </div>
@@ -3902,7 +3889,6 @@ function App() {
           skills: profile.skills,
           travel_radius: profile.travel_radius,
           bio: profile.bio,
-          avatar_url: user.avatar_url || null,
           role: 'human'
         })
       })
