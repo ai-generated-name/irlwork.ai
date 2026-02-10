@@ -148,6 +148,9 @@ function EarningsDashboard({ user }) {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Payment Account Setup */}
+      <ConnectBankButton user={user} />
+
       {/* Success Message */}
       {withdrawResult && (
         <div className="bg-[#D1FAE5] border border-[#059669]/20 rounded-xl p-4">
@@ -240,12 +243,7 @@ function EarningsDashboard({ user }) {
           )}
 
           {(!balanceData?.available_cents || balanceData.available_cents <= 0) && (
-            <div className="mt-3 md:mt-4">
-              <p className="text-[#059669]/60 text-xs md:text-sm">No funds available to withdraw yet</p>
-              <div className="mt-2">
-                <ConnectBankButton user={user} compact />
-              </div>
-            </div>
+            <p className="text-[#059669]/60 text-xs md:text-sm mt-3 md:mt-4">No funds available to withdraw yet</p>
           )}
 
           {availableTransactions.length > 0 && (
