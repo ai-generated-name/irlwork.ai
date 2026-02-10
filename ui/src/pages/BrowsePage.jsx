@@ -467,6 +467,7 @@ export default function BrowsePage({ user }) {
               tasks.map(task => (
                 <div
                   key={task.id}
+                  onClick={() => navigate(`/tasks/${task.id}`)}
                   style={{
                     background: 'white',
                     borderRadius: 'var(--radius-lg)',

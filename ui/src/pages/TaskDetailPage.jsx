@@ -29,34 +29,38 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
   // Fetch initial data
   useEffect(() => {
-    if (!taskId || !user) return;
+    if (!taskId) return;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch task details
+        // Fetch task details (works with or without auth)
+        const headers = user?.id ? { Authorization: user.id } : {};
         const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, {
-          headers: { Authorization: user.id }
+          headers
         });
         if (!taskRes.ok) throw new Error('Task not found');
         const taskData = await taskRes.json();
         setTask(taskData);
 
         // Fetch task status (includes proof info and dispute window)
-        const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
-          headers: { Authorization: user.id }
-        });
-        if (statusRes.ok) {
-          const statusData = await statusRes.json();
-          setTaskStatus(statusData);
+        if (user?.id) {
+          const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
+            headers: { Authorization: user.id }
+          });
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            setTaskStatus(statusData);
+          }
         }
 
         // Fetch agent profile (from users table)
         if (taskData.agent_id) {
+          const agentHeaders = user?.id ? { Authorization: user.id } : {};
           const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, {
-            headers: { Authorization: user.id }
+            headers: agentHeaders
           });
           if (agentRes.ok) {
             const agentData = await agentRes.json();
@@ -64,8 +68,10 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           }
         }
 
-        // Fetch or create conversation for this task
-        await loadConversation(taskData);
+        // Fetch or create conversation for this task (only if logged in)
+        if (user) {
+          await loadConversation(taskData);
+        }
 
       } catch (err) {
         console.error('Error fetching task data:', err);
