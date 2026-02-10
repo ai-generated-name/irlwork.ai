@@ -1444,7 +1444,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, is_anonymous } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1466,6 +1466,7 @@ app.post('/api/tasks', async (req, res) => {
       human_ids: [],
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
+      is_anonymous: !!is_anonymous,
       created_at: new Date().toISOString()
     })
     .select()
@@ -1490,11 +1491,26 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at, deposit_amount_cents, unique_deposit_amount, instructions, work_started_at, proof_submitted_at, assigned_at')
+    .select('id, title, description, category, location, latitude, longitude, budget, budget_type, duration_hours, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at, deposit_amount_cents, unique_deposit_amount, instructions, work_started_at, proof_submitted_at, assigned_at, is_remote, is_anonymous')
     .eq('id', req.params.id)
     .single();
 
   if (error || !task) return res.status(404).json({ error: 'Not found' });
+
+  // Embed poster (agent) public profile
+  let poster = null;
+  if (task.agent_id) {
+    if (task.is_anonymous) {
+      poster = { name: 'Anonymous', type: 'unknown' };
+    } else {
+      const { data: agentData } = await supabase
+        .from('users')
+        .select('id, name, type, city, state, total_tasks_posted, total_usdc_paid, rating, review_count, verified, created_at')
+        .eq('id', task.agent_id)
+        .single();
+      poster = agentData || null;
+    }
+  }
 
   // Only return sensitive financial/escrow fields to task participants
   const user = await getUserByToken(req.headers.authorization);
@@ -1504,9 +1520,9 @@ app.get('/api/tasks/:id', async (req, res, next) => {
     const { escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at,
             deposit_amount_cents, unique_deposit_amount, instructions,
             work_started_at, proof_submitted_at, assigned_at, ...publicTask } = task;
-    return res.json(publicTask);
+    return res.json({ ...publicTask, poster });
   }
-  res.json(task);
+  res.json({ ...task, poster });
 });
 
 app.get('/api/tasks/:id/status', async (req, res) => {
@@ -1561,6 +1577,28 @@ app.get('/api/tasks/:id/status', async (req, res) => {
     proof_submitted_at: task.proof_submitted_at,
     proofs: proofs || [],
     dispute_window: dispute_window_info
+  });
+});
+
+// Task stats (application count + view count) - public endpoint
+app.get('/api/tasks/:id/stats', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const [appResult, viewResult] = await Promise.all([
+    supabase
+      .from('task_applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('task_id', req.params.id),
+    supabase
+      .from('page_views')
+      .select('*', { count: 'exact', head: true })
+      .eq('page_type', 'task')
+      .eq('target_id', req.params.id)
+  ]);
+
+  res.json({
+    applications: appResult.count || 0,
+    views: viewResult.count || 0
   });
 });
 
@@ -3333,6 +3371,7 @@ app.post('/api/mcp', async (req, res) => {
             human_ids: [],
             escrow_amount: budgetAmount,
             is_remote: !!params.is_remote,
+            is_anonymous: !!params.is_anonymous,
             created_at: new Date().toISOString()
           })
           .select()

@@ -23,6 +23,7 @@ import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIc
 
 import CityAutocomplete from './components/CityAutocomplete'
 import { TASK_CATEGORIES } from './components/CategoryPills'
+import StandaloneTaskDetailPage from './pages/TaskDetailPage'
 
 // Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
 class TabErrorBoundary extends React.Component {
@@ -2987,166 +2988,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 }
 
 // Task Detail Page - shareable link for individual tasks
-function TaskDetailPage({ taskId, user, onLogout }) {
-  const [task, setTask] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
-
-  useEffect(() => {
-    const fetchTask = async () => {
-      try {
-        const headers = user ? { Authorization: user.id } : {}
-        const res = await fetch(`${API_URL}/tasks/${taskId}`, { headers })
-        if (res.ok) {
-          const data = await res.json()
-          setTask(data)
-        } else {
-          setError('Task not found')
-        }
-      } catch (e) {
-        setError('Failed to load task')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchTask()
-  }, [taskId, user])
-
-  const getStatusLabel = (status) => {
-    const labels = {
-      open: 'Open',
-      assigned: 'Assigned',
-      accepted: 'Accepted',
-      in_progress: 'In Progress',
-      pending_review: 'Pending Review',
-      completed: 'Completed',
-      paid: 'Paid',
-      cancelled: 'Cancelled'
-    }
-    return labels[status] || status
-  }
-
-  if (loading) {
-    return (
-      <div className="landing-v4" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>⏳</div>
-          <p style={{ color: 'var(--text-secondary)' }}>Loading task...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !task) {
-    return (
-      <div className="landing-v4" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-          <h2 style={{ color: 'var(--text-primary)', marginBottom: 8 }}>Task Not Found</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>{error || 'This task may have been removed or doesn\'t exist.'}</p>
-          <a href="/dashboard" className="v4-btn v4-btn-primary">Go to Dashboard</a>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="landing-v4">
-      {/* Navbar */}
-      <nav className="navbar-v4">
-        <a href="/" className="logo-v4">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
-        </a>
-        <div className="nav-links-v4">
-          {user ? (
-            <a href="/dashboard" className="nav-link-v4">Dashboard</a>
-          ) : (
-            <a href="/auth" className="v4-btn v4-btn-primary v4-btn-sm">Sign In</a>
-          )}
-        </div>
-      </nav>
-
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: 'calc(60px + 40px) 20px 40px' }}>
-        {/* Breadcrumb */}
-        <div style={{ marginBottom: 24 }}>
-          <a href="/dashboard?tab=browse" style={{ color: 'var(--orange-600)', fontSize: 14, textDecoration: 'none' }}>
-            ← Back to Tasks
-          </a>
-        </div>
-
-        {/* Task Card */}
-        <div className="task-detail-card" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: 32, border: '1px solid rgba(26,26,26,0.08)' }}>
-          <div className="task-detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-            <div>
-              <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
-                {getStatusLabel(task.status)}
-              </span>
-              <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginTop: 12 }}>{task.title}</h1>
-            </div>
-            <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--orange-600)' }}>${task.budget || 0}</div>
-          </div>
-
-          <p style={{ color: 'var(--text-secondary)', fontSize: 16, lineHeight: 1.6, marginBottom: 24 }}>
-            {task.description || 'No description provided.'}
-          </p>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 14 }}>
-              📂 {task.category || 'General'}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 14 }}>
-              📍 {task.city || 'Remote'}
-            </span>
-            {task.deadline && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 14 }}>
-                ⏰ {new Date(task.deadline).toLocaleDateString()}
-              </span>
-            )}
-          </div>
-
-          {/* Posted by */}
-          {task.agent && (
-            <div style={{ borderTop: '1px solid rgba(26,26,26,0.08)', paddingTop: 24 }}>
-              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>Posted by</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                  {task.agent.name?.[0]?.toUpperCase() || '?'}
-                </div>
-                <div>
-                  <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{task.agent.name || 'AI Agent'}</p>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                    Posted {new Date(task.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          {task.status === 'open' && user && (
-            <div style={{ borderTop: '1px solid rgba(26,26,26,0.08)', paddingTop: 24, marginTop: 24 }}>
-              <a href={`/dashboard?tab=browse`} className="v4-btn v4-btn-primary" style={{ width: '100%', textAlign: 'center', display: 'block' }}>
-                Apply for This Task
-              </a>
-            </div>
-          )}
-
-          {!user && task.status === 'open' && (
-            <div style={{ borderTop: '1px solid rgba(26,26,26,0.08)', paddingTop: 24, marginTop: 24 }}>
-              <a href="/auth" className="v4-btn v4-btn-primary" style={{ width: '100%', textAlign: 'center', display: 'block' }}>
-                Sign In to Apply
-              </a>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function MCPPage() {
   const [user, setUser] = useState(null)
   const [keys, setKeys] = useState([])
@@ -3827,7 +3668,7 @@ function App() {
     if (path.startsWith('/tasks/')) {
       const taskId = path.split('/tasks/')[1]
       if (taskId) {
-        return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
+        return <StandaloneTaskDetailPage taskId={taskId} user={user} onNavigate={(path) => { window.location.href = path }} />
       }
     }
 

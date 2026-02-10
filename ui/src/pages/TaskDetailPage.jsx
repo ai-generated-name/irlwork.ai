@@ -1,10 +1,16 @@
 // Task Detail Page
-// Central hub for humans to view task info, communicate with agents, and submit proof
+// Central hub for viewing task info, agent profile, communication, and proof submission
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../App';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
+import PosterInfoBar from '../components/TaskDetail/PosterInfoBar';
+import DescriptionSection from '../components/TaskDetail/DescriptionSection';
+import LocationSection from '../components/TaskDetail/LocationSection';
+import RequirementsSection from '../components/TaskDetail/RequirementsSection';
+import StatsSection from '../components/TaskDetail/StatsSection';
+import BudgetCard from '../components/TaskDetail/BudgetCard';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
 import EscrowDisplay from '../components/TaskDetail/EscrowDisplay';
 import ProofSection from '../components/TaskDetail/ProofSection';
@@ -21,7 +27,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [agentProfile, setAgentProfile] = useState(null);
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [lastMessageTime, setLastMessageTime] = useState(null); // For incremental polling
+  const [lastMessageTime, setLastMessageTime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(null);
@@ -29,32 +35,33 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
   // Fetch initial data
   useEffect(() => {
-    if (!taskId || !user) return;
+    if (!taskId) return;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch task details
-        const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, {
-          headers: { Authorization: user.id }
-        });
+        // Fetch task details (now includes embedded poster data)
+        const headers = user ? { Authorization: user.id } : {};
+        const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
         if (!taskRes.ok) throw new Error('Task not found');
         const taskData = await taskRes.json();
         setTask(taskData);
 
-        // Fetch task status (includes proof info and dispute window)
-        const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
-          headers: { Authorization: user.id }
-        });
-        if (statusRes.ok) {
-          const statusData = await statusRes.json();
-          setTaskStatus(statusData);
+        // Fetch task status (includes proof info and dispute window) - only if logged in
+        if (user) {
+          const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
+            headers: { Authorization: user.id }
+          });
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            setTaskStatus(statusData);
+          }
         }
 
-        // Fetch agent profile (from users table)
-        if (taskData.agent_id) {
+        // Fetch full agent profile for the detailed card (unless anonymous)
+        if (taskData.agent_id && !taskData.is_anonymous && user) {
           const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, {
             headers: { Authorization: user.id }
           });
@@ -64,8 +71,10 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           }
         }
 
-        // Fetch or create conversation for this task
-        await loadConversation(taskData);
+        // Fetch or create conversation for this task (only if logged in)
+        if (user) {
+          await loadConversation(taskData);
+        }
 
       } catch (err) {
         console.error('Error fetching task data:', err);
@@ -95,10 +104,8 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'tasks', filter: `id=eq.${taskId}` },
         async (payload) => {
-          // Update task data with the real-time change
           setTask(prev => prev ? { ...prev, ...payload.new } : payload.new);
 
-          // If status changed, also refresh the task status endpoint for full details
           if (user) {
             try {
               const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
@@ -124,7 +131,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   // Load conversation and messages
   const loadConversation = async (taskData) => {
     try {
-      // Try to get existing conversation for this task
       const convRes = await fetch(`${API_URL}/conversations`, {
         headers: { Authorization: user.id }
       });
@@ -137,19 +143,17 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           setConversation(taskConv);
           await loadMessages(taskConv.id);
         }
-        // If no conversation exists yet, it will be created when first message is sent
       }
     } catch (err) {
       console.error('Error loading conversation:', err);
     }
   };
 
-  // Load messages for a conversation (supports incremental polling with afterTime)
+  // Load messages (supports incremental polling)
   const loadMessages = async (conversationId, incremental = false) => {
     if (!conversationId) return;
 
     try {
-      // Build URL with optional after_time for incremental polling
       let url = `${API_URL}/messages/${conversationId}?limit=50`;
       if (incremental && lastMessageTime) {
         url += `&after_time=${encodeURIComponent(lastMessageTime)}`;
@@ -164,27 +168,22 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         const newMessages = data || [];
 
         if (incremental && lastMessageTime) {
-          // Append new messages to existing ones
           if (newMessages.length > 0) {
             setMessages(prev => [...prev, ...newMessages]);
             setLastMessageTime(newMessages[newMessages.length - 1].created_at);
           }
         } else {
-          // Initial load - replace all messages
           setMessages(newMessages);
-          // Set lastMessageTime to enable incremental polling
           if (newMessages.length > 0) {
             setLastMessageTime(newMessages[newMessages.length - 1].created_at);
           } else {
-            // No messages yet - use current time so polling can still start
             setLastMessageTime(new Date().toISOString());
           }
 
-          // Mark all messages as read on initial conversation open
           fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
             method: 'PUT',
             headers: { Authorization: user.id }
-          }).catch(() => {}); // Fire-and-forget
+          }).catch(() => {});
         }
       }
     } catch (err) {
@@ -199,7 +198,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     try {
       let convId = conversation?.id;
 
-      // Create conversation if it doesn't exist
       if (!convId) {
         const createConvRes = await fetch(`${API_URL}/conversations`, {
           method: 'POST',
@@ -223,7 +221,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         }
       }
 
-      // Send message
       const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: {
@@ -237,7 +234,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       });
 
       if (res.ok) {
-        // Reload messages
         await loadMessages(convId);
       } else {
         throw new Error('Failed to send message');
@@ -266,7 +262,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       });
 
       if (res.ok) {
-        // Reload task data
         window.location.reload();
       } else {
         const errorData = await res.json();
@@ -306,6 +301,8 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     return () => clearInterval(interval);
   }, [taskStatus]);
 
+  const isParticipant = user && task && (task.agent_id === user.id || task.human_id === user.id);
+
   // Loading state
   if (loading) {
     return (
@@ -319,11 +316,13 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   }
 
   // Error state
-  if (error) {
+  if (error || !task) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-[#DC2626] text-xl mb-4">Error: {error}</div>
+          <div className="text-4xl mb-4">🔍</div>
+          <div className="text-[#1A1A1A] text-xl font-bold mb-2">Task Not Found</div>
+          <div className="text-[#525252] mb-6">{error || 'This task may have been removed.'}</div>
           <button
             onClick={() => onNavigate?.('/dashboard')}
             className="bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
@@ -347,10 +346,16 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         </a>
         <div className="flex items-center gap-4 md:gap-6">
           <a href="/mcp" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">For Agents</a>
-          <a href="/dashboard" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">Browse Tasks</a>
-          <a href="/dashboard" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
-            Dashboard
-          </a>
+          <a href="/dashboard?tab=browse" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">Browse Tasks</a>
+          {user ? (
+            <a href="/dashboard" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
+              Dashboard
+            </a>
+          ) : (
+            <a href="/auth" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
+              Sign In
+            </a>
+          )}
         </div>
       </nav>
 
@@ -358,11 +363,11 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       <header className="border-b border-[rgba(26,26,26,0.08)] sticky top-[72px] bg-white z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <button
-            onClick={() => onNavigate?.('/dashboard')}
-            className="flex items-center gap-2 text-[#525252] hover:text-[#1A1A1A] transition-colors"
+            onClick={() => onNavigate?.('/dashboard?tab=browse')}
+            className="flex items-center gap-2 text-[#E07A5F] hover:text-[#C45F4A] transition-colors text-sm font-medium"
           >
             <span>←</span>
-            <span>Back to Dashboard</span>
+            <span>Back to Tasks</span>
           </button>
           <div className="flex items-center gap-4">
             {user && task && task.agent_id !== user.id && (
@@ -394,28 +399,46 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         {/* Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Left Column - Task Details (60%) */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3">
+            <PosterInfoBar task={task} />
             <TaskHeader task={task} />
+            <DescriptionSection task={task} />
+            <LocationSection task={task} />
+            <RequirementsSection task={task} />
+            <StatsSection taskId={taskId} />
 
-            {/* Show proof section if in progress, or status badge if submitted */}
-            {task.status === 'in_progress' ? (
+            {/* Proof section - only for participants */}
+            {isParticipant && task.status === 'in_progress' && user && task.human_id === user.id && (
               <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
-            ) : (
+            )}
+            {isParticipant && task.status !== 'in_progress' && (
               <ProofStatusBadge task={task} proofs={taskStatus?.proofs} />
             )}
           </div>
 
-          {/* Right Column - Actions & Messaging (40%) */}
+          {/* Right Column - Budget, Agent Info & Messaging (40%) */}
           <div className="lg:col-span-2 space-y-4">
-            <AgentProfileCard agent={agentProfile} />
-            <EscrowDisplay task={task} />
-            <TaskMessageThread
-              conversation={conversation}
-              messages={messages}
+            <BudgetCard
+              task={task}
               user={user}
-              onSendMessage={handleSendMessage}
-              onLoadMessages={() => conversation && loadMessages(conversation.id, true)}
+              onApply={() => onNavigate?.('/dashboard?tab=browse')}
             />
+            <AgentProfileCard
+              agent={agentProfile || task.poster}
+              isAnonymous={task.is_anonymous}
+            />
+            {isParticipant && (
+              <>
+                <EscrowDisplay task={task} />
+                <TaskMessageThread
+                  conversation={conversation}
+                  messages={messages}
+                  user={user}
+                  onSendMessage={handleSendMessage}
+                  onLoadMessages={() => conversation && loadMessages(conversation.id, true)}
+                />
+              </>
+            )}
           </div>
         </div>
       </main>
