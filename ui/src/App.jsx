@@ -2162,6 +2162,58 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             </a>
           </div>
 
+          {/* Center: Navigation Links */}
+          <div className="dashboard-v4-topbar-center">
+            {!hiringMode ? (
+              <>
+                <button
+                  className="dashboard-v4-topbar-link"
+                  onClick={() => { setHiringMode(true); setActiveTabState('create'); updateTabUrl('create') }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                    <path d="M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                  Hire Humans
+                </button>
+                <a href="/mcp" className="dashboard-v4-topbar-link">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                  For Agents
+                </a>
+              </>
+            ) : (
+              <>
+                <button
+                  className="dashboard-v4-topbar-link"
+                  onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks') }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <path d="M8 21h8" />
+                    <path d="M12 17v4" />
+                  </svg>
+                  Work on Tasks
+                </button>
+                <button
+                  className="dashboard-v4-topbar-link"
+                  onClick={() => setActiveTab('browse')}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                  Browse Humans
+                </button>
+              </>
+            )}
+          </div>
+
           {/* Right: Notifications + User */}
           <div className="dashboard-v4-topbar-right">
             {/* Notifications Bell */}
@@ -2503,6 +2555,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               acceptTask={acceptTask}
               onStartWork={startWork}
               setShowProofSubmit={setShowProofSubmit}
+              notifications={notifications}
+              onNavigate={(tab) => setActiveTab(tab)}
             />
           </TabErrorBoundary>
         )}
