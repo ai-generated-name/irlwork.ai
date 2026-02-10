@@ -44,7 +44,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       try {
         // Fetch task details (works with or without auth)
-        const headers = user ? { Authorization: user.id } : {};
+        const headers = user?.id ? { Authorization: user.id } : {};
         const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
         if (!taskRes.ok) throw new Error('Task not found');
         const taskData = await taskRes.json();
@@ -54,7 +54,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
         // Fetch agent profile for all viewers
         if (taskData.agent_id) {
-          const agentHeaders = user ? { Authorization: user.id } : {};
+          const agentHeaders = user?.id ? { Authorization: user.id } : {};
           const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, { headers: agentHeaders });
           if (agentRes.ok) {
             const agentData = await agentRes.json();
