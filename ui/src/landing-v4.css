@@ -3590,6 +3590,26 @@
   flex-wrap: wrap;
 }
 
+.mcp-v4-copy-prompt-btn {
+  border: 2px solid var(--orange-500) !important;
+  color: var(--orange-500) !important;
+  background: transparent !important;
+  border-radius: 100px;
+  font-family: var(--font-display);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mcp-v4-copy-prompt-btn:hover {
+  background: var(--orange-500) !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
 .mcp-v4-section {
   margin-bottom: var(--space-12);
 }
