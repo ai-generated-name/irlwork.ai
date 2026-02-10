@@ -1,5 +1,5 @@
 // irlwork.ai - Modern Clean UI
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -442,7 +442,7 @@ function Onboarding({ onComplete, user }) {
   )
 }
 
-function AuthPage({ onLogin }) {
+function AuthPage({ onLogin, onNavigate }) {
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -470,7 +470,10 @@ function AuthPage({ onLogin }) {
           })
 
       if (error) throw error
-      window.location.href = '/dashboard'
+      // Don't navigate here — the parent App's onAuthStateChange will detect
+      // the new session and redirect from /auth to /dashboard automatically.
+      // This avoids a full page reload on mobile.
+      if (onNavigate) onNavigate('/dashboard')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -568,7 +571,8 @@ function AuthPage({ onLogin }) {
           
           debug('[Auth] Session set successfully')
           window.history.replaceState({}, document.title, window.location.pathname)
-          window.location.href = '/dashboard'
+          // Parent App's onAuthStateChange handles the redirect — no full page reload
+          if (onNavigate) onNavigate('/dashboard')
           return
         }
       } catch (err) {
@@ -4073,6 +4077,24 @@ function App() {
     } catch { return null }
   })
   const [loading, setLoading] = useState(true)
+  const [currentPath, setCurrentPath] = useState(window.location.pathname)
+  const initDoneRef = useRef(false)
+
+  // Navigate without full page reload — updates URL + React state only
+  const navigate = useCallback((url) => {
+    debug('[Nav] Navigating to:', url)
+    window.history.pushState({}, '', url)
+    // Only track pathname portion — query params are read from window.location.search
+    const pathname = url.split('?')[0].split('#')[0]
+    setCurrentPath(pathname)
+  }, [])
+
+  // Listen for browser back/forward
+  useEffect(() => {
+    const onPopState = () => setCurrentPath(window.location.pathname)
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
 
   useEffect(() => {
     if (!supabase) {
@@ -4124,13 +4146,20 @@ function App() {
         console.error('[Auth] getSession error:', e)
         setLoading(false)
       }
+      initDoneRef.current = true
     }
 
     init()
 
-    // Listen for auth changes
+    // Listen for auth changes — skip redundant fetchUserProfile if init() already handled it
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       debug('[Auth] State change:', event, session ? 'with session' : 'no session')
+      // Only react to SIGNED_IN / TOKEN_REFRESHED after init is done,
+      // to avoid double-fetching the user profile during the initial load
+      if (!initDoneRef.current && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        debug('[Auth] Skipping duplicate fetch — init() still running')
+        return
+      }
       if (session?.user) {
         await fetchUserProfile(session.user)
       } else {
@@ -4202,7 +4231,7 @@ function App() {
   const logout = async () => {
     if (supabase) await supabase.auth.signOut()
     setUser(null)
-    window.location.href = '/'
+    navigate('/')
   }
 
   const handleOnboardingComplete = async (profile) => {
@@ -4239,7 +4268,7 @@ function App() {
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
-        window.location.href = '/dashboard?tab=browse'
+        navigate('/dashboard?tab=browse')
       } else {
         const errorData = await res.json().catch(() => ({}))
         console.error('[Onboarding] Failed:', errorData)
@@ -4252,8 +4281,31 @@ function App() {
     }
   }
 
-  // Routes
-  const path = window.location.pathname
+  // Auth redirects via useEffect — never redirect during render to avoid loops.
+  // Must be before any early returns to satisfy React's rules of hooks.
+  const path = currentPath
+  useEffect(() => {
+    if (loading) return
+    if (path === '/auth' && user) {
+      debug('[Auth] Already logged in, redirecting to dashboard')
+      navigate('/dashboard')
+    } else if (path === '/onboard' && !user) {
+      debug('[Auth] No user for onboard, redirecting to auth')
+      navigate('/auth')
+    } else if (path === '/onboard' && user && !user.needs_onboarding) {
+      debug('[Auth] User already onboarded, redirecting to dashboard')
+      navigate('/dashboard')
+    } else if (path === '/dashboard' && !user) {
+      debug('[Auth] No user, redirecting to auth')
+      navigate('/auth')
+    } else if (path === '/dashboard' && user && user.needs_onboarding) {
+      debug('[Auth] User needs onboarding, redirecting to /onboard')
+      navigate('/onboard')
+    }
+  }, [path, user, loading, navigate])
+
+  // Routes — use currentPath (React state) instead of window.location.pathname
+  // to avoid full-page reloads that restart auth init and cause mobile refresh loops
   debug('[Auth] Rendering route:', path, 'user:', user ? user.email : 'none')
 
   // Only block on auth loading for routes that require authentication
@@ -4265,18 +4317,11 @@ function App() {
 
   // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
   const routeContent = (() => {
-    // If on auth page and already logged in, redirect to dashboard
-    if (path === '/auth' && user) {
-      debug('[Auth] Already logged in, redirecting to dashboard')
-      window.location.href = '/dashboard'
-      return <Loading />
-    }
-
     // Task detail route - /tasks/:id
     if (path.startsWith('/tasks/')) {
       const taskId = path.split('/tasks/')[1]
       if (taskId) {
-        return <Suspense fallback={<Loading />}><TaskDetailPage taskId={taskId} user={user} onNavigate={(path) => { window.location.href = path }} /></Suspense>
+        return <Suspense fallback={<Loading />}><TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={navigate} /></Suspense>
       }
     }
 
@@ -4284,45 +4329,26 @@ function App() {
     if (path.startsWith('/humans/')) {
       const humanId = path.split('/humans/')[1]
       if (humanId) {
-        return <Suspense fallback={<Loading />}><HumanProfilePage humanId={humanId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} /></Suspense>
+        return <Suspense fallback={<Loading />}><HumanProfilePage humanId={humanId} user={user} onLogout={logout} onNavigate={navigate} /></Suspense>
       }
     }
 
     // Onboarding route - dedicated route for onboarding wizard
     if (path === '/onboard') {
-      if (!user) {
-        debug('[Auth] No user for onboard, redirecting to auth')
-        window.location.href = '/auth'
-        return <Loading />
-      }
-      // If user doesn't need onboarding, redirect to dashboard
-      if (!user.needs_onboarding) {
-        debug('[Auth] User already onboarded, redirecting to dashboard')
-        window.location.href = '/dashboard'
-        return <Loading />
-      }
+      if (!user || !user.needs_onboarding) return <Loading />
       return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
     // Dashboard route - requires auth
     if (path === '/dashboard') {
-      if (!user) {
-        debug('[Auth] No user, redirecting to auth')
-        window.location.href = '/auth'
-        return <Loading />
-      }
-
-      // If user needs onboarding, redirect to /onboard
-      if (user.needs_onboarding) {
-        debug('[Auth] User needs onboarding, redirecting to /onboard')
-        window.location.href = '/onboard'
-        return <Loading />
-      }
-
+      if (!user || user.needs_onboarding) return <Loading />
       return <Dashboard user={user} onLogout={logout} />
     }
 
-    if (path === '/auth') return <AuthPage />
+    if (path === '/auth') {
+      if (user) return <Loading />
+      return <AuthPage onNavigate={navigate} />
+    }
     if (path === '/mcp') return <MCPPage />
     if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
 
