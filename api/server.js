@@ -4458,6 +4458,7 @@ app.get('/api/tasks/available', async (req, res) => {
             .select('*')
             .eq('status', 'open')
             .is('latitude', null)
+            .eq('is_remote', false)
             .ilike('location', `%${city}%`)
             .limit(20);
 
