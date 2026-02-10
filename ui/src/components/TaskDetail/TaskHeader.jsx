@@ -39,6 +39,26 @@ export default function TaskHeader({ task }) {
         </p>
       </div>
 
+      {/* Requirements */}
+      {task.requirements && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">Requirements</h3>
+          <p className="text-[#525252] text-sm leading-relaxed whitespace-pre-wrap">
+            {task.requirements}
+          </p>
+        </div>
+      )}
+
+      {/* Instructions (only visible to task participants - API strips for non-participants) */}
+      {task.instructions && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">Instructions</h3>
+          <p className="text-[#525252] text-sm leading-relaxed whitespace-pre-wrap">
+            {task.instructions}
+          </p>
+        </div>
+      )}
+
       {/* Metadata Row */}
       <div className="flex flex-wrap gap-4 text-sm text-[#525252]">
         {/* Posted Date */}
@@ -55,10 +75,18 @@ export default function TaskHeader({ task }) {
           </div>
         )}
 
+        {/* Duration */}
+        {task.duration_hours && (
+          <div className="flex items-center gap-2">
+            <span>⏱️</span>
+            <span>~{task.duration_hours}h estimated</span>
+          </div>
+        )}
+
         {/* Location */}
         <div className="flex items-center gap-2">
           <span>📍</span>
-          <span>{task.city || 'Remote'}</span>
+          <span>{task.city || task.location || 'Remote'}</span>
         </div>
 
         {/* Category */}

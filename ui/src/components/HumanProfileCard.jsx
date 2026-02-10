@@ -1,9 +1,32 @@
 import React from 'react'
-import { MapPin, Star, Check } from 'lucide-react'
+import { MapPin, Star, Check, Globe, Clock } from 'lucide-react'
 import { SocialIconsRow } from './SocialIcons'
 
-function StarRating({ rating, count }) {
+function StarRating({ rating, count, showNewBadge = false }) {
   const numRating = parseFloat(rating) || 0
+  const numCount = parseInt(count) || 0
+
+  if (numRating === 0 && numCount === 0) {
+    if (showNewBadge) {
+      return (
+        <span style={{
+          padding: '3px 10px',
+          background: 'linear-gradient(135deg, #10B981, #059669)',
+          borderRadius: 999,
+          fontSize: 11,
+          color: 'white',
+          fontWeight: 600,
+          letterSpacing: '0.03em',
+          display: 'inline-block',
+          marginTop: 2
+        }}>
+          NEW
+        </span>
+      )
+    }
+    return <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, display: 'inline-block' }}>No reviews yet</span>
+  }
+
   const fullStars = Math.floor(numRating)
   const hasHalf = numRating - fullStars >= 0.25
 
@@ -21,20 +44,17 @@ function StarRating({ rating, count }) {
           />
         ))}
       </div>
-      {numRating > 0 ? (
-        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
-          {numRating.toFixed(1)}
-          {count > 0 && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> ({count} {count === 1 ? 'review' : 'reviews'})</span>}
-        </span>
-      ) : (
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No reviews yet</span>
-      )}
+      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+        {numRating.toFixed(1)}
+        {numCount > 0 && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> ({numCount})</span>}
+      </span>
     </div>
   )
 }
 
 export default function HumanProfileCard({ human, onHire, onExpand, variant = 'browse' }) {
   const skills = Array.isArray(human.skills) ? human.skills : []
+  const languages = Array.isArray(human.languages) ? human.languages : []
   const maxSkills = variant === 'dashboard' ? 4 : 3
 
   return (
@@ -65,24 +85,36 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
       {/* Header: Avatar + Info */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
         {/* Avatar */}
-        <div style={{
-          width: 52,
-          height: 52,
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontWeight: 700,
-          fontSize: 20,
-          flexShrink: 0,
-          boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
-        }}>
-          {human.name?.[0]?.toUpperCase() || '?'}
-        </div>
+        {human.avatar_url ? (
+          <img
+            src={human.avatar_url}
+            alt={human.name || ''}
+            style={{
+              width: 52, height: 52, borderRadius: '50%',
+              objectFit: 'cover', flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+            }}
+          />
+        ) : (
+          <div style={{
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontWeight: 700,
+            fontSize: 20,
+            flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+          }}>
+            {human.name?.[0]?.toUpperCase() || '?'}
+          </div>
+        )}
 
-        {/* Name + Location + Rating */}
+        {/* Name + Headline + Location + Rating */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <h3 style={{
@@ -112,6 +144,19 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               </div>
             )}
           </div>
+          {human.headline && (
+            <p style={{
+              fontSize: 13,
+              color: 'var(--text-secondary)',
+              margin: '2px 0 0',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              lineHeight: 1.3
+            }}>
+              {human.headline}
+            </p>
+          )}
           {human.city && (
             <span style={{
               fontSize: 13,
@@ -123,9 +168,15 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
             }}>
               <MapPin size={12} style={{ color: '#F4845F' }} />
               {human.city}{human.state ? `, ${human.state}` : ''}
+              {human.timezone && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
+                  <Clock size={11} style={{ color: 'var(--text-tertiary)' }} />
+                  {human.timezone.replace(/_/g, ' ').split('/').pop()}
+                </span>
+              )}
             </span>
           )}
-          <StarRating rating={human.rating} count={human.total_ratings_count || 0} />
+          <StarRating rating={human.rating} count={human.total_ratings_count || 0} showNewBadge={true} />
         </div>
       </div>
 
@@ -151,7 +202,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         display: 'flex',
         flexWrap: 'wrap',
         gap: 6,
-        marginBottom: 16,
+        marginBottom: languages.length > 0 ? 8 : 16,
         minHeight: 28
       }}>
         {skills.slice(0, maxSkills).map((skill, idx) => (
@@ -167,7 +218,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               border: '1px solid rgba(244,132,95,0.12)'
             }}
           >
-            {skill.replace('_', ' ')}
+            {skill.replace(/_/g, ' ')}
           </span>
         ))}
         {skills.length > maxSkills && (
@@ -181,6 +232,21 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
           </span>
         )}
       </div>
+
+      {/* Languages */}
+      {languages.length > 0 && (
+        <div style={{
+          fontSize: 12,
+          color: 'var(--text-tertiary)',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4
+        }}>
+          <Globe size={12} style={{ flexShrink: 0 }} />
+          {languages.join(' \u00B7 ')}
+        </div>
+      )}
 
       {/* Social Links */}
       {human.social_links && typeof human.social_links === 'object' && Object.keys(human.social_links).length > 0 && (

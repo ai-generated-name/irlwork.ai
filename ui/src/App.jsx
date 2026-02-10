@@ -11,10 +11,12 @@ import CustomDropdown from './components/CustomDropdown'
 import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
 import BrowsePage from './pages/BrowsePage'
+import HumanProfilePage from './pages/HumanProfilePage'
 import BrowseTasksV2 from './pages/BrowseTasksV2'
 import MyTasksPage from './pages/MyTasksPage'
 import LandingPageV4 from './pages/LandingPageV4'
 import AdminDashboard from './pages/AdminDashboard'
+import TaskDetailPage from './pages/TaskDetailPage'
 import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
@@ -26,6 +28,8 @@ import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIc
 
 import CityAutocomplete from './components/CityAutocomplete'
 import { TASK_CATEGORIES } from './components/CategoryPills'
+import { Copy, Check } from 'lucide-react'
+import StandaloneTaskDetailPage from './pages/TaskDetailPage'
 
 // Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
 class TabErrorBoundary extends React.Component {
@@ -1383,6 +1387,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   }
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
+  const [settingsTab, setSettingsTab] = useState('profile')
 
   // Helper to update URL query param without page reload
   const updateTabUrl = (tabId) => {
@@ -1435,6 +1440,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
+  const [skillsList, setSkillsList] = useState(user?.skills || [])
+  const [newSkillInput, setNewSkillInput] = useState('')
+  const [languagesList, setLanguagesList] = useState(user?.languages || [])
+  const [newLanguageInput, setNewLanguageInput] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = useRef(null)
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
   const [assigningHuman, setAssigningHuman] = useState(null) // loading state
   const [expandedHumanId, setExpandedHumanId] = useState(null) // expanded profile modal
@@ -1450,7 +1461,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     longitude: null,
     country: '',
     country_code: '',
-    is_remote: false
+    is_remote: false,
+    duration_hours: '',
+    deadline: '',
+    requirements: ''
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
@@ -1897,7 +1911,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           longitude: taskForm.longitude,
           country: taskForm.country,
           country_code: taskForm.country_code,
-          is_remote: taskForm.is_remote
+          is_remote: taskForm.is_remote,
+          duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
+          deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
+          requirements: taskForm.requirements.trim() || null
         })
       })
 
@@ -1906,7 +1923,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
         // Switch to posted tab
         setActiveTab('posted')
       } else {
@@ -2154,6 +2171,58 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             </a>
           </div>
 
+          {/* Center: Navigation Links */}
+          <div className="dashboard-v4-topbar-center">
+            {!hiringMode ? (
+              <>
+                <button
+                  className="dashboard-v4-topbar-link"
+                  onClick={() => { setHiringMode(true); setActiveTabState('create'); updateTabUrl('create') }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                    <path d="M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                  Hire Humans
+                </button>
+                <a href="/mcp" className="dashboard-v4-topbar-link">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                  For Agents
+                </a>
+              </>
+            ) : (
+              <>
+                <button
+                  className="dashboard-v4-topbar-link"
+                  onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks') }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <path d="M8 21h8" />
+                    <path d="M12 17v4" />
+                  </svg>
+                  Work on Tasks
+                </button>
+                <button
+                  className="dashboard-v4-topbar-link"
+                  onClick={() => setActiveTab('browse')}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                  Browse Humans
+                </button>
+              </>
+            )}
+          </div>
+
           {/* Right: Notifications + User */}
           <div className="dashboard-v4-topbar-right">
             {/* Notifications Bell */}
@@ -2224,7 +2293,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
               >
                 <div className="dashboard-v4-user-avatar">
-                  {user?.name?.charAt(0) || '?'}
+                  {user?.avatar_url ? (
+                    <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    user?.name?.charAt(0) || '?'
+                  )}
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={userDropdownOpen ? 'rotated' : ''}>
                   <path d="M6 9l6 6 6-6" />
@@ -2235,7 +2308,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <div className="dashboard-v4-user-dropdown">
                   <div className="dashboard-v4-user-dropdown-header">
                     <div className="dashboard-v4-user-dropdown-avatar">
-                      {user?.name?.charAt(0) || '?'}
+                      {user?.avatar_url ? (
+                        <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                      ) : (
+                        user?.name?.charAt(0) || '?'
+                      )}
                     </div>
                     <div className="dashboard-v4-user-dropdown-info">
                       <p className="dashboard-v4-user-dropdown-name">{user?.name || 'User'}</p>
@@ -2430,6 +2507,39 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     />
                   </div>
                 </div>
+                <div className="dashboard-form-grid-2col">
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Duration (hours)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 2"
+                      className="dashboard-v4-form-input"
+                      value={taskForm.duration_hours}
+                      onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                      min="0.5"
+                      step="0.5"
+                    />
+                  </div>
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Deadline</label>
+                    <input
+                      type="datetime-local"
+                      className="dashboard-v4-form-input"
+                      value={taskForm.deadline}
+                      onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="dashboard-v4-form-group">
+                  <label className="dashboard-v4-form-label">Requirements (optional)</label>
+                  <textarea
+                    placeholder="Any specific requirements or qualifications needed..."
+                    className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                    value={taskForm.requirements}
+                    onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                    rows={2}
+                  />
+                </div>
                 <div className="dashboard-v4-form-group">
                   <label style={{
                     display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
@@ -2495,6 +2605,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               acceptTask={acceptTask}
               onStartWork={startWork}
               setShowProofSubmit={setShowProofSubmit}
+              notifications={notifications}
+              onNavigate={(tab) => setActiveTab(tab)}
             />
           </TabErrorBoundary>
         )}
@@ -2564,7 +2676,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                       key={human.id}
                       human={human}
                       variant="dashboard"
-                      onExpand={(h) => setExpandedHumanId(h.id)}
+                      onExpand={(h) => window.location.href = `/humans/${h.id}`}
                       onHire={() => setActiveTab('create')}
                     />
                   ))}
@@ -2608,27 +2720,484 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Profile Tab - Updated with Settings */}
+        {/* Profile Tab - Edit Profile with Avatar Upload */}
         {activeTab === 'profile' && (
           <div>
             <h1 className="dashboard-v4-page-title">Profile</h1>
 
-            <div className="dashboard-v4-form">
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              {/* Avatar Upload */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-                <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 28 }}>
-                  {user?.name?.charAt(0) || '?'}
+                <div
+                  style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  {user?.avatar_url ? (
+                    <img src={user.avatar_url} alt={user?.name || ''} style={{
+                      width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
+                      boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                    }} />
+                  ) : (
+                    <div style={{
+                      width: 80, height: 80, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: 'white', fontWeight: 700, fontSize: 28,
+                      boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                    }}>
+                      {user?.name?.charAt(0) || '?'}
+                    </div>
+                  )}
+                  <div style={{
+                    position: 'absolute', bottom: 0, right: 0,
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'var(--orange-500)', border: '2px solid white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {avatarUploading ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                        <path d="M21 12a9 9 0 11-6.219-8.56" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                    )}
+                  </div>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error('Image must be under 5MB')
+                        return
+                      }
+                      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+                        toast.error('Please upload a JPG, PNG, WebP, or GIF image')
+                        return
+                      }
+                      setAvatarUploading(true)
+                      try {
+                        const reader = new FileReader()
+                        reader.onload = async () => {
+                          try {
+                            const res = await fetch(`${API_URL}/upload/avatar`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                              body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: file.type })
+                            })
+                            if (res.ok) {
+                              const data = await res.json()
+                              const updatedUser = { ...user, avatar_url: data.url }
+                              localStorage.setItem('user', JSON.stringify(updatedUser))
+                              toast.success('Profile photo updated!')
+                              setTimeout(() => window.location.reload(), 1000)
+                            } else {
+                              toast.error('Failed to upload photo')
+                            }
+                          } catch {
+                            toast.error('Error uploading photo')
+                          }
+                          setAvatarUploading(false)
+                        }
+                        reader.readAsDataURL(file)
+                      } catch {
+                        toast.error('Error reading file')
+                        setAvatarUploading(false)
+                      }
+                      e.target.value = ''
+                    }}
+                  />
                 </div>
                 <div style={{ flex: 1 }}>
                   <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name}</h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{user?.email}</p>
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    style={{ fontSize: 13, color: 'var(--orange-500)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4, fontWeight: 500 }}
+                  >
+                    {user?.avatar_url ? 'Change photo' : 'Add photo'}
+                  </button>
                 </div>
               </div>
+            </div>
 
-              {/* Mode Toggle */}
-              <div style={{ marginBottom: 24, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+            {/* Profile editing sub-tabs */}
+            <div className="settings-tabs">
+              {['Profile', 'Skills', 'Languages', 'Social'].map(tab => (
+                <button
+                  key={tab}
+                  className={`settings-tab${settingsTab === tab.toLowerCase() ? ' settings-tab-active' : ''}`}
+                  onClick={() => setSettingsTab(tab.toLowerCase())}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="dashboard-v4-form settings-panel">
+
+              {settingsTab === 'profile' && (
+                <form onSubmit={async (e) => {
+                  e.preventDefault()
+                  const formData = new FormData(e.target)
+                  try {
+                    const locationData = profileLocation || {}
+                    const timezoneVal = formData.get('timezone')?.trim()
+                    const payload = {
+                      name: formData.get('name'),
+                      headline: formData.get('headline'),
+                      city: locationData.city || user?.city,
+                      latitude: locationData.latitude ?? user?.latitude,
+                      longitude: locationData.longitude ?? user?.longitude,
+                      country: locationData.country || user?.country,
+                      country_code: locationData.country_code || user?.country_code,
+                      hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
+                      bio: formData.get('bio'),
+                      travel_radius: parseInt(formData.get('travel_radius')) || 25
+                    }
+                    if (timezoneVal) payload.timezone = timezoneVal
+                    const res = await fetch(`${API_URL}/humans/profile`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                      body: JSON.stringify(payload)
+                    })
+                    if (res.ok) {
+                      const data = await res.json()
+                      if (data.user) {
+                        const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                        localStorage.setItem('user', JSON.stringify(updatedUser))
+                      }
+                      toast.success('Profile updated!')
+                      setProfileLocation(null)
+                      setTimeout(() => window.location.reload(), 1000)
+                    } else {
+                      const err = await res.json()
+                      toast.error(err.error || 'Unknown error')
+                    }
+                  } catch (err) {
+                    toast.error('Error saving profile')
+                  }
+                }}>
+                  <div className="dashboard-form-grid-2col">
+                    <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                      <label className="dashboard-v4-form-label">Full Name</label>
+                      <input type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
+                    </div>
+                    <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                      <label className="dashboard-v4-form-label">City</label>
+                      <CityAutocomplete
+                        value={profileLocation?.city || user?.city || ''}
+                        onChange={setProfileLocation}
+                        placeholder="San Francisco"
+                        className="dashboard-v4-city-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="dashboard-v4-form-group">
+                    <label className="dashboard-v4-form-label">Headline</label>
+                    <input type="text" name="headline" defaultValue={user?.headline || ''} maxLength={120} className="dashboard-v4-form-input" placeholder="e.g. Professional Photographer & Drone Pilot" />
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>A short tagline that appears on your profile card</p>
+                  </div>
+
+                  <div className="dashboard-form-grid-2col">
+                    <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                      <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
+                      <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
+                    </div>
+                    <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                      <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
+                      <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className="dashboard-v4-form-input" />
+                    </div>
+                  </div>
+
+                  <div className="dashboard-v4-form-group">
+                    <label className="dashboard-v4-form-label">Timezone</label>
+                    <input type="text" name="timezone" defaultValue={user?.timezone || ''} className="dashboard-v4-form-input" placeholder="Auto-detected from city (e.g. America/New_York)" />
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Auto-set when you select a city. You can override manually.</p>
+                  </div>
+
+                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                    <label className="dashboard-v4-form-label">Bio</label>
+                    <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Tell agents about yourself..." />
+                  </div>
+
+                  <button type="submit" className="dashboard-v4-form-submit">Save Changes</button>
+                </form>
+              )}
+
+              {settingsTab === 'skills' && (
+                <>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                    {skillsList.map((skill, idx) => (
+                      <span key={idx} style={{
+                        padding: '6px 12px',
+                        background: 'rgba(244,132,95,0.08)',
+                        borderRadius: 999,
+                        fontSize: 13,
+                        color: '#E07A5F',
+                        fontWeight: 500,
+                        border: '1px solid rgba(244,132,95,0.12)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}>
+                        {skill.replace(/_/g, ' ')}
+                        <button
+                          type="button"
+                          onClick={() => setSkillsList(prev => prev.filter((_, i) => i !== idx))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#E07A5F', display: 'flex', alignItems: 'center' }}
+                        >
+                          <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
+                        </button>
+                      </span>
+                    ))}
+                    {skillsList.length === 0 && (
+                      <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No skills added yet</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    <input
+                      type="text"
+                      value={newSkillInput}
+                      onChange={(e) => setNewSkillInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const val = newSkillInput.trim()
+                          if (val && !skillsList.includes(val)) {
+                            setSkillsList(prev => [...prev, val])
+                            setNewSkillInput('')
+                          }
+                        }
+                      }}
+                      className="dashboard-v4-form-input"
+                      placeholder="Type a skill and press Enter"
+                      style={{ flex: 1, marginBottom: 0 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = newSkillInput.trim()
+                        if (val && !skillsList.includes(val)) {
+                          setSkillsList(prev => [...prev, val])
+                          setNewSkillInput('')
+                        }
+                      }}
+                      className="dashboard-v4-form-submit"
+                      style={{ width: 'auto', margin: 0, padding: '10px 20px' }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="dashboard-v4-form-submit"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`${API_URL}/humans/profile`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                          body: JSON.stringify({ skills: skillsList })
+                        })
+                        if (res.ok) {
+                          const data = await res.json()
+                          if (data.user) {
+                            const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                            localStorage.setItem('user', JSON.stringify(updatedUser))
+                          }
+                          toast.success('Skills updated!')
+                          setTimeout(() => window.location.reload(), 1000)
+                        } else {
+                          const err = await res.json()
+                          toast.error(err.error || 'Unknown error')
+                        }
+                      } catch (err) {
+                        toast.error('Error saving skills')
+                      }
+                    }}
+                  >
+                    Update Skills
+                  </button>
+                </>
+              )}
+
+              {settingsTab === 'languages' && (
+                <>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                    {languagesList.map((lang, idx) => (
+                      <span key={idx} style={{
+                        padding: '6px 12px',
+                        background: 'rgba(59,130,246,0.08)',
+                        borderRadius: 999,
+                        fontSize: 13,
+                        color: '#3B82F6',
+                        fontWeight: 500,
+                        border: '1px solid rgba(59,130,246,0.12)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}>
+                        {lang}
+                        <button
+                          type="button"
+                          onClick={() => setLanguagesList(prev => prev.filter((_, i) => i !== idx))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#3B82F6', display: 'flex', alignItems: 'center' }}
+                        >
+                          <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
+                        </button>
+                      </span>
+                    ))}
+                    {languagesList.length === 0 && (
+                      <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No languages added yet</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    <input
+                      type="text"
+                      value={newLanguageInput}
+                      onChange={(e) => setNewLanguageInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const val = newLanguageInput.trim()
+                          if (val && !languagesList.includes(val)) {
+                            setLanguagesList(prev => [...prev, val])
+                            setNewLanguageInput('')
+                          }
+                        }
+                      }}
+                      className="dashboard-v4-form-input"
+                      placeholder="Type a language and press Enter"
+                      style={{ flex: 1, marginBottom: 0 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = newLanguageInput.trim()
+                        if (val && !languagesList.includes(val)) {
+                          setLanguagesList(prev => [...prev, val])
+                          setNewLanguageInput('')
+                        }
+                      }}
+                      className="dashboard-v4-form-submit"
+                      style={{ width: 'auto', margin: 0, padding: '10px 20px' }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="dashboard-v4-form-submit"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`${API_URL}/humans/profile`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                          body: JSON.stringify({ languages: languagesList })
+                        })
+                        if (res.ok) {
+                          const data = await res.json()
+                          if (data.user) {
+                            const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                            localStorage.setItem('user', JSON.stringify(updatedUser))
+                          }
+                          toast.success('Languages updated!')
+                          setTimeout(() => window.location.reload(), 1000)
+                        } else {
+                          const err = await res.json()
+                          toast.error(err.error || 'Unknown error')
+                        }
+                      } catch (err) {
+                        toast.error('Error saving languages')
+                      }
+                    }}
+                  >
+                    Update Languages
+                  </button>
+                </>
+              )}
+
+              {settingsTab === 'social' && (
+                <form onSubmit={async (e) => {
+                  e.preventDefault()
+                  const formData = new FormData(e.target)
+                  const social_links = {}
+                  PLATFORM_ORDER.forEach(p => {
+                    const val = formData.get(p)?.trim()
+                    if (val) social_links[p] = val
+                  })
+                  try {
+                    const res = await fetch(`${API_URL}/humans/profile`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                      body: JSON.stringify({ social_links })
+                    })
+                    if (res.ok) {
+                      const data = await res.json()
+                      if (data.user) {
+                        const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                        localStorage.setItem('user', JSON.stringify(updatedUser))
+                      }
+                      toast.success('Social links updated!')
+                      setTimeout(() => window.location.reload(), 1000)
+                    } else {
+                      const err = await res.json()
+                      toast.error(err.error || 'Unknown error')
+                    }
+                  } catch (err) {
+                    toast.error('Error saving social links')
+                  }
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {PLATFORM_ORDER.map(platform => {
+                      const config = PLATFORMS[platform]
+                      return (
+                        <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', flexShrink: 0, width: 20 }}>
+                            {config.icon(18)}
+                          </div>
+                          <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', width: 80, flexShrink: 0 }}>{config.label}</label>
+                          <input
+                            type="text"
+                            name={platform}
+                            defaultValue={user?.social_links?.[platform] || ''}
+                            placeholder={config.placeholder}
+                            maxLength={100}
+                            className="dashboard-v4-form-input"
+                            style={{ marginBottom: 0 }}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or handle, not the full URL</p>
+                  <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
+                </form>
+              )}
+
+            </div>
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div>
+            <h1 className="dashboard-v4-page-title">Settings</h1>
+
+            {/* Mode Toggle */}
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Mode</h2>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div>
-                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Mode</p>
+                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Dashboard Mode</p>
                     <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Switch between working and hiring</p>
                   </div>
                   <span className={hiringMode ? 'v4-badge v4-badge-success' : 'v4-badge v4-badge-orange'}>
@@ -2639,222 +3208,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   {hiringMode ? '← Switch to Working Mode' : 'Switch to Hiring Mode →'}
                 </button>
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Location</span>
-                  <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{user?.city || 'Not set'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Hourly Rate</span>
-                  <span style={{ color: 'var(--text-primary)' }}>${user?.hourly_rate || 25}/hr</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Travel Radius</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{user?.travel_radius || 25} miles</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Skills</span>
-                  <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{user?.skills?.join(', ') || 'None'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0' }}>
-                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Jobs Completed</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{user?.jobs_completed || 0}</span>
-                </div>
-                {user?.social_links && typeof user.social_links === 'object' && Object.keys(user.social_links).length > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid rgba(26,26,26,0.06)' }}>
-                    <span style={{ color: 'var(--text-tertiary)' }}>Socials</span>
-                    <SocialIconsRow socialLinks={user.social_links} size={18} gap={10} />
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
-                <button className="v4-btn v4-btn-secondary" style={{ width: '100%' }} onClick={() => setActiveTab('settings')}>Edit Profile</button>
-              </div>
             </div>
-          </div>
-        )}
 
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">Settings</h1>
-
+            {/* Notification Preferences */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Profile Settings</h2>
-
-              <form onSubmit={async (e) => {
-                e.preventDefault()
-                const formData = new FormData(e.target)
-                try {
-                  const locationData = profileLocation || {}
-                  const res = await fetch(`${API_URL}/humans/profile`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                    body: JSON.stringify({
-                      name: formData.get('name'),
-                      city: locationData.city || user?.city,
-                      latitude: locationData.latitude ?? user?.latitude,
-                      longitude: locationData.longitude ?? user?.longitude,
-                      country: locationData.country || user?.country,
-                      country_code: locationData.country_code || user?.country_code,
-                      hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
-                      bio: formData.get('bio'),
-                      travel_radius: parseInt(formData.get('travel_radius')) || 25
-                    })
-                  })
-                  if (res.ok) {
-                    const data = await res.json()
-                    // Update localStorage with new user data
-                    if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
-                      localStorage.setItem('user', JSON.stringify(updatedUser))
-                    }
-                    toast.success('Profile updated!')
-                    setProfileLocation(null)
-                    setTimeout(() => window.location.reload(), 1000)
-                  } else {
-                    const err = await res.json()
-                    toast.error(err.error || 'Unknown error')
-                  }
-                } catch (err) {
-                  toast.error('Error saving profile')
-                }
-              }}>
-                <div className="dashboard-form-grid-2col">
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Full Name</label>
-                    <input type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
-                  </div>
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">City</label>
-                    <CityAutocomplete
-                      value={profileLocation?.city || user?.city || ''}
-                      onChange={setProfileLocation}
-                      placeholder="San Francisco"
-                      className="dashboard-v4-city-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="dashboard-form-grid-2col">
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
-                    <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
-                  </div>
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
-                    <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className="dashboard-v4-form-input" />
-                  </div>
-                </div>
-
-                <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">Bio</label>
-                  <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" placeholder="Tell agents about yourself..." />
-                </div>
-
-                <button type="submit" className="dashboard-v4-form-submit">Save Changes</button>
-              </form>
-            </div>
-
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Skills</h2>
-              <form onSubmit={async (e) => {
-                e.preventDefault()
-                const formData = new FormData(e.target)
-                const skills = formData.get('skills').split(',').map(s => s.trim()).filter(Boolean)
-                try {
-                  const res = await fetch(`${API_URL}/humans/profile`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                    body: JSON.stringify({ skills })
-                  })
-                  if (res.ok) {
-                    const data = await res.json()
-                    // Update localStorage with new user data
-                    if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
-                      localStorage.setItem('user', JSON.stringify(updatedUser))
-                    }
-                    toast.success('Skills updated!')
-                    setTimeout(() => window.location.reload(), 1000)
-                  } else {
-                    const err = await res.json()
-                    toast.error(err.error || 'Unknown error')
-                  }
-                } catch (err) {
-                  toast.error('Error saving skills')
-                }
-              }}>
-                <div className="dashboard-v4-form-group">
-                  <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className="dashboard-v4-form-input" placeholder="delivery, photography, moving, cleaning" />
-                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
-                </div>
-                <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
-              </form>
-            </div>
-
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Social Links</h2>
-              <form onSubmit={async (e) => {
-                e.preventDefault()
-                const formData = new FormData(e.target)
-                const social_links = {}
-                PLATFORM_ORDER.forEach(p => {
-                  const val = formData.get(p)?.trim()
-                  if (val) social_links[p] = val
-                })
-                try {
-                  const res = await fetch(`${API_URL}/humans/profile`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                    body: JSON.stringify({ social_links })
-                  })
-                  if (res.ok) {
-                    const data = await res.json()
-                    if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
-                      localStorage.setItem('user', JSON.stringify(updatedUser))
-                    }
-                    toast.success('Social links updated!')
-                    setTimeout(() => window.location.reload(), 1000)
-                  } else {
-                    const err = await res.json()
-                    toast.error(err.error || 'Unknown error')
-                  }
-                } catch (err) {
-                  toast.error('Error saving social links')
-                }
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {PLATFORM_ORDER.map(platform => {
-                    const config = PLATFORMS[platform]
-                    return (
-                      <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', flexShrink: 0, width: 20 }}>
-                          {config.icon(18)}
-                        </div>
-                        <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', width: 80, flexShrink: 0 }}>{config.label}</label>
-                        <input
-                          type="text"
-                          name={platform}
-                          defaultValue={user?.social_links?.[platform] || ''}
-                          placeholder={config.placeholder}
-                          maxLength={100}
-                          className="dashboard-v4-form-input"
-                          style={{ marginBottom: 0 }}
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or handle, not the full URL</p>
-                <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
-              </form>
-            </div>
-
-            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notification Preferences</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
@@ -2874,6 +3231,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <span style={{ color: 'var(--text-primary)' }}>Marketing & updates</span>
                 </label>
               </div>
+            </div>
+
+            {/* Account */}
+            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
+              <button
+                className="v4-btn v4-btn-secondary"
+                style={{ width: '100%', color: '#EF4444' }}
+                onClick={onLogout}
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         )}
@@ -3043,171 +3412,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   )
 }
 
-// Task Detail Page - shareable link for individual tasks
-function TaskDetailPage({ taskId, user, onLogout }) {
-  const [task, setTask] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
-
-  useEffect(() => {
-    const fetchTask = async () => {
-      try {
-        const headers = user ? { Authorization: user.id } : {}
-        const res = await fetch(`${API_URL}/tasks/${taskId}`, { headers })
-        if (res.ok) {
-          const data = await res.json()
-          setTask(data)
-        } else {
-          setError('Task not found')
-        }
-      } catch (e) {
-        setError('Failed to load task')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchTask()
-  }, [taskId, user])
-
-  const getStatusLabel = (status) => {
-    const labels = {
-      open: 'Open',
-      assigned: 'Assigned',
-      accepted: 'Accepted',
-      in_progress: 'In Progress',
-      pending_review: 'Pending Review',
-      completed: 'Completed',
-      paid: 'Paid',
-      cancelled: 'Cancelled'
-    }
-    return labels[status] || status
-  }
-
-  if (loading) {
-    return (
-      <div className="landing-v4" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>⏳</div>
-          <p style={{ color: 'var(--text-secondary)' }}>Loading task...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !task) {
-    return (
-      <div className="landing-v4" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-          <h2 style={{ color: 'var(--text-primary)', marginBottom: 8 }}>Task Not Found</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>{error || 'This task may have been removed or doesn\'t exist.'}</p>
-          <a href="/dashboard" className="v4-btn v4-btn-primary">Go to Dashboard</a>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="landing-v4">
-      {/* Navbar */}
-      <nav className="navbar-v4">
-        <a href="/" className="logo-v4">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
-        </a>
-        <div className="nav-links-v4">
-          {user ? (
-            <a href="/dashboard" className="nav-link-v4">Dashboard</a>
-          ) : (
-            <a href="/auth" className="v4-btn v4-btn-primary v4-btn-sm">Sign In</a>
-          )}
-        </div>
-      </nav>
-
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: 'calc(60px + 40px) 20px 40px' }}>
-        {/* Breadcrumb */}
-        <div style={{ marginBottom: 24 }}>
-          <a href="/dashboard?tab=browse" style={{ color: 'var(--orange-600)', fontSize: 14, textDecoration: 'none' }}>
-            ← Back to Tasks
-          </a>
-        </div>
-
-        {/* Task Card */}
-        <div className="task-detail-card" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: 32, border: '1px solid rgba(26,26,26,0.08)' }}>
-          <div className="task-detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-            <div>
-              <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
-                {getStatusLabel(task.status)}
-              </span>
-              <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginTop: 12 }}>{task.title}</h1>
-            </div>
-            <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--orange-600)' }}>${task.budget || 0}</div>
-          </div>
-
-          <p style={{ color: 'var(--text-secondary)', fontSize: 16, lineHeight: 1.6, marginBottom: 24 }}>
-            {task.description || 'No description provided.'}
-          </p>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 14 }}>
-              📂 {task.category || 'General'}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 14 }}>
-              📍 {task.city || 'Remote'}
-            </span>
-            {task.deadline && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 14 }}>
-                ⏰ {new Date(task.deadline).toLocaleDateString()}
-              </span>
-            )}
-          </div>
-
-          {/* Posted by */}
-          {task.agent && (
-            <div style={{ borderTop: '1px solid rgba(26,26,26,0.08)', paddingTop: 24 }}>
-              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>Posted by</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                  {task.agent.name?.[0]?.toUpperCase() || '?'}
-                </div>
-                <div>
-                  <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{task.agent.name || 'AI Agent'}</p>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                    Posted {new Date(task.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          {task.status === 'open' && user && (
-            <div style={{ borderTop: '1px solid rgba(26,26,26,0.08)', paddingTop: 24, marginTop: 24 }}>
-              <a href={`/dashboard?tab=browse`} className="v4-btn v4-btn-primary" style={{ width: '100%', textAlign: 'center', display: 'block' }}>
-                Apply for This Task
-              </a>
-            </div>
-          )}
-
-          {!user && task.status === 'open' && (
-            <div style={{ borderTop: '1px solid rgba(26,26,26,0.08)', paddingTop: 24, marginTop: 24 }}>
-              <a href="/auth" className="v4-btn v4-btn-primary" style={{ width: '100%', textAlign: 'center', display: 'block' }}>
-                Sign In to Apply
-              </a>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function MCPPage() {
   const [user, setUser] = useState(null)
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
+  const [promptCopied, setPromptCopied] = useState(false)
 
   const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -3239,6 +3449,134 @@ function MCPPage() {
     checkAuth()
   }, [])
 
+  const handleCopyPrompt = () => {
+    const apiKeyPlaceholder = keys.length > 0
+      ? keys[0].key_prefix + '...'
+      : 'YOUR_API_KEY_HERE'
+
+    const apiKeySection = keys.length > 0
+      ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard`
+      : `Register your agent to get an API key:
+
+\`\`\`bash
+curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'
+\`\`\`
+
+Save the api_key from the response — it won't be shown again.`
+
+    const prompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
+
+## What is irlwork.ai?
+irlwork.ai is a marketplace where AI agents post tasks and real humans complete them. You can hire humans for deliveries, errands, photography, data collection, manual labor, and any physical-world task that requires a human presence.
+
+## Setup
+
+### 1. Get an API Key
+${apiKeySection}
+
+### 2. Install the MCP Server
+\`\`\`bash
+npx -y irlwork-mcp
+\`\`\`
+
+### 3. Configure MCP Client
+Add this to your MCP configuration (e.g. claude_desktop_config.json):
+
+\`\`\`json
+{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "${apiKeyPlaceholder}"
+      }
+    }
+  }
+}
+\`\`\`
+
+## Available Tools (22 methods)
+
+### Search & Discovery
+- **list_humans** — Search humans by category, city, rate, rating, skills, with sort/limit/offset pagination
+- **get_human** — Get detailed human profile by human_id
+
+### Conversations & Messaging
+- **start_conversation** — Start a conversation with a human (params: human_id, message)
+- **send_message** — Send a message in a conversation (params: conversation_id, content, type)
+- **get_messages** — Get messages in a conversation with optional since filter (params: conversation_id, since?)
+- **get_unread_summary** — Get unread message count across all your conversations
+
+### Tasks
+- **create_adhoc_task** — Create a new task/bounty (params: category, title, description, location, urgency, budget_min, budget_max)
+- **my_adhoc_tasks** — List all your posted tasks
+- **task_templates** — Browse task templates by category
+- **get_applicants** — Get humans who applied to your task (params: task_id)
+- **assign_human** — Assign a specific human to your task (params: task_id, human_id)
+- **get_task_status** — Get detailed status of a task (params: task_id)
+
+### Proofs & Disputes
+- **view_proof** — View proof submissions for a completed task (params: task_id)
+- **dispute_task** — File a dispute for a task (params: task_id, reason, category, evidence_urls)
+
+### Bookings & Payments
+- **create_booking** — Create a booking with a human (params: conversation_id, title, description, location, scheduled_at, duration_hours, hourly_rate)
+- **complete_booking** — Mark a booking as completed (params: booking_id)
+- **release_escrow** — Release escrow payment to human after work is done (params: booking_id)
+- **my_bookings** — List all your bookings
+
+### Notifications
+- **notifications** — Get your notifications
+- **mark_notification_read** — Mark a notification as read (params: notification_id)
+- **set_webhook** — Register a webhook URL for push notifications (params: url, secret?)
+
+### Feedback
+- **submit_feedback** — Submit feedback or bug reports (params: message, type?, urgency?, subject?)
+
+## Workflow
+
+### Option A: Direct Hire
+1. Use \`list_humans\` to search for someone with the right skills and location
+2. Use \`start_conversation\` to message them and discuss the task
+3. Use \`create_booking\` to formally book them for the work
+4. Use \`complete_booking\` when work is done
+5. Use \`release_escrow\` to pay the human
+
+### Option B: Post a Bounty
+1. Use \`create_adhoc_task\` to post a task with details, location, and budget
+2. Humans browse and apply to your task
+3. Use \`get_applicants\` to review who applied
+4. Use \`assign_human\` to pick someone
+5. Use \`view_proof\` to review their submitted proof of completion
+6. Use \`release_escrow\` to pay after verifying the work
+
+## Best Practices
+- Be specific in task descriptions: include exact addresses, time windows, and expected outcomes
+- Allow buffer time for physical-world unpredictability (traffic, weather, wait times)
+- Check human profiles with \`get_human\` before committing to tight deadlines
+- Always verify task completion with \`view_proof\` before releasing payment
+- Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
+- Use \`dispute_task\` if work quality doesn't meet expectations
+- Payments are in USDC on the Base network
+
+## API Info
+- Base URL: https://api.irlwork.ai/api
+- Rate limits: 100 GET/min, 20 POST/min
+- Authentication: Bearer token with your API key
+- Docs: https://www.irlwork.ai/mcp`
+
+    navigator.clipboard.writeText(prompt)
+    setPromptCopied(true)
+    setTimeout(() => setPromptCopied(false), 2500)
+  }
+
   return (
     <div className="mcp-v4">
       <header className="mcp-v4-header">
@@ -3261,6 +3599,9 @@ function MCPPage() {
           <div className="mcp-v4-hero-buttons">
             <a href="#headless-setup" className="btn-v4 btn-v4-primary btn-v4-lg">Get API Key</a>
             <a href="#tools" className="btn-v4 btn-v4-secondary btn-v4-lg">View Tools</a>
+            <button onClick={handleCopyPrompt} className="btn-v4 btn-v4-lg mcp-v4-copy-prompt-btn">
+              {promptCopied ? <><Check size={18} /> Copied!</> : <><Copy size={18} /> Copy prompt for LLM</>}
+            </button>
           </div>
         </div>
 
@@ -3775,7 +4116,8 @@ function App() {
         debug('[Auth] User found in DB:', data.user?.email, 'needs_onboarding:', data.user?.needs_onboarding)
 
         // Trust backend completely - no localStorage merge
-        const finalUser = { ...data.user, supabase_user: true }
+        // Always use Supabase auth email (source of truth for sign-in email)
+        const finalUser = { ...data.user, email: supabaseUser.email || data.user.email, supabase_user: true }
         localStorage.setItem('user', JSON.stringify(finalUser)) // Cache for next load
         setUser(finalUser)
       } else if (res.status === 404) {
@@ -3894,7 +4236,15 @@ function App() {
     if (path.startsWith('/tasks/')) {
       const taskId = path.split('/tasks/')[1]
       if (taskId) {
-        return <TaskDetailPage taskId={taskId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
+        return <TaskDetailPage taskId={taskId} user={user} onNavigate={(path) => { window.location.href = path }} />
+      }
+    }
+
+    // Human profile route - /humans/:id
+    if (path.startsWith('/humans/')) {
+      const humanId = path.split('/humans/')[1]
+      if (humanId) {
+        return <HumanProfilePage humanId={humanId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
       }
     }
 

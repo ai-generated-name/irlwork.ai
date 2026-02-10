@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stripe Connect V2 — Platform Dashboard</title>
+  <style>
+    /* =========================================================================
+       Design tokens — inspired by the irlwork.ai cream/orange theme.
+       Clean, modern, and readable.
+       ========================================================================= */
+    :root {
+      --bg: #FAF8F5;
+      --bg-card: #FFFFFF;
+      --text: #1a1a1a;
+      --text-muted: #6b7280;
+      --border: #e5e5e5;
+      --accent: #E07A5F;
+      --accent-hover: #c96a51;
+      --success: #059669;
+      --success-bg: #ecfdf5;
+      --warning: #d97706;
+      --warning-bg: #fffbeb;
+      --danger: #dc2626;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --font: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0;
+    }
+
+    /* Navigation */
+    nav {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    nav .logo {
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--accent);
+    }
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    nav a:hover, nav a.active { color: var(--text); }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+    p.subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    /* Forms */
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: var(--font);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .btn-outline:hover:not(:disabled) { background: #fef2ee; }
+
+    /* Status badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 100px;
+    }
+    .badge-success { background: var(--success-bg); color: var(--success); }
+    .badge-warning { background: var(--warning-bg); color: var(--warning); }
+    .badge-danger { background: #fef2f2; color: var(--danger); }
+    .badge-neutral { background: #f3f4f6; color: var(--text-muted); }
+
+    /* Seller list */
+    .seller-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .seller-item:last-child { border-bottom: none; }
+    .seller-info { flex: 1; }
+    .seller-info .name { font-weight: 600; font-size: 15px; }
+    .seller-info .email { font-size: 13px; color: var(--text-muted); }
+    .seller-info .account-id { font-size: 12px; color: var(--text-muted); font-family: monospace; }
+    .seller-actions { display: flex; align-items: center; gap: 12px; }
+
+    /* Grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    /* Alert */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .alert-error { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+    .alert-success { background: var(--success-bg); color: var(--success); border: 1px solid #a7f3d0; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+    .empty-state p { font-size: 14px; }
+
+    /* Section spacing */
+    .section { margin-bottom: 40px; }
+
+    .inline-form {
+      display: flex;
+      gap: 12px;
+      align-items: end;
+    }
+    .inline-form .form-group { flex: 1; margin-bottom: 0; }
+  </style>
+  <!-- Google Fonts: DM Sans (matches irlwork.ai) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav>
+    <span class="logo">Connect V2 Demo</span>
+    <a href="/" class="active">Dashboard</a>
+    <a href="/storefront">Storefront</a>
+  </nav>
+
+  <div class="container">
+    <h1>Platform Dashboard</h1>
+    <p class="subtitle">Create connected accounts, onboard sellers, and manage products.</p>
+
+    <!-- =====================================================================
+         SECTION 1: Create a Connected Account
+         ===================================================================== -->
+    <div class="section">
+      <div class="card">
+        <h2>Create a Connected Account</h2>
+        <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">
+          Register a new seller on the platform. This creates a V2 Connected Account where the
+          platform manages pricing and fee collection.
+        </p>
+
+        <div id="create-alert" class="alert"></div>
+
+        <form id="create-account-form">
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="seller-name">Seller Name</label>
+              <input type="text" id="seller-name" placeholder="Jane's Bakery" required>
+            </div>
+            <div class="form-group">
+              <label for="seller-email">Contact Email</label>
+              <input type="email" id="seller-email" placeholder="jane@bakery.com" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" id="create-btn">Create Account</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         SECTION 2: Connected Accounts (Sellers)
+         ===================================================================== -->
+    <div class="section">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h2 style="margin-bottom:0;">Connected Accounts</h2>
+          <button class="btn btn-outline" onclick="loadAccounts()" style="font-size:12px;padding:6px 12px;">
+            Refresh
+          </button>
+        </div>
+
+        <div id="accounts-list">
+          <div class="empty-state">
+            <p>No connected accounts yet. Create one above to get started.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         SECTION 3: Create a Product
+         ===================================================================== -->
+    <div class="section">
+      <div class="card">
+        <h2>Create a Product</h2>
+        <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">
+          Products are created at the platform level. The connected account ID is stored in
+          metadata so payments are routed to the correct seller.
+        </p>
+
+        <div id="product-alert" class="alert"></div>
+
+        <form id="create-product-form">
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="product-name">Product Name</label>
+              <input type="text" id="product-name" placeholder="Sourdough Bread" required>
+            </div>
+            <div class="form-group">
+              <label for="product-price">Price (USD)</label>
+              <input type="number" id="product-price" placeholder="9.99" min="0.50" step="0.01" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="product-description">Description</label>
+            <input type="text" id="product-description" placeholder="Freshly baked every morning">
+          </div>
+          <div class="form-group">
+            <label for="product-seller">Seller</label>
+            <select id="product-seller" required>
+              <option value="">Select a seller...</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" id="product-btn">Create Product</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // Dashboard JavaScript
+    // =========================================================================
+    //
+    // All API calls go to the same Express server that serves this page.
+    // In production, these would call your backend API.
+    // =========================================================================
+
+    // -----------------------------------------------------------------------
+    // Create Connected Account
+    // -----------------------------------------------------------------------
+    document.getElementById('create-account-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('seller-name').value.trim();
+      const email = document.getElementById('seller-email').value.trim();
+      const btn = document.getElementById('create-btn');
+      const alert = document.getElementById('create-alert');
+
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+      alert.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        // Show success
+        alert.className = 'alert alert-success';
+        alert.textContent = `Account created: ${data.accountId}`;
+        alert.style.display = 'block';
+
+        // Reset form and reload lists
+        e.target.reset();
+        loadAccounts();
+      } catch (err) {
+        alert.className = 'alert alert-error';
+        alert.textContent = err.message;
+        alert.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // Load and Display Connected Accounts
+    // -----------------------------------------------------------------------
+    async function loadAccounts() {
+      const container = document.getElementById('accounts-list');
+      const sellerSelect = document.getElementById('product-seller');
+
+      try {
+        const res = await fetch('/api/accounts');
+        const accounts = await res.json();
+
+        if (accounts.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <p>No connected accounts yet. Create one above to get started.</p>
+            </div>`;
+          sellerSelect.innerHTML = '<option value="">Select a seller...</option>';
+          return;
+        }
+
+        // Render account list
+        container.innerHTML = accounts.map(account => {
+          // Determine the status badge based on onboarding and payment readiness
+          let statusBadge;
+          if (account.readyToReceivePayments) {
+            statusBadge = '<span class="badge badge-success">Active</span>';
+          } else if (account.onboardingComplete) {
+            statusBadge = '<span class="badge badge-warning">Pending Activation</span>';
+          } else {
+            statusBadge = '<span class="badge badge-neutral">Needs Onboarding</span>';
+          }
+
+          return `
+            <div class="seller-item">
+              <div class="seller-info">
+                <div class="name">${escapeHtml(account.name)}</div>
+                <div class="email">${escapeHtml(account.email)}</div>
+                <div class="account-id">${account.stripeAccountId}</div>
+              </div>
+              <div class="seller-actions">
+                ${statusBadge}
+                <button class="btn btn-outline" style="font-size:12px;padding:6px 12px;"
+                  onclick="onboardAccount('${account.stripeAccountId}')">
+                  ${account.onboardingComplete ? 'Update Info' : 'Onboard'}
+                </button>
+              </div>
+            </div>`;
+        }).join('');
+
+        // Update seller dropdown for product creation
+        sellerSelect.innerHTML =
+          '<option value="">Select a seller...</option>' +
+          accounts.map(a =>
+            `<option value="${a.stripeAccountId}">${escapeHtml(a.name)} (${a.stripeAccountId})</option>`
+          ).join('');
+
+      } catch (err) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <p style="color:var(--danger)">Failed to load accounts: ${escapeHtml(err.message)}</p>
+          </div>`;
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Onboard a Connected Account
+    // -----------------------------------------------------------------------
+    // Generates a fresh Account Link and redirects the seller to Stripe's
+    // hosted onboarding flow.
+    async function onboardAccount(accountId) {
+      try {
+        const res = await fetch(`/api/accounts/${accountId}/onboard`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        // Redirect to Stripe's onboarding flow
+        window.location.href = data.url;
+      } catch (err) {
+        window.alert('Failed to start onboarding: ' + err.message);
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Create a Product
+    // -----------------------------------------------------------------------
+    document.getElementById('create-product-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('product-name').value.trim();
+      const description = document.getElementById('product-description').value.trim();
+      const priceStr = document.getElementById('product-price').value;
+      const sellerAccountId = document.getElementById('product-seller').value;
+      const btn = document.getElementById('product-btn');
+      const alert = document.getElementById('product-alert');
+
+      if (!sellerAccountId) {
+        alert.className = 'alert alert-error';
+        alert.textContent = 'Please select a seller.';
+        alert.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+      alert.style.display = 'none';
+
+      // Convert dollars to cents (e.g., 9.99 → 999)
+      const priceInCents = Math.round(parseFloat(priceStr) * 100);
+
+      try {
+        const res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            description,
+            priceInCents,
+            currency: 'usd',
+            sellerAccountId,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert.className = 'alert alert-success';
+        alert.textContent = `Product created: ${data.name} ($${(data.priceInCents / 100).toFixed(2)})`;
+        alert.style.display = 'block';
+
+        e.target.reset();
+      } catch (err) {
+        alert.className = 'alert alert-error';
+        alert.textContent = err.message;
+        alert.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Product';
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // Utility: HTML escaping to prevent XSS
+    // -----------------------------------------------------------------------
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // Load accounts on page load
+    loadAccounts();
+  </script>
+</body>
+</html>
