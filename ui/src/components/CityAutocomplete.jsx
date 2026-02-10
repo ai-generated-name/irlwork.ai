@@ -76,6 +76,8 @@ const CityAutocomplete = ({
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const lastValidCity = useRef(value || null);
+  const queryRef = useRef(query);
 
   // Load cities data lazily on first focus
   const loadCities = async () => {
@@ -187,6 +189,7 @@ const CityAutocomplete = ({
   // Handle city selection
   const handleSelect = (city) => {
     setQuery(city.displayName);
+    lastValidCity.current = city.displayName;
     setShowDropdown(false);
 
     // Call onChange with full city data including country and state
@@ -243,15 +246,48 @@ const CityAutocomplete = ({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   // Sync query with value prop
   useEffect(() => {
     if (value && value !== query) {
       setQuery(value);
+      lastValidCity.current = value;
     }
   }, [value]);
+
+  // Keep queryRef in sync for use inside setTimeout
+  useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
+
+  // Revert to last valid city on blur (prevents free-text entry)
+  const handleBlur = () => {
+    setTimeout(() => {
+      setShowDropdown(false);
+      // Use ref to get current query value (state may be stale in timeout)
+      const currentQuery = queryRef.current;
+      if (currentQuery !== lastValidCity.current) {
+        setQuery(lastValidCity.current || '');
+        if (!lastValidCity.current) {
+          onChange({
+            city: '',
+            latitude: null,
+            longitude: null,
+            country: null,
+            country_code: null,
+            state: null,
+            state_code: null
+          });
+        }
+      }
+    }, 200);
+  };
 
   return (
     <div className={`city-autocomplete-v4 ${className}`}>
@@ -263,8 +299,15 @@ const CityAutocomplete = ({
         onKeyDown={handleKeyDown}
         onFocus={() => {
           loadCities(); // Preload cities on focus
-          if (query.length >= 2 && results.length > 0) setShowDropdown(true);
+          if (query.length >= 2) {
+            if (results.length > 0) {
+              setShowDropdown(true);
+            } else if (citiesCache) {
+              searchCities(query);
+            }
+          }
         }}
+        onBlur={handleBlur}
         placeholder={placeholder}
         className="city-autocomplete-v4-input"
         autoComplete="off"
@@ -274,6 +317,8 @@ const CityAutocomplete = ({
         <div
           ref={dropdownRef}
           className="city-autocomplete-v4-dropdown"
+          onMouseDown={(e) => e.preventDefault()}
+          onTouchStart={(e) => e.preventDefault()}
         >
           {results.map((city, index) => (
             <button
@@ -306,6 +351,8 @@ const CityAutocomplete = ({
         <div
           ref={dropdownRef}
           className="city-autocomplete-v4-dropdown"
+          onMouseDown={(e) => e.preventDefault()}
+          onTouchStart={(e) => e.preventDefault()}
         >
           <div className="city-autocomplete-v4-empty">
             No cities found for "{query}"
