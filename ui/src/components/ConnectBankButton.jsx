@@ -5,6 +5,7 @@ export default function ConnectBankButton({ user, compact = false }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchStatus();
@@ -27,6 +28,7 @@ export default function ConnectBankButton({ user, compact = false }) {
 
   const handleConnect = async () => {
     setConnecting(true);
+    setError(null);
     try {
       const res = await fetch(`${API_URL}/stripe/connect/onboard`, {
         method: 'POST',
@@ -52,7 +54,7 @@ export default function ConnectBankButton({ user, compact = false }) {
       window.location.href = data.onboarding_url;
     } catch (e) {
       console.error('Connect error:', e);
-      alert(e.message);
+      setError(e.message);
     } finally {
       setConnecting(false);
     }
@@ -155,6 +157,22 @@ export default function ConnectBankButton({ user, compact = false }) {
   // Not connected — big prominent setup card
   return (
     <div className="bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] border-2 border-[#6366f1]/15 rounded-2xl p-6 md:p-8">
+      {error && (
+        <div className="mb-4 p-3 bg-[#FEE2E2] border border-[#DC2626]/20 rounded-xl flex items-start gap-2.5">
+          <svg className="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-[#DC2626] text-sm font-medium">Connection failed</p>
+            <p className="text-[#DC2626]/70 text-xs mt-0.5">{error}</p>
+          </div>
+          <button onClick={() => setError(null)} className="text-[#DC2626]/50 hover:text-[#DC2626] flex-shrink-0">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row items-start md:items-center gap-5">
         <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center flex-shrink-0">
           <svg className="w-7 h-7 text-[#6366f1]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
