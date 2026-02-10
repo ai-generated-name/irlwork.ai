@@ -2665,6 +2665,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <span style={{ color: 'var(--text-tertiary)' }}>Skills</span>
                   <span style={{ color: 'var(--text-primary)' }}>{user?.skills?.join(', ') || 'None'}</span>
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
+                  <span style={{ color: 'var(--text-tertiary)' }}>Languages</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{user?.languages?.length > 0 ? user.languages.join(', ') : 'Not set'}</span>
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
                   <span style={{ color: 'var(--text-tertiary)' }}>Jobs Completed</span>
                   <span style={{ color: 'var(--text-primary)' }}>{user?.jobs_completed || 0}</span>

@@ -289,6 +289,28 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               </div>
             )}
 
+            {/* Languages */}
+            {profile.languages && profile.languages.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px 0' }}>Languages</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {profile.languages.map((lang, idx) => (
+                    <span key={idx} style={{
+                      padding: '6px 14px',
+                      background: 'rgba(59,130,246,0.08)',
+                      borderRadius: 999,
+                      fontSize: 13,
+                      color: '#3B82F6',
+                      fontWeight: 500,
+                      border: '1px solid rgba(59,130,246,0.12)'
+                    }}>
+                      {lang}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Stats Grid */}
             <div style={{
               display: 'grid',
