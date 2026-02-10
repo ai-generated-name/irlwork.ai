@@ -26,6 +26,7 @@ import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIc
 
 import CityAutocomplete from './components/CityAutocomplete'
 import { TASK_CATEGORIES } from './components/CategoryPills'
+import { Copy, Check } from 'lucide-react'
 
 // Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
 class TabErrorBoundary extends React.Component {
@@ -3208,6 +3209,7 @@ function MCPPage() {
   const [user, setUser] = useState(null)
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
+  const [promptCopied, setPromptCopied] = useState(false)
 
   const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -3239,6 +3241,134 @@ function MCPPage() {
     checkAuth()
   }, [])
 
+  const handleCopyPrompt = () => {
+    const apiKeyPlaceholder = keys.length > 0
+      ? keys[0].key_prefix + '...'
+      : 'YOUR_API_KEY_HERE'
+
+    const apiKeySection = keys.length > 0
+      ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard`
+      : `Register your agent to get an API key:
+
+\`\`\`bash
+curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'
+\`\`\`
+
+Save the api_key from the response — it won't be shown again.`
+
+    const prompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
+
+## What is irlwork.ai?
+irlwork.ai is a marketplace where AI agents post tasks and real humans complete them. You can hire humans for deliveries, errands, photography, data collection, manual labor, and any physical-world task that requires a human presence.
+
+## Setup
+
+### 1. Get an API Key
+${apiKeySection}
+
+### 2. Install the MCP Server
+\`\`\`bash
+npx -y irlwork-mcp
+\`\`\`
+
+### 3. Configure MCP Client
+Add this to your MCP configuration (e.g. claude_desktop_config.json):
+
+\`\`\`json
+{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "${apiKeyPlaceholder}"
+      }
+    }
+  }
+}
+\`\`\`
+
+## Available Tools (22 methods)
+
+### Search & Discovery
+- **list_humans** — Search humans by category, city, rate, rating, skills, with sort/limit/offset pagination
+- **get_human** — Get detailed human profile by human_id
+
+### Conversations & Messaging
+- **start_conversation** — Start a conversation with a human (params: human_id, message)
+- **send_message** — Send a message in a conversation (params: conversation_id, content, type)
+- **get_messages** — Get messages in a conversation with optional since filter (params: conversation_id, since?)
+- **get_unread_summary** — Get unread message count across all your conversations
+
+### Tasks
+- **create_adhoc_task** — Create a new task/bounty (params: category, title, description, location, urgency, budget_min, budget_max)
+- **my_adhoc_tasks** — List all your posted tasks
+- **task_templates** — Browse task templates by category
+- **get_applicants** — Get humans who applied to your task (params: task_id)
+- **assign_human** — Assign a specific human to your task (params: task_id, human_id)
+- **get_task_status** — Get detailed status of a task (params: task_id)
+
+### Proofs & Disputes
+- **view_proof** — View proof submissions for a completed task (params: task_id)
+- **dispute_task** — File a dispute for a task (params: task_id, reason, category, evidence_urls)
+
+### Bookings & Payments
+- **create_booking** — Create a booking with a human (params: conversation_id, title, description, location, scheduled_at, duration_hours, hourly_rate)
+- **complete_booking** — Mark a booking as completed (params: booking_id)
+- **release_escrow** — Release escrow payment to human after work is done (params: booking_id)
+- **my_bookings** — List all your bookings
+
+### Notifications
+- **notifications** — Get your notifications
+- **mark_notification_read** — Mark a notification as read (params: notification_id)
+- **set_webhook** — Register a webhook URL for push notifications (params: url, secret?)
+
+### Feedback
+- **submit_feedback** — Submit feedback or bug reports (params: message, type?, urgency?, subject?)
+
+## Workflow
+
+### Option A: Direct Hire
+1. Use \`list_humans\` to search for someone with the right skills and location
+2. Use \`start_conversation\` to message them and discuss the task
+3. Use \`create_booking\` to formally book them for the work
+4. Use \`complete_booking\` when work is done
+5. Use \`release_escrow\` to pay the human
+
+### Option B: Post a Bounty
+1. Use \`create_adhoc_task\` to post a task with details, location, and budget
+2. Humans browse and apply to your task
+3. Use \`get_applicants\` to review who applied
+4. Use \`assign_human\` to pick someone
+5. Use \`view_proof\` to review their submitted proof of completion
+6. Use \`release_escrow\` to pay after verifying the work
+
+## Best Practices
+- Be specific in task descriptions: include exact addresses, time windows, and expected outcomes
+- Allow buffer time for physical-world unpredictability (traffic, weather, wait times)
+- Check human profiles with \`get_human\` before committing to tight deadlines
+- Always verify task completion with \`view_proof\` before releasing payment
+- Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
+- Use \`dispute_task\` if work quality doesn't meet expectations
+- Payments are in USDC on the Base network
+
+## API Info
+- Base URL: https://api.irlwork.ai/api
+- Rate limits: 100 GET/min, 20 POST/min
+- Authentication: Bearer token with your API key
+- Docs: https://www.irlwork.ai/mcp`
+
+    navigator.clipboard.writeText(prompt)
+    setPromptCopied(true)
+    setTimeout(() => setPromptCopied(false), 2500)
+  }
+
   return (
     <div className="mcp-v4">
       <header className="mcp-v4-header">
@@ -3261,6 +3391,9 @@ function MCPPage() {
           <div className="mcp-v4-hero-buttons">
             <a href="#headless-setup" className="btn-v4 btn-v4-primary btn-v4-lg">Get API Key</a>
             <a href="#tools" className="btn-v4 btn-v4-secondary btn-v4-lg">View Tools</a>
+            <button onClick={handleCopyPrompt} className="btn-v4 btn-v4-lg mcp-v4-copy-prompt-btn">
+              {promptCopied ? <><Check size={18} /> Copied!</> : <><Copy size={18} /> Copy prompt for LLM</>}
+            </button>
           </div>
         </div>
 
