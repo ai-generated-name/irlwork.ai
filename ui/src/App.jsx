@@ -2613,7 +2613,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           <div>
             <h1 className="dashboard-v4-page-title">Profile</h1>
 
-            <div className="dashboard-v4-form" style={{ maxWidth: 500 }}>
+            <div className="dashboard-v4-form">
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
                 <div style={{ width: 80, height: 80, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 28 }}>
                   {user?.name?.charAt(0) || '?'}
@@ -2641,24 +2641,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Location</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{user?.city || 'Not set'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
+                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Location</span>
+                  <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{user?.city || 'Not set'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Hourly Rate</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
+                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Hourly Rate</span>
                   <span style={{ color: 'var(--text-primary)' }}>${user?.hourly_rate || 25}/hr</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Travel Radius</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
+                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Travel Radius</span>
                   <span style={{ color: 'var(--text-primary)' }}>{user?.travel_radius || 25} miles</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Skills</span>
-                  <span style={{ color: 'var(--text-primary)' }}>{user?.skills?.join(', ') || 'None'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
+                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Skills</span>
+                  <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{user?.skills?.join(', ') || 'None'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>Jobs Completed</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0' }}>
+                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Jobs Completed</span>
                   <span style={{ color: 'var(--text-primary)' }}>{user?.jobs_completed || 0}</span>
                 </div>
                 {user?.social_links && typeof user.social_links === 'object' && Object.keys(user.social_links).length > 0 && (

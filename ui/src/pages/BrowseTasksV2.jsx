@@ -78,7 +78,10 @@ export default function BrowseTasksV2({
   });
 
   // UI state
-  const [viewMode, setViewMode] = useState('split'); // 'split', 'list', 'map'
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'list';
+    return 'split';
+  });
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
@@ -190,7 +193,15 @@ export default function BrowseTasksV2({
     : [10.8231, 106.6297]; // Default HCMC
 
   // Responsive view mode
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.innerWidth < 768
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div className="browse-tasks-v2">
@@ -416,7 +427,7 @@ export default function BrowseTasksV2({
       </div>
 
       {/* Mobile map toggle */}
-      {isMobile && viewMode === 'list' && (
+      {isMobile && (
         <button
           className="browse-tasks-v2-map-fab"
           onClick={() => setShowMobileMap(true)}

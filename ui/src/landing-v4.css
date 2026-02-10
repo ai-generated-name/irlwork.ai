@@ -5907,6 +5907,10 @@ select.select-v4-dark option:checked,
     min-width: 100px;
     font-size: 13px;
   }
+  .dashboard-v4-page-title {
+    font-size: 22px;
+    margin-bottom: var(--space-4);
+  }
 }
 
 /* ─── TASK DETAIL PAGE MOBILE ─── */
