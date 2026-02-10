@@ -247,11 +247,12 @@ const CityAutocomplete = ({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
+    // Use pointerdown instead of touchstart — touchstart fires on virtual
+    // keyboard taps on mobile, which falsely triggers click-outside detection
+    // and immediately hides the dropdown on every keystroke.
+    document.addEventListener('pointerdown', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside);
     };
   }, []);
 
@@ -274,6 +275,11 @@ const CityAutocomplete = ({
       // If user is tapping a dropdown item, don't revert — let the click complete
       if (isSelectingRef.current) {
         isSelectingRef.current = false;
+        return;
+      }
+      // On mobile, blur/refocus cycles happen frequently (keyboard toggle,
+      // viewport resize). If the input already regained focus, skip revert.
+      if (document.activeElement === inputRef.current) {
         return;
       }
       setShowDropdown(false);
