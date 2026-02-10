@@ -299,6 +299,22 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     return () => clearInterval(interval);
   }, [taskStatus]);
 
+  // Format relative time
+  const getTimeAgo = (dateStr) => {
+    if (!dateStr) return '';
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 30) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -329,24 +345,22 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1A1A1A]" style={{ fontFamily: v4.fonts.display }}>
-      {/* V4 Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-8 py-4 bg-[rgba(250,248,245,0.95)] backdrop-blur-lg border-b border-[rgba(26,26,26,0.1)]">
-        <a href="/" className="flex items-center gap-3 no-underline">
-          <div className="w-10 h-10 bg-[#0F4C5C] rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md">
-            irl
-          </div>
-          <span className="text-lg font-extrabold text-[#1A1A1A] tracking-tight hidden sm:inline">irlwork.ai</span>
+    <div className="landing-v4 min-h-screen" style={{ fontFamily: v4.fonts.display }}>
+      {/* Navbar — same as dashboard */}
+      <nav className="navbar-v4">
+        <a href="/" className="logo-v4">
+          <div className="logo-mark-v4">irl</div>
+          <span className="logo-name-v4">irlwork.ai</span>
         </a>
-        <div className="flex items-center gap-4 md:gap-6">
-          <a href="/mcp" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">For Agents</a>
-          <a href="/dashboard" className="text-[#525252] no-underline text-sm font-medium hover:text-[#1A1A1A] transition-colors hidden sm:inline">Browse Tasks</a>
+        <div className="nav-links-v4" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <a href="/mcp" className="nav-link-v4">For Agents</a>
+          <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
           {user ? (
-            <a href="/dashboard" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
+            <a href="/dashboard" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
               Dashboard
             </a>
           ) : (
-            <a href="/auth" className="px-4 py-2 bg-[#E07A5F] rounded-xl text-white font-semibold text-sm shadow-md hover:bg-[#C45F4A] transition-colors no-underline">
+            <a href="/auth" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
               Sign In
             </a>
           )}
@@ -354,20 +368,27 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       </nav>
 
       {/* Sub-header with back button */}
-      <header className="border-b border-[rgba(26,26,26,0.08)] sticky top-[72px] bg-white z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+      <header style={{
+        borderBottom: '1px solid rgba(26,26,26,0.08)',
+        position: 'sticky',
+        top: 56,
+        background: 'white',
+        zIndex: 10,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+      }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 16px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            className="flex items-center gap-2 text-[#525252] hover:text-[#1A1A1A] transition-colors"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E07A5F', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
           >
             <span>←</span>
-            <span>Back to Dashboard</span>
+            <span>Back to Tasks</span>
           </button>
-          <div className="flex items-center gap-4">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {user && task && task.agent_id !== user.id && (
               <button
                 onClick={() => setShowReportModal(true)}
-                className="flex items-center gap-1.5 text-[#8A8A8A] hover:text-[#DC2626] transition-colors text-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#8A8A8A', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
@@ -376,15 +397,15 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 Report
               </button>
             )}
-            <div className="text-[#8A8A8A] text-sm">
+            <span style={{ color: '#8A8A8A', fontSize: 13 }}>
               Task ID: {taskId.slice(0, 8)}...
-            </div>
+            </span>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8 mt-[72px]">
+      <main style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 16px', marginTop: 56 }}>
         {/* Countdown Banner (only when pending review) */}
         {taskStatus?.dispute_window_info && (
           <CountdownBanner disputeWindowInfo={taskStatus.dispute_window_info} />
@@ -428,22 +449,43 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             {isParticipant && task.status !== 'in_progress' && (
               <ProofStatusBadge task={task} proofs={taskStatus?.proofs} />
             )}
+
+            {/* Messages - in left column beneath task info */}
+            {isParticipant && (
+              <TaskMessageThread
+                conversation={conversation}
+                messages={messages}
+                user={user}
+                onSendMessage={handleSendMessage}
+                onLoadMessages={() => conversation && loadMessages(conversation.id, true)}
+              />
+            )}
           </div>
 
-          {/* Right Column - Agent Profile & Actions (40%) */}
+          {/* Right Column - Budget, Stats, Agent Profile, Escrow (40%) */}
           <div className="lg:col-span-2 space-y-4">
+            {/* Budget Card with posted date */}
+            <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 shadow-sm text-center">
+              <div className="text-4xl font-bold text-[#059669] font-mono">
+                ${task.budget || 0}
+              </div>
+              <div className="text-[#525252] text-sm mt-1">USDC</div>
+              <div className="text-[#8A8A8A] text-xs mt-1">
+                {task.budget_type === 'hourly' ? 'Hourly Rate' : 'Fixed Price'}
+              </div>
+              <div className="border-t border-[rgba(26,26,26,0.08)] mt-4 pt-3">
+                <span className="text-[#8A8A8A] text-xs">
+                  Posted {getTimeAgo(task.created_at)}
+                </span>
+              </div>
+            </div>
+
+            {/* Agent Profile Card */}
             <AgentProfileCard agent={agentProfile} />
+
+            {/* Escrow Display (participants only) */}
             {isParticipant && (
-              <>
-                <EscrowDisplay task={task} />
-                <TaskMessageThread
-                  conversation={conversation}
-                  messages={messages}
-                  user={user}
-                  onSendMessage={handleSendMessage}
-                  onLoadMessages={() => conversation && loadMessages(conversation.id, true)}
-                />
-              </>
+              <EscrowDisplay task={task} />
             )}
           </div>
         </div>
