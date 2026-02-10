@@ -4521,7 +4521,13 @@ app.get('/api/tasks/available', async (req, res) => {
     let results = tasks || [];
 
     // Apply distance filtering if coordinates provided (legacy fallback)
-    if (user_lat && user_lng && (radius_km || radius) && radius_km !== 'anywhere') {
+    // Skip all location filtering when radius_km is 'anywhere' — return all tasks
+    if (radius_km === 'anywhere') {
+      // "Anywhere" means no location filtering — but still respect remote toggle
+      if (!includeRemote) {
+        results = results.filter(t => !t.is_remote);
+      }
+    } else if (user_lat && user_lng && (radius_km || radius)) {
       const userLatitude = parseFloat(user_lat);
       const userLongitude = parseFloat(user_lng);
 

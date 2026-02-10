@@ -123,7 +123,8 @@ export default function BrowseTasksV2({
       if (category) params.set('category', category);
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (sort) params.set('sort', sort);
-      if (location.city) params.set('city', location.city);
+      // Don't send city when "Anywhere" is selected — we want all tasks regardless of location
+      if (location.city && radius !== 'anywhere') params.set('city', location.city);
       params.set('include_remote', includeRemote ? 'true' : 'false');
 
       params.set('limit', '50');
