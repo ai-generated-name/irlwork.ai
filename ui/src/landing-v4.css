@@ -2150,12 +2150,13 @@
   color: var(--text-tertiary);
   font-size: 13px;
   line-height: 1.6;
+  margin-top: var(--space-4);
 }
 
 .footer-v4-social {
   display: flex;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
 }
 
 .footer-v4-social-link {
@@ -3589,6 +3590,26 @@
   flex-wrap: wrap;
 }
 
+.mcp-v4-copy-prompt-btn {
+  border: 2px solid var(--orange-500) !important;
+  color: var(--orange-500) !important;
+  background: transparent !important;
+  border-radius: 100px;
+  font-family: var(--font-display);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mcp-v4-copy-prompt-btn:hover {
+  background: var(--orange-500) !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
 .mcp-v4-section {
   margin-bottom: var(--space-12);
 }
@@ -5012,6 +5033,49 @@
   color: var(--text-tertiary);
   cursor: not-allowed;
   box-shadow: none;
+}
+
+/* Settings Tabs */
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  max-width: 600px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(26, 26, 26, 0.06);
+  border-bottom: none;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 6px 6px 0;
+}
+
+.settings-tab {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  transition: all 0.2s var(--ease-smooth);
+}
+
+.settings-tab:hover {
+  color: var(--text-secondary);
+  background: rgba(26, 26, 26, 0.03);
+}
+
+.settings-tab-active {
+  color: var(--orange-600);
+  background: var(--bg-primary);
+  box-shadow: inset 0 -2px 0 var(--orange-500);
+}
+
+.settings-panel {
+  max-width: 600px;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl) !important;
 }
 
 /* Messages */

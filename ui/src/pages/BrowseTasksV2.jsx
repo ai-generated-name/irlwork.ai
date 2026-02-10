@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import TaskMap from '../components/TaskMap';
-import CategoryPills, { TASK_CATEGORIES } from '../components/CategoryPills';
+import { TASK_CATEGORIES } from '../components/CategoryPills';
 import TaskCardV2 from '../components/TaskCardV2';
 import QuickApplyModal from '../components/QuickApplyModal';
 import ReportTaskModal from '../components/ReportTaskModal';
@@ -24,6 +24,11 @@ const RADIUS_OPTIONS = [
   { value: '100', label: 'Within 100 km' },
   { value: 'anywhere', label: 'Anywhere' },
 ];
+
+const CATEGORY_OPTIONS = TASK_CATEGORIES.map(cat => ({
+  value: cat.value,
+  label: cat.label,
+}));
 
 // Loading skeleton component
 function TaskCardSkeleton() {
@@ -227,6 +232,12 @@ export default function BrowseTasksV2({
 
           <div className="browse-tasks-v2-filters">
             <CustomDropdown
+              value={category}
+              onChange={setCategory}
+              options={CATEGORY_OPTIONS}
+              className="browse-tasks-v2-category-dropdown"
+            />
+            <CustomDropdown
               value={sort}
               onChange={setSort}
               options={SORT_OPTIONS}
@@ -274,9 +285,6 @@ export default function BrowseTasksV2({
             )}
           </div>
         </div>
-
-        {/* Category pills */}
-        <CategoryPills selected={category} onChange={setCategory} />
 
         {/* Location bar */}
         <div className="browse-tasks-v2-location-bar">
