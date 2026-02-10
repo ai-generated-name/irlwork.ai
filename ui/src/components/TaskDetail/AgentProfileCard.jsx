@@ -21,12 +21,12 @@ export default function AgentProfileCard({ agent }) {
             src={agent.avatar_url}
             alt={agent.name || 'Agent'}
             className="w-16 h-16 rounded-full object-cover"
+            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
           />
-        ) : (
-          <div className="w-16 h-16 bg-[rgba(15,76,92,0.1)] rounded-full flex items-center justify-center text-2xl font-bold text-[#0F4C5C]">
-            {agent.name ? agent.name[0].toUpperCase() : 'A'}
-          </div>
-        )}
+        ) : null}
+        <div className="w-16 h-16 bg-[rgba(15,76,92,0.1)] rounded-full items-center justify-center text-2xl font-bold text-[#0F4C5C]" style={{ display: agent.avatar_url ? 'none' : 'flex' }}>
+          {agent.name ? agent.name[0].toUpperCase() : 'A'}
+        </div>
         <div>
           <h3 className="font-bold text-[#1A1A1A] text-lg">{agent.name || 'Agent'}</h3>
           <p className="text-[#525252] text-sm">{agent.email || 'AI Agent'}</p>

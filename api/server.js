@@ -827,7 +827,6 @@ app.get('/api/auth/verify', async (req, res) => {
   res.json({
     user: {
       id: user.id, email: user.email, name: user.name, type: user.type,
-      avatar_url: user.avatar_url || null,
       city: user.city, hourly_rate: user.hourly_rate,
       bio: user.bio || '',
       avatar_url: user.avatar_url || '',
@@ -2111,7 +2110,8 @@ app.post('/api/upload/proof', async (req, res) => {
   const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
   const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
   const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
-  
+  const R2_PUBLIC_URL = getEnv('R2_PUBLIC_URL') || getEnv('CLOUD_PUBLIC_URL');
+
   // Demo mode if no R2 config
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
     const { file, filename } = req.body;
@@ -2119,24 +2119,24 @@ app.post('/api/upload/proof', async (req, res) => {
     const randomStr = Math.random().toString(36).substring(2, 8);
     const ext = filename?.split('.').pop() || 'jpg';
     const uniqueFilename = `proofs/${user.id}/${timestamp}-${randomStr}.${ext}`;
-    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    const mockUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-r2.dev/${R2_BUCKET}/${uniqueFilename}`;
     console.log(`[R2 DEMO] Would upload to: ${mockUrl}`);
     return res.json({ url: mockUrl, filename: uniqueFilename, success: true, demo: true });
   }
-  
+
   try {
     const { file, filename, mimeType } = req.body;
-    
+
     if (!file) {
       return res.status(400).json({ error: 'No file provided' });
     }
-    
+
     // Generate unique filename
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
     const ext = filename?.split('.').pop() || 'jpg';
     const uniqueFilename = `proofs/${user.id}/${timestamp}-${randomStr}.${ext}`;
-    
+
     // Decode base64 file data if needed
     let fileData = file;
     if (file.startsWith('data:')) {
@@ -2144,15 +2144,15 @@ app.post('/api/upload/proof', async (req, res) => {
     } else if (typeof file === 'string' && !file.startsWith('/') && !file.startsWith('http')) {
       fileData = Buffer.from(file, 'base64');
     }
-    
+
     // Upload to R2 using AWS SDK
     let uploadSuccess = false;
     let txHash = null;
-    
+
     try {
       const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
       const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-      
+
       const s3Client = new S3Client({
         region: 'auto',
         endpoint: R2_ENDPOINT,
@@ -2161,22 +2161,22 @@ app.post('/api/upload/proof', async (req, res) => {
           secretAccessKey: R2_SECRET_KEY,
         },
       });
-      
+
       await s3Client.send(new PutObjectCommand({
         Bucket: R2_BUCKET,
         Key: uniqueFilename,
         Body: fileData,
         ContentType: mimeType || 'image/jpeg',
       }));
-      
+
       uploadSuccess = true;
       txHash = '0x' + crypto.randomBytes(32).toString('hex');
     } catch (s3Error) {
       console.error('R2 upload error:', s3Error.message);
       // Fallback to demo URL
     }
-    
-    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+
+    const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${uniqueFilename}`;
     
     res.json({ 
       url: publicUrl,
@@ -2205,6 +2205,7 @@ app.post('/api/upload/avatar', async (req, res) => {
   const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
   const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
   const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+  const R2_PUBLIC_URL = getEnv('R2_PUBLIC_URL') || getEnv('CLOUD_PUBLIC_URL');
 
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
     const { file, filename } = req.body;
@@ -2212,7 +2213,7 @@ app.post('/api/upload/avatar', async (req, res) => {
     const randomStr = Math.random().toString(36).substring(2, 8);
     const ext = filename?.split('.').pop() || 'jpg';
     const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
-    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    const mockUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-r2.dev/${R2_BUCKET}/${uniqueFilename}`;
     console.log(`[R2 DEMO] Would upload avatar to: ${mockUrl}`);
 
     // Still update the user's avatar_url in the database with the mock URL
@@ -2257,7 +2258,7 @@ app.post('/api/upload/avatar', async (req, res) => {
       console.error('R2 avatar upload error:', s3Error.message);
     }
 
-    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${uniqueFilename}`;
 
     // Update the user's avatar_url in the database
     await supabase.from('users').update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', user.id);
@@ -2283,6 +2284,7 @@ app.post('/api/upload/feedback', async (req, res) => {
   const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
   const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
   const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+  const R2_PUBLIC_URL = getEnv('R2_PUBLIC_URL') || getEnv('CLOUD_PUBLIC_URL');
 
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
     const { file, filename } = req.body;
@@ -2290,7 +2292,7 @@ app.post('/api/upload/feedback', async (req, res) => {
     const randomStr = Math.random().toString(36).substring(2, 8);
     const ext = filename?.split('.').pop() || 'jpg';
     const uniqueFilename = `feedback/${user.id}/${timestamp}-${randomStr}.${ext}`;
-    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    const mockUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-r2.dev/${R2_BUCKET}/${uniqueFilename}`;
     console.log(`[R2 DEMO] Would upload feedback image to: ${mockUrl}`);
     return res.json({ url: mockUrl, filename: uniqueFilename, success: true, demo: true });
   }
@@ -2331,7 +2333,7 @@ app.post('/api/upload/feedback', async (req, res) => {
       console.error('R2 feedback upload error:', s3Error.message);
     }
 
-    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${uniqueFilename}`;
     res.json({ url: publicUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
   } catch (e) {
     console.error('Feedback upload error:', e.message);
@@ -2340,88 +2342,7 @@ app.post('/api/upload/feedback', async (req, res) => {
 });
 
 // ============ AVATAR UPLOAD ============
-app.post('/api/upload/avatar', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { file, filename, mimeType } = req.body;
-
-  if (!file) return res.status(400).json({ error: 'No file provided' });
-
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-  if (mimeType && !allowedTypes.includes(mimeType)) {
-    return res.status(400).json({ error: 'Only JPG, PNG, WebP, and GIF images are allowed' });
-  }
-
-  // Use indirect access to avoid Railway build scanner
-  const getEnv = (k) => {
-    try { return require('process').env[k]; } catch { return null; }
-  };
-  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
-  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
-  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
-  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
-
-  const timestamp = Date.now();
-  const randomStr = Math.random().toString(36).substring(2, 8);
-  const ext = filename?.split('.').pop() || 'jpg';
-  const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
-
-  // Demo mode if no R2 config
-  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
-    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
-    console.log(`[R2 DEMO] Would upload avatar to: ${mockUrl}`);
-    // Still update DB with mock URL
-    await supabase.from('users').update({ avatar_url: mockUrl }).eq('id', user.id);
-    return res.json({ url: mockUrl, success: true, demo: true });
-  }
-
-  try {
-    // Decode base64 file data
-    let fileData = file;
-    if (file.startsWith('data:')) {
-      fileData = Buffer.from(file.split(',')[1], 'base64');
-    } else if (typeof file === 'string' && !file.startsWith('/') && !file.startsWith('http')) {
-      fileData = Buffer.from(file, 'base64');
-    }
-
-    // Validate size (5MB max)
-    if (Buffer.byteLength(fileData) > 5 * 1024 * 1024) {
-      return res.status(400).json({ error: 'Image must be under 5MB' });
-    }
-
-    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-    const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-
-    const s3Client = new S3Client({
-      region: 'auto',
-      endpoint: R2_ENDPOINT,
-      credentials: {
-        accessKeyId: R2_ACCESS_KEY,
-        secretAccessKey: R2_SECRET_KEY,
-      },
-    });
-
-    await s3Client.send(new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: uniqueFilename,
-      Body: fileData,
-      ContentType: mimeType || 'image/jpeg',
-    }));
-
-    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
-
-    // Update user's avatar_url in DB
-    await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
-
-    res.json({ url: publicUrl, success: true });
-  } catch (e) {
-    console.error('Avatar upload error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
+// (duplicate avatar upload endpoint removed — handled above)
 
 app.post('/api/feedback', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });

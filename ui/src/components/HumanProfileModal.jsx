@@ -123,25 +123,25 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                     objectFit: 'cover', flexShrink: 0,
                     boxShadow: '0 4px 16px rgba(244,132,95,0.3)'
                   }}
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
                 />
-              ) : (
-                <div style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: 32,
-                  flexShrink: 0,
-                  boxShadow: '0 4px 16px rgba(244,132,95,0.3)'
-                }}>
-                  {profile.name?.[0]?.toUpperCase() || '?'}
-                </div>
-              )}
+              ) : null}
+              <div style={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                display: profile.avatar_url ? 'none' : 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 700,
+                fontSize: 32,
+                flexShrink: 0,
+                boxShadow: '0 4px 16px rgba(244,132,95,0.3)'
+              }}>
+                {profile.name?.[0]?.toUpperCase() || '?'}
+              </div>
 
               <div style={{ flex: 1 }}>
                 {/* Name + Verified */}

@@ -2317,10 +2317,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               >
                 <div className="dashboard-v4-user-avatar">
                   {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                  ) : (
-                    user?.name?.charAt(0) || '?'
-                  )}
+                    <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                  ) : null}
+                  <span style={{ display: user?.avatar_url ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                    {user?.name?.charAt(0) || '?'}
+                  </span>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={userDropdownOpen ? 'rotated' : ''}>
                   <path d="M6 9l6 6 6-6" />
@@ -2332,10 +2333,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <div className="dashboard-v4-user-dropdown-header">
                     <div className="dashboard-v4-user-dropdown-avatar">
                       {user?.avatar_url ? (
-                        <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                      ) : (
-                        user?.name?.charAt(0) || '?'
-                      )}
+                        <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                      ) : null}
+                      <span style={{ display: user?.avatar_url ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                        {user?.name?.charAt(0) || '?'}
+                      </span>
                     </div>
                     <div className="dashboard-v4-user-dropdown-info">
                       <p className="dashboard-v4-user-dropdown-name">{user?.name || 'User'}</p>
@@ -2765,18 +2767,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     <img src={user.avatar_url} alt={user?.name || ''} style={{
                       width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
                       boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
-                    }} />
-                  ) : (
-                    <div style={{
-                      width: 80, height: 80, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'white', fontWeight: 700, fontSize: 28,
-                      boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
-                    }}>
-                      {user?.name?.charAt(0) || '?'}
-                    </div>
-                  )}
+                    }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                  ) : null}
+                  <div style={{
+                    width: 80, height: 80, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
+                    display: user?.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'white', fontWeight: 700, fontSize: 28,
+                    boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                  }}>
+                    {user?.name?.charAt(0) || '?'}
+                  </div>
                   <div style={{
                     position: 'absolute', bottom: 0, right: 0,
                     width: 28, height: 28, borderRadius: '50%',
