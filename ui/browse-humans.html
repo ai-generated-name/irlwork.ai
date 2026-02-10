@@ -235,6 +235,8 @@
       align-items: center;
       justify-content: center;
       font-size: 32px;
+      font-weight: 700;
+      color: white;
       margin-bottom: 16px;
       box-shadow: var(--shadow-md);
     }
@@ -345,6 +347,8 @@
       align-items: center;
       justify-content: center;
       font-size: 48px;
+      font-weight: 700;
+      color: white;
       margin: 0 auto 20px;
       box-shadow: var(--shadow-lg);
     }
@@ -525,103 +529,58 @@
       }).catch(() => {});
     }
 
-    // Sample profile data
-    const profiles = [
-      {
-        id: 1,
-        name: "Sarah Chen",
-        avatar: "👩‍💼",
-        location: "San Francisco, CA",
-        rating: 4.9,
-        reviews: 127,
-        skills: ["Package Pickup", "Photo Verification", "Document Signing"],
-        tasksCompleted: 143,
-        responseTime: "< 1 hour"
-      },
-      {
-        id: 2,
-        name: "Marcus Johnson",
-        avatar: "👨‍🔧",
-        location: "New York, NY",
-        rating: 5.0,
-        reviews: 89,
-        skills: ["Device Setup", "Tech Support", "Assembly"],
-        tasksCompleted: 95,
-        responseTime: "< 30 min"
-      },
-      {
-        id: 3,
-        name: "Elena Rodriguez",
-        avatar: "👩‍🎨",
-        location: "Los Angeles, CA",
-        rating: 4.8,
-        reviews: 156,
-        skills: ["Photography", "Creative Tasks", "Event Coverage"],
-        tasksCompleted: 178,
-        responseTime: "< 2 hours"
-      },
-      {
-        id: 4,
-        name: "David Kim",
-        avatar: "👨‍💻",
-        location: "Austin, TX",
-        rating: 4.9,
-        reviews: 203,
-        skills: ["Data Entry", "Form Filling", "Research"],
-        tasksCompleted: 267,
-        responseTime: "< 1 hour"
-      },
-      {
-        id: 5,
-        name: "Aisha Patel",
-        avatar: "👩‍🏫",
-        location: "Chicago, IL",
-        rating: 5.0,
-        reviews: 92,
-        skills: ["Translation", "Tutoring", "Content Review"],
-        tasksCompleted: 104,
-        responseTime: "< 45 min"
-      },
-      {
-        id: 6,
-        name: "James Wilson",
-        avatar: "👨‍🚀",
-        location: "Seattle, WA",
-        rating: 4.7,
-        reviews: 78,
-        skills: ["Delivery", "Errands", "Shopping"],
-        tasksCompleted: 89,
-        responseTime: "< 1.5 hours"
-      },
-      {
-        id: 7,
-        name: "Maya Thompson",
-        avatar: "👩‍🔬",
-        location: "Boston, MA",
-        rating: 4.9,
-        reviews: 134,
-        skills: ["Site Inspection", "Quality Check", "Verification"],
-        tasksCompleted: 156,
-        responseTime: "< 1 hour"
-      },
-      {
-        id: 8,
-        name: "Carlos Garcia",
-        avatar: "👨‍🌾",
-        location: "Miami, FL",
-        rating: 5.0,
-        reviews: 67,
-        skills: ["Plant Care", "Maintenance", "Cleaning"],
-        tasksCompleted: 71,
-        responseTime: "< 2 hours"
+    const API_URL = 'https://api.irlwork.ai/api';
+    let profiles = [];
+
+    // Fetch profiles from API
+    async function fetchProfiles() {
+      const grid = document.getElementById('profilesGrid');
+      grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 48px; color: var(--text-tertiary);">Loading...</div>';
+
+      try {
+        const res = await fetch(`${API_URL}/humans/directory`);
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+
+        profiles = data.map(h => ({
+          id: h.id,
+          name: h.name || 'Anonymous',
+          avatar: h.name ? h.name.charAt(0).toUpperCase() : '?',
+          location: [h.city, h.state].filter(Boolean).join(', ') || 'Location not set',
+          rating: h.rating || 0,
+          reviews: h.total_ratings_count || 0,
+          skills: Array.isArray(h.skills) ? h.skills : [],
+          tasksCompleted: h.jobs_completed || 0,
+          hourlyRate: h.hourly_rate
+        }));
+      } catch (e) {
+        console.error('Error fetching humans:', e);
+        profiles = [];
       }
-    ];
+
+      renderProfiles();
+    }
 
     // Render profiles
     function renderProfiles() {
       const grid = document.getElementById('profilesGrid');
+
+      if (profiles.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 64px 24px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
+            <h3 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">No humans available yet</h3>
+            <p style="color: var(--text-tertiary); max-width: 400px; margin: 0 auto;">
+              Be the first to join! Sign up and start completing tasks in your area.
+            </p>
+            <a href="/auth" class="btn btn-primary" style="margin-top: 24px;">Join Now</a>
+          </div>
+        `;
+        return;
+      }
+
       grid.innerHTML = profiles.map(profile => `
-        <div class="profile-card" onclick="openModal(${profile.id})">
+        <div class="profile-card" onclick="openModal('${profile.id}')">
           <div class="profile-avatar">${profile.avatar}</div>
           <h3 class="profile-name">${profile.name}</h3>
           <div class="profile-location">📍 ${profile.location}</div>
@@ -639,13 +598,12 @@
     // Open modal
     function openModal(profileId) {
       const profile = profiles.find(p => p.id === profileId);
+      if (!profile) return;
+
       const modal = document.getElementById('profileModal');
       const modalBody = document.getElementById('modalBody');
 
-      // Track profile view (Note: This uses demo IDs - replace with real UUIDs when connected to backend)
-      if (profile.userId) {
-        trackView('profile', profile.userId);
-      }
+      trackView('profile', profile.id);
 
       modalBody.innerHTML = `
         <div class="modal-avatar">${profile.avatar}</div>
@@ -670,10 +628,12 @@
               <div class="stat-value">${profile.tasksCompleted}</div>
               <div class="stat-label">Tasks Completed</div>
             </div>
+            ${profile.hourlyRate ? `
             <div class="stat-box">
-              <div class="stat-value">${profile.responseTime}</div>
-              <div class="stat-label">Response Time</div>
+              <div class="stat-value">$${profile.hourlyRate}/hr</div>
+              <div class="stat-label">Hourly Rate</div>
             </div>
+            ` : ''}
           </div>
         </div>
 
@@ -690,7 +650,7 @@
 
     // Contact worker
     function contactWorker(name) {
-      alert(`Contact feature coming soon! You'll be able to message ${name} directly.`);
+      window.location.href = '/auth';
     }
 
     // Close modal on background click
@@ -701,7 +661,7 @@
     });
 
     // Initialize
-    renderProfiles();
+    fetchProfiles();
   </script>
 </body>
 </html>
