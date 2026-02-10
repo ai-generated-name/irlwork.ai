@@ -1,5 +1,5 @@
 // irlwork.ai - Modern Clean UI
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -10,20 +10,20 @@ import TopFilterBar from './components/TopFilterBar'
 import CustomDropdown from './components/CustomDropdown'
 import QuickStats from './components/QuickStats'
 import EmptyState from './components/EmptyState'
-import BrowsePage from './pages/BrowsePage'
-import HumanProfilePage from './pages/HumanProfilePage'
-import BrowseTasksV2 from './pages/BrowseTasksV2'
-import MyTasksPage from './pages/MyTasksPage'
-import LandingPageV4 from './pages/LandingPageV4'
-import AdminDashboard from './pages/AdminDashboard'
-import TaskDetailPage from './pages/TaskDetailPage'
+const BrowsePage = lazy(() => import('./pages/BrowsePage'))
+const HumanProfilePage = lazy(() => import('./pages/HumanProfilePage'))
+const BrowseTasksV2 = lazy(() => import('./pages/BrowseTasksV2'))
+const MyTasksPage = lazy(() => import('./pages/MyTasksPage'))
+const LandingPageV4 = lazy(() => import('./pages/LandingPageV4'))
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
+const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
 import FeedbackButton from './components/FeedbackButton'
-import StripeProvider from './components/StripeProvider'
-import PaymentMethodForm from './components/PaymentMethodForm'
-import PaymentMethodList from './components/PaymentMethodList'
+const StripeProvider = lazy(() => import('./components/StripeProvider'))
+const PaymentMethodForm = lazy(() => import('./components/PaymentMethodForm'))
+const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
 import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
@@ -2598,31 +2598,35 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
           <TabErrorBoundary>
-            <MyTasksPage
-              user={user}
-              tasks={tasks}
-              loading={loading}
-              acceptTask={acceptTask}
-              onStartWork={startWork}
-              setShowProofSubmit={setShowProofSubmit}
-              notifications={notifications}
-              onNavigate={(tab) => setActiveTab(tab)}
-            />
+            <Suspense fallback={<Loading />}>
+              <MyTasksPage
+                user={user}
+                tasks={tasks}
+                loading={loading}
+                acceptTask={acceptTask}
+                onStartWork={startWork}
+                setShowProofSubmit={setShowProofSubmit}
+                notifications={notifications}
+                onNavigate={(tab) => setActiveTab(tab)}
+              />
+            </Suspense>
           </TabErrorBoundary>
         )}
 
         {/* Working Mode: Browse Tasks Tab - Shows available tasks to claim */}
         {!hiringMode && activeTab === 'browse' && (
           <TabErrorBoundary>
-            <BrowseTasksV2
-              user={user}
-              initialLocation={{
-                lat: filterCoords?.lat || user?.latitude,
-                lng: filterCoords?.lng || user?.longitude,
-                city: locationFilter || user?.city
-              }}
-              initialRadius={radiusFilter || '25'}
-            />
+            <Suspense fallback={<Loading />}>
+              <BrowseTasksV2
+                user={user}
+                initialLocation={{
+                  lat: filterCoords?.lat || user?.latitude,
+                  lng: filterCoords?.lng || user?.longitude,
+                  city: locationFilter || user?.city
+                }}
+                initialRadius={radiusFilter || '25'}
+              />
+            </Suspense>
           </TabErrorBoundary>
         )}
 
@@ -2694,21 +2698,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {hiringMode && activeTab === 'payments' && (
           <div>
             <h1 className="dashboard-v4-page-title">Payment Methods</h1>
-            <StripeProvider>
-              <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
-                  <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
+            <Suspense fallback={<Loading />}>
+              <StripeProvider>
+                <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
+                    <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
+                    <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
+                  </div>
+                  <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                    When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
+                  </div>
                 </div>
-                <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
-                  <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
-                </div>
-                <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                  When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
-                </div>
-              </div>
-            </StripeProvider>
+              </StripeProvider>
+            </Suspense>
           </div>
         )}
 
@@ -3258,7 +3264,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Admin Tab - Only visible to admins */}
         {activeTab === 'admin' && isAdmin && (
           <div>
-            <AdminDashboard user={user} />
+            <Suspense fallback={<Loading />}>
+              <AdminDashboard user={user} />
+            </Suspense>
           </div>
         )}
 
@@ -4236,7 +4244,7 @@ function App() {
     if (path.startsWith('/tasks/')) {
       const taskId = path.split('/tasks/')[1]
       if (taskId) {
-        return <TaskDetailPage taskId={taskId} user={user} onNavigate={(path) => { window.location.href = path }} />
+        return <Suspense fallback={<Loading />}><TaskDetailPage taskId={taskId} user={user} onNavigate={(path) => { window.location.href = path }} /></Suspense>
       }
     }
 
@@ -4244,7 +4252,7 @@ function App() {
     if (path.startsWith('/humans/')) {
       const humanId = path.split('/humans/')[1]
       if (humanId) {
-        return <HumanProfilePage humanId={humanId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} />
+        return <Suspense fallback={<Loading />}><HumanProfilePage humanId={humanId} user={user} onLogout={logout} onNavigate={(path) => { window.location.href = path }} /></Suspense>
       }
     }
 
@@ -4284,9 +4292,9 @@ function App() {
 
     if (path === '/auth') return <AuthPage />
     if (path === '/mcp') return <MCPPage />
-    if (path === '/browse') return <BrowsePage user={user} />
+    if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
 
-    return <LandingPageV4 />
+    return <Suspense fallback={<Loading />}><LandingPageV4 /></Suspense>
   })()
 
   // Dashboard has feedback in sidebar, other pages use floating button

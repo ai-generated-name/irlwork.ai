@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import TaskMap from '../components/TaskMap';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+const TaskMap = lazy(() => import('../components/TaskMap'));
 import { TASK_CATEGORIES } from '../components/CategoryPills';
 import TaskCardV2 from '../components/TaskCardV2';
 import QuickApplyModal from '../components/QuickApplyModal';
@@ -420,16 +420,18 @@ export default function BrowseTasksV2({
         {/* Map */}
         {(viewMode === 'split' || viewMode === 'map') && (
           <div className="browse-tasks-v2-map">
-            <TaskMap
-              tasks={tasks}
-              center={mapCenter}
-              zoom={12}
-              radius={radius !== 'anywhere' ? parseFloat(radius) : null}
-              selectedTaskId={selectedTaskId}
-              hoveredTaskId={hoveredTaskId}
-              onTaskSelect={handleTaskSelect}
-              onTaskHover={setHoveredTaskId}
-            />
+            <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>Loading map...</div>}>
+              <TaskMap
+                tasks={tasks}
+                center={mapCenter}
+                zoom={12}
+                radius={radius !== 'anywhere' ? parseFloat(radius) : null}
+                selectedTaskId={selectedTaskId}
+                hoveredTaskId={hoveredTaskId}
+                onTaskSelect={handleTaskSelect}
+                onTaskHover={setHoveredTaskId}
+              />
+            </Suspense>
           </div>
         )}
       </div>
@@ -461,19 +463,21 @@ export default function BrowseTasksV2({
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
-          <TaskMap
-            tasks={tasks}
-            center={mapCenter}
-            zoom={12}
-            radius={radius !== 'anywhere' ? parseFloat(radius) : null}
-            selectedTaskId={selectedTaskId}
-            hoveredTaskId={hoveredTaskId}
-            onTaskSelect={(id) => {
-              handleTaskSelect(id);
-              setShowMobileMap(false);
-            }}
-            onTaskHover={setHoveredTaskId}
-          />
+          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>Loading map...</div>}>
+            <TaskMap
+              tasks={tasks}
+              center={mapCenter}
+              zoom={12}
+              radius={radius !== 'anywhere' ? parseFloat(radius) : null}
+              selectedTaskId={selectedTaskId}
+              hoveredTaskId={hoveredTaskId}
+              onTaskSelect={(id) => {
+                handleTaskSelect(id);
+                setShowMobileMap(false);
+              }}
+              onTaskHover={setHoveredTaskId}
+            />
+          </Suspense>
         </div>
       )}
 
