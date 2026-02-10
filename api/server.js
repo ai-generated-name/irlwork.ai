@@ -18,6 +18,8 @@ const helmet = require('helmet');
 const http = require('http');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
+const BCRYPT_ROUNDS = 12;
 
 const { createClient } = require('@supabase/supabase-js');
 
@@ -195,6 +197,29 @@ function hashApiKeyLegacy(apiKey) {
 // Get the prefix of an API key for display
 function getApiKeyPrefix(apiKey) {
   return apiKey.substring(0, 12) + '...';
+}
+
+// Webhook URL validation (SSRF prevention)
+function isValidWebhookUrl(urlStr) {
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== 'https:') return false;
+    const hostname = url.hostname.toLowerCase();
+    // Block private/internal/metadata IPs and hostnames
+    const blocked = [
+      'localhost', '127.0.0.1', '0.0.0.0', '::1',
+      '169.254.169.254', 'metadata.google.internal',
+      '100.100.100.200'
+    ];
+    if (blocked.includes(hostname)) return false;
+    // Block private IP ranges
+    if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostname)) return false;
+    // Block 169.254.x.x link-local
+    if (hostname.startsWith('169.254.')) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Rate limiting helper
@@ -445,6 +470,11 @@ async function dispatchWebhook(userId, event) {
       headers['X-Webhook-Signature'] = signature;
     }
 
+    if (!isValidWebhookUrl(user.webhook_url)) {
+      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${user.webhook_url}`);
+      return;
+    }
+
     await fetch(user.webhook_url, {
       method: 'POST',
       headers,
@@ -518,7 +548,7 @@ app.post('/api/auth/register/human', async (req, res) => {
     const id = providedId || uuidv4();
     // Accept both 'skills' and 'categories' for backwards compatibility
     const userSkills = skills.length > 0 ? skills : categories;
-    const password_hash = password ? crypto.createHash('sha256').update(password).digest('hex') : null;
+    const password_hash = password ? await bcrypt.hash(password, BCRYPT_ROUNDS) : null;
     const profile_completeness = 0.2 + (hourly_rate ? 0.1 : 0) + (userSkills.length > 0 ? 0.2 : 0) + (bio ? 0.1 : 0) + (phone ? 0.1 : 0);
 
     const { data: user, error } = await supabase
@@ -654,24 +684,41 @@ app.post('/api/auth/register/agent', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const { email, password } = req.body;
-  const password_hash = crypto.createHash('sha256').update(password).digest('hex');
-  
+
+  // Fetch user by email (bcrypt hashes are non-deterministic, can't use .eq() for comparison)
   const { data: user, error } = await supabase
     .from('users')
     .select('*')
     .eq('email', email)
-    .eq('password_hash', password_hash)
     .single();
-  
-  if (error || !user) {
+
+  if (error || !user || !user.password_hash) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  
-  res.json({ 
-    user: { id: user.id, email: user.email, name: user.name, type: user.type }, 
-    token: crypto.randomBytes(32).toString('hex') 
+
+  // Verify password — support bcrypt and legacy SHA-256 with auto-migration
+  let passwordValid = false;
+  if (user.password_hash.startsWith('$2b$') || user.password_hash.startsWith('$2a$')) {
+    passwordValid = await bcrypt.compare(password, user.password_hash);
+  } else {
+    // Legacy SHA-256 hash — verify and auto-upgrade to bcrypt
+    const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
+    if (legacyHash === user.password_hash) {
+      passwordValid = true;
+      const newHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+      await supabase.from('users').update({ password_hash: newHash }).eq('id', user.id);
+    }
+  }
+
+  if (!passwordValid) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  res.json({
+    user: { id: user.id, email: user.email, name: user.name, type: user.type },
+    token: crypto.randomBytes(32).toString('hex')
   });
 });
 
@@ -928,7 +975,7 @@ app.post('/api/auth/register-agent', async (req, res) => {
 
     // Create user
     const userId = uuidv4();
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const name = agent_name || email.split('@')[0];
 
     const { error: createError } = await supabase.from('users').insert({
@@ -1942,8 +1989,8 @@ app.post('/api/tasks/:id/release', async (req, res) => {
   // Generate simulated transaction
   const txHash = '0x' + crypto.randomBytes(32).toString('hex');
   
-  // Update task
-  const { error: updateError } = await supabase
+  // Update task (atomic check on escrow_status to prevent double-release)
+  const { data: updatedRelease, error: updateError } = await supabase
     .from('tasks')
     .update({
       escrow_status: 'released',
@@ -1951,10 +1998,13 @@ app.post('/api/tasks/:id/release', async (req, res) => {
       status: 'paid',
       release_tx: txHash
     })
-    .eq('id', id);
-  
-  if (updateError) {
-    return res.status(500).json({ error: updateError.message });
+    .eq('id', id)
+    .in('escrow_status', ['deposited', 'held'])
+    .select('id')
+    .single();
+
+  if (updateError || !updatedRelease) {
+    return res.status(409).json({ error: 'Payment has already been released or is being processed.' });
   }
   
   // NOTE: Previously inserted into a 'transactions' table that doesn't exist.
@@ -2350,7 +2400,34 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Not your task' });
   }
-  
+
+  // Check proof rejection limit — auto-escalate to dispute after 3 rejections
+  const MAX_REJECTIONS = 3;
+  const { count: rejectionCount } = await supabase
+    .from('task_proofs')
+    .select('id', { count: 'exact', head: true })
+    .eq('task_id', taskId)
+    .eq('status', 'rejected');
+
+  if (rejectionCount >= MAX_REJECTIONS) {
+    await supabase.from('tasks').update({
+      status: 'disputed',
+      dispute_reason: `Auto-escalated: proof rejected ${MAX_REJECTIONS} times`,
+      disputed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }).eq('id', taskId).in('status', ['in_progress', 'pending_review']);
+
+    await createNotification(task.human_id, 'dispute', 'Task Escalated to Dispute',
+      `Task "${task.title}" auto-escalated after ${MAX_REJECTIONS} proof rejections. An admin will review.`, `/tasks/${taskId}`);
+    await createNotification(task.agent_id, 'dispute', 'Task Escalated to Dispute',
+      `Task "${task.title}" auto-escalated after ${MAX_REJECTIONS} proof rejections. An admin will review.`, `/tasks/${taskId}`);
+
+    return res.status(400).json({
+      error: `Maximum proof rejections (${MAX_REJECTIONS}) reached. Task escalated to dispute resolution.`,
+      rejection_count: rejectionCount
+    });
+  }
+
   // Get latest proof
   const { data: latestProof } = await supabase
     .from('task_proofs')
@@ -2702,9 +2779,17 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
   if (task.human_id !== user.id && task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
-  
-  // Update task to disputed
-  await supabase
+
+  // Only allow disputes on active tasks
+  const disputeableStatuses = ['in_progress', 'pending_review', 'approved'];
+  if (!disputeableStatuses.includes(task.status)) {
+    return res.status(400).json({
+      error: `Cannot dispute a task with status "${task.status}". Only active tasks can be disputed.`
+    });
+  }
+
+  // Update task to disputed (atomic status check)
+  const { data: disputedTask, error: disputeErr } = await supabase
     .from('tasks')
     .update({
       status: 'disputed',
@@ -2713,7 +2798,14 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
       disputed_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', taskId);
+    .eq('id', taskId)
+    .in('status', disputeableStatuses)
+    .select('id')
+    .single();
+
+  if (disputeErr || !disputedTask) {
+    return res.status(409).json({ error: 'Task status changed before dispute could be filed. Please refresh.' });
+  }
   
   // Notify relevant parties
   const notifyTo = user.id === task.human_id ? task.agent_id : task.human_id;
@@ -2780,7 +2872,7 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
     const netAmount = escrowAmount - platformFee;
     const txHash = '0x' + crypto.randomBytes(32).toString('hex');
     
-    await supabase
+    const { data: disputeRelease, error: disputeReleaseErr } = await supabase
       .from('tasks')
       .update({
         status: 'paid',
@@ -2790,8 +2882,15 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', task_id);
-    
+      .eq('id', task_id)
+      .neq('escrow_status', 'released')
+      .select('id')
+      .single();
+
+    if (disputeReleaseErr || !disputeRelease) {
+      return res.status(409).json({ error: 'Payment has already been released.' });
+    }
+
     await supabase.from('payouts').insert({
       id: uuidv4(),
       task_id: task_id,
@@ -3143,6 +3242,11 @@ async function deliverWebhook(agentId, payload) {
       headers['X-Webhook-Signature'] = signature;
     }
 
+    if (!isValidWebhookUrl(webhookUrl)) {
+      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${webhookUrl}`);
+      return;
+    }
+
     console.log(`[WEBHOOK] Delivering to ${webhookUrl}`);
     await fetch(webhookUrl, {
       method: 'POST',
@@ -3210,6 +3314,11 @@ app.post('/api/webhooks/register', async (req, res) => {
   }
 
   const { webhook_url, webhook_secret } = req.body;
+
+  // Validate webhook URL (SSRF prevention)
+  if (webhook_url && !isValidWebhookUrl(webhook_url)) {
+    return res.status(400).json({ error: 'Invalid webhook URL. Must be HTTPS and not target private/internal addresses.' });
+  }
 
   const updateData = {
     webhook_url: webhook_url || null,
@@ -3684,8 +3793,8 @@ app.post('/api/mcp', async (req, res) => {
           txHash = '0x' + crypto.randomBytes(32).toString('hex');
         }
         
-        // Update task
-        await supabase
+        // Update task (atomic check to prevent double-release)
+        const { data: mcpRelease, error: mcpReleaseErr } = await supabase
           .from('tasks')
           .update({
             status: 'paid',
@@ -3693,8 +3802,15 @@ app.post('/api/mcp', async (req, res) => {
             escrow_released_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .eq('id', task_id);
-        
+          .eq('id', task_id)
+          .in('escrow_status', ['deposited', 'held'])
+          .select('id')
+          .single();
+
+        if (mcpReleaseErr || !mcpRelease) {
+          return res.status(409).json({ error: 'Payment has already been released.' });
+        }
+
         // Record payout
         await supabase.from('payouts').insert({
           id: uuidv4(),
@@ -3711,20 +3827,8 @@ app.post('/api/mcp', async (req, res) => {
           created_at: new Date().toISOString()
         });
         
-        // Update human stats - increment jobs_completed
-        const { data: humanStats } = await supabase
-          .from('users')
-          .select('jobs_completed')
-          .eq('id', task.human_id)
-          .single();
-
-        await supabase
-          .from('users')
-          .update({
-            jobs_completed: (humanStats?.jobs_completed || 0) + 1,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', task.human_id);
+        // Update human stats (atomic increment via RPC)
+        await supabase.rpc('increment_user_stat', { user_id_param: task.human_id, stat_name: 'jobs_completed', increment_by: 1 });
         
         // Notify human
         await createNotification(
@@ -4391,7 +4495,13 @@ app.get('/api/tasks/available', async (req, res) => {
 
     if (category) query = query.eq('category', category);
     if (urgency) query = query.eq('urgency', urgency);
-    if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    if (search) {
+      // Sanitize: strip PostgREST filter operators to prevent query injection
+      const sanitizedSearch = search.replace(/[,.()"'\\%_]/g, '');
+      if (sanitizedSearch.trim()) {
+        query = query.or(`title.ilike.%${sanitizedSearch}%,description.ilike.%${sanitizedSearch}%`);
+      }
+    }
 
     // Sort
     if (sort === 'pay_high') {

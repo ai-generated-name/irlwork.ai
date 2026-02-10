@@ -72,6 +72,9 @@ const safeSupabase = {
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
+// Only log diagnostics in development
+const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
+
 // === Styles ===
 const styles = {
   btn: `px-5 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer border-0`,
@@ -480,7 +483,7 @@ function AuthPage({ onLogin }) {
       return
     }
     try {
-      console.log('[Auth] Starting Google OAuth...')
+      debug('[Auth] Starting Google OAuth...')
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -511,7 +514,7 @@ function AuthPage({ onLogin }) {
         return
       }
       
-      console.log('[Auth] OAuth initiated successfully')
+      debug('[Auth] OAuth initiated successfully')
     } catch (err) {
       console.error('[Auth] Google login failed:', err)
       setErrorModal({
@@ -559,7 +562,7 @@ function AuthPage({ onLogin }) {
           })
           if (error) throw error
           
-          console.log('[Auth] Session set successfully')
+          debug('[Auth] Session set successfully')
           window.history.replaceState({}, document.title, window.location.pathname)
           window.location.href = '/dashboard'
           return
@@ -1626,7 +1629,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setTasks(data || [])
       }
     } catch (e) {
-      console.log('Could not fetch tasks')
+      debug('Could not fetch tasks')
     } finally {
       setLoading(false)
     }
@@ -1653,7 +1656,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setAvailableTasks(data || [])
       }
     } catch (e) {
-      console.log('Could not fetch available tasks')
+      debug('Could not fetch available tasks')
     }
   }
 
@@ -1665,7 +1668,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setHumans(data || [])
       }
     } catch (e) {
-      console.log('Could not fetch humans')
+      debug('Could not fetch humans')
     }
   }
 
@@ -1677,7 +1680,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setPostedTasks(data || [])
       }
     } catch (e) {
-      console.log('Could not fetch posted tasks')
+      debug('Could not fetch posted tasks')
     } finally {
       setLoading(false)
     }
@@ -1693,7 +1696,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setTaskApplications(prev => ({ ...prev, [taskId]: data }))
       }
     } catch (e) {
-      console.log('Could not fetch applications')
+      debug('Could not fetch applications')
     }
   }
 
@@ -1743,7 +1746,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setWallet(data || { balance: 0, transactions: [] })
       }
     } catch (e) {
-      console.log('Could not fetch wallet')
+      debug('Could not fetch wallet')
     }
   }
 
@@ -1755,7 +1758,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setNotifications(data || [])
       }
     } catch (e) {
-      console.log('Could not fetch notifications')
+      debug('Could not fetch notifications')
     }
   }
 
@@ -1949,7 +1952,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       })
       fetchTasks()
     } catch (e) {
-      console.log('Could not accept task')
+      debug('Could not accept task')
     }
   }
 
@@ -1961,7 +1964,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       })
       fetchTasks()
     } catch (e) {
-      console.log('Could not start work')
+      debug('Could not start work')
     }
   }
 
@@ -1973,7 +1976,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       })
       fetchPostedTasks()
     } catch (e) {
-      console.log('Could not approve task')
+      debug('Could not approve task')
     }
   }
 
@@ -2008,7 +2011,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       setShowProofSubmit(null)
       fetchTasks()
     } catch (e) {
-      console.log('Could not submit proof')
+      debug('Could not submit proof')
     }
   }
 
@@ -2025,7 +2028,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       setShowProofReview(null)
       fetchPostedTasks()
     } catch (e) {
-      console.log('Could not reject task')
+      debug('Could not reject task')
     }
   }
 
@@ -3705,12 +3708,12 @@ function App() {
     }
 
     async function init() {
-      console.log('[Auth] Initializing...')
+      debug('[Auth] Initializing...')
 
       // Check for OAuth callback first
       const hash = window.location.hash
       if (hash.includes('access_token')) {
-        console.log('[Auth] Processing OAuth callback...')
+        debug('[Auth] Processing OAuth callback...')
         try {
           const params = new URLSearchParams(hash.slice(1))
           const accessToken = params.get('access_token')
@@ -3724,7 +3727,7 @@ function App() {
             if (error) {
               console.error('[Auth] Session set error:', error)
             } else {
-              console.log('[Auth] Session set successfully')
+              debug('[Auth] Session set successfully')
             }
             window.history.replaceState({}, document.title, window.location.pathname)
           }
@@ -3735,7 +3738,7 @@ function App() {
 
       // Get session and user
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('[Auth] Session:', session ? 'found' : 'none')
+      debug('[Auth] Session:', session ? 'found' : 'none')
 
       if (session?.user) {
         await fetchUserProfile(session.user)
@@ -3748,7 +3751,7 @@ function App() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] State change:', event, session ? 'with session' : 'no session')
+      debug('[Auth] State change:', event, session ? 'with session' : 'no session')
       if (session?.user) {
         await fetchUserProfile(session.user)
       } else {
@@ -3762,14 +3765,14 @@ function App() {
 
   async function fetchUserProfile(supabaseUser) {
     try {
-      console.log('[Auth] Fetching user profile...')
+      debug('[Auth] Fetching user profile...')
       const res = await fetch(`${API_URL}/auth/verify`, {
         headers: { Authorization: supabaseUser.id }
       })
 
       if (res.ok) {
         const data = await res.json()
-        console.log('[Auth] User found in DB:', data.user?.email, 'needs_onboarding:', data.user?.needs_onboarding)
+        debug('[Auth] User found in DB:', data.user?.email, 'needs_onboarding:', data.user?.needs_onboarding)
 
         // Trust backend completely - no localStorage merge
         const finalUser = { ...data.user, supabase_user: true }
@@ -3777,7 +3780,7 @@ function App() {
         setUser(finalUser)
       } else if (res.status === 404) {
         // New user - needs onboarding
-        console.log('[Auth] New user, needs onboarding')
+        debug('[Auth] New user, needs onboarding')
         const newUser = {
           id: supabaseUser.id,
           email: supabaseUser.email,
@@ -3789,7 +3792,7 @@ function App() {
         localStorage.setItem('user', JSON.stringify(newUser))
         setUser(newUser)
       } else {
-        console.log('[Auth] Backend error:', res.status)
+        debug('[Auth] Backend error:', res.status)
         // On error, create minimal user that needs onboarding
         const newUser = {
           id: supabaseUser.id,
@@ -3823,7 +3826,7 @@ function App() {
   }
 
   const handleOnboardingComplete = async (profile) => {
-    console.log('[Onboarding] Completing with profile:', profile)
+    debug('[Onboarding] Completing with profile:', profile)
 
     try {
       // Use the new idempotent onboard endpoint
@@ -3853,7 +3856,7 @@ function App() {
       if (res.ok) {
         const data = await res.json()
         const finalUser = { ...data.user, supabase_user: true }
-        console.log('[Onboarding] Success, user:', finalUser)
+        debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
         window.location.href = '/dashboard?tab=browse'
@@ -3870,19 +3873,19 @@ function App() {
   }
 
   if (loading) {
-    console.log('[Auth] Loading...')
+    debug('[Auth] Loading...')
     return <Loading />
   }
 
   // Routes
   const path = window.location.pathname
-  console.log('[Auth] Rendering route:', path, 'user:', user ? user.email : 'none')
+  debug('[Auth] Rendering route:', path, 'user:', user ? user.email : 'none')
 
   // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
   const routeContent = (() => {
     // If on auth page and already logged in, redirect to dashboard
     if (path === '/auth' && user) {
-      console.log('[Auth] Already logged in, redirecting to dashboard')
+      debug('[Auth] Already logged in, redirecting to dashboard')
       window.location.href = '/dashboard'
       return <Loading />
     }
@@ -3898,13 +3901,13 @@ function App() {
     // Onboarding route - dedicated route for onboarding wizard
     if (path === '/onboard') {
       if (!user) {
-        console.log('[Auth] No user for onboard, redirecting to auth')
+        debug('[Auth] No user for onboard, redirecting to auth')
         window.location.href = '/auth'
         return <Loading />
       }
       // If user doesn't need onboarding, redirect to dashboard
       if (!user.needs_onboarding) {
-        console.log('[Auth] User already onboarded, redirecting to dashboard')
+        debug('[Auth] User already onboarded, redirecting to dashboard')
         window.location.href = '/dashboard'
         return <Loading />
       }
@@ -3914,14 +3917,14 @@ function App() {
     // Dashboard route - requires auth
     if (path === '/dashboard') {
       if (!user) {
-        console.log('[Auth] No user, redirecting to auth')
+        debug('[Auth] No user, redirecting to auth')
         window.location.href = '/auth'
         return <Loading />
       }
 
       // If user needs onboarding, redirect to /onboard
       if (user.needs_onboarding) {
-        console.log('[Auth] User needs onboarding, redirecting to /onboard')
+        debug('[Auth] User needs onboarding, redirecting to /onboard')
         window.location.href = '/onboard'
         return <Loading />
       }

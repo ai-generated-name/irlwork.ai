@@ -10,6 +10,7 @@ function EarningsDashboard({ user }) {
   const [error, setError] = useState(null)
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawResult, setWithdrawResult] = useState(null)
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false)
 
   useEffect(() => {
     if (!user?.id) {
@@ -45,21 +46,24 @@ function EarningsDashboard({ user }) {
     }
   }
 
-  const handleWithdraw = async (method) => {
+  const handleWithdraw = (method) => {
     if (!balanceData?.available_cents || balanceData.available_cents <= 0) {
       toast.error('No funds available to withdraw')
       return
     }
 
-    const dest = method === 'stripe' ? 'your bank account' : user?.wallet_address
+    // Require wallet address for non-stripe withdrawals
     if (method !== 'stripe' && !user?.wallet_address) {
       toast.error('Please add a wallet address in your profile settings first')
       return
     }
 
-    if (!confirm(`Withdraw $${balanceData.available.toFixed(2)} to ${dest}?`)) {
-      return
-    }
+    setShowWithdrawConfirm(method || 'usdc')
+  }
+
+  const executeWithdraw = async () => {
+    const method = showWithdrawConfirm
+    setShowWithdrawConfirm(false)
 
     try {
       setWithdrawing(true)
@@ -341,6 +345,26 @@ function EarningsDashboard({ user }) {
           <p className="text-[#1A1A1A] font-mono text-xs md:text-sm break-all">
             {user.wallet_address}
           </p>
+        </div>
+      )}
+
+      {/* Withdrawal Confirmation Modal */}
+      {showWithdrawConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Withdrawal</h3>
+            <p className="text-gray-600 mb-4">
+              Withdraw ${balanceData?.available?.toFixed(2)} to {showWithdrawConfirm === 'stripe' ? 'your bank account' : `${user.wallet_address?.substring(0, 10)}...`}?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                Cancel
+              </button>
+              <button onClick={executeWithdraw} className="px-4 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857]">
+                Confirm Withdrawal
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
