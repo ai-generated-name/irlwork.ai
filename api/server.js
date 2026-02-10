@@ -4541,6 +4541,8 @@ app.get('/api/tasks/available', async (req, res) => {
     }
 
     // Fallback: no location or RPC failed - use legacy filtering
+    const willDistanceFilter = user_lat && user_lng && radius_km !== 'anywhere' && (radius_km || radius);
+
     let query = supabase
       .from('tasks')
       .select(`
@@ -4548,6 +4550,12 @@ app.get('/api/tasks/available', async (req, res) => {
         agent:users!tasks_agent_id_fkey(id, name)
       `)
       .eq('status', 'open');
+
+    // When distance filtering, exclude remote tasks from the initial query so they
+    // don't consume the limit — remote tasks are fetched separately via fetchRemoteTasks()
+    if (willDistanceFilter) {
+      query = query.or('is_remote.is.null,is_remote.eq.false');
+    }
 
     if (category) query = query.eq('category', category);
     if (urgency) query = query.eq('urgency', urgency);
@@ -4583,27 +4591,22 @@ app.get('/api/tasks/available', async (req, res) => {
       if (!includeRemote) {
         results = results.filter(t => !t.is_remote);
       }
-    } else if (user_lat && user_lng && (radius_km || radius)) {
+    } else if (willDistanceFilter) {
       const userLatitude = parseFloat(user_lat);
       const userLongitude = parseFloat(user_lng);
 
-      // Keep remote tasks — they bypass distance filtering
-      const remoteTasks = results.filter(t => t.is_remote);
-      let localTasks = results.filter(t => !t.is_remote);
-
+      // Remote tasks were excluded from the initial query, so all results here are local
       if (radius_km) {
         const radiusKm = parseFloat(radius_km) || 50;
         if (radiusKm === 0) {
-          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, 5);
+          results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
         } else {
-          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, radiusKm);
+          results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
         }
       } else if (radius) {
         const maxRadius = parseFloat(radius);
-        localTasks = filterByDistance(localTasks, userLatitude, userLongitude, maxRadius);
+        results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
       }
-
-      results = [...localTasks];
 
       // Fallback: include tasks without coords that match city string
       if (city) {
@@ -4613,14 +4616,6 @@ app.get('/api/tasks/available', async (req, res) => {
         );
         const resultIds = new Set(results.map(r => r.id));
         tasksWithoutCoords.forEach(t => {
-          if (!resultIds.has(t.id)) results.push(t);
-        });
-      }
-
-      // Add remote tasks back (they are not filtered by distance)
-      if (includeRemote) {
-        const resultIds = new Set(results.map(r => r.id));
-        remoteTasks.forEach(t => {
           if (!resultIds.has(t.id)) results.push(t);
         });
       }
