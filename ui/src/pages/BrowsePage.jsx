@@ -107,8 +107,11 @@ export default function BrowsePage({ user }) {
   const [taskSortBy, setTaskSortBy] = useState('newest')
 
   // Apply modal state
-  const [showApplyModal, setShowApplyModal] = useState(null)
-  const [applyMessage, setApplyMessage] = useState('')
+  const [showApplyModal, setShowApplyModal] = useState(null) // task object or null
+  const [applyWhyFit, setApplyWhyFit] = useState('')
+  const [applyAvailability, setApplyAvailability] = useState('')
+  const [applyQuestions, setApplyQuestions] = useState('')
+  const [applyCounterOffer, setApplyCounterOffer] = useState('')
   const [applyLoading, setApplyLoading] = useState(false)
   const [applySuccess, setApplySuccess] = useState(false)
   const [applyError, setApplyError] = useState('')
@@ -269,17 +272,34 @@ export default function BrowsePage({ user }) {
 
   async function handleApply() {
     if (!user || !showApplyModal) return
+    if (!applyWhyFit.trim() || !applyAvailability.trim()) return
+
     setApplyLoading(true)
     setApplyError('')
     try {
       const res = await fetch(`${API_URL}/tasks/${showApplyModal.id}/apply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
-        body: JSON.stringify({ cover_letter: applyMessage })
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
+        body: JSON.stringify({
+          cover_letter: applyWhyFit.trim(),
+          availability: applyAvailability.trim(),
+          questions: applyQuestions.trim() || null,
+          proposed_rate: applyCounterOffer ? parseFloat(applyCounterOffer) : null,
+        })
       })
       if (res.ok) {
         setApplySuccess(true)
-        setTimeout(() => { setShowApplyModal(null); setApplyMessage(''); setApplySuccess(false) }, 2000)
+        setTimeout(() => {
+          setShowApplyModal(null)
+          setApplyWhyFit('')
+          setApplyAvailability('')
+          setApplyQuestions('')
+          setApplyCounterOffer('')
+          setApplySuccess(false)
+        }, 2000)
       } else {
         const err = await res.json()
         setApplyError(err.error || 'Failed to apply')
@@ -997,25 +1017,180 @@ export default function BrowsePage({ user }) {
                     <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Apply to Task</h2>
                     <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{showApplyModal.title}</p>
                   </div>
-                  <button onClick={() => { setShowApplyModal(null); setApplyMessage(''); setApplyError('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                  <button
+                    onClick={() => { setShowApplyModal(null); setApplyWhyFit(''); setApplyAvailability(''); setApplyQuestions(''); setApplyCounterOffer(''); setApplyError('') }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 4
+                    }}
+                  >
                     <X size={24} style={{ color: 'var(--text-tertiary)' }} />
                   </button>
                 </div>
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 8, color: 'var(--text-primary)' }}>Cover Letter (optional)</label>
+
+                {/* 1. Why you're a good fit (required) */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-primary)'
+                  }}>
+                    Why you're a good fit <span style={{ color: 'var(--coral-500)' }}>*</span>
+                  </label>
                   <textarea
-                    placeholder="Why are you a good fit for this task? Share your relevant experience..."
-                    value={applyMessage}
-                    onChange={(e) => setApplyMessage(e.target.value)}
-                    style={{ width: '100%', minHeight: 120, padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid rgba(26,26,26,0.1)', fontSize: 15, resize: 'vertical', fontFamily: 'inherit' }}
+                    placeholder="Share relevant experience, skills, or why you're the right person for this task..."
+                    value={applyWhyFit}
+                    onChange={(e) => setApplyWhyFit(e.target.value)}
+                    maxLength={500}
+                    style={{
+                      width: '100%',
+                      minHeight: 80,
+                      padding: 12,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      fontSize: 14,
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
                   />
                 </div>
+
+                {/* 2. Confirm availability (required) */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-primary)'
+                  }}>
+                    Confirm availability <span style={{ color: 'var(--coral-500)' }}>*</span>
+                  </label>
+                  <textarea
+                    placeholder="When can you start? How soon can you complete this?"
+                    value={applyAvailability}
+                    onChange={(e) => setApplyAvailability(e.target.value)}
+                    maxLength={200}
+                    style={{
+                      width: '100%',
+                      minHeight: 56,
+                      padding: 12,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      fontSize: 14,
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+
+                {/* 3. Questions about the task (optional) */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-secondary)'
+                  }}>
+                    Questions about the task
+                  </label>
+                  <textarea
+                    placeholder="Any questions or clarifications needed?"
+                    value={applyQuestions}
+                    onChange={(e) => setApplyQuestions(e.target.value)}
+                    maxLength={300}
+                    style={{
+                      width: '100%',
+                      minHeight: 56,
+                      padding: 12,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      fontSize: 14,
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+
+                {/* 4. Counter offer (optional) */}
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-secondary)'
+                  }}>
+                    Counter offer
+                  </label>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    border: '1px solid rgba(26,26,26,0.1)',
+                    borderRadius: 'var(--radius-md)',
+                    overflow: 'hidden'
+                  }}>
+                    <span style={{ padding: '10px 12px', background: 'var(--bg-tertiary)', fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={applyCounterOffer}
+                      onChange={(e) => setApplyCounterOffer(e.target.value)}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        border: 'none',
+                        fontSize: 14,
+                        fontFamily: 'inherit',
+                        outline: 'none'
+                      }}
+                    />
+                    <span style={{ padding: '10px 12px', background: 'var(--bg-tertiary)', fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>USDC</span>
+                  </div>
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    Task budget: ${showApplyModal.budget || 0} USDC
+                  </span>
+                </div>
+
                 {applyError && (
                   <div style={{ padding: 12, background: '#FEE2E2', borderRadius: 'var(--radius-md)', color: '#DC2626', fontSize: 14, marginBottom: 16 }}>{applyError}</div>
                 )}
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button onClick={() => { setShowApplyModal(null); setApplyMessage(''); setApplyError('') }} style={{ flex: 1, padding: 14, borderRadius: 'var(--radius-md)', border: '1px solid rgba(26,26,26,0.1)', background: 'white', fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={handleApply} disabled={applyLoading} style={{ flex: 1, padding: 14, borderRadius: 'var(--radius-md)', border: 'none', background: applyLoading ? 'var(--text-tertiary)' : 'var(--coral-500)', color: 'white', fontWeight: 600, cursor: applyLoading ? 'not-allowed' : 'pointer' }}>
+                  <button
+                    onClick={() => { setShowApplyModal(null); setApplyWhyFit(''); setApplyAvailability(''); setApplyQuestions(''); setApplyCounterOffer(''); setApplyError('') }}
+                    style={{
+                      flex: 1,
+                      padding: 14,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      background: 'white',
+                      fontWeight: 500,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleApply}
+                    disabled={applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()}
+                    style={{
+                      flex: 1,
+                      padding: 14,
+                      borderRadius: 'var(--radius-md)',
+                      border: 'none',
+                      background: (applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()) ? 'var(--text-tertiary)' : 'var(--coral-500)',
+                      color: 'white',
+                      fontWeight: 600,
+                      cursor: (applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()) ? 'not-allowed' : 'pointer'
+                    }}
+                  >
                     {applyLoading ? 'Submitting...' : 'Submit Application'}
                   </button>
                 </div>

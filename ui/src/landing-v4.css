@@ -4336,7 +4336,7 @@
   text-overflow: ellipsis;
 }
 
-/* Connect to AI Agent Button */
+/* Connect to AI Agent Button (legacy) */
 .dashboard-v4-connect-agent-btn {
   display: flex;
   align-items: center;
@@ -4359,6 +4359,71 @@
   border-color: var(--orange-500);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(244, 132, 95, 0.15);
+}
+
+/* Connect to AI Agent - Sidebar Top Position */
+.dashboard-v4-connect-agent-sidebar-top {
+  padding: var(--space-3) var(--space-4);
+}
+
+.dashboard-v4-connect-agent-btn-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(244, 132, 95, 0.35);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(244, 132, 95, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%);
+  color: var(--orange-600);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-v4-connect-agent-btn-top::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(244, 132, 95, 0.06) 0%, transparent 50%, rgba(251, 146, 60, 0.06) 100%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.dashboard-v4-connect-agent-btn-top:hover {
+  border-color: var(--orange-500);
+  background: linear-gradient(135deg, rgba(244, 132, 95, 0.18) 0%, rgba(251, 146, 60, 0.08) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 132, 95, 0.2);
+}
+
+.dashboard-v4-connect-agent-btn-top:hover::before {
+  opacity: 1;
+}
+
+.dashboard-v4-connect-agent-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Connected state */
+.dashboard-v4-connect-agent-btn-top.connected {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.04) 100%);
+  color: #16a34a;
+  cursor: default;
+}
+
+.dashboard-v4-connect-agent-btn-top.connected:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgba(34, 197, 94, 0.4);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.04) 100%);
 }
 
 /* ===== Connect Agent Page: Easy Install Section ===== */
@@ -4609,19 +4674,50 @@
 }
 
 .dashboard-v4-topbar-cta {
-  color: var(--orange-600);
-  background: rgba(244, 132, 95, 0.1);
+  color: #fff;
+  background: linear-gradient(135deg, var(--orange-600) 0%, #e05a2b 100%);
   border-radius: var(--radius-full);
+  padding: 8px 18px;
+  font-weight: 700;
+  font-size: 13.5px;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(244, 132, 95, 0.35), 0 0 0 0 rgba(244, 132, 95, 0);
+  animation: cta-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes cta-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(244, 132, 95, 0.35), 0 0 0 0 rgba(244, 132, 95, 0.15); }
+  50% { box-shadow: 0 4px 16px rgba(244, 132, 95, 0.45), 0 0 0 4px rgba(244, 132, 95, 0.08); }
 }
 
 .dashboard-v4-topbar-cta svg {
   opacity: 1;
-  stroke: var(--orange-600);
+  stroke: #fff;
 }
 
 .dashboard-v4-topbar-cta:hover {
-  background: rgba(244, 132, 95, 0.18);
-  color: var(--orange-500);
+  background: linear-gradient(135deg, #e05a2b 0%, var(--orange-600) 100%);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(244, 132, 95, 0.5), 0 0 0 0 rgba(244, 132, 95, 0);
+  animation: none;
+}
+
+.dashboard-v4-topbar-cta-teal {
+  background: linear-gradient(135deg, var(--teal-600, #0f4c5c) 0%, #0d3d4a 100%);
+  box-shadow: 0 2px 8px rgba(15, 76, 92, 0.35), 0 0 0 0 rgba(15, 76, 92, 0);
+  animation: cta-pulse-teal 2.5s ease-in-out infinite;
+}
+
+@keyframes cta-pulse-teal {
+  0%, 100% { box-shadow: 0 2px 8px rgba(15, 76, 92, 0.35), 0 0 0 0 rgba(15, 76, 92, 0.15); }
+  50% { box-shadow: 0 4px 16px rgba(15, 76, 92, 0.45), 0 0 0 4px rgba(15, 76, 92, 0.08); }
+}
+
+.dashboard-v4-topbar-cta-teal:hover {
+  background: linear-gradient(135deg, #0d3d4a 0%, var(--teal-600, #0f4c5c) 100%);
+  box-shadow: 0 4px 16px rgba(15, 76, 92, 0.5), 0 0 0 0 rgba(15, 76, 92, 0);
+  animation: none;
 }
 
 .dashboard-v4-topbar-right {
@@ -5728,6 +5824,78 @@
   box-shadow: none;
 }
 
+/* Required/Optional field indicators */
+.dashboard-v4-form-required {
+  color: var(--error);
+  margin-left: 2px;
+  font-weight: 600;
+}
+
+.dashboard-v4-form-optional {
+  color: var(--text-tertiary);
+  font-weight: 400;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+/* Form section divider */
+.dashboard-v4-form-section {
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid rgba(26, 26, 26, 0.06);
+}
+
+.dashboard-v4-form-section:first-child {
+  margin-top: 0;
+}
+
+.dashboard-v4-form-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+}
+
+/* Yes/No toggle button group */
+.dashboard-v4-toggle-group {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.dashboard-v4-toggle-btn {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgba(26, 26, 26, 0.1);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+  text-align: center;
+}
+
+.dashboard-v4-toggle-btn:hover {
+  border-color: var(--orange-300);
+  color: var(--text-primary);
+}
+
+.dashboard-v4-toggle-btn.active {
+  background: rgba(244, 132, 95, 0.08);
+  border-color: var(--orange-500);
+  color: var(--orange-600);
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .dashboard-v4-toggle-group {
+    flex-direction: column;
+  }
+}
+
 /* Settings Tabs */
 .settings-tabs {
   display: flex;
@@ -5945,6 +6113,7 @@
   .dashboard-v4-mode-switch-mobile {
     display: block;
   }
+
 
   .dashboard-v4-topbar-logo {
     display: flex; /* Show logo on mobile when sidebar is hidden */
