@@ -2,6 +2,7 @@
 // Displays agent reputation metrics: rating, payment rate, jobs completed, total USDC paid
 
 import React from 'react';
+import { Star, DollarSign, CheckCircle } from 'lucide-react';
 
 export default function AgentProfileCard({ agent }) {
   if (!agent) {
@@ -62,7 +63,7 @@ export default function AgentProfileCard({ agent }) {
         {/* Rating */}
         <div className="flex justify-between items-center py-2 border-b border-[rgba(26,26,26,0.08)]">
           <span className="text-[#525252] flex items-center gap-2">
-            <span>⭐</span>
+            <Star size={14} />
             <span>Rating</span>
           </span>
           <span className="font-bold text-[#1A1A1A]">
@@ -77,7 +78,7 @@ export default function AgentProfileCard({ agent }) {
         {/* Payment Rate */}
         <div className="flex justify-between items-center py-2 border-b border-[rgba(26,26,26,0.08)]">
           <span className="text-[#525252] flex items-center gap-2">
-            <span>💰</span>
+            <DollarSign size={14} />
             <span>Payment Rate</span>
           </span>
           <span className="font-bold text-[#1A1A1A]">
@@ -88,7 +89,7 @@ export default function AgentProfileCard({ agent }) {
         {/* Jobs Completed */}
         <div className="flex justify-between items-center py-2 border-b border-[rgba(26,26,26,0.08)]">
           <span className="text-[#525252] flex items-center gap-2">
-            <span>✅</span>
+            <CheckCircle size={14} />
             <span>Jobs Completed</span>
           </span>
           <span className="font-bold text-[#1A1A1A]">
