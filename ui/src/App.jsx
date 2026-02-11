@@ -3697,8 +3697,19 @@ Signature required. Bring to our office at 123 Main St.",
 }
 
 function App() {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Initialize from localStorage cache for instant rendering (no loading spinner for returning users)
+  const [user, setUser] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('user') || 'null')
+      return cached?.supabase_user ? cached : null
+    } catch { return null }
+  })
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('user') || 'null')
+      return !cached?.supabase_user
+    } catch { return true }
+  })
 
   useEffect(() => {
     if (!supabase) {
@@ -3744,6 +3755,7 @@ function App() {
         if (session?.user) {
           await fetchUserProfile(session.user)
         } else {
+          setUser(null)
           setLoading(false)
         }
       } catch (e) {
