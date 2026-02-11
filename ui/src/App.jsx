@@ -4262,14 +4262,19 @@ Signature required. Bring to our office at 123 Main St.",
 }
 
 function App() {
-  // Initialize user from localStorage cache for instant render on /dashboard
+  // Initialize from localStorage cache for instant rendering (no loading spinner for returning users)
   const [user, setUser] = useState(() => {
     try {
-      const cached = localStorage.getItem('user')
-      return cached ? JSON.parse(cached) : null
+      const cached = JSON.parse(localStorage.getItem('user') || 'null')
+      return cached?.supabase_user ? cached : null
     } catch { return null }
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('user') || 'null')
+      return !cached?.supabase_user
+    } catch { return true }
+  })
   const [currentPath, setCurrentPath] = useState(window.location.pathname)
   const initDoneRef = useRef(false)
 
@@ -4333,6 +4338,7 @@ function App() {
         if (session?.user) {
           await fetchUserProfile(session.user)
         } else {
+          setUser(null)
           setLoading(false)
         }
       } catch (e) {
