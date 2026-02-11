@@ -4380,7 +4380,6 @@
   align-items: center;
   gap: var(--space-2);
   flex: 1;
-  padding-left: var(--space-6);
 }
 
 .dashboard-v4-topbar-link {
@@ -5708,6 +5707,10 @@
 
   .dashboard-v4-topbar-center {
     display: none;
+  }
+
+  .dashboard-v4-topbar-link {
+    display: none !important;
   }
 
   .dashboard-v4-topbar-logo {
