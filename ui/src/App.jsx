@@ -1430,9 +1430,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     const saved = localStorage.getItem('irlwork_hiringMode')
     return saved === 'true'
   })
-  const [showCreateForm, setShowCreateForm] = useState(false)
   const [humansSubTab, setHumansSubTab] = useState('browse')
-  const [tasksSubTab, setTasksSubTab] = useState('tasks')
+  const [tasksSubTab, setTasksSubTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('tab') === 'create-task' ? 'create' : 'tasks'
+  })
 
   // Read initial tab from URL path: /dashboard/working/browse → 'browse'
   const getInitialTab = () => {
@@ -2003,6 +2005,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setCreateTaskError('Budget must be at least $5')
       return
     }
+    if (!taskForm.is_remote && !taskForm.city.trim()) {
+      setCreateTaskError('City is required for in-person tasks')
+      return
+    }
 
     setCreatingTask(true)
     try {
@@ -2035,8 +2041,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
-        // Close create form and stay on posted tab
-        setShowCreateForm(false)
+        // Switch to posted tasks list
+        setTasksSubTab('tasks')
         setActiveTab('posted')
       } else {
         const err = await res.json()
@@ -2529,41 +2535,45 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              {tasksSubTab === 'tasks' && (
-                <button
-                  className="v4-btn v4-btn-primary"
-                  onClick={() => setShowCreateForm(!showCreateForm)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}
-                >
-                  {showCreateForm ? 'Cancel' : '+ Create Task'}
-                </button>
-              )}
-            </div>
+            <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
 
-            {/* Sub-tabs: Tasks / Disputes */}
+            {/* Sub-tabs: Create Task / Posted Tasks / Disputes */}
             <div className="dashboard-v4-sub-tabs">
               <button
-                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => setTasksSubTab('tasks')}
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); }}
               >
-                Tasks
+                + Create Task
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); }}
+              >
+                Posted Tasks
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
-                onClick={() => setTasksSubTab('disputes')}
+                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); }}
               >
                 Disputes
               </button>
             </div>
 
-            {tasksSubTab === 'tasks' && showCreateForm && (
-              <div style={{ marginTop: 16, marginBottom: 24 }}>
+            {tasksSubTab === 'create' && (
+              <div style={{ marginTop: 16 }}>
                 <div className="dashboard-v4-form">
+                  <h2 className="dashboard-v4-form-title">Create a New Task</h2>
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
+
+                    {/* Basic Info */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Basic Info</span>
+                    </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Task Title</label>
+                      <label className="dashboard-v4-form-label">
+                        Task Title <span className="dashboard-v4-form-required">*</span>
+                      </label>
                       <input
                         type="text"
                         placeholder="What do you need done?"
@@ -2572,8 +2582,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
                       />
                     </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Description</label>
+                      <label className="dashboard-v4-form-label">
+                        Description <span className="dashboard-v4-form-optional">(optional)</span>
+                      </label>
                       <textarea
                         placeholder="Provide details about the task..."
                         className="dashboard-v4-form-input dashboard-v4-form-textarea"
@@ -2581,9 +2594,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                       />
                     </div>
+
                     <div className="dashboard-form-grid-2col">
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Category</label>
+                        <label className="dashboard-v4-form-label">
+                          Category <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <CustomDropdown
                           value={taskForm.category}
                           onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
@@ -2598,7 +2614,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Budget (USD)</label>
+                        <label className="dashboard-v4-form-label">
+                          Budget (USD) <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <input
                           type="number"
                           placeholder="$"
@@ -2609,9 +2627,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     </div>
+
+                    {/* Schedule & Duration */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Schedule & Duration</span>
+                    </div>
+
                     <div className="dashboard-form-grid-2col">
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Duration (hours)</label>
+                        <label className="dashboard-v4-form-label">
+                          Duration (hours) <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
                         <input
                           type="number"
                           placeholder="e.g. 2"
@@ -2623,7 +2649,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Deadline</label>
+                        <label className="dashboard-v4-form-label">
+                          Deadline <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
                         <input
                           type="datetime-local"
                           className="dashboard-v4-form-input"
@@ -2632,33 +2660,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     </div>
-                    <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Requirements (optional)</label>
-                      <textarea
-                        placeholder="Any specific requirements or qualifications needed..."
-                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                        value={taskForm.requirements}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                        rows={2}
-                      />
+
+                    {/* Location */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Location</span>
                     </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label style={{
-                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                        fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={taskForm.is_remote}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                          style={{ width: 18, height: 18, cursor: 'pointer' }}
-                        />
-                        This task can be done remotely
-                      </label>
+                      <label className="dashboard-v4-form-label">Is this task remote?</label>
+                      <div className="dashboard-v4-toggle-group">
+                        <button
+                          type="button"
+                          className={`dashboard-v4-toggle-btn ${taskForm.is_remote ? 'active' : ''}`}
+                          onClick={() => setTaskForm(prev => ({ ...prev, is_remote: true }))}
+                        >
+                          Yes, remote
+                        </button>
+                        <button
+                          type="button"
+                          className={`dashboard-v4-toggle-btn ${!taskForm.is_remote ? 'active' : ''}`}
+                          onClick={() => setTaskForm(prev => ({ ...prev, is_remote: false }))}
+                        >
+                          No, in-person
+                        </button>
+                      </div>
                     </div>
+
                     {!taskForm.is_remote && (
                       <div className="dashboard-v4-form-group">
-                        <label className="dashboard-v4-form-label">City</label>
+                        <label className="dashboard-v4-form-label">
+                          City <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <CityAutocomplete
                           value={taskForm.city}
                           onChange={(locationData) => setTaskForm(prev => ({
@@ -2674,6 +2706,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     )}
+
+                    {/* Additional Info */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Additional Info</span>
+                    </div>
+
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">
+                        Requirements <span className="dashboard-v4-form-optional">(optional)</span>
+                      </label>
+                      <textarea
+                        placeholder="Any specific requirements or qualifications needed..."
+                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                        value={taskForm.requirements}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                        rows={2}
+                      />
+                    </div>
+
                     {createTaskError && (
                       <div className="dashboard-v4-form-error">{createTaskError}</div>
                     )}
