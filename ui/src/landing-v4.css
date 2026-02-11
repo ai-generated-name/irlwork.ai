@@ -3525,8 +3525,14 @@
 }
 
 .mcp-v4-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
   border-bottom: 1px solid rgba(26, 26, 26, 0.08);
-  background: var(--bg-secondary);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
 }
 
 .mcp-v4-header-inner {
@@ -3556,6 +3562,7 @@
   max-width: 1100px;
   margin: 0 auto;
   padding: var(--space-12) var(--space-6);
+  padding-top: calc(64px + var(--space-12)); /* Account for fixed header height */
 }
 
 .mcp-v4-hero {
@@ -5149,6 +5156,15 @@
 
   .dashboard-v4-main {
     margin-left: 0;
+    padding-top: 56px; /* Account for fixed topbar height on mobile */
+  }
+
+  .dashboard-v4-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
   }
 
   .dashboard-v4-menu-btn {
