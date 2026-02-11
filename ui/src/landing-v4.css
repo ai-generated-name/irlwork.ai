@@ -5888,8 +5888,17 @@
 
   .dashboard-v4-main {
     margin-left: 0;
+    padding-top: 56px; /* Account for fixed topbar height on mobile */
     overflow-x: hidden;
     padding-top: 56px; /* Account for fixed topbar height on mobile */
+  }
+
+  .dashboard-v4-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
   }
 
   .dashboard-v4-topbar {
