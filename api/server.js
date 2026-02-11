@@ -1847,19 +1847,19 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { cover_letter, proposed_rate } = req.body;
-  
+  const { cover_letter, availability, questions, proposed_rate } = req.body;
+
   const { data: existing } = await supabase
     .from('task_applications')
     .select('*')
     .eq('task_id', req.params.id)
     .eq('human_id', user.id)
     .single();
-  
+
   if (existing) {
     return res.status(400).json({ error: 'Already applied' });
   }
-  
+
   const id = uuidv4();
   const { data: application, error } = await supabase
     .from('task_applications')
@@ -1868,6 +1868,8 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
       task_id: req.params.id,
       human_id: user.id,
       cover_letter: cover_letter || '',
+      availability: availability || '',
+      questions: questions || null,
       proposed_rate,
       status: 'pending',
       created_at: new Date().toISOString()

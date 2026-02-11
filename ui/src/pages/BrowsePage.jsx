@@ -31,7 +31,10 @@ export default function BrowsePage({ user }) {
 
   // Apply modal state
   const [showApplyModal, setShowApplyModal] = useState(null) // task object or null
-  const [applyMessage, setApplyMessage] = useState('')
+  const [applyWhyFit, setApplyWhyFit] = useState('')
+  const [applyAvailability, setApplyAvailability] = useState('')
+  const [applyQuestions, setApplyQuestions] = useState('')
+  const [applyCounterOffer, setApplyCounterOffer] = useState('')
   const [applyLoading, setApplyLoading] = useState(false)
   const [applySuccess, setApplySuccess] = useState(false)
   const [applyError, setApplyError] = useState('')
@@ -157,6 +160,7 @@ export default function BrowsePage({ user }) {
 
   async function handleApply() {
     if (!user || !showApplyModal) return
+    if (!applyWhyFit.trim() || !applyAvailability.trim()) return
 
     setApplyLoading(true)
     setApplyError('')
@@ -168,14 +172,22 @@ export default function BrowsePage({ user }) {
           'Content-Type': 'application/json',
           Authorization: user.id
         },
-        body: JSON.stringify({ cover_letter: applyMessage })
+        body: JSON.stringify({
+          cover_letter: applyWhyFit.trim(),
+          availability: applyAvailability.trim(),
+          questions: applyQuestions.trim() || null,
+          proposed_rate: applyCounterOffer ? parseFloat(applyCounterOffer) : null,
+        })
       })
 
       if (res.ok) {
         setApplySuccess(true)
         setTimeout(() => {
           setShowApplyModal(null)
-          setApplyMessage('')
+          setApplyWhyFit('')
+          setApplyAvailability('')
+          setApplyQuestions('')
+          setApplyCounterOffer('')
           setApplySuccess(false)
         }, 2000)
       } else {
@@ -697,7 +709,7 @@ export default function BrowsePage({ user }) {
                     <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{showApplyModal.title}</p>
                   </div>
                   <button
-                    onClick={() => { setShowApplyModal(null); setApplyMessage(''); setApplyError('') }}
+                    onClick={() => { setShowApplyModal(null); setApplyWhyFit(''); setApplyAvailability(''); setApplyQuestions(''); setApplyCounterOffer(''); setApplyError('') }}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -709,7 +721,8 @@ export default function BrowsePage({ user }) {
                   </button>
                 </div>
 
-                <div style={{ marginBottom: 24 }}>
+                {/* 1. Why you're a good fit (required) */}
+                <div style={{ marginBottom: 16 }}>
                   <label style={{
                     display: 'block',
                     fontSize: 14,
@@ -717,23 +730,124 @@ export default function BrowsePage({ user }) {
                     marginBottom: 8,
                     color: 'var(--text-primary)'
                   }}>
-                    Cover Letter (optional)
+                    Why you're a good fit <span style={{ color: 'var(--coral-500)' }}>*</span>
                   </label>
                   <textarea
-                    placeholder="Why are you a good fit for this task? Share your relevant experience..."
-                    value={applyMessage}
-                    onChange={(e) => setApplyMessage(e.target.value)}
+                    placeholder="Share relevant experience, skills, or why you're the right person for this task..."
+                    value={applyWhyFit}
+                    onChange={(e) => setApplyWhyFit(e.target.value)}
+                    maxLength={500}
                     style={{
                       width: '100%',
-                      minHeight: 120,
-                      padding: 16,
+                      minHeight: 80,
+                      padding: 12,
                       borderRadius: 'var(--radius-md)',
                       border: '1px solid rgba(26,26,26,0.1)',
-                      fontSize: 15,
+                      fontSize: 14,
                       resize: 'vertical',
                       fontFamily: 'inherit'
                     }}
                   />
+                </div>
+
+                {/* 2. Confirm availability (required) */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-primary)'
+                  }}>
+                    Confirm availability <span style={{ color: 'var(--coral-500)' }}>*</span>
+                  </label>
+                  <textarea
+                    placeholder="When can you start? How soon can you complete this?"
+                    value={applyAvailability}
+                    onChange={(e) => setApplyAvailability(e.target.value)}
+                    maxLength={200}
+                    style={{
+                      width: '100%',
+                      minHeight: 56,
+                      padding: 12,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      fontSize: 14,
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+
+                {/* 3. Questions about the task (optional) */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-secondary)'
+                  }}>
+                    Questions about the task
+                  </label>
+                  <textarea
+                    placeholder="Any questions or clarifications needed?"
+                    value={applyQuestions}
+                    onChange={(e) => setApplyQuestions(e.target.value)}
+                    maxLength={300}
+                    style={{
+                      width: '100%',
+                      minHeight: 56,
+                      padding: 12,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      fontSize: 14,
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+
+                {/* 4. Counter offer (optional) */}
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-secondary)'
+                  }}>
+                    Counter offer
+                  </label>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    border: '1px solid rgba(26,26,26,0.1)',
+                    borderRadius: 'var(--radius-md)',
+                    overflow: 'hidden'
+                  }}>
+                    <span style={{ padding: '10px 12px', background: 'var(--bg-tertiary)', fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={applyCounterOffer}
+                      onChange={(e) => setApplyCounterOffer(e.target.value)}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        border: 'none',
+                        fontSize: 14,
+                        fontFamily: 'inherit',
+                        outline: 'none'
+                      }}
+                    />
+                    <span style={{ padding: '10px 12px', background: 'var(--bg-tertiary)', fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>USDC</span>
+                  </div>
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    Task budget: ${showApplyModal.budget || 0} USDC
+                  </span>
                 </div>
 
                 {applyError && (
@@ -751,7 +865,7 @@ export default function BrowsePage({ user }) {
 
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button
-                    onClick={() => { setShowApplyModal(null); setApplyMessage(''); setApplyError('') }}
+                    onClick={() => { setShowApplyModal(null); setApplyWhyFit(''); setApplyAvailability(''); setApplyQuestions(''); setApplyCounterOffer(''); setApplyError('') }}
                     style={{
                       flex: 1,
                       padding: 14,
@@ -766,16 +880,16 @@ export default function BrowsePage({ user }) {
                   </button>
                   <button
                     onClick={handleApply}
-                    disabled={applyLoading}
+                    disabled={applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()}
                     style={{
                       flex: 1,
                       padding: 14,
                       borderRadius: 'var(--radius-md)',
                       border: 'none',
-                      background: applyLoading ? 'var(--text-tertiary)' : 'var(--coral-500)',
+                      background: (applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()) ? 'var(--text-tertiary)' : 'var(--coral-500)',
                       color: 'white',
                       fontWeight: 600,
-                      cursor: applyLoading ? 'not-allowed' : 'pointer'
+                      cursor: (applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()) ? 'not-allowed' : 'pointer'
                     }}
                   >
                     {applyLoading ? 'Submitting...' : 'Submit Application'}
