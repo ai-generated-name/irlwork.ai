@@ -3737,12 +3737,17 @@ function App() {
       }
 
       // Get session and user
-      const { data: { session } } = await supabase.auth.getSession()
-      debug('[Auth] Session:', session ? 'found' : 'none')
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        debug('[Auth] Session:', session ? 'found' : 'none')
 
-      if (session?.user) {
-        await fetchUserProfile(session.user)
-      } else {
+        if (session?.user) {
+          await fetchUserProfile(session.user)
+        } else {
+          setLoading(false)
+        }
+      } catch (e) {
+        console.error('[Auth] getSession error:', e)
         setLoading(false)
       }
     }
