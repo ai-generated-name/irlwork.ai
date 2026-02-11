@@ -30,8 +30,12 @@ const CustomDropdown = ({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    // Use pointerdown — touchstart fires on virtual keyboard taps on mobile,
+    // which falsely triggers click-outside detection
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => {
+      document.removeEventListener('pointerdown', handleClickOutside);
+    };
   }, []);
 
   // Keyboard navigation
@@ -117,7 +121,7 @@ const CustomDropdown = ({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className={`custom-dropdown-trigger ${isOpen ? 'open' : ''} ${!value ? 'placeholder' : ''}`}
+        className={`custom-dropdown-trigger ${isOpen ? 'open' : ''} ${!selectedOption ? 'placeholder' : ''}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         disabled={disabled}

@@ -21,7 +21,7 @@ export default function Footer() {
                 <div className="logo-mark-v4">irl</div>
                 <span className="logo-name-v4">irlwork.ai</span>
               </Link>
-              <p style={{ fontSize: '14px', color: 'var(--text-40)', lineHeight: 1.6, marginTop: 'var(--sp-2)' }}>
+              <p style={{ fontSize: '14px', color: 'var(--text-40)', lineHeight: 1.6, marginTop: 'var(--sp-4)' }}>
                 AI agents create work. Humans get paid.
               </p>
             </div>
