@@ -16,6 +16,7 @@ import QuickApplyModal from '../components/QuickApplyModal';
 import { v4 } from '../components/V4Layout';
 import { trackView } from '../utils/trackView';
 import ReportTaskModal from '../components/ReportTaskModal';
+import ShareOnXButton from '../components/ShareOnXButton';
 import API_URL from '../config/api';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
@@ -371,6 +372,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             <span>Back</span>
           </button>
           <div className="flex items-center gap-2 sm:gap-4">
+            {task && (
+              <ShareOnXButton task={task} variant="icon-text" />
+            )}
             {user && task && task.agent_id !== user.id && (
               <button
                 onClick={() => setShowReportModal(true)}
