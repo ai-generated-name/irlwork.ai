@@ -19,31 +19,35 @@ export default function TaskHeader({ task }) {
   const statusConfig = STATUS_CONFIG[task.status] || STATUS_CONFIG.open;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 mb-6 shadow-sm">
-      {/* Status Badge */}
-      <div className="mb-4">
-        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${statusConfig.color}`}>
+    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
+      {/* Status Badge + Budget inline on mobile */}
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
+        </span>
+        {/* Compact budget shown inline on mobile only */}
+        <span className="lg:hidden text-lg font-bold text-[#059669] font-mono">
+          ${task.budget} <span className="text-xs font-normal text-[#8A8A8A]">USDC</span>
         </span>
       </div>
 
       {/* Title */}
-      <h1 className="text-3xl font-bold text-[#1A1A1A] mb-4">
+      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#1A1A1A] mb-2 sm:mb-4">
         {task.title}
       </h1>
 
       {/* Description */}
-      <div className="mb-6">
-        <p className="text-[#525252] text-base leading-relaxed whitespace-pre-wrap">
+      <div className="mb-3 sm:mb-6">
+        <p className="text-[#525252] text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
           {task.description}
         </p>
       </div>
 
       {/* Requirements */}
       {task.requirements && (
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">Requirements</h3>
-          <p className="text-[#525252] text-sm leading-relaxed whitespace-pre-wrap">
+        <div className="mb-3 sm:mb-6">
+          <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Requirements</h3>
+          <p className="text-[#525252] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
             {task.requirements}
           </p>
         </div>
@@ -51,25 +55,25 @@ export default function TaskHeader({ task }) {
 
       {/* Instructions (only visible to task participants - API strips for non-participants) */}
       {task.instructions && (
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">Instructions</h3>
-          <p className="text-[#525252] text-sm leading-relaxed whitespace-pre-wrap">
+        <div className="mb-3 sm:mb-6">
+          <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Instructions</h3>
+          <p className="text-[#525252] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
             {task.instructions}
           </p>
         </div>
       )}
 
       {/* Metadata Row */}
-      <div className="flex flex-wrap gap-4 text-sm text-[#525252]">
+      <div className="flex flex-wrap gap-x-3 gap-y-1.5 sm:gap-4 text-xs sm:text-sm text-[#525252]">
         {/* Posted Date */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <span>📅</span>
           <span>Posted {new Date(task.created_at).toLocaleDateString()}</span>
         </div>
 
         {/* Deadline */}
         {task.deadline && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <span>⏰</span>
             <span>Due {new Date(task.deadline).toLocaleDateString()}</span>
           </div>
@@ -77,29 +81,29 @@ export default function TaskHeader({ task }) {
 
         {/* Duration */}
         {task.duration_hours && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <span>⏱️</span>
-            <span>~{task.duration_hours}h estimated</span>
+            <span>~{task.duration_hours}h</span>
           </div>
         )}
 
         {/* Location */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <span>📍</span>
           <span>{task.city || task.location || 'Remote'}</span>
         </div>
 
         {/* Category */}
         {task.category && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <span>🏷️</span>
             <span>{task.category}</span>
           </div>
         )}
       </div>
 
-      {/* Budget - Large and Prominent */}
-      <div className="mt-6 pt-6 border-t border-[rgba(26,26,26,0.08)]">
+      {/* Budget - Large and Prominent (desktop only, mobile shows inline above + BudgetCard) */}
+      <div className="hidden lg:block mt-6 pt-6 border-t border-[rgba(26,26,26,0.08)]">
         <div className="flex items-baseline gap-2">
           <span className="text-4xl font-bold text-[#059669] font-mono">
             ${task.budget}
