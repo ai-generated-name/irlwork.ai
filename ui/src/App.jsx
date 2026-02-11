@@ -4367,9 +4367,13 @@ function App() {
   async function fetchUserProfile(supabaseUser) {
     try {
       debug('[Auth] Fetching user profile...')
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 8000)
       const res = await fetch(`${API_URL}/auth/verify`, {
-        headers: { Authorization: supabaseUser.id }
+        headers: { Authorization: supabaseUser.id },
+        signal: controller.signal
       })
+      clearTimeout(timeout)
 
       if (res.ok) {
         const data = await res.json()
