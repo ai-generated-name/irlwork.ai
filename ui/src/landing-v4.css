@@ -4223,6 +4223,36 @@
   border-radius: var(--radius-full);
 }
 
+/* Sub-tabs (used within Humans, Payments pages) */
+.dashboard-v4-sub-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(26, 26, 26, 0.08);
+}
+
+.dashboard-v4-sub-tab {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+}
+
+.dashboard-v4-sub-tab:hover {
+  color: var(--text-secondary);
+}
+
+.dashboard-v4-sub-tab.active {
+  color: var(--orange-600);
+  border-bottom-color: var(--orange-500);
+  font-weight: 600;
+}
+
 /* User Section */
 .dashboard-v4-user {
   padding: var(--space-4);
