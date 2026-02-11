@@ -777,36 +777,6 @@ app.post('/api/auth/register/human', async (req, res) => {
   }
 });
 
-app.post('/api/auth/register/agent', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-
-  try {
-    const { email, name } = req.body;
-    const id = uuidv4();
-    const api_key = 'irl_' + crypto.randomBytes(24).toString('hex');
-
-    const { data: user, error } = await supabase
-      .from('users')
-      .insert({
-        id,
-        email,
-        password_hash: null,
-        name,
-        type: 'agent',
-        api_key,
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    res.json({ user: { id, email, name, type: 'agent' }, api_key });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 app.post('/api/auth/login', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
@@ -2561,9 +2531,6 @@ app.post('/api/upload/feedback', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-
-// ============ AVATAR UPLOAD ============
-// (duplicate avatar upload endpoint removed — handled above)
 
 app.post('/api/feedback', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
@@ -5462,10 +5429,7 @@ app.get('/api/my-tasks', async (req, res) => {
   res.json(tasks || []);
 });
 
-// REMOVED: Duplicate /api/tasks/available route - consolidated into main route above (line ~3416)
-
 // ============ TASKS CRUD ============
-// NOTE: POST /api/tasks is defined earlier (~line 1356) using agent_id — do not duplicate here
 
 app.patch('/api/tasks/:id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
