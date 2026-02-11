@@ -812,7 +812,15 @@ app.get('/api/auth/verify', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
   
   const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Invalid token' });
+  if (!user) {
+    // Distinguish between invalid token and user not yet in DB
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(token)) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    return res.status(401).json({ error: 'Invalid token' });
+  }
   
   // Calculate derived metrics
   const completionRate = user.total_tasks_accepted > 0
@@ -864,12 +872,21 @@ app.get('/api/auth/verify', async (req, res) => {
 app.post('/api/auth/onboard', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  // Validate the user via proper token authentication (prevents account takeover via arbitrary UUID)
+  // Validate the user via token authentication
+  // For new users (first onboarding), they won't have a DB row yet, so getUserByToken returns null.
+  // In that case, accept a valid UUID directly — the upsert will create their row.
   const authenticatedUser = await getUserByToken(req.headers.authorization);
-  if (!authenticatedUser) {
-    return res.status(401).json({ error: 'Invalid or missing authentication' });
+  let userId;
+  if (authenticatedUser) {
+    userId = authenticatedUser.id;
+  } else {
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(token)) {
+      return res.status(401).json({ error: 'Invalid or missing authentication' });
+    }
+    userId = token;
   }
-  const userId = authenticatedUser.id;
 
   const { email, name, city, latitude, longitude, country, country_code,
           hourly_rate, skills, travel_radius, role, bio, avatar_url } = req.body;
