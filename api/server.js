@@ -254,6 +254,13 @@ function getApiKeyPrefix(apiKey) {
   return apiKey.substring(0, 12) + '...';
 }
 
+// Safely parse a JSONB column value that may be a JS array (from JSONB) or a string (double-encoded)
+function safeParseJsonArray(val) {
+  if (Array.isArray(val)) return val;
+  if (!val) return [];
+  try { const parsed = JSON.parse(val); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+}
+
 // Webhook URL validation (SSRF prevention)
 function isValidWebhookUrl(urlStr) {
   try {
@@ -968,9 +975,9 @@ app.get('/api/auth/verify', async (req, res) => {
       country_code: user.country_code,
       wallet_address: user.wallet_address,
       deposit_address: user.deposit_address,
-      skills: JSON.parse(user.skills || '[]'),
+      skills: safeParseJsonArray(user.skills),
       social_links: user.social_links || {},
-      languages: JSON.parse(user.languages || '[]'),
+      languages: safeParseJsonArray(user.languages),
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
       verified: user.verified,
@@ -1066,8 +1073,8 @@ app.post('/api/auth/onboard', async (req, res) => {
     // Parse skills and languages back to arrays for response
     const userData = {
       ...data,
-      skills: JSON.parse(data.skills || '[]'),
-      languages: JSON.parse(data.languages || '[]'),
+      skills: safeParseJsonArray(data.skills),
+      languages: safeParseJsonArray(data.languages),
       needs_onboarding: false
     };
 
@@ -1473,7 +1480,7 @@ app.get('/api/humans', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   // Parse skills and languages for all humans
-  let results = humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]'), languages: JSON.parse(h.languages || '[]') })) || [];
+  let results = humans?.map(h => ({ ...h, skills: safeParseJsonArray(h.skills), languages: safeParseJsonArray(h.languages) })) || [];
 
   // Apply distance filtering if coordinates provided
   if (user_lat && user_lng && radius) {
@@ -1505,7 +1512,7 @@ app.get('/api/users/:id', async (req, res) => {
     .single();
 
   if (error || !user) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...user, skills: JSON.parse(user.skills || '[]') });
+  res.json({ ...user, skills: safeParseJsonArray(user.skills) });
 });
 
 app.get('/api/humans/:id', async (req, res, next) => {
@@ -1525,119 +1532,126 @@ app.get('/api/humans/:id', async (req, res, next) => {
     .single();
 
   if (error || !user) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...user, skills: JSON.parse(user.skills || '[]'), languages: JSON.parse(user.languages || '[]') });
+  res.json({ ...user, skills: safeParseJsonArray(user.skills), languages: safeParseJsonArray(user.languages) });
 });
 
 // ============ PROFILE ============
 app.put('/api/humans/profile', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  let user = await getUserByToken(req.headers.authorization);
+  try {
+    let user = await getUserByToken(req.headers.authorization);
 
-  // If user doesn't exist in our DB but has a valid UUID token (from Supabase Auth), auto-create them
-  if (!user) {
-    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // If user doesn't exist in our DB but has a valid UUID token (from Supabase Auth), auto-create them
+    if (!user) {
+      const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (uuidRegex.test(token)) {
-      // Create the user record
-      const { name, city, hourly_rate, skills } = req.body;
-      const { data: newUser, error: createError } = await supabase
-        .from('users')
-        .insert({
-          id: token,
-          email: req.body.email || `${token}@oauth.user`,
-          name: name || 'New User',
-          type: 'human',
-          account_type: 'human',
-          city: city || '',
-          hourly_rate: hourly_rate || 25,
-          skills: JSON.stringify(skills || []),
-          verified: true,
-          needs_onboarding: false,
-          availability: 'available',
-          rating: 0,
-          jobs_completed: 0,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      if (uuidRegex.test(token)) {
+        // Create the user record
+        const { name, city, hourly_rate, skills } = req.body;
+        const { data: newUser, error: createError } = await supabase
+          .from('users')
+          .insert({
+            id: token,
+            email: req.body.email || `${token}@oauth.user`,
+            name: name || 'New User',
+            type: 'human',
+            account_type: 'human',
+            city: city || '',
+            hourly_rate: hourly_rate || 25,
+            skills: JSON.stringify(Array.isArray(skills) ? skills : []),
+            verified: true,
+            needs_onboarding: false,
+            availability: 'available',
+            rating: 0,
+            jobs_completed: 0,
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
 
-      if (createError) {
-        // Insert failed (likely email conflict) — the getUserByToken email fallback
-        // should have caught this, but handle it gracefully anyway
-        console.error('Failed to auto-create user:', createError);
-        return res.status(401).json({ error: 'Unauthorized - could not create user' });
+        if (createError) {
+          console.error('Failed to auto-create user:', createError);
+          return res.status(401).json({ error: 'Unauthorized - could not create user' });
+        }
+        user = newUser;
+      } else {
+        return res.status(401).json({ error: 'Unauthorized' });
       }
-      user = newUser;
-    } else {
-      return res.status(401).json({ error: 'Unauthorized' });
     }
-  }
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
+    const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
 
-  const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true, type: 'human', account_type: 'human' };
-  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+    const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true, type: 'human', account_type: 'human' };
+    if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
-  if (name) updates.name = name;
-  if (wallet_address) updates.wallet_address = wallet_address;
-  if (hourly_rate) updates.hourly_rate = hourly_rate;
-  if (bio !== undefined) updates.bio = bio;
-  // Accept both 'skills' and 'categories' for backwards compatibility
-  // Store as JSON string to match registration format
-  if (skills) updates.skills = JSON.stringify(Array.isArray(skills) ? skills : JSON.parse(skills));
-  if (categories) updates.skills = JSON.stringify(Array.isArray(categories) ? categories : JSON.parse(categories));
-  if (city) updates.city = city;
-  // Parse as floats to match registration format
-  if (latitude !== undefined) updates.latitude = latitude != null ? parseFloat(latitude) : null;
-  if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
-  if (country !== undefined) updates.country = country;
-  if (country_code !== undefined) updates.country_code = country_code;
-  if (travel_radius) {
-    updates.travel_radius = travel_radius;
-    updates.service_radius = travel_radius;
-  }
-  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
-  if (social_links !== undefined) {
-    const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
-    const cleaned = {};
-    if (typeof social_links === 'object' && social_links !== null) {
-      for (const [key, value] of Object.entries(social_links)) {
-        if (allowedPlatforms.includes(key) && typeof value === 'string' && value.trim()) {
-          cleaned[key] = value.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+    if (name) updates.name = name;
+    if (wallet_address) updates.wallet_address = wallet_address;
+    if (hourly_rate) updates.hourly_rate = hourly_rate;
+    if (bio !== undefined) updates.bio = bio;
+    // Accept both 'skills' and 'categories' for backwards compatibility
+    // Store as JSON string to match registration format
+    if (skills) {
+      const arr = Array.isArray(skills) ? skills : safeParseJsonArray(skills);
+      updates.skills = JSON.stringify(arr);
+    }
+    if (categories) {
+      const arr = Array.isArray(categories) ? categories : safeParseJsonArray(categories);
+      updates.skills = JSON.stringify(arr);
+    }
+    if (city) updates.city = city;
+    if (latitude !== undefined) updates.latitude = latitude != null ? parseFloat(latitude) : null;
+    if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
+    if (country !== undefined) updates.country = country;
+    if (country_code !== undefined) updates.country_code = country_code;
+    if (travel_radius) {
+      updates.travel_radius = travel_radius;
+      updates.service_radius = travel_radius;
+    }
+    if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
+    if (social_links !== undefined) {
+      const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
+      const cleaned = {};
+      if (typeof social_links === 'object' && social_links !== null) {
+        for (const [key, value] of Object.entries(social_links)) {
+          if (allowedPlatforms.includes(key) && typeof value === 'string' && value.trim()) {
+            cleaned[key] = value.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+          }
         }
       }
+      updates.social_links = cleaned;
     }
-    updates.social_links = cleaned;
-  }
-  if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
-  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
-  if (timezone !== undefined) updates.timezone = timezone;
-  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+    if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
+    if (timezone !== undefined) updates.timezone = timezone;
 
-  // Auto-derive timezone from coordinates when location changes but timezone not explicitly set
-  if (updates.latitude != null && updates.longitude != null && timezone === undefined) {
-    try {
-      const tzResults = findTimezone(updates.latitude, updates.longitude);
-      if (tzResults && tzResults.length > 0) {
-        updates.timezone = tzResults[0];
+    // Auto-derive timezone from coordinates when location changes but timezone not explicitly set
+    if (updates.latitude != null && updates.longitude != null && timezone === undefined) {
+      try {
+        const tzResults = findTimezone(updates.latitude, updates.longitude);
+        if (tzResults && tzResults.length > 0) {
+          updates.timezone = tzResults[0];
+        }
+      } catch (e) {
+        console.error('[Profile] Failed to derive timezone:', e.message);
       }
-    } catch (e) {
-      console.error('[Profile] Failed to derive timezone:', e.message);
     }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    // Parse JSONB fields before sending to match auth/verify response format
+    res.json({ success: true, user: { ...data, skills: safeParseJsonArray(data.skills), languages: safeParseJsonArray(data.languages) } });
+  } catch (e) {
+    console.error('[Profile Update] Error:', e);
+    res.status(500).json({ error: e.message || 'Internal server error' });
   }
-
-  const { data, error } = await supabase
-    .from('users')
-    .update(updates)
-    .eq('id', user.id)
-    .select()
-    .single();
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  res.json({ success: true, user: data });
 });
 
 // ============ TASKS ============
@@ -3885,8 +3899,8 @@ app.post('/api/mcp', async (req, res) => {
 
         res.json(humans?.map(h => ({
           ...h,
-          skills: JSON.parse(h.skills || '[]'),
-          languages: JSON.parse(h.languages || '[]')
+          skills: safeParseJsonArray(h.skills),
+          languages: safeParseJsonArray(h.languages)
         })) || []);
         break;
       }
@@ -3901,7 +3915,7 @@ app.post('/api/mcp', async (req, res) => {
         if (error) {
           return res.status(404).json({ error: 'Human not found' });
         }
-        res.json({ ...human, skills: JSON.parse(human.skills || '[]') });
+        res.json({ ...human, skills: safeParseJsonArray(human.skills) });
         break;
       }
       
@@ -4993,8 +5007,8 @@ app.get('/api/humans/directory', async (req, res) => {
 
   res.json(humans?.map(h => ({
     ...h,
-    skills: JSON.parse(h.skills || '[]'),
-    languages: JSON.parse(h.languages || '[]')
+    skills: safeParseJsonArray(h.skills),
+    languages: safeParseJsonArray(h.languages)
   })) || []);
 });
 
@@ -5037,8 +5051,8 @@ app.get('/api/humans/:id/profile', async (req, res) => {
 
   res.json({
     ...user,
-    skills: JSON.parse(user.skills || '[]'),
-    languages: JSON.parse(user.languages || '[]'),
+    skills: safeParseJsonArray(user.skills),
+    languages: safeParseJsonArray(user.languages),
     reviews: reviews || [],
     // Derived metrics
     completion_rate: completionRate,
@@ -5130,8 +5144,8 @@ app.get('/api/profile', async (req, res) => {
     avatar_url: profile.avatar_url || '',
     hourly_rate: profile.hourly_rate,
     wallet_address: profile.wallet_address,
-    skills: JSON.parse(profile.skills || '[]'),
-    languages: JSON.parse(profile.languages || '[]'),
+    skills: safeParseJsonArray(profile.skills),
+    languages: safeParseJsonArray(profile.languages),
     travel_radius: profile.travel_radius || 25,
     social_links: profile.social_links || {},
     rating: profile.rating,
