@@ -437,6 +437,22 @@ async function getUserByToken(token) {
       .eq('id', cleanToken)
       .single();
     if (data) return data;
+
+    // UUID not found in users table — resolve via Supabase Auth email fallback.
+    // This handles Google OAuth users whose users row was created with a different UUID.
+    try {
+      const { data: { user: authUser } } = await supabase.auth.admin.getUserById(cleanToken);
+      if (authUser?.email) {
+        const { data: byEmail } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', authUser.email)
+          .single();
+        if (byEmail) return byEmail;
+      }
+    } catch (e) {
+      // Auth admin API unavailable — continue to other token checks
+    }
   }
 
   // Check if it's a new-style API key (irl_sk_...)
@@ -1533,6 +1549,7 @@ app.put('/api/humans/profile', async (req, res) => {
           email: req.body.email || `${token}@oauth.user`,
           name: name || 'New User',
           type: 'human',
+          account_type: 'human',
           city: city || '',
           hourly_rate: hourly_rate || 25,
           skills: JSON.stringify(skills || []),
@@ -1547,6 +1564,8 @@ app.put('/api/humans/profile', async (req, res) => {
         .single();
 
       if (createError) {
+        // Insert failed (likely email conflict) — the getUserByToken email fallback
+        // should have caught this, but handle it gracefully anyway
         console.error('Failed to auto-create user:', createError);
         return res.status(401).json({ error: 'Unauthorized - could not create user' });
       }
