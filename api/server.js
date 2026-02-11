@@ -355,19 +355,6 @@ setInterval(() => {
  * of accepting raw UUIDs. This will require frontend changes to send the JWT
  * from supabase.auth.getSession().
  */
-/**
- * Build the correct avatar URL for a user, using the API proxy endpoint.
- * This ensures avatars always work regardless of R2 public URL configuration.
- */
-function getAvatarUrl(user, req) {
-  if (!user || !user.avatar_r2_key) return user?.avatar_url || '';
-  // Derive base URL from request headers (works in dev and production)
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
-  if (!host) return user.avatar_url || '';
-  return `${protocol}://${host}/api/avatar/${user.id}`;
-}
-
 async function getUserByToken(token) {
   if (!token || !supabase) return null;
 
@@ -842,7 +829,7 @@ app.get('/api/auth/verify', async (req, res) => {
       id: user.id, email: user.email, name: user.name, type: user.type,
       city: user.city, hourly_rate: user.hourly_rate,
       bio: user.bio || '',
-      avatar_url: getAvatarUrl(user, req),
+      avatar_url: user.avatar_url || '',
       travel_radius: user.travel_radius || 25,
       latitude: user.latitude,
       longitude: user.longitude,
@@ -2204,156 +2191,71 @@ app.post('/api/upload/proof', async (req, res) => {
   }
 });
 
-// ============ AVATAR UPLOAD ============
+// ============ AVATAR UPLOAD (Supabase Storage) ============
 app.post('/api/upload/avatar', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const getEnv = (k) => {
-    try { return require('process').env[k]; } catch { return null; }
-  };
-  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
-  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
-  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
-  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
-  const R2_PUBLIC_URL = getEnv('R2_PUBLIC_URL') || getEnv('CLOUD_PUBLIC_URL');
-
-  // Derive API base URL from the incoming request (works in both dev and production)
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
-  const API_BASE = host ? `${protocol}://${host}` : (getEnv('API_URL') || `http://localhost:${PORT}`);
-
-  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
-    // Demo mode — no R2 creds, use API proxy URL so avatar still works via /api/avatar/:id
-    const { file, filename } = req.body;
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = filename?.split('.').pop() || 'jpg';
-    const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
-    console.log(`[R2 DEMO] Would upload avatar to R2 key: ${uniqueFilename}`);
-
-    // Use API proxy URL as the avatar URL (always accessible)
-    const avatarUrl = `${API_BASE}/api/avatar/${user.id}`;
-    await supabase.from('users').update({ avatar_url: avatarUrl, avatar_r2_key: uniqueFilename, updated_at: new Date().toISOString() }).eq('id', user.id);
-
-    return res.json({ url: avatarUrl, filename: uniqueFilename, success: true, demo: true });
-  }
-
   try {
     const { file, filename, mimeType } = req.body;
     if (!file) return res.status(400).json({ error: 'No file provided' });
 
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = filename?.split('.').pop() || 'jpg';
-    const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
-
-    let fileData = file;
+    // Decode base64 file data
+    let fileBuffer;
     if (file.startsWith('data:')) {
-      fileData = Buffer.from(file.split(',')[1], 'base64');
-    } else if (typeof file === 'string' && !file.startsWith('/') && !file.startsWith('http')) {
-      fileData = Buffer.from(file, 'base64');
+      fileBuffer = Buffer.from(file.split(',')[1], 'base64');
+    } else {
+      fileBuffer = Buffer.from(file, 'base64');
     }
 
-    let uploadSuccess = false;
-    try {
-      const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-      const s3Client = new S3Client({
-        region: 'auto',
-        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-        credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+    // Generate unique filename
+    const timestamp = Date.now();
+    const ext = filename?.split('.').pop() || 'jpg';
+    const storagePath = `${user.id}/${timestamp}.${ext}`;
+
+    // Delete old avatar if exists
+    const { data: existingFiles } = await supabase.storage.from('avatars').list(user.id);
+    if (existingFiles && existingFiles.length > 0) {
+      const filesToDelete = existingFiles.map(f => `${user.id}/${f.name}`);
+      await supabase.storage.from('avatars').remove(filesToDelete);
+    }
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(storagePath, fileBuffer, {
+        contentType: mimeType || 'image/jpeg',
+        upsert: true
       });
 
-      await s3Client.send(new PutObjectCommand({
-        Bucket: R2_BUCKET,
-        Key: uniqueFilename,
-        Body: fileData,
-        ContentType: mimeType || 'image/jpeg',
-      }));
-      uploadSuccess = true;
-    } catch (s3Error) {
-      console.error('R2 avatar upload error:', s3Error.message);
+    if (uploadError) {
+      console.error('[Avatar Upload] Supabase Storage error:', uploadError.message);
+      return res.status(500).json({ error: 'Failed to upload: ' + uploadError.message });
     }
 
-    // Use R2 public URL if configured, otherwise use API proxy endpoint (always works)
-    const avatarUrl = R2_PUBLIC_URL
-      ? `${R2_PUBLIC_URL}/${uniqueFilename}`
-      : `${API_BASE}/api/avatar/${user.id}`;
+    // Get public URL
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath);
+    const publicUrl = urlData.publicUrl;
 
-    // Save both the display URL and the R2 key (for proxy serving)
+    console.log(`[Avatar Upload] user=${user.id}, path=${storagePath}, url=${publicUrl}`);
+
+    // Update user's avatar_url in the database
     const { error: updateError } = await supabase.from('users').update({
-      avatar_url: avatarUrl,
-      avatar_r2_key: uniqueFilename,
+      avatar_url: publicUrl,
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
 
-    console.log(`[Avatar Upload] user=${user.id}, r2Key=${uniqueFilename}, url=${avatarUrl}, r2Upload=${uploadSuccess}, dbError=${updateError?.message || 'none'}, API_BASE=${API_BASE}`);
+    if (updateError) {
+      console.error('[Avatar Upload] DB update error:', updateError.message);
+    }
 
-    res.json({ url: avatarUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
+    res.json({ url: publicUrl, filename: storagePath, success: true });
   } catch (e) {
     console.error('Avatar upload error:', e.message);
     res.status(500).json({ error: e.message });
   }
-});
-
-// ============ AVATAR SERVE (proxy from R2) ============
-app.get('/api/avatar/:userId', async (req, res) => {
-  if (!supabase) return res.status(404).send('Not found');
-
-  try {
-    const { data: user, error: dbError } = await supabase.from('users').select('avatar_url, avatar_r2_key, name').eq('id', req.params.userId).single();
-    console.log(`[Avatar Serve] userId=${req.params.userId}, hasUser=${!!user}, r2Key=${user?.avatar_r2_key || 'none'}, avatarUrl=${user?.avatar_url || 'none'}, dbError=${dbError?.message || 'none'}`);
-    if (!user) return res.status(404).send('No avatar');
-
-    // If avatar_r2_key exists, serve directly from R2
-    if (user.avatar_r2_key) {
-      const getEnv = (k) => {
-        try { return require('process').env[k]; } catch { return null; }
-      };
-      const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
-      const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
-      const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
-      const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
-
-      if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
-        return res.status(404).send('Storage not configured');
-      }
-
-      const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
-      const s3Client = new S3Client({
-        region: 'auto',
-        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-        credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
-      });
-
-      console.log(`[Avatar Serve] Fetching from R2: bucket=${R2_BUCKET}, key=${user.avatar_r2_key}`);
-      const result = await s3Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: user.avatar_r2_key }));
-      console.log(`[Avatar Serve] R2 success: contentType=${result.ContentType}, contentLength=${result.ContentLength}`);
-
-      res.set('Content-Type', result.ContentType || 'image/jpeg');
-      res.set('Cache-Control', 'public, max-age=3600');
-      return result.Body.pipe(res);
-    }
-
-    // Fallback: if avatar_url is an external URL (e.g., Google profile pic), redirect to it
-    if (user.avatar_url && user.avatar_url.startsWith('http') && !user.avatar_url.includes('/api/avatar/')) {
-      return res.redirect(user.avatar_url);
-    }
-
-    return res.status(404).send('No avatar');
-  } catch (e) {
-    console.error('Avatar serve error:', e.message);
-    res.status(404).send('Not found');
-  }
-});
-
-// ============ AVATAR DEBUG (temporary) ============
-app.get('/api/avatar-debug/:userId', async (req, res) => {
-  if (!supabase) return res.json({ error: 'No DB' });
-  const { data, error } = await supabase.from('users').select('id, name, avatar_url, avatar_r2_key').eq('id', req.params.userId).single();
-  res.json({ user: data, dbError: error?.message || null });
 });
 
 // ============ FEEDBACK ============

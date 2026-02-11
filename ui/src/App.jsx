@@ -2825,14 +2825,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                             })
                             if (res.ok) {
                               const data = await res.json()
-                              // Use the API avatar proxy URL (always works)
-                              const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
-                              const updatedUser = { ...user, avatar_url: avatarProxyUrl }
+                              // Use the Supabase Storage public URL directly
+                              const updatedUser = { ...user, avatar_url: data.url }
                               setUser(updatedUser)
                               localStorage.setItem('user', JSON.stringify(updatedUser))
                               toast.success('Profile photo updated!')
                             } else {
-                              toast.error('Failed to upload photo')
+                              const errData = await res.json().catch(() => ({}))
+                              toast.error(errData.error || 'Failed to upload photo')
                             }
                           } catch {
                             toast.error('Error uploading photo')
