@@ -1435,8 +1435,7 @@ app.get('/api/humans', async (req, res) => {
   let query = supabase
     .from('users')
     .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude, avatar_url, headline, languages, timezone')
-    .eq('type', 'human')
-    .eq('verified', true);
+    .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
@@ -4932,16 +4931,27 @@ app.get('/api/tasks/available', async (req, res) => {
 // ============ HUMANS DIRECTORY ============
 app.get('/api/humans/directory', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { category, city, min_rate, max_rate, limit = 50 } = req.query;
-  
+
+  const { category, city, min_rate, max_rate, limit } = req.query;
+
+  // Check if user is authenticated
+  const user = await getUserByToken(req.headers.authorization);
+
+  // Public (unauthenticated) requests are capped at 500 humans
+  const PUBLIC_LIMIT = 500;
+  let effectiveLimit;
+  if (user) {
+    effectiveLimit = limit ? parseInt(limit) : 1000;
+  } else {
+    effectiveLimit = limit ? Math.min(parseInt(limit), PUBLIC_LIMIT) : PUBLIC_LIMIT;
+  }
+
   let query = supabase
     .from('users')
     .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
     .eq('type', 'human')
-    .eq('verified', true)
     .order('rating', { ascending: false })
-    .limit(parseInt(limit));
+    .limit(effectiveLimit);
 
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);

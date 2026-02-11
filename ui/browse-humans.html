@@ -538,7 +538,7 @@
       grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 48px; color: var(--text-tertiary);">Loading...</div>';
 
       try {
-        const res = await fetch(`${API_URL}/humans/directory`);
+        const res = await fetch(`${API_URL}/humans/directory?limit=500`);
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
 
