@@ -39,6 +39,28 @@ export default function MyTaskCard({
   const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
   const categoryLabel = task.category?.replace('-', ' ') || 'General';
 
+  // Deadline urgency
+  const getUrgencyClass = () => {
+    if (!task.deadline) return '';
+    const daysLeft = Math.ceil((new Date(task.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+    if (daysLeft < 0) return 'mytasks-card--overdue';
+    if (daysLeft <= 1) return 'mytasks-card--urgent';
+    if (daysLeft <= 3) return 'mytasks-card--soon';
+    return '';
+  };
+
+  const getDaysLeft = () => {
+    if (!task.deadline) return null;
+    const daysLeft = Math.ceil((new Date(task.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+    if (daysLeft < 0) return 'Overdue';
+    if (daysLeft === 0) return 'Due today';
+    if (daysLeft === 1) return '1 day left';
+    return `${daysLeft} days left`;
+  };
+
+  const urgencyClass = getUrgencyClass();
+  const daysLeftLabel = getDaysLeft();
+
   const handleClick = () => {
     if (onClick) onClick(task);
   };
@@ -51,7 +73,7 @@ export default function MyTaskCard({
   // Compact variant for completed/paid tasks
   if (variant === 'compact') {
     return (
-      <div className="mytasks-card mytasks-card--compact" onClick={handleClick}>
+      <div className={`mytasks-card mytasks-card--compact ${urgencyClass}`} onClick={handleClick}>
         <div className="mytasks-card__row">
           <div className="mytasks-card__row-left">
             <span className={`mytasks-status ${status.className}`}>{status.label}</span>
@@ -71,7 +93,7 @@ export default function MyTaskCard({
 
   // Full variant for active and review
   return (
-    <div className="mytasks-card" onClick={handleClick}>
+    <div className={`mytasks-card ${urgencyClass}`} onClick={handleClick}>
       <div className="mytasks-card__header">
         <div>
           <span className={`mytasks-status ${status.className}`}>{status.label}</span>
@@ -89,6 +111,15 @@ export default function MyTaskCard({
         <span className="mytasks-card__meta-item">📍 {task.city || 'Remote'}</span>
         <span className="mytasks-card__meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
         {task.agent_name && <span className="mytasks-card__meta-item">🤖 {task.agent_name}</span>}
+        {daysLeftLabel && (
+          <span className={`mytasks-card__meta-item mytasks-card__deadline ${urgencyClass}`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: 'inline', verticalAlign: '-2px' }}>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            {' '}{daysLeftLabel}
+          </span>
+        )}
       </div>
 
       <div className="mytasks-card__footer">

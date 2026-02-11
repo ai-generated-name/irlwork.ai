@@ -199,7 +199,7 @@ const CityAutocomplete = ({
           {results.map((city, index) => (
             <button
               key={`${city.name}-${city.countryCode}-${index}`}
-              onClick={() => handleSelect(city)}
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(city); }}
               className={`city-autocomplete-v4-item ${index === selectedIndex ? 'selected' : ''}`}
             >
               <div>

@@ -16,9 +16,17 @@ export default function AgentProfileCard({ agent }) {
     <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 mb-4 shadow-sm">
       {/* Header with Avatar and Name */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="w-16 h-16 bg-[rgba(15,76,92,0.1)] rounded-full flex items-center justify-center text-2xl font-bold text-[#0F4C5C]">
-          {agent.name ? agent.name[0].toUpperCase() : 'A'}
-        </div>
+        {agent.avatar_url ? (
+          <img
+            src={agent.avatar_url}
+            alt={agent.name || 'Agent'}
+            className="w-16 h-16 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-16 h-16 bg-[rgba(15,76,92,0.1)] rounded-full flex items-center justify-center text-2xl font-bold text-[#0F4C5C]">
+            {agent.name ? agent.name[0].toUpperCase() : 'A'}
+          </div>
+        )}
         <div>
           <h3 className="font-bold text-[#1A1A1A] text-lg">{agent.name || 'Agent'}</h3>
           <p className="text-[#525252] text-sm">{agent.email || 'AI Agent'}</p>
@@ -34,7 +42,11 @@ export default function AgentProfileCard({ agent }) {
             <span>Rating</span>
           </span>
           <span className="font-bold text-[#1A1A1A]">
-            {agent.rating ? `${agent.rating.toFixed(1)} / 5.0` : 'No ratings yet'}
+            {agent.rating ? `${agent.rating.toFixed(1)} / 5.0` : (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#D97706]">
+                New
+              </span>
+            )}
           </span>
         </div>
 

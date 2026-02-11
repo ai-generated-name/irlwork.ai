@@ -5,7 +5,6 @@ import {
   Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight,
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
-import '../landing-v4.css'
 
 // Animated Counter Component
 function AnimatedCounter({ end, duration = 2000, suffix = '' }) {

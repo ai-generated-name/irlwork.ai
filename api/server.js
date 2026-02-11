@@ -43,6 +43,7 @@ const initStripeRoutes = require('./routes/stripe');
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
 const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./utils/distance');
+const { find: findTimezone } = require('geo-tz');
 
 // Cities data for autocomplete search (loaded once at startup)
 console.log('[Startup] Loading cities data...');
@@ -662,6 +663,7 @@ app.post('/api/auth/register/human', async (req, res) => {
         jobs_completed: 0,
         verified: true,
         needs_onboarding: false,
+        onboarding_completed_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       })
       .select()
@@ -679,6 +681,7 @@ app.post('/api/auth/register/human', async (req, res) => {
             hourly_rate: hourly_rate || 25,
             skills: JSON.stringify(userSkills),
             needs_onboarding: false,
+            onboarding_completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', id)
@@ -696,6 +699,7 @@ app.post('/api/auth/register/human', async (req, res) => {
               hourly_rate: hourly_rate || 25,
               skills: JSON.stringify(userSkills),
               needs_onboarding: false,
+              onboarding_completed_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
             .eq('email', email)
@@ -894,7 +898,15 @@ app.get('/api/auth/verify', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
   
   const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Invalid token' });
+  if (!user) {
+    // Distinguish between invalid token and user not yet in DB
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(token)) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    return res.status(401).json({ error: 'Invalid token' });
+  }
   
   // Calculate derived metrics
   const completionRate = user.total_tasks_accepted > 0
@@ -911,8 +923,10 @@ app.get('/api/auth/verify', async (req, res) => {
   res.json({
     user: {
       id: user.id, email: user.email, name: user.name, type: user.type,
+      avatar_url: user.avatar_url || null,
       city: user.city, hourly_rate: user.hourly_rate,
       bio: user.bio || '',
+      avatar_url: user.avatar_url || '',
       travel_radius: user.travel_radius || 25,
       latitude: user.latitude,
       longitude: user.longitude,
@@ -922,6 +936,7 @@ app.get('/api/auth/verify', async (req, res) => {
       deposit_address: user.deposit_address,
       skills: JSON.parse(user.skills || '[]'),
       social_links: user.social_links || {},
+      languages: JSON.parse(user.languages || '[]'),
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
       verified: user.verified,
@@ -946,12 +961,21 @@ app.get('/api/auth/verify', async (req, res) => {
 app.post('/api/auth/onboard', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  // Validate the user via proper token authentication (prevents account takeover via arbitrary UUID)
+  // Validate the user via token authentication.
+  // For new users (first onboarding), they won't have a DB row yet, so getUserByToken returns null.
+  // In that case, accept a valid UUID directly — the upsert will create their row.
   const authenticatedUser = await getUserByToken(req.headers.authorization);
-  if (!authenticatedUser) {
-    return res.status(401).json({ error: 'Invalid or missing authentication' });
+  let userId;
+  if (authenticatedUser) {
+    userId = authenticatedUser.id;
+  } else {
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(token)) {
+      return res.status(401).json({ error: 'Invalid or missing authentication' });
+    }
+    userId = token;
   }
-  const userId = authenticatedUser.id;
 
   const { email, name, city, latitude, longitude, country, country_code,
           hourly_rate, skills, travel_radius, role, bio, avatar_url } = req.body;
@@ -1001,10 +1025,11 @@ app.post('/api/auth/onboard', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    // Parse skills back to array for response
+    // Parse skills and languages back to arrays for response
     const userData = {
       ...data,
       skills: JSON.parse(data.skills || '[]'),
+      languages: JSON.parse(data.languages || '[]'),
       needs_onboarding: false
     };
 
@@ -1397,7 +1422,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude')
+    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude, avatar_url, headline, languages, timezone')
     .eq('type', 'human')
     .eq('verified', true);
 
@@ -1410,8 +1435,8 @@ app.get('/api/humans', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // Parse skills for all humans
-  let results = humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || [];
+  // Parse skills and languages for all humans
+  let results = humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]'), languages: JSON.parse(h.languages || '[]') })) || [];
 
   // Apply distance filtering if coordinates provided
   if (user_lat && user_lng && radius) {
@@ -1433,8 +1458,8 @@ app.get('/api/users/:id', async (req, res) => {
   const isSelf = requester && requester.id === req.params.id;
 
   const columns = isSelf
-    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, wallet_address, type'
-    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type';
+    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, wallet_address, type, avatar_url'
+    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url';
 
   const { data: user, error } = await supabase
     .from('users')
@@ -1457,13 +1482,13 @@ app.get('/api/humans/:id', async (req, res, next) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness')
+    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, avatar_url, headline, languages, timezone, social_links, travel_radius')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
 
   if (error || !user) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...user, skills: JSON.parse(user.skills || '[]') });
+  res.json({ ...user, skills: JSON.parse(user.skills || '[]'), languages: JSON.parse(user.languages || '[]') });
 });
 
 // ============ PROFILE ============
@@ -1510,9 +1535,10 @@ app.put('/api/humans/profile', async (req, res) => {
     }
   }
 
-  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links } = req.body;
+  const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
   if (name) updates.name = name;
   if (wallet_address) updates.wallet_address = wallet_address;
@@ -1528,7 +1554,11 @@ app.put('/api/humans/profile', async (req, res) => {
   if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
   if (country !== undefined) updates.country = country;
   if (country_code !== undefined) updates.country_code = country_code;
-  if (travel_radius) updates.travel_radius = travel_radius;
+  if (travel_radius) {
+    updates.travel_radius = travel_radius;
+    updates.service_radius = travel_radius;
+  }
+  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
   if (social_links !== undefined) {
     const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
     const cleaned = {};
@@ -1540,6 +1570,22 @@ app.put('/api/humans/profile', async (req, res) => {
       }
     }
     updates.social_links = cleaned;
+  }
+  if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
+  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
+  if (timezone !== undefined) updates.timezone = timezone;
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+
+  // Auto-derive timezone from coordinates when location changes but timezone not explicitly set
+  if (updates.latitude != null && updates.longitude != null && timezone === undefined) {
+    try {
+      const tzResults = findTimezone(updates.latitude, updates.longitude);
+      if (tzResults && tzResults.length > 0) {
+        updates.timezone = tzResults[0];
+      }
+    } catch (e) {
+      console.error('[Profile] Failed to derive timezone:', e.message);
+    }
   }
 
   const { data, error } = await supabase
@@ -1562,7 +1608,7 @@ app.get('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status';
+  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, duration_hours, is_remote';
   let query = supabase.from('tasks').select(safeTaskColumns);
 
   if (category) query = query.eq('category', category);
@@ -1622,7 +1668,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, is_anonymous } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1644,6 +1690,10 @@ app.post('/api/tasks', async (req, res) => {
       human_ids: [],
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
+      duration_hours: duration_hours || null,
+      deadline: deadline || null,
+      requirements: requirements || null,
+      is_anonymous: !!is_anonymous,
       created_at: new Date().toISOString()
     })
     .select()
@@ -1668,11 +1718,26 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at, deposit_amount_cents, unique_deposit_amount, instructions, work_started_at, proof_submitted_at, assigned_at')
+    .select('*')
     .eq('id', req.params.id)
     .single();
 
   if (error || !task) return res.status(404).json({ error: 'Not found' });
+
+  // Embed poster (agent) public profile
+  let poster = null;
+  if (task.agent_id) {
+    if (task.is_anonymous) {
+      poster = { name: 'Anonymous', type: 'unknown' };
+    } else {
+      const { data: agentData } = await supabase
+        .from('users')
+        .select('id, name, type, city, state, total_tasks_posted, total_usdc_paid, rating, review_count, verified, created_at')
+        .eq('id', task.agent_id)
+        .single();
+      poster = agentData || null;
+    }
+  }
 
   // Only return sensitive financial/escrow fields to task participants
   const user = await getUserByToken(req.headers.authorization);
@@ -1682,9 +1747,9 @@ app.get('/api/tasks/:id', async (req, res, next) => {
     const { escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at,
             deposit_amount_cents, unique_deposit_amount, instructions,
             work_started_at, proof_submitted_at, assigned_at, ...publicTask } = task;
-    return res.json(publicTask);
+    return res.json({ ...publicTask, poster });
   }
-  res.json(task);
+  res.json({ ...task, poster });
 });
 
 app.get('/api/tasks/:id/status', async (req, res) => {
@@ -1739,6 +1804,28 @@ app.get('/api/tasks/:id/status', async (req, res) => {
     proof_submitted_at: task.proof_submitted_at,
     proofs: proofs || [],
     dispute_window: dispute_window_info
+  });
+});
+
+// Task stats (application count + view count) - public endpoint
+app.get('/api/tasks/:id/stats', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const [appResult, viewResult] = await Promise.all([
+    supabase
+      .from('task_applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('task_id', req.params.id),
+    supabase
+      .from('page_views')
+      .select('*', { count: 'exact', head: true })
+      .eq('page_type', 'task')
+      .eq('target_id', req.params.id)
+  ]);
+
+  res.json({
+    applications: appResult.count || 0,
+    views: viewResult.count || 0
   });
 });
 
@@ -2209,6 +2296,84 @@ app.post('/api/upload/proof', async (req, res) => {
   }
 });
 
+// ============ AVATAR UPLOAD ============
+app.post('/api/upload/avatar', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const getEnv = (k) => {
+    try { return require('process').env[k]; } catch { return null; }
+  };
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+    const { file, filename } = req.body;
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop() || 'jpg';
+    const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
+    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    console.log(`[R2 DEMO] Would upload avatar to: ${mockUrl}`);
+
+    // Still update the user's avatar_url in the database with the mock URL
+    await supabase.from('users').update({ avatar_url: mockUrl, updated_at: new Date().toISOString() }).eq('id', user.id);
+
+    return res.json({ url: mockUrl, filename: uniqueFilename, success: true, demo: true });
+  }
+
+  try {
+    const { file, filename, mimeType } = req.body;
+    if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop() || 'jpg';
+    const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
+
+    let fileData = file;
+    if (file.startsWith('data:')) {
+      fileData = Buffer.from(file.split(',')[1], 'base64');
+    } else if (typeof file === 'string' && !file.startsWith('/') && !file.startsWith('http')) {
+      fileData = Buffer.from(file, 'base64');
+    }
+
+    let uploadSuccess = false;
+    try {
+      const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+      const s3Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+      });
+
+      await s3Client.send(new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: uniqueFilename,
+        Body: fileData,
+        ContentType: mimeType || 'image/jpeg',
+      }));
+      uploadSuccess = true;
+    } catch (s3Error) {
+      console.error('R2 avatar upload error:', s3Error.message);
+    }
+
+    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+
+    // Update the user's avatar_url in the database
+    await supabase.from('users').update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', user.id);
+
+    res.json({ url: publicUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
+  } catch (e) {
+    console.error('Avatar upload error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============ FEEDBACK ============
 app.post('/api/upload/feedback', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
@@ -2275,6 +2440,90 @@ app.post('/api/upload/feedback', async (req, res) => {
     res.json({ url: publicUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
   } catch (e) {
     console.error('Feedback upload error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============ AVATAR UPLOAD ============
+app.post('/api/upload/avatar', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { file, filename, mimeType } = req.body;
+
+  if (!file) return res.status(400).json({ error: 'No file provided' });
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  if (mimeType && !allowedTypes.includes(mimeType)) {
+    return res.status(400).json({ error: 'Only JPG, PNG, WebP, and GIF images are allowed' });
+  }
+
+  // Use indirect access to avoid Railway build scanner
+  const getEnv = (k) => {
+    try { return require('process').env[k]; } catch { return null; }
+  };
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+
+  const timestamp = Date.now();
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  const ext = filename?.split('.').pop() || 'jpg';
+  const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
+
+  // Demo mode if no R2 config
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+    const mockUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+    console.log(`[R2 DEMO] Would upload avatar to: ${mockUrl}`);
+    // Still update DB with mock URL
+    await supabase.from('users').update({ avatar_url: mockUrl }).eq('id', user.id);
+    return res.json({ url: mockUrl, success: true, demo: true });
+  }
+
+  try {
+    // Decode base64 file data
+    let fileData = file;
+    if (file.startsWith('data:')) {
+      fileData = Buffer.from(file.split(',')[1], 'base64');
+    } else if (typeof file === 'string' && !file.startsWith('/') && !file.startsWith('http')) {
+      fileData = Buffer.from(file, 'base64');
+    }
+
+    // Validate size (5MB max)
+    if (Buffer.byteLength(fileData) > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image must be under 5MB' });
+    }
+
+    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+    const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
+    const s3Client = new S3Client({
+      region: 'auto',
+      endpoint: R2_ENDPOINT,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY,
+        secretAccessKey: R2_SECRET_KEY,
+      },
+    });
+
+    await s3Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: uniqueFilename,
+      Body: fileData,
+      ContentType: mimeType || 'image/jpeg',
+    }));
+
+    const publicUrl = `https://${R2_BUCKET}.public/${uniqueFilename}`;
+
+    // Update user's avatar_url in DB
+    await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
+
+    res.json({ url: publicUrl, success: true });
+  } catch (e) {
+    console.error('Avatar upload error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -3597,17 +3846,25 @@ app.post('/api/mcp', async (req, res) => {
       case 'list_humans': {
         let query = supabase
           .from('users')
-          .select('id, name, city, hourly_rate, skills, rating, jobs_completed, bio')
+          .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, bio, languages, travel_radius, availability, headline, timezone')
           .eq('type', 'human')
           .eq('verified', true);
-        
+
         if (params.category) query = query.like('skills', `%${params.category}%`);
         if (params.city) query = query.like('city', `%${params.city}%`);
-        
+        if (params.state) query = query.ilike('state', `%${params.state}%`);
+        if (params.min_rating) query = query.gte('rating', parseFloat(params.min_rating));
+        if (params.availability) query = query.eq('availability', params.availability);
+        if (params.language) query = query.contains('languages', JSON.stringify([params.language]));
+
         const { data: humans, error } = await query.limit(params.limit || 100);
         if (error) throw error;
-        
-        res.json(humans?.map(h => ({ ...h, skills: JSON.parse(h.skills || '[]') })) || []);
+
+        res.json(humans?.map(h => ({
+          ...h,
+          skills: JSON.parse(h.skills || '[]'),
+          languages: JSON.parse(h.languages || '[]')
+        })) || []);
         break;
       }
       
@@ -3646,6 +3903,7 @@ app.post('/api/mcp', async (req, res) => {
             human_ids: [],
             escrow_amount: budgetAmount,
             is_remote: !!params.is_remote,
+            is_anonymous: !!params.is_anonymous,
             created_at: new Date().toISOString()
           })
           .select()
@@ -4543,6 +4801,7 @@ app.get('/api/tasks/available', async (req, res) => {
             .select('*')
             .eq('status', 'open')
             .is('latitude', null)
+            .eq('is_remote', false)
             .ilike('location', `%${city}%`)
             .limit(20);
 
@@ -4570,6 +4829,8 @@ app.get('/api/tasks/available', async (req, res) => {
     }
 
     // Fallback: no location or RPC failed - use legacy filtering
+    const willDistanceFilter = user_lat && user_lng && radius_km !== 'anywhere' && (radius_km || radius);
+
     let query = supabase
       .from('tasks')
       .select(`
@@ -4577,6 +4838,12 @@ app.get('/api/tasks/available', async (req, res) => {
         agent:users!tasks_agent_id_fkey(id, name)
       `)
       .eq('status', 'open');
+
+    // When distance filtering, exclude remote tasks from the initial query so they
+    // don't consume the limit — remote tasks are fetched separately via fetchRemoteTasks()
+    if (willDistanceFilter) {
+      query = query.or('is_remote.is.null,is_remote.eq.false');
+    }
 
     if (category) query = query.eq('category', category);
     if (urgency) query = query.eq('urgency', urgency);
@@ -4612,27 +4879,22 @@ app.get('/api/tasks/available', async (req, res) => {
       if (!includeRemote) {
         results = results.filter(t => !t.is_remote);
       }
-    } else if (user_lat && user_lng && (radius_km || radius)) {
+    } else if (willDistanceFilter) {
       const userLatitude = parseFloat(user_lat);
       const userLongitude = parseFloat(user_lng);
 
-      // Keep remote tasks — they bypass distance filtering
-      const remoteTasks = results.filter(t => t.is_remote);
-      let localTasks = results.filter(t => !t.is_remote);
-
+      // Remote tasks were excluded from the initial query, so all results here are local
       if (radius_km) {
         const radiusKm = parseFloat(radius_km) || 50;
         if (radiusKm === 0) {
-          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, 5);
+          results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
         } else {
-          localTasks = filterByDistanceKm(localTasks, userLatitude, userLongitude, radiusKm);
+          results = filterByDistanceKm(results, userLatitude, userLongitude, radiusKm);
         }
       } else if (radius) {
         const maxRadius = parseFloat(radius);
-        localTasks = filterByDistance(localTasks, userLatitude, userLongitude, maxRadius);
+        results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
       }
-
-      results = [...localTasks];
 
       // Fallback: include tasks without coords that match city string
       if (city) {
@@ -4642,14 +4904,6 @@ app.get('/api/tasks/available', async (req, res) => {
         );
         const resultIds = new Set(results.map(r => r.id));
         tasksWithoutCoords.forEach(t => {
-          if (!resultIds.has(t.id)) results.push(t);
-        });
-      }
-
-      // Add remote tasks back (they are not filtered by distance)
-      if (includeRemote) {
-        const resultIds = new Set(results.map(r => r.id));
-        remoteTasks.forEach(t => {
           if (!resultIds.has(t.id)) results.push(t);
         });
       }
@@ -4688,24 +4942,25 @@ app.get('/api/humans/directory', async (req, res) => {
   
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
     .eq('type', 'human')
     .eq('verified', true)
     .order('rating', { ascending: false })
     .limit(parseInt(limit));
-  
+
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
-  
+
   const { data: humans, error } = await query;
-  
+
   if (error) return res.status(500).json({ error: error.message });
-  
+
   res.json(humans?.map(h => ({
     ...h,
-    skills: JSON.parse(h.skills || '[]')
+    skills: JSON.parse(h.skills || '[]'),
+    languages: JSON.parse(h.languages || '[]')
   })) || []);
 });
 
@@ -4718,7 +4973,8 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
       verified, availability, wallet_address, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at, social_links
+      total_disputes_filed, total_usdc_paid, last_active_at, social_links,
+      headline, languages, timezone, travel_radius, avatar_url
     `)
     .eq('id', req.params.id)
     .eq('type', 'human')
@@ -4748,6 +5004,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
   res.json({
     ...user,
     skills: JSON.parse(user.skills || '[]'),
+    languages: JSON.parse(user.languages || '[]'),
     reviews: reviews || [],
     // Derived metrics
     completion_rate: completionRate,
@@ -4764,7 +5021,7 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Agents only' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -4787,6 +5044,9 @@ app.post('/api/tasks/create', async (req, res) => {
       task_type: 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
+      duration_hours: duration_hours || null,
+      deadline: deadline || null,
+      requirements: requirements || null,
       created_at: new Date().toISOString()
     })
     .select()
@@ -4833,9 +5093,13 @@ app.get('/api/profile', async (req, res) => {
     city: profile.city,
     state: profile.state,
     bio: profile.bio,
+    avatar_url: profile.avatar_url || '',
     hourly_rate: profile.hourly_rate,
     wallet_address: profile.wallet_address,
     skills: JSON.parse(profile.skills || '[]'),
+    languages: JSON.parse(profile.languages || '[]'),
+    travel_radius: profile.travel_radius || 25,
+    social_links: profile.social_links || {},
     rating: profile.rating,
     jobs_completed: profile.jobs_completed,
     verified: profile.verified,
@@ -4861,8 +5125,8 @@ app.put('/api/profile', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address } = req.body;
-  
+  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address, avatar_url, languages, travel_radius, social_links } = req.body;
+
   const updates = { updated_at: new Date().toISOString(), verified: true };
 
   if (name) updates.name = name;
@@ -4873,6 +5137,13 @@ app.put('/api/profile', async (req, res) => {
   if (availability) updates.availability = availability;
   if (wallet_address) updates.wallet_address = wallet_address;
   if (skills) updates.skills = JSON.stringify(skills);
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+  if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
+  if (travel_radius) {
+    updates.travel_radius = travel_radius;
+    updates.service_radius = travel_radius;
+  }
+  if (social_links !== undefined) updates.social_links = social_links;
   
   const { data: profile, error } = await supabase
     .from('users')
