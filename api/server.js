@@ -4557,10 +4557,11 @@ app.post('/api/messages', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // Update conversation's updated_at
+  // Update conversation's updated_at and last_message preview
+  const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
   await supabase
     .from('conversations')
-    .update({ updated_at: new Date().toISOString() })
+    .update({ updated_at: new Date().toISOString(), last_message: preview })
     .eq('id', conversation_id);
 
   // Notify the OTHER party about the new message
@@ -4570,7 +4571,6 @@ app.post('/api/messages', async (req, res) => {
 
   if (otherPartyId) {
     const taskTitle = conversation.tasks?.title || 'a task';
-    const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
     await createNotification(
       otherPartyId,
       'new_message',

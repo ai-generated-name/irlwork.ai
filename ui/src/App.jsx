@@ -2050,15 +2050,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const sendMessage = async (e) => {
     e.preventDefault()
     if (!newMessage.trim() || !selectedConversation) return
+    const msgContent = newMessage
+    setNewMessage('') // Clear immediately for responsiveness
     try {
       await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.id },
-        body: JSON.stringify({ conversation_id: selectedConversation, content: newMessage })
+        body: JSON.stringify({ conversation_id: selectedConversation, content: msgContent })
       })
-      setNewMessage('')
       fetchMessages(selectedConversation)
-    } catch (e) {}
+      // Update conversation list to show new last_message preview
+      fetchConversations()
+    } catch (e) {
+      setNewMessage(msgContent) // Restore on error
+    }
   }
 
   const acceptTask = async (taskId) => {
@@ -3720,7 +3725,31 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         )}
 
         {/* Messages Tab */}
-        {activeTab === 'messages' && (
+        {activeTab === 'messages' && (() => {
+          // Helper: resolve the "other" party in a conversation
+          const getOtherParty = (c) => {
+            if (!c || !user) return { name: 'Unknown', avatar_url: null }
+            // If current user is the human, the other party is the agent (and vice versa)
+            if (c.human_id === user.id) return c.agent || { name: 'Unknown Agent', avatar_url: null }
+            return c.human || { name: 'Unknown Human', avatar_url: null }
+          }
+          // Helper: relative time
+          const timeAgo = (dateStr) => {
+            if (!dateStr) return ''
+            const diff = Date.now() - new Date(dateStr).getTime()
+            const mins = Math.floor(diff / 60000)
+            if (mins < 1) return 'now'
+            if (mins < 60) return `${mins}m`
+            const hrs = Math.floor(mins / 60)
+            if (hrs < 24) return `${hrs}h`
+            const days = Math.floor(hrs / 24)
+            if (days < 7) return `${days}d`
+            return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          }
+          const activeConv = conversations.find(c => c.id === selectedConversation)
+          const activeOther = activeConv ? getOtherParty(activeConv) : null
+
+          return (
           <div>
             <h1 className="dashboard-v4-page-title">Messages</h1>
 
@@ -3728,49 +3757,101 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               {/* Conversations List */}
               <div className={`dashboard-v4-conversations ${selectedConversation ? 'hidden md:block' : 'block'}`}>
                 {conversations.length === 0 ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>No conversations yet</div>
+                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
+                    <p style={{ fontWeight: 500, marginBottom: 4 }}>No conversations yet</p>
+                    <p style={{ fontSize: 13 }}>Messages will appear here when you communicate about a task</p>
+                  </div>
                 ) : (
-                  conversations.map(c => (
+                  conversations.map(c => {
+                    const other = getOtherParty(c)
+                    return (
                     <div
                       key={c.id}
                       className={`dashboard-v4-conversation-item ${selectedConversation === c.id ? 'active' : ''}`}
                       onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
                     >
-                      <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                        {c.other_user?.name?.charAt(0) || '?'}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.otherUser?.name || 'Unknown'}</p>
-                        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last_message || 'No messages'}</p>
-                      </div>
-                      {c.unread > 0 && (
-                        <span className="dashboard-v4-nav-badge">{c.unread}</span>
+                      {other.avatar_url ? (
+                        <img src={other.avatar_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 15, flexShrink: 0 }}>
+                          {other.name?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
                       )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <p style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, margin: 0 }}>{other.name}</p>
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{timeAgo(c.updated_at)}</span>
+                        </div>
+                        {c.task && (
+                          <p style={{ fontSize: 12, color: 'var(--orange-600)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '0 0 2px 0' }}>
+                            {c.task.title}
+                          </p>
+                        )}
+                        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{c.last_message || 'No messages yet'}</p>
+                      </div>
                     </div>
-                  ))
+                  )})
                 )}
               </div>
 
               {/* Messages Thread */}
               <div className={`dashboard-v4-message-thread ${selectedConversation ? 'block' : 'hidden md:flex'}`}>
-                {selectedConversation ? (
+                {selectedConversation && activeConv ? (
                   <>
-                    {/* Mobile Back Button */}
-                    <div className="flex md:hidden items-center gap-2" style={{ padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                      <button onClick={() => setSelectedConversation(null)} style={{ padding: 8, background: 'none', border: 'none', cursor: 'pointer' }}>
-                        ← Back
+                    {/* Thread Header: back button + other party + task link */}
+                    <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(26,26,26,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
+                      <button onClick={() => setSelectedConversation(null)} className="md:hidden" style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)' }}>
+                        ←
                       </button>
-                    </div>
-                    <div className="dashboard-v4-message-list">
-                      {messages.map(m => (
-                        <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
-                          <p>{m.content}</p>
-                          <p style={{ fontSize: 11, marginTop: 4, opacity: 0.7 }}>
-                            {new Date(m.created_at).toLocaleTimeString()}
-                          </p>
+                      {activeOther?.avatar_url ? (
+                        <img src={activeOther.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>
+                          {activeOther?.name?.charAt(0)?.toUpperCase() || '?'}
                         </div>
-                      ))}
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{activeOther?.name}</p>
+                        {activeConv.task && (
+                          <a
+                            href={`/tasks/${activeConv.task.id}`}
+                            style={{ fontSize: 12, color: 'var(--orange-600)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                            onClick={(e) => { e.stopPropagation() }}
+                          >
+                            {activeConv.task.title} →
+                          </a>
+                        )}
+                      </div>
+                      {activeConv.task && (
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', background: 'rgba(224,122,95,0.1)', padding: '2px 8px', borderRadius: 6, flexShrink: 0 }}>
+                          ${activeConv.task.budget}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Messages */}
+                    <div className="dashboard-v4-message-list" ref={el => { if (el) el.scrollTop = el.scrollHeight }}>
+                      {messages.length === 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: 14 }}>
+                          No messages yet — send one to start the conversation
+                        </div>
+                      ) : (
+                        messages.map(m => (
+                          <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
+                            {m.sender_id !== user.id && m.sender?.name && (
+                              <p style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, opacity: 0.7 }}>{m.sender.name}</p>
+                            )}
+                            <p style={{ margin: 0, lineHeight: 1.5 }}>{m.content}</p>
+                            <p style={{ fontSize: 11, marginTop: 4, opacity: 0.6, margin: 0 }}>
+                              {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Input */}
                     <div className="dashboard-v4-message-input">
                       <input
                         type="text"
@@ -3781,18 +3862,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         style={{ flex: 1 }}
                         onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(e) }}
                       />
-                      <button className="v4-btn v4-btn-primary" onClick={sendMessage}>Send</button>
+                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={!newMessage.trim()}>Send</button>
                     </div>
                   </>
                 ) : (
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
-                    Select a conversation to start messaging
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', gap: 8 }}>
+                    <span style={{ fontSize: 28 }}>💬</span>
+                    <p style={{ margin: 0 }}>Select a conversation to start messaging</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        )}
+          )
+        })()}
 
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
