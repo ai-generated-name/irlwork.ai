@@ -355,6 +355,19 @@ setInterval(() => {
  * of accepting raw UUIDs. This will require frontend changes to send the JWT
  * from supabase.auth.getSession().
  */
+/**
+ * Build the correct avatar URL for a user, using the API proxy endpoint.
+ * This ensures avatars always work regardless of R2 public URL configuration.
+ */
+function getAvatarUrl(user, req) {
+  if (!user || !user.avatar_r2_key) return user?.avatar_url || '';
+  // Derive base URL from request headers (works in dev and production)
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  if (!host) return user.avatar_url || '';
+  return `${protocol}://${host}/api/avatar/${user.id}`;
+}
+
 async function getUserByToken(token) {
   if (!token || !supabase) return null;
 
@@ -829,7 +842,7 @@ app.get('/api/auth/verify', async (req, res) => {
       id: user.id, email: user.email, name: user.name, type: user.type,
       city: user.city, hourly_rate: user.hourly_rate,
       bio: user.bio || '',
-      avatar_url: user.avatar_url || '',
+      avatar_url: getAvatarUrl(user, req),
       travel_radius: user.travel_radius || 25,
       latitude: user.latitude,
       longitude: user.longitude,
@@ -2206,7 +2219,11 @@ app.post('/api/upload/avatar', async (req, res) => {
   const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
   const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
   const R2_PUBLIC_URL = getEnv('R2_PUBLIC_URL') || getEnv('CLOUD_PUBLIC_URL');
-  const API_BASE = getEnv('API_URL') || `http://localhost:${PORT}`;
+
+  // Derive API base URL from the incoming request (works in both dev and production)
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const API_BASE = host ? `${protocol}://${host}` : (getEnv('API_URL') || `http://localhost:${PORT}`);
 
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
     // Demo mode — no R2 creds, use API proxy URL so avatar still works via /api/avatar/:id

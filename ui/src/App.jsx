@@ -76,6 +76,8 @@ const safeSupabase = {
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
+import { fixAvatarUrl } from './utils/avatarUrl'
+
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
 
@@ -1683,7 +1685,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
-        setHumans(data || [])
+        setHumans(fixAvatarUrl(data || []))
       }
     } catch (e) {
       debug('Could not fetch humans')
@@ -2823,10 +2825,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                             })
                             if (res.ok) {
                               const data = await res.json()
-                              const updatedUser = { ...user, avatar_url: data.url }
+                              // Use the API avatar proxy URL (always works)
+                              const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
+                              const updatedUser = { ...user, avatar_url: avatarProxyUrl }
+                              setUser(updatedUser)
                               localStorage.setItem('user', JSON.stringify(updatedUser))
                               toast.success('Profile photo updated!')
-                              setTimeout(() => window.location.reload(), 1000)
                             } else {
                               toast.error('Failed to upload photo')
                             }
@@ -4356,7 +4360,7 @@ function App() {
 
         // Trust backend completely - no localStorage merge
         // Always use Supabase auth email (source of truth for sign-in email)
-        const finalUser = { ...data.user, email: supabaseUser.email || data.user.email, supabase_user: true }
+        const finalUser = fixAvatarUrl({ ...data.user, email: supabaseUser.email || data.user.email, supabase_user: true })
         localStorage.setItem('user', JSON.stringify(finalUser)) // Cache for next load
         setUser(finalUser)
       } else if (res.status === 404) {
@@ -4436,7 +4440,7 @@ function App() {
 
       if (res.ok) {
         const data = await res.json()
-        const finalUser = { ...data.user, supabase_user: true }
+        const finalUser = fixAvatarUrl({ ...data.user, supabase_user: true })
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)

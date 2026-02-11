@@ -3,6 +3,7 @@ import { X, MapPin, Check, Star, Briefcase, Clock, Shield, Calendar, TrendingUp,
 import { StarRating } from './HumanProfileCard'
 import { SocialIconsRow } from './SocialIcons'
 import ForAgentsBox from './ForAgentsBox'
+import { fixAvatarUrl } from '../utils/avatarUrl'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -21,7 +22,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
         return r.json()
       })
       .then(data => {
-        setProfile(data)
+        setProfile(fixAvatarUrl(data))
         setLoading(false)
       })
       .catch(err => {
