@@ -14,6 +14,8 @@ const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const HumanProfilePage = lazy(() => import('./pages/HumanProfilePage'))
 const BrowseTasksV2 = lazy(() => import('./pages/BrowseTasksV2'))
 const MyTasksPage = lazy(() => import('./pages/MyTasksPage'))
+const WorkingDashboard = lazy(() => import('./pages/WorkingDashboard'))
+const HiringDashboard = lazy(() => import('./pages/HiringDashboard'))
 import LandingPageV4 from './pages/LandingPageV4'
 import NotFoundPage from './pages/NotFoundPage'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
@@ -1440,12 +1442,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     const isHiringFromUrl = window.location.pathname === '/dashboard/hiring'
 
     // Valid tabs for each mode
-    const humanTabs = ['tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
-    const hiringTabs = ['posted', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
+    const humanTabs = ['dashboard', 'tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
+    const hiringTabs = ['dashboard', 'posted', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
 
     if (tabParam) {
       // Map URL-friendly names to internal tab IDs
       const tabMap = {
+        'dashboard': 'dashboard',
         'create-task': 'posted',
         'my-tasks': isHiringFromUrl ? 'posted' : 'tasks',
         'browse': 'browse',
@@ -1463,7 +1466,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       if (!isHiringFromUrl && humanTabs.includes(mappedTab)) return mappedTab
     }
 
-    return isHiringFromUrl ? 'posted' : 'tasks'
+    return 'dashboard'
   }
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
@@ -1473,6 +1476,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const updateTabUrl = (tabId, mode) => {
     // Map internal tab IDs to URL-friendly names
     const urlMap = {
+      'dashboard': 'dashboard',
       'posted': 'my-tasks',
       'tasks': 'my-tasks',
       'browse': 'browse',
@@ -1581,16 +1585,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   // Check if current user is admin (from API profile response)
   const isAdmin = user && user.type === 'admin'
 
-  // Working mode: My Tasks, Browse Tasks, Messages, Payments
+  // Working mode: Dashboard, My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
   ]
 
-  // Hiring mode: My Tasks, Humans, Messages, Payments
+  // Hiring mode: Dashboard, My Tasks, Humans, Messages, Payments
   const hiringNav = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Humans', icon: Icons.humans },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
@@ -1619,7 +1625,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const toggleHiringMode = () => {
     const newHiringMode = !hiringMode
     setHiringMode(newHiringMode)
-    const newTab = newHiringMode ? 'posted' : 'tasks'
+    const newTab = 'dashboard'
     setActiveTabState(newTab)
     updateTabUrl(newTab, newHiringMode)
   }
@@ -1642,6 +1648,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       if (tabParam) {
         const isHiring = path === '/dashboard/hiring'
         const tabMap = {
+          'dashboard': 'dashboard',
           'create-task': 'posted',
           'my-tasks': isHiring ? 'posted' : 'tasks',
           'browse': 'browse',
@@ -2187,20 +2194,34 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
         </a>
 
-        {/* Mode Toggle */}
-        <div className="dashboard-v4-mode-toggle">
-          <button
-            className={`dashboard-v4-mode-btn ${!hiringMode ? 'active' : ''}`}
-            onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
-          >
-            Working
-          </button>
-          <button
-            className={`dashboard-v4-mode-btn ${hiringMode ? 'active' : ''}`}
-            onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true) }}
-          >
-            Hiring
-          </button>
+        {/* Mode Switch - mobile only */}
+        <div className="dashboard-v4-mode-switch-mobile">
+          {hiringMode ? (
+            <button
+              className="dashboard-v4-mode-switch-btn"
+              onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false); setSidebarOpen(false) }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8" />
+                <path d="M12 17v4" />
+              </svg>
+              Switch to Working
+            </button>
+          ) : (
+            <button
+              className="dashboard-v4-mode-switch-btn hiring"
+              onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true); setSidebarOpen(false) }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                <path d="M16 3.13a4 4 0 010 7.75" />
+              </svg>
+              Switch to Hiring
+            </button>
+          )}
         </div>
 
         {/* Navigation */}
@@ -2301,7 +2322,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             {!hiringMode ? (
               <>
                 <button
-                  className="dashboard-v4-topbar-link"
+                  className="dashboard-v4-topbar-link dashboard-v4-topbar-cta"
                   onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2461,6 +2482,33 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
         {/* Content Area */}
         <div className="dashboard-v4-content">
+        {/* Working Mode: Dashboard Tab */}
+        {!hiringMode && activeTab === 'dashboard' && (
+          <TabErrorBoundary>
+            <Suspense fallback={<Loading />}>
+              <WorkingDashboard
+                user={user}
+                tasks={tasks}
+                notifications={notifications}
+                onNavigate={(tab) => setActiveTab(tab)}
+              />
+            </Suspense>
+          </TabErrorBoundary>
+        )}
+
+        {/* Hiring Mode: Dashboard Tab */}
+        {hiringMode && activeTab === 'dashboard' && (
+          <TabErrorBoundary>
+            <Suspense fallback={<Loading />}>
+              <HiringDashboard
+                user={user}
+                postedTasks={postedTasks}
+                onNavigate={(tab) => setActiveTab(tab)}
+              />
+            </Suspense>
+          </TabErrorBoundary>
+        )}
+
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
