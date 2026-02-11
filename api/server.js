@@ -44,6 +44,60 @@ const initStripeRoutes = require('./routes/stripe');
 console.log('[Startup] Loading utils...');
 const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./utils/distance');
 
+// Cities data for autocomplete search (loaded once at startup)
+console.log('[Startup] Loading cities data...');
+const citiesRaw = require('cities.json');
+const admin1Raw = require('cities.json/admin1.json');
+
+const COUNTRY_NAMES = {
+  'US': 'USA', 'GB': 'UK', 'CA': 'Canada', 'AU': 'Australia', 'NZ': 'New Zealand',
+  'FR': 'France', 'DE': 'Germany', 'IT': 'Italy', 'ES': 'Spain', 'JP': 'Japan',
+  'CN': 'China', 'IN': 'India', 'BR': 'Brazil', 'MX': 'Mexico', 'AR': 'Argentina',
+  'ZA': 'South Africa', 'NG': 'Nigeria', 'EG': 'Egypt', 'KE': 'Kenya',
+  'NL': 'Netherlands', 'BE': 'Belgium', 'SE': 'Sweden', 'NO': 'Norway',
+  'DK': 'Denmark', 'FI': 'Finland', 'PL': 'Poland', 'RU': 'Russia', 'UA': 'Ukraine',
+  'TR': 'Turkey', 'SA': 'Saudi Arabia', 'AE': 'UAE', 'IL': 'Israel',
+  'SG': 'Singapore', 'MY': 'Malaysia', 'TH': 'Thailand', 'PH': 'Philippines',
+  'ID': 'Indonesia', 'VN': 'Vietnam', 'KR': 'South Korea', 'PK': 'Pakistan',
+  'BD': 'Bangladesh', 'CL': 'Chile', 'CO': 'Colombia', 'PE': 'Peru',
+  'VE': 'Venezuela', 'PT': 'Portugal', 'GR': 'Greece', 'CZ': 'Czech Republic',
+  'AT': 'Austria', 'CH': 'Switzerland', 'IE': 'Ireland'
+};
+const COUNTRIES_WITH_STATES = ['US', 'CA', 'AU'];
+
+// Build admin1 lookup map
+const admin1Map = new Map();
+admin1Raw.forEach(a => admin1Map.set(a.code, a.name));
+
+// Pre-process cities into searchable objects
+const citiesIndex = citiesRaw.map(city => {
+  const countryCode = city.country;
+  const countryName = COUNTRY_NAMES[countryCode] || countryCode;
+  let stateName = null;
+  let stateCode = null;
+  if (COUNTRIES_WITH_STATES.includes(countryCode) && city.admin1) {
+    stateName = admin1Map.get(`${countryCode}.${city.admin1}`) || null;
+    stateCode = city.admin1;
+  }
+  const displayName = stateName
+    ? `${city.name}, ${stateName}, ${countryName}`
+    : `${city.name}, ${countryName}`;
+
+  return {
+    name: city.name,
+    nameLower: city.name.toLowerCase(),
+    country: countryName,
+    countryLower: countryName.toLowerCase(),
+    countryCode,
+    state: stateName,
+    stateCode,
+    lat: parseFloat(city.lat),
+    lng: parseFloat(city.lng),
+    displayName
+  };
+});
+console.log(`[Startup] Cities index built: ${citiesIndex.length} cities`);
+
 // Phase 1 Admin Routes
 console.log('[Startup] Loading admin routes...');
 const initAdminRoutes = require('./routes/admin');
@@ -501,6 +555,37 @@ if (supabase) {
   app.use('/api/stripe', stripeRoutes);
   console.log('[Startup] Stripe routes mounted at /api/stripe');
 }
+
+// ============ CITY SEARCH ============
+// Public endpoint — no auth required, no Supabase needed
+app.get('/api/cities/search', (req, res) => {
+  const { q, limit: limitStr } = req.query;
+  if (!q || q.length < 2) {
+    return res.json([]);
+  }
+
+  const limit = Math.min(Math.max(parseInt(limitStr) || 10, 1), 20);
+  const lowerQuery = q.toLowerCase();
+
+  const matches = [];
+  for (let i = 0; i < citiesIndex.length && matches.length < limit; i++) {
+    const city = citiesIndex[i];
+    if (city.nameLower.includes(lowerQuery) || city.countryLower.includes(lowerQuery)) {
+      matches.push({
+        name: city.name,
+        country: city.country,
+        countryCode: city.countryCode,
+        state: city.state,
+        stateCode: city.stateCode,
+        lat: city.lat,
+        lng: city.lng,
+        displayName: city.displayName
+      });
+    }
+  }
+
+  res.json(matches);
+});
 
 // ============ MIDDLEWARE ============
 // Middleware to update last_active_at on authenticated requests
