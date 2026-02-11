@@ -4321,6 +4321,22 @@ app.get('/api/notifications', async (req, res) => {
   res.json(notifications || []);
 });
 
+app.post('/api/notifications/:id/read', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', req.params.id)
+    .eq('user_id', user.id);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
 // ============ ACTIVITY FEED ============
 app.get('/api/activity/feed', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
@@ -4378,7 +4394,31 @@ app.get('/api/conversations', async (req, res) => {
     .order('updated_at', { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json(conversations || []);
+
+  if (!conversations || conversations.length === 0) {
+    return res.json([]);
+  }
+
+  // Compute per-conversation unread counts
+  const convIds = conversations.map(c => c.id);
+  const { data: unreadData } = await supabase
+    .from('messages')
+    .select('conversation_id')
+    .in('conversation_id', convIds)
+    .neq('sender_id', user.id)
+    .is('read_at', null);
+
+  const unreadMap = {};
+  (unreadData || []).forEach(m => {
+    unreadMap[m.conversation_id] = (unreadMap[m.conversation_id] || 0) + 1;
+  });
+
+  const result = conversations.map(c => ({
+    ...c,
+    unread: unreadMap[c.id] || 0
+  }));
+
+  res.json(result);
 });
 
 app.post('/api/conversations', async (req, res) => {
@@ -4628,7 +4668,7 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
   // Verify user is a participant in this conversation
   const { data: conversation } = await supabase
     .from('conversations')
-    .select('id, human_id, agent_id')
+    .select('id, human_id, agent_id, task_id')
     .eq('id', id)
     .single();
 
@@ -4650,6 +4690,17 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
     .select('id');
 
   if (error) return res.status(500).json({ error: error.message });
+
+  // Also clear new_message notifications for this conversation's task
+  if (conversation.task_id) {
+    await supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .eq('type', 'new_message')
+      .is('read_at', null)
+      .like('link', `%${conversation.task_id}%`);
+  }
 
   res.json({ marked_count: data?.length || 0 });
 });

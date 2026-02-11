@@ -1741,6 +1741,50 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
   }, [hiringMode, user, expandedTask])
 
+  // Poll for new messages when Messages tab is active and a conversation is selected
+  useEffect(() => {
+    if (activeTab !== 'messages' || !selectedConversation) return
+    const interval = setInterval(() => {
+      fetchMessages(selectedConversation, true) // skipMarkRead on polls — already marked on open
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [activeTab, selectedConversation])
+
+  // Background refresh: keep unread badge fresh
+  useEffect(() => {
+    if (!user) return
+    const interval = setInterval(() => {
+      fetchUnreadMessages()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [user])
+
+  // Real-time subscription for new messages
+  useEffect(() => {
+    if (!user) return
+
+    const messagesChannel = safeSupabase
+      .channel(`user-messages-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          // If we're viewing the conversation this message belongs to, refresh it
+          if (selectedConversation && payload.new?.conversation_id === selectedConversation) {
+            fetchMessages(selectedConversation, true)
+          }
+          // Always refresh unread count and conversation list
+          fetchUnreadMessages()
+          fetchConversations()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      safeSupabase.removeChannel(messagesChannel)
+    }
+  }, [user, selectedConversation])
+
   const fetchTasks = async () => {
     try {
       const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.id } })
@@ -2055,12 +2099,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
   }
 
-  const fetchMessages = async (conversationId) => {
+  const fetchMessages = async (conversationId, skipMarkRead = false) => {
     try {
       const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
         setMessages(data || [])
+        // Mark messages as read when opening a conversation (matches TaskDetailPage pattern)
+        if (!skipMarkRead) {
+          fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
+            method: 'PUT',
+            headers: { Authorization: user.id }
+          }).then(() => {
+            fetchUnreadMessages()
+            fetchConversations()
+          }).catch(() => {})
+        }
       }
     } catch (e) {}
   }
@@ -3859,7 +3913,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                          <p style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, margin: 0 }}>{other.name}</p>
+                          <p style={{ fontWeight: c.unread > 0 ? 700 : 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, margin: 0 }}>{other.name}</p>
                           <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{timeAgo(c.updated_at)}</span>
                         </div>
                         {c.task && (
@@ -3867,8 +3921,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             {c.task.title}
                           </p>
                         )}
-                        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{c.last_message || 'No messages yet'}</p>
+                        <p style={{ fontSize: 13, color: c.unread > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontWeight: c.unread > 0 ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{c.last_message || 'No messages yet'}</p>
                       </div>
+                      {c.unread > 0 && (
+                        <span style={{ background: 'var(--orange-600)', color: 'white', borderRadius: '50%', minWidth: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, padding: '0 5px' }}>
+                          {c.unread}
+                        </span>
+                      )}
                     </div>
                   )})
                 )}
@@ -3931,17 +3990,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     </div>
 
                     {/* Input */}
-                    <div className="dashboard-v4-message-input">
-                      <input
-                        type="text"
+                    <div className="dashboard-v4-message-input" style={{ alignItems: 'flex-end' }}>
+                      <textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type a message..."
+                        placeholder="Type a message... (Shift+Enter for newline)"
                         className="dashboard-v4-form-input"
-                        style={{ flex: 1 }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(e) }}
+                        style={{ flex: 1, resize: 'none', minHeight: 40, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
+                        rows={1}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(e) } }}
+                        onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
                       />
-                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={!newMessage.trim()}>Send</button>
+                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={!newMessage.trim()} style={{ minHeight: 40 }}>Send</button>
                     </div>
                   </>
                 ) : (
