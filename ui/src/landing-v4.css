@@ -6042,6 +6042,7 @@
     display: block;
   }
 
+
   .dashboard-v4-topbar-logo {
     display: flex; /* Show logo on mobile when sidebar is hidden */
   }

@@ -1434,12 +1434,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [humansSubTab, setHumansSubTab] = useState('browse')
   const [tasksSubTab, setTasksSubTab] = useState('tasks')
 
-  // Read initial tab from URL query param
+  // Read initial tab from URL path: /dashboard/working/browse → 'browse'
   const getInitialTab = () => {
+    const pathParts = window.location.pathname.split('/')
+    // pathParts: ['', 'dashboard', 'working', 'browse'] or ['', 'dashboard', 'hiring']
+    const isHiringFromUrl = pathParts[2] === 'hiring'
+    const tabSegment = pathParts[3] || null
+
+    // Also support legacy ?tab= query param for backwards compat
     const params = new URLSearchParams(window.location.search)
-    const tabParam = params.get('tab')
-    // Derive mode from URL path, fallback to localStorage
-    const isHiringFromUrl = window.location.pathname === '/dashboard/hiring'
+    const tabParam = tabSegment || params.get('tab')
 
     // Valid tabs for each mode
     const humanTabs = ['dashboard', 'tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
@@ -1466,13 +1470,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       if (!isHiringFromUrl && humanTabs.includes(mappedTab)) return mappedTab
     }
 
-    return 'dashboard'
+    return isHiringFromUrl ? 'posted' : 'tasks'
   }
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
 
-  // Helper to update URL query param without page reload
+  // Helper to update URL path without page reload
   const updateTabUrl = (tabId, mode) => {
     // Map internal tab IDs to URL-friendly names
     const urlMap = {
@@ -1488,7 +1492,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
     const urlTab = urlMap[tabId] || tabId
     const modeSegment = (mode !== undefined ? mode : hiringMode) ? 'hiring' : 'working'
-    const newUrl = `/dashboard/${modeSegment}?tab=${urlTab}`
+    const newUrl = `/dashboard/${modeSegment}/${urlTab}`
     window.history.pushState({}, '', newUrl)
   }
 
@@ -1634,20 +1638,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   // Handle browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
-      // Detect mode from URL path
-      const path = window.location.pathname
-      if (path === '/dashboard/hiring' && !hiringMode) {
+      const pathParts = window.location.pathname.split('/')
+      const mode = pathParts[2] // 'working' or 'hiring'
+      const tabSegment = pathParts[3] || null
+      const isHiring = mode === 'hiring'
+
+      // Detect mode change from URL path
+      if (isHiring && !hiringMode) {
         setHiringMode(true)
         setActiveTabState('posted')
-      } else if (path === '/dashboard/working' && hiringMode) {
+      } else if (!isHiring && hiringMode) {
         setHiringMode(false)
         setActiveTabState('tasks')
       }
 
-      const params = new URLSearchParams(window.location.search)
-      const tabParam = params.get('tab')
+      // Also support legacy ?tab= query param
+      const tabParam = tabSegment || new URLSearchParams(window.location.search).get('tab')
       if (tabParam) {
-        const isHiring = path === '/dashboard/hiring'
+        const isHiring = mode === 'hiring'
         const tabMap = {
           'dashboard': 'dashboard',
           'create-task': 'posted',
@@ -1924,7 +1932,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       return
     }
 
-    // Dashboard with query params (e.g. /dashboard?task=xxx or /dashboard/hiring?tab=xxx)
+    // Dashboard links (e.g. /dashboard/hiring/payments or legacy /dashboard?task=xxx)
     if (link.startsWith('/dashboard')) {
       const params = new URLSearchParams(link.split('?')[1] || '')
       const taskId = params.get('task')
@@ -1932,7 +1940,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         window.location.href = `/tasks/${taskId}`
         return
       }
-      const tab = params.get('tab')
+      // Parse tab from path segment: /dashboard/working/browse → 'browse'
+      const linkParts = link.split('?')[0].split('/')
+      const tabFromPath = linkParts[3] || null
+      const tab = tabFromPath || params.get('tab')
       if (tab) {
         setActiveTab(tab)
       }
@@ -4167,7 +4178,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               </button>
             </div>
             <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring?tab=settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring/settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
           </div>
 
           {/* Step 2: Install */}
@@ -4641,7 +4652,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
                   <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
                 )}
                 <a
-                  href="/dashboard/hiring?tab=settings"
+                  href="/dashboard/hiring/settings"
                   className="btn-v4 btn-v4-primary"
                 >
                   Manage API Keys →
@@ -4947,7 +4958,7 @@ Signature required. Bring to our office at 123 Main St.",
             <div>
               <h4 className="footer-v4-column-title">Platform</h4>
               <div className="footer-v4-links">
-                <a href="/dashboard/working?tab=browse" className="footer-v4-link">Browse Tasks</a>
+                <a href="/dashboard/working/browse" className="footer-v4-link">Browse Tasks</a>
                 <a href="/auth" className="footer-v4-link">Sign Up</a>
                 <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
               </div>
@@ -5198,7 +5209,7 @@ function App() {
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
-        navigate('/dashboard/working?tab=browse')
+        navigate('/dashboard/working/browse')
       } else {
         const errorData = await res.json().catch(() => ({}))
         console.error('[Onboarding] Failed:', errorData)
@@ -5275,10 +5286,10 @@ function App() {
       return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
-    // Dashboard route - requires auth (matches /dashboard/working and /dashboard/hiring)
-    if (path === '/dashboard/working' || path === '/dashboard/hiring') {
+    // Dashboard route - requires auth (matches /dashboard/working/... and /dashboard/hiring/...)
+    if (path.startsWith('/dashboard/working') || path.startsWith('/dashboard/hiring')) {
       if (!user || user.needs_onboarding) return <Loading />
-      return <Dashboard user={user} onLogout={logout} initialMode={path === '/dashboard/hiring' ? 'hiring' : 'working'} onUserUpdate={setUser} />
+      return <Dashboard user={user} onLogout={logout} initialMode={path.startsWith('/dashboard/hiring') ? 'hiring' : 'working'} onUserUpdate={setUser} />
     }
 
     // Bare /dashboard redirect (handled by useEffect above, but guard here too)
