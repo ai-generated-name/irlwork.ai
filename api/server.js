@@ -876,17 +876,17 @@ app.get('/api/auth/google/callback', async (req, res) => {
     }
     
     if (!existingUser) {
-      // Create new user
-      const id = uuidv4();
+      // Create new user — use Supabase auth UUID so fetchUserProfile can find them by supabaseUser.id
       const { data: newUser, error: createError } = await supabase
         .from('users')
         .insert({
-          id,
+          id: user.id,
           email,
           name,
           type: 'human',
           account_type: 'human',
           verified: true,
+          avatar_url: user.user_metadata?.avatar_url || null,
           profile_completeness: 0.5,
           availability: 'available',
           rating: 0,
@@ -895,11 +895,17 @@ app.get('/api/auth/google/callback', async (req, res) => {
         })
         .select()
         .single();
-      
+
       if (createError) throw createError;
       existingUser = newUser;
+    } else if (!existingUser.type || existingUser.type !== 'human') {
+      // Existing user but type not set — update to ensure they appear in browse
+      await supabase
+        .from('users')
+        .update({ type: 'human', account_type: 'human', verified: true })
+        .eq('id', existingUser.id);
     }
-    
+
     // Redirect back to app (Supabase session handles auth — no tokens in URL)
     res.redirect(frontendUrl);
   } catch (e) {
@@ -1014,6 +1020,8 @@ app.post('/api/auth/onboard', async (req, res) => {
         id: userId,
         email,
         name,
+        type: 'human',
+        account_type: 'human',
         city,
         latitude,
         longitude,
@@ -1025,6 +1033,8 @@ app.post('/api/auth/onboard', async (req, res) => {
         role: role || 'human',
         bio: bio || null,
         avatar_url: avatar_url || null,
+        verified: true,
+        availability: 'available',
         profile_completeness,
         needs_onboarding: false,
         onboarding_completed_at: new Date().toISOString()
@@ -1548,7 +1558,7 @@ app.put('/api/humans/profile', async (req, res) => {
 
   const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
 
-  const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
+  const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true, type: 'human', account_type: 'human' };
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
   if (name) updates.name = name;
