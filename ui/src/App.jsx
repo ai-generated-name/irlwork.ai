@@ -3576,7 +3576,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Notifications</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h1 className="dashboard-v4-page-title">Notifications</h1>
+              {notifications.length > 0 && (
+                <button onClick={markAllNotificationsRead} className="dashboard-v4-notification-mark-read" style={{ fontSize: 14 }}>
+                  Clear all
+                </button>
+              )}
+            </div>
 
             {notifications.length === 0 ? (
               <div className="dashboard-v4-empty">
