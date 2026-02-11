@@ -1382,7 +1382,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   })
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [humansSubTab, setHumansSubTab] = useState('browse')
-  const [paymentsSubTab, setPaymentsSubTab] = useState('methods')
+  const [tasksSubTab, setTasksSubTab] = useState('tasks')
 
   // Read initial tab from URL query param
   const getInitialTab = () => {
@@ -2407,18 +2407,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showCreateForm ? 0 : undefined }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
+              {tasksSubTab === 'tasks' && (
+                <button
+                  className="v4-btn v4-btn-primary"
+                  onClick={() => setShowCreateForm(!showCreateForm)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}
+                >
+                  {showCreateForm ? 'Cancel' : '+ Create Task'}
+                </button>
+              )}
+            </div>
+
+            {/* Sub-tabs: Tasks / Disputes */}
+            <div className="dashboard-v4-sub-tabs">
               <button
-                className="v4-btn v4-btn-primary"
-                onClick={() => setShowCreateForm(!showCreateForm)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
+                onClick={() => setTasksSubTab('tasks')}
               >
-                {showCreateForm ? 'Cancel' : '+ Create Task'}
+                Tasks
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
+                onClick={() => setTasksSubTab('disputes')}
+              >
+                Disputes
               </button>
             </div>
 
-            {showCreateForm && (
+            {tasksSubTab === 'tasks' && showCreateForm && (
               <div style={{ marginTop: 16, marginBottom: 24 }}>
                 <div className="dashboard-v4-form">
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
@@ -2545,113 +2563,121 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               </div>
             )}
 
-            {loading ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">⏳</div>
-                <p className="dashboard-v4-empty-text">Loading...</p>
-              </div>
-            ) : postedTasks.length === 0 ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
-                <p className="dashboard-v4-empty-title">No tasks posted yet</p>
-                <p className="dashboard-v4-empty-text">Create a task to get started</p>
-              </div>
-            ) : (
-              <div>
-                {postedTasks.map(task => {
-                  const needsAction = task.status === 'pending_review'
-                  const isOpen = task.status === 'open'
-                  const isExpanded = expandedTask === task.id
-                  const applications = taskApplications[task.id] || []
+            {tasksSubTab === 'tasks' && (
+              <>
+                {loading ? (
+                  <div className="dashboard-v4-empty">
+                    <div className="dashboard-v4-empty-icon">⏳</div>
+                    <p className="dashboard-v4-empty-text">Loading...</p>
+                  </div>
+                ) : postedTasks.length === 0 ? (
+                  <div className="dashboard-v4-empty">
+                    <div className="dashboard-v4-empty-icon">{Icons.task}</div>
+                    <p className="dashboard-v4-empty-title">No tasks posted yet</p>
+                    <p className="dashboard-v4-empty-text">Create a task to get started</p>
+                  </div>
+                ) : (
+                  <div>
+                    {postedTasks.map(task => {
+                      const needsAction = task.status === 'pending_review'
+                      const isOpen = task.status === 'open'
+                      const isExpanded = expandedTask === task.id
+                      const applications = taskApplications[task.id] || []
 
-                  return (
-                    <div key={task.id} className="dashboard-v4-task-card">
-                      <div className="dashboard-v4-task-header">
-                        <div>
-                          <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
-                            {getStatusLabel(task.status)}
-                          </span>
-                          <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
-                        </div>
-                        <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
-                      </div>
+                      return (
+                        <div key={task.id} className="dashboard-v4-task-card">
+                          <div className="dashboard-v4-task-header">
+                            <div>
+                              <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
+                                {getStatusLabel(task.status)}
+                              </span>
+                              <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
+                            </div>
+                            <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
+                          </div>
 
-                      <div className="dashboard-v4-task-meta">
-                        <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                        <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
-                        {task.assignee && (
-                          <span className="dashboard-v4-task-meta-item">👤 {task.assignee.name}</span>
-                        )}
-                      </div>
+                          <div className="dashboard-v4-task-meta">
+                            <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
+                            <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
+                            {task.assignee && (
+                              <span className="dashboard-v4-task-meta-item">👤 {task.assignee.name}</span>
+                            )}
+                          </div>
 
-                      {/* View Applicants Button for open tasks */}
-                      {isOpen && (
-                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
-                          <button
-                            onClick={() => {
-                              if (isExpanded) {
-                                setExpandedTask(null)
-                              } else {
-                                setExpandedTask(task.id)
-                                fetchApplicationsForTask(task.id)
-                              }
-                            }}
-                            style={{ color: 'var(--orange-600)', fontWeight: 500, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}
-                          >
-                            {isExpanded ? '▼ Hide Applicants' : '▶ View Applicants'}
-                          </button>
+                          {/* View Applicants Button for open tasks */}
+                          {isOpen && (
+                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
+                              <button
+                                onClick={() => {
+                                  if (isExpanded) {
+                                    setExpandedTask(null)
+                                  } else {
+                                    setExpandedTask(task.id)
+                                    fetchApplicationsForTask(task.id)
+                                  }
+                                }}
+                                style={{ color: 'var(--orange-600)', fontWeight: 500, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}
+                              >
+                                {isExpanded ? '▼ Hide Applicants' : '▶ View Applicants'}
+                              </button>
 
-                          {/* Applicants List */}
-                          {isExpanded && (
-                            <div style={{ marginTop: 16 }}>
-                              {applications.length === 0 ? (
-                                <p style={{ color: 'var(--text-tertiary)', fontSize: 14, textAlign: 'center', padding: 16 }}>No applicants yet</p>
-                              ) : (
-                                applications.map(app => (
-                                  <div key={app.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                                        {app.applicant?.name?.[0]?.toUpperCase() || '?'}
+                              {/* Applicants List */}
+                              {isExpanded && (
+                                <div style={{ marginTop: 16 }}>
+                                  {applications.length === 0 ? (
+                                    <p style={{ color: 'var(--text-tertiary)', fontSize: 14, textAlign: 'center', padding: 16 }}>No applicants yet</p>
+                                  ) : (
+                                    applications.map(app => (
+                                      <div key={app.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
+                                            {app.applicant?.name?.[0]?.toUpperCase() || '?'}
+                                          </div>
+                                          <div>
+                                            <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
+                                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                              ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                            </p>
+                                            {app.cover_letter && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>"{app.cover_letter}"</p>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <button
+                                          onClick={() => handleAssignHuman(task.id, app.human_id)}
+                                          disabled={assigningHuman === app.human_id}
+                                          className="v4-btn v4-btn-primary"
+                                        >
+                                          {assigningHuman === app.human_id ? 'Assigning...' : 'Accept'}
+                                        </button>
                                       </div>
-                                      <div>
-                                        <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
-                                        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                          ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
-                                        </p>
-                                        {app.cover_letter && (
-                                          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>"{app.cover_letter}"</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={() => handleAssignHuman(task.id, app.human_id)}
-                                      disabled={assigningHuman === app.human_id}
-                                      className="v4-btn v4-btn-primary"
-                                    >
-                                      {assigningHuman === app.human_id ? 'Assigning...' : 'Accept'}
-                                    </button>
-                                  </div>
-                                ))
+                                    ))
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}
-                        </div>
-                      )}
 
-                      {needsAction && (
-                        <div className="dashboard-v4-task-actions">
-                          <button className="v4-btn v4-btn-primary" onClick={() => setShowProofReview(task.id)}>
-                            Review Proof
-                          </button>
+                          {needsAction && (
+                            <div className="dashboard-v4-task-actions">
+                              <button className="v4-btn v4-btn-primary" onClick={() => setShowProofReview(task.id)}>
+                                Review Proof
+                              </button>
+                            </div>
+                          )}
+                          {task.status === 'paid' && (
+                            <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}>💸 Payment released</p>
+                          )}
                         </div>
-                      )}
-                      {task.status === 'paid' && (
-                        <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}>💸 Payment released</p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {tasksSubTab === 'disputes' && (
+              <DisputePanel user={user} />
             )}
           </div>
         )}
@@ -2779,50 +2805,27 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Hiring Mode: Payments Tab - Payment Methods + Disputes sub-tabs */}
+        {/* Hiring Mode: Payments Tab */}
         {hiringMode && activeTab === 'payments' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Payments</h1>
-
-            {/* Sub-tabs: Methods / Disputes */}
-            <div className="dashboard-v4-sub-tabs">
-              <button
-                className={`dashboard-v4-sub-tab ${paymentsSubTab === 'methods' ? 'active' : ''}`}
-                onClick={() => setPaymentsSubTab('methods')}
-              >
-                Payment Methods
-              </button>
-              <button
-                className={`dashboard-v4-sub-tab ${paymentsSubTab === 'disputes' ? 'active' : ''}`}
-                onClick={() => setPaymentsSubTab('disputes')}
-              >
-                Disputes
-              </button>
-            </div>
-
-            {paymentsSubTab === 'methods' && (
-              <Suspense fallback={<Loading />}>
-                <StripeProvider>
-                  <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
-                      <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
-                    </div>
-                    <div>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
-                      <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
-                    </div>
-                    <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                      When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
-                    </div>
+            <h1 className="dashboard-v4-page-title">Payment Methods</h1>
+            <Suspense fallback={<Loading />}>
+              <StripeProvider>
+                <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
+                    <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
                   </div>
-                </StripeProvider>
-              </Suspense>
-            )}
-
-            {paymentsSubTab === 'disputes' && (
-              <DisputePanel user={user} />
-            )}
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
+                    <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
+                  </div>
+                  <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                    When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
+                  </div>
+                </div>
+              </StripeProvider>
+            </Suspense>
           </div>
         )}
 
