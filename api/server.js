@@ -908,16 +908,51 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
 app.get('/api/auth/verify', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
+
+  let user = await getUserByToken(req.headers.authorization);
   if (!user) {
-    // Distinguish between invalid token and user not yet in DB
+    // For valid UUIDs (OAuth users not yet in DB), auto-create their user row
     const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(token)) {
-      return res.status(404).json({ error: 'User not found' });
+      // Look up their email and metadata from Supabase Auth
+      try {
+        const { data: { user: authUser } } = await supabase.auth.admin.getUserById(token);
+        if (authUser?.email) {
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: token,
+              email: authUser.email,
+              name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
+              avatar_url: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || '',
+              type: 'human',
+              account_type: 'human',
+              verified: true,
+              needs_onboarding: true,
+              availability: 'available',
+              rating: 0,
+              jobs_completed: 0,
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+          if (!createError && newUser) {
+            user = newUser;
+          } else {
+            console.error('[Auth Verify] Failed to auto-create OAuth user:', createError?.message);
+            return res.status(404).json({ error: 'User not found' });
+          }
+        } else {
+          return res.status(404).json({ error: 'User not found' });
+        }
+      } catch (e) {
+        console.error('[Auth Verify] Error looking up auth user:', e.message);
+        return res.status(404).json({ error: 'User not found' });
+      }
+    } else {
+      return res.status(401).json({ error: 'Invalid token' });
     }
-    return res.status(401).json({ error: 'Invalid token' });
   }
   
   // Calculate derived metrics
@@ -1518,19 +1553,38 @@ app.put('/api/humans/profile', async (req, res) => {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
       if (uuidRegex.test(token)) {
-        // Create the user record
+        // Look up real email from Supabase Auth (handles all OAuth providers)
+        let authEmail = req.body.email;
+        let authName = req.body.name;
+        let authAvatar = null;
+        try {
+          const { data: { user: authUser } } = await supabase.auth.admin.getUserById(token);
+          if (authUser?.email) {
+            authEmail = authUser.email;
+            authName = authName || authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'New User';
+            authAvatar = authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || null;
+          }
+        } catch (e) {
+          console.error('[Profile] Failed to look up auth user:', e.message);
+        }
+
+        if (!authEmail) {
+          return res.status(401).json({ error: 'Unauthorized - could not determine user email' });
+        }
+
         const { name, city, hourly_rate, skills } = req.body;
         const { data: newUser, error: createError } = await supabase
           .from('users')
           .insert({
             id: token,
-            email: req.body.email || `${token}@oauth.user`,
-            name: name || 'New User',
+            email: authEmail,
+            name: name || authName || 'New User',
             type: 'human',
             account_type: 'human',
             city: city || '',
             hourly_rate: hourly_rate || 25,
             skills: JSON.stringify(Array.isArray(skills) ? skills : []),
+            avatar_url: authAvatar,
             verified: true,
             needs_onboarding: false,
             availability: 'available',
