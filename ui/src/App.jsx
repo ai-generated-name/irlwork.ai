@@ -77,6 +77,8 @@ const safeSupabase = {
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
+import { fixAvatarUrl } from './utils/avatarUrl'
+
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
 
@@ -1705,7 +1707,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
-        setHumans(data || [])
+        setHumans(fixAvatarUrl(data || []))
       }
     } catch (e) {
       debug('Could not fetch humans')
@@ -2339,10 +2341,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               >
                 <div className="dashboard-v4-user-avatar">
                   {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                  ) : (
-                    user?.name?.charAt(0) || '?'
-                  )}
+                    <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                  ) : null}
+                  <span style={{ display: user?.avatar_url ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                    {user?.name?.charAt(0) || '?'}
+                  </span>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={userDropdownOpen ? 'rotated' : ''}>
                   <path d="M6 9l6 6 6-6" />
@@ -2354,10 +2357,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   <div className="dashboard-v4-user-dropdown-header">
                     <div className="dashboard-v4-user-dropdown-avatar">
                       {user?.avatar_url ? (
-                        <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                      ) : (
-                        user?.name?.charAt(0) || '?'
-                      )}
+                        <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                      ) : null}
+                      <span style={{ display: user?.avatar_url ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                        {user?.name?.charAt(0) || '?'}
+                      </span>
                     </div>
                     <div className="dashboard-v4-user-dropdown-info">
                       <p className="dashboard-v4-user-dropdown-name">{user?.name || 'User'}</p>
@@ -2787,18 +2791,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     <img src={user.avatar_url} alt={user?.name || ''} style={{
                       width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
                       boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
-                    }} />
-                  ) : (
-                    <div style={{
-                      width: 80, height: 80, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'white', fontWeight: 700, fontSize: 28,
-                      boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
-                    }}>
-                      {user?.name?.charAt(0) || '?'}
-                    </div>
-                  )}
+                    }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                  ) : null}
+                  <div style={{
+                    width: 80, height: 80, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
+                    display: user?.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'white', fontWeight: 700, fontSize: 28,
+                    boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                  }}>
+                    {user?.name?.charAt(0) || '?'}
+                  </div>
                   <div style={{
                     position: 'absolute', bottom: 0, right: 0,
                     width: 28, height: 28, borderRadius: '50%',
@@ -2844,10 +2847,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                             })
                             if (res.ok) {
                               const data = await res.json()
-                              const updatedUser = { ...user, avatar_url: data.url }
+                              // Use the API avatar proxy URL (always works)
+                              const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
+                              const updatedUser = { ...user, avatar_url: avatarProxyUrl }
+                              setUser(updatedUser)
                               localStorage.setItem('user', JSON.stringify(updatedUser))
                               toast.success('Profile photo updated!')
-                              setTimeout(() => window.location.reload(), 1000)
                             } else {
                               toast.error('Failed to upload photo')
                             }
@@ -4387,7 +4392,7 @@ function App() {
 
         // Trust backend completely - no localStorage merge
         // Always use Supabase auth email (source of truth for sign-in email)
-        const finalUser = { ...data.user, email: supabaseUser.email || data.user.email, supabase_user: true }
+        const finalUser = fixAvatarUrl({ ...data.user, email: supabaseUser.email || data.user.email, supabase_user: true })
         localStorage.setItem('user', JSON.stringify(finalUser)) // Cache for next load
         setUser(finalUser)
       } else if (res.status === 404) {
@@ -4479,7 +4484,7 @@ function App() {
 
       if (res.ok) {
         const data = await res.json()
-        const finalUser = { ...data.user, supabase_user: true }
+        const finalUser = fixAvatarUrl({ ...data.user, supabase_user: true })
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
