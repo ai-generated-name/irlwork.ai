@@ -1555,12 +1555,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const baseNav = hiringMode ? hiringNav : humanNav
   const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: '🛡️' }] : baseNav
 
-  // Mark all notifications as read and remove them from the list
+  // Mark all notifications as read (keep them visible in the list)
   const markAllNotificationsRead = async () => {
     try {
       const unreadIds = notifications.filter(n => !n.read_at).map(n => n.id)
-      // Remove unread notifications from state immediately
-      setNotifications(prev => prev.filter(n => n.read_at))
+      // Mark as read in state immediately
+      setNotifications(prev => prev.map(n => n.read_at ? n : { ...n, read_at: new Date().toISOString() }))
       // Mark each as read in backend (fire and forget)
       for (const id of unreadIds) {
         fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
@@ -1800,8 +1800,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
-        // Only show unread notifications — clicked/read ones are removed from the list
-        setNotifications((data || []).filter(n => !n.read_at))
+        setNotifications(data || [])
       }
     } catch (e) {
       debug('Could not fetch notifications')
@@ -1838,10 +1837,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   // Navigate to a notification's linked page
   const navigateToNotification = (notification) => {
-    // Remove the clicked notification from state immediately so it disappears from UI
-    setNotifications(prev => prev.filter(n => n.id !== notification.id))
-    // Mark as read in backend (fire and forget — no refetch needed since we already removed it)
-    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
+    // Mark as read in state immediately (keep it in the list)
+    setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read_at: n.read_at || new Date().toISOString() } : n))
+    // Mark as read in backend (fire and forget)
+    if (!notification.read_at) {
+      fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
+    }
     setNotificationDropdownOpen(false)
 
     const link = notification.link
@@ -3591,9 +3592,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h1 className="dashboard-v4-page-title">Notifications</h1>
-              {notifications.length > 0 && (
+              {unreadNotifications > 0 && (
                 <button onClick={markAllNotificationsRead} className="dashboard-v4-notification-mark-read" style={{ fontSize: 14 }}>
-                  Clear all
+                  Mark all as read
                 </button>
               )}
             </div>
