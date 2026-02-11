@@ -1,66 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-
-// Country code to country name mapping (common countries)
-const COUNTRY_NAMES = {
-  'US': 'USA',
-  'GB': 'UK',
-  'CA': 'Canada',
-  'AU': 'Australia',
-  'NZ': 'New Zealand',
-  'FR': 'France',
-  'DE': 'Germany',
-  'IT': 'Italy',
-  'ES': 'Spain',
-  'JP': 'Japan',
-  'CN': 'China',
-  'IN': 'India',
-  'BR': 'Brazil',
-  'MX': 'Mexico',
-  'AR': 'Argentina',
-  'ZA': 'South Africa',
-  'NG': 'Nigeria',
-  'EG': 'Egypt',
-  'KE': 'Kenya',
-  'NL': 'Netherlands',
-  'BE': 'Belgium',
-  'SE': 'Sweden',
-  'NO': 'Norway',
-  'DK': 'Denmark',
-  'FI': 'Finland',
-  'PL': 'Poland',
-  'RU': 'Russia',
-  'UA': 'Ukraine',
-  'TR': 'Turkey',
-  'SA': 'Saudi Arabia',
-  'AE': 'UAE',
-  'IL': 'Israel',
-  'SG': 'Singapore',
-  'MY': 'Malaysia',
-  'TH': 'Thailand',
-  'PH': 'Philippines',
-  'ID': 'Indonesia',
-  'VN': 'Vietnam',
-  'KR': 'South Korea',
-  'PK': 'Pakistan',
-  'BD': 'Bangladesh',
-  'CL': 'Chile',
-  'CO': 'Colombia',
-  'PE': 'Peru',
-  'VE': 'Venezuela',
-  'PT': 'Portugal',
-  'GR': 'Greece',
-  'CZ': 'Czech Republic',
-  'AT': 'Austria',
-  'CH': 'Switzerland',
-  'IE': 'Ireland'
-};
-
-// Countries where state/province should be shown in display name
-const COUNTRIES_WITH_STATES = ['US', 'CA', 'AU'];
-
-// Cache for loaded cities and admin1 data - loaded on demand
-let citiesCache = null;
-let admin1Map = null;
+import API_URL from '../config/api';
 
 const CityAutocomplete = ({
   value,
@@ -72,82 +11,15 @@ const CityAutocomplete = ({
   const [results, setResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [citiesLoaded, setCitiesLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const lastValidCity = useRef(value || null);
   const queryRef = useRef(query);
   const isSelectingRef = useRef(false);
+  const abortRef = useRef(null);
 
-  // Load cities data lazily on first focus
-  const loadCities = async () => {
-    if (citiesCache) {
-      setCitiesLoaded(true);
-      return citiesCache;
-    }
-
-    setIsLoading(true);
-    try {
-      // Load cities and admin1 data in parallel
-      const [citiesModule, admin1Module] = await Promise.all([
-        import('cities.json'),
-        import('cities.json/admin1.json')
-      ]);
-      const citiesData = citiesModule.default;
-      const admin1Data = admin1Module.default;
-
-      // Build admin1 lookup map: "US.MA" -> "Massachusetts"
-      if (!admin1Map) {
-        admin1Map = new Map();
-        admin1Data.forEach(a => admin1Map.set(a.code, a.name));
-      }
-
-      // Process cities data with state/province info
-      citiesCache = citiesData.map(city => {
-        const countryCode = city.country;
-        const countryName = COUNTRY_NAMES[countryCode] || countryCode;
-
-        // Look up state/province name for countries that use them
-        let stateName = null;
-        let stateCode = null;
-        if (COUNTRIES_WITH_STATES.includes(countryCode) && city.admin1) {
-          const admin1Key = `${countryCode}.${city.admin1}`;
-          stateName = admin1Map.get(admin1Key) || null;
-          stateCode = city.admin1;
-        }
-
-        // Build display name: "City, State, Country" or "City, Country"
-        let displayName;
-        if (stateName) {
-          displayName = `${city.name}, ${stateName}, ${countryName}`;
-        } else {
-          displayName = `${city.name}, ${countryName}`;
-        }
-
-        return {
-          name: city.name,
-          country: countryName,
-          countryCode,
-          state: stateName,
-          stateCode,
-          lat: parseFloat(city.lat),
-          lng: parseFloat(city.lng),
-          displayName
-        };
-      });
-
-      setCitiesLoaded(true);
-      return citiesCache;
-    } catch (e) {
-      console.error('Failed to load cities data:', e);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Search cities when query changes
+  // Search cities via API when query changes (debounced)
   useEffect(() => {
     if (!query || query.length < 2) {
       setResults([]);
@@ -155,37 +27,36 @@ const CityAutocomplete = ({
       return;
     }
 
-    // Only search if cities are loaded
-    if (!citiesCache) {
-      loadCities().then(() => {
-        // Re-trigger search after loading
-        if (citiesCache && query.length >= 2) {
-          searchCities(query);
-        }
-      });
-      return;
-    }
+    // Debounce API calls — wait 300ms after last keystroke
+    const timeoutId = setTimeout(() => {
+      // Cancel any in-flight request
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    searchCities(query);
-  }, [query, citiesLoaded]);
+      setIsLoading(true);
+      fetch(`${API_URL}/cities/search?q=${encodeURIComponent(query)}&limit=10`, {
+        signal: controller.signal
+      })
+        .then(res => res.json())
+        .then(cities => {
+          setResults(cities);
+          setShowDropdown(cities.length > 0);
+          setSelectedIndex(0);
+        })
+        .catch(err => {
+          if (err.name !== 'AbortError') {
+            console.error('City search failed:', err);
+          }
+        })
+        .finally(() => setIsLoading(false));
+    }, 300);
 
-  const searchCities = (searchQuery) => {
-    if (!citiesCache) return;
-
-    const lowerQuery = searchQuery.toLowerCase();
-
-    // Fuzzy search: match city name or country
-    const matches = citiesCache
-      .filter(city =>
-        city.name.toLowerCase().includes(lowerQuery) ||
-        city.country.toLowerCase().includes(lowerQuery)
-      )
-      .slice(0, 10); // Limit to 10 results
-
-    setResults(matches);
-    setShowDropdown(matches.length > 0);
-    setSelectedIndex(0);
-  };
+    return () => {
+      clearTimeout(timeoutId);
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [query]);
 
   // Handle city selection
   const handleSelect = (city) => {
@@ -194,7 +65,6 @@ const CityAutocomplete = ({
     lastValidCity.current = city.displayName;
     setShowDropdown(false);
 
-    // Call onChange with full city data including country and state
     onChange({
       city: city.displayName,
       latitude: city.lat,
@@ -235,7 +105,7 @@ const CityAutocomplete = ({
     }
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking/tapping outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -247,9 +117,8 @@ const CityAutocomplete = ({
       }
     };
 
-    // Use pointerdown instead of touchstart — touchstart fires on virtual
-    // keyboard taps on mobile, which falsely triggers click-outside detection
-    // and immediately hides the dropdown on every keystroke.
+    // pointerdown works for both mouse and touch, and does NOT fire
+    // for virtual keyboard taps on mobile
     document.addEventListener('pointerdown', handleClickOutside);
     return () => {
       document.removeEventListener('pointerdown', handleClickOutside);
@@ -272,7 +141,7 @@ const CityAutocomplete = ({
   // Revert to last valid city on blur (prevents free-text entry)
   const handleBlur = () => {
     setTimeout(() => {
-      // If user is tapping a dropdown item, don't revert — let the click complete
+      // If user is tapping a dropdown item, don't revert
       if (isSelectingRef.current) {
         isSelectingRef.current = false;
         return;
@@ -283,7 +152,6 @@ const CityAutocomplete = ({
         return;
       }
       setShowDropdown(false);
-      // Use ref to get current query value (state may be stale in timeout)
       const currentQuery = queryRef.current;
       if (currentQuery !== lastValidCity.current) {
         setQuery(lastValidCity.current || '');
@@ -311,13 +179,8 @@ const CityAutocomplete = ({
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         onFocus={() => {
-          loadCities(); // Preload cities on focus
-          if (query.length >= 2) {
-            if (results.length > 0) {
-              setShowDropdown(true);
-            } else if (citiesCache) {
-              searchCities(query);
-            }
+          if (query.length >= 2 && results.length > 0) {
+            setShowDropdown(true);
           }
         }}
         onBlur={handleBlur}
