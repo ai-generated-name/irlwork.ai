@@ -1516,6 +1516,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [radiusFilter, setRadiusFilter] = useState('50')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [agentConnected, setAgentConnected] = useState(() => localStorage.getItem('irlwork_agentConnected') === 'true')
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
@@ -2194,6 +2195,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
         </a>
 
+        {/* Connect to AI Agent CTA - top of sidebar in hiring mode */}
+        {hiringMode && (
+          <div className="dashboard-v4-connect-agent-sidebar-top">
+            <button
+              onClick={() => !agentConnected && (window.location.href = '/connect-agent')}
+              className={`dashboard-v4-connect-agent-btn-top ${agentConnected ? 'connected' : ''}`}
+            >
+              <span className="dashboard-v4-connect-agent-icon">{agentConnected ? '✅' : '🤖'}</span>
+              <span>{agentConnected ? 'AI Agent Connected' : 'Connect to AI Agent'}</span>
+              {!agentConnected && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', opacity: 0.5 }}>
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Mode Switch - mobile only */}
         <div className="dashboard-v4-mode-switch-mobile">
           {hiringMode ? (
@@ -2245,19 +2264,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </button>
           ))}
         </nav>
-
-        {/* Connect to AI Agent CTA - only show in hiring mode */}
-        {hiringMode && (
-          <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-            <button
-              onClick={() => window.location.href = '/connect-agent'}
-              className="dashboard-v4-connect-agent-btn"
-            >
-              <span style={{ fontSize: 18 }}>🤖</span>
-              <span>Connect to AI Agent</span>
-            </button>
-          </div>
-        )}
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
@@ -2345,7 +2351,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             ) : (
               <>
                 <button
-                  className="dashboard-v4-topbar-link"
+                  className="dashboard-v4-topbar-link dashboard-v4-topbar-cta dashboard-v4-topbar-cta-teal"
                   onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
