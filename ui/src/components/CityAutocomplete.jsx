@@ -146,7 +146,7 @@ const CityAutocomplete = ({
 
   // Search cities when query changes
   useEffect(() => {
-    if (!query || query.length < 2) {
+    if (!query || query.length < 1) {
       setResults([]);
       setShowDropdown(false);
       return;
@@ -156,7 +156,7 @@ const CityAutocomplete = ({
     if (!citiesCache) {
       loadCities().then(() => {
         // Re-trigger search after loading
-        if (citiesCache && query.length >= 2) {
+        if (citiesCache && query.length >= 1) {
           searchCities(query);
         }
       });
