@@ -10,12 +10,12 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
 // Platform fee (15%)
-const PLATFORM_FEE_PERCENT = 0.15;
+const PLATFORM_FEE_PERCENT = 15;
 
 // Cents-based fee calculation to avoid floating-point rounding errors
 function calculateFees(depositAmount) {
   const depositCents = Math.round(parseFloat(depositAmount) * 100);
-  const platformFeeCents = Math.round(depositCents * PLATFORM_FEE_PERCENT);
+  const platformFeeCents = Math.round(depositCents * PLATFORM_FEE_PERCENT / 100);
   const workerCents = depositCents - platformFeeCents;
   return {
     worker_amount: (workerCents / 100).toFixed(2),
@@ -668,7 +668,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       res.json({
         success: true,
         payment_id: payment.id,
-        deposit_amount: depositAmount,
+        deposit_amount: payment.deposit_amount,
         worker_amount: parseFloat(humanAmount),
         platform_fee: parseFloat(platformFee),
         worker_stripe_account: task.human?.stripe_account_id || null,

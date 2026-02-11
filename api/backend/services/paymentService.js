@@ -67,15 +67,22 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Failed to create pending transaction');
   }
 
-  // Update task escrow status
-  await supabase
+  // Update task escrow status — atomic guard prevents double-release
+  const { data: releasedTask, error: releaseError } = await supabase
     .from('tasks')
     .update({
       escrow_status: 'released',
       escrow_released_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', taskId);
+    .eq('id', taskId)
+    .in('escrow_status', ['deposited', 'held'])
+    .select('id')
+    .single();
+
+  if (releaseError || !releasedTask) {
+    throw new Error('Payment has already been released or is in a disputed state');
+  }
 
   // Record payout (Stripe transfer will happen after 48-hour hold)
   await supabase.from('payouts').insert({

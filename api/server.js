@@ -2022,8 +2022,8 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
         supabase, user.id, taskId, amountCents, payment_method_id || null
       );
 
-      // Task goes straight to in_progress — no waiting for manual deposit
-      const { error } = await supabase
+      // Task goes straight to in_progress — atomic guard prevents double-charge
+      const { data: updatedTask, error } = await supabase
         .from('tasks')
         .update({
           human_id: human_id,
@@ -2036,9 +2036,22 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
           payment_method: 'stripe',
           updated_at: new Date().toISOString()
         })
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .eq('status', 'open')
+        .select('id')
+        .single();
 
-      if (error) return res.status(500).json({ error: error.message });
+      if (error || !updatedTask) {
+        // Task was already assigned concurrently — refund the charge
+        try {
+          const { refundPayment } = require('./backend/services/stripeService');
+          await refundPayment(charge.payment_intent_id, 'Task was already assigned');
+          console.log(`[Assign] Refunded duplicate charge for task ${taskId}`);
+        } catch (refundErr) {
+          console.error(`[Assign] CRITICAL: Failed to refund duplicate charge for task ${taskId}:`, refundErr);
+        }
+        return res.status(409).json({ error: 'Task was already assigned to another worker' });
+      }
 
       await finalizeAssignment(
         `You've been selected for "${task.title}". Payment is confirmed — you can begin work now!`
@@ -2105,15 +2118,15 @@ app.get('/api/agent/tasks', async (req, res) => {
   res.json(tasks || []);
 });
 
-// Release payment for a task
+// Release payment for a task — uses Stripe pipeline with 48-hour hold
 app.post('/api/tasks/:id/release', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
-  
+
   // Get task details
   const { data: task, error: taskError } = await supabase
     .from('tasks')
@@ -2129,63 +2142,41 @@ app.post('/api/tasks/:id/release', async (req, res) => {
   if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
-  
+
   // Task must be completed or approved
   if (task.status !== 'completed' && task.status !== 'approved') {
     return res.status(400).json({ error: 'Task must be completed before releasing payment' });
   }
-  
+
   // Check if escrow was deposited
   if (task.escrow_status !== 'deposited' && task.escrow_status !== 'held') {
     return res.status(400).json({ error: 'No escrow deposit found for this task' });
   }
-  
-  // Calculate payment
-  const budget = parseFloat(task.budget) || 0;
-  const platformFee = budget * (PLATFORM_FEE_PERCENT / 100);
-  const netAmount = budget - platformFee;
-  
-  // Generate simulated transaction
-  const txHash = '0x' + crypto.randomBytes(32).toString('hex');
-  
-  // Update task (atomic check on escrow_status to prevent double-release)
-  const { data: updatedRelease, error: updateError } = await supabase
-    .from('tasks')
-    .update({
-      escrow_status: 'released',
-      escrow_released_at: new Date().toISOString(),
-      status: 'paid',
-      release_tx: txHash
-    })
-    .eq('id', id)
-    .in('escrow_status', ['deposited', 'held'])
-    .select('id')
-    .single();
 
-  if (updateError || !updatedRelease) {
-    return res.status(409).json({ error: 'Payment has already been released or is being processed.' });
+  try {
+    // Use the proper Stripe pipeline with 48-hour hold
+    await releasePaymentToPending(supabase, id, task.human_id, user.id, createNotification);
+
+    // Update task status to paid
+    await supabase
+      .from('tasks')
+      .update({ status: 'paid', updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    const budget = parseFloat(task.budget) || 0;
+    const platformFee = Math.round(budget * PLATFORM_FEE_PERCENT) / 100;
+    const netAmount = budget - platformFee;
+
+    res.json({
+      success: true,
+      amount: budget,
+      platformFee,
+      netAmount,
+      assignee: task.assignee
+    });
+  } catch (e) {
+    return res.status(409).json({ error: e.message || 'Payment release failed' });
   }
-  
-  // NOTE: Previously inserted into a 'transactions' table that doesn't exist.
-  // Transaction data is tracked via payouts + pending_transactions tables.
-
-  // Create notification for human
-  await createNotification(
-    task.human_id,
-    'payment_released',
-    'Payment Released',
-    `Your payment of $${netAmount.toFixed(2)} USD has been released.`,
-    `/tasks/${id}`
-  );
-
-  res.json({
-    success: true,
-    txHash,
-    amount: budget,
-    platformFee,
-    netAmount,
-    assignee: task.assignee
-  });
 });
 
 // ============ R2 FILE UPLOAD ============
@@ -3167,45 +3158,28 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
   
   // Resolve based on decision
   if (release_to_human) {
-    // Release payment to human
-    const escrowAmount = task.escrow_amount || task.budget || 50;
-    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-    const netAmount = escrowAmount - platformFee;
-    const txHash = '0x' + crypto.randomBytes(32).toString('hex');
-    
-    const { data: disputeRelease, error: disputeReleaseErr } = await supabase
+    // Release payment to human via Stripe pipeline (48-hour hold + auto-transfer)
+    try {
+      await releasePaymentToPending(supabase, task_id, task.human_id, task.agent_id, createNotification);
+    } catch (e) {
+      return res.status(409).json({ error: e.message || 'Payment has already been released.' });
+    }
+
+    // Update task with dispute resolution metadata
+    await supabase
       .from('tasks')
       .update({
         status: 'paid',
-        escrow_status: 'released',
-        escrow_released_at: new Date().toISOString(),
         dispute_resolved_at: new Date().toISOString(),
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', task_id)
-      .neq('escrow_status', 'released')
-      .select('id')
-      .single();
+      .eq('id', task_id);
 
-    if (disputeReleaseErr || !disputeRelease) {
-      return res.status(409).json({ error: 'Payment has already been released.' });
-    }
+    const escrowAmount = task.escrow_amount || task.budget || 50;
+    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+    const netAmount = escrowAmount - platformFee;
 
-    await supabase.from('payouts').insert({
-      id: uuidv4(),
-      task_id: task_id,
-      human_id: task.human_id,
-      agent_id: task.agent_id,
-      gross_amount: escrowAmount,
-      platform_fee: platformFee,
-      net_amount: netAmount,
-      tx_hash: txHash,
-      status: 'completed',
-      dispute_resolved: true,
-      created_at: new Date().toISOString()
-    });
-    
     await createNotification(
       task.human_id,
       'dispute_resolved',
@@ -3920,12 +3894,14 @@ app.post('/api/mcp', async (req, res) => {
           });
         }
 
-        const { error: taskError } = await supabase
+        // Atomic guard: only update if task is still open (prevents double-charge)
+        const { data: updatedMcpTask, error: taskError } = await supabase
           .from('tasks')
           .update({
             human_id,
             status: 'in_progress',
             escrow_status: 'deposited',
+            escrow_amount: budgetAmount,
             escrow_deposited_at: new Date().toISOString(),
             stripe_payment_intent_id: chargeResult.payment_intent_id,
             payment_method: 'stripe',
@@ -3934,9 +3910,21 @@ app.post('/api/mcp', async (req, res) => {
             instructions,
             updated_at: new Date().toISOString()
           })
-          .eq('id', task_id);
+          .eq('id', task_id)
+          .eq('status', 'open')
+          .select('id')
+          .single();
 
-        if (taskError) throw taskError;
+        if (taskError || !updatedMcpTask) {
+          // Task was already assigned concurrently — refund
+          try {
+            const { refundPayment } = require('./backend/services/stripeService');
+            await refundPayment(chargeResult.payment_intent_id, 'Task was already assigned');
+          } catch (refundErr) {
+            console.error(`[MCP Hire] CRITICAL: Failed to refund duplicate charge for task ${task_id}:`, refundErr);
+          }
+          return res.status(409).json({ error: 'Task was already assigned to another worker' });
+        }
 
         // Notify human
         await createNotification(
@@ -4083,6 +4071,12 @@ app.post('/api/mcp', async (req, res) => {
             .eq('id', latestProof.id);
         }
         
+        // Update task status to approved first
+        await supabase
+          .from('tasks')
+          .update({ status: 'approved', updated_at: new Date().toISOString() })
+          .eq('id', task_id);
+
         // Release payment via Stripe (same flow as non-MCP approve)
         try {
           await releasePaymentToPending(supabase, task_id, task.human_id, user.id, createNotification);
@@ -4091,10 +4085,16 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(409).json({ error: e.message || 'Payment release failed.' });
         }
 
+        // Mark as paid after successful release
+        await supabase
+          .from('tasks')
+          .update({ status: 'paid', updated_at: new Date().toISOString() })
+          .eq('id', task_id);
+
         const escrowAmount = task.escrow_amount || task.budget || 50;
-        const platformFee = Math.round(escrowAmount * 15) / 100;
+        const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
         const netAmount = escrowAmount - platformFee;
-        
+
         res.json({
           success: true,
           status: 'paid',

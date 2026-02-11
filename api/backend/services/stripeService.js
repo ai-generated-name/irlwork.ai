@@ -1,7 +1,7 @@
 const { stripe } = require('../lib/stripe');
 const { v4: uuidv4 } = require('uuid');
 
-const PLATFORM_FEE_PERCENT = 0.15; // 15% platform fee
+const PLATFORM_FEE_PERCENT = 15; // 15% — use as: Math.round(amount * PLATFORM_FEE_PERCENT) / 100
 
 // ============================================================================
 // CUSTOMER MANAGEMENT (Agents)

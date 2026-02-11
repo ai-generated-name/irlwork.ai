@@ -150,7 +150,7 @@ function EarningsDashboard({ user }) {
         <div className="bg-[#D1FAE5] border border-[#059669]/20 rounded-xl p-4">
           <p className="text-[#059669] font-semibold">Withdrawal Successful!</p>
           <p className="text-sm text-[#059669]/80 mt-1">
-            ${withdrawResult.amount_withdrawn} is being transferred to your bank account
+            ${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account
           </p>
         </div>
       )}

@@ -64,7 +64,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, onWithd
         </div>
         {!stripeReady && (
           <div style={{ marginTop: '0.75rem' }}>
-            <ConnectBankButton user={user} />
+            <ConnectBankButton user={user} compact />
           </div>
         )}
       </div>
