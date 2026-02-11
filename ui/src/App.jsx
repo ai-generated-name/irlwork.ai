@@ -3798,27 +3798,39 @@ function App() {
         setUser(newUser)
       } else {
         debug('[Auth] Backend error:', res.status)
-        // On error, create minimal user that needs onboarding
-        const newUser = {
-          id: supabaseUser.id,
-          email: supabaseUser.email,
-          name: supabaseUser.user_metadata?.full_name || 'User',
-          supabase_user: true,
-          needs_onboarding: true
+        // On error, use cached profile if available (don't force re-onboarding on transient errors)
+        const cached = JSON.parse(localStorage.getItem('user') || 'null')
+        if (cached && !cached.needs_onboarding) {
+          debug('[Auth] Using cached profile (API error fallback)')
+          setUser({ ...cached, supabase_user: true })
+        } else {
+          const newUser = {
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            name: supabaseUser.user_metadata?.full_name || 'User',
+            supabase_user: true,
+            needs_onboarding: true
+          }
+          setUser(newUser)
         }
-        setUser(newUser)
       }
     } catch (e) {
       console.error('[Auth] Fetch error:', e)
-      // On network error, create minimal user that needs onboarding
-      setUser({
-        id: supabaseUser.id,
-        email: supabaseUser.email,
-        name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
-        avatar_url: supabaseUser.user_metadata?.avatar_url || '',
-        supabase_user: true,
-        needs_onboarding: true
-      })
+      // On network error, use cached profile if available (don't force re-onboarding on transient errors)
+      const cached = JSON.parse(localStorage.getItem('user') || 'null')
+      if (cached && !cached.needs_onboarding) {
+        debug('[Auth] Using cached profile (network error fallback)')
+        setUser({ ...cached, supabase_user: true })
+      } else {
+        setUser({
+          id: supabaseUser.id,
+          email: supabaseUser.email,
+          name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
+          avatar_url: supabaseUser.user_metadata?.avatar_url || '',
+          supabase_user: true,
+          needs_onboarding: true
+        })
+      }
     } finally {
       setLoading(false)
     }
