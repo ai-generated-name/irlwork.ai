@@ -743,7 +743,7 @@ function AuthPage({ onLogin, onNavigate }) {
                 className="auth-v4-input"
                 style={{ paddingRight: 44 }}
                 required
-                minLength={6}
+                minLength={8}
                 id="auth-password"
                 aria-label="Password"
               />
@@ -786,20 +786,60 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
   const [proofText, setProofText] = useState('')
   const [files, setFiles] = useState([])
   const [uploadedUrls, setUploadedUrls] = useState([])
+  const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef(null)
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files || [])
     if (selected.length + files.length > 3) {
       toast.error('Maximum 3 files allowed')
       return
     }
-    setFiles(prev => [...prev, ...selected].slice(0, 3))
+    const newFiles = [...files, ...selected].slice(0, 3)
+    setFiles(newFiles)
+
+    // Upload each new file to the backend
+    setUploading(true)
+    try {
+      for (const file of selected) {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+        const res = await fetch(`${API_URL}/upload/proof`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: task?.human_id || ''
+          },
+          body: JSON.stringify({ file: base64, filename: file.name, mimeType: file.type })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.url) {
+            setUploadedUrls(prev => [...prev, data.url])
+          }
+        } else {
+          toast.error(`Failed to upload ${file.name}`)
+        }
+      }
+    } catch (err) {
+      toast.error('Upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeFile = (index) => {
+    setFiles(prev => prev.filter((_, i) => i !== index))
+    setUploadedUrls(prev => prev.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async () => {
-    if (!proofText.trim() && uploadedUrls.length === 0) {
+    if (!proofText.trim() && uploadedUrls.length === 0 && files.length === 0) {
       toast.error('Please provide proof text or upload images')
       return
     }
@@ -812,54 +852,80 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
-      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Submit Proof</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
+      <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Submit Proof</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}>✕</button>
         </div>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Describe your work</label>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Describe your work</label>
             <textarea
               value={proofText}
               onChange={(e) => setProofText(e.target.value)}
               placeholder="Describe what you did to complete this task..."
               rows={4}
-              className={`${styles.input} resize-none`}
+              className="onboarding-v4-input"
+              style={{ resize: 'vertical', fontFamily: 'inherit' }}
             />
           </div>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Upload Proof (max 3 files)</label>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Upload Proof (max 3 files)</label>
             <div
-              className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center cursor-pointer hover:border-orange-500 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: '2px dashed var(--border)',
+                borderRadius: 12,
+                padding: 24,
+                textAlign: 'center',
+                cursor: files.length >= 3 ? 'default' : 'pointer',
+                opacity: files.length >= 3 ? 0.5 : 1,
+                transition: 'border-color 0.2s'
+              }}
+              onClick={() => files.length < 3 && fileInputRef.current?.click()}
             >
-              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
-              <div className="text-3xl mb-2">📤</div>
-              <p className="text-gray-400 text-sm">Click to upload images</p>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
+              <div style={{ fontSize: 28, marginBottom: 8 }}>📤</div>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>
+                {files.length >= 3 ? 'Maximum files reached' : 'Click to upload images'}
+              </p>
             </div>
             {files.length > 0 && (
-              <div className="flex gap-2 mt-3 flex-wrap">
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                 {files.map((file, i) => (
-                  <div key={i} className="bg-white/10 rounded-lg p-2 text-sm text-white">
-                    {file.name.slice(0, 15)}...
+                  <div key={i} style={{
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    fontSize: 13,
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    <span>{file.name.length > 18 ? file.name.slice(0, 18) + '...' : file.name}</span>
+                    <button onClick={() => removeFile(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14, padding: 0 }}>✕</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          {uploadedUrls.length > 0 && (
-            <p className="text-green-400 text-sm flex items-center gap-2">
-              <span>✓</span> {uploadedUrls.length} files uploaded
+          {uploading && (
+            <p style={{ fontSize: 13, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="loading-v4-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Uploading files...
+            </p>
+          )}
+          {uploadedUrls.length > 0 && !uploading && (
+            <p style={{ fontSize: 13, color: '#10B981', display: 'flex', alignItems: 'center', gap: 8 }}>
+              ✓ {uploadedUrls.length} file{uploadedUrls.length !== 1 ? 's' : ''} uploaded
             </p>
           )}
         </div>
-        <div className="flex gap-3 mt-6">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={handleSubmit} disabled={submitting}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+          <button className="v4-btn v4-btn-primary" style={{ flex: 1 }} onClick={handleSubmit} disabled={submitting || uploading}>
             {submitting ? 'Submitting...' : 'Submit Proof'}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -872,72 +938,78 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
   const [hours, setHours] = useState(24)
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
-      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Review Proof</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
+      <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Review Proof</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}>✕</button>
         </div>
-        <div className="space-y-4 mb-6">
-          <div className="bg-white/5 rounded-xl p-4">
-            <h3 className="font-semibold text-white mb-2">{task?.title}</h3>
-            <p className="text-gray-400 text-sm">{task?.description}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <div style={{ background: 'var(--bg-tertiary)', borderRadius: 12, padding: 16 }}>
+            <h3 style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>{task?.title}</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{task?.description}</p>
           </div>
           {task?.proof_description && (
-            <div className="bg-white/5 rounded-xl p-4">
-              <h4 className="text-gray-400 text-sm mb-2">Human's Proof:</h4>
-              <p className="text-white">{task.proof_description}</p>
+            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 12, padding: 16 }}>
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Human's Proof:</h4>
+              <p style={{ color: 'var(--text-primary)' }}>{task.proof_description}</p>
             </div>
           )}
           {task?.proof_urls?.length > 0 && (
             <div>
-              <h4 className="text-gray-400 text-sm mb-2">Proof Images:</h4>
-              <div className="flex gap-2 flex-wrap">
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Proof Images:</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {task.proof_urls.map((url, i) => (
-                  <img key={i} src={url} alt={`Proof ${i + 1}`} className="w-24 h-24 object-cover rounded-lg" />
+                  <img key={i} src={url} alt={`Proof ${i + 1}`} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
                 ))}
               </div>
             </div>
           )}
         </div>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Feedback (required for reject)</label>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Feedback (required for reject)</label>
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Provide feedback..."
               rows={3}
-              className={`${styles.input} resize-none`}
+              className="onboarding-v4-input"
+              style={{ resize: 'vertical', fontFamily: 'inherit' }}
             />
           </div>
           {rejecting && (
             <div>
-              <label className="block text-gray-400 text-sm mb-2">Extend deadline by (hours)</label>
+              <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Extend deadline by (hours)</label>
               <input
                 type="number"
                 value={hours}
                 onChange={(e) => setHours(parseInt(e.target.value) || 0)}
                 min={1}
                 max={168}
-                className={styles.input}
+                className="onboarding-v4-input"
               />
             </div>
           )}
         </div>
-        <div className="flex gap-3 mt-6">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>Close</Button>
-          <Button variant="secondary" className="flex-1" onClick={() => setRejecting(!rejecting)}>
-            {rejecting ? 'Cancel Reject' : 'Reject & Request Changes'}
-          </Button>
-          <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={onApprove}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Close</button>
+          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={() => setRejecting(!rejecting)}>
+            {rejecting ? 'Cancel Reject' : 'Reject'}
+          </button>
+          <button className="v4-btn v4-btn-primary" style={{ flex: 1, background: '#10B981' }} onClick={onApprove}>
             Approve & Pay
-          </Button>
+          </button>
         </div>
         {rejecting && (
-          <Button className="w-full mt-3 bg-red-600 hover:bg-red-700" onClick={() => onReject({ feedback, extendHours: hours })} disabled={!feedback.trim()}>
+          <button
+            className="v4-btn"
+            style={{ width: '100%', marginTop: 12, background: '#DC2626', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: feedback.trim() ? 'pointer' : 'not-allowed', opacity: feedback.trim() ? 1 : 0.5 }}
+            onClick={() => onReject({ feedback, extendHours: hours })}
+            disabled={!feedback.trim()}
+          >
             Confirm Rejection
-          </Button>
+          </button>
         )}
       </div>
     </div>

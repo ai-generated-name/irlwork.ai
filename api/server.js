@@ -1690,24 +1690,34 @@ app.post('/api/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const user = await getUserByToken(req.headers.authorization);
-  if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, deadline, requirements } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, deadline, requirements, country, country_code, duration_hours } = req.body;
+
+  // Validate required fields
+  if (!title || !title.trim()) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  if (!budget || parseFloat(budget) < 5) {
+    return res.status(400).json({ error: 'Budget must be at least $5' });
+  }
 
   const id = uuidv4();
-  const budgetAmount = budget || 50;
+  const budgetAmount = parseFloat(budget) || 50;
 
   const { data: task, error } = await supabase
     .from('tasks')
     .insert({
       id,
       agent_id: user.id,
-      title,
+      title: title.trim(),
       description,
       category,
       location,
       latitude: latitude || null,
       longitude: longitude || null,
+      country: country || null,
+      country_code: country_code || null,
       budget: budgetAmount,
       status: 'open',
       task_type: 'direct',
@@ -1715,6 +1725,7 @@ app.post('/api/tasks', async (req, res) => {
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
       deadline: deadline || null,
+      duration_hours: duration_hours || null,
       requirements: requirements || null,
       created_at: new Date().toISOString()
     })
@@ -2649,14 +2660,14 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   // Verify task exists and user is assigned
   const { data: task, error: taskError } = await supabase
     .from('tasks')
-    .select('id, human_id, status, title')
+    .select('id, human_id, agent_id, status, title')
     .eq('id', taskId)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.human_id !== user.id) {
     return res.status(403).json({ error: 'Not assigned to this task' });
   }
@@ -3174,18 +3185,16 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  // Check if user is admin
-  const { data: adminUser } = await supabase
-    .from('users')
-    .select('type')
-    .eq('id', user.id)
-    .single();
-  
-  if (adminUser?.type !== 'admin') {
+  // Check if user is admin via ADMIN_USER_IDS environment variable
+  const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+  if (!ADMIN_USER_IDS.includes(user.id)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  
-  const { task_id, resolution, refund_human = false, release_to_human = false, notes } = req.body;
+
+  const { task_id, resolution, refund_to_agent = false, release_to_human = false, notes,
+          // Support legacy parameter name for backwards compatibility
+          refund_human } = req.body;
+  const shouldRefundAgent = refund_to_agent || refund_human;
   
   // Get task
   const { data: task, error: taskError } = await supabase
@@ -3250,8 +3259,8 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
       `The dispute has been resolved in your favor. Payment of ${netAmount.toFixed(2)} USDC has been released.`,
       `/tasks/${task_id}`
     );
-  } else if (refund_human) {
-    // Refund escrow to agent
+  } else if (shouldRefundAgent) {
+    // Refund escrow to agent (param was misleadingly named refund_human, now refund_to_agent)
     await supabase
       .from('tasks')
       .update({
@@ -5600,6 +5609,23 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     })
     .eq('id', user.id);
 
+  // Get the task details to notify the agent
+  const { data: acceptedTask } = await supabase
+    .from('tasks')
+    .select('agent_id, title')
+    .eq('id', id)
+    .single();
+
+  if (acceptedTask?.agent_id) {
+    await createNotification(
+      acceptedTask.agent_id,
+      'task_accepted',
+      'Task Accepted',
+      `${user.name || 'A worker'} has accepted your task "${acceptedTask.title}".`,
+      `/tasks/${id}`
+    );
+  }
+
   res.json({ success: true });
 });
 
@@ -5609,49 +5635,56 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
 
 app.post('/api/tasks/:id/start', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
-  
+
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .select('*')
     .eq('id', id)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.human_id !== user.id) {
     return res.status(403).json({ error: 'Not assigned to you' });
   }
-  
+
+  // Only allow starting tasks that are in 'assigned' or 'accepted' status
+  const startableStatuses = ['assigned', 'accepted'];
+  if (!startableStatuses.includes(task.status)) {
+    return res.status(400).json({ error: `Cannot start a task with status "${task.status}". Task must be assigned first.` });
+  }
+
   await supabase
     .from('tasks')
     .update({
       status: 'in_progress',
-      started_at: new Date().toISOString(),
+      work_started_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', id);
-  
+    .eq('id', id)
+    .in('status', startableStatuses);
+
   res.json({ success: true, status: 'in_progress' });
 });
 
 app.post('/api/tasks/:id/cancel', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
-  
+
   const { data: task } = await supabase
     .from('tasks')
-    .select('agent_id')
+    .select('agent_id, human_id, title, status, escrow_status')
     .eq('id', id)
     .single();
 
@@ -5659,10 +5692,33 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
+  // Only allow cancellation of tasks that haven't been paid or completed
+  const cancellableStatuses = ['open', 'assigned', 'in_progress'];
+  if (!cancellableStatuses.includes(task.status)) {
+    return res.status(400).json({
+      error: `Cannot cancel a task with status "${task.status}". Only open, assigned, or in-progress tasks can be cancelled.`
+    });
+  }
+
   await supabase
     .from('tasks')
-    .update({ status: 'cancelled' })
-    .eq('id', id);
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .in('status', cancellableStatuses);
+
+  // Notify the assigned human if one exists
+  if (task.human_id) {
+    await createNotification(
+      task.human_id,
+      'task_cancelled',
+      'Task Cancelled',
+      `The task "${task.title}" has been cancelled by the poster.`,
+      `/tasks/${id}`
+    );
+  }
 
   res.json({ success: true });
 });
