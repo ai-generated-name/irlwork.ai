@@ -2044,8 +2044,8 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       if (error || !updatedTask) {
         // Task was already assigned concurrently — refund the charge
         try {
-          const { refundPayment } = require('./backend/services/stripeService');
-          await refundPayment(charge.payment_intent_id, 'Task was already assigned');
+          const { refundPaymentIntent } = require('./backend/services/stripeService');
+          await refundPaymentIntent(charge.payment_intent_id, 'duplicate');
           console.log(`[Assign] Refunded duplicate charge for task ${taskId}`);
         } catch (refundErr) {
           console.error(`[Assign] CRITICAL: Failed to refund duplicate charge for task ${taskId}:`, refundErr);
@@ -3918,8 +3918,8 @@ app.post('/api/mcp', async (req, res) => {
         if (taskError || !updatedMcpTask) {
           // Task was already assigned concurrently — refund
           try {
-            const { refundPayment } = require('./backend/services/stripeService');
-            await refundPayment(chargeResult.payment_intent_id, 'Task was already assigned');
+            const { refundPaymentIntent } = require('./backend/services/stripeService');
+            await refundPaymentIntent(chargeResult.payment_intent_id, 'duplicate');
           } catch (refundErr) {
             console.error(`[MCP Hire] CRITICAL: Failed to refund duplicate charge for task ${task_id}:`, refundErr);
           }

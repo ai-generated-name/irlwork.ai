@@ -33,7 +33,10 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Task not found');
   }
 
-  const escrowAmount = task.escrow_amount || task.budget || 50;
+  const escrowAmount = task.escrow_amount || task.budget;
+  if (!escrowAmount || escrowAmount <= 0) {
+    throw new Error('Task has no valid escrow amount or budget set');
+  }
 
   // Calculate fees
   const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;

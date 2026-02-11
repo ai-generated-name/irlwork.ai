@@ -1555,6 +1555,26 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     localStorage.setItem('irlwork_hiringMode', hiringMode)
   }, [hiringMode])
 
+  // Handle Stripe Connect onboarding return
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const stripeOnboard = params.get('stripe_onboard')
+    if (stripeOnboard === 'complete') {
+      toast.success('Bank account setup complete! You can now receive payments.')
+      setActiveTab('payments')
+      // Clean up URL param
+      params.delete('stripe_onboard')
+      const cleanUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`
+      window.history.replaceState({}, '', cleanUrl)
+    } else if (stripeOnboard === 'refresh') {
+      toast.info('Bank setup session expired. Please try again.')
+      setActiveTab('payments')
+      params.delete('stripe_onboard')
+      const cleanUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`
+      window.history.replaceState({}, '', cleanUrl)
+    }
+  }, [])
+
   // Pre-fill location filter with user's city
   useEffect(() => {
     if (user?.city && !locationFilter) {

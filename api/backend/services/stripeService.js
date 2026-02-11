@@ -251,6 +251,17 @@ async function getConnectAccountStatus(stripeAccountId) {
   };
 }
 
+/**
+ * Generate a login link for the worker's Stripe Express Dashboard.
+ * Allows workers to manage bank accounts, view payouts, update tax info.
+ */
+async function createLoginLink(stripeAccountId) {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
+  return loginLink.url;
+}
+
 // ============================================================================
 // TRANSFERS (Platform → Worker)
 // ============================================================================
@@ -291,7 +302,23 @@ async function transferToWorker(supabase, pendingTransactionId, workerStripeAcco
 // ============================================================================
 
 /**
- * Refund a payment to the agent's card.
+ * Refund a PaymentIntent directly by ID (no DB lookup).
+ * Used for immediate rollbacks, e.g. when a race condition causes a duplicate charge.
+ */
+async function refundPaymentIntent(paymentIntentId, reason = 'duplicate') {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  const refund = await stripe.refunds.create({
+    payment_intent: paymentIntentId,
+    reason,
+    metadata: { platform: 'irlwork', reason }
+  });
+
+  return { refund_id: refund.id, status: refund.status, amount: refund.amount };
+}
+
+/**
+ * Refund a payment to the agent's card by task ID.
  * Used when disputes are resolved in the agent's favor or tasks are cancelled.
  */
 async function refundPayment(supabase, taskId, reason = 'requested_by_customer') {
@@ -395,6 +422,10 @@ async function handleWebhookEvent(event, supabase, createNotification) {
 
     case 'payout.failed':
       await handlePayoutFailed(event.data.object, supabase, createNotification);
+      break;
+
+    case 'payout.paid':
+      await handlePayoutPaid(event.data.object, supabase, createNotification);
       break;
 
     default:
@@ -713,6 +744,32 @@ async function handlePayoutFailed(payout, supabase, createNotification) {
   }
 }
 
+/**
+ * Handle payout.paid — worker's bank deposit has landed.
+ */
+async function handlePayoutPaid(payout, supabase, createNotification) {
+  if (!payout?.destination) return;
+
+  const amountDollars = (payout.amount / 100).toFixed(2);
+
+  // Find worker by Stripe account ID
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('stripe_account_id', payout.destination)
+    .single();
+
+  if (user && createNotification) {
+    await createNotification(
+      user.id,
+      'payout_paid',
+      'Bank Deposit Received',
+      `$${amountDollars} has been deposited to your bank account.`,
+      '/payments'
+    );
+  }
+}
+
 module.exports = {
   getOrCreateStripeCustomer,
   createSetupIntent,
@@ -722,9 +779,11 @@ module.exports = {
   chargeAgentForTask,
   createConnectAccount,
   createAccountLink,
+  createLoginLink,
   getConnectAccountStatus,
   transferToWorker,
   refundPayment,
+  refundPaymentIntent,
   handleWebhookEvent,
   PLATFORM_FEE_PERCENT,
 };
