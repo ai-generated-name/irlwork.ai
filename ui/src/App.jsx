@@ -1375,9 +1375,10 @@ function ApiKeysTab({ user }) {
   )
 }
 
-function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
+function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, initialMode }) {
   const toast = useToast()
   const [hiringMode, setHiringMode] = useState(() => {
+    if (initialMode) return initialMode === 'hiring'
     const saved = localStorage.getItem('irlwork_hiringMode')
     return saved === 'true'
   })
@@ -1389,7 +1390,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const getInitialTab = () => {
     const params = new URLSearchParams(window.location.search)
     const tabParam = params.get('tab')
-    const savedHiringMode = localStorage.getItem('irlwork_hiringMode') === 'true'
+    // Derive mode from URL path, fallback to localStorage
+    const isHiringFromUrl = window.location.pathname === '/dashboard/hiring'
 
     // Valid tabs for each mode
     const humanTabs = ['tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
@@ -1399,7 +1401,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       // Map URL-friendly names to internal tab IDs
       const tabMap = {
         'create-task': 'posted',
-        'my-tasks': savedHiringMode ? 'posted' : 'tasks',
+        'my-tasks': isHiringFromUrl ? 'posted' : 'tasks',
         'browse': 'browse',
         'messages': 'messages',
         'payments': 'payments',
@@ -1411,18 +1413,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       }
       const mappedTab = tabMap[tabParam] || tabParam
 
-      if (savedHiringMode && hiringTabs.includes(mappedTab)) return mappedTab
-      if (!savedHiringMode && humanTabs.includes(mappedTab)) return mappedTab
+      if (isHiringFromUrl && hiringTabs.includes(mappedTab)) return mappedTab
+      if (!isHiringFromUrl && humanTabs.includes(mappedTab)) return mappedTab
     }
 
-    return savedHiringMode ? 'posted' : 'tasks'
+    return isHiringFromUrl ? 'posted' : 'tasks'
   }
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
 
   // Helper to update URL query param without page reload
-  const updateTabUrl = (tabId) => {
+  const updateTabUrl = (tabId, mode) => {
     // Map internal tab IDs to URL-friendly names
     const urlMap = {
       'posted': 'my-tasks',
@@ -1435,7 +1437,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       'notifications': 'notifications'
     }
     const urlTab = urlMap[tabId] || tabId
-    const newUrl = `/dashboard?tab=${urlTab}`
+    const modeSegment = (mode !== undefined ? mode : hiringMode) ? 'hiring' : 'working'
+    const newUrl = `/dashboard/${modeSegment}?tab=${urlTab}`
     window.history.pushState({}, '', newUrl)
   }
 
@@ -1572,18 +1575,29 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     setHiringMode(newHiringMode)
     const newTab = newHiringMode ? 'posted' : 'tasks'
     setActiveTabState(newTab)
-    updateTabUrl(newTab)
+    updateTabUrl(newTab, newHiringMode)
   }
 
   // Handle browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
+      // Detect mode from URL path
+      const path = window.location.pathname
+      if (path === '/dashboard/hiring' && !hiringMode) {
+        setHiringMode(true)
+        setActiveTabState('posted')
+      } else if (path === '/dashboard/working' && hiringMode) {
+        setHiringMode(false)
+        setActiveTabState('tasks')
+      }
+
       const params = new URLSearchParams(window.location.search)
       const tabParam = params.get('tab')
       if (tabParam) {
+        const isHiring = path === '/dashboard/hiring'
         const tabMap = {
           'create-task': 'posted',
-          'my-tasks': hiringMode ? 'posted' : 'tasks',
+          'my-tasks': isHiring ? 'posted' : 'tasks',
           'browse': 'browse',
           'messages': 'messages',
           'payments': 'payments',
@@ -1856,7 +1870,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       return
     }
 
-    // Dashboard with query params (e.g. /dashboard?task=xxx)
+    // Dashboard with query params (e.g. /dashboard?task=xxx or /dashboard/hiring?tab=xxx)
     if (link.startsWith('/dashboard')) {
       const params = new URLSearchParams(link.split('?')[1] || '')
       const taskId = params.get('task')
@@ -2131,13 +2145,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         <div className="dashboard-v4-mode-toggle">
           <button
             className={`dashboard-v4-mode-btn ${!hiringMode ? 'active' : ''}`}
-            onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks') }}
+            onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
           >
             Working
           </button>
           <button
             className={`dashboard-v4-mode-btn ${hiringMode ? 'active' : ''}`}
-            onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted') }}
+            onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true) }}
           >
             Hiring
           </button>
@@ -2230,19 +2244,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <path d="M3 12h18M3 6h18M3 18h18" />
               </svg>
             </button>
-            <a href="/dashboard" className="dashboard-v4-topbar-logo">
+            <a href={hiringMode ? '/dashboard/hiring' : '/dashboard/working'} className="dashboard-v4-topbar-logo">
               <div className="logo-mark-v4">irl</div>
               <span className="logo-name-v4">irlwork.ai</span>
             </a>
           </div>
 
-          {/* Center: Navigation Links */}
-          <div className="dashboard-v4-topbar-center">
+          {/* Right: Mode switch + Notifications + User */}
+          <div className="dashboard-v4-topbar-right">
             {!hiringMode ? (
               <>
                 <button
                   className="dashboard-v4-topbar-link"
-                  onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted') }}
+                  onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
@@ -2265,7 +2279,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               <>
                 <button
                   className="dashboard-v4-topbar-link"
-                  onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks') }}
+                  onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -2286,10 +2300,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 </button>
               </>
             )}
-          </div>
-
-          {/* Right: Notifications + User */}
-          <div className="dashboard-v4-topbar-right">
             {/* Notifications Bell */}
             <div className="dashboard-v4-notifications-wrapper">
               <button
@@ -3927,7 +3937,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             <span className="logo-name-v4">irlwork.ai</span>
           </a>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/dashboard" className="mcp-v4-nav-link">← Dashboard</a>
+            <a href="/dashboard/hiring" className="mcp-v4-nav-link">← Dashboard</a>
             <a href="/mcp" className="mcp-v4-nav-link">Full API Docs</a>
           </div>
         </div>
@@ -4039,7 +4049,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               </button>
             </div>
             <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate keys from your <a href="/dashboard" onClick={() => localStorage.setItem('irlwork_hiringMode', 'true')} style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring?tab=settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
           </div>
 
           {/* Step 2: Install */}
@@ -4193,7 +4203,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
           <p>View all 22+ tools, parameters, and usage examples in the complete documentation.</p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">View Full API Docs →</a>
-            <a href="/dashboard" className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => localStorage.setItem('irlwork_hiringMode', 'true')}>Go to Dashboard</a>
+            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
           </div>
         </section>
       </main>
@@ -4214,7 +4224,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               <div className="footer-v4-links">
                 <a href="/mcp" className="footer-v4-link">API Docs</a>
                 <a href="/connect-agent" className="footer-v4-link">Connect Agent</a>
-                <a href="/dashboard" className="footer-v4-link">Dashboard</a>
+                <a href="/dashboard/hiring" className="footer-v4-link">Dashboard</a>
               </div>
             </div>
           </div>
@@ -4268,7 +4278,7 @@ function MCPPage() {
       : 'YOUR_API_KEY_HERE'
 
     const apiKeySection = keys.length > 0
-      ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard`
+      ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring`
       : `Register your agent to get an API key:
 
 \`\`\`bash
@@ -4513,9 +4523,8 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
                   <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
                 )}
                 <a
-                  href="/dashboard"
+                  href="/dashboard/hiring?tab=settings"
                   className="btn-v4 btn-v4-primary"
-                  onClick={() => localStorage.setItem('irlwork_hiringMode', 'true')}
                 >
                   Manage API Keys →
                 </a>
@@ -4820,7 +4829,7 @@ Signature required. Bring to our office at 123 Main St.",
             <div>
               <h4 className="footer-v4-column-title">Platform</h4>
               <div className="footer-v4-links">
-                <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
+                <a href="/dashboard/working?tab=browse" className="footer-v4-link">Browse Tasks</a>
                 <a href="/auth" className="footer-v4-link">Sign Up</a>
                 <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
               </div>
@@ -5073,7 +5082,7 @@ function App() {
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
-        navigate('/dashboard?tab=browse')
+        navigate('/dashboard/working?tab=browse')
       } else {
         const errorData = await res.json().catch(() => ({}))
         console.error('[Onboarding] Failed:', errorData)
@@ -5093,17 +5102,23 @@ function App() {
     if (loading) return
     if (path === '/auth' && user) {
       debug('[Auth] Already logged in, redirecting to dashboard')
-      navigate('/dashboard')
+      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+      navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
     } else if (path === '/onboard' && !user) {
       debug('[Auth] No user for onboard, redirecting to auth')
       navigate('/auth')
     } else if (path === '/onboard' && user && !user.needs_onboarding) {
       debug('[Auth] User already onboarded, redirecting to dashboard')
-      navigate('/dashboard')
-    } else if (path === '/dashboard' && !user) {
+      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+      navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path === '/dashboard' && user) {
+      debug('[Auth] Bare /dashboard, redirecting to mode-specific URL')
+      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+      navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path.startsWith('/dashboard') && !user) {
       debug('[Auth] No user, redirecting to auth')
       navigate('/auth')
-    } else if (path === '/dashboard' && user && user.needs_onboarding) {
+    } else if (path.startsWith('/dashboard') && user && user.needs_onboarding) {
       debug('[Auth] User needs onboarding, redirecting to /onboard')
       navigate('/onboard')
     }
@@ -5115,7 +5130,7 @@ function App() {
 
   // Only block on auth loading for routes that require authentication
   // Skip the gate if we have a cached user (renders instantly from localStorage)
-  if (loading && !user && ['/dashboard', '/onboard'].some(r => path.startsWith(r))) {
+  if (loading && !user && ['/dashboard/', '/dashboard', '/onboard'].some(r => path.startsWith(r))) {
     debug('[Auth] Loading...')
     return <Loading />
   }
@@ -5144,10 +5159,16 @@ function App() {
       return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
-    // Dashboard route - requires auth
+    // Dashboard route - requires auth (matches /dashboard/working and /dashboard/hiring)
+    if (path === '/dashboard/working' || path === '/dashboard/hiring') {
+      if (!user || user.needs_onboarding) return <Loading />
+      return <Dashboard user={user} onLogout={logout} initialMode={path === '/dashboard/hiring' ? 'hiring' : 'working'} />
+    }
+
+    // Bare /dashboard redirect (handled by useEffect above, but guard here too)
     if (path === '/dashboard') {
       if (!user || user.needs_onboarding) return <Loading />
-      return <Dashboard user={user} onLogout={logout} />
+      return <Loading />
     }
 
     if (path === '/auth') {
@@ -5166,7 +5187,7 @@ function App() {
   })()
 
   // Dashboard has feedback in sidebar, other pages use floating button
-  const isDashboard = path === '/dashboard'
+  const isDashboard = path.startsWith('/dashboard')
 
   return (
     <>
