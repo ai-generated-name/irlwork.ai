@@ -82,6 +82,9 @@ import { fixAvatarUrl } from './utils/avatarUrl'
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
 
+// Safely handle JSONB values that may already be parsed arrays or still be JSON strings
+const safeArr = v => { if (Array.isArray(v)) return v; if (!v) return []; try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } }
+
 // === Styles ===
 const styles = {
   btn: `px-5 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer border-0`,
@@ -3040,7 +3043,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     if (res.ok) {
                       const data = await res.json()
                       if (data.user) {
-                        const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                        const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                         localStorage.setItem('user', JSON.stringify(updatedUser))
                       }
                       toast.success('Profile updated!')
@@ -3179,7 +3182,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         if (res.ok) {
                           const data = await res.json()
                           if (data.user) {
-                            const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                            const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                           }
                           toast.success('Skills updated!')
@@ -3275,7 +3278,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         if (res.ok) {
                           const data = await res.json()
                           if (data.user) {
-                            const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                            const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                           }
                           toast.success('Languages updated!')
@@ -3312,7 +3315,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     if (res.ok) {
                       const data = await res.json()
                       if (data.user) {
-                        const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                        const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                         localStorage.setItem('user', JSON.stringify(updatedUser))
                       }
                       toast.success('Social links updated!')
@@ -3406,7 +3409,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     const data = await res.json()
                     // Update localStorage with new user data
                     if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      const updatedUser = { ...data.user, skills: safeArr(data.user.skills), supabase_user: true }
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Profile updated!')
@@ -3472,7 +3475,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     const data = await res.json()
                     // Update localStorage with new user data
                     if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      const updatedUser = { ...data.user, skills: safeArr(data.user.skills), supabase_user: true }
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Skills updated!')
@@ -3512,7 +3515,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   if (res.ok) {
                     const data = await res.json()
                     if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      const updatedUser = { ...data.user, skills: safeArr(data.user.skills), supabase_user: true }
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Social links updated!')
