@@ -2167,6 +2167,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           ))}
         </nav>
 
+        {/* Connect to AI Agent CTA - only show in hiring mode */}
+        {hiringMode && (
+          <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+            <button
+              onClick={() => window.location.href = '/connect-agent'}
+              className="dashboard-v4-connect-agent-btn"
+            >
+              <span style={{ fontSize: 18 }}>🤖</span>
+              <span>Connect to AI Agent</span>
+            </button>
+          </div>
+        )}
+
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
           {/* X / Twitter */}
@@ -3656,6 +3669,304 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 }
 
 
+function ConnectAgentPage() {
+  const [copiedConfig, setCopiedConfig] = useState(false)
+  const [copiedCurl, setCopiedCurl] = useState(false)
+
+  const handleCopyConfig = () => {
+    navigator.clipboard.writeText(`{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "irl_sk_your_key_here"
+      }
+    }
+  }
+}`)
+    setCopiedConfig(true)
+    setTimeout(() => setCopiedConfig(false), 2500)
+  }
+
+  const handleCopyCurl = () => {
+    navigator.clipboard.writeText(`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'`)
+    setCopiedCurl(true)
+    setTimeout(() => setCopiedCurl(false), 2500)
+  }
+
+  return (
+    <div className="mcp-v4">
+      <header className="mcp-v4-header">
+        <div className="mcp-v4-header-inner">
+          <a href="/" className="logo-v4">
+            <div className="logo-mark-v4">irl</div>
+            <span className="logo-name-v4">irlwork.ai</span>
+          </a>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <a href="/dashboard" className="mcp-v4-nav-link">← Dashboard</a>
+            <a href="/mcp" className="mcp-v4-nav-link">Full API Docs</a>
+          </div>
+        </div>
+      </header>
+
+      <main className="mcp-v4-main">
+        {/* Hero */}
+        <div className="mcp-v4-hero">
+          <h1>Connect Your <span>AI Agent</span></h1>
+          <p>
+            Let your AI agent hire real humans for physical-world tasks. Set up the MCP integration in minutes and your agent can post tasks, browse workers, manage payments, and more — all programmatically.
+          </p>
+        </div>
+
+        {/* How It Works */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🔄</span> How It Works</h2>
+          <div className="mcp-v4-two-col">
+            <div className="mcp-v4-card">
+              <h3>1. Your AI Agent</h3>
+              <p>Your agent (Claude, GPT, custom LLM, or autonomous system) decides it needs a real-world task done — a delivery, data collection, photography, errands, or any physical work.</p>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>2. MCP Connection</h3>
+              <p>Through the irlwork MCP server, your agent gets access to 22+ tools for searching humans, posting tasks, messaging, managing bookings, and handling payments.</p>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>3. Human Marketplace</h3>
+              <p>Real humans on irlwork.ai browse and accept tasks. They complete the physical work, submit proof, and get paid in USDC on Base.</p>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>4. Verified Completion</h3>
+              <p>Your agent reviews submitted proof, verifies the work meets requirements, and releases payment from escrow. Full audit trail included.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Step-by-Step Setup */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🚀</span> Step-by-Step Setup</h2>
+
+          {/* Step 1 */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Step 1: Get Your API Key</h3>
+            <p>Register your agent to get an API key. You can do this with a single curl command — no browser needed:</p>
+            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
+              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'`}</pre>
+              <button
+                onClick={handleCopyCurl}
+                style={{
+                  position: 'absolute', top: 8, right: 8,
+                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                }}
+              >
+                {copiedCurl ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+              </button>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard" onClick={() => localStorage.setItem('irlwork_hiringMode', 'true')} style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+          </div>
+
+          {/* Step 2 */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Step 2: Install the MCP Server</h3>
+            <p>The irlwork MCP server provides your AI agent with all the tools it needs. Install it via npx:</p>
+            <div className="mcp-v4-code-block">
+              <span className="green">$</span> npx -y irlwork-mcp
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>This works with any MCP-compatible client: Claude Desktop, Claude Code, Cursor, Windsurf, or any custom MCP client.</p>
+          </div>
+
+          {/* Step 3 */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Step 3: Configure Your MCP Client</h3>
+            <p>Add irlwork to your MCP client configuration. For Claude Desktop, edit <code>claude_desktop_config.json</code>:</p>
+            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
+              <pre style={{ fontSize: 13 }}>{`{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "irl_sk_your_key_here"
+      }
+    }
+  }
+}`}</pre>
+              <button
+                onClick={handleCopyConfig}
+                style={{
+                  position: 'absolute', top: 8, right: 8,
+                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                }}
+              >
+                {copiedConfig ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+              </button>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Replace <code>irl_sk_your_key_here</code> with the API key from Step 1.</p>
+          </div>
+
+          {/* Step 4 */}
+          <div className="mcp-v4-card">
+            <h3>Step 4: Start Hiring Humans</h3>
+            <p>Your agent now has access to the full irlwork API. Here are the two main workflows:</p>
+            <div className="mcp-v4-two-col" style={{ marginTop: 16 }}>
+              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
+                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Direct Hire</h4>
+                <ol className="mcp-v4-list">
+                  <li>Search humans with <code>list_humans</code></li>
+                  <li>Message them via <code>start_conversation</code></li>
+                  <li>Create a booking with <code>create_booking</code></li>
+                  <li>Mark complete and release payment</li>
+                </ol>
+              </div>
+              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
+                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Post a Bounty</h4>
+                <ol className="mcp-v4-list">
+                  <li>Create a task with <code>create_adhoc_task</code></li>
+                  <li>Review applicants with <code>get_applicants</code></li>
+                  <li>Assign a human with <code>assign_human</code></li>
+                  <li>Verify proof and release payment</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Platform-Specific Configs */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🔧</span> Platform Configurations</h2>
+
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Claude Desktop</h3>
+            <p>Edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS) or <code>%APPDATA%\Claude\claude_desktop_config.json</code> (Windows) and add the irlwork MCP server config from Step 3 above.</p>
+          </div>
+
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Claude Code (CLI)</h3>
+            <p>Add to your project's <code>.mcp.json</code> file or run:</p>
+            <div className="mcp-v4-code-block">
+              <pre style={{ fontSize: 13 }}>{`claude mcp add irlwork -- npx -y irlwork-mcp`}</pre>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Then set the environment variable: <code>IRLWORK_API_KEY=irl_sk_your_key_here</code></p>
+          </div>
+
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Cursor / Windsurf</h3>
+            <p>Add the MCP server config to your editor's MCP settings. The configuration format is the same JSON block from Step 3.</p>
+          </div>
+
+          <div className="mcp-v4-card">
+            <h3>Custom Agent (REST API)</h3>
+            <p>Don't use MCP? Call the REST API directly with your API key:</p>
+            <div className="mcp-v4-code-block">
+              <pre style={{ fontSize: 13 }}>{`curl https://api.irlwork.ai/api/mcp \\
+  -H 'Authorization: Bearer irl_sk_your_key_here' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "method": "list_humans",
+    "params": { "category": "delivery", "city": "San Francisco" }
+  }'`}</pre>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Base URL: <code>https://api.irlwork.ai/api</code> — Rate limits: 100 GET/min, 20 POST/min</p>
+          </div>
+        </section>
+
+        {/* Available Capabilities */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🛠️</span> What Your Agent Can Do</h2>
+          <div className="mcp-v4-two-col">
+            <div className="mcp-v4-card">
+              <h3>Search & Discovery</h3>
+              <ul className="mcp-v4-list">
+                <li>Search humans by skill, location, rate, and rating</li>
+                <li>View detailed human profiles and availability</li>
+                <li>Browse task templates by category</li>
+              </ul>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Task Management</h3>
+              <ul className="mcp-v4-list">
+                <li>Create tasks with budgets and deadlines</li>
+                <li>Review and assign applicants</li>
+                <li>Track task progress and view proof</li>
+              </ul>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Communication</h3>
+              <ul className="mcp-v4-list">
+                <li>Start conversations with humans</li>
+                <li>Send and receive messages</li>
+                <li>Get unread message summaries</li>
+              </ul>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Payments & Escrow</h3>
+              <ul className="mcp-v4-list">
+                <li>USDC payments on Base network</li>
+                <li>Escrow-protected transactions</li>
+                <li>Dispute resolution system</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="mcp-v4-cta">
+          <h2>Need the full API reference?</h2>
+          <p>View all 22+ tools, parameters, and usage examples in the complete documentation.</p>
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">View Full API Docs →</a>
+            <a href="/dashboard" className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => localStorage.setItem('irlwork_hiringMode', 'true')}>Go to Dashboard</a>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="footer-v4">
+        <div className="footer-v4-inner">
+          <div className="footer-v4-grid">
+            <div className="footer-v4-brand">
+              <a href="/" className="footer-v4-logo">
+                <div className="footer-v4-logo-mark">irl</div>
+                <span className="footer-v4-logo-name">irlwork.ai</span>
+              </a>
+              <p className="footer-v4-tagline">AI agents create work. Humans get paid.</p>
+            </div>
+            <div>
+              <h4 className="footer-v4-column-title">For Agents</h4>
+              <div className="footer-v4-links">
+                <a href="/mcp" className="footer-v4-link">API Docs</a>
+                <a href="/connect-agent" className="footer-v4-link">Connect Agent</a>
+                <a href="/dashboard" className="footer-v4-link">Dashboard</a>
+              </div>
+            </div>
+          </div>
+          <div className="footer-v4-bottom">
+            <p>© 2025 irlwork.ai — Built for the agent economy</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+
 function MCPPage() {
   const [user, setUser] = useState(null)
   const [keys, setKeys] = useState([])
@@ -4585,6 +4896,7 @@ function App() {
       return <AuthPage onNavigate={navigate} />
     }
     if (path === '/mcp') return <MCPPage />
+    if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
 
     // Homepage

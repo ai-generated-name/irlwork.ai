@@ -4278,6 +4278,31 @@
   text-overflow: ellipsis;
 }
 
+/* Connect to AI Agent Button */
+.dashboard-v4-connect-agent-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgba(244, 132, 95, 0.3);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(244, 132, 95, 0.08) 0%, rgba(251, 146, 60, 0.04) 100%);
+  color: var(--orange-600);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+}
+
+.dashboard-v4-connect-agent-btn:hover {
+  background: linear-gradient(135deg, rgba(244, 132, 95, 0.15) 0%, rgba(251, 146, 60, 0.08) 100%);
+  border-color: var(--orange-500);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(244, 132, 95, 0.15);
+}
+
 /* Main Content */
 .dashboard-v4-main {
   flex: 1;
