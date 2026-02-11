@@ -131,7 +131,7 @@ Available Methods:
 ```
 AUTH
 POST /api/auth/register/human
-POST /api/auth/register/agent
+POST /api/auth/register-agent
 POST /api/auth/login
 GET  /api/auth/verify
 

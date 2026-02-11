@@ -909,8 +909,6 @@ function ApiKeysTab({ user }) {
   const [error, setError] = useState(null)
   const [showRevoked, setShowRevoked] = useState(false)
 
-  const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
-
   const fetchKeys = async () => {
     try {
       const response = await fetch(`${API_URL}/keys`, {
@@ -4235,8 +4233,6 @@ function MCPPage() {
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
   const [promptCopied, setPromptCopied] = useState(false)
-
-  const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
   useEffect(() => {
     const checkAuth = async () => {
