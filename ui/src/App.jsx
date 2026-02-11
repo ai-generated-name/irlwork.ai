@@ -2141,20 +2141,34 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
         </a>
 
-        {/* Mode Toggle */}
-        <div className="dashboard-v4-mode-toggle">
-          <button
-            className={`dashboard-v4-mode-btn ${!hiringMode ? 'active' : ''}`}
-            onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
-          >
-            Working
-          </button>
-          <button
-            className={`dashboard-v4-mode-btn ${hiringMode ? 'active' : ''}`}
-            onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true) }}
-          >
-            Hiring
-          </button>
+        {/* Mode Switch - mobile only */}
+        <div className="dashboard-v4-mode-switch-mobile">
+          {hiringMode ? (
+            <button
+              className="dashboard-v4-mode-switch-btn"
+              onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false); setSidebarOpen(false) }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8" />
+                <path d="M12 17v4" />
+              </svg>
+              Switch to Working
+            </button>
+          ) : (
+            <button
+              className="dashboard-v4-mode-switch-btn hiring"
+              onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true); setSidebarOpen(false) }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                <path d="M16 3.13a4 4 0 010 7.75" />
+              </svg>
+              Switch to Hiring
+            </button>
+          )}
         </div>
 
         {/* Navigation */}
@@ -2255,7 +2269,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             {!hiringMode ? (
               <>
                 <button
-                  className="dashboard-v4-topbar-link"
+                  className="dashboard-v4-topbar-link dashboard-v4-topbar-cta"
                   onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
