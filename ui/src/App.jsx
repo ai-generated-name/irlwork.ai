@@ -245,7 +245,7 @@ function Onboarding({ onComplete, user }) {
           {userAvatar && (
             <img
               src={userAvatar}
-              alt=""
+              alt={`${userName}'s profile picture`}
               style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: 8, objectFit: 'cover' }}
             />
           )}
@@ -267,6 +267,11 @@ function Onboarding({ onComplete, user }) {
             />
           </div>
         </div>
+
+        {/* Global error display */}
+        {error && (
+          <div className="auth-v4-error" style={{ marginBottom: '1rem' }}>{error}</div>
+        )}
 
         {/* Step 1: City */}
         {step === 1 && (
@@ -337,14 +342,14 @@ function Onboarding({ onComplete, user }) {
           <div>
             <h1 className="onboarding-v4-title">What can you help with?</h1>
             <p className="onboarding-v4-subtitle">Select the categories that match your skills</p>
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12
-            }}>
+            <div className="onboarding-v4-skills-grid">
               {ONBOARDING_CATEGORIES.map(cat => (
                 <button
                   key={cat.value}
                   type="button"
                   onClick={() => toggleCategory(cat.value)}
+                  aria-pressed={form.selectedCategories.includes(cat.value)}
+                  aria-label={`${cat.label}${form.selectedCategories.includes(cat.value) ? ' (selected)' : ''}`}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 10,
@@ -355,7 +360,7 @@ function Onboarding({ onComplete, user }) {
                     textAlign: 'left'
                   }}
                 >
-                  <span style={{ fontSize: 18 }}>{cat.icon}</span>
+                  <span style={{ fontSize: 18 }} role="img" aria-hidden="true">{cat.icon}</span>
                   <span>{cat.label}</span>
                 </button>
               ))}
@@ -367,10 +372,20 @@ function Onboarding({ onComplete, user }) {
               onChange={e => setForm({ ...form, otherSkills: e.target.value })}
               className="onboarding-v4-input"
               style={{ marginTop: 4 }}
+              aria-label="Other skills, comma separated"
             />
+            {form.selectedCategories.length === 0 && !form.otherSkills.trim() && (
+              <p style={{ fontSize: 13, color: '#f59e0b', marginTop: 8 }}>Select at least one skill or add your own</p>
+            )}
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(1)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={() => setStep(3)}>Continue</button>
+              <button
+                className="onboarding-v4-btn-next"
+                onClick={() => setStep(3)}
+                disabled={form.selectedCategories.length === 0 && !form.otherSkills.trim()}
+              >
+                Continue
+              </button>
             </div>
           </div>
         )}
@@ -387,6 +402,8 @@ function Onboarding({ onComplete, user }) {
               className="onboarding-v4-input"
               style={{ minHeight: 100, resize: 'vertical', fontFamily: 'inherit' }}
               autoFocus
+              aria-label="Bio"
+              id="onboard-bio"
             />
             <p className="onboarding-v4-hint">2-3 sentences about your experience (optional but recommended)</p>
             <div className="onboarding-v4-buttons">
@@ -413,6 +430,8 @@ function Onboarding({ onComplete, user }) {
                 value={form.travel_radius}
                 onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
                 className="onboarding-v4-slider"
+                aria-label="Travel distance in miles"
+                id="onboard-travel-radius"
               />
               <p className="onboarding-v4-slider-value">
                 {form.travel_radius} miles
@@ -441,6 +460,8 @@ function Onboarding({ onComplete, user }) {
                   placeholder="25"
                   value={form.hourly_rate}
                   onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
+                  aria-label="Minimum hourly rate in dollars"
+                  id="onboard-hourly-rate"
                   style={{
                     flex: 1, padding: '16px 14px', border: 'none', background: 'transparent',
                     fontSize: 15, color: 'var(--text-primary)', outline: 'none',
@@ -453,9 +474,6 @@ function Onboarding({ onComplete, user }) {
               </div>
             </div>
 
-            {error && (
-              <div className="auth-v4-error">{error}</div>
-            )}
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
               <button className="onboarding-v4-btn-next" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
@@ -475,6 +493,7 @@ function AuthPage({ onLogin, onNavigate }) {
   const [error, setError] = useState('')
   const [errorModal, setErrorModal] = useState(null)
   const [form, setForm] = useState({ email: '', password: '', name: '' })
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -669,13 +688,17 @@ function AuthPage({ onLogin, onNavigate }) {
             disabled={loading}
             className="auth-v4-google-btn"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Continue with Google
+            {loading ? (
+              <div className="loading-v4-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
+            ) : (
+              <svg style={{ width: 20, height: 20 }} viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            )}
+            {loading ? 'Connecting...' : 'Continue with Google'}
           </button>
 
           <div className="auth-v4-divider">
@@ -693,6 +716,9 @@ function AuthPage({ onLogin, onNavigate }) {
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 className="auth-v4-input"
                 required={!isLogin}
+                id="auth-name"
+                aria-label="Full name"
+                autoComplete="name"
               />
             )}
             <input
@@ -702,16 +728,36 @@ function AuthPage({ onLogin, onNavigate }) {
               onChange={e => setForm({ ...form, email: e.target.value })}
               className="auth-v4-input"
               required
+              id="auth-email"
+              aria-label="Email address"
+              autoComplete="email"
             />
-            <input
-              type="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={e => setForm({ ...form, password: e.target.value })}
-              className="auth-v4-input"
-              required
-              minLength={6}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                className="auth-v4-input"
+                style={{ paddingRight: 44 }}
+                required
+                minLength={6}
+                id="auth-password"
+                aria-label="Password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                  color: 'var(--text-tertiary)', fontSize: 13, fontWeight: 500
+                }}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             <button type="submit" className="auth-v4-submit" disabled={loading}>
               {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
             </button>
@@ -719,7 +765,7 @@ function AuthPage({ onLogin, onNavigate }) {
 
           <p className="auth-v4-switch">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button onClick={() => setIsLogin(!isLogin)} className="auth-v4-switch-link">
+            <button onClick={() => { setIsLogin(!isLogin); setForm({ email: '', password: '', name: '' }); setError('') }} className="auth-v4-switch-link">
               {isLogin ? 'Sign up' : 'Sign in'}
             </button>
           </p>
@@ -1375,7 +1421,7 @@ function ApiKeysTab({ user }) {
   )
 }
 
-function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, initialMode }) {
+function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, initialMode, onUserUpdate }) {
   const toast = useToast()
   const [hiringMode, setHiringMode] = useState(() => {
     if (initialMode) return initialMode === 'hiring'
@@ -3422,7 +3468,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     }
                     toast.success('Profile updated!')
                     setProfileLocation(null)
-                    setTimeout(() => window.location.reload(), 1000)
+                    if (data.user && onUserUpdate) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      onUserUpdate(updatedUser)
+                    }
                   } else {
                     const err = await res.json()
                     toast.error(err.error || 'Unknown error')
@@ -3487,7 +3536,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Skills updated!')
-                    setTimeout(() => window.location.reload(), 1000)
+                    if (data.user && onUserUpdate) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      onUserUpdate(updatedUser)
+                    }
                   } else {
                     const err = await res.json()
                     toast.error(err.error || 'Unknown error')
@@ -3527,7 +3579,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Social links updated!')
-                    setTimeout(() => window.location.reload(), 1000)
+                    if (data.user && onUserUpdate) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      onUserUpdate(updatedUser)
+                    }
                   } else {
                     const err = await res.json()
                     toast.error(err.error || 'Unknown error')
@@ -4948,13 +5003,11 @@ function App() {
 
     init()
 
-    // Listen for auth changes — skip redundant fetchUserProfile if init() already handled it
+    // Listen for auth changes — skip TOKEN_REFRESHED to avoid disrupting user mid-interaction
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       debug('[Auth] State change:', event, session ? 'with session' : 'no session')
-      // Only react to SIGNED_IN / TOKEN_REFRESHED after init is done,
-      // to avoid double-fetching the user profile during the initial load
-      if (!initDoneRef.current && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        debug('[Auth] Skipping duplicate fetch — init() still running')
+      if (event === 'TOKEN_REFRESHED') {
+        debug('[Auth] Token refreshed, skipping profile re-fetch')
         return
       }
       if (session?.user) {
@@ -5162,7 +5215,7 @@ function App() {
     // Dashboard route - requires auth (matches /dashboard/working and /dashboard/hiring)
     if (path === '/dashboard/working' || path === '/dashboard/hiring') {
       if (!user || user.needs_onboarding) return <Loading />
-      return <Dashboard user={user} onLogout={logout} initialMode={path === '/dashboard/hiring' ? 'hiring' : 'working'} />
+      return <Dashboard user={user} onLogout={logout} initialMode={path === '/dashboard/hiring' ? 'hiring' : 'working'} onUserUpdate={setUser} />
     }
 
     // Bare /dashboard redirect (handled by useEffect above, but guard here too)
