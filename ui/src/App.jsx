@@ -3854,6 +3854,7 @@ function App() {
 
   const logout = async () => {
     if (supabase) await supabase.auth.signOut()
+    localStorage.removeItem('user')
     setUser(null)
     window.location.href = '/'
   }
