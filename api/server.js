@@ -2283,11 +2283,13 @@ app.post('/api/upload/avatar', async (req, res) => {
       : `${API_BASE}/api/avatar/${user.id}`;
 
     // Save both the display URL and the R2 key (for proxy serving)
-    await supabase.from('users').update({
+    const { error: updateError } = await supabase.from('users').update({
       avatar_url: avatarUrl,
       avatar_r2_key: uniqueFilename,
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
+
+    console.log(`[Avatar Upload] user=${user.id}, r2Key=${uniqueFilename}, url=${avatarUrl}, r2Upload=${uploadSuccess}, dbError=${updateError?.message || 'none'}, API_BASE=${API_BASE}`);
 
     res.json({ url: avatarUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
   } catch (e) {
@@ -2301,7 +2303,8 @@ app.get('/api/avatar/:userId', async (req, res) => {
   if (!supabase) return res.status(404).send('Not found');
 
   try {
-    const { data: user } = await supabase.from('users').select('avatar_url, avatar_r2_key, name').eq('id', req.params.userId).single();
+    const { data: user, error: dbError } = await supabase.from('users').select('avatar_url, avatar_r2_key, name').eq('id', req.params.userId).single();
+    console.log(`[Avatar Serve] userId=${req.params.userId}, hasUser=${!!user}, r2Key=${user?.avatar_r2_key || 'none'}, avatarUrl=${user?.avatar_url || 'none'}, dbError=${dbError?.message || 'none'}`);
     if (!user) return res.status(404).send('No avatar');
 
     // If avatar_r2_key exists, serve directly from R2
@@ -2325,7 +2328,9 @@ app.get('/api/avatar/:userId', async (req, res) => {
         credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
       });
 
+      console.log(`[Avatar Serve] Fetching from R2: bucket=${R2_BUCKET}, key=${user.avatar_r2_key}`);
       const result = await s3Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: user.avatar_r2_key }));
+      console.log(`[Avatar Serve] R2 success: contentType=${result.ContentType}, contentLength=${result.ContentLength}`);
 
       res.set('Content-Type', result.ContentType || 'image/jpeg');
       res.set('Cache-Control', 'public, max-age=3600');
@@ -2342,6 +2347,13 @@ app.get('/api/avatar/:userId', async (req, res) => {
     console.error('Avatar serve error:', e.message);
     res.status(404).send('Not found');
   }
+});
+
+// ============ AVATAR DEBUG (temporary) ============
+app.get('/api/avatar-debug/:userId', async (req, res) => {
+  if (!supabase) return res.json({ error: 'No DB' });
+  const { data, error } = await supabase.from('users').select('id, name, avatar_url, avatar_r2_key').eq('id', req.params.userId).single();
+  res.json({ user: data, dbError: error?.message || null });
 });
 
 // ============ FEEDBACK ============
