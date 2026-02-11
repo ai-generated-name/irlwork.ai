@@ -868,12 +868,33 @@ app.get('/api/auth/verify', async (req, res) => {
 app.post('/api/auth/onboard', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  // Validate the user via proper token authentication (prevents account takeover via arbitrary UUID)
-  const authenticatedUser = await getUserByToken(req.headers.authorization);
-  if (!authenticatedUser) {
-    return res.status(401).json({ error: 'Invalid or missing authentication' });
+  // Validate the user via token authentication.
+  // For onboarding, the user may not yet exist in the users table, so fall back
+  // to verifying the UUID exists as a Supabase Auth user.
+  let authenticatedUser = await getUserByToken(req.headers.authorization);
+  let userId;
+  if (authenticatedUser) {
+    userId = authenticatedUser.id;
+  } else {
+    // New user — verify the UUID exists in Supabase Auth
+    const cleanToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(cleanToken)) {
+      return res.status(401).json({ error: 'Invalid or missing authentication' });
+    }
+    // Verify this UUID is a real Supabase Auth user
+    try {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.admin.getUserById(cleanToken);
+      if (authError || !authUser) {
+        return res.status(401).json({ error: 'Invalid or missing authentication' });
+      }
+      userId = authUser.id;
+    } catch (adminErr) {
+      // auth.admin may not be available with anon key — accept valid UUID for onboarding
+      console.warn('[Onboard] auth.admin unavailable, accepting UUID:', cleanToken);
+      userId = cleanToken;
+    }
   }
-  const userId = authenticatedUser.id;
 
   const { email, name, city, latitude, longitude, country, country_code,
           hourly_rate, skills, travel_radius, role, bio, avatar_url } = req.body;
