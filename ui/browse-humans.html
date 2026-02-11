@@ -525,105 +525,63 @@
       }).catch(() => {});
     }
 
-    // Sample profile data
-    const profiles = [
-      {
-        id: 1,
-        name: "Sarah Chen",
-        avatar: "👩‍💼",
-        location: "San Francisco, CA",
-        rating: 4.9,
-        reviews: 127,
-        skills: ["Package Pickup", "Photo Verification", "Document Signing"],
-        tasksCompleted: 143,
-        responseTime: "< 1 hour"
-      },
-      {
-        id: 2,
-        name: "Marcus Johnson",
-        avatar: "👨‍🔧",
-        location: "New York, NY",
-        rating: 5.0,
-        reviews: 89,
-        skills: ["Device Setup", "Tech Support", "Assembly"],
-        tasksCompleted: 95,
-        responseTime: "< 30 min"
-      },
-      {
-        id: 3,
-        name: "Elena Rodriguez",
-        avatar: "👩‍🎨",
-        location: "Los Angeles, CA",
-        rating: 4.8,
-        reviews: 156,
-        skills: ["Photography", "Creative Tasks", "Event Coverage"],
-        tasksCompleted: 178,
-        responseTime: "< 2 hours"
-      },
-      {
-        id: 4,
-        name: "David Kim",
-        avatar: "👨‍💻",
-        location: "Austin, TX",
-        rating: 4.9,
-        reviews: 203,
-        skills: ["Data Entry", "Form Filling", "Research"],
-        tasksCompleted: 267,
-        responseTime: "< 1 hour"
-      },
-      {
-        id: 5,
-        name: "Aisha Patel",
-        avatar: "👩‍🏫",
-        location: "Chicago, IL",
-        rating: 5.0,
-        reviews: 92,
-        skills: ["Translation", "Tutoring", "Content Review"],
-        tasksCompleted: 104,
-        responseTime: "< 45 min"
-      },
-      {
-        id: 6,
-        name: "James Wilson",
-        avatar: "👨‍🚀",
-        location: "Seattle, WA",
-        rating: 4.7,
-        reviews: 78,
-        skills: ["Delivery", "Errands", "Shopping"],
-        tasksCompleted: 89,
-        responseTime: "< 1.5 hours"
-      },
-      {
-        id: 7,
-        name: "Maya Thompson",
-        avatar: "👩‍🔬",
-        location: "Boston, MA",
-        rating: 4.9,
-        reviews: 134,
-        skills: ["Site Inspection", "Quality Check", "Verification"],
-        tasksCompleted: 156,
-        responseTime: "< 1 hour"
-      },
-      {
-        id: 8,
-        name: "Carlos Garcia",
-        avatar: "👨‍🌾",
-        location: "Miami, FL",
-        rating: 5.0,
-        reviews: 67,
-        skills: ["Plant Care", "Maintenance", "Cleaning"],
-        tasksCompleted: 71,
-        responseTime: "< 2 hours"
+    const API_URL = 'https://api.irlwork.ai/api';
+    let profiles = [];
+
+    // Fetch profiles from API
+    async function fetchProfiles() {
+      const grid = document.getElementById('profilesGrid');
+      grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 48px; color: var(--text-tertiary);">Loading...</div>';
+
+      try {
+        const res = await fetch(`${API_URL}/humans/directory`);
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+
+        profiles = data.map(h => ({
+          id: h.id,
+          name: h.name || 'Anonymous',
+          avatar: h.avatar_url ? `<img src="${h.avatar_url}" alt="${h.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (h.name ? h.name.charAt(0).toUpperCase() : '?'),
+          avatarIsImg: !!h.avatar_url,
+          location: [h.city, h.state].filter(Boolean).join(', ') || 'Location not set',
+          rating: h.rating || 0,
+          reviews: h.total_ratings_count || 0,
+          skills: Array.isArray(h.skills) ? h.skills : [],
+          tasksCompleted: h.jobs_completed || 0,
+          hourlyRate: h.hourly_rate,
+          headline: h.headline || '',
+          languages: Array.isArray(h.languages) ? h.languages : []
+        }));
+      } catch (e) {
+        console.error('Error fetching humans:', e);
+        profiles = [];
       }
-    ];
+
+      renderProfiles();
+    }
 
     // Render profiles
     function renderProfiles() {
       const grid = document.getElementById('profilesGrid');
+
+      if (profiles.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 64px 24px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
+            <h3 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">No humans found.</h3>
+            <p style="color: var(--text-tertiary); max-width: 400px; margin: 0 auto;">
+              Try adjusting your filters.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
       grid.innerHTML = profiles.map(profile => `
-        <div class="profile-card" onclick="openModal(${profile.id})">
-          <div class="profile-avatar">${profile.avatar}</div>
+        <div class="profile-card" onclick="openModal('${profile.id}')">
+          <div class="profile-avatar">${profile.avatarIsImg ? profile.avatar : profile.avatar}</div>
           <h3 class="profile-name">${profile.name}</h3>
+          ${profile.headline ? `<div style="color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">${profile.headline}</div>` : ''}
           <div class="profile-location">📍 ${profile.location}</div>
           <div class="profile-rating">
             <span class="stars">${'★'.repeat(Math.floor(profile.rating))}${profile.rating % 1 !== 0 ? '☆' : ''}</span>
@@ -632,13 +590,15 @@
           <div class="profile-skills">
             ${profile.skills.slice(0, 3).map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
           </div>
+          ${profile.hourlyRate ? `<div style="color: var(--text-secondary); font-size: 13px; margin-top: 8px;">$${profile.hourlyRate}/hr</div>` : ''}
         </div>
       `).join('');
     }
 
     // Open modal
     function openModal(profileId) {
-      const profile = profiles.find(p => p.id === profileId);
+      const profile = profiles.find(p => String(p.id) === String(profileId));
+      if (!profile) return;
       const modal = document.getElementById('profileModal');
       const modalBody = document.getElementById('modalBody');
 
@@ -701,7 +661,7 @@
     });
 
     // Initialize
-    renderProfiles();
+    fetchProfiles();
   </script>
 </body>
 </html>

@@ -4597,31 +4597,43 @@ app.get('/api/tasks/available', async (req, res) => {
 
 // ============ HUMANS DIRECTORY ============
 app.get('/api/humans/directory', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { category, city, min_rate, max_rate, limit = 50 } = req.query;
-  
-  let query = supabase
-    .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links')
-    .eq('type', 'human')
-    .eq('verified', true)
-    .order('rating', { ascending: false })
-    .limit(parseInt(limit));
-  
-  if (category) query = query.like('skills', `%${category}%`);
-  if (city) query = query.like('city', `%${city}%`);
-  if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
-  if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
-  
-  const { data: humans, error } = await query;
-  
-  if (error) return res.status(500).json({ error: error.message });
-  
-  res.json(humans?.map(h => ({
-    ...h,
-    skills: JSON.parse(h.skills || '[]')
-  })) || []);
+  try {
+    if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+    const { category, city, min_rate, max_rate, limit = 50 } = req.query;
+
+    let query = supabase
+      .from('users')
+      .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
+      .eq('type', 'human')
+      .eq('verified', true)
+      .order('rating', { ascending: false })
+      .limit(parseInt(limit));
+
+    if (category) query = query.like('skills', `%${category}%`);
+    if (city) query = query.like('city', `%${city}%`);
+    if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
+    if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
+
+    const { data: humans, error } = await query;
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    const safeJsonParse = (val, fallback = []) => {
+      if (Array.isArray(val)) return val;
+      if (!val) return fallback;
+      try { return JSON.parse(val); } catch { return fallback; }
+    };
+
+    res.json(humans?.map(h => ({
+      ...h,
+      skills: safeJsonParse(h.skills),
+      languages: safeJsonParse(h.languages)
+    })) || []);
+  } catch (err) {
+    console.error('Error in /api/humans/directory:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 app.get('/api/humans/:id/profile', async (req, res) => {
