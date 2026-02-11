@@ -1555,12 +1555,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const baseNav = hiringMode ? hiringNav : humanNav
   const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: '🛡️' }] : baseNav
 
-  // Mark all notifications as read
+  // Mark all notifications as read and remove them from the list
   const markAllNotificationsRead = async () => {
     try {
       const unreadIds = notifications.filter(n => !n.read_at).map(n => n.id)
+      // Remove unread notifications from state immediately
+      setNotifications(prev => prev.filter(n => n.read_at))
+      // Mark each as read in backend (fire and forget)
       for (const id of unreadIds) {
-        await markNotificationRead(id)
+        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
       }
     } catch (e) {
       console.error('Error marking all notifications read:', e)
@@ -1797,7 +1800,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
-        setNotifications(data || [])
+        // Only show unread notifications — clicked/read ones are removed from the list
+        setNotifications((data || []).filter(n => !n.read_at))
       }
     } catch (e) {
       debug('Could not fetch notifications')
@@ -1834,7 +1838,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   // Navigate to a notification's linked page
   const navigateToNotification = (notification) => {
-    markNotificationRead(notification.id)
+    // Remove the clicked notification from state immediately so it disappears from UI
+    setNotifications(prev => prev.filter(n => n.id !== notification.id))
+    // Mark as read in backend (fire and forget — no refetch needed since we already removed it)
+    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
     setNotificationDropdownOpen(false)
 
     const link = notification.link
@@ -3569,7 +3576,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Notifications</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h1 className="dashboard-v4-page-title">Notifications</h1>
+              {notifications.length > 0 && (
+                <button onClick={markAllNotificationsRead} className="dashboard-v4-notification-mark-read" style={{ fontSize: 14 }}>
+                  Clear all
+                </button>
+              )}
+            </div>
 
             {notifications.length === 0 ? (
               <div className="dashboard-v4-empty">
