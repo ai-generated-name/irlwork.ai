@@ -3523,8 +3523,14 @@
 }
 
 .mcp-v4-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
   border-bottom: 1px solid rgba(26, 26, 26, 0.08);
-  background: var(--bg-secondary);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
 }
 
 .mcp-v4-header-inner {
@@ -3554,6 +3560,7 @@
   max-width: 1100px;
   margin: 0 auto;
   padding: var(--space-12) var(--space-6);
+  padding-top: calc(64px + var(--space-12)); /* Account for fixed header height */
 }
 
 .mcp-v4-hero {
@@ -4331,6 +4338,173 @@
   border-color: var(--orange-500);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(244, 132, 95, 0.15);
+}
+
+/* ===== Connect Agent Page: Easy Install Section ===== */
+.connect-agent-easy-install {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: var(--radius-xl);
+  padding: 40px;
+  color: white;
+}
+
+.connect-agent-easy-install-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+
+.connect-agent-easy-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--orange-400);
+  margin-bottom: 8px;
+}
+
+.connect-agent-easy-title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  color: white;
+}
+
+.connect-agent-easy-desc {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+  max-width: 520px;
+}
+
+.connect-agent-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--orange-600) 0%, var(--orange-500) 100%);
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s var(--ease-smooth);
+  flex-shrink: 0;
+}
+
+.connect-agent-copy-btn:hover {
+  background: linear-gradient(135deg, var(--orange-700) 0%, var(--orange-600) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(244, 132, 95, 0.35);
+}
+
+.connect-agent-copy-btn.copied {
+  background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+}
+
+.connect-agent-prompt-preview {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 32px;
+}
+
+.connect-agent-prompt-preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 10px;
+}
+
+.connect-agent-prompt-preview-content {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+}
+
+.connect-agent-steps-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.connect-agent-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  flex: 1;
+}
+
+.connect-agent-step strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.connect-agent-step p {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+.connect-agent-step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--orange-600) 0%, var(--orange-500) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.connect-agent-step-arrow {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .connect-agent-easy-install {
+    padding: 24px;
+  }
+  .connect-agent-easy-install-header {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .connect-agent-easy-title {
+    font-size: 22px;
+  }
+  .connect-agent-copy-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 24px;
+  }
+  .connect-agent-steps-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .connect-agent-step-arrow {
+    transform: rotate(90deg);
+  }
+  .connect-agent-step {
+    width: 100%;
+  }
 }
 
 /* Main Content */
@@ -5691,6 +5865,15 @@
   .dashboard-v4-main {
     margin-left: 0;
     overflow-x: hidden;
+    padding-top: 56px; /* Account for fixed topbar height on mobile */
+  }
+
+  .dashboard-v4-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
   }
 
   .dashboard-v4-menu-btn {
