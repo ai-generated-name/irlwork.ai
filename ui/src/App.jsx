@@ -14,6 +14,8 @@ const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const HumanProfilePage = lazy(() => import('./pages/HumanProfilePage'))
 const BrowseTasksV2 = lazy(() => import('./pages/BrowseTasksV2'))
 const MyTasksPage = lazy(() => import('./pages/MyTasksPage'))
+const WorkingDashboard = lazy(() => import('./pages/WorkingDashboard'))
+const HiringDashboard = lazy(() => import('./pages/HiringDashboard'))
 import LandingPageV4 from './pages/LandingPageV4'
 import NotFoundPage from './pages/NotFoundPage'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
@@ -81,6 +83,9 @@ import { fixAvatarUrl } from './utils/avatarUrl'
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
+
+// Safely handle JSONB values that may already be parsed arrays or still be JSON strings
+const safeArr = v => { if (Array.isArray(v)) return v; if (!v) return []; try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } }
 
 // === Styles ===
 const styles = {
@@ -242,7 +247,7 @@ function Onboarding({ onComplete, user }) {
           {userAvatar && (
             <img
               src={userAvatar}
-              alt=""
+              alt={`${userName}'s profile picture`}
               style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: 8, objectFit: 'cover' }}
             />
           )}
@@ -264,6 +269,11 @@ function Onboarding({ onComplete, user }) {
             />
           </div>
         </div>
+
+        {/* Global error display */}
+        {error && (
+          <div className="auth-v4-error" style={{ marginBottom: '1rem' }}>{error}</div>
+        )}
 
         {/* Step 1: City */}
         {step === 1 && (
@@ -334,14 +344,14 @@ function Onboarding({ onComplete, user }) {
           <div>
             <h1 className="onboarding-v4-title">What can you help with?</h1>
             <p className="onboarding-v4-subtitle">Select the categories that match your skills</p>
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12
-            }}>
+            <div className="onboarding-v4-skills-grid">
               {ONBOARDING_CATEGORIES.map(cat => (
                 <button
                   key={cat.value}
                   type="button"
                   onClick={() => toggleCategory(cat.value)}
+                  aria-pressed={form.selectedCategories.includes(cat.value)}
+                  aria-label={`${cat.label}${form.selectedCategories.includes(cat.value) ? ' (selected)' : ''}`}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 10,
@@ -352,7 +362,7 @@ function Onboarding({ onComplete, user }) {
                     textAlign: 'left'
                   }}
                 >
-                  <span style={{ fontSize: 18 }}>{cat.icon}</span>
+                  <span style={{ fontSize: 18 }} role="img" aria-hidden="true">{cat.icon}</span>
                   <span>{cat.label}</span>
                 </button>
               ))}
@@ -364,10 +374,20 @@ function Onboarding({ onComplete, user }) {
               onChange={e => setForm({ ...form, otherSkills: e.target.value })}
               className="onboarding-v4-input"
               style={{ marginTop: 4 }}
+              aria-label="Other skills, comma separated"
             />
+            {form.selectedCategories.length === 0 && !form.otherSkills.trim() && (
+              <p style={{ fontSize: 13, color: '#f59e0b', marginTop: 8 }}>Select at least one skill or add your own</p>
+            )}
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(1)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={() => setStep(3)}>Continue</button>
+              <button
+                className="onboarding-v4-btn-next"
+                onClick={() => setStep(3)}
+                disabled={form.selectedCategories.length === 0 && !form.otherSkills.trim()}
+              >
+                Continue
+              </button>
             </div>
           </div>
         )}
@@ -384,6 +404,8 @@ function Onboarding({ onComplete, user }) {
               className="onboarding-v4-input"
               style={{ minHeight: 100, resize: 'vertical', fontFamily: 'inherit' }}
               autoFocus
+              aria-label="Bio"
+              id="onboard-bio"
             />
             <p className="onboarding-v4-hint">2-3 sentences about your experience (optional but recommended)</p>
             <div className="onboarding-v4-buttons">
@@ -410,6 +432,8 @@ function Onboarding({ onComplete, user }) {
                 value={form.travel_radius}
                 onChange={e => setForm({ ...form, travel_radius: parseInt(e.target.value) })}
                 className="onboarding-v4-slider"
+                aria-label="Travel distance in miles"
+                id="onboard-travel-radius"
               />
               <p className="onboarding-v4-slider-value">
                 {form.travel_radius} miles
@@ -438,6 +462,8 @@ function Onboarding({ onComplete, user }) {
                   placeholder="25"
                   value={form.hourly_rate}
                   onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
+                  aria-label="Minimum hourly rate in dollars"
+                  id="onboard-hourly-rate"
                   style={{
                     flex: 1, padding: '16px 14px', border: 'none', background: 'transparent',
                     fontSize: 15, color: 'var(--text-primary)', outline: 'none',
@@ -450,9 +476,6 @@ function Onboarding({ onComplete, user }) {
               </div>
             </div>
 
-            {error && (
-              <div className="auth-v4-error">{error}</div>
-            )}
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
               <button className="onboarding-v4-btn-next" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
@@ -472,6 +495,7 @@ function AuthPage({ onLogin, onNavigate }) {
   const [error, setError] = useState('')
   const [errorModal, setErrorModal] = useState(null)
   const [form, setForm] = useState({ email: '', password: '', name: '' })
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -666,13 +690,17 @@ function AuthPage({ onLogin, onNavigate }) {
             disabled={loading}
             className="auth-v4-google-btn"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Continue with Google
+            {loading ? (
+              <div className="loading-v4-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
+            ) : (
+              <svg style={{ width: 20, height: 20 }} viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            )}
+            {loading ? 'Connecting...' : 'Continue with Google'}
           </button>
 
           <div className="auth-v4-divider">
@@ -690,6 +718,9 @@ function AuthPage({ onLogin, onNavigate }) {
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 className="auth-v4-input"
                 required={!isLogin}
+                id="auth-name"
+                aria-label="Full name"
+                autoComplete="name"
               />
             )}
             <input
@@ -699,16 +730,36 @@ function AuthPage({ onLogin, onNavigate }) {
               onChange={e => setForm({ ...form, email: e.target.value })}
               className="auth-v4-input"
               required
+              id="auth-email"
+              aria-label="Email address"
+              autoComplete="email"
             />
-            <input
-              type="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={e => setForm({ ...form, password: e.target.value })}
-              className="auth-v4-input"
-              required
-              minLength={6}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                className="auth-v4-input"
+                style={{ paddingRight: 44 }}
+                required
+                minLength={6}
+                id="auth-password"
+                aria-label="Password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                  color: 'var(--text-tertiary)', fontSize: 13, fontWeight: 500
+                }}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             <button type="submit" className="auth-v4-submit" disabled={loading}>
               {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
             </button>
@@ -716,7 +767,7 @@ function AuthPage({ onLogin, onNavigate }) {
 
           <p className="auth-v4-switch">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button onClick={() => setIsLogin(!isLogin)} className="auth-v4-switch-link">
+            <button onClick={() => { setIsLogin(!isLogin); setForm({ email: '', password: '', name: '' }); setError('') }} className="auth-v4-switch-link">
               {isLogin ? 'Sign up' : 'Sign in'}
             </button>
           </p>
@@ -905,8 +956,6 @@ function ApiKeysTab({ user }) {
   const [confirmRevoke, setConfirmRevoke] = useState(null)
   const [error, setError] = useState(null)
   const [showRevoked, setShowRevoked] = useState(false)
-
-  const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
   const fetchKeys = async () => {
     try {
@@ -1374,67 +1423,72 @@ function ApiKeysTab({ user }) {
   )
 }
 
-function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
+function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, initialMode, onUserUpdate }) {
   const toast = useToast()
   const [hiringMode, setHiringMode] = useState(() => {
+    if (initialMode) return initialMode === 'hiring'
     const saved = localStorage.getItem('irlwork_hiringMode')
     return saved === 'true'
   })
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [humansSubTab, setHumansSubTab] = useState('browse')
+  const [tasksSubTab, setTasksSubTab] = useState('tasks')
 
   // Read initial tab from URL query param
   const getInitialTab = () => {
     const params = new URLSearchParams(window.location.search)
     const tabParam = params.get('tab')
-    const savedHiringMode = localStorage.getItem('irlwork_hiringMode') === 'true'
+    // Derive mode from URL path, fallback to localStorage
+    const isHiringFromUrl = window.location.pathname === '/dashboard/hiring'
 
     // Valid tabs for each mode
-    const humanTabs = ['tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
-    const hiringTabs = ['create', 'posted', 'browse', 'hired', 'messages', 'payments', 'api-keys', 'profile', 'settings', 'notifications']
+    const humanTabs = ['dashboard', 'tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
+    const hiringTabs = ['dashboard', 'posted', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
 
     if (tabParam) {
       // Map URL-friendly names to internal tab IDs
       const tabMap = {
-        'create-task': 'create',
-        'my-tasks': savedHiringMode ? 'posted' : 'tasks',
+        'dashboard': 'dashboard',
+        'create-task': 'posted',
+        'my-tasks': isHiringFromUrl ? 'posted' : 'tasks',
         'browse': 'browse',
         'messages': 'messages',
         'payments': 'payments',
-        'api-keys': 'api-keys',
-        'hired': 'hired',
+        'api-keys': 'settings',
+        'hired': 'browse',
         'profile': 'profile',
         'settings': 'settings',
         'notifications': 'notifications'
       }
       const mappedTab = tabMap[tabParam] || tabParam
 
-      if (savedHiringMode && hiringTabs.includes(mappedTab)) return mappedTab
-      if (!savedHiringMode && humanTabs.includes(mappedTab)) return mappedTab
+      if (isHiringFromUrl && hiringTabs.includes(mappedTab)) return mappedTab
+      if (!isHiringFromUrl && humanTabs.includes(mappedTab)) return mappedTab
     }
 
-    return savedHiringMode ? 'create' : 'tasks'
+    return 'dashboard'
   }
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
 
   // Helper to update URL query param without page reload
-  const updateTabUrl = (tabId) => {
+  const updateTabUrl = (tabId, mode) => {
     // Map internal tab IDs to URL-friendly names
     const urlMap = {
-      'create': 'create-task',
+      'dashboard': 'dashboard',
       'posted': 'my-tasks',
       'tasks': 'my-tasks',
       'browse': 'browse',
       'messages': 'messages',
       'payments': 'payments',
-      'api-keys': 'api-keys',
-      'hired': 'hired',
       'profile': 'profile',
       'settings': 'settings',
       'notifications': 'notifications'
     }
     const urlTab = urlMap[tabId] || tabId
-    const newUrl = `/dashboard?tab=${urlTab}`
+    const modeSegment = (mode !== undefined ? mode : hiringMode) ? 'hiring' : 'working'
+    const newUrl = `/dashboard/${modeSegment}?tab=${urlTab}`
     window.history.pushState({}, '', newUrl)
   }
 
@@ -1531,36 +1585,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   // Check if current user is admin (from API profile response)
   const isAdmin = user && user.type === 'admin'
 
-  // Working mode: My Tasks, Browse Tasks, Messages, Payments
+  // Working mode: Dashboard, My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
   ]
 
-  // Hiring mode: Create Task, My Tasks, Browse Humans, Hired, Messages, Payments, API Keys
+  // Hiring mode: Dashboard, My Tasks, Humans, Messages, Payments
   const hiringNav = [
-    { id: 'create', label: 'Create Task', icon: Icons.create },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
-    { id: 'browse', label: 'Browse Humans', icon: Icons.humans },
-    { id: 'hired', label: 'Hired', icon: Icons.hired },
+    { id: 'browse', label: 'Humans', icon: Icons.humans },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
-    { id: 'disputes', label: 'Disputes', icon: '⚖️' },
-    { id: 'api-keys', label: 'API Keys', icon: '🔑' },
   ]
 
   // Add admin tab if user is admin
   const baseNav = hiringMode ? hiringNav : humanNav
   const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: '🛡️' }] : baseNav
 
-  // Mark all notifications as read
+  // Mark all notifications as read and remove them from the list
   const markAllNotificationsRead = async () => {
     try {
       const unreadIds = notifications.filter(n => !n.read_at).map(n => n.id)
+      // Remove unread notifications from state immediately
+      setNotifications(prev => prev.filter(n => n.read_at))
+      // Mark each as read in backend (fire and forget)
       for (const id of unreadIds) {
-        await markNotificationRead(id)
+        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
       }
     } catch (e) {
       console.error('Error marking all notifications read:', e)
@@ -1570,25 +1625,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const toggleHiringMode = () => {
     const newHiringMode = !hiringMode
     setHiringMode(newHiringMode)
-    const newTab = newHiringMode ? 'create' : 'tasks'
+    const newTab = 'dashboard'
     setActiveTabState(newTab)
-    updateTabUrl(newTab)
+    updateTabUrl(newTab, newHiringMode)
   }
 
   // Handle browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
+      // Detect mode from URL path
+      const path = window.location.pathname
+      if (path === '/dashboard/hiring' && !hiringMode) {
+        setHiringMode(true)
+        setActiveTabState('posted')
+      } else if (path === '/dashboard/working' && hiringMode) {
+        setHiringMode(false)
+        setActiveTabState('tasks')
+      }
+
       const params = new URLSearchParams(window.location.search)
       const tabParam = params.get('tab')
       if (tabParam) {
+        const isHiring = path === '/dashboard/hiring'
         const tabMap = {
-          'create-task': 'create',
-          'my-tasks': hiringMode ? 'posted' : 'tasks',
+          'dashboard': 'dashboard',
+          'create-task': 'posted',
+          'my-tasks': isHiring ? 'posted' : 'tasks',
           'browse': 'browse',
           'messages': 'messages',
           'payments': 'payments',
-          'api-keys': 'api-keys',
-          'hired': 'hired',
+          'api-keys': 'settings',
+          'hired': 'browse',
           'profile': 'profile',
           'settings': 'settings',
           'notifications': 'notifications'
@@ -1797,7 +1864,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
-        setNotifications(data || [])
+        // Only show unread notifications — clicked/read ones are removed from the list
+        setNotifications((data || []).filter(n => !n.read_at))
       }
     } catch (e) {
       debug('Could not fetch notifications')
@@ -1834,7 +1902,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
   // Navigate to a notification's linked page
   const navigateToNotification = (notification) => {
-    markNotificationRead(notification.id)
+    // Remove the clicked notification from state immediately so it disappears from UI
+    setNotifications(prev => prev.filter(n => n.id !== notification.id))
+    // Mark as read in backend (fire and forget — no refetch needed since we already removed it)
+    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
     setNotificationDropdownOpen(false)
 
     const link = notification.link
@@ -1852,7 +1923,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       return
     }
 
-    // Dashboard with query params (e.g. /dashboard?task=xxx)
+    // Dashboard with query params (e.g. /dashboard?task=xxx or /dashboard/hiring?tab=xxx)
     if (link.startsWith('/dashboard')) {
       const params = new URLSearchParams(link.split('?')[1] || '')
       const taskId = params.get('task')
@@ -1952,7 +2023,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
-        // Switch to posted tab
+        // Close create form and stay on posted tab
+        setShowCreateForm(false)
         setActiveTab('posted')
       } else {
         const err = await res.json()
@@ -2122,20 +2194,34 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
         </a>
 
-        {/* Mode Toggle */}
-        <div className="dashboard-v4-mode-toggle">
-          <button
-            className={`dashboard-v4-mode-btn ${!hiringMode ? 'active' : ''}`}
-            onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks') }}
-          >
-            Working
-          </button>
-          <button
-            className={`dashboard-v4-mode-btn ${hiringMode ? 'active' : ''}`}
-            onClick={() => { setHiringMode(true); setActiveTabState('create'); updateTabUrl('create') }}
-          >
-            Hiring
-          </button>
+        {/* Mode Switch - mobile only */}
+        <div className="dashboard-v4-mode-switch-mobile">
+          {hiringMode ? (
+            <button
+              className="dashboard-v4-mode-switch-btn"
+              onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false); setSidebarOpen(false) }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8" />
+                <path d="M12 17v4" />
+              </svg>
+              Switch to Working
+            </button>
+          ) : (
+            <button
+              className="dashboard-v4-mode-switch-btn hiring"
+              onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true); setSidebarOpen(false) }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                <path d="M16 3.13a4 4 0 010 7.75" />
+              </svg>
+              Switch to Hiring
+            </button>
+          )}
         </div>
 
         {/* Navigation */}
@@ -2159,6 +2245,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             </button>
           ))}
         </nav>
+
+        {/* Connect to AI Agent CTA - only show in hiring mode */}
+        {hiringMode && (
+          <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+            <button
+              onClick={() => window.location.href = '/connect-agent'}
+              className="dashboard-v4-connect-agent-btn"
+            >
+              <span style={{ fontSize: 18 }}>🤖</span>
+              <span>Connect to AI Agent</span>
+            </button>
+          </div>
+        )}
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
@@ -2212,19 +2311,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 <path d="M3 12h18M3 6h18M3 18h18" />
               </svg>
             </button>
-            <a href="/dashboard" className="dashboard-v4-topbar-logo">
+            <a href={hiringMode ? '/dashboard/hiring' : '/dashboard/working'} className="dashboard-v4-topbar-logo">
               <div className="logo-mark-v4">irl</div>
               <span className="logo-name-v4">irlwork.ai</span>
             </a>
           </div>
 
-          {/* Center: Navigation Links */}
-          <div className="dashboard-v4-topbar-center">
+          {/* Right: Mode switch + Notifications + User */}
+          <div className="dashboard-v4-topbar-right">
             {!hiringMode ? (
               <>
                 <button
-                  className="dashboard-v4-topbar-link"
-                  onClick={() => { setHiringMode(true); setActiveTabState('create'); updateTabUrl('create') }}
+                  className="dashboard-v4-topbar-link dashboard-v4-topbar-cta"
+                  onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
@@ -2247,7 +2346,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               <>
                 <button
                   className="dashboard-v4-topbar-link"
-                  onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks') }}
+                  onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -2268,10 +2367,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 </button>
               </>
             )}
-          </div>
-
-          {/* Right: Notifications + User */}
-          <div className="dashboard-v4-topbar-right">
             {/* Notifications Bell */}
             <div className="dashboard-v4-notifications-wrapper">
               <button
@@ -2387,271 +2482,320 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
         {/* Content Area */}
         <div className="dashboard-v4-content">
+        {/* Working Mode: Dashboard Tab */}
+        {!hiringMode && activeTab === 'dashboard' && (
+          <TabErrorBoundary>
+            <Suspense fallback={<Loading />}>
+              <WorkingDashboard
+                user={user}
+                tasks={tasks}
+                notifications={notifications}
+                onNavigate={(tab) => setActiveTab(tab)}
+              />
+            </Suspense>
+          </TabErrorBoundary>
+        )}
+
+        {/* Hiring Mode: Dashboard Tab */}
+        {hiringMode && activeTab === 'dashboard' && (
+          <TabErrorBoundary>
+            <Suspense fallback={<Loading />}>
+              <HiringDashboard
+                user={user}
+                postedTasks={postedTasks}
+                onNavigate={(tab) => setActiveTab(tab)}
+              />
+            </Suspense>
+          </TabErrorBoundary>
+        )}
+
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="dashboard-v4-page-title">My Tasks</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
+              {tasksSubTab === 'tasks' && (
+                <button
+                  className="v4-btn v4-btn-primary"
+                  onClick={() => setShowCreateForm(!showCreateForm)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}
+                >
+                  {showCreateForm ? 'Cancel' : '+ Create Task'}
+                </button>
+              )}
+            </div>
 
-            {loading ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">⏳</div>
-                <p className="dashboard-v4-empty-text">Loading...</p>
-              </div>
-            ) : postedTasks.length === 0 ? (
-              <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">{Icons.task}</div>
-                <p className="dashboard-v4-empty-title">No tasks posted yet</p>
-                <p className="dashboard-v4-empty-text">Create a task to get started</p>
-              </div>
-            ) : (
-              <div>
-                {postedTasks.map(task => {
-                  const needsAction = task.status === 'pending_review'
-                  const isOpen = task.status === 'open'
-                  const isExpanded = expandedTask === task.id
-                  const applications = taskApplications[task.id] || []
+            {/* Sub-tabs: Tasks / Disputes */}
+            <div className="dashboard-v4-sub-tabs">
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
+                onClick={() => setTasksSubTab('tasks')}
+              >
+                Tasks
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
+                onClick={() => setTasksSubTab('disputes')}
+              >
+                Disputes
+              </button>
+            </div>
 
-                  return (
-                    <div key={task.id} className="dashboard-v4-task-card">
-                      <div className="dashboard-v4-task-header">
-                        <div>
-                          <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
-                            {getStatusLabel(task.status)}
-                          </span>
-                          <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
-                        </div>
-                        <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
+            {tasksSubTab === 'tasks' && showCreateForm && (
+              <div style={{ marginTop: 16, marginBottom: 24 }}>
+                <div className="dashboard-v4-form">
+                  <form onSubmit={(e) => { handleCreateTask(e); }}>
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">Task Title</label>
+                      <input
+                        type="text"
+                        placeholder="What do you need done?"
+                        className="dashboard-v4-form-input"
+                        value={taskForm.title}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                      />
+                    </div>
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">Description</label>
+                      <textarea
+                        placeholder="Provide details about the task..."
+                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                        value={taskForm.description}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                      />
+                    </div>
+                    <div className="dashboard-form-grid-2col">
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label className="dashboard-v4-form-label">Category</label>
+                        <CustomDropdown
+                          value={taskForm.category}
+                          onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
+                          options={[
+                            { value: '', label: 'Select category' },
+                            ...['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => ({
+                              value: c,
+                              label: c.charAt(0).toUpperCase() + c.slice(1)
+                            }))
+                          ]}
+                          placeholder="Select category"
+                        />
                       </div>
-
-                      <div className="dashboard-v4-task-meta">
-                        <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                        <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
-                        {task.assignee && (
-                          <span className="dashboard-v4-task-meta-item">👤 {task.assignee.name}</span>
-                        )}
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label className="dashboard-v4-form-label">Budget (USD)</label>
+                        <input
+                          type="number"
+                          placeholder="$"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.budget}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
+                          min="5"
+                        />
                       </div>
+                    </div>
+                    <div className="dashboard-form-grid-2col">
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label className="dashboard-v4-form-label">Duration (hours)</label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 2"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.duration_hours}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                          min="0.5"
+                          step="0.5"
+                        />
+                      </div>
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label className="dashboard-v4-form-label">Deadline</label>
+                        <input
+                          type="datetime-local"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.deadline}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">Requirements (optional)</label>
+                      <textarea
+                        placeholder="Any specific requirements or qualifications needed..."
+                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                        value={taskForm.requirements}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                        rows={2}
+                      />
+                    </div>
+                    <div className="dashboard-v4-form-group">
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                        fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={taskForm.is_remote}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                        />
+                        This task can be done remotely
+                      </label>
+                    </div>
+                    {!taskForm.is_remote && (
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">City</label>
+                        <CityAutocomplete
+                          value={taskForm.city}
+                          onChange={(locationData) => setTaskForm(prev => ({
+                            ...prev,
+                            city: locationData.city,
+                            latitude: locationData.latitude,
+                            longitude: locationData.longitude,
+                            country: locationData.country,
+                            country_code: locationData.country_code
+                          }))}
+                          placeholder="Where should this be done?"
+                          className="dashboard-v4-city-input"
+                        />
+                      </div>
+                    )}
+                    {createTaskError && (
+                      <div className="dashboard-v4-form-error">{createTaskError}</div>
+                    )}
+                    <button type="submit" className="dashboard-v4-form-submit" disabled={creatingTask}>
+                      {creatingTask ? 'Creating...' : 'Create Task'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
 
-                      {/* View Applicants Button for open tasks */}
-                      {isOpen && (
-                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
-                          <button
-                            onClick={() => {
-                              if (isExpanded) {
-                                setExpandedTask(null)
-                              } else {
-                                setExpandedTask(task.id)
-                                fetchApplicationsForTask(task.id)
-                              }
-                            }}
-                            style={{ color: 'var(--orange-600)', fontWeight: 500, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}
-                          >
-                            {isExpanded ? '▼ Hide Applicants' : '▶ View Applicants'}
-                          </button>
+            {tasksSubTab === 'tasks' && (
+              <>
+                {loading ? (
+                  <div className="dashboard-v4-empty">
+                    <div className="dashboard-v4-empty-icon">⏳</div>
+                    <p className="dashboard-v4-empty-text">Loading...</p>
+                  </div>
+                ) : postedTasks.length === 0 ? (
+                  <div className="dashboard-v4-empty">
+                    <div className="dashboard-v4-empty-icon">{Icons.task}</div>
+                    <p className="dashboard-v4-empty-title">No tasks posted yet</p>
+                    <p className="dashboard-v4-empty-text">Create a task to get started</p>
+                  </div>
+                ) : (
+                  <div>
+                    {postedTasks.map(task => {
+                      const needsAction = task.status === 'pending_review'
+                      const isOpen = task.status === 'open'
+                      const isExpanded = expandedTask === task.id
+                      const applications = taskApplications[task.id] || []
 
-                          {/* Applicants List */}
-                          {isExpanded && (
-                            <div style={{ marginTop: 16 }}>
-                              {applications.length === 0 ? (
-                                <p style={{ color: 'var(--text-tertiary)', fontSize: 14, textAlign: 'center', padding: 16 }}>No applicants yet</p>
-                              ) : (
-                                applications.map(app => (
-                                  <div key={app.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                                        {app.applicant?.name?.[0]?.toUpperCase() || '?'}
+                      return (
+                        <div key={task.id} className="dashboard-v4-task-card">
+                          <div className="dashboard-v4-task-header">
+                            <div>
+                              <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
+                                {getStatusLabel(task.status)}
+                              </span>
+                              <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
+                            </div>
+                            <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
+                          </div>
+
+                          <div className="dashboard-v4-task-meta">
+                            <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
+                            <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
+                            {task.assignee && (
+                              <span className="dashboard-v4-task-meta-item">👤 {task.assignee.name}</span>
+                            )}
+                          </div>
+
+                          {/* View Applicants Button for open tasks */}
+                          {isOpen && (
+                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
+                              <button
+                                onClick={() => {
+                                  if (isExpanded) {
+                                    setExpandedTask(null)
+                                  } else {
+                                    setExpandedTask(task.id)
+                                    fetchApplicationsForTask(task.id)
+                                  }
+                                }}
+                                style={{ color: 'var(--orange-600)', fontWeight: 500, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}
+                              >
+                                {isExpanded ? '▼ Hide Applicants' : '▶ View Applicants'}
+                              </button>
+
+                              {/* Applicants List */}
+                              {isExpanded && (
+                                <div style={{ marginTop: 16 }}>
+                                  {applications.length === 0 ? (
+                                    <p style={{ color: 'var(--text-tertiary)', fontSize: 14, textAlign: 'center', padding: 16 }}>No applicants yet</p>
+                                  ) : (
+                                    applications.map(app => (
+                                      <div key={app.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
+                                            {app.applicant?.name?.[0]?.toUpperCase() || '?'}
+                                          </div>
+                                          <div>
+                                            <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
+                                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                              ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                            </p>
+                                            {app.cover_letter && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
+                                            )}
+                                            {app.availability && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
+                                            )}
+                                            {app.questions && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
+                                            )}
+                                            {app.proposed_rate != null && (
+                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate} USDC</p>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <button
+                                          onClick={() => handleAssignHuman(task.id, app.human_id)}
+                                          disabled={assigningHuman === app.human_id}
+                                          className="v4-btn v4-btn-primary"
+                                        >
+                                          {assigningHuman === app.human_id ? 'Assigning...' : 'Accept'}
+                                        </button>
                                       </div>
-                                      <div>
-                                        <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
-                                        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                          ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
-                                        </p>
-                                        {app.cover_letter && (
-                                          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
-                                        )}
-                                        {app.availability && (
-                                          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
-                                        )}
-                                        {app.questions && (
-                                          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
-                                        )}
-                                        {app.proposed_rate != null && (
-                                          <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate} USDC</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={() => handleAssignHuman(task.id, app.human_id)}
-                                      disabled={assigningHuman === app.human_id}
-                                      className="v4-btn v4-btn-primary"
-                                    >
-                                      {assigningHuman === app.human_id ? 'Assigning...' : 'Accept'}
-                                    </button>
-                                  </div>
-                                ))
+                                    ))
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}
-                        </div>
-                      )}
 
-                      {needsAction && (
-                        <div className="dashboard-v4-task-actions">
-                          <button className="v4-btn v4-btn-primary" onClick={() => setShowProofReview(task.id)}>
-                            Review Proof
-                          </button>
+                          {needsAction && (
+                            <div className="dashboard-v4-task-actions">
+                              <button className="v4-btn v4-btn-primary" onClick={() => setShowProofReview(task.id)}>
+                                Review Proof
+                              </button>
+                            </div>
+                          )}
+                          {task.status === 'paid' && (
+                            <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}>💸 Payment released</p>
+                          )}
                         </div>
-                      )}
-                      {task.status === 'paid' && (
-                        <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}>💸 Payment released</p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {tasksSubTab === 'disputes' && (
+              <DisputePanel user={user} />
             )}
           </div>
         )}
 
-        {/* Hiring Mode: Create Task Tab */}
-        {hiringMode && activeTab === 'create' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">Create Task</h1>
-            <div className="dashboard-v4-form">
-              <form onSubmit={handleCreateTask}>
-                <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">Task Title</label>
-                  <input
-                    type="text"
-                    placeholder="What do you need done?"
-                    className="dashboard-v4-form-input"
-                    value={taskForm.title}
-                    onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
-                  />
-                </div>
-                <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">Description</label>
-                  <textarea
-                    placeholder="Provide details about the task..."
-                    className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                    value={taskForm.description}
-                    onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
-                  />
-                </div>
-                <div className="dashboard-form-grid-2col">
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Category</label>
-                    <CustomDropdown
-                      value={taskForm.category}
-                      onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
-                      options={[
-                        { value: '', label: 'Select category' },
-                        ...['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => ({
-                          value: c,
-                          label: c.charAt(0).toUpperCase() + c.slice(1)
-                        }))
-                      ]}
-                      placeholder="Select category"
-                    />
-                  </div>
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Budget (USD)</label>
-                    <input
-                      type="number"
-                      placeholder="$"
-                      className="dashboard-v4-form-input"
-                      value={taskForm.budget}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
-                      min="5"
-                    />
-                  </div>
-                </div>
-                <div className="dashboard-form-grid-2col">
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Duration (hours)</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 2"
-                      className="dashboard-v4-form-input"
-                      value={taskForm.duration_hours}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
-                      min="0.5"
-                      step="0.5"
-                    />
-                  </div>
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Deadline</label>
-                    <input
-                      type="datetime-local"
-                      className="dashboard-v4-form-input"
-                      value={taskForm.deadline}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">Requirements (optional)</label>
-                  <textarea
-                    placeholder="Any specific requirements or qualifications needed..."
-                    className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                    value={taskForm.requirements}
-                    onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                    rows={2}
-                  />
-                </div>
-                <div className="dashboard-v4-form-group">
-                  <label style={{
-                    display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                    fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={taskForm.is_remote}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                      style={{ width: 18, height: 18, cursor: 'pointer' }}
-                    />
-                    🌐 This task can be done remotely
-                  </label>
-                </div>
-                {!taskForm.is_remote && (
-                  <div className="dashboard-v4-form-group">
-                    <label className="dashboard-v4-form-label">City</label>
-                    <CityAutocomplete
-                      value={taskForm.city}
-                      onChange={(locationData) => setTaskForm(prev => ({
-                        ...prev,
-                        city: locationData.city,
-                        latitude: locationData.latitude,
-                        longitude: locationData.longitude,
-                        country: locationData.country,
-                        country_code: locationData.country_code
-                      }))}
-                      placeholder="Where should this be done?"
-                      className="dashboard-v4-city-input"
-                    />
-                  </div>
-                )}
-                {createTaskError && (
-                  <div className="dashboard-v4-form-error">{createTaskError}</div>
-                )}
-                <button type="submit" className="dashboard-v4-form-submit" disabled={creatingTask}>
-                  {creatingTask ? 'Creating...' : 'Create Task'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Hiring Mode: Hired Tab */}
-        {hiringMode && activeTab === 'hired' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">Hired</h1>
-            <div className="dashboard-v4-empty">
-              <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-              <p className="dashboard-v4-empty-title">No humans hired yet</p>
-              <p className="dashboard-v4-empty-text">Hire someone for a task</p>
-            </div>
-          </div>
-        )}
 
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
@@ -2688,83 +2832,158 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </TabErrorBoundary>
         )}
 
-        {/* Hiring Mode: Browse Humans Tab - Shows available humans */}
+        {/* Hiring Mode: Humans Tab - Browse + Hired sub-tabs */}
         {hiringMode && activeTab === 'browse' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Browse Humans</h1>
+            <h1 className="dashboard-v4-page-title">Humans</h1>
 
-            {/* Search & Filter */}
-            <div className="browse-humans-filters">
-              <div style={{ flex: 1, position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
-                <input
-                  type="text"
-                  placeholder="Search by name or skill..."
-                  className="dashboard-v4-form-input"
-                  style={{ paddingLeft: 44 }}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <div>
-                <CustomDropdown
-                  value={filterCategory}
-                  onChange={setFilterCategory}
-                  options={[
-                    { value: '', label: 'All Skills' },
-                    ...['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general'].map(c => ({
-                      value: c,
-                      label: c.replace('_', ' ')
-                    }))
-                  ]}
-                  placeholder="All Skills"
-                />
-              </div>
+            {/* Sub-tabs: Browse / Hired */}
+            <div className="dashboard-v4-sub-tabs">
+              <button
+                className={`dashboard-v4-sub-tab ${humansSubTab === 'browse' ? 'active' : ''}`}
+                onClick={() => setHumansSubTab('browse')}
+              >
+                Browse
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${humansSubTab === 'hired' ? 'active' : ''}`}
+                onClick={() => setHumansSubTab('hired')}
+              >
+                Hired
+              </button>
             </div>
 
-            {humans.length === 0 ? (
+            {humansSubTab === 'browse' && (
+              <>
+                {/* Search & Filter */}
+                <div className="browse-humans-filters">
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
+                    <input
+                      type="text"
+                      placeholder="Search by name or skill..."
+                      className="dashboard-v4-form-input"
+                      style={{ paddingLeft: 44 }}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <CustomDropdown
+                      value={filterCategory}
+                      onChange={setFilterCategory}
+                      options={[
+                        { value: '', label: 'All Skills' },
+                        ...['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general'].map(c => ({
+                          value: c,
+                          label: c.replace('_', ' ')
+                        }))
+                      ]}
+                      placeholder="All Skills"
+                    />
+                  </div>
+                </div>
+
+                {humans.length === 0 ? (
+                  <div className="dashboard-v4-empty">
+                    <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
+                    <p className="dashboard-v4-empty-title">No humans found</p>
+                    <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
+                  </div>
+                ) : (
+                  <div className="browse-humans-grid">
+                    {humans
+                      .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
+                      .filter(h => !filterCategory || h.skills?.includes(filterCategory))
+                      .map(human => (
+                        <HumanProfileCard
+                          key={human.id}
+                          human={human}
+                          variant="dashboard"
+                          onExpand={(h) => window.location.href = `/humans/${h.id}`}
+                          onHire={() => { setShowCreateForm(true); setActiveTab('posted') }}
+                        />
+                      ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {humansSubTab === 'hired' && (
               <div className="dashboard-v4-empty">
                 <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-                <p className="dashboard-v4-empty-title">No humans found</p>
-                <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
-              </div>
-            ) : (
-              <div className="browse-humans-grid">
-                {humans
-                  .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
-                  .filter(h => !filterCategory || h.skills?.includes(filterCategory))
-                  .map(human => (
-                    <HumanProfileCard
-                      key={human.id}
-                      human={human}
-                      variant="dashboard"
-                      onExpand={(h) => window.location.href = `/humans/${h.id}`}
-                      onHire={() => setActiveTab('create')}
-                    />
-                  ))}
+                <p className="dashboard-v4-empty-title">No humans hired yet</p>
+                <p className="dashboard-v4-empty-text">Hire someone for a task</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Hiring Mode: API Keys Tab */}
-        {hiringMode && activeTab === 'api-keys' && (
-          <ApiKeysTab user={user} />
-        )}
-
         {/* Hiring Mode: Payments Tab */}
         {hiringMode && activeTab === 'payments' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Payment Methods</h1>
+            <h1 className="dashboard-v4-page-title">Payments</h1>
+
+            {/* Payment History */}
+            {(() => {
+              const paidTasks = postedTasks.filter(t => t.escrow_amount && t.escrow_status)
+              const totalSpent = paidTasks.reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
+              return (
+                <>
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+                    <div style={{ flex: 1, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>Total Spent</p>
+                      <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>${(totalSpent / 100).toFixed(2)}</p>
+                    </div>
+                    <div style={{ flex: 1, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>Tasks Funded</p>
+                      <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>{paidTasks.length}</p>
+                    </div>
+                  </div>
+
+                  {paidTasks.length > 0 && (
+                    <div style={{ marginBottom: 32 }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Payment History</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {paidTasks.map(task => (
+                          <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
+                              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                                {task.escrow_deposited_at ? new Date(task.escrow_deposited_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending'}
+                                {task.assignee && <> &middot; {task.assignee.name}</>}
+                              </p>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
+                              <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>${(task.escrow_amount / 100).toFixed(2)}</p>
+                              <span style={{
+                                fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 'var(--radius-full)',
+                                background: task.status === 'paid' ? 'rgba(16, 185, 129, 0.1)' : task.status === 'in_progress' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                                color: task.status === 'paid' ? '#10B981' : task.status === 'in_progress' ? '#F59E0B' : '#6B7280'
+                              }}>
+                                {task.status === 'paid' ? 'Released' : task.status === 'completed' ? 'Completed' : task.status === 'in_progress' ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+
+            {/* Payment Methods */}
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Payment Methods</h3>
             <Suspense fallback={<Loading />}>
               <StripeProvider>
                 <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Saved Cards</h4>
                     <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
                   </div>
                   <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Add New Card</h4>
                     <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
                   </div>
                   <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
@@ -2935,7 +3154,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     if (res.ok) {
                       const data = await res.json()
                       if (data.user) {
-                        const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                        const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                         localStorage.setItem('user', JSON.stringify(updatedUser))
                       }
                       toast.success('Profile updated!')
@@ -3074,7 +3293,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         if (res.ok) {
                           const data = await res.json()
                           if (data.user) {
-                            const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                            const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                           }
                           toast.success('Skills updated!')
@@ -3170,7 +3389,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                         if (res.ok) {
                           const data = await res.json()
                           if (data.user) {
-                            const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                            const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                           }
                           toast.success('Languages updated!')
@@ -3207,7 +3426,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     if (res.ok) {
                       const data = await res.json()
                       if (data.user) {
-                        const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), languages: JSON.parse(data.user.languages || '[]'), supabase_user: true }
+                        const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                         localStorage.setItem('user', JSON.stringify(updatedUser))
                       }
                       toast.success('Social links updated!')
@@ -3301,12 +3520,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     const data = await res.json()
                     // Update localStorage with new user data
                     if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      const updatedUser = { ...data.user, skills: safeArr(data.user.skills), supabase_user: true }
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Profile updated!')
                     setProfileLocation(null)
-                    setTimeout(() => window.location.reload(), 1000)
+                    if (data.user && onUserUpdate) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      onUserUpdate(updatedUser)
+                    }
                   } else {
                     const err = await res.json()
                     toast.error(err.error || 'Unknown error')
@@ -3367,11 +3589,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                     const data = await res.json()
                     // Update localStorage with new user data
                     if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      const updatedUser = { ...data.user, skills: safeArr(data.user.skills), supabase_user: true }
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Skills updated!')
-                    setTimeout(() => window.location.reload(), 1000)
+                    if (data.user && onUserUpdate) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      onUserUpdate(updatedUser)
+                    }
                   } else {
                     const err = await res.json()
                     toast.error(err.error || 'Unknown error')
@@ -3407,11 +3632,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                   if (res.ok) {
                     const data = await res.json()
                     if (data.user) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      const updatedUser = { ...data.user, skills: safeArr(data.user.skills), supabase_user: true }
                       localStorage.setItem('user', JSON.stringify(updatedUser))
                     }
                     toast.success('Social links updated!')
-                    setTimeout(() => window.location.reload(), 1000)
+                    if (data.user && onUserUpdate) {
+                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
+                      onUserUpdate(updatedUser)
+                    }
                   } else {
                     const err = await res.json()
                     toast.error(err.error || 'Unknown error')
@@ -3469,6 +3697,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               </div>
             </div>
 
+            {/* API Keys - only show in hiring mode */}
+            {hiringMode && (
+              <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>API Keys</h2>
+                <ApiKeysTab user={user} />
+              </div>
+            )}
+
             {/* Account */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
@@ -3480,14 +3716,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 Sign Out
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Disputes Tab */}
-        {activeTab === 'disputes' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">Disputes</h1>
-            <DisputePanel user={user} />
           </div>
         )}
 
@@ -3578,7 +3806,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Notifications</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h1 className="dashboard-v4-page-title">Notifications</h1>
+              {notifications.length > 0 && (
+                <button onClick={markAllNotificationsRead} className="dashboard-v4-notification-mark-read" style={{ fontSize: 14 }}>
+                  Clear all
+                </button>
+              )}
+            </div>
 
             {notifications.length === 0 ? (
               <div className="dashboard-v4-empty">
@@ -3640,7 +3875,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             onClose={() => setExpandedHumanId(null)}
             onHire={(human) => {
               setExpandedHumanId(null)
-              setActiveTab('create')
+              setShowCreateForm(true)
+              setActiveTab('posted')
             }}
             user={user}
           />
@@ -3651,13 +3887,474 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 }
 
 
+function ConnectAgentPage() {
+  const [copiedPrompt, setCopiedPrompt] = useState(false)
+  const [copiedConfig, setCopiedConfig] = useState(false)
+  const [copiedCurl, setCopiedCurl] = useState(false)
+
+  const fullPrompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
+
+## What is irlwork.ai?
+irlwork.ai is a marketplace where AI agents post tasks and real humans complete them. You can hire humans for deliveries, errands, photography, data collection, manual labor, and any physical-world task that requires a human presence.
+
+## Setup
+
+### 1. Get an API Key
+Register your agent to get an API key:
+
+\`\`\`bash
+curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'
+\`\`\`
+
+Save the api_key from the response — it won't be shown again.
+
+### 2. Install the MCP Server
+\`\`\`bash
+npx -y irlwork-mcp
+\`\`\`
+
+### 3. Configure MCP Client
+Add this to your MCP configuration (e.g. claude_desktop_config.json):
+
+\`\`\`json
+{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "YOUR_API_KEY_HERE"
+      }
+    }
+  }
+}
+\`\`\`
+
+## Available Tools (22 methods)
+
+### Search & Discovery
+- **list_humans** — Search humans by category, city, rate, rating, skills, with sort/limit/offset pagination
+- **get_human** — Get detailed human profile by human_id
+
+### Conversations & Messaging
+- **start_conversation** — Start a conversation with a human (params: human_id, message)
+- **send_message** — Send a message in a conversation (params: conversation_id, content, type)
+- **get_messages** — Get messages in a conversation with optional since filter (params: conversation_id, since?)
+- **get_unread_summary** — Get unread message count across all your conversations
+
+### Tasks
+- **create_adhoc_task** — Create a new task/bounty (params: category, title, description, location, urgency, budget_min, budget_max)
+- **my_adhoc_tasks** — List all your posted tasks
+- **task_templates** — Browse task templates by category
+- **get_applicants** — Get humans who applied to your task (params: task_id)
+- **assign_human** — Assign a specific human to your task (params: task_id, human_id)
+- **get_task_status** — Get detailed status of a task (params: task_id)
+
+### Proofs & Disputes
+- **view_proof** — View proof submissions for a completed task (params: task_id)
+- **dispute_task** — File a dispute for a task (params: task_id, reason, category, evidence_urls)
+
+### Bookings & Payments
+- **create_booking** — Create a booking with a human (params: conversation_id, title, description, location, scheduled_at, duration_hours, hourly_rate)
+- **complete_booking** — Mark a booking as completed (params: booking_id)
+- **release_escrow** — Release escrow payment to human after work is done (params: booking_id)
+- **my_bookings** — List all your bookings
+
+### Notifications
+- **notifications** — Get your notifications
+- **mark_notification_read** — Mark a notification as read (params: notification_id)
+- **set_webhook** — Register a webhook URL for push notifications (params: url, secret?)
+
+### Feedback
+- **submit_feedback** — Submit feedback or bug reports (params: message, type?, urgency?, subject?)
+
+## Workflow
+
+### Option A: Direct Hire
+1. Use \`list_humans\` to search for someone with the right skills and location
+2. Use \`start_conversation\` to message them and discuss the task
+3. Use \`create_booking\` to formally book them for the work
+4. Use \`complete_booking\` when work is done
+5. Use \`release_escrow\` to pay the human
+
+### Option B: Post a Bounty
+1. Use \`create_adhoc_task\` to post a task with details, location, and budget
+2. Humans browse and apply to your task
+3. Use \`get_applicants\` to review who applied
+4. Use \`assign_human\` to pick someone
+5. Use \`view_proof\` to review their submitted proof of completion
+6. Use \`release_escrow\` to pay after verifying the work
+
+## Best Practices
+- Be specific in task descriptions: include exact addresses, time windows, and expected outcomes
+- Allow buffer time for physical-world unpredictability (traffic, weather, wait times)
+- Check human profiles with \`get_human\` before committing to tight deadlines
+- Always verify task completion with \`view_proof\` before releasing payment
+- Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
+- Use \`dispute_task\` if work quality doesn't meet expectations
+- Payments are in USDC on the Base network
+
+## API Info
+- Base URL: https://api.irlwork.ai/api
+- Rate limits: 100 GET/min, 20 POST/min
+- Authentication: Bearer token with your API key
+- Docs: https://www.irlwork.ai/mcp`
+
+  const handleCopyPrompt = () => {
+    navigator.clipboard.writeText(fullPrompt)
+    setCopiedPrompt(true)
+    setTimeout(() => setCopiedPrompt(false), 3000)
+  }
+
+  const handleCopyConfig = () => {
+    navigator.clipboard.writeText(`{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "irl_sk_your_key_here"
+      }
+    }
+  }
+}`)
+    setCopiedConfig(true)
+    setTimeout(() => setCopiedConfig(false), 2500)
+  }
+
+  const handleCopyCurl = () => {
+    navigator.clipboard.writeText(`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'`)
+    setCopiedCurl(true)
+    setTimeout(() => setCopiedCurl(false), 2500)
+  }
+
+  return (
+    <div className="mcp-v4">
+      <header className="mcp-v4-header">
+        <div className="mcp-v4-header-inner">
+          <a href="/" className="logo-v4">
+            <div className="logo-mark-v4">irl</div>
+            <span className="logo-name-v4">irlwork.ai</span>
+          </a>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <a href="/dashboard/hiring" className="mcp-v4-nav-link">← Dashboard</a>
+            <a href="/mcp" className="mcp-v4-nav-link">Full API Docs</a>
+          </div>
+        </div>
+      </header>
+
+      <main className="mcp-v4-main">
+        {/* Hero with Copy Prompt CTA */}
+        <div className="mcp-v4-hero">
+          <h1>Connect Your <span>AI Agent</span></h1>
+          <p>
+            Give your AI agent the ability to hire real humans for physical-world tasks. Copy the prompt below into any AI agent and it will know how to use irlwork.ai.
+          </p>
+        </div>
+
+        {/* ===== EASY INSTALL: Copy Prompt ===== */}
+        <section className="mcp-v4-section">
+          <div className="connect-agent-easy-install">
+            <div className="connect-agent-easy-install-header">
+              <div>
+                <div className="connect-agent-easy-label">Easiest way to start</div>
+                <h2 className="connect-agent-easy-title">Copy & Paste Into Your AI Agent</h2>
+                <p className="connect-agent-easy-desc">
+                  This prompt contains everything your AI agent needs — setup instructions, all 22 available tools, workflows, and best practices. Just paste it into Claude, ChatGPT, or any AI agent.
+                </p>
+              </div>
+              <button
+                onClick={handleCopyPrompt}
+                className={`connect-agent-copy-btn ${copiedPrompt ? 'copied' : ''}`}
+              >
+                {copiedPrompt
+                  ? <><Check size={20} /> Copied to Clipboard!</>
+                  : <><Copy size={20} /> Copy Full Prompt</>
+                }
+              </button>
+            </div>
+
+            {/* Preview of what gets copied */}
+            <div className="connect-agent-prompt-preview">
+              <div className="connect-agent-prompt-preview-label">Preview of what gets copied:</div>
+              <div className="connect-agent-prompt-preview-content">
+                <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Bounty workflows &bull; Best practices &bull; Rate limits</p>
+              </div>
+            </div>
+
+            {/* 3-step visual for beginners */}
+            <div className="connect-agent-steps-row">
+              <div className="connect-agent-step">
+                <div className="connect-agent-step-num">1</div>
+                <div>
+                  <strong>Copy the prompt</strong>
+                  <p>Click the button above</p>
+                </div>
+              </div>
+              <div className="connect-agent-step-arrow">→</div>
+              <div className="connect-agent-step">
+                <div className="connect-agent-step-num">2</div>
+                <div>
+                  <strong>Paste into your AI</strong>
+                  <p>Claude, ChatGPT, etc.</p>
+                </div>
+              </div>
+              <div className="connect-agent-step-arrow">→</div>
+              <div className="connect-agent-step">
+                <div className="connect-agent-step-num">3</div>
+                <div>
+                  <strong>Ask it to hire a human</strong>
+                  <p>"Find someone to deliver a package"</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== DIVIDER ===== */}
+        <div style={{ textAlign: 'center', padding: '8px 0 32px', color: 'var(--text-tertiary)', fontSize: 14 }}>
+          — or set up the MCP integration for a deeper, persistent connection —
+        </div>
+
+        {/* ===== MANUAL SETUP ===== */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🔧</span> Manual Setup (MCP Integration)</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15 }}>
+            For a persistent integration where your agent always has access to irlwork tools, install the MCP server. This gives your agent native tool-calling access — no prompt needed.
+          </p>
+
+          {/* Step 1: API Key */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Step 1: Get Your API Key</h3>
+            <p>Register your agent with a single command — no browser needed:</p>
+            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
+              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'`}</pre>
+              <button
+                onClick={handleCopyCurl}
+                style={{
+                  position: 'absolute', top: 8, right: 8,
+                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                }}
+              >
+                {copiedCurl ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+              </button>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring?tab=settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+          </div>
+
+          {/* Step 2: Install */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Step 2: Install the MCP Server</h3>
+            <p>One command to install:</p>
+            <div className="mcp-v4-code-block">
+              <span className="green">$</span> npx -y irlwork-mcp
+            </div>
+          </div>
+
+          {/* Step 3: Configure */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Step 3: Add to Your MCP Client</h3>
+            <p>Add this to your MCP configuration file:</p>
+            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
+              <pre style={{ fontSize: 13 }}>{`{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "irl_sk_your_key_here"
+      }
+    }
+  }
+}`}</pre>
+              <button
+                onClick={handleCopyConfig}
+                style={{
+                  position: 'absolute', top: 8, right: 8,
+                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                }}
+              >
+                {copiedConfig ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+              </button>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Replace <code>irl_sk_your_key_here</code> with your API key from Step 1.</p>
+          </div>
+
+          {/* Step 4: Done */}
+          <div className="mcp-v4-card">
+            <h3>Step 4: Start Hiring</h3>
+            <p>Your agent now has native access to 22+ tools. Ask it to:</p>
+            <div className="mcp-v4-two-col" style={{ marginTop: 16 }}>
+              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
+                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Direct Hire</h4>
+                <ol className="mcp-v4-list">
+                  <li>Search humans with <code>list_humans</code></li>
+                  <li>Message via <code>start_conversation</code></li>
+                  <li>Book with <code>create_booking</code></li>
+                  <li>Pay with <code>release_escrow</code></li>
+                </ol>
+              </div>
+              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
+                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Post a Bounty</h4>
+                <ol className="mcp-v4-list">
+                  <li>Create with <code>create_adhoc_task</code></li>
+                  <li>Review with <code>get_applicants</code></li>
+                  <li>Assign with <code>assign_human</code></li>
+                  <li>Verify and release payment</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== PLATFORM CONFIGS ===== */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>💻</span> Platform-Specific Setup</h2>
+
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Claude Desktop</h3>
+            <p>Edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS) or <code>%APPDATA%\Claude\claude_desktop_config.json</code> (Windows) and add the MCP config from Step 3.</p>
+          </div>
+
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Claude Code (CLI)</h3>
+            <p>Run this in your terminal:</p>
+            <div className="mcp-v4-code-block">
+              <pre style={{ fontSize: 13 }}>{`claude mcp add irlwork -- npx -y irlwork-mcp`}</pre>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Then set: <code>IRLWORK_API_KEY=irl_sk_your_key_here</code></p>
+          </div>
+
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Cursor / Windsurf</h3>
+            <p>Add the MCP server config to your editor's MCP settings. Same JSON format as Step 3.</p>
+          </div>
+
+          <div className="mcp-v4-card">
+            <h3>Custom Agent (REST API)</h3>
+            <p>Don't use MCP? Call the API directly:</p>
+            <div className="mcp-v4-code-block">
+              <pre style={{ fontSize: 13 }}>{`curl https://api.irlwork.ai/api/mcp \\
+  -H 'Authorization: Bearer irl_sk_your_key_here' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "method": "list_humans",
+    "params": { "category": "delivery", "city": "San Francisco" }
+  }'`}</pre>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Base URL: <code>https://api.irlwork.ai/api</code> — Rate limits: 100 GET/min, 20 POST/min</p>
+          </div>
+        </section>
+
+        {/* ===== WHAT YOUR AGENT CAN DO ===== */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🛠️</span> What Your Agent Can Do</h2>
+          <div className="mcp-v4-two-col">
+            <div className="mcp-v4-card">
+              <h3>Search & Discovery</h3>
+              <ul className="mcp-v4-list">
+                <li>Search humans by skill, location, rate, and rating</li>
+                <li>View detailed profiles and availability</li>
+                <li>Browse task templates by category</li>
+              </ul>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Task Management</h3>
+              <ul className="mcp-v4-list">
+                <li>Create tasks with budgets and deadlines</li>
+                <li>Review and assign applicants</li>
+                <li>Track progress and view proof</li>
+              </ul>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Communication</h3>
+              <ul className="mcp-v4-list">
+                <li>Start conversations with humans</li>
+                <li>Send and receive messages</li>
+                <li>Get unread message summaries</li>
+              </ul>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Payments & Escrow</h3>
+              <ul className="mcp-v4-list">
+                <li>USDC payments on Base network</li>
+                <li>Escrow-protected transactions</li>
+                <li>Dispute resolution system</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="mcp-v4-cta">
+          <h2>Need the full API reference?</h2>
+          <p>View all 22+ tools, parameters, and usage examples in the complete documentation.</p>
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">View Full API Docs →</a>
+            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="footer-v4">
+        <div className="footer-v4-inner">
+          <div className="footer-v4-grid">
+            <div className="footer-v4-brand">
+              <a href="/" className="footer-v4-logo">
+                <div className="footer-v4-logo-mark">irl</div>
+                <span className="footer-v4-logo-name">irlwork.ai</span>
+              </a>
+              <p className="footer-v4-tagline">AI agents create work. Humans get paid.</p>
+            </div>
+            <div>
+              <h4 className="footer-v4-column-title">For Agents</h4>
+              <div className="footer-v4-links">
+                <a href="/mcp" className="footer-v4-link">API Docs</a>
+                <a href="/connect-agent" className="footer-v4-link">Connect Agent</a>
+                <a href="/dashboard/hiring" className="footer-v4-link">Dashboard</a>
+              </div>
+            </div>
+          </div>
+          <div className="footer-v4-bottom">
+            <p>© 2025 irlwork.ai — Built for the agent economy</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+
 function MCPPage() {
   const [user, setUser] = useState(null)
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
   const [promptCopied, setPromptCopied] = useState(false)
-
-  const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -3693,7 +4390,7 @@ function MCPPage() {
       : 'YOUR_API_KEY_HERE'
 
     const apiKeySection = keys.length > 0
-      ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard`
+      ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring`
       : `Register your agent to get an API key:
 
 \`\`\`bash
@@ -3938,9 +4635,8 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
                   <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
                 )}
                 <a
-                  href="/dashboard"
+                  href="/dashboard/hiring?tab=settings"
                   className="btn-v4 btn-v4-primary"
-                  onClick={() => localStorage.setItem('irlwork_hiringMode', 'true')}
                 >
                   Manage API Keys →
                 </a>
@@ -4245,9 +4941,9 @@ Signature required. Bring to our office at 123 Main St.",
             <div>
               <h4 className="footer-v4-column-title">Platform</h4>
               <div className="footer-v4-links">
-                <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
+                <a href="/dashboard/working?tab=browse" className="footer-v4-link">Browse Tasks</a>
                 <a href="/auth" className="footer-v4-link">Sign Up</a>
-                <a href="/browse" className="footer-v4-link">Browse Humans</a>
+                <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
               </div>
             </div>
 
@@ -4364,13 +5060,11 @@ function App() {
 
     init()
 
-    // Listen for auth changes — skip redundant fetchUserProfile if init() already handled it
+    // Listen for auth changes — skip TOKEN_REFRESHED to avoid disrupting user mid-interaction
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       debug('[Auth] State change:', event, session ? 'with session' : 'no session')
-      // Only react to SIGNED_IN / TOKEN_REFRESHED after init is done,
-      // to avoid double-fetching the user profile during the initial load
-      if (!initDoneRef.current && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        debug('[Auth] Skipping duplicate fetch — init() still running')
+      if (event === 'TOKEN_REFRESHED') {
+        debug('[Auth] Token refreshed, skipping profile re-fetch')
         return
       }
       if (session?.user) {
@@ -4498,7 +5192,7 @@ function App() {
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
-        navigate('/dashboard?tab=browse')
+        navigate('/dashboard/working?tab=browse')
       } else {
         const errorData = await res.json().catch(() => ({}))
         console.error('[Onboarding] Failed:', errorData)
@@ -4518,17 +5212,23 @@ function App() {
     if (loading) return
     if (path === '/auth' && user) {
       debug('[Auth] Already logged in, redirecting to dashboard')
-      navigate('/dashboard')
+      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+      navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
     } else if (path === '/onboard' && !user) {
       debug('[Auth] No user for onboard, redirecting to auth')
       navigate('/auth')
     } else if (path === '/onboard' && user && !user.needs_onboarding) {
       debug('[Auth] User already onboarded, redirecting to dashboard')
-      navigate('/dashboard')
-    } else if (path === '/dashboard' && !user) {
+      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+      navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path === '/dashboard' && user) {
+      debug('[Auth] Bare /dashboard, redirecting to mode-specific URL')
+      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+      navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path.startsWith('/dashboard') && !user) {
       debug('[Auth] No user, redirecting to auth')
       navigate('/auth')
-    } else if (path === '/dashboard' && user && user.needs_onboarding) {
+    } else if (path.startsWith('/dashboard') && user && user.needs_onboarding) {
       debug('[Auth] User needs onboarding, redirecting to /onboard')
       navigate('/onboard')
     }
@@ -4540,7 +5240,7 @@ function App() {
 
   // Only block on auth loading for routes that require authentication
   // Skip the gate if we have a cached user (renders instantly from localStorage)
-  if (loading && !user && ['/dashboard', '/onboard'].some(r => path.startsWith(r))) {
+  if (loading && !user && ['/dashboard/', '/dashboard', '/onboard'].some(r => path.startsWith(r))) {
     debug('[Auth] Loading...')
     return <Loading />
   }
@@ -4569,10 +5269,16 @@ function App() {
       return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
-    // Dashboard route - requires auth
+    // Dashboard route - requires auth (matches /dashboard/working and /dashboard/hiring)
+    if (path === '/dashboard/working' || path === '/dashboard/hiring') {
+      if (!user || user.needs_onboarding) return <Loading />
+      return <Dashboard user={user} onLogout={logout} initialMode={path === '/dashboard/hiring' ? 'hiring' : 'working'} onUserUpdate={setUser} />
+    }
+
+    // Bare /dashboard redirect (handled by useEffect above, but guard here too)
     if (path === '/dashboard') {
       if (!user || user.needs_onboarding) return <Loading />
-      return <Dashboard user={user} onLogout={logout} />
+      return <Loading />
     }
 
     if (path === '/auth') {
@@ -4580,6 +5286,7 @@ function App() {
       return <AuthPage onNavigate={navigate} />
     }
     if (path === '/mcp') return <MCPPage />
+    if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
 
     // Homepage
@@ -4590,7 +5297,7 @@ function App() {
   })()
 
   // Dashboard has feedback in sidebar, other pages use floating button
-  const isDashboard = path === '/dashboard'
+  const isDashboard = path.startsWith('/dashboard')
 
   return (
     <>

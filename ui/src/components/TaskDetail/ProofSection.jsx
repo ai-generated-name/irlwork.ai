@@ -107,27 +107,27 @@ export default function ProofSection({ task, user, onSubmit }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 mb-6 shadow-sm">
-      <h2 className="text-xl font-bold text-[#1A1A1A] mb-4">Submit Proof of Work</h2>
+    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
+      <h2 className="text-base sm:text-xl font-bold text-[#1A1A1A] mb-3 sm:mb-4">Submit Proof of Work</h2>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {/* Proof Text */}
         <div>
-          <label className="block text-[#525252] text-sm mb-2">Describe your work</label>
+          <label className="block text-[#525252] text-xs sm:text-sm mb-1.5 sm:mb-2">Describe your work</label>
           <textarea
             value={proofText}
             onChange={(e) => setProofText(e.target.value)}
             placeholder="Describe what you did to complete this task..."
-            rows={4}
-            className={`${styles.input} resize-none`}
+            rows={3}
+            className={`${styles.input} resize-none text-sm`}
           />
         </div>
 
         {/* File Upload */}
         <div>
-          <label className="block text-[#525252] text-sm mb-2">Upload Proof (max 3 images)</label>
+          <label className="block text-[#525252] text-xs sm:text-sm mb-1.5 sm:mb-2">Upload Proof (max 3 images)</label>
           <div
-            className="border-2 border-dashed border-[rgba(26,26,26,0.2)] rounded-xl p-6 text-center cursor-pointer hover:border-[#0F4C5C] transition-colors bg-[#FAF8F5]"
+            className="border-2 border-dashed border-[rgba(26,26,26,0.2)] rounded-xl p-4 sm:p-6 text-center cursor-pointer hover:border-[#0F4C5C] transition-colors bg-[#FAF8F5]"
             onClick={() => !uploading && fileInputRef.current?.click()}
           >
             <input
@@ -138,27 +138,27 @@ export default function ProofSection({ task, user, onSubmit }) {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <div className="text-3xl mb-2">{uploading ? '⏳' : '📤'}</div>
-            <p className="text-[#525252] text-sm">
-              {uploading ? 'Uploading...' : 'Click to upload images'}
+            <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{uploading ? '⏳' : '📤'}</div>
+            <p className="text-[#525252] text-xs sm:text-sm">
+              {uploading ? 'Uploading...' : 'Tap to upload images'}
             </p>
-            <p className="text-[#8A8A8A] text-xs mt-1">PNG, JPG, or JPEG (max 3 files)</p>
+            <p className="text-[#8A8A8A] text-xs mt-0.5 sm:mt-1">PNG, JPG, or JPEG (max 3)</p>
           </div>
 
           {/* Selected Files */}
           {files.length > 0 && (
-            <div className="flex gap-2 mt-3 flex-wrap">
+            <div className="flex gap-1.5 sm:gap-2 mt-2 sm:mt-3 flex-wrap">
               {files.map((file, i) => (
-                <div key={i} className="bg-[#F5F2ED] rounded-lg p-2 pr-3 flex items-center gap-2">
-                  <span className="text-sm text-[#1A1A1A]">
-                    {file.name.length > 20 ? file.name.slice(0, 20) + '...' : file.name}
+                <div key={i} className="bg-[#F5F2ED] rounded-lg p-1.5 sm:p-2 pr-2 sm:pr-3 flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-xs sm:text-sm text-[#1A1A1A]">
+                    {file.name.length > 15 ? file.name.slice(0, 15) + '...' : file.name}
                   </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       removeFile(i);
                     }}
-                    className="text-[#8A8A8A] hover:text-[#DC2626] text-sm"
+                    className="text-[#8A8A8A] hover:text-[#DC2626] text-xs sm:text-sm"
                   >
                     ✕
                   </button>
@@ -169,7 +169,7 @@ export default function ProofSection({ task, user, onSubmit }) {
 
           {/* Uploaded Confirmation */}
           {uploadedUrls.length > 0 && (
-            <p className="text-[#059669] text-sm flex items-center gap-2 mt-3">
+            <p className="text-[#059669] text-xs sm:text-sm flex items-center gap-2 mt-2 sm:mt-3">
               <span>✓</span> {uploadedUrls.length} file(s) uploaded
             </p>
           )}
@@ -179,18 +179,18 @@ export default function ProofSection({ task, user, onSubmit }) {
         <button
           onClick={handleSubmit}
           disabled={submitting || uploading}
-          className="w-full bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-colors"
+          className="w-full bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
         >
           {submitting ? 'Submitting...' : uploading ? 'Uploading files...' : 'Submit Proof'}
         </button>
 
         {/* Instructions */}
-        <div className="bg-[#D1E9F0] border border-[rgba(15,76,92,0.2)] rounded-lg p-3 text-sm text-[#0F4C5C]">
-          <p className="font-medium mb-1">📝 Proof Submission Tips:</p>
-          <ul className="list-disc list-inside space-y-1 text-xs text-[#525252]">
-            <li>Provide detailed description of work completed</li>
-            <li>Upload clear photos showing the finished task</li>
-            <li>Agent has 48 hours to review before auto-release</li>
+        <div className="bg-[#D1E9F0] border border-[rgba(15,76,92,0.2)] rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-[#0F4C5C]">
+          <p className="font-medium mb-1">📝 Tips:</p>
+          <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-[#525252]">
+            <li>Describe work completed in detail</li>
+            <li>Upload clear photos of finished task</li>
+            <li>48h review window before auto-release</li>
           </ul>
         </div>
       </div>

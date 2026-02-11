@@ -1,6 +1,7 @@
 node_modules/
 ui/dist/
 ui/node_modules/
+api/node_modules/
 
 # Environment files (contain secrets)
 .env
