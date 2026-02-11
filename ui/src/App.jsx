@@ -2230,7 +2230,30 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           </div>
         )}
 
-        {/* Mode Switch - mobile only */}
+
+        {/* Navigation */}
+        <nav className="dashboard-v4-nav">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id)
+                setSidebarOpen(false)
+              }}
+              className={`dashboard-v4-nav-item ${activeTab === item.id ? 'active' : ''}`}
+            >
+              <div className="dashboard-v4-nav-item-content">
+                <span className="dashboard-v4-nav-icon">{item.icon}</span>
+                <span className="dashboard-v4-nav-label">{item.label}</span>
+              </div>
+              {item.badge > 0 && (
+                <span className="dashboard-v4-nav-badge">{item.badge}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
           {hiringMode ? (
             <button
@@ -2255,32 +2278,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <path d="M22 21v-2a4 4 0 00-3-3.87" />
                 <path d="M16 3.13a4 4 0 010 7.75" />
               </svg>
-              Switch to Hiring
+              Hire Humans
             </button>
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="dashboard-v4-nav">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id)
-                setSidebarOpen(false)
-              }}
-              className={`dashboard-v4-nav-item ${activeTab === item.id ? 'active' : ''}`}
-            >
-              <div className="dashboard-v4-nav-item-content">
-                <span className="dashboard-v4-nav-icon">{item.icon}</span>
-                <span className="dashboard-v4-nav-label">{item.label}</span>
-              </div>
-              {item.badge > 0 && (
-                <span className="dashboard-v4-nav-badge">{item.badge}</span>
-              )}
-            </button>
-          ))}
-        </nav>
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
