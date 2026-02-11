@@ -2808,16 +2808,68 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: Payments Tab */}
         {hiringMode && activeTab === 'payments' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Payment Methods</h1>
+            <h1 className="dashboard-v4-page-title">Payments</h1>
+
+            {/* Payment History */}
+            {(() => {
+              const paidTasks = postedTasks.filter(t => t.escrow_amount && t.escrow_status)
+              const totalSpent = paidTasks.reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
+              return (
+                <>
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+                    <div style={{ flex: 1, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>Total Spent</p>
+                      <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>${(totalSpent / 100).toFixed(2)}</p>
+                    </div>
+                    <div style={{ flex: 1, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>Tasks Funded</p>
+                      <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>{paidTasks.length}</p>
+                    </div>
+                  </div>
+
+                  {paidTasks.length > 0 && (
+                    <div style={{ marginBottom: 32 }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Payment History</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {paidTasks.map(task => (
+                          <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
+                              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                                {task.escrow_deposited_at ? new Date(task.escrow_deposited_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending'}
+                                {task.assignee && <> &middot; {task.assignee.name}</>}
+                              </p>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
+                              <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>${(task.escrow_amount / 100).toFixed(2)}</p>
+                              <span style={{
+                                fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 'var(--radius-full)',
+                                background: task.status === 'paid' ? 'rgba(16, 185, 129, 0.1)' : task.status === 'in_progress' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                                color: task.status === 'paid' ? '#10B981' : task.status === 'in_progress' ? '#F59E0B' : '#6B7280'
+                              }}>
+                                {task.status === 'paid' ? 'Released' : task.status === 'completed' ? 'Completed' : task.status === 'in_progress' ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+
+            {/* Payment Methods */}
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Payment Methods</h3>
             <Suspense fallback={<Loading />}>
               <StripeProvider>
                 <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Saved Cards</h4>
                     <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
                   </div>
                   <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Add New Card</h4>
                     <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
                   </div>
                   <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
