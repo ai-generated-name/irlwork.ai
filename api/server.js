@@ -1632,7 +1632,7 @@ app.get('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, duration_hours, is_remote';
+  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, is_remote';
   let query = supabase.from('tasks').select(safeTaskColumns);
 
   if (category) query = query.eq('category', category);
@@ -1692,7 +1692,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, is_anonymous } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, deadline, requirements } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1714,10 +1714,8 @@ app.post('/api/tasks', async (req, res) => {
       human_ids: [],
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
-      duration_hours: duration_hours || null,
       deadline: deadline || null,
       requirements: requirements || null,
-      is_anonymous: !!is_anonymous,
       created_at: new Date().toISOString()
     })
     .select()
@@ -3909,7 +3907,6 @@ app.post('/api/mcp', async (req, res) => {
             human_ids: [],
             escrow_amount: budgetAmount,
             is_remote: !!params.is_remote,
-            is_anonymous: !!params.is_anonymous,
             created_at: new Date().toISOString()
           })
           .select()
@@ -4374,9 +4371,8 @@ app.get('/api/conversations', async (req, res) => {
     .select(`
       *,
       task:tasks(id, title, category, budget),
-      human:users!human_id(id, name, type, rating),
-      agent:users!agent_id(id, name, type, organization),
-      last_message:messages(created_at, content, sender_id)
+      human:users!human_id(id, name, type, rating, avatar_url),
+      agent:users!agent_id(id, name, type, avatar_url)
     `)
     .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
     .order('updated_at', { ascending: false });
@@ -4391,7 +4387,7 @@ app.post('/api/conversations', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { agent_id, task_id, title } = req.body;
+  const { agent_id, task_id } = req.body;
 
   // Use upsert to prevent race condition duplicates
   // NOTE: Do NOT pass `id` field - let DB generate UUID on insert.
@@ -4402,9 +4398,7 @@ app.post('/api/conversations', async (req, res) => {
     .upsert({
       human_id: user.id,
       agent_id: agent_id || null,
-      task_id: task_id || null,
-      title: title || 'New Conversation',
-      status: 'active'
+      task_id: task_id || null
     }, {
       onConflict: 'human_id,agent_id,task_id',
       ignoreDuplicates: false
@@ -4427,9 +4421,9 @@ app.get('/api/conversations/:id', async (req, res) => {
     .from('conversations')
     .select(`
       *,
-      task:tasks(*),
-      human:users!human_id(*),
-      agent:users!agent_id(*)
+      task:tasks(id, title, category, budget, status, location, is_remote),
+      human:users!human_id(id, name, type, rating, avatar_url),
+      agent:users!agent_id(id, name, type, avatar_url)
     `)
     .eq('id', req.params.id)
     .single();
@@ -4533,7 +4527,7 @@ app.post('/api/messages', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { conversation_id, content, message_type = 'text', metadata = {} } = req.body;
+  const { conversation_id, content } = req.body;
 
   // Verify user has access to conversation (include task_id and task title for notifications)
   const { data: conversation, error: convError } = await supabase
@@ -4558,8 +4552,6 @@ app.post('/api/messages', async (req, res) => {
       conversation_id,
       sender_id: user.id,
       content,
-      message_type,
-      metadata,
       created_at: new Date().toISOString()
     })
     .select()
@@ -4688,7 +4680,7 @@ app.get('/api/messages/unread/count', async (req, res) => {
   const { data: conversations } = await supabase
     .from('conversations')
     .select('id')
-    .or(`user_id.eq.${user.id},agent_id.eq.${user.id}`);
+    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`);
   
   if (!conversations || conversations.length === 0) {
     return res.json({ count: 0 });
@@ -5091,7 +5083,7 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Agents only' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, country, country_code, deadline, requirements } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -5114,7 +5106,6 @@ app.post('/api/tasks/create', async (req, res) => {
       task_type: 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
-      duration_hours: duration_hours || null,
       deadline: deadline || null,
       requirements: requirements || null,
       created_at: new Date().toISOString()
