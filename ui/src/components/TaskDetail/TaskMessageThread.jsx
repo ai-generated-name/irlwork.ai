@@ -53,21 +53,21 @@ export default function TaskMessageThread({
   };
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] flex flex-col h-[500px] shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] flex flex-col h-[320px] sm:h-[420px] lg:h-[500px] shadow-sm">
       {/* Header */}
-      <div className="p-4 border-b border-[rgba(26,26,26,0.08)]">
-        <h3 className="text-[#1A1A1A] font-bold">Messages</h3>
-        <p className="text-[#525252] text-sm">Chat with the agent about this task</p>
+      <div className="px-3 py-2.5 sm:p-4 border-b border-[rgba(26,26,26,0.08)]">
+        <h3 className="text-[#1A1A1A] font-bold text-sm sm:text-base">Messages</h3>
+        <p className="text-[#525252] text-xs sm:text-sm">Chat with the agent about this task</p>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#FAF8F5]">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-[#FAF8F5]">
         {!conversation ? (
-          <div className="flex items-center justify-center h-full text-[#525252] text-sm">
+          <div className="flex items-center justify-center h-full text-[#525252] text-xs sm:text-sm">
             No messages yet. Send a message to start the conversation.
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-[#525252] text-sm">
+          <div className="flex items-center justify-center h-full text-[#525252] text-xs sm:text-sm">
             No messages yet. Be the first to send a message!
           </div>
         ) : (
@@ -78,13 +78,13 @@ export default function TaskMessageThread({
                 className={`flex ${m.sender_id === user.id ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[70%] rounded-xl p-3 ${
+                  className={`max-w-[80%] sm:max-w-[70%] rounded-xl p-2.5 sm:p-3 ${
                     m.sender_id === user.id
                       ? 'bg-[#0F4C5C] text-white'
                       : 'bg-white text-[#1A1A1A] border border-[rgba(26,26,26,0.08)]'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                  <p className="whitespace-pre-wrap break-words text-sm">{m.content}</p>
                   <p
                     className={`text-xs mt-1 ${
                       m.sender_id === user.id
@@ -103,19 +103,19 @@ export default function TaskMessageThread({
       </div>
 
       {/* Message Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-[rgba(26,26,26,0.08)] flex gap-3 bg-white rounded-b-2xl">
+      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(26,26,26,0.08)] flex gap-2 sm:gap-3 bg-white rounded-b-2xl">
         <input
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message..."
-          className={`${styles.input} flex-1`}
+          className={`${styles.input} flex-1 !py-2.5 sm:!py-3 text-sm`}
           disabled={sending}
         />
         <button
           type="submit"
           disabled={sending || !newMessage.trim()}
-          className="bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-colors"
+          className="bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
         >
           {sending ? '...' : 'Send'}
         </button>

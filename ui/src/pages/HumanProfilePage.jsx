@@ -51,7 +51,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
         {/* Back + Share */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <button
-            onClick={() => onNavigate?.('/browse') || (window.location.href = '/browse')}
+            onClick={() => onNavigate?.('/browse?mode=humans') || (window.location.href = '/browse?mode=humans')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -101,7 +101,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
             <p style={{ color: 'var(--text-secondary, #525252)', fontSize: 18, fontWeight: 600 }}>Profile not found</p>
             <p style={{ color: 'var(--text-tertiary, #8A8A8A)', fontSize: 14, marginTop: 8 }}>{error}</p>
             <button
-              onClick={() => window.location.href = '/browse'}
+              onClick={() => window.location.href = '/browse?mode=humans'}
               style={{
                 marginTop: 24,
                 padding: '10px 24px',

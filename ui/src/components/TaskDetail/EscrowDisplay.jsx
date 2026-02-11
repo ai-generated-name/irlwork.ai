@@ -48,11 +48,11 @@ export default function EscrowDisplay({ task }) {
   const statusMessage = getStatusMessage();
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 mb-4 shadow-sm">
-      <h3 className="text-[#1A1A1A] font-bold mb-4">Escrow Status</h3>
+    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
+      <h3 className="text-[#1A1A1A] font-bold text-sm sm:text-base mb-3 sm:mb-4">Escrow Status</h3>
 
       {/* Escrow Badge */}
-      <div className="mb-4">
+      <div className="mb-3 sm:mb-4">
         <EscrowBadge
           status={escrowStatus}
           amount={escrowAmount}
@@ -63,25 +63,23 @@ export default function EscrowDisplay({ task }) {
 
       {/* Status Message */}
       <div className="flex items-start gap-2">
-        <span className={`text-lg ${statusMessage.color}`}>{statusMessage.icon}</span>
+        <span className={`text-base sm:text-lg ${statusMessage.color}`}>{statusMessage.icon}</span>
         <div className="flex-1">
-          <p className={`text-sm ${statusMessage.color}`}>
+          <p className={`text-xs sm:text-sm ${statusMessage.color}`}>
             {statusMessage.text}
           </p>
 
           {/* Deposit Timestamp */}
           {task.escrow_deposited_at && (
-            <p className="text-[#8A8A8A] text-xs mt-2">
-              Deposited on {new Date(task.escrow_deposited_at).toLocaleDateString()} at{' '}
-              {new Date(task.escrow_deposited_at).toLocaleTimeString()}
+            <p className="text-[#8A8A8A] text-xs mt-1.5 sm:mt-2">
+              Deposited {new Date(task.escrow_deposited_at).toLocaleDateString()}
             </p>
           )}
 
           {/* Release Timestamp */}
           {task.escrow_released_at && (
-            <p className="text-[#8A8A8A] text-xs mt-2">
-              Released on {new Date(task.escrow_released_at).toLocaleDateString()} at{' '}
-              {new Date(task.escrow_released_at).toLocaleTimeString()}
+            <p className="text-[#8A8A8A] text-xs mt-1.5 sm:mt-2">
+              Released {new Date(task.escrow_released_at).toLocaleDateString()}
             </p>
           )}
         </div>
@@ -89,10 +87,9 @@ export default function EscrowDisplay({ task }) {
 
       {/* Security Note */}
       {escrowStatus === 'deposited' && (
-        <div className="mt-4 pt-4 border-t border-[rgba(26,26,26,0.08)]">
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[rgba(26,26,26,0.08)]">
           <div className="text-xs text-[#8A8A8A]">
-            🔒 Your payment is protected. Funds will only be released when you submit proof and the agent approves,
-            or automatically after the dispute window closes.
+            🔒 Payment protected. Funds released on proof approval or after the dispute window.
           </div>
         </div>
       )}
