@@ -13,27 +13,27 @@ export default function BudgetCard({ task, user, onApply }) {
   const showSignIn = task.status === 'open' && !user;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 mb-4 shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
       {/* Budget amount */}
-      <div className="text-center mb-4">
+      <div className="text-center mb-3 sm:mb-4">
         <div className="flex items-baseline justify-center gap-1">
-          <span className="text-4xl font-bold text-[#059669] font-mono">
+          <span className="text-3xl sm:text-4xl font-bold text-[#059669] font-mono">
             ${budget}
           </span>
-          {isHourly && <span className="text-lg text-[#525252]">/hr</span>}
+          {isHourly && <span className="text-base sm:text-lg text-[#525252]">/hr</span>}
         </div>
-        <div className="text-sm text-[#8A8A8A] mt-1">USDC</div>
+        <div className="text-xs sm:text-sm text-[#8A8A8A] mt-1">USDC</div>
       </div>
 
       {/* Estimated hours and total for hourly tasks */}
       {isHourly && durationHours > 0 && (
-        <div className="border-t border-[rgba(26,26,26,0.08)] pt-3 mt-3 space-y-2">
-          <div className="flex justify-between text-sm">
+        <div className="border-t border-[rgba(26,26,26,0.08)] pt-2 sm:pt-3 mt-2 sm:mt-3 space-y-1.5 sm:space-y-2">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-[#525252]">Estimated hours</span>
             <span className="text-[#1A1A1A] font-medium">~{durationHours}h</span>
           </div>
           {estimatedTotal && (
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-xs sm:text-sm">
               <span className="text-[#525252]">Est. total</span>
               <span className="text-[#1A1A1A] font-medium">${estimatedTotal.toLocaleString()}</span>
             </div>
@@ -43,12 +43,12 @@ export default function BudgetCard({ task, user, onApply }) {
 
       {/* Fixed price label */}
       {!isHourly && (
-        <div className="text-center text-sm text-[#525252]">Fixed Price</div>
+        <div className="text-center text-xs sm:text-sm text-[#525252]">Fixed Price</div>
       )}
 
       {/* Posted date */}
       {task.created_at && (
-        <div className="border-t border-[rgba(26,26,26,0.08)] mt-4 pt-3 text-center">
+        <div className="border-t border-[rgba(26,26,26,0.08)] mt-3 sm:mt-4 pt-2 sm:pt-3 text-center">
           <span className="text-xs text-[#8A8A8A]">
             Posted {new Date(task.created_at).toLocaleDateString()}
           </span>
@@ -59,7 +59,7 @@ export default function BudgetCard({ task, user, onApply }) {
       {canApply && (
         <button
           onClick={onApply}
-          className="w-full mt-5 py-3 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-base shadow-md"
+          className="w-full mt-3 sm:mt-5 py-2.5 sm:py-3 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-sm sm:text-base shadow-md"
         >
           Apply for This Task
         </button>
@@ -68,7 +68,7 @@ export default function BudgetCard({ task, user, onApply }) {
       {showSignIn && (
         <a
           href="/auth"
-          className="block w-full mt-5 py-3 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-base shadow-md text-center no-underline"
+          className="block w-full mt-3 sm:mt-5 py-2.5 sm:py-3 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-sm sm:text-base shadow-md text-center no-underline"
         >
           Sign In to Apply
         </a>

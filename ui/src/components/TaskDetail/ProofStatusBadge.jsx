@@ -45,22 +45,21 @@ export default function ProofStatusBadge({ task, proofs }) {
   const config = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending_review;
 
   return (
-    <div className={`rounded-xl border-2 p-6 mb-6 ${config.color}`}>
-      <div className="flex items-start gap-3">
-        <span className="text-3xl">{config.icon}</span>
-        <div className="flex-1">
-          <h3 className="text-lg font-bold mb-1">{config.label}</h3>
-          <p className="text-sm opacity-90">{config.description}</p>
+    <div className={`rounded-xl border-2 p-3 sm:p-6 ${config.color}`}>
+      <div className="flex items-start gap-2 sm:gap-3">
+        <span className="text-xl sm:text-3xl">{config.icon}</span>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm sm:text-lg font-bold mb-0.5 sm:mb-1">{config.label}</h3>
+          <p className="text-xs sm:text-sm opacity-90">{config.description}</p>
 
           {/* Show latest proof details if available */}
           {proofs && proofs.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-current/20">
+            <div className="mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t border-current/20">
               <p className="text-xs opacity-70">
-                Submitted on {new Date(proofs[0].created_at).toLocaleDateString()} at{' '}
-                {new Date(proofs[0].created_at).toLocaleTimeString()}
+                Submitted {new Date(proofs[0].created_at).toLocaleDateString()}
               </p>
               {proofs[0].proof_text && (
-                <p className="text-sm mt-2 opacity-80 italic">
+                <p className="text-xs sm:text-sm mt-1.5 sm:mt-2 opacity-80 italic truncate sm:whitespace-normal">
                   "{proofs[0].proof_text.slice(0, 100)}{proofs[0].proof_text.length > 100 ? '...' : ''}"
                 </p>
               )}
@@ -71,8 +70,8 @@ export default function ProofStatusBadge({ task, proofs }) {
 
       {/* Additional Actions */}
       {task.status === 'disputed' && (
-        <div className="mt-4 pt-4 border-t border-current/20">
-          <button className="text-sm font-medium hover:underline">
+        <div className="mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t border-current/20">
+          <button className="text-xs sm:text-sm font-medium hover:underline">
             View Dispute Details →
           </button>
         </div>
