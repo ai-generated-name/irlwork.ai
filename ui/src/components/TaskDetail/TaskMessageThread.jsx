@@ -103,14 +103,17 @@ export default function TaskMessageThread({
       </div>
 
       {/* Message Input */}
-      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(26,26,26,0.08)] flex gap-2 sm:gap-3 bg-white rounded-b-2xl">
-        <input
-          type="text"
+      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(26,26,26,0.08)] flex gap-2 sm:gap-3 items-end bg-white rounded-b-2xl">
+        <textarea
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type a message..."
+          placeholder="Type a message... (Shift+Enter for newline)"
           className={`${styles.input} flex-1 !py-2.5 sm:!py-3 text-sm`}
+          style={{ resize: 'none', minHeight: 40, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
+          rows={1}
           disabled={sending}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) } }}
+          onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
         />
         <button
           type="submit"
