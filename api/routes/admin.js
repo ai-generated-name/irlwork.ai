@@ -136,7 +136,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         .select('id')
         .eq('status', 'pending');
 
-      // Total USDC processed
+      // Total payments processed
       const { data: allPayments } = await supabase
         .from('manual_payments')
         .select('deposit_amount')
@@ -198,7 +198,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
   });
 
   // ============================================================================
-  // GET /api/admin/tasks/pending-deposits - Tasks awaiting USDC deposit
+  // GET /api/admin/tasks/pending-deposits - Tasks awaiting deposit confirmation
   // ============================================================================
   router.get('/tasks/pending-deposits', async (req, res) => {
     try {
@@ -503,7 +503,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         .select(`
           id, title, escrow_amount, updated_at,
           agent:users!tasks_agent_id_fkey(id, name, email),
-          human:users!tasks_human_id_fkey(id, name, email, circle_wallet_id)
+          human:users!tasks_human_id_fkey(id, name, email, stripe_account_id)
         `)
         .eq('status', 'approved')
         .eq('escrow_status', 'deposited')
@@ -547,8 +547,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         .from('tasks')
         .select(`
           *,
-          agent:users!tasks_agent_id_fkey(id, name, email, circle_wallet_id),
-          human:users!tasks_human_id_fkey(id, name, email, circle_wallet_id)
+          agent:users!tasks_agent_id_fkey(id, name, email, stripe_account_id),
+          human:users!tasks_human_id_fkey(id, name, email, stripe_account_id)
         `)
         .eq('id', id)
         .single();
@@ -593,7 +593,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       // Get task
       const { data: task, error: taskError } = await supabase
         .from('tasks')
-        .select('*, human:users!tasks_human_id_fkey(id, name, email, circle_wallet_id)')
+        .select('*, human:users!tasks_human_id_fkey(id, name, email, stripe_account_id)')
         .eq('id', id)
         .single();
 
@@ -658,7 +658,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         task.human_id,
         'payment_approved',
         'Payment Approved!',
-        `Your payment of $${humanAmount} USDC for "${task.title}" has been approved. Withdrawal is being processed.`,
+        `Your payment of $${humanAmount} USD for "${task.title}" has been approved. Withdrawal is being processed.`,
         `/tasks/${id}`
       );
 
@@ -671,7 +671,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         deposit_amount: depositAmount,
         worker_amount: parseFloat(humanAmount),
         platform_fee: parseFloat(platformFee),
-        worker_wallet: task.human?.circle_wallet_id || null,
+        worker_stripe_account: task.human?.stripe_account_id || null,
         message: 'Payment released. Ready for withdrawal confirmation.'
       });
     } catch (error) {
@@ -690,7 +690,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         .select(`
           *,
           task:tasks(id, title),
-          worker:users!manual_payments_worker_id_fkey(id, name, email, circle_wallet_id)
+          worker:users!manual_payments_worker_id_fkey(id, name, email, stripe_account_id)
         `)
         .eq('status', 'pending_withdrawal')
         .order('released_at', { ascending: true });
@@ -705,94 +705,26 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
   });
 
   // ============================================================================
-  // POST /api/admin/payments/:id/confirm-withdrawal - Confirm USDC sent
+  // POST /api/admin/payments/:id/confirm-withdrawal - DEPRECATED (was USDC)
+  // Withdrawals are now handled automatically via Stripe Connect transfers.
   // ============================================================================
   router.post('/payments/:id/confirm-withdrawal', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { tx_hash, amount_sent } = req.body;
-
-      if (!tx_hash) {
-        return res.status(400).json({ error: 'tx_hash is required' });
-      }
-
-      // Get payment
-      const { data: payment, error: paymentError } = await supabase
-        .from('manual_payments')
-        .select('*, task:tasks(id, title), worker:users!manual_payments_worker_id_fkey(id, name, email)')
-        .eq('id', id)
-        .single();
-
-      if (paymentError || !payment) {
-        return res.status(404).json({ error: 'Payment not found' });
-      }
-
-      if (payment.status !== 'pending_withdrawal') {
-        return res.status(400).json({ error: `Payment status is ${payment.status}, expected pending_withdrawal` });
-      }
-
-      // Update manual_payments
-      const { error: updatePaymentError } = await supabase
-        .from('manual_payments')
-        .update({
-          withdrawal_tx_hash: tx_hash,
-          status: 'withdrawn',
-          withdrawn_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id);
-
-      if (updatePaymentError) throw updatePaymentError;
-
-      // Update task
-      const { error: updateTaskError } = await supabase
-        .from('tasks')
-        .update({
-          escrow_status: 'withdrawn',
-          status: 'paid',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', payment.task_id);
-
-      if (updateTaskError) throw updateTaskError;
-
-      // Update human stats (atomic increment via RPC)
-      await supabase.rpc('increment_user_stat', { user_id_param: payment.worker_id, stat_name: 'jobs_completed', increment_by: 1 });
-
-      // Notify human
-      await createNotification(
-        payment.worker_id,
-        'payment_sent',
-        'USDC Sent!',
-        `Your payment of $${payment.worker_amount} USDC for "${payment.task?.title}" has been sent to your wallet. TX: ${tx_hash.substring(0, 10)}...`,
-        `https://basescan.org/tx/${tx_hash}`
-      );
-
-      // Log admin action
-      await logAdminAction(req.user.id, 'confirm_withdrawal', payment.task_id, id, { tx_hash, amount_sent });
-
-      res.json({
-        success: true,
-        tx_hash,
-        basescan_url: `https://basescan.org/tx/${tx_hash}`,
-        message: 'Withdrawal confirmed. Human has been notified.'
-      });
-    } catch (error) {
-      console.error('[Admin] Confirm withdrawal error:', error);
-      res.status(500).json({ error: error.message });
-    }
+    res.status(410).json({
+      error: 'This endpoint is deprecated. Withdrawals are now handled automatically via Stripe Connect.',
+      message: 'Workers withdraw directly to their bank account through Stripe Connect.'
+    });
   });
 
   // ============================================================================
-  // POST /api/admin/tasks/:id/refund - Refund agent
+  // POST /api/admin/tasks/:id/refund - Refund agent via Stripe
   // ============================================================================
   router.post('/tasks/:id/refund', async (req, res) => {
     try {
       const { id } = req.params;
-      const { tx_hash, amount_refunded, reason } = req.body;
+      const { reason } = req.body;
 
-      if (!tx_hash || !reason) {
-        return res.status(400).json({ error: 'tx_hash and reason are required' });
+      if (!reason) {
+        return res.status(400).json({ error: 'reason is required' });
       }
 
       // Get task
@@ -806,56 +738,51 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         return res.status(404).json({ error: 'Task not found' });
       }
 
-      // Get manual_payment if exists
-      const { data: payment } = await supabase
-        .from('manual_payments')
-        .select('*')
-        .eq('task_id', id)
-        .single();
-
-      // Update or create manual_payments record
-      if (payment) {
-        await supabase
-          .from('manual_payments')
-          .update({
-            refund_tx_hash: tx_hash,
-            refund_reason: reason,
-            status: 'refunded',
-            refunded_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', payment.id);
+      // Refund via Stripe
+      const { refundPayment } = require('../backend/services/stripeService');
+      let refundResult;
+      try {
+        refundResult = await refundPayment(supabase, id, 'requested_by_customer');
+      } catch (refundError) {
+        return res.status(400).json({
+          error: 'Stripe refund failed',
+          details: refundError.message
+        });
       }
 
-      // Update task
-      const { error: updateError } = await supabase
+      // Cancel any pending transactions for this task
+      await supabase
+        .from('pending_transactions')
+        .update({ status: 'cancelled', notes: `Refunded: ${reason}` })
+        .eq('task_id', id)
+        .in('status', ['pending', 'available', 'frozen']);
+
+      // Update task status
+      await supabase
         .from('tasks')
         .update({
-          escrow_status: 'refunded',
           status: 'cancelled',
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
-
-      if (updateError) throw updateError;
 
       // Notify agent
       await createNotification(
         task.agent_id,
         'refund_processed',
         'Refund Processed',
-        `Your refund of $${amount_refunded || task.escrow_amount} USDC for "${task.title}" has been processed. TX: ${tx_hash.substring(0, 10)}...`,
-        `https://basescan.org/tx/${tx_hash}`
+        `Your refund of $${(refundResult.amount / 100).toFixed(2)} for "${task.title}" has been processed and will be returned to your card.`,
+        null
       );
 
       // Log admin action
-      await logAdminAction(req.user.id, 'refund', id, payment?.id, { tx_hash, amount_refunded, reason });
+      await logAdminAction(req.user.id, 'refund', id, null, { refund_id: refundResult.refund_id, reason });
 
       res.json({
         success: true,
-        tx_hash,
-        basescan_url: `https://basescan.org/tx/${tx_hash}`,
-        message: 'Refund processed. Agent has been notified.'
+        refund_id: refundResult.refund_id,
+        amount: refundResult.amount,
+        message: 'Refund processed via Stripe. Agent has been notified.'
       });
     } catch (error) {
       console.error('[Admin] Refund error:', error);

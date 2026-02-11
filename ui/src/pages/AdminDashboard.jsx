@@ -14,7 +14,6 @@ export default function AdminDashboard({ user }) {
   const [dashboard, setDashboard] = useState(null)
   const [queueData, setQueueData] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
-  const [actionModal, setActionModal] = useState(null)
   const [confirmModal, setConfirmModal] = useState(null)
   const [reportResolveModal, setReportResolveModal] = useState(null)
   const [feedbackData, setFeedbackData] = useState([])
@@ -63,11 +62,9 @@ export default function AdminDashboard({ user }) {
       }
 
       const endpoints = {
-        'pending-deposits': '/admin/tasks/pending-deposits',
         'stale-deposits': '/admin/tasks/stale-deposits',
         'pending-agent-approval': '/admin/tasks/pending-agent-approval',
         'pending-release': '/admin/tasks/pending-release',
-        'pending-withdrawals': '/admin/payments/pending-withdrawals',
         'reports': '/admin/reports?status=pending'
       }
 
@@ -97,31 +94,6 @@ export default function AdminDashboard({ user }) {
   }, [activeQueue, fetchQueue])
 
   // Action handlers
-  const confirmDeposit = async (taskId, txHash, amount) => {
-    setActionLoading(taskId)
-    try {
-      const res = await fetch(`${API_URL}/admin/tasks/${taskId}/confirm-deposit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: user.id
-        },
-        body: JSON.stringify({ tx_hash: txHash, amount_received: parseFloat(amount) })
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Failed to confirm deposit')
-      }
-      setActionModal(null)
-      fetchQueue(activeQueue)
-      fetchDashboard()
-    } catch (err) {
-      toast.error(err.message)
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
   const releasePayment = async (taskId) => {
     setActionLoading(taskId)
     try {
@@ -137,31 +109,6 @@ export default function AdminDashboard({ user }) {
         const err = await res.json()
         throw new Error(err.error || 'Failed to release payment')
       }
-      fetchQueue(activeQueue)
-      fetchDashboard()
-    } catch (err) {
-      toast.error(err.message)
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const confirmWithdrawal = async (paymentId, txHash, amount) => {
-    setActionLoading(paymentId)
-    try {
-      const res = await fetch(`${API_URL}/admin/payments/${paymentId}/confirm-withdrawal`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: user.id
-        },
-        body: JSON.stringify({ tx_hash: txHash, amount_sent: parseFloat(amount) })
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Failed to confirm withdrawal')
-      }
-      setActionModal(null)
       fetchQueue(activeQueue)
       fetchDashboard()
     } catch (err) {
@@ -292,11 +239,9 @@ export default function AdminDashboard({ user }) {
   const queues = [
     { id: 'dashboard', label: 'Overview', icon: '📊' },
     { id: 'reports', label: 'Reports', icon: '🚩', count: dashboard?.pending_reports?.count, alert: dashboard?.pending_reports?.count > 0 },
-    { id: 'pending-deposits', label: 'Pending Deposits', icon: '💰', count: dashboard?.pending_deposits?.count },
     { id: 'stale-deposits', label: 'Stale (>48h)', icon: '⚠️', count: dashboard?.stale_deposits_48h?.count, alert: dashboard?.stale_deposits_48h?.alert },
     { id: 'pending-agent-approval', label: 'Awaiting Agent', icon: '👤', count: dashboard?.pending_agent_approval?.count },
     { id: 'pending-release', label: 'Ready to Release', icon: '✅', count: dashboard?.pending_release?.count },
-    { id: 'pending-withdrawals', label: 'Pending Withdrawals', icon: '💸', count: dashboard?.pending_withdrawals?.count },
     { id: 'feedback', label: 'Feedback', icon: '📝', count: dashboard?.feedback?.count },
   ]
 
@@ -360,13 +305,6 @@ export default function AdminDashboard({ user }) {
             alert={dashboard?.pending_reports?.count > 0}
           />
           <StatCard
-            title="Pending Deposits"
-            value={dashboard?.pending_deposits?.count || 0}
-            subtitle={`$${dashboard?.pending_deposits?.total_usdc?.toFixed(2) || '0.00'} USDC expected`}
-            icon="💰"
-            color="yellow"
-          />
-          <StatCard
             title="Stale Deposits (>48h)"
             value={dashboard?.stale_deposits_48h?.count || 0}
             subtitle="Needs attention"
@@ -377,7 +315,7 @@ export default function AdminDashboard({ user }) {
           <StatCard
             title="Work In Progress"
             value={dashboard?.work_in_progress?.count || 0}
-            subtitle={`$${dashboard?.work_in_progress?.total_usdc_held?.toFixed(2) || '0.00'} USDC held`}
+            subtitle={`$${dashboard?.work_in_progress?.total_usdc_held?.toFixed(2) || '0.00'} USD held`}
             icon="🔨"
             color="blue"
           />
@@ -391,16 +329,9 @@ export default function AdminDashboard({ user }) {
           <StatCard
             title="Ready to Release"
             value={dashboard?.pending_release?.count || 0}
-            subtitle={`$${dashboard?.pending_release?.total_usdc_to_release?.toFixed(2) || '0.00'} USDC`}
+            subtitle={`$${dashboard?.pending_release?.total_usdc_to_release?.toFixed(2) || '0.00'} USD`}
             icon="✅"
             color="green"
-          />
-          <StatCard
-            title="Pending Withdrawals"
-            value={dashboard?.pending_withdrawals?.count || 0}
-            subtitle={`$${dashboard?.pending_withdrawals?.total_usdc_to_send?.toFixed(2) || '0.00'} USDC to send`}
-            icon="💸"
-            color="teal"
           />
           <StatCard
             title="Pending Feedback"
@@ -417,7 +348,7 @@ export default function AdminDashboard({ user }) {
                 <p className="text-2xl font-bold text-green-600">${dashboard?.totals?.platform_fees_earned?.toFixed(2) || '0.00'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total USDC Processed</p>
+                <p className="text-sm text-gray-500">Total USD Processed</p>
                 <p className="text-2xl font-bold text-gray-900">${dashboard?.totals?.total_usdc_processed?.toFixed(2) || '0.00'}</p>
               </div>
             </div>
@@ -504,12 +435,9 @@ export default function AdminDashboard({ user }) {
               key={item.id}
               item={item}
               queue={activeQueue}
-              onConfirmDeposit={(txHash, amount) => confirmDeposit(item.id, txHash, amount)}
               onReleasePayment={() => releasePayment(item.id)}
-              onConfirmWithdrawal={(txHash, amount) => confirmWithdrawal(item.id, txHash, amount)}
               onCancelAssignment={() => confirmCancelAssignment(item.id)}
               loading={actionLoading === item.id}
-              setActionModal={setActionModal}
             />
           ))}
         </div>
@@ -531,17 +459,6 @@ export default function AdminDashboard({ user }) {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Action Modal */}
-      {actionModal && (
-        <ActionModal
-          type={actionModal.type}
-          item={actionModal.item}
-          onClose={() => setActionModal(null)}
-          onConfirm={actionModal.onConfirm}
-          loading={actionLoading === actionModal.item.id}
-        />
       )}
 
       {/* Report Resolve Modal */}
@@ -581,7 +498,7 @@ function StatCard({ title, value, subtitle, icon, color, alert }) {
   )
 }
 
-function QueueItem({ item, queue, onConfirmDeposit, onReleasePayment, onConfirmWithdrawal, onCancelAssignment, loading, setActionModal }) {
+function QueueItem({ item, queue, onReleasePayment, onCancelAssignment, loading }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -609,37 +526,9 @@ function QueueItem({ item, queue, onConfirmDeposit, onReleasePayment, onConfirmW
             {item.worker_amount && <span>Amount: ${item.worker_amount}</span>}
           </div>
 
-          {item.platform_wallet && (
-            <div className="mt-2 text-xs text-gray-400 font-mono">
-              Deposit to: {item.platform_wallet}
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-          {queue === 'pending-deposits' && (
-            <>
-              <button
-                onClick={() => setActionModal({
-                  type: 'confirm-deposit',
-                  item,
-                  onConfirm: onConfirmDeposit
-                })}
-                disabled={loading}
-                className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
-              >
-                {loading ? '...' : 'Confirm Deposit'}
-              </button>
-              <button
-                onClick={onCancelAssignment}
-                disabled={loading}
-                className="px-3 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </>
-          )}
-
           {queue === 'stale-deposits' && (
             <button
               onClick={onCancelAssignment}
@@ -660,20 +549,6 @@ function QueueItem({ item, queue, onConfirmDeposit, onReleasePayment, onConfirmW
             </button>
           )}
 
-          {queue === 'pending-withdrawals' && (
-            <button
-              onClick={() => setActionModal({
-                type: 'confirm-withdrawal',
-                item,
-                onConfirm: onConfirmWithdrawal
-              })}
-              disabled={loading}
-              className="px-3 py-1.5 bg-teal text-white text-sm rounded-lg hover:bg-teal-dark disabled:opacity-50"
-            >
-              {loading ? '...' : 'Confirm Sent'}
-            </button>
-          )}
-
           <button
             onClick={() => setExpanded(!expanded)}
             className="px-2 py-1.5 text-gray-400 hover:text-gray-600"
@@ -690,89 +565,6 @@ function QueueItem({ item, queue, onConfirmDeposit, onReleasePayment, onConfirmW
           </pre>
         </div>
       )}
-    </div>
-  )
-}
-
-function ActionModal({ type, item, onClose, onConfirm, loading }) {
-  const toast = useToast()
-  const [txHash, setTxHash] = useState('')
-  const [amount, setAmount] = useState(item.expected_deposit || item.worker_amount || '')
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!txHash) {
-      toast.error('Transaction hash is required')
-      return
-    }
-    onConfirm(txHash, amount)
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
-          {type === 'confirm-deposit' ? 'Confirm Deposit' : 'Confirm Withdrawal'}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Transaction Hash
-            </label>
-            <input
-              type="text"
-              value={txHash}
-              onChange={(e) => setTxHash(e.target.value)}
-              placeholder="0x..."
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Amount (USDC)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none"
-              required
-            />
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              {loading ? 'Processing...' : 'Confirm'}
-            </button>
-          </div>
-        </form>
-
-        <p className="text-xs text-gray-400 mt-4 text-center">
-          <a
-            href={`https://basescan.org`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-teal hover:underline"
-          >
-            Open BaseScan
-          </a>
-        </p>
-      </div>
     </div>
   )
 }

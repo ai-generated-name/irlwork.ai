@@ -22,7 +22,7 @@ export default function BudgetCard({ task, user, onApply }) {
           </span>
           {isHourly && <span className="text-base sm:text-lg text-[#525252]">/hr</span>}
         </div>
-        <div className="text-xs sm:text-sm text-[#8A8A8A] mt-1">USDC</div>
+        <div className="text-xs sm:text-sm text-[#8A8A8A] mt-1">USD</div>
       </div>
 
       {/* Estimated hours and total for hourly tasks */}

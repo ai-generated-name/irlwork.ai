@@ -4,6 +4,9 @@
  * Runs every 15 minutes to promote pending transactions to available
  * after the 48-hour dispute window has passed.
  *
+ * All payments are Stripe-based. After promotion, auto-transfers to
+ * the worker's connected Stripe account if they have one set up.
+ *
  * Usage:
  *   const { startBalancePromoter } = require('./services/balancePromoter');
  *   startBalancePromoter(supabaseClient, createNotification);
@@ -50,17 +53,24 @@ async function promotePendingBalances(supabase, createNotification) {
     // Process each cleared transaction
     for (const tx of cleared) {
       try {
-        // Update status to 'available'
-        const { error: updateError } = await supabase
+        // Update status to 'available' — race condition guard: only update if still 'pending'
+        const { data: updated, error: updateError } = await supabase
           .from('pending_transactions')
           .update({
             status: 'available',
             cleared_at: new Date().toISOString()
           })
-          .eq('id', tx.id);
+          .eq('id', tx.id)
+          .eq('status', 'pending') // Guard: prevent overwriting frozen/withdrawn
+          .select();
 
         if (updateError) {
           console.error(`[BalancePromoter] Error updating transaction ${tx.id}:`, updateError);
+          continue;
+        }
+
+        if (!updated || updated.length === 0) {
+          console.warn(`[BalancePromoter] Transaction ${tx.id} was no longer pending (may be frozen/disputed), skipping`);
           continue;
         }
 
@@ -68,15 +78,14 @@ async function promotePendingBalances(supabase, createNotification) {
 
         console.log(`[BalancePromoter] Promoted transaction ${tx.id} - $${amount.toFixed(2)} now available for ${tx.user_id}`);
 
-        // Send notification to human
+        // Send notification to worker
         if (createNotification) {
-          const currencyLabel = tx.payout_method === 'stripe' ? 'USD' : 'USDC';
           await createNotification(
             tx.user_id,
             'balance_available',
             'Payment Available!',
-            `$${amount.toFixed(2)} ${currencyLabel} is now available for withdrawal. The 48-hour dispute window has passed.`,
-            `/wallet`
+            `$${amount.toFixed(2)} is now available for withdrawal. The 48-hour dispute window has passed.`,
+            `/payments`
           );
         }
 
@@ -87,39 +96,38 @@ async function promotePendingBalances(supabase, createNotification) {
           .eq('task_id', tx.task_id)
           .eq('status', 'pending');
 
-        // Stripe-paid tasks: auto-transfer to worker's connected account if they have one
-        if (tx.payout_method === 'stripe') {
-          try {
-            const { transferToWorker, getConnectAccountStatus } = require('./stripeService');
-            const { data: worker } = await supabase
-              .from('users')
-              .select('stripe_account_id, stripe_onboarding_complete')
-              .eq('id', tx.user_id)
-              .single();
+        // Auto-transfer to worker's connected Stripe account if they have one
+        try {
+          const { transferToWorker, getConnectAccountStatus } = require('./stripeService');
+          const { data: worker } = await supabase
+            .from('users')
+            .select('stripe_account_id, stripe_onboarding_complete')
+            .eq('id', tx.user_id)
+            .single();
 
-            if (worker?.stripe_account_id && worker?.stripe_onboarding_complete) {
-              const status = await getConnectAccountStatus(worker.stripe_account_id);
-              if (status.payouts_enabled) {
-                const result = await transferToWorker(supabase, tx.id, worker.stripe_account_id, tx.amount_cents, tx.task_id);
-                console.log(`[BalancePromoter] Auto-transferred $${amount.toFixed(2)} to Stripe account ${worker.stripe_account_id} (transfer: ${result.transfer_id})`);
+          if (worker?.stripe_account_id && worker?.stripe_onboarding_complete) {
+            const status = await getConnectAccountStatus(worker.stripe_account_id);
+            if (status.payouts_enabled) {
+              const result = await transferToWorker(supabase, tx.id, worker.stripe_account_id, tx.amount_cents, tx.task_id);
+              console.log(`[BalancePromoter] Auto-transferred $${amount.toFixed(2)} to Stripe account ${worker.stripe_account_id} (transfer: ${result.transfer_id})`);
 
-                // Mark as withdrawn since transfer is initiated
-                await supabase
-                  .from('pending_transactions')
-                  .update({
-                    status: 'withdrawn',
-                    stripe_transfer_id: result.transfer_id,
-                    withdrawn_at: new Date().toISOString()
-                  })
-                  .eq('id', tx.id);
-              }
+              // Mark as withdrawn — race condition guard: only if still 'available'
+              await supabase
+                .from('pending_transactions')
+                .update({
+                  status: 'withdrawn',
+                  stripe_transfer_id: result.transfer_id,
+                  withdrawn_at: new Date().toISOString()
+                })
+                .eq('id', tx.id)
+                .eq('status', 'available'); // Guard: prevent double-transfer
             }
-            // If worker doesn't have Connect set up, funds stay as 'available'
-            // and they'll be prompted to connect when they try to withdraw
-          } catch (transferError) {
-            console.error(`[BalancePromoter] Stripe auto-transfer failed for tx ${tx.id}:`, transferError.message);
-            // Funds stay as 'available' — worker can manually withdraw later
           }
+          // If worker doesn't have Connect set up, funds stay as 'available'
+          // and they'll be prompted to connect when they try to withdraw
+        } catch (transferError) {
+          console.error(`[BalancePromoter] Stripe auto-transfer failed for tx ${tx.id}:`, transferError.message);
+          // Funds stay as 'available' — worker can manually withdraw later
         }
 
       } catch (error) {

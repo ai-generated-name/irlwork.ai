@@ -89,7 +89,7 @@ export default function ReputationMetrics({ user, isHiringMode }) {
   } = user
 
   // Format currency
-  const formatUSDC = (amount) => {
+  const formatUSD = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -216,7 +216,7 @@ export default function ReputationMetrics({ user, isHiringMode }) {
             <StatCard
               icon={Icons.money}
               label="Total Paid"
-              value={formatUSDC(total_usdc_paid)}
+              value={formatUSD(total_usdc_paid)}
               subtitle="To humans"
             />
             <StatCard
@@ -238,7 +238,7 @@ export default function ReputationMetrics({ user, isHiringMode }) {
                 <div className="flex justify-between py-3 border-b border-white/10">
                   <span className="text-gray-400">Average per Task</span>
                   <span className="text-white font-semibold">
-                    {formatUSDC(total_usdc_paid / total_tasks_posted)}
+                    {formatUSD(total_usdc_paid / total_tasks_posted)}
                   </span>
                 </div>
 

@@ -1,5 +1,5 @@
 // Agent Profile Card Component
-// Displays agent reputation metrics: rating, payment rate, jobs completed, total USDC paid
+// Displays agent reputation metrics: rating, payment rate, jobs completed, total paid
 
 import React from 'react';
 
@@ -96,14 +96,14 @@ export default function AgentProfileCard({ agent }) {
           </span>
         </div>
 
-        {/* Total USDC Paid */}
+        {/* Total Paid */}
         <div className="flex justify-between items-center py-2">
           <span className="text-[#525252] flex items-center gap-2">
             <span>💵</span>
             <span>Total Paid Out</span>
           </span>
           <span className="font-bold text-[#059669]">
-            ${(agent.total_usdc_paid || 0).toLocaleString()} USDC
+            ${(agent.total_usdc_paid || 0).toLocaleString()}
           </span>
         </div>
       </div>

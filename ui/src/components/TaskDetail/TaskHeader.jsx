@@ -27,7 +27,7 @@ export default function TaskHeader({ task }) {
         </span>
         {/* Compact budget shown inline on mobile only */}
         <span className="lg:hidden text-lg font-bold text-[#059669] font-mono">
-          ${task.budget} <span className="text-xs font-normal text-[#8A8A8A]">USDC</span>
+          ${task.budget} <span className="text-xs font-normal text-[#8A8A8A]">USD</span>
         </span>
       </div>
 
@@ -108,7 +108,7 @@ export default function TaskHeader({ task }) {
           <span className="text-4xl font-bold text-[#059669] font-mono">
             ${task.budget}
           </span>
-          <span className="text-xl text-[#525252]">USDC</span>
+          <span className="text-xl text-[#525252]">USD</span>
         </div>
         <p className="text-[#8A8A8A] text-sm mt-1">Payment for this task</p>
       </div>

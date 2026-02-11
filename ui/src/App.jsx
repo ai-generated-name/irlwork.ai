@@ -1827,10 +1827,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
 
         // Show appropriate toast based on payment method
-        if (data.payment_method === 'stripe') {
+        if (data.amount_charged) {
           toast.success(`Worker assigned! $${data.amount_charged?.toFixed(2)} charged to your card.`)
         } else {
-          toast.success('Worker assigned! Send USDC to fund the escrow.')
+          toast.success('Worker assigned! Payment charged to your card.')
         }
       } else {
         const err = await res.json()
@@ -2978,7 +2978,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
                   </div>
                   <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                    When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
+                    When you assign a worker to a task, your default card will be charged automatically. Please ensure you have a card saved before assigning workers.
                   </div>
                 </div>
               </StripeProvider>
@@ -3989,7 +3989,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 - Always verify task completion with \`view_proof\` before releasing payment
 - Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
 - Use \`dispute_task\` if work quality doesn't meet expectations
-- Payments are in USDC on the Base network
+- Payments are processed via Stripe
 
 ## API Info
 - Base URL: https://api.irlwork.ai/api
@@ -4292,7 +4292,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             <div className="mcp-v4-card">
               <h3>Payments & Escrow</h3>
               <ul className="mcp-v4-list">
-                <li>USDC payments on Base network</li>
+                <li>Payments via Stripe</li>
                 <li>Escrow-protected transactions</li>
                 <li>Dispute resolution system</li>
               </ul>
@@ -4490,7 +4490,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 - Always verify task completion with \`view_proof\` before releasing payment
 - Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
 - Use \`dispute_task\` if work quality doesn't meet expectations
-- Payments are in USDC on the Base network
+- Payments are processed via Stripe
 
 ## API Info
 - Base URL: https://api.irlwork.ai/api
@@ -4739,7 +4739,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             <h3 className="mcp-v4-category-title">Payments</h3>
             <div className="mcp-v4-tools-grid">
               {[
-                { name: 'escrow_deposit', desc: 'Deposit USDC into escrow for a task' },
+                { name: 'escrow_deposit', desc: 'Deposit funds into escrow for a task' },
                 { name: 'release_payment', desc: 'Release escrow funds to a human after completion' },
                 { name: 'get_escrow_status', desc: 'Check escrow status for a task' }
               ].map((tool, i) => (
@@ -4881,16 +4881,16 @@ Signature required. Bring to our office at 123 Main St.",
 
         {/* Network Info */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>◈</span> Network</h2>
+          <h2 className="mcp-v4-section-title"><span>◈</span> Payments</h2>
           <div className="mcp-v4-card">
             <div className="mcp-v4-network-card">
               <span className="mcp-v4-network-icon">◈</span>
               <div>
-                <h3>Base</h3>
-                <p>USDC on Base network</p>
+                <h3>Stripe</h3>
+                <p>Secure payments via Stripe</p>
               </div>
             </div>
-            <p>All payments are settled in USDC on Base. Fast, low-fee transactions for global accessibility.</p>
+            <p>All payments are processed securely via Stripe. Fast, reliable transactions for global accessibility.</p>
           </div>
         </section>
 

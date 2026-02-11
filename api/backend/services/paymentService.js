@@ -39,17 +39,6 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
   const netAmount = escrowAmount - platformFee;
 
-  // Get human's wallet
-  const { data: human, error: humanError } = await supabase
-    .from('users')
-    .select('wallet_address')
-    .eq('id', humanId)
-    .single();
-
-  if (humanError || !human?.wallet_address) {
-    throw new Error('Human has no wallet address');
-  }
-
   // Convert to cents for database storage
   const netAmountCents = Math.round(netAmount * 100);
   const platformFeeCents = Math.round(platformFee * 100);
@@ -66,7 +55,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
       task_id: taskId,
       amount_cents: netAmountCents,
       status: 'pending',
-      payout_method: task.payment_method || 'usdc',
+      payout_method: 'stripe',
       clears_at: clearsAt.toISOString(),
       created_at: new Date().toISOString()
     })
@@ -88,15 +77,14 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     })
     .eq('id', taskId);
 
-  // Record payout (without tx_hash yet, as payment is pending)
+  // Record payout (Stripe transfer will happen after 48-hour hold)
   await supabase.from('payouts').insert({
     id: uuidv4(),
     task_id: taskId,
     human_id: humanId,
-    tx_hash: null, // No tx_hash yet - payment pending dispute window
     amount_cents: netAmountCents,
     fee_cents: platformFeeCents,
-    wallet_address: human.wallet_address,
+    payout_method: 'stripe',
     status: 'pending',
     created_at: new Date().toISOString()
   });
@@ -109,7 +97,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   await supabase.rpc('increment_user_stat', { user_id_param: humanId, stat_name: 'total_tasks_completed', increment_by: 1 });
   await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', humanId);
 
-  // Update agent's total_usdc_paid (atomic increment)
+  // Update agent's total paid (atomic increment)
   await supabase.rpc('increment_user_stat', { user_id_param: agentId, stat_name: 'total_usdc_paid', increment_by: netAmount });
   await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', agentId);
 
@@ -119,7 +107,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
       humanId,
       'payment_pending',
       'Payment Released - Pending Clearance',
-      `Your payment of $${netAmount.toFixed(2)} USDC has been released and will be available for withdrawal on ${clearsAt.toLocaleDateString()} at ${clearsAt.toLocaleTimeString()}. This 48-hour hold period allows for dispute resolution.`
+      `Your payment of $${netAmount.toFixed(2)} has been released and will be available for withdrawal on ${clearsAt.toLocaleDateString()} at ${clearsAt.toLocaleTimeString()}. This 48-hour hold period allows for dispute resolution.`
     );
   }
 

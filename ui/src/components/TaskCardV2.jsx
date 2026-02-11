@@ -107,7 +107,7 @@ export default function TaskCardV2({
       <div className="task-card-v2-meta-row">
         <div className="task-card-v2-budget">
           <span className="task-card-v2-budget-amount">${task.budget || 0}</span>
-          <span className="task-card-v2-budget-label">USDC</span>
+          <span className="task-card-v2-budget-label">USD</span>
         </div>
         {task.duration && (
           <div className="task-card-v2-duration">
