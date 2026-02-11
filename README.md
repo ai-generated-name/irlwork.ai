@@ -98,7 +98,7 @@ Claude: "Book her for tomorrow at 2PM for 2 hours at $80/hr"
 
 ### Auth
 - `POST /api/auth/register/human` - Register human
-- `POST /api/auth/register/agent` - Register agent (get API key)
+- `POST /api/auth/register-agent` - Register agent (get API key)
 - `POST /api/auth/login` - Login
 
 ### Humans

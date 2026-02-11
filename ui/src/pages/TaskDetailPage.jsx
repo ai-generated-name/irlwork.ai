@@ -362,28 +362,28 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         zIndex: 10,
         boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
       }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 16px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="h-10 sm:h-14" style={{ maxWidth: 1280, margin: '0 auto', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#E07A5F', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
+            className="flex items-center gap-1.5 sm:gap-2 text-[#E07A5F] bg-transparent border-none cursor-pointer text-xs sm:text-sm font-medium"
           >
             <span>←</span>
-            <span>Back to Tasks</span>
+            <span>Back</span>
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="flex items-center gap-2 sm:gap-4">
             {user && task && task.agent_id !== user.id && (
               <button
                 onClick={() => setShowReportModal(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#8A8A8A', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}
+                className="flex items-center gap-1 sm:gap-1.5 text-[#8A8A8A] bg-transparent border-none cursor-pointer text-xs"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                   <line x1="4" y1="22" x2="4" y2="15" />
                 </svg>
                 Report
               </button>
             )}
-            <span style={{ color: '#8A8A8A', fontSize: 13 }}>
+            <span className="text-[#8A8A8A] text-xs hidden sm:inline">
               Task ID: {taskId.slice(0, 8)}...
             </span>
           </div>
@@ -391,17 +391,26 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       </header>
 
       {/* Main Content */}
-      <main style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 16px', marginTop: 56 }}>
+      <main className="mx-auto px-3 pt-4 pb-6 sm:px-4 sm:pt-8 sm:pb-8 mt-14" style={{ maxWidth: 1280 }}>
         {/* Countdown Banner (only when pending review) */}
         {taskStatus?.dispute_window_info && (
           <CountdownBanner disputeWindowInfo={taskStatus.dispute_window_info} />
         )}
 
         {/* Two-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
           {/* Left Column - Task Details (60%) */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-3 sm:space-y-4 lg:space-y-6">
             <TaskHeader task={task} />
+
+            {/* Mobile-only: Budget card right after header so Apply is visible early */}
+            <div className="lg:hidden">
+              <BudgetCard
+                task={task}
+                user={user}
+                onApply={() => setShowApplyModal(true)}
+              />
+            </div>
 
             {/* Show proof section if in progress, or status badge if submitted (participants only) */}
             {isParticipant && task.status === 'in_progress' && (
@@ -424,13 +433,15 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           </div>
 
           {/* Right Column - Budget, Stats, Agent Profile, Escrow (40%) */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Budget Card with apply button */}
-            <BudgetCard
-              task={task}
-              user={user}
-              onApply={() => setShowApplyModal(true)}
-            />
+          <div className="lg:col-span-2 space-y-3 sm:space-y-4">
+            {/* Budget Card - hidden on mobile (shown inline above), visible on desktop sidebar */}
+            <div className="hidden lg:block">
+              <BudgetCard
+                task={task}
+                user={user}
+                onApply={() => setShowApplyModal(true)}
+              />
+            </div>
 
             {/* Stats (Applications & Views) */}
             <StatsSection taskId={taskId} />

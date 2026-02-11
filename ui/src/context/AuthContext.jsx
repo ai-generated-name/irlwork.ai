@@ -141,7 +141,7 @@ export function AuthProvider({ children }) {
     })
     if (error) throw new Error(error.message)
     try {
-      const res = await fetch(API_URL + '/auth/register/agent', {
+      const res = await fetch(API_URL + '/auth/register-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)

@@ -75,7 +75,10 @@ function SkeletonCard() {
 
 export default function BrowsePage({ user }) {
   const toast = useToast()
-  const [viewMode, setViewMode] = useState('humans')
+  // Parse URL params to allow direct linking to humans view via /browse?mode=humans
+  const urlParams = new URLSearchParams(window.location.search)
+  const initialMode = urlParams.get('mode') === 'tasks' ? 'tasks' : 'humans'
+  const [viewMode, setViewMode] = useState(initialMode)
   const gridRef = useRef(null)
 
   // Humans state
@@ -217,7 +220,10 @@ export default function BrowsePage({ user }) {
       if (debouncedCountry) params.set('country', debouncedCountry)
       if (debouncedMaxRate) params.set('max_rate', debouncedMaxRate)
 
-      const res = await fetch(`${API_URL}/humans/directory?${params}`)
+      const headers = {}
+      if (user?.id) headers['Authorization'] = user.id
+
+      const res = await fetch(`${API_URL}/humans/directory?${params}`, { headers })
       if (res.ok) {
         const data = await res.json()
         // Handle both old array format and new object format
@@ -1232,7 +1238,7 @@ Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
               <div className="footer-v4-links">
                 <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
                 <a href="/auth" className="footer-v4-link">Sign Up</a>
-                <a href="/browse" className="footer-v4-link">Browse Humans</a>
+                <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
               </div>
             </div>
 
