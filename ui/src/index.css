@@ -1097,7 +1097,7 @@ code, pre {
 }
 
 .quick-apply-modal-field {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
 .quick-apply-modal-field label {
@@ -1138,6 +1138,67 @@ code, pre {
   font-size: 12px;
   color: var(--text-tertiary);
   text-align: right;
+}
+
+.quick-apply-modal-required {
+  color: var(--orange-500);
+  font-weight: 600;
+}
+
+.quick-apply-modal-counter-offer {
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(26, 26, 26, 0.1);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.2s var(--ease-smooth);
+}
+
+.quick-apply-modal-counter-offer:focus-within {
+  border-color: var(--orange-500);
+}
+
+.quick-apply-modal-currency-prefix,
+.quick-apply-modal-currency-suffix {
+  padding: var(--space-3) var(--space-3);
+  background: var(--bg-tertiary);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.quick-apply-modal-currency-suffix {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.quick-apply-modal-counter-input {
+  flex: 1;
+  padding: var(--space-3) var(--space-3);
+  border: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  outline: none;
+  min-width: 0;
+}
+
+.quick-apply-modal-counter-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Hide number input spinners */
+.quick-apply-modal-counter-input::-webkit-outer-spin-button,
+.quick-apply-modal-counter-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.quick-apply-modal-counter-input[type=number] {
+  -moz-appearance: textfield;
 }
 
 .quick-apply-modal-error {

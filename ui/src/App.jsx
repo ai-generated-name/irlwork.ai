@@ -2744,7 +2744,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                               ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
                                             </p>
                                             {app.cover_letter && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>"{app.cover_letter}"</p>
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
+                                            )}
+                                            {app.availability && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
+                                            )}
+                                            {app.questions && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
+                                            )}
+                                            {app.proposed_rate != null && (
+                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate} USDC</p>
                                             )}
                                           </div>
                                         </div>
