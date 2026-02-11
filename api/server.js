@@ -1859,19 +1859,19 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { cover_letter, proposed_rate } = req.body;
-  
+  const { cover_letter, availability, questions, proposed_rate } = req.body;
+
   const { data: existing } = await supabase
     .from('task_applications')
     .select('*')
     .eq('task_id', req.params.id)
     .eq('human_id', user.id)
     .single();
-  
+
   if (existing) {
     return res.status(400).json({ error: 'Already applied' });
   }
-  
+
   const id = uuidv4();
   const { data: application, error } = await supabase
     .from('task_applications')
@@ -1880,6 +1880,8 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
       task_id: req.params.id,
       human_id: user.id,
       cover_letter: cover_letter || '',
+      availability: availability || '',
+      questions: questions || null,
       proposed_rate,
       status: 'pending',
       created_at: new Date().toISOString()
@@ -4942,29 +4944,74 @@ app.get('/api/tasks/available', async (req, res) => {
 app.get('/api/humans/directory', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const { category, city, min_rate, max_rate, limit } = req.query;
+  const { category, city, country, skill, min_rate, max_rate, limit = 32, offset = 0, sort = 'rating' } = req.query;
 
   // Check if user is authenticated
-  const user = await getUserByToken(req.headers.authorization);
+  const authUser = await getUserByToken(req.headers.authorization);
 
   // Public (unauthenticated) requests are capped at 500 humans
   const PUBLIC_LIMIT = 500;
-  let effectiveLimit;
-  if (user) {
-    effectiveLimit = limit ? parseInt(limit) : 1000;
+  let parsedLimit;
+  if (authUser) {
+    parsedLimit = Math.min(parseInt(limit) || 32, 1000);
   } else {
-    effectiveLimit = limit ? Math.min(parseInt(limit), PUBLIC_LIMIT) : PUBLIC_LIMIT;
+    parsedLimit = Math.min(parseInt(limit) || 32, PUBLIC_LIMIT);
   }
+  const parsedOffset = parseInt(offset) || 0;
 
+  // First get total count with same filters
+  let countQuery = supabase
+    .from('users')
+    .select('id', { count: 'exact', head: true })
+    .eq('type', 'human')
+    .eq('verified', true);
+
+  if (category) countQuery = countQuery.like('skills', `%${category}%`);
+  if (skill) countQuery = countQuery.like('skills', `%${skill}%`);
+  if (city) countQuery = countQuery.ilike('city', `%${city}%`);
+  if (country) countQuery = countQuery.ilike('country', `%${country}%`);
+  if (min_rate) countQuery = countQuery.gte('hourly_rate', parseFloat(min_rate));
+  if (max_rate) countQuery = countQuery.lte('hourly_rate', parseFloat(max_rate));
+
+  const { count: totalCount } = await countQuery;
+
+  // Build data query with sorting
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
     .eq('type', 'human')
-    .order('rating', { ascending: false })
-    .limit(effectiveLimit);
+    .eq('verified', true);
+
+  // Sorting
+  switch (sort) {
+    case 'price_low':
+      query = query.order('hourly_rate', { ascending: true, nullsFirst: false });
+      break;
+    case 'price_high':
+      query = query.order('hourly_rate', { ascending: false, nullsFirst: false });
+      break;
+    case 'most_reviewed':
+      query = query.order('total_ratings_count', { ascending: false, nullsFirst: false });
+      break;
+    case 'most_completed':
+      query = query.order('jobs_completed', { ascending: false, nullsFirst: false });
+      break;
+    case 'newest':
+      query = query.order('created_at', { ascending: false });
+      break;
+    case 'rating':
+    default:
+      query = query.order('rating', { ascending: false, nullsFirst: false });
+      break;
+  }
+
+  // Pagination
+  query = query.range(parsedOffset, parsedOffset + parsedLimit - 1);
 
   if (category) query = query.like('skills', `%${category}%`);
-  if (city) query = query.like('city', `%${city}%`);
+  if (skill) query = query.like('skills', `%${skill}%`);
+  if (city) query = query.ilike('city', `%${city}%`);
+  if (country) query = query.ilike('country', `%${country}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
 
@@ -4972,11 +5019,19 @@ app.get('/api/humans/directory', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  res.json(humans?.map(h => ({
+  const parsed = humans?.map(h => ({
     ...h,
     skills: safeParseJsonArray(h.skills),
     languages: safeParseJsonArray(h.languages)
-  })) || []);
+  })) || [];
+
+  res.json({
+    humans: parsed,
+    total: totalCount || 0,
+    limit: parsedLimit,
+    offset: parsedOffset,
+    hasMore: parsedOffset + parsedLimit < (totalCount || 0)
+  });
 });
 
 app.get('/api/humans/:id/profile', async (req, res) => {
