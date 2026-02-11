@@ -239,7 +239,7 @@ function Onboarding({ onComplete, user }) {
               style={{ width: 56, height: 56, borderRadius: '50%', marginBottom: 8, objectFit: 'cover' }}
             />
           )}
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
             Hey {userName}, let's set up your profile
           </p>
         </div>
@@ -284,7 +284,7 @@ function Onboarding({ onComplete, user }) {
             {form.city && (
               <div style={{ marginTop: '1rem' }}>
                 {loadingTasks ? (
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>
                     Checking for tasks near {form.city}...
                   </p>
                 ) : nearbyTasks.length > 0 ? (
@@ -295,16 +295,16 @@ function Onboarding({ onComplete, user }) {
                     {nearbyTasks.map((task, i) => (
                       <div key={task.id || i} style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: 8,
+                        padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 8,
                         marginBottom: 4, fontSize: 13
                       }}>
-                        <span style={{ color: 'rgba(255,255,255,0.9)' }}>{task.title}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{task.title}</span>
                         <span style={{ color: '#10B981', fontWeight: 600 }}>${task.budget}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>
                     No tasks near {form.city} yet — be one of the first workers in your area
                   </p>
                 )}
@@ -338,9 +338,9 @@ function Onboarding({ onComplete, user }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 10,
-                    border: form.selectedCategories.includes(cat.value) ? '2px solid #10B981' : '2px solid rgba(255,255,255,0.1)',
-                    background: form.selectedCategories.includes(cat.value) ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
-                    color: form.selectedCategories.includes(cat.value) ? '#10B981' : 'rgba(255,255,255,0.8)',
+                    border: form.selectedCategories.includes(cat.value) ? '2px solid #10B981' : '2px solid rgba(0,0,0,0.12)',
+                    background: form.selectedCategories.includes(cat.value) ? 'rgba(16,185,129,0.15)' : 'rgba(0,0,0,0.03)',
+                    color: form.selectedCategories.includes(cat.value) ? '#10B981' : '#3d3d3d',
                     cursor: 'pointer', fontSize: 14, transition: 'all 0.15s',
                     textAlign: 'left'
                   }}
@@ -393,7 +393,7 @@ function Onboarding({ onComplete, user }) {
             <p className="onboarding-v4-subtitle">Set your travel distance and hourly rate</p>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
                 How far can you travel?
               </label>
               <input
@@ -410,16 +410,37 @@ function Onboarding({ onComplete, user }) {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>
-                Minimum hourly rate ($)
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Minimum hourly rate
               </label>
-              <input
-                type="number"
-                placeholder="Hourly rate"
-                value={form.hourly_rate}
-                onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
-                className="onboarding-v4-input"
-              />
+              <div style={{
+                display: 'flex', alignItems: 'center',
+                background: 'var(--bg-secondary)',
+                border: '1px solid rgba(26, 26, 26, 0.1)',
+                borderRadius: 'var(--radius-md)',
+                overflow: 'hidden',
+                transition: 'all var(--duration-fast)'
+              }}>
+                <span style={{
+                  padding: '16px 14px', fontSize: 16, fontWeight: 600,
+                  color: 'var(--text-tertiary)', background: 'var(--bg-tertiary)',
+                  borderRight: '1px solid rgba(26, 26, 26, 0.08)'
+                }}>$</span>
+                <input
+                  type="number"
+                  placeholder="25"
+                  value={form.hourly_rate}
+                  onChange={e => setForm({ ...form, hourly_rate: parseInt(e.target.value) || 0 })}
+                  style={{
+                    flex: 1, padding: '16px 14px', border: 'none', background: 'transparent',
+                    fontSize: 15, color: 'var(--text-primary)', outline: 'none',
+                    fontFamily: 'var(--font-body)'
+                  }}
+                />
+                <span style={{
+                  padding: '16px 14px', fontSize: 13, color: 'var(--text-tertiary)'
+                }}>per hour</span>
+              </div>
             </div>
 
             {error && (
@@ -3737,12 +3758,17 @@ function App() {
       }
 
       // Get session and user
-      const { data: { session } } = await supabase.auth.getSession()
-      debug('[Auth] Session:', session ? 'found' : 'none')
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        debug('[Auth] Session:', session ? 'found' : 'none')
 
-      if (session?.user) {
-        await fetchUserProfile(session.user)
-      } else {
+        if (session?.user) {
+          await fetchUserProfile(session.user)
+        } else {
+          setLoading(false)
+        }
+      } catch (e) {
+        console.error('[Auth] getSession error:', e)
         setLoading(false)
       }
     }
@@ -3793,27 +3819,39 @@ function App() {
         setUser(newUser)
       } else {
         debug('[Auth] Backend error:', res.status)
-        // On error, create minimal user that needs onboarding
-        const newUser = {
-          id: supabaseUser.id,
-          email: supabaseUser.email,
-          name: supabaseUser.user_metadata?.full_name || 'User',
-          supabase_user: true,
-          needs_onboarding: true
+        // On error, use cached profile if available (don't force re-onboarding on transient errors)
+        const cached = JSON.parse(localStorage.getItem('user') || 'null')
+        if (cached && !cached.needs_onboarding) {
+          debug('[Auth] Using cached profile (API error fallback)')
+          setUser({ ...cached, supabase_user: true })
+        } else {
+          const newUser = {
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            name: supabaseUser.user_metadata?.full_name || 'User',
+            supabase_user: true,
+            needs_onboarding: true
+          }
+          setUser(newUser)
         }
-        setUser(newUser)
       }
     } catch (e) {
       console.error('[Auth] Fetch error:', e)
-      // On network error, create minimal user that needs onboarding
-      setUser({
-        id: supabaseUser.id,
-        email: supabaseUser.email,
-        name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
-        avatar_url: supabaseUser.user_metadata?.avatar_url || '',
-        supabase_user: true,
-        needs_onboarding: true
-      })
+      // On network error, use cached profile if available (don't force re-onboarding on transient errors)
+      const cached = JSON.parse(localStorage.getItem('user') || 'null')
+      if (cached && !cached.needs_onboarding) {
+        debug('[Auth] Using cached profile (network error fallback)')
+        setUser({ ...cached, supabase_user: true })
+      } else {
+        setUser({
+          id: supabaseUser.id,
+          email: supabaseUser.email,
+          name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
+          avatar_url: supabaseUser.user_metadata?.avatar_url || '',
+          supabase_user: true,
+          needs_onboarding: true
+        })
+      }
     } finally {
       setLoading(false)
     }
