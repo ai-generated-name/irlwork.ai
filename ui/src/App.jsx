@@ -1380,6 +1380,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     const saved = localStorage.getItem('irlwork_hiringMode')
     return saved === 'true'
   })
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [humansSubTab, setHumansSubTab] = useState('browse')
+  const [paymentsSubTab, setPaymentsSubTab] = useState('methods')
 
   // Read initial tab from URL query param
   const getInitialTab = () => {
@@ -1389,18 +1392,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
 
     // Valid tabs for each mode
     const humanTabs = ['tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
-    const hiringTabs = ['create', 'posted', 'browse', 'hired', 'messages', 'payments', 'api-keys', 'profile', 'settings', 'notifications']
+    const hiringTabs = ['posted', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
 
     if (tabParam) {
       // Map URL-friendly names to internal tab IDs
       const tabMap = {
-        'create-task': 'create',
+        'create-task': 'posted',
         'my-tasks': savedHiringMode ? 'posted' : 'tasks',
         'browse': 'browse',
         'messages': 'messages',
         'payments': 'payments',
-        'api-keys': 'api-keys',
-        'hired': 'hired',
+        'api-keys': 'settings',
+        'hired': 'browse',
         'profile': 'profile',
         'settings': 'settings',
         'notifications': 'notifications'
@@ -1411,7 +1414,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       if (!savedHiringMode && humanTabs.includes(mappedTab)) return mappedTab
     }
 
-    return savedHiringMode ? 'create' : 'tasks'
+    return savedHiringMode ? 'posted' : 'tasks'
   }
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
@@ -1421,14 +1424,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const updateTabUrl = (tabId) => {
     // Map internal tab IDs to URL-friendly names
     const urlMap = {
-      'create': 'create-task',
       'posted': 'my-tasks',
       'tasks': 'my-tasks',
       'browse': 'browse',
       'messages': 'messages',
       'payments': 'payments',
-      'api-keys': 'api-keys',
-      'hired': 'hired',
       'profile': 'profile',
       'settings': 'settings',
       'notifications': 'notifications'
@@ -1539,16 +1539,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
   ]
 
-  // Hiring mode: Create Task, My Tasks, Browse Humans, Hired, Messages, Payments, API Keys
+  // Hiring mode: My Tasks, Humans, Messages, Payments
   const hiringNav = [
-    { id: 'create', label: 'Create Task', icon: Icons.create },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
-    { id: 'browse', label: 'Browse Humans', icon: Icons.humans },
-    { id: 'hired', label: 'Hired', icon: Icons.hired },
+    { id: 'browse', label: 'Humans', icon: Icons.humans },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
-    { id: 'disputes', label: 'Disputes', icon: '⚖️' },
-    { id: 'api-keys', label: 'API Keys', icon: '🔑' },
   ]
 
   // Add admin tab if user is admin
@@ -1573,7 +1569,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const toggleHiringMode = () => {
     const newHiringMode = !hiringMode
     setHiringMode(newHiringMode)
-    const newTab = newHiringMode ? 'create' : 'tasks'
+    const newTab = newHiringMode ? 'posted' : 'tasks'
     setActiveTabState(newTab)
     updateTabUrl(newTab)
   }
@@ -1585,13 +1581,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
       const tabParam = params.get('tab')
       if (tabParam) {
         const tabMap = {
-          'create-task': 'create',
+          'create-task': 'posted',
           'my-tasks': hiringMode ? 'posted' : 'tasks',
           'browse': 'browse',
           'messages': 'messages',
           'payments': 'payments',
-          'api-keys': 'api-keys',
-          'hired': 'hired',
+          'api-keys': 'settings',
+          'hired': 'browse',
           'profile': 'profile',
           'settings': 'settings',
           'notifications': 'notifications'
@@ -1959,7 +1955,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
-        // Switch to posted tab
+        // Close create form and stay on posted tab
+        setShowCreateForm(false)
         setActiveTab('posted')
       } else {
         const err = await res.json()
@@ -2139,7 +2136,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </button>
           <button
             className={`dashboard-v4-mode-btn ${hiringMode ? 'active' : ''}`}
-            onClick={() => { setHiringMode(true); setActiveTabState('create'); updateTabUrl('create') }}
+            onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted') }}
           >
             Hiring
           </button>
@@ -2244,7 +2241,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               <>
                 <button
                   className="dashboard-v4-topbar-link"
-                  onClick={() => { setHiringMode(true); setActiveTabState('create'); updateTabUrl('create') }}
+                  onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted') }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
@@ -2410,7 +2407,143 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="dashboard-v4-page-title">My Tasks</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showCreateForm ? 0 : undefined }}>
+              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
+              <button
+                className="v4-btn v4-btn-primary"
+                onClick={() => setShowCreateForm(!showCreateForm)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}
+              >
+                {showCreateForm ? 'Cancel' : '+ Create Task'}
+              </button>
+            </div>
+
+            {showCreateForm && (
+              <div style={{ marginTop: 16, marginBottom: 24 }}>
+                <div className="dashboard-v4-form">
+                  <form onSubmit={(e) => { handleCreateTask(e); }}>
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">Task Title</label>
+                      <input
+                        type="text"
+                        placeholder="What do you need done?"
+                        className="dashboard-v4-form-input"
+                        value={taskForm.title}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                      />
+                    </div>
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">Description</label>
+                      <textarea
+                        placeholder="Provide details about the task..."
+                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                        value={taskForm.description}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                      />
+                    </div>
+                    <div className="dashboard-form-grid-2col">
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label className="dashboard-v4-form-label">Category</label>
+                        <CustomDropdown
+                          value={taskForm.category}
+                          onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
+                          options={[
+                            { value: '', label: 'Select category' },
+                            ...['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => ({
+                              value: c,
+                              label: c.charAt(0).toUpperCase() + c.slice(1)
+                            }))
+                          ]}
+                          placeholder="Select category"
+                        />
+                      </div>
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label className="dashboard-v4-form-label">Budget (USD)</label>
+                        <input
+                          type="number"
+                          placeholder="$"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.budget}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
+                          min="5"
+                        />
+                      </div>
+                    </div>
+                    <div className="dashboard-form-grid-2col">
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label className="dashboard-v4-form-label">Duration (hours)</label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 2"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.duration_hours}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                          min="0.5"
+                          step="0.5"
+                        />
+                      </div>
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label className="dashboard-v4-form-label">Deadline</label>
+                        <input
+                          type="datetime-local"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.deadline}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">Requirements (optional)</label>
+                      <textarea
+                        placeholder="Any specific requirements or qualifications needed..."
+                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                        value={taskForm.requirements}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                        rows={2}
+                      />
+                    </div>
+                    <div className="dashboard-v4-form-group">
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                        fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={taskForm.is_remote}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                        />
+                        This task can be done remotely
+                      </label>
+                    </div>
+                    {!taskForm.is_remote && (
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">City</label>
+                        <CityAutocomplete
+                          value={taskForm.city}
+                          onChange={(locationData) => setTaskForm(prev => ({
+                            ...prev,
+                            city: locationData.city,
+                            latitude: locationData.latitude,
+                            longitude: locationData.longitude,
+                            country: locationData.country,
+                            country_code: locationData.country_code
+                          }))}
+                          placeholder="Where should this be done?"
+                          className="dashboard-v4-city-input"
+                        />
+                      </div>
+                    )}
+                    {createTaskError && (
+                      <div className="dashboard-v4-form-error">{createTaskError}</div>
+                    )}
+                    <button type="submit" className="dashboard-v4-form-submit" disabled={creatingTask}>
+                      {creatingTask ? 'Creating...' : 'Create Task'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
 
             {loading ? (
               <div className="dashboard-v4-empty">
@@ -2523,146 +2656,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </div>
         )}
 
-        {/* Hiring Mode: Create Task Tab */}
-        {hiringMode && activeTab === 'create' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">Create Task</h1>
-            <div className="dashboard-v4-form">
-              <form onSubmit={handleCreateTask}>
-                <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">Task Title</label>
-                  <input
-                    type="text"
-                    placeholder="What do you need done?"
-                    className="dashboard-v4-form-input"
-                    value={taskForm.title}
-                    onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
-                  />
-                </div>
-                <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">Description</label>
-                  <textarea
-                    placeholder="Provide details about the task..."
-                    className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                    value={taskForm.description}
-                    onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
-                  />
-                </div>
-                <div className="dashboard-form-grid-2col">
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Category</label>
-                    <CustomDropdown
-                      value={taskForm.category}
-                      onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
-                      options={[
-                        { value: '', label: 'Select category' },
-                        ...['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => ({
-                          value: c,
-                          label: c.charAt(0).toUpperCase() + c.slice(1)
-                        }))
-                      ]}
-                      placeholder="Select category"
-                    />
-                  </div>
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Budget (USD)</label>
-                    <input
-                      type="number"
-                      placeholder="$"
-                      className="dashboard-v4-form-input"
-                      value={taskForm.budget}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
-                      min="5"
-                    />
-                  </div>
-                </div>
-                <div className="dashboard-form-grid-2col">
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Duration (hours)</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 2"
-                      className="dashboard-v4-form-input"
-                      value={taskForm.duration_hours}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
-                      min="0.5"
-                      step="0.5"
-                    />
-                  </div>
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Deadline</label>
-                    <input
-                      type="datetime-local"
-                      className="dashboard-v4-form-input"
-                      value={taskForm.deadline}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">Requirements (optional)</label>
-                  <textarea
-                    placeholder="Any specific requirements or qualifications needed..."
-                    className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                    value={taskForm.requirements}
-                    onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                    rows={2}
-                  />
-                </div>
-                <div className="dashboard-v4-form-group">
-                  <label style={{
-                    display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                    fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={taskForm.is_remote}
-                      onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                      style={{ width: 18, height: 18, cursor: 'pointer' }}
-                    />
-                    🌐 This task can be done remotely
-                  </label>
-                </div>
-                {!taskForm.is_remote && (
-                  <div className="dashboard-v4-form-group">
-                    <label className="dashboard-v4-form-label">City</label>
-                    <CityAutocomplete
-                      value={taskForm.city}
-                      onChange={(locationData) => setTaskForm(prev => ({
-                        ...prev,
-                        city: locationData.city,
-                        latitude: locationData.latitude,
-                        longitude: locationData.longitude,
-                        country: locationData.country,
-                        country_code: locationData.country_code
-                      }))}
-                      placeholder="Where should this be done?"
-                      className="dashboard-v4-city-input"
-                    />
-                  </div>
-                )}
-                {createTaskError && (
-                  <div className="dashboard-v4-form-error">{createTaskError}</div>
-                )}
-                <button type="submit" className="dashboard-v4-form-submit" disabled={creatingTask}>
-                  {creatingTask ? 'Creating...' : 'Create Task'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Hiring Mode: Hired Tab */}
-        {hiringMode && activeTab === 'hired' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">Hired</h1>
-            <div className="dashboard-v4-empty">
-              <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-              <p className="dashboard-v4-empty-title">No humans hired yet</p>
-              <p className="dashboard-v4-empty-text">Hire someone for a task</p>
-            </div>
-          </div>
-        )}
 
         {/* Working Mode: My Tasks Tab */}
         {!hiringMode && activeTab === 'tasks' && (
@@ -2699,91 +2692,137 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
           </TabErrorBoundary>
         )}
 
-        {/* Hiring Mode: Browse Humans Tab - Shows available humans */}
+        {/* Hiring Mode: Humans Tab - Browse + Hired sub-tabs */}
         {hiringMode && activeTab === 'browse' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Browse Humans</h1>
+            <h1 className="dashboard-v4-page-title">Humans</h1>
 
-            {/* Search & Filter */}
-            <div className="browse-humans-filters">
-              <div style={{ flex: 1, position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
-                <input
-                  type="text"
-                  placeholder="Search by name or skill..."
-                  className="dashboard-v4-form-input"
-                  style={{ paddingLeft: 44 }}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <div>
-                <CustomDropdown
-                  value={filterCategory}
-                  onChange={setFilterCategory}
-                  options={[
-                    { value: '', label: 'All Skills' },
-                    ...['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general'].map(c => ({
-                      value: c,
-                      label: c.replace('_', ' ')
-                    }))
-                  ]}
-                  placeholder="All Skills"
-                />
-              </div>
+            {/* Sub-tabs: Browse / Hired */}
+            <div className="dashboard-v4-sub-tabs">
+              <button
+                className={`dashboard-v4-sub-tab ${humansSubTab === 'browse' ? 'active' : ''}`}
+                onClick={() => setHumansSubTab('browse')}
+              >
+                Browse
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${humansSubTab === 'hired' ? 'active' : ''}`}
+                onClick={() => setHumansSubTab('hired')}
+              >
+                Hired
+              </button>
             </div>
 
-            {humans.length === 0 ? (
+            {humansSubTab === 'browse' && (
+              <>
+                {/* Search & Filter */}
+                <div className="browse-humans-filters">
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
+                    <input
+                      type="text"
+                      placeholder="Search by name or skill..."
+                      className="dashboard-v4-form-input"
+                      style={{ paddingLeft: 44 }}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <CustomDropdown
+                      value={filterCategory}
+                      onChange={setFilterCategory}
+                      options={[
+                        { value: '', label: 'All Skills' },
+                        ...['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general'].map(c => ({
+                          value: c,
+                          label: c.replace('_', ' ')
+                        }))
+                      ]}
+                      placeholder="All Skills"
+                    />
+                  </div>
+                </div>
+
+                {humans.length === 0 ? (
+                  <div className="dashboard-v4-empty">
+                    <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
+                    <p className="dashboard-v4-empty-title">No humans found</p>
+                    <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
+                  </div>
+                ) : (
+                  <div className="browse-humans-grid">
+                    {humans
+                      .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
+                      .filter(h => !filterCategory || h.skills?.includes(filterCategory))
+                      .map(human => (
+                        <HumanProfileCard
+                          key={human.id}
+                          human={human}
+                          variant="dashboard"
+                          onExpand={(h) => window.location.href = `/humans/${h.id}`}
+                          onHire={() => { setShowCreateForm(true); setActiveTab('posted') }}
+                        />
+                      ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {humansSubTab === 'hired' && (
               <div className="dashboard-v4-empty">
                 <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-                <p className="dashboard-v4-empty-title">No humans found</p>
-                <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
-              </div>
-            ) : (
-              <div className="browse-humans-grid">
-                {humans
-                  .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
-                  .filter(h => !filterCategory || h.skills?.includes(filterCategory))
-                  .map(human => (
-                    <HumanProfileCard
-                      key={human.id}
-                      human={human}
-                      variant="dashboard"
-                      onExpand={(h) => window.location.href = `/humans/${h.id}`}
-                      onHire={() => setActiveTab('create')}
-                    />
-                  ))}
+                <p className="dashboard-v4-empty-title">No humans hired yet</p>
+                <p className="dashboard-v4-empty-text">Hire someone for a task</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Hiring Mode: API Keys Tab */}
-        {hiringMode && activeTab === 'api-keys' && (
-          <ApiKeysTab user={user} />
-        )}
-
-        {/* Hiring Mode: Payments Tab */}
+        {/* Hiring Mode: Payments Tab - Payment Methods + Disputes sub-tabs */}
         {hiringMode && activeTab === 'payments' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Payment Methods</h1>
-            <Suspense fallback={<Loading />}>
-              <StripeProvider>
-                <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
-                    <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
+            <h1 className="dashboard-v4-page-title">Payments</h1>
+
+            {/* Sub-tabs: Methods / Disputes */}
+            <div className="dashboard-v4-sub-tabs">
+              <button
+                className={`dashboard-v4-sub-tab ${paymentsSubTab === 'methods' ? 'active' : ''}`}
+                onClick={() => setPaymentsSubTab('methods')}
+              >
+                Payment Methods
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${paymentsSubTab === 'disputes' ? 'active' : ''}`}
+                onClick={() => setPaymentsSubTab('disputes')}
+              >
+                Disputes
+              </button>
+            </div>
+
+            {paymentsSubTab === 'methods' && (
+              <Suspense fallback={<Loading />}>
+                <StripeProvider>
+                  <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Saved Cards</h3>
+                      <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
+                      <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
+                    </div>
+                    <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                      When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
+                    </div>
                   </div>
-                  <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Card</h3>
-                    <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
-                  </div>
-                  <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                    When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
-                  </div>
-                </div>
-              </StripeProvider>
-            </Suspense>
+                </StripeProvider>
+              </Suspense>
+            )}
+
+            {paymentsSubTab === 'disputes' && (
+              <DisputePanel user={user} />
+            )}
           </div>
         )}
 
@@ -3480,6 +3519,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
               </div>
             </div>
 
+            {/* API Keys - only show in hiring mode */}
+            {hiringMode && (
+              <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>API Keys</h2>
+                <ApiKeysTab user={user} />
+              </div>
+            )}
+
             {/* Account */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
@@ -3491,14 +3538,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
                 Sign Out
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Disputes Tab */}
-        {activeTab === 'disputes' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">Disputes</h1>
-            <DisputePanel user={user} />
           </div>
         )}
 
@@ -3658,7 +3697,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
             onClose={() => setExpandedHumanId(null)}
             onHire={(human) => {
               setExpandedHumanId(null)
-              setActiveTab('create')
+              setShowCreateForm(true)
+              setActiveTab('posted')
             }}
             user={user}
           />
