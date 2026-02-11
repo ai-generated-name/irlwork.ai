@@ -21,7 +21,10 @@ const categories = [
 
 export default function BrowsePage({ user }) {
   const toast = useToast()
-  const [viewMode, setViewMode] = useState('tasks') // 'tasks' or 'humans'
+  // Parse URL params to allow direct linking to humans view via /browse?mode=humans
+  const urlParams = new URLSearchParams(window.location.search)
+  const initialMode = urlParams.get('mode') === 'humans' ? 'humans' : 'tasks'
+  const [viewMode, setViewMode] = useState(initialMode) // 'tasks' or 'humans'
   const [tasks, setTasks] = useState([])
   const [humans, setHumans] = useState([])
   const [loading, setLoading] = useState(true)
@@ -136,7 +139,10 @@ export default function BrowsePage({ user }) {
         if (categoryFilter) params.append('category', categoryFilter)
         if (cityFilter) params.append('city', cityFilter)
 
-        const res = await fetch(`${API_URL}/humans/directory?${params}`)
+        const headers = {}
+        if (user?.id) headers['Authorization'] = user.id
+
+        const res = await fetch(`${API_URL}/humans/directory?${params}`, { headers })
         if (res.ok) {
           let data = await res.json()
           // Sort
@@ -1299,7 +1305,7 @@ Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
               <div className="footer-v4-links">
                 <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
                 <a href="/auth" className="footer-v4-link">Sign Up</a>
-                <a href="/browse" className="footer-v4-link">Browse Humans</a>
+                <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
               </div>
             </div>
 

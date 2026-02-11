@@ -437,6 +437,22 @@ async function getUserByToken(token) {
       .eq('id', cleanToken)
       .single();
     if (data) return data;
+
+    // UUID not found in users table — resolve via Supabase Auth email fallback.
+    // This handles Google OAuth users whose users row was created with a different UUID.
+    try {
+      const { data: { user: authUser } } = await supabase.auth.admin.getUserById(cleanToken);
+      if (authUser?.email) {
+        const { data: byEmail } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', authUser.email)
+          .single();
+        if (byEmail) return byEmail;
+      }
+    } catch (e) {
+      // Auth admin API unavailable — continue to other token checks
+    }
   }
 
   // Check if it's a new-style API key (irl_sk_...)
@@ -876,17 +892,17 @@ app.get('/api/auth/google/callback', async (req, res) => {
     }
     
     if (!existingUser) {
-      // Create new user
-      const id = uuidv4();
+      // Create new user — use Supabase auth UUID so fetchUserProfile can find them by supabaseUser.id
       const { data: newUser, error: createError } = await supabase
         .from('users')
         .insert({
-          id,
+          id: user.id,
           email,
           name,
           type: 'human',
           account_type: 'human',
           verified: true,
+          avatar_url: user.user_metadata?.avatar_url || null,
           profile_completeness: 0.5,
           availability: 'available',
           rating: 0,
@@ -895,11 +911,17 @@ app.get('/api/auth/google/callback', async (req, res) => {
         })
         .select()
         .single();
-      
+
       if (createError) throw createError;
       existingUser = newUser;
+    } else if (!existingUser.type || existingUser.type !== 'human') {
+      // Existing user but type not set — update to ensure they appear in browse
+      await supabase
+        .from('users')
+        .update({ type: 'human', account_type: 'human', verified: true })
+        .eq('id', existingUser.id);
     }
-    
+
     // Redirect back to app (Supabase session handles auth — no tokens in URL)
     res.redirect(frontendUrl);
   } catch (e) {
@@ -1014,6 +1036,8 @@ app.post('/api/auth/onboard', async (req, res) => {
         id: userId,
         email,
         name,
+        type: 'human',
+        account_type: 'human',
         city,
         latitude,
         longitude,
@@ -1025,6 +1049,8 @@ app.post('/api/auth/onboard', async (req, res) => {
         role: role || 'human',
         bio: bio || null,
         avatar_url: avatar_url || null,
+        verified: true,
+        availability: 'available',
         profile_completeness,
         needs_onboarding: false,
         onboarding_completed_at: new Date().toISOString()
@@ -1435,8 +1461,7 @@ app.get('/api/humans', async (req, res) => {
   let query = supabase
     .from('users')
     .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude, avatar_url, headline, languages, timezone')
-    .eq('type', 'human')
-    .eq('verified', true);
+    .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
@@ -1524,6 +1549,7 @@ app.put('/api/humans/profile', async (req, res) => {
           email: req.body.email || `${token}@oauth.user`,
           name: name || 'New User',
           type: 'human',
+          account_type: 'human',
           city: city || '',
           hourly_rate: hourly_rate || 25,
           skills: JSON.stringify(skills || []),
@@ -1538,6 +1564,8 @@ app.put('/api/humans/profile', async (req, res) => {
         .single();
 
       if (createError) {
+        // Insert failed (likely email conflict) — the getUserByToken email fallback
+        // should have caught this, but handle it gracefully anyway
         console.error('Failed to auto-create user:', createError);
         return res.status(401).json({ error: 'Unauthorized - could not create user' });
       }
@@ -1549,7 +1577,7 @@ app.put('/api/humans/profile', async (req, res) => {
 
   const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
 
-  const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true };
+  const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true, type: 'human', account_type: 'human' };
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
   if (name) updates.name = name;
@@ -4932,16 +4960,27 @@ app.get('/api/tasks/available', async (req, res) => {
 // ============ HUMANS DIRECTORY ============
 app.get('/api/humans/directory', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { category, city, min_rate, max_rate, limit = 50 } = req.query;
-  
+
+  const { category, city, min_rate, max_rate, limit } = req.query;
+
+  // Check if user is authenticated
+  const user = await getUserByToken(req.headers.authorization);
+
+  // Public (unauthenticated) requests are capped at 500 humans
+  const PUBLIC_LIMIT = 500;
+  let effectiveLimit;
+  if (user) {
+    effectiveLimit = limit ? parseInt(limit) : 1000;
+  } else {
+    effectiveLimit = limit ? Math.min(parseInt(limit), PUBLIC_LIMIT) : PUBLIC_LIMIT;
+  }
+
   let query = supabase
     .from('users')
     .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
     .eq('type', 'human')
-    .eq('verified', true)
     .order('rating', { ascending: false })
-    .limit(parseInt(limit));
+    .limit(effectiveLimit);
 
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
