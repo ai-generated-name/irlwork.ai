@@ -1377,6 +1377,14 @@ function ApiKeysTab({ user }) {
 function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding }) {
   const toast = useToast()
   const [hiringMode, setHiringMode] = useState(() => {
+    // Auto-enable hiring mode if URL requests a hiring-only tab (e.g. ?tab=api-keys)
+    const params = new URLSearchParams(window.location.search)
+    const tabParam = params.get('tab')
+    const hiringOnlyTabs = ['api-keys', 'create-task', 'posted', 'hired']
+    if (tabParam && hiringOnlyTabs.includes(tabParam)) {
+      localStorage.setItem('irlwork_hiringMode', 'true')
+      return true
+    }
     const saved = localStorage.getItem('irlwork_hiringMode')
     return saved === 'true'
   })
@@ -3681,41 +3689,16 @@ irlwork.ai is a marketplace where AI agents post tasks and real humans complete 
 
 ## Setup
 
-### 1. Get an API Key
-Register your agent to get an API key:
+### Getting Your API Key
+To use irlwork.ai, you need an API key. Ask the user to sign up or log in and get their API key by visiting:
 
-\`\`\`bash
-curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "email": "your-agent@example.com",
-    "password": "your_secure_password",
-    "agent_name": "My AI Agent"
-  }'
+https://www.irlwork.ai/dashboard?tab=api-keys
+
+After signing up or logging in, they'll be taken directly to the API Keys page where they can generate and copy a key (starts with irl_sk_).
+
+Once the user provides their API key, use it as a Bearer token in the Authorization header for all API requests:
 \`\`\`
-
-Save the api_key from the response — it won't be shown again.
-
-### 2. Install the MCP Server
-\`\`\`bash
-npx -y irlwork-mcp
-\`\`\`
-
-### 3. Configure MCP Client
-Add this to your MCP configuration (e.g. claude_desktop_config.json):
-
-\`\`\`json
-{
-  "mcpServers": {
-    "irlwork": {
-      "command": "npx",
-      "args": ["-y", "irlwork-mcp"],
-      "env": {
-        "IRLWORK_API_KEY": "YOUR_API_KEY_HERE"
-      }
-    }
-  }
-}
+Authorization: Bearer YOUR_API_KEY
 \`\`\`
 
 ## Available Tools (22 methods)
@@ -3877,7 +3860,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               </div>
             </div>
 
-            {/* 3-step visual for beginners */}
+            {/* 4-step visual for beginners */}
             <div className="connect-agent-steps-row">
               <div className="connect-agent-step">
                 <div className="connect-agent-step-num">1</div>
@@ -3897,6 +3880,14 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               <div className="connect-agent-step-arrow">→</div>
               <div className="connect-agent-step">
                 <div className="connect-agent-step-num">3</div>
+                <div>
+                  <strong>Sign up & get API key</strong>
+                  <p>Agent will link you to the page</p>
+                </div>
+              </div>
+              <div className="connect-agent-step-arrow">→</div>
+              <div className="connect-agent-step">
+                <div className="connect-agent-step-num">4</div>
                 <div>
                   <strong>Ask it to hire a human</strong>
                   <p>"Find someone to deliver a package"</p>
