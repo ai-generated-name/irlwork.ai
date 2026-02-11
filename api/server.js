@@ -578,6 +578,7 @@ app.post('/api/auth/register/human', async (req, res) => {
         jobs_completed: 0,
         verified: true,
         needs_onboarding: false,
+        onboarding_completed_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       })
       .select()
@@ -595,6 +596,7 @@ app.post('/api/auth/register/human', async (req, res) => {
             hourly_rate: hourly_rate || 25,
             skills: JSON.stringify(userSkills),
             needs_onboarding: false,
+            onboarding_completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', id)
@@ -612,6 +614,7 @@ app.post('/api/auth/register/human', async (req, res) => {
               hourly_rate: hourly_rate || 25,
               skills: JSON.stringify(userSkills),
               needs_onboarding: false,
+              onboarding_completed_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
             .eq('email', email)
