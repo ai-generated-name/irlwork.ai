@@ -113,8 +113,8 @@ async function processStripeWithdrawal(supabase, userId, amountCents = null, cre
       );
       transferIds.push(result.transfer_id);
 
-      // Mark transaction as withdrawn — race condition guard: only update if still 'available'
-      const { data: updated, error: updateError } = await supabase
+      // Mark transaction as withdrawn with status precondition
+      const { data: updated, error: updateErr } = await supabase
         .from('pending_transactions')
         .update({
           status: 'withdrawn',
@@ -123,11 +123,13 @@ async function processStripeWithdrawal(supabase, userId, amountCents = null, cre
           notes: `Stripe transfer: ${result.transfer_id}`
         })
         .eq('id', tx.id)
-        .eq('status', 'available') // Race condition guard
-        .select();
+        .eq('status', 'available')
+        .select('id')
+        .single();
 
-      if (!updated || updated.length === 0) {
-        console.warn(`[Stripe Withdrawal] Transaction ${tx.id} was no longer available, skipping`);
+      if (updateErr || !updated) {
+        console.warn(`[Stripe Withdrawal] Transaction ${tx.id} already withdrawn, skipping`);
+        continue;
       }
     }
 

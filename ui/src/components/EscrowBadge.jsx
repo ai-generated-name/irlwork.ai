@@ -1,13 +1,14 @@
 // Escrow Badge Component
 // Shows the current escrow status for a task
 import React from 'react';
+import { Hourglass } from 'lucide-react';
 
 const STATUS_CONFIG = {
   pending: {
     label: 'Awaiting Deposit',
     color: 'bg-[#8A8A8A]',
     textColor: 'text-[#525252]',
-    icon: '⏳',
+    icon: <Hourglass size={14} />,
     description: 'Waiting for agent to fund escrow'
   },
   deposited: {

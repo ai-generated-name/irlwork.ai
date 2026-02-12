@@ -1,12 +1,13 @@
 // PayoutHistory.jsx - Shows human's payout history
 import React from 'react';
+import { ArrowDownLeft } from 'lucide-react';
 import API_URL from '../config/api';
 
 export default function PayoutHistory({ payouts = [] }) {
   if (payouts.length === 0) {
     return (
       <div className="text-center py-8">
-        <div className="text-4xl mb-3">💸</div>
+        <div className="mb-3"><ArrowDownLeft size={32} /></div>
         <p className="text-[#525252]">No payouts yet</p>
         <p className="text-[#8A8A8A] text-sm">Complete tasks to start earning</p>
       </div>

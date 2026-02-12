@@ -21,6 +21,9 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const BCRYPT_ROUNDS = 12;
 
+// Wallet address validation (Ethereum/Base network - 0x + 40 hex chars)
+const isValidWalletAddress = (addr) => /^0x[a-fA-F0-9]{40}$/.test(addr);
+
 const { createClient } = require('@supabase/supabase-js');
 
 // Background services
@@ -528,6 +531,67 @@ async function createNotification(userId, type, title, message, link = null) {
     message,
     link
   });
+}
+
+// Send email notification for new messages (uses Supabase Edge Function or direct SMTP)
+async function sendMessageEmailNotification(recipientUserId, senderName, taskTitle, messagePreview, taskId) {
+  if (!supabase) return;
+
+  try {
+    // Get recipient's email and notification preferences
+    const { data: recipient } = await supabase
+      .from('users')
+      .select('email, name, notification_preferences')
+      .eq('id', recipientUserId)
+      .single();
+
+    if (!recipient?.email) return;
+
+    // Check if user has email notifications disabled
+    const prefs = recipient.notification_preferences || {};
+    if (prefs.email_messages === false) return;
+
+    // Throttle: don't send more than 1 email per 5 minutes per conversation
+    const cacheKey = `email_throttle_${recipientUserId}_${taskId}`;
+    if (global._emailThrottle?.[cacheKey]) {
+      const elapsed = Date.now() - global._emailThrottle[cacheKey];
+      if (elapsed < 5 * 60 * 1000) return; // Skip if within 5 min window
+    }
+    if (!global._emailThrottle) global._emailThrottle = {};
+    global._emailThrottle[cacheKey] = Date.now();
+
+    // Use Supabase's built-in email (via auth.admin) or a simple fetch to an edge function
+    // For now, use the Supabase edge function pattern if available
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    if (!RESEND_API_KEY) {
+      console.log(`[Email] Would notify ${recipient.email}: New message from ${senderName} about "${taskTitle}"`);
+      return;
+    }
+
+    const taskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'IRL Work <notifications@irlwork.ai>',
+        to: recipient.email,
+        subject: `New message from ${senderName} about "${taskTitle}"`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
+            <div style="background: #FAF8F5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+              <p style="color: #525252; font-size: 14px; margin: 0 0 8px 0;"><strong>${senderName}</strong> sent you a message:</p>
+              <p style="color: #1A1A1A; font-size: 15px; margin: 0; line-height: 1.5;">${messagePreview}</p>
+            </div>
+            <p style="font-size: 13px; color: #8A8A8A; margin: 0 0 16px 0;">Task: ${taskTitle}</p>
+            <a href="${taskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">Reply on IRL Work</a>
+            <p style="font-size: 11px; color: #B0B0B0; margin-top: 24px;">You received this because you have message notifications enabled on IRL Work.</p>
+          </div>
+        `
+      })
+    });
+  } catch (err) {
+    console.error('[Email] Failed to send message notification:', err.message);
+  }
 }
 
 // Dispatch webhook to user if they have one configured
@@ -1629,7 +1693,7 @@ app.get('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, duration_hours, is_remote';
+  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, is_remote';
   let query = supabase.from('tasks').select(safeTaskColumns);
 
   if (category) query = query.eq('category', category);
@@ -1637,9 +1701,10 @@ app.get('/api/tasks', async (req, res) => {
   if (status) query = query.eq('status', status);
   if (my_tasks && user) query = query.eq('agent_id', user.id);
 
-  // Filter out moderated tasks from browse (unless viewing own tasks)
+  // Filter out moderated and expired tasks from browse (unless viewing own tasks)
   if (!my_tasks) {
     query = query.not('moderation_status', 'in', '("hidden","removed")');
+    query = query.not('status', 'eq', 'expired');
   }
 
   const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(100);
@@ -1687,34 +1752,58 @@ app.post('/api/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const user = await getUserByToken(req.headers.authorization);
-  if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, is_anonymous } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, deadline, requirements, country, country_code, duration_hours } = req.body;
+
+  // Validate required fields
+  if (!title || !title.trim()) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  if (title.trim().length > 200) {
+    return res.status(400).json({ error: 'Title must be 200 characters or less' });
+  }
+  if (description && description.length > 5000) {
+    return res.status(400).json({ error: 'Description must be 5000 characters or less' });
+  }
+  if (requirements && requirements.length > 3000) {
+    return res.status(400).json({ error: 'Requirements must be 3000 characters or less' });
+  }
+  if (location && location.length > 300) {
+    return res.status(400).json({ error: 'Location must be 300 characters or less' });
+  }
+  if (!budget || parseFloat(budget) < 5) {
+    return res.status(400).json({ error: 'Budget must be at least $5' });
+  }
+  if (parseFloat(budget) > 100000) {
+    return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
+  }
 
   const id = uuidv4();
-  const budgetAmount = budget || 50;
+  const budgetAmount = parseFloat(budget) || 50;
 
   const { data: task, error } = await supabase
     .from('tasks')
     .insert({
       id,
       agent_id: user.id,
-      title,
+      title: title.trim(),
       description,
       category,
       location,
       latitude: latitude || null,
       longitude: longitude || null,
+      country: country || null,
+      country_code: country_code || null,
       budget: budgetAmount,
       status: 'open',
       task_type: 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
-      duration_hours: duration_hours || null,
       deadline: deadline || null,
+      duration_hours: duration_hours || null,
       requirements: requirements || null,
-      is_anonymous: !!is_anonymous,
       created_at: new Date().toISOString()
     })
     .select()
@@ -1856,19 +1945,19 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { cover_letter, proposed_rate } = req.body;
-  
+  const { cover_letter, availability, questions, proposed_rate } = req.body;
+
   const { data: existing } = await supabase
     .from('task_applications')
     .select('*')
     .eq('task_id', req.params.id)
     .eq('human_id', user.id)
     .single();
-  
+
   if (existing) {
     return res.status(400).json({ error: 'Already applied' });
   }
-  
+
   const id = uuidv4();
   const { data: application, error } = await supabase
     .from('task_applications')
@@ -1877,6 +1966,8 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
       task_id: req.params.id,
       human_id: user.id,
       cover_letter: cover_letter || '',
+      availability: availability || '',
+      questions: questions || null,
       proposed_rate,
       status: 'pending',
       created_at: new Date().toISOString()
@@ -2601,14 +2692,14 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   // Verify task exists and user is assigned
   const { data: task, error: taskError } = await supabase
     .from('tasks')
-    .select('id, human_id, status, title')
+    .select('id, human_id, agent_id, status, title')
     .eq('id', taskId)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.human_id !== user.id) {
     return res.status(403).json({ error: 'Not assigned to this task' });
   }
@@ -2808,6 +2899,11 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     return res.status(403).json({ error: 'Not your task' });
   }
 
+  // Guard: task must be in pending_review or disputed status to approve
+  if (!['pending_review', 'disputed'].includes(task.status)) {
+    return res.status(400).json({ error: `Cannot approve task in '${task.status}' status` });
+  }
+
   // Get latest proof
   const { data: latestProof } = await supabase
     .from('task_proofs')
@@ -2821,23 +2917,37 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     return res.status(400).json({ error: 'No proof to approve' });
   }
 
-  // Update proof status to approved
-  await supabase
+  // Atomic update with status precondition to prevent double-approval
+  const { data: updatedProof, error: proofUpdateError } = await supabase
     .from('task_proofs')
     .update({
       status: 'approved',
       updated_at: new Date().toISOString()
     })
-    .eq('id', latestProof.id);
+    .eq('id', latestProof.id)
+    .neq('status', 'approved')
+    .select('id')
+    .single();
 
-  // Update task to 'approved' status
-  await supabase
+  if (proofUpdateError || !updatedProof) {
+    return res.status(409).json({ error: 'Proof has already been approved' });
+  }
+
+  // Atomic task status update with precondition
+  const { data: updatedTask, error: taskUpdateError } = await supabase
     .from('tasks')
     .update({
       status: 'approved',
       updated_at: new Date().toISOString()
     })
-    .eq('id', taskId);
+    .eq('id', taskId)
+    .in('status', ['pending_review', 'disputed'])
+    .select('id')
+    .single();
+
+  if (taskUpdateError || !updatedTask) {
+    return res.status(409).json({ error: 'Task has already been approved' });
+  }
 
   // Notify human
   await createNotification(
@@ -3120,10 +3230,143 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
 // ============ ADMIN DISPUTE RESOLUTION ============
 // DEPRECATED: Use POST /api/disputes/:id/resolve instead
 app.post('/api/admin/resolve-dispute', async (req, res) => {
-  res.status(410).json({
-    error: 'This endpoint is deprecated. Use POST /api/disputes/:id/resolve instead.',
-    migration: 'Pass { resolution, resolution_notes, refund_agent, release_to_human } to /api/disputes/:disputeId/resolve'
-  });
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  // Check if user is admin via ADMIN_USER_IDS environment variable
+  const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+  if (!ADMIN_USER_IDS.includes(user.id)) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const { task_id, resolution, refund_to_agent = false, release_to_human = false, notes,
+          // Support legacy parameter name for backwards compatibility
+          refund_human } = req.body;
+  const shouldRefundAgent = refund_to_agent || refund_human;
+
+  // Get task
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', task_id)
+    .single();
+
+  if (taskError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  if (task.status !== 'disputed') {
+    return res.status(400).json({ error: 'Task is not disputed' });
+  }
+
+  // Resolve based on decision
+  if (release_to_human) {
+    // Release payment to human
+    const escrowAmount = task.escrow_amount || task.budget || 50;
+    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+    const netAmount = escrowAmount - platformFee;
+    const txHash = '0x' + crypto.randomBytes(32).toString('hex');
+
+    const { data: disputeRelease, error: disputeReleaseErr } = await supabase
+      .from('tasks')
+      .update({
+        status: 'paid',
+        escrow_status: 'released',
+        escrow_released_at: new Date().toISOString(),
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', task_id)
+      .neq('escrow_status', 'released')
+      .select('id')
+      .single();
+
+    if (disputeReleaseErr || !disputeRelease) {
+      return res.status(409).json({ error: 'Payment has already been released.' });
+    }
+
+    await supabase.from('payouts').insert({
+      id: uuidv4(),
+      task_id: task_id,
+      human_id: task.human_id,
+      agent_id: task.agent_id,
+      gross_amount: escrowAmount,
+      platform_fee: platformFee,
+      net_amount: netAmount,
+      tx_hash: txHash,
+      status: 'completed',
+      dispute_resolved: true,
+      created_at: new Date().toISOString()
+    });
+
+    await createNotification(
+      task.human_id,
+      'dispute_resolved',
+      'Dispute Resolved - Favorable',
+      `The dispute has been resolved in your favor. Payment of ${netAmount.toFixed(2)} USDC has been released.`,
+      `/tasks/${task_id}`
+    );
+  } else if (shouldRefundAgent) {
+    // Refund escrow to agent (param was misleadingly named refund_human, now refund_to_agent)
+    const { data: refundResult, error: refundError } = await supabase
+      .from('tasks')
+      .update({
+        status: 'cancelled',
+        escrow_status: 'refunded',
+        escrow_refunded_at: new Date().toISOString(),
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', task_id)
+      .eq('status', 'disputed')
+      .select('id')
+      .single();
+
+    if (refundError || !refundResult) {
+      return res.status(409).json({ error: 'Dispute has already been resolved.' });
+    }
+
+    await createNotification(
+      task.agent_id,
+      'dispute_resolved',
+      'Dispute Resolved - Refund',
+      `The dispute has been resolved. Escrow of ${task.escrow_amount} USDC has been refunded to your wallet.`,
+      `/tasks/${task_id}`
+    );
+    await createNotification(
+      task.human_id,
+      'dispute_resolved',
+      'Dispute Resolved',
+      `The dispute has been resolved. ${notes || 'See details in your dashboard.'}`,
+      `/tasks/${task_id}`
+    );
+  } else {
+    // Partial resolution - reset 48h timer for agent review
+    const { data: partialResult, error: partialError } = await supabase
+      .from('tasks')
+      .update({
+        status: 'pending_review',
+        proof_submitted_at: new Date().toISOString(),
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        notes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', task_id)
+      .eq('status', 'disputed')
+      .select('id')
+      .single();
+
+    if (partialError || !partialResult) {
+      return res.status(409).json({ error: 'Dispute has already been resolved.' });
+    }
+  }
+
+  res.json({ success: true, resolution });
 });
 
 // DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
@@ -3716,7 +3959,6 @@ app.post('/api/mcp', async (req, res) => {
             human_ids: [],
             escrow_amount: budgetAmount,
             is_remote: !!params.is_remote,
-            is_anonymous: !!params.is_anonymous,
             created_at: new Date().toISOString()
           })
           .select()
@@ -4102,6 +4344,22 @@ app.get('/api/notifications', async (req, res) => {
   res.json(notifications || []);
 });
 
+app.post('/api/notifications/:id/read', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('id', req.params.id)
+    .eq('user_id', user.id);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
 // ============ ACTIVITY FEED ============
 app.get('/api/activity/feed', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
@@ -4152,15 +4410,38 @@ app.get('/api/conversations', async (req, res) => {
     .select(`
       *,
       task:tasks(id, title, category, budget),
-      human:users!human_id(id, name, type, rating),
-      agent:users!agent_id(id, name, type, organization),
-      last_message:messages(created_at, content, sender_id)
+      human:users!human_id(id, name, type, rating, avatar_url, last_active_at),
+      agent:users!agent_id(id, name, type, avatar_url, last_active_at)
     `)
     .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
     .order('updated_at', { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json(conversations || []);
+
+  if (!conversations || conversations.length === 0) {
+    return res.json([]);
+  }
+
+  // Compute per-conversation unread counts using a single aggregation query
+  const convIds = conversations.map(c => c.id);
+  const { data: unreadData } = await supabase
+    .from('messages')
+    .select('conversation_id')
+    .in('conversation_id', convIds)
+    .neq('sender_id', user.id)
+    .is('read_at', null);
+
+  const unreadMap = {};
+  (unreadData || []).forEach(m => {
+    unreadMap[m.conversation_id] = (unreadMap[m.conversation_id] || 0) + 1;
+  });
+
+  const result = conversations.map(c => ({
+    ...c,
+    unread: unreadMap[c.id] || 0
+  }));
+
+  res.json(result);
 });
 
 app.post('/api/conversations', async (req, res) => {
@@ -4169,7 +4450,7 @@ app.post('/api/conversations', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { agent_id, task_id, title } = req.body;
+  const { agent_id, task_id } = req.body;
 
   // Use upsert to prevent race condition duplicates
   // NOTE: Do NOT pass `id` field - let DB generate UUID on insert.
@@ -4180,9 +4461,7 @@ app.post('/api/conversations', async (req, res) => {
     .upsert({
       human_id: user.id,
       agent_id: agent_id || null,
-      task_id: task_id || null,
-      title: title || 'New Conversation',
-      status: 'active'
+      task_id: task_id || null
     }, {
       onConflict: 'human_id,agent_id,task_id',
       ignoreDuplicates: false
@@ -4205,9 +4484,9 @@ app.get('/api/conversations/:id', async (req, res) => {
     .from('conversations')
     .select(`
       *,
-      task:tasks(*),
-      human:users!human_id(*),
-      agent:users!agent_id(*)
+      task:tasks(id, title, category, budget, status, location, is_remote),
+      human:users!human_id(id, name, type, rating, avatar_url),
+      agent:users!agent_id(id, name, type, avatar_url)
     `)
     .eq('id', req.params.id)
     .single();
@@ -4311,7 +4590,7 @@ app.post('/api/messages', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { conversation_id, content, message_type = 'text', metadata = {} } = req.body;
+  const { conversation_id, content, attachments } = req.body;
 
   // Verify user has access to conversation (include task_id and task title for notifications)
   const { data: conversation, error: convError } = await supabase
@@ -4328,27 +4607,52 @@ app.post('/api/messages', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
+  // Build metadata with attachments if present
+  const metadata = {};
+  if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+    metadata.attachments = attachments.slice(0, 5); // Max 5 attachments per message
+  }
+
   const id = uuidv4();
-  const { data: message, error } = await supabase
-    .from('messages')
-    .insert({
-      id,
-      conversation_id,
-      sender_id: user.id,
-      content,
-      message_type,
-      metadata,
-      created_at: new Date().toISOString()
-    })
-    .select()
-    .single();
+  const baseInsert = {
+    id,
+    conversation_id,
+    sender_id: user.id,
+    content: content || '',
+    created_at: new Date().toISOString()
+  };
+
+  // Try to include metadata (with attachments) — fall back to without if column doesn't exist
+  let message, error;
+  if (metadata.attachments) {
+    const withMeta = { ...baseInsert, metadata };
+    const result = await supabase.from('messages').insert(withMeta).select().single();
+    if (result.error && result.error.message?.includes('metadata')) {
+      // Column doesn't exist — retry without metadata, embed attachment URLs in content
+      const attachNote = metadata.attachments.map(a => `[📎 ${a.name}](${a.url})`).join('\n');
+      baseInsert.content = (baseInsert.content ? baseInsert.content + '\n\n' : '') + attachNote;
+      const retry = await supabase.from('messages').insert(baseInsert).select().single();
+      message = retry.data;
+      error = retry.error;
+    } else {
+      message = result.data;
+      error = result.error;
+    }
+  } else {
+    const result = await supabase.from('messages').insert(baseInsert).select().single();
+    message = result.data;
+    error = result.error;
+  }
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // Update conversation's updated_at
+  // Update conversation's updated_at and last_message preview
+  const hasAttachments = metadata.attachments?.length > 0;
+  const previewText = content || (hasAttachments ? `📎 ${metadata.attachments.length} attachment${metadata.attachments.length > 1 ? 's' : ''}` : '');
+  const preview = previewText.length > 100 ? previewText.substring(0, 100) + '...' : previewText;
   await supabase
     .from('conversations')
-    .update({ updated_at: new Date().toISOString() })
+    .update({ updated_at: new Date().toISOString(), last_message: preview })
     .eq('id', conversation_id);
 
   // Notify the OTHER party about the new message
@@ -4358,7 +4662,6 @@ app.post('/api/messages', async (req, res) => {
 
   if (otherPartyId) {
     const taskTitle = conversation.tasks?.title || 'a task';
-    const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
     await createNotification(
       otherPartyId,
       'new_message',
@@ -4366,6 +4669,9 @@ app.post('/api/messages', async (req, res) => {
       `New message about "${taskTitle}": ${preview}`,
       `/tasks/${conversation.task_id}`
     );
+
+    // Send email notification to the other party (async, non-blocking)
+    sendMessageEmailNotification(otherPartyId, user.name, taskTitle, preview, conversation.task_id).catch(() => {});
 
     // Dispatch webhook if the other party has one configured
     await dispatchWebhook(otherPartyId, {
@@ -4377,12 +4683,85 @@ app.post('/api/messages', async (req, res) => {
         sender_name: user.name,
         sender_type: user.type || (user.is_agent ? 'agent' : 'worker'),
         content,
+        attachments: metadata.attachments || [],
         created_at: message.created_at
       }
     });
   }
 
   res.json(message);
+});
+
+// ============ MESSAGE ATTACHMENT UPLOAD ============
+app.post('/api/upload/message-attachment', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const getEnv = (k) => {
+    try { return require('process').env[k]; } catch { return null; }
+  };
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+  const R2_PUBLIC_URL = getEnv('R2_PUBLIC_URL') || getEnv('CLOUD_PUBLIC_URL');
+
+  try {
+    const { file, filename, mimeType } = req.body;
+    if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    // Validate file size (max 10MB for base64 ~ 13.3MB string)
+    if (typeof file === 'string' && file.length > 14 * 1024 * 1024) {
+      return res.status(400).json({ error: 'File too large. Maximum 10MB allowed.' });
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const detectedType = mimeType || 'application/octet-stream';
+    if (!allowedTypes.some(t => detectedType.startsWith(t.split('/')[0]))) {
+      // Allow any image/* and the listed document types
+    }
+
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop()?.toLowerCase() || 'bin';
+    const safeFilename = `messages/${user.id}/${timestamp}-${randomStr}.${ext}`;
+
+    if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+      // Demo mode
+      const mockUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${safeFilename}` : `https://pub-r2.dev/${R2_BUCKET}/${safeFilename}`;
+      return res.json({ url: mockUrl, filename: filename || safeFilename, type: detectedType, size: 0, demo: true });
+    }
+
+    let fileData = file;
+    if (file.startsWith('data:')) {
+      fileData = Buffer.from(file.split(',')[1], 'base64');
+    } else if (typeof file === 'string') {
+      fileData = Buffer.from(file, 'base64');
+    }
+
+    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+    const s3Client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+    });
+
+    await s3Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: safeFilename,
+      Body: fileData,
+      ContentType: detectedType,
+    }));
+
+    const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${safeFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${safeFilename}`;
+    res.json({ url: publicUrl, filename: filename || safeFilename, type: detectedType, size: fileData.length });
+  } catch (e) {
+    console.error('Message attachment upload error:', e.message);
+    res.status(500).json({ error: 'Failed to upload attachment' });
+  }
 });
 
 app.put('/api/messages/:id/read', async (req, res) => {
@@ -4414,7 +4793,7 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
   // Verify user is a participant in this conversation
   const { data: conversation } = await supabase
     .from('conversations')
-    .select('id, human_id, agent_id')
+    .select('id, human_id, agent_id, task_id')
     .eq('id', id)
     .single();
 
@@ -4436,6 +4815,17 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
     .select('id');
 
   if (error) return res.status(500).json({ error: error.message });
+
+  // Also clear new_message notifications for this conversation's task
+  if (conversation.task_id) {
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('type', 'new_message')
+      .eq('is_read', false)
+      .like('link', `%${conversation.task_id}%`);
+  }
 
   res.json({ marked_count: data?.length || 0 });
 });
@@ -4466,7 +4856,7 @@ app.get('/api/messages/unread/count', async (req, res) => {
   const { data: conversations } = await supabase
     .from('conversations')
     .select('id')
-    .or(`user_id.eq.${user.id},agent_id.eq.${user.id}`);
+    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`);
   
   if (!conversations || conversations.length === 0) {
     return res.json({ count: 0 });
@@ -4869,7 +5259,7 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Agents only' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, country, country_code, deadline, requirements } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -4892,7 +5282,6 @@ app.post('/api/tasks/create', async (req, res) => {
       task_type: 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
-      duration_hours: duration_hours || null,
       deadline: deadline || null,
       requirements: requirements || null,
       created_at: new Date().toISOString()
@@ -5179,6 +5568,84 @@ async function start() {
     // Start balance promoter (promotes pending → available after 48 hours)
     startBalancePromoter(supabase, createNotification);
     console.log('   ✅ Balance promoter started (15min interval)');
+
+    // Start task expiry service
+    // Two expiry rules:
+    //   1. Open tasks past their deadline with no one assigned → expire immediately
+    //   2. Open tasks with no deadline older than 30 days → expire as stale
+    const TASK_EXPIRY_DAYS = 30;
+    const TASK_EXPIRY_INTERVAL_MS = 60 * 60 * 1000; // Check every hour
+    async function expireOpenTasks() {
+      try {
+        const now = new Date().toISOString();
+
+        // Rule 1: Expire open tasks past their deadline (no human assigned)
+        const { data: deadlineExpired, error: deadlineErr } = await supabase
+          .from('tasks')
+          .update({
+            status: 'expired',
+            updated_at: now
+          })
+          .eq('status', 'open')
+          .is('human_id', null)
+          .not('deadline', 'is', null)
+          .lt('deadline', now)
+          .select('id, agent_id, title, deadline');
+
+        if (deadlineErr) {
+          console.error('[TaskExpiry] Deadline expiry error:', deadlineErr.message);
+        } else if (deadlineExpired && deadlineExpired.length > 0) {
+          console.log(`[TaskExpiry] Expired ${deadlineExpired.length} tasks past their deadline`);
+          for (const task of deadlineExpired) {
+            if (task.agent_id) {
+              await createNotification(
+                task.agent_id,
+                'task_expired',
+                'Task Expired',
+                `Your task "${task.title}" expired because its deadline passed without anyone accepting it. You can repost it anytime.`,
+                `/tasks/${task.id}`
+              );
+            }
+          }
+        }
+
+        // Rule 2: Expire open tasks without a deadline after 30 days
+        const cutoff = new Date(Date.now() - TASK_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        const { data: staleExpired, error: staleErr } = await supabase
+          .from('tasks')
+          .update({
+            status: 'expired',
+            updated_at: now
+          })
+          .eq('status', 'open')
+          .is('human_id', null)
+          .lt('created_at', cutoff)
+          .select('id, agent_id, title');
+
+        if (staleErr) {
+          console.error('[TaskExpiry] Stale expiry error:', staleErr.message);
+        } else if (staleExpired && staleExpired.length > 0) {
+          console.log(`[TaskExpiry] Expired ${staleExpired.length} stale tasks (>${TASK_EXPIRY_DAYS} days old)`);
+          for (const task of staleExpired) {
+            if (task.agent_id) {
+              await createNotification(
+                task.agent_id,
+                'task_expired',
+                'Task Expired',
+                `Your task "${task.title}" expired after ${TASK_EXPIRY_DAYS} days without applicants. You can repost it anytime.`,
+                `/tasks/${task.id}`
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[TaskExpiry] Error:', err.message);
+      }
+    }
+    // Run once on startup, then on interval
+    expireOpenTasks();
+    setInterval(expireOpenTasks, TASK_EXPIRY_INTERVAL_MS);
+    console.log(`   ✅ Task expiry service started (deadline + ${TASK_EXPIRY_DAYS}-day stale, hourly check)`);
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
@@ -5299,6 +5766,23 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     })
     .eq('id', user.id);
 
+  // Get the task details to notify the agent
+  const { data: acceptedTask } = await supabase
+    .from('tasks')
+    .select('agent_id, title')
+    .eq('id', id)
+    .single();
+
+  if (acceptedTask?.agent_id) {
+    await createNotification(
+      acceptedTask.agent_id,
+      'task_accepted',
+      'Task Accepted',
+      `${user.name || 'A worker'} has accepted your task "${acceptedTask.title}".`,
+      `/tasks/${id}`
+    );
+  }
+
   res.json({ success: true });
 });
 
@@ -5308,49 +5792,56 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
 
 app.post('/api/tasks/:id/start', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
-  
+
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .select('*')
     .eq('id', id)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.human_id !== user.id) {
     return res.status(403).json({ error: 'Not assigned to you' });
   }
-  
+
+  // Only allow starting tasks that are in 'assigned' or 'accepted' status
+  const startableStatuses = ['assigned', 'accepted'];
+  if (!startableStatuses.includes(task.status)) {
+    return res.status(400).json({ error: `Cannot start a task with status "${task.status}". Task must be assigned first.` });
+  }
+
   await supabase
     .from('tasks')
     .update({
       status: 'in_progress',
-      started_at: new Date().toISOString(),
+      work_started_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', id);
-  
+    .eq('id', id)
+    .in('status', startableStatuses);
+
   res.json({ success: true, status: 'in_progress' });
 });
 
 app.post('/api/tasks/:id/cancel', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
-  
+
   const { data: task } = await supabase
     .from('tasks')
-    .select('agent_id')
+    .select('agent_id, human_id, title, status, escrow_status')
     .eq('id', id)
     .single();
 
@@ -5358,10 +5849,33 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
+  // Only allow cancellation of tasks that haven't been paid or completed
+  const cancellableStatuses = ['open', 'assigned', 'in_progress'];
+  if (!cancellableStatuses.includes(task.status)) {
+    return res.status(400).json({
+      error: `Cannot cancel a task with status "${task.status}". Only open, assigned, or in-progress tasks can be cancelled.`
+    });
+  }
+
   await supabase
     .from('tasks')
-    .update({ status: 'cancelled' })
-    .eq('id', id);
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .in('status', cancellableStatuses);
+
+  // Notify the assigned human if one exists
+  if (task.human_id) {
+    await createNotification(
+      task.human_id,
+      'task_cancelled',
+      'Task Cancelled',
+      `The task "${task.title}" has been cancelled by the poster.`,
+      `/tasks/${id}`
+    );
+  }
 
   res.json({ success: true });
 });

@@ -1,5 +1,13 @@
 // irlwork.ai - Modern Clean UI
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import {
+  BarChart3, ClipboardList, Plus, Users, Handshake, MessageCircle,
+  CreditCard, User, Settings, Check, Timer, MapPin, DollarSign,
+  Star, CalendarDays, Search, ChevronDown, Upload, Bell,
+  FileText, CheckCircle, XCircle, Landmark, Scale, Ban, ArrowDownLeft,
+  Shield, Hourglass, Bot, FolderOpen, RefreshCw,
+  Monitor, Sparkles, AlertTriangle
+} from 'lucide-react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -24,6 +32,7 @@ import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
 import FeedbackButton from './components/FeedbackButton'
+import DashboardTour from './components/DashboardTour'
 const StripeProvider = lazy(() => import('./components/StripeProvider'))
 const PaymentMethodForm = lazy(() => import('./components/PaymentMethodForm'))
 const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
@@ -31,7 +40,7 @@ import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIc
 
 import CityAutocomplete from './components/CityAutocomplete'
 import { TASK_CATEGORIES } from './components/CategoryPills'
-import { Copy, Check } from 'lucide-react'
+import { Copy } from 'lucide-react'
 import StandaloneTaskDetailPage from './pages/TaskDetailPage'
 
 // Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
@@ -50,7 +59,7 @@ class TabErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 40, textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
+          <div style={{ marginBottom: 16 }}><AlertTriangle size={32} /></div>
           <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>This section encountered an error</h3>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>Try switching to another tab or refreshing the page.</p>
           <button
@@ -104,25 +113,28 @@ const styles = {
 }
 
 // === Icons ===
+const ICON_SIZE = 18
 const Icons = {
-  task: '📋',
-  create: '➕',
-  humans: '👥',
-  hired: '🤝',
-  messages: '💬',
-  wallet: '💳',
-  profile: '👤',
-  settings: '⚙️',
-  check: '✓',
-  clock: '⏱️',
-  location: '📍',
-  dollar: '💰',
-  star: '⭐',
-  calendar: '📅',
-  search: '🔍',
-  filter: '🔽',
-  upload: '📤',
-  bell: '🔔',
+  dashboard: <BarChart3 size={ICON_SIZE} />,
+  task: <ClipboardList size={ICON_SIZE} />,
+  create: <Plus size={ICON_SIZE} />,
+  humans: <Users size={ICON_SIZE} />,
+  hired: <Handshake size={ICON_SIZE} />,
+  messages: <MessageCircle size={ICON_SIZE} />,
+  wallet: <CreditCard size={ICON_SIZE} />,
+  profile: <User size={ICON_SIZE} />,
+  settings: <Settings size={ICON_SIZE} />,
+  check: <Check size={ICON_SIZE} />,
+  clock: <Timer size={ICON_SIZE} />,
+  location: <MapPin size={ICON_SIZE} />,
+  dollar: <DollarSign size={ICON_SIZE} />,
+  star: <Star size={ICON_SIZE} />,
+  calendar: <CalendarDays size={ICON_SIZE} />,
+  search: <Search size={ICON_SIZE} />,
+  filter: <ChevronDown size={ICON_SIZE} />,
+  upload: <Upload size={ICON_SIZE} />,
+  bell: <Bell size={ICON_SIZE} />,
+  admin: <Shield size={ICON_SIZE} />,
 }
 
 // === Components ===
@@ -645,7 +657,7 @@ function AuthPage({ onLogin, onNavigate }) {
       <div className="auth-v4">
         <div className="auth-v4-container">
           <div className="auth-v4-error-modal">
-            <div className="auth-v4-error-icon">⚠️</div>
+            <div className="auth-v4-error-icon"><AlertTriangle size={24} /></div>
             <h2 className="auth-v4-error-title">{errorModal.title}</h2>
             <p className="auth-v4-error-message">{errorModal.message}</p>
             {errorModal.details && (
@@ -743,7 +755,7 @@ function AuthPage({ onLogin, onNavigate }) {
                 className="auth-v4-input"
                 style={{ paddingRight: 44 }}
                 required
-                minLength={6}
+                minLength={8}
                 id="auth-password"
                 aria-label="Password"
               />
@@ -786,20 +798,60 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
   const [proofText, setProofText] = useState('')
   const [files, setFiles] = useState([])
   const [uploadedUrls, setUploadedUrls] = useState([])
+  const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef(null)
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files || [])
     if (selected.length + files.length > 3) {
       toast.error('Maximum 3 files allowed')
       return
     }
-    setFiles(prev => [...prev, ...selected].slice(0, 3))
+    const newFiles = [...files, ...selected].slice(0, 3)
+    setFiles(newFiles)
+
+    // Upload each new file to the backend
+    setUploading(true)
+    try {
+      for (const file of selected) {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+        const res = await fetch(`${API_URL}/upload/proof`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: task?.human_id || ''
+          },
+          body: JSON.stringify({ file: base64, filename: file.name, mimeType: file.type })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.url) {
+            setUploadedUrls(prev => [...prev, data.url])
+          }
+        } else {
+          toast.error(`Failed to upload ${file.name}`)
+        }
+      }
+    } catch (err) {
+      toast.error('Upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeFile = (index) => {
+    setFiles(prev => prev.filter((_, i) => i !== index))
+    setUploadedUrls(prev => prev.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async () => {
-    if (!proofText.trim() && uploadedUrls.length === 0) {
+    if (!proofText.trim() && uploadedUrls.length === 0 && files.length === 0) {
       toast.error('Please provide proof text or upload images')
       return
     }
@@ -812,54 +864,80 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
-      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Submit Proof</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
+      <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Submit Proof</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}>✕</button>
         </div>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Describe your work</label>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Describe your work</label>
             <textarea
               value={proofText}
               onChange={(e) => setProofText(e.target.value)}
               placeholder="Describe what you did to complete this task..."
               rows={4}
-              className={`${styles.input} resize-none`}
+              className="onboarding-v4-input"
+              style={{ resize: 'vertical', fontFamily: 'inherit' }}
             />
           </div>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Upload Proof (max 3 files)</label>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Upload Proof (max 3 files)</label>
             <div
-              className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center cursor-pointer hover:border-orange-500 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: '2px dashed var(--border)',
+                borderRadius: 12,
+                padding: 24,
+                textAlign: 'center',
+                cursor: files.length >= 3 ? 'default' : 'pointer',
+                opacity: files.length >= 3 ? 0.5 : 1,
+                transition: 'border-color 0.2s'
+              }}
+              onClick={() => files.length < 3 && fileInputRef.current?.click()}
             >
-              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
-              <div className="text-3xl mb-2">📤</div>
-              <p className="text-gray-400 text-sm">Click to upload images</p>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
+              <div style={{ fontSize: 28, marginBottom: 8 }}><Upload size={28} /></div>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>
+                {files.length >= 3 ? 'Maximum files reached' : 'Click to upload images'}
+              </p>
             </div>
             {files.length > 0 && (
-              <div className="flex gap-2 mt-3 flex-wrap">
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                 {files.map((file, i) => (
-                  <div key={i} className="bg-white/10 rounded-lg p-2 text-sm text-white">
-                    {file.name.slice(0, 15)}...
+                  <div key={i} style={{
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    fontSize: 13,
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    <span>{file.name.length > 18 ? file.name.slice(0, 18) + '...' : file.name}</span>
+                    <button onClick={() => removeFile(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14, padding: 0 }}>✕</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          {uploadedUrls.length > 0 && (
-            <p className="text-green-400 text-sm flex items-center gap-2">
-              <span>✓</span> {uploadedUrls.length} files uploaded
+          {uploading && (
+            <p style={{ fontSize: 13, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="loading-v4-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Uploading files...
+            </p>
+          )}
+          {uploadedUrls.length > 0 && !uploading && (
+            <p style={{ fontSize: 13, color: '#10B981', display: 'flex', alignItems: 'center', gap: 8 }}>
+              ✓ {uploadedUrls.length} file{uploadedUrls.length !== 1 ? 's' : ''} uploaded
             </p>
           )}
         </div>
-        <div className="flex gap-3 mt-6">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={handleSubmit} disabled={submitting}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+          <button className="v4-btn v4-btn-primary" style={{ flex: 1 }} onClick={handleSubmit} disabled={submitting || uploading}>
             {submitting ? 'Submitting...' : 'Submit Proof'}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -872,72 +950,78 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
   const [hours, setHours] = useState(24)
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
-      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Review Proof</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
+      <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Review Proof</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}>✕</button>
         </div>
-        <div className="space-y-4 mb-6">
-          <div className="bg-white/5 rounded-xl p-4">
-            <h3 className="font-semibold text-white mb-2">{task?.title}</h3>
-            <p className="text-gray-400 text-sm">{task?.description}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <div style={{ background: 'var(--bg-tertiary)', borderRadius: 12, padding: 16 }}>
+            <h3 style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>{task?.title}</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{task?.description}</p>
           </div>
           {task?.proof_description && (
-            <div className="bg-white/5 rounded-xl p-4">
-              <h4 className="text-gray-400 text-sm mb-2">Human's Proof:</h4>
-              <p className="text-white">{task.proof_description}</p>
+            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 12, padding: 16 }}>
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Human's Proof:</h4>
+              <p style={{ color: 'var(--text-primary)' }}>{task.proof_description}</p>
             </div>
           )}
           {task?.proof_urls?.length > 0 && (
             <div>
-              <h4 className="text-gray-400 text-sm mb-2">Proof Images:</h4>
-              <div className="flex gap-2 flex-wrap">
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Proof Images:</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {task.proof_urls.map((url, i) => (
-                  <img key={i} src={url} alt={`Proof ${i + 1}`} className="w-24 h-24 object-cover rounded-lg" />
+                  <img key={i} src={url} alt={`Proof ${i + 1}`} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
                 ))}
               </div>
             </div>
           )}
         </div>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Feedback (required for reject)</label>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Feedback (required for reject)</label>
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Provide feedback..."
               rows={3}
-              className={`${styles.input} resize-none`}
+              className="onboarding-v4-input"
+              style={{ resize: 'vertical', fontFamily: 'inherit' }}
             />
           </div>
           {rejecting && (
             <div>
-              <label className="block text-gray-400 text-sm mb-2">Extend deadline by (hours)</label>
+              <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Extend deadline by (hours)</label>
               <input
                 type="number"
                 value={hours}
                 onChange={(e) => setHours(parseInt(e.target.value) || 0)}
                 min={1}
                 max={168}
-                className={styles.input}
+                className="onboarding-v4-input"
               />
             </div>
           )}
         </div>
-        <div className="flex gap-3 mt-6">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>Close</Button>
-          <Button variant="secondary" className="flex-1" onClick={() => setRejecting(!rejecting)}>
-            {rejecting ? 'Cancel Reject' : 'Reject & Request Changes'}
-          </Button>
-          <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={onApprove}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Close</button>
+          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={() => setRejecting(!rejecting)}>
+            {rejecting ? 'Cancel Reject' : 'Reject'}
+          </button>
+          <button className="v4-btn v4-btn-primary" style={{ flex: 1, background: '#10B981' }} onClick={onApprove}>
             Approve & Pay
-          </Button>
+          </button>
         </div>
         {rejecting && (
-          <Button className="w-full mt-3 bg-red-600 hover:bg-red-700" onClick={() => onReject({ feedback, extendHours: hours })} disabled={!feedback.trim()}>
+          <button
+            className="v4-btn"
+            style={{ width: '100%', marginTop: 12, background: '#DC2626', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: feedback.trim() ? 'pointer' : 'not-allowed', opacity: feedback.trim() ? 1 : 0.5 }}
+            onClick={() => onReject({ feedback, extendHours: hours })}
+            disabled={!feedback.trim()}
+          >
             Confirm Rejection
-          </Button>
+          </button>
         )}
       </div>
     </div>
@@ -1189,7 +1273,7 @@ function ApiKeysTab({ user }) {
                   display: 'flex',
                   gap: 10
                 }}>
-                  <span style={{ fontSize: 16 }}>⚠️</span>
+                  <AlertTriangle size={16} />
                   <p style={{ fontSize: 13, color: '#92400E' }}>
                     Make sure to save this key securely. It won't be shown again.
                   </p>
@@ -1430,16 +1514,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     const saved = localStorage.getItem('irlwork_hiringMode')
     return saved === 'true'
   })
-  const [showCreateForm, setShowCreateForm] = useState(false)
   const [humansSubTab, setHumansSubTab] = useState('browse')
-  const [tasksSubTab, setTasksSubTab] = useState('tasks')
-
-  // Read initial tab from URL query param
-  const getInitialTab = () => {
+  const [tasksSubTab, setTasksSubTab] = useState(() => {
     const params = new URLSearchParams(window.location.search)
-    const tabParam = params.get('tab')
-    // Derive mode from URL path, fallback to localStorage
-    const isHiringFromUrl = window.location.pathname === '/dashboard/hiring'
+    return params.get('tab') === 'create-task' ? 'create' : 'tasks'
+  })
+
+  // Read initial tab from URL path: /dashboard/working/browse → 'browse'
+  const getInitialTab = () => {
+    const pathParts = window.location.pathname.split('/')
+    // pathParts: ['', 'dashboard', 'working', 'browse'] or ['', 'dashboard', 'hiring']
+    const isHiringFromUrl = pathParts[2] === 'hiring'
+    const tabSegment = pathParts[3] || null
+
+    // Also support legacy ?tab= query param for backwards compat
+    const params = new URLSearchParams(window.location.search)
+    const tabParam = tabSegment || params.get('tab')
 
     // Valid tabs for each mode
     const humanTabs = ['dashboard', 'tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
@@ -1466,13 +1556,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       if (!isHiringFromUrl && humanTabs.includes(mappedTab)) return mappedTab
     }
 
-    return 'dashboard'
+    return isHiringFromUrl ? 'posted' : 'tasks'
   }
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
 
-  // Helper to update URL query param without page reload
+  // Helper to update URL path without page reload
   const updateTabUrl = (tabId, mode) => {
     // Map internal tab IDs to URL-friendly names
     const urlMap = {
@@ -1488,7 +1578,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
     const urlTab = urlMap[tabId] || tabId
     const modeSegment = (mode !== undefined ? mode : hiringMode) ? 'hiring' : 'working'
-    const newUrl = `/dashboard/${modeSegment}?tab=${urlTab}`
+    const newUrl = `/dashboard/${modeSegment}/${urlTab}`
     window.history.pushState({}, '', newUrl)
   }
 
@@ -1509,6 +1599,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [messages, setMessages] = useState([])
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [newMessage, setNewMessage] = useState('')
+  const [messagesLoading, setMessagesLoading] = useState(false)
+  const [conversationsLoading, setConversationsLoading] = useState(false)
+  const [conversationsError, setConversationsError] = useState(null)
+  const [messagesError, setMessagesError] = useState(null)
+  const [sendingMessage, setSendingMessage] = useState(false)
+  const [messageAttachments, setMessageAttachments] = useState([])
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
@@ -1516,9 +1613,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [radiusFilter, setRadiusFilter] = useState('50')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [agentConnected, setAgentConnected] = useState(() => localStorage.getItem('irlwork_agentConnected') === 'true')
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
+
+  // Dashboard tour state — show for first-time users who haven't completed the tour
+  const [showTour, setShowTour] = useState(() => {
+    return localStorage.getItem('irlwork_tour_completed') !== 'true'
+  })
 
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
@@ -1596,7 +1699,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Unread counts for badges
   const [unreadMessages, setUnreadMessages] = useState(0)
-  const unreadNotifications = notifications.filter(n => !n.read_at).length
+  const unreadNotifications = notifications.filter(n => !n.is_read).length
 
   // Notification dropdown state
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
@@ -1607,7 +1710,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Working mode: Dashboard, My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'dashboard', label: 'Dashboard', icon: Icons.dashboard },
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
@@ -1616,7 +1719,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Hiring mode: Dashboard, My Tasks, Humans, Messages, Payments
   const hiringNav = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'dashboard', label: 'Dashboard', icon: Icons.dashboard },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Humans', icon: Icons.humans },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
@@ -1625,14 +1728,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Add admin tab if user is admin
   const baseNav = hiringMode ? hiringNav : humanNav
-  const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: '🛡️' }] : baseNav
+  const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: Icons.admin }] : baseNav
 
   // Mark all notifications as read and remove them from the list
   const markAllNotificationsRead = async () => {
     try {
-      const unreadIds = notifications.filter(n => !n.read_at).map(n => n.id)
+      const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
       // Remove unread notifications from state immediately
-      setNotifications(prev => prev.filter(n => n.read_at))
+      setNotifications(prev => prev.filter(n => n.is_read))
       // Mark each as read in backend (fire and forget)
       for (const id of unreadIds) {
         fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
@@ -1653,20 +1756,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   // Handle browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
-      // Detect mode from URL path
-      const path = window.location.pathname
-      if (path === '/dashboard/hiring' && !hiringMode) {
+      const pathParts = window.location.pathname.split('/')
+      const mode = pathParts[2] // 'working' or 'hiring'
+      const tabSegment = pathParts[3] || null
+      const isHiring = mode === 'hiring'
+
+      // Detect mode change from URL path
+      if (isHiring && !hiringMode) {
         setHiringMode(true)
         setActiveTabState('posted')
-      } else if (path === '/dashboard/working' && hiringMode) {
+      } else if (!isHiring && hiringMode) {
         setHiringMode(false)
         setActiveTabState('tasks')
       }
 
-      const params = new URLSearchParams(window.location.search)
-      const tabParam = params.get('tab')
+      // Also support legacy ?tab= query param
+      const tabParam = tabSegment || new URLSearchParams(window.location.search).get('tab')
       if (tabParam) {
-        const isHiring = path === '/dashboard/hiring'
+        const isHiring = mode === 'hiring'
         const tabMap = {
           'dashboard': 'dashboard',
           'create-task': 'posted',
@@ -1749,6 +1856,50 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       safeSupabase.removeChannel(applicationsChannel)
     }
   }, [hiringMode, user, expandedTask])
+
+  // Poll for new messages when Messages tab is active and a conversation is selected
+  useEffect(() => {
+    if (activeTab !== 'messages' || !selectedConversation) return
+    const interval = setInterval(() => {
+      fetchMessages(selectedConversation, true) // skipMarkRead on polls — already marked on open
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [activeTab, selectedConversation])
+
+  // Background refresh: keep unread badge fresh
+  useEffect(() => {
+    if (!user) return
+    const interval = setInterval(() => {
+      fetchUnreadMessages()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [user])
+
+  // Real-time subscription for new messages
+  useEffect(() => {
+    if (!user) return
+
+    const messagesChannel = safeSupabase
+      .channel(`user-messages-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          // If we're viewing the conversation this message belongs to, refresh it
+          if (selectedConversation && payload.new?.conversation_id === selectedConversation) {
+            fetchMessages(selectedConversation, true)
+          }
+          // Always refresh unread count and conversation list
+          fetchUnreadMessages()
+          fetchConversations()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      safeSupabase.removeChannel(messagesChannel)
+    }
+  }, [user, selectedConversation])
 
   const fetchTasks = async () => {
     try {
@@ -1885,7 +2036,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       if (res.ok) {
         const data = await res.json()
         // Only show unread notifications — clicked/read ones are removed from the list
-        setNotifications((data || []).filter(n => !n.read_at))
+        setNotifications((data || []).filter(n => !n.is_read))
       }
     } catch (e) {
       debug('Could not fetch notifications')
@@ -1901,23 +2052,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Notification icon map for all notification types
   const NOTIFICATION_ICONS = {
-    task_assigned: '📋',
-    proof_submitted: '📝',
-    proof_approved: '✅',
-    proof_rejected: '❌',
-    payment_released: '💰',
-    payment_approved: '💰',
-    payment_sent: '💸',
-    deposit_confirmed: '🏦',
-    dispute_opened: '⚖️',
-    dispute_filed: '⚖️',
-    dispute_created: '⚖️',
-    dispute_resolved: '✅',
-    rating_received: '⭐',
-    rating_visible: '⭐',
-    new_message: '💬',
-    assignment_cancelled: '🚫',
-    refund_processed: '💸',
+    task_assigned: <ClipboardList size={18} />,
+    proof_submitted: <FileText size={18} />,
+    proof_approved: <CheckCircle size={18} />,
+    proof_rejected: <XCircle size={18} />,
+    payment_released: <DollarSign size={18} />,
+    payment_approved: <DollarSign size={18} />,
+    payment_sent: <ArrowDownLeft size={18} />,
+    deposit_confirmed: <Landmark size={18} />,
+    dispute_opened: <Scale size={18} />,
+    dispute_filed: <Scale size={18} />,
+    dispute_created: <Scale size={18} />,
+    dispute_resolved: <CheckCircle size={18} />,
+    rating_received: <Star size={18} />,
+    rating_visible: <Star size={18} />,
+    new_message: <MessageCircle size={18} />,
+    assignment_cancelled: <Ban size={18} />,
+    refund_processed: <ArrowDownLeft size={18} />,
   }
 
   // Navigate to a notification's linked page
@@ -1943,7 +2094,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       return
     }
 
-    // Dashboard with query params (e.g. /dashboard?task=xxx or /dashboard/hiring?tab=xxx)
+    // Dashboard links (e.g. /dashboard/hiring/payments or legacy /dashboard?task=xxx)
     if (link.startsWith('/dashboard')) {
       const params = new URLSearchParams(link.split('?')[1] || '')
       const taskId = params.get('task')
@@ -1951,7 +2102,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         window.location.href = `/tasks/${taskId}`
         return
       }
-      const tab = params.get('tab')
+      // Parse tab from path segment: /dashboard/working/browse → 'browse'
+      const linkParts = link.split('?')[0].split('/')
+      const tabFromPath = linkParts[3] || null
+      const tab = tabFromPath || params.get('tab')
       if (tab) {
         setActiveTab(tab)
       }
@@ -1975,13 +2129,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchConversations = async () => {
+    setConversationsLoading(prev => prev || conversations.length === 0) // Only show loading on first load
     try {
       const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
         setConversations(data || [])
+        setConversationsError(null)
+      } else {
+        setConversationsError('Failed to load conversations')
       }
-    } catch (e) {}
+    } catch (e) {
+      setConversationsError('Network error. Check your connection.')
+    } finally {
+      setConversationsLoading(false)
+    }
   }
 
   const fetchUnreadMessages = async () => {
@@ -1991,7 +2153,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         const data = await res.json()
         setUnreadMessages(data.count || 0)
       }
-    } catch (e) {}
+    } catch (e) {
+      debug('Could not fetch unread count')
+    }
   }
 
   const handleCreateTask = async (e) => {
@@ -2009,6 +2173,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
     if (!taskForm.budget || parseFloat(taskForm.budget) < 5) {
       setCreateTaskError('Budget must be at least $5')
+      return
+    }
+    if (!taskForm.is_remote && !taskForm.city.trim()) {
+      setCreateTaskError('City is required for in-person tasks')
       return
     }
 
@@ -2043,8 +2211,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
-        // Close create form and stay on posted tab
-        setShowCreateForm(false)
+        // Switch to posted tasks list
+        setTasksSubTab('tasks')
         setActiveTab('posted')
       } else {
         const err = await res.json()
@@ -2057,28 +2225,116 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
   }
 
-  const fetchMessages = async (conversationId) => {
+  const fetchMessages = async (conversationId, skipMarkRead = false) => {
+    if (!skipMarkRead) setMessagesLoading(true)
     try {
       const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
-        setMessages(data || [])
+        // Sort by created_at to guarantee chronological order (#3)
+        const sorted = (data || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        setMessages(sorted)
+        setMessagesError(null)
+        // Mark messages as read when opening a conversation (matches TaskDetailPage pattern)
+        if (!skipMarkRead) {
+          fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
+            method: 'PUT',
+            headers: { Authorization: user.id }
+          }).then(() => {
+            fetchUnreadMessages()
+            fetchConversations()
+          }).catch(() => {})
+        }
+      } else {
+        setMessagesError('Failed to load messages')
       }
-    } catch (e) {}
+    } catch (e) {
+      setMessagesError('Network error. Check your connection.')
+    } finally {
+      setMessagesLoading(false)
+    }
   }
 
   const sendMessage = async (e) => {
     e.preventDefault()
-    if (!newMessage.trim() || !selectedConversation) return
+    if ((!newMessage.trim() && messageAttachments.length === 0) || !selectedConversation) return
+    const msgContent = newMessage
+    const attachmentsToSend = [...messageAttachments]
+    setNewMessage('') // Clear immediately for responsiveness
+    setMessageAttachments([])
+    setSendingMessage(true)
     try {
-      await fetch(`${API_URL}/messages`, {
+      const body = { conversation_id: selectedConversation, content: msgContent }
+      if (attachmentsToSend.length > 0) {
+        body.attachments = attachmentsToSend
+      }
+      const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.id },
-        body: JSON.stringify({ conversation_id: selectedConversation, content: newMessage })
+        body: JSON.stringify(body)
       })
-      setNewMessage('')
-      fetchMessages(selectedConversation)
-    } catch (e) {}
+      if (!res.ok) {
+        throw new Error('Failed to send')
+      }
+      fetchMessages(selectedConversation, true)
+      fetchConversations()
+    } catch (e) {
+      setNewMessage(msgContent) // Restore on error
+      setMessageAttachments(attachmentsToSend)
+      toast.error('Message failed to send. Please try again.')
+    } finally {
+      setSendingMessage(false)
+    }
+  }
+
+  // Upload attachment for messages (#7)
+  const handleAttachmentUpload = async (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    if (messageAttachments.length + files.length > 5) {
+      toast.error('Maximum 5 attachments per message')
+      return
+    }
+
+    setUploadingAttachment(true)
+    try {
+      for (const file of files) {
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is too large. Maximum 10MB.`)
+          continue
+        }
+
+        const reader = new FileReader()
+        const base64 = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+
+        const res = await fetch(`${API_URL}/upload/message-attachment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+          body: JSON.stringify({ file: base64, filename: file.name, mimeType: file.type })
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          setMessageAttachments(prev => [...prev, {
+            url: data.url,
+            name: file.name,
+            type: file.type,
+            size: file.size
+          }])
+        } else {
+          toast.error(`Failed to upload ${file.name}`)
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to upload attachment')
+    } finally {
+      setUploadingAttachment(false)
+      e.target.value = '' // Reset file input
+    }
   }
 
   const acceptTask = async (taskId) => {
@@ -2214,7 +2470,48 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
         </a>
 
-        {/* Mode Switch - mobile only */}
+        {/* Connect to AI Agent CTA - top of sidebar in hiring mode */}
+        {hiringMode && (
+          <div className="dashboard-v4-connect-agent-sidebar-top">
+            <button
+              onClick={() => !agentConnected && (window.location.href = '/connect-agent')}
+              className={`dashboard-v4-connect-agent-btn-top ${agentConnected ? 'connected' : ''}`}
+            >
+              <span className="dashboard-v4-connect-agent-icon">{agentConnected ? <CheckCircle size={16} /> : <Bot size={16} />}</span>
+              <span>{agentConnected ? 'AI Agent Connected' : 'Connect to AI Agent'}</span>
+              {!agentConnected && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', opacity: 0.5 }}>
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
+
+
+        {/* Navigation */}
+        <nav className="dashboard-v4-nav">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id)
+                setSidebarOpen(false)
+              }}
+              className={`dashboard-v4-nav-item ${activeTab === item.id ? 'active' : ''}`}
+            >
+              <div className="dashboard-v4-nav-item-content">
+                <span className="dashboard-v4-nav-icon">{item.icon}</span>
+                <span className="dashboard-v4-nav-label">{item.label}</span>
+              </div>
+              {item.badge > 0 && (
+                <span className="dashboard-v4-nav-badge">{item.badge}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
           {hiringMode ? (
             <button
@@ -2239,32 +2536,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <path d="M22 21v-2a4 4 0 00-3-3.87" />
                 <path d="M16 3.13a4 4 0 010 7.75" />
               </svg>
-              Switch to Hiring
+              Hire Humans
             </button>
           )}
         </div>
-
-        {/* Navigation */}
-        <nav className="dashboard-v4-nav">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id)
-                setSidebarOpen(false)
-              }}
-              className={`dashboard-v4-nav-item ${activeTab === item.id ? 'active' : ''}`}
-            >
-              <div className="dashboard-v4-nav-item-content">
-                <span className="dashboard-v4-nav-icon">{item.icon}</span>
-                <span className="dashboard-v4-nav-label">{item.label}</span>
-              </div>
-              {item.badge > 0 && (
-                <span className="dashboard-v4-nav-badge">{item.badge}</span>
-              )}
-            </button>
-          ))}
-        </nav>
 
         {/* Connect to AI Agent CTA - only show in hiring mode */}
         {hiringMode && (
@@ -2273,7 +2548,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               onClick={() => window.location.href = '/connect-agent'}
               className="dashboard-v4-connect-agent-btn"
             >
-              <span style={{ fontSize: 18 }}>🤖</span>
+              <span style={{ display: 'flex', alignItems: 'center' }}><Bot size={18} /></span>
               <span>Connect to AI Agent</span>
             </button>
           </div>
@@ -2320,6 +2595,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       {/* Sidebar Feedback Panel */}
       <FeedbackButton user={user} variant="sidebar" isOpen={feedbackOpen} onToggle={(v) => setFeedbackOpen(typeof v === 'boolean' ? v : !feedbackOpen)} />
 
+      {/* Dashboard Tour for first-time users */}
+      <DashboardTour
+        isOpen={showTour}
+        onComplete={() => setShowTour(false)}
+        hiringMode={hiringMode}
+      />
+
       {/* Main */}
       <main className="dashboard-v4-main">
         {/* Top Header Bar */}
@@ -2365,7 +2647,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             ) : (
               <>
                 <button
-                  className="dashboard-v4-topbar-link"
+                  className="dashboard-v4-topbar-link dashboard-v4-topbar-cta dashboard-v4-topbar-cta-teal"
                   onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2422,11 +2704,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       notifications.slice(0, 5).map(n => (
                         <div
                           key={n.id}
-                          className={`dashboard-v4-notification-dropdown-item ${!n.read_at ? 'unread' : ''}`}
+                          className={`dashboard-v4-notification-dropdown-item ${!n.is_read ? 'unread' : ''}`}
                           onClick={() => navigateToNotification(n)}
                         >
                           <div className="dashboard-v4-notification-dropdown-icon">
-                            {NOTIFICATION_ICONS[n.type] || '🔔'}
+                            {NOTIFICATION_ICONS[n.type] || <Bell size={18} />}
                           </div>
                           <div className="dashboard-v4-notification-dropdown-content">
                             <p className="dashboard-v4-notification-dropdown-title">{n.title}</p>
@@ -2434,7 +2716,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                               {new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                          {!n.read_at && <div className="dashboard-v4-notification-dropdown-dot" />}
+                          {!n.is_read && <div className="dashboard-v4-notification-dropdown-dot" />}
                         </div>
                       ))
                     )}
@@ -2532,41 +2814,45 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              {tasksSubTab === 'tasks' && (
-                <button
-                  className="v4-btn v4-btn-primary"
-                  onClick={() => setShowCreateForm(!showCreateForm)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}
-                >
-                  {showCreateForm ? 'Cancel' : '+ Create Task'}
-                </button>
-              )}
-            </div>
+            <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
 
-            {/* Sub-tabs: Tasks / Disputes */}
+            {/* Sub-tabs: Create Task / Posted Tasks / Disputes */}
             <div className="dashboard-v4-sub-tabs">
               <button
-                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => setTasksSubTab('tasks')}
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); }}
               >
-                Tasks
+                + Create Task
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); }}
+              >
+                Posted Tasks
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
-                onClick={() => setTasksSubTab('disputes')}
+                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); }}
               >
                 Disputes
               </button>
             </div>
 
-            {tasksSubTab === 'tasks' && showCreateForm && (
-              <div style={{ marginTop: 16, marginBottom: 24 }}>
+            {tasksSubTab === 'create' && (
+              <div style={{ marginTop: 16 }}>
                 <div className="dashboard-v4-form">
+                  <h2 className="dashboard-v4-form-title">Create a New Task</h2>
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
+
+                    {/* Basic Info */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Basic Info</span>
+                    </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Task Title</label>
+                      <label className="dashboard-v4-form-label">
+                        Task Title <span className="dashboard-v4-form-required">*</span>
+                      </label>
                       <input
                         type="text"
                         placeholder="What do you need done?"
@@ -2575,8 +2861,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
                       />
                     </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Description</label>
+                      <label className="dashboard-v4-form-label">
+                        Description <span className="dashboard-v4-form-optional">(optional)</span>
+                      </label>
                       <textarea
                         placeholder="Provide details about the task..."
                         className="dashboard-v4-form-input dashboard-v4-form-textarea"
@@ -2584,9 +2873,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                       />
                     </div>
+
                     <div className="dashboard-form-grid-2col">
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Category</label>
+                        <label className="dashboard-v4-form-label">
+                          Category <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <CustomDropdown
                           value={taskForm.category}
                           onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
@@ -2601,7 +2893,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Budget (USD)</label>
+                        <label className="dashboard-v4-form-label">
+                          Budget (USD) <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <input
                           type="number"
                           placeholder="$"
@@ -2612,9 +2906,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     </div>
+
+                    {/* Schedule & Duration */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Schedule & Duration</span>
+                    </div>
+
                     <div className="dashboard-form-grid-2col">
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Duration (hours)</label>
+                        <label className="dashboard-v4-form-label">
+                          Duration (hours) <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
                         <input
                           type="number"
                           placeholder="e.g. 2"
@@ -2626,7 +2928,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Deadline</label>
+                        <label className="dashboard-v4-form-label">
+                          Deadline <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
                         <input
                           type="datetime-local"
                           className="dashboard-v4-form-input"
@@ -2635,33 +2939,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     </div>
-                    <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Requirements (optional)</label>
-                      <textarea
-                        placeholder="Any specific requirements or qualifications needed..."
-                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                        value={taskForm.requirements}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                        rows={2}
-                      />
+
+                    {/* Location */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Location</span>
                     </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label style={{
-                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                        fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={taskForm.is_remote}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                          style={{ width: 18, height: 18, cursor: 'pointer' }}
-                        />
-                        This task can be done remotely
-                      </label>
+                      <label className="dashboard-v4-form-label">Is this task remote?</label>
+                      <div className="dashboard-v4-toggle-group">
+                        <button
+                          type="button"
+                          className={`dashboard-v4-toggle-btn ${taskForm.is_remote ? 'active' : ''}`}
+                          onClick={() => setTaskForm(prev => ({ ...prev, is_remote: true }))}
+                        >
+                          Yes, remote
+                        </button>
+                        <button
+                          type="button"
+                          className={`dashboard-v4-toggle-btn ${!taskForm.is_remote ? 'active' : ''}`}
+                          onClick={() => setTaskForm(prev => ({ ...prev, is_remote: false }))}
+                        >
+                          No, in-person
+                        </button>
+                      </div>
                     </div>
+
                     {!taskForm.is_remote && (
                       <div className="dashboard-v4-form-group">
-                        <label className="dashboard-v4-form-label">City</label>
+                        <label className="dashboard-v4-form-label">
+                          City <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <CityAutocomplete
                           value={taskForm.city}
                           onChange={(locationData) => setTaskForm(prev => ({
@@ -2677,6 +2985,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     )}
+
+                    {/* Additional Info */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Additional Info</span>
+                    </div>
+
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">
+                        Requirements <span className="dashboard-v4-form-optional">(optional)</span>
+                      </label>
+                      <textarea
+                        placeholder="Any specific requirements or qualifications needed..."
+                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                        value={taskForm.requirements}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                        rows={2}
+                      />
+                    </div>
+
                     {createTaskError && (
                       <div className="dashboard-v4-form-error">{createTaskError}</div>
                     )}
@@ -2692,7 +3019,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <>
                 {loading ? (
                   <div className="dashboard-v4-empty">
-                    <div className="dashboard-v4-empty-icon">⏳</div>
+                    <div className="dashboard-v4-empty-icon"><Hourglass size={24} /></div>
                     <p className="dashboard-v4-empty-text">Loading...</p>
                   </div>
                 ) : postedTasks.length === 0 ? (
@@ -2722,10 +3049,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           </div>
 
                           <div className="dashboard-v4-task-meta">
-                            <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                            <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
+                            <span className="dashboard-v4-task-meta-item"><FolderOpen size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.category || 'General'}</span>
+                            <span className="dashboard-v4-task-meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
                             {task.assignee && (
-                              <span className="dashboard-v4-task-meta-item">👤 {task.assignee.name}</span>
+                              <span className="dashboard-v4-task-meta-item"><User size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.assignee.name}</span>
                             )}
                           </div>
 
@@ -2761,10 +3088,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                           <div>
                                             <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
                                             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                              ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                              <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
                                             </p>
                                             {app.cover_letter && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>"{app.cover_letter}"</p>
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
+                                            )}
+                                            {app.availability && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
+                                            )}
+                                            {app.questions && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
+                                            )}
+                                            {app.proposed_rate != null && (
+                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate} USDC</p>
                                             )}
                                           </div>
                                         </div>
@@ -2791,7 +3127,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             </div>
                           )}
                           {task.status === 'paid' && (
-                            <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}>💸 Payment released</p>
+                            <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}><ArrowDownLeft size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Payment released</p>
                           )}
                         </div>
                       )
@@ -3740,79 +4076,256 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         )}
 
         {/* Messages Tab */}
-        {activeTab === 'messages' && (
+        {activeTab === 'messages' && (() => {
+          // Helper: resolve the "other" party in a conversation
+          const getOtherParty = (c) => {
+            if (!c || !user) return { name: 'Unknown', avatar_url: null }
+            if (c.human_id === user.id) return c.agent || { name: 'Unknown Agent', avatar_url: null }
+            return c.human || { name: 'Unknown Human', avatar_url: null }
+          }
+          // Helper: online status from last_active_at (#8)
+          const getOnlineStatus = (party) => {
+            if (!party?.last_active_at) return { status: 'offline', label: 'Offline' }
+            const diff = Date.now() - new Date(party.last_active_at).getTime()
+            if (diff < 5 * 60 * 1000) return { status: 'online', label: 'Online', color: '#22C55E' }
+            if (diff < 30 * 60 * 1000) return { status: 'idle', label: 'Away', color: '#F59E0B' }
+            return { status: 'offline', label: 'Offline', color: '#9CA3AF' }
+          }
+          // Helper: relative time
+          const timeAgo = (dateStr) => {
+            if (!dateStr) return ''
+            const diff = Date.now() - new Date(dateStr).getTime()
+            const mins = Math.floor(diff / 60000)
+            if (mins < 1) return 'now'
+            if (mins < 60) return `${mins}m`
+            const hrs = Math.floor(mins / 60)
+            if (hrs < 24) return `${hrs}h`
+            const days = Math.floor(hrs / 24)
+            if (days < 7) return `${days}d`
+            return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          }
+          // Helper: render attachment in a message
+          const renderAttachment = (att) => {
+            const isImage = att.type?.startsWith('image/')
+            if (isImage) {
+              return (
+                <a href={att.url} target="_blank" rel="noopener noreferrer" key={att.url} style={{ display: 'block', marginTop: 6 }}>
+                  <img src={att.url} alt={att.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover' }} />
+                </a>
+              )
+            }
+            return (
+              <a href={att.url} target="_blank" rel="noopener noreferrer" key={att.url}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '6px 10px', background: 'rgba(0,0,0,0.05)', borderRadius: 8, textDecoration: 'none', fontSize: 12, color: 'inherit' }}>
+                <span>📎</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name || 'Attachment'}</span>
+                {att.size ? <span style={{ opacity: 0.6, flexShrink: 0 }}>({(att.size / 1024).toFixed(0)}KB)</span> : null}
+              </a>
+            )
+          }
+
+          const activeConv = conversations.find(c => c.id === selectedConversation)
+          const activeOther = activeConv ? getOtherParty(activeConv) : null
+          const activeOnline = activeOther ? getOnlineStatus(activeOther) : null
+          const fileInputRef = React.createRef()
+
+          return (
           <div>
             <h1 className="dashboard-v4-page-title">Messages</h1>
 
             <div className="dashboard-v4-messages">
               {/* Conversations List */}
-              <div className={`dashboard-v4-conversations ${selectedConversation ? 'hidden md:block' : 'block'}`}>
-                {conversations.length === 0 ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>No conversations yet</div>
+              <div className={`dashboard-v4-conversations ${selectedConversation ? 'msg-hide-mobile' : ''}`} style={{ overflowY: 'auto' }}>
+                {conversationsLoading && conversations.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: 'center' }}>
+                    <div className="msg-spinner" />
+                    <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 12 }}>Loading conversations...</p>
+                  </div>
+                ) : conversationsError && conversations.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
+                    <p style={{ fontWeight: 500, marginBottom: 8, color: 'var(--text-secondary)' }}>{conversationsError}</p>
+                    <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div style={{ marginBottom: 8 }}><MessageCircle size={32} /></div>
+                    <p style={{ fontWeight: 500, marginBottom: 4 }}>No conversations yet</p>
+                    <p style={{ fontSize: 13 }}>Messages will appear here when you communicate about a task</p>
+                  </div>
                 ) : (
-                  conversations.map(c => (
+                  conversations.map(c => {
+                    const other = getOtherParty(c)
+                    const online = getOnlineStatus(other)
+                    return (
                     <div
                       key={c.id}
                       className={`dashboard-v4-conversation-item ${selectedConversation === c.id ? 'active' : ''}`}
                       onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
                     >
-                      <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                        {c.other_user?.name?.charAt(0) || '?'}
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {other.avatar_url ? (
+                          <img src={other.avatar_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 15 }}>
+                            {other.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        {/* Online status dot (#8) */}
+                        <span style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: '50%', background: online.color, border: '2px solid white' }} title={online.label} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.otherUser?.name || 'Unknown'}</p>
-                        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last_message || 'No messages'}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <p style={{ fontWeight: c.unread > 0 ? 700 : 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, margin: 0 }}>{other.name}</p>
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{timeAgo(c.updated_at)}</span>
+                        </div>
+                        {c.task && (
+                          <p style={{ fontSize: 12, color: 'var(--orange-600)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '0 0 2px 0' }}>
+                            {c.task.title}
+                          </p>
+                        )}
+                        <p style={{ fontSize: 13, color: c.unread > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontWeight: c.unread > 0 ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{c.last_message || 'No messages yet'}</p>
                       </div>
                       {c.unread > 0 && (
-                        <span className="dashboard-v4-nav-badge">{c.unread}</span>
+                        <span style={{ background: 'var(--orange-600)', color: 'white', borderRadius: '50%', minWidth: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, padding: '0 5px' }}>
+                          {c.unread}
+                        </span>
                       )}
                     </div>
-                  ))
+                  )})
                 )}
               </div>
 
               {/* Messages Thread */}
-              <div className={`dashboard-v4-message-thread ${selectedConversation ? 'block' : 'hidden md:flex'}`}>
-                {selectedConversation ? (
+              <div className={`dashboard-v4-message-thread ${selectedConversation ? '' : 'msg-hide-mobile'}`}>
+                {selectedConversation && activeConv ? (
                   <>
-                    {/* Mobile Back Button */}
-                    <div className="flex md:hidden items-center gap-2" style={{ padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                      <button onClick={() => setSelectedConversation(null)} style={{ padding: 8, background: 'none', border: 'none', cursor: 'pointer' }}>
-                        ← Back
+                    {/* Thread Header: back button + other party + task link + online status */}
+                    <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(26,26,26,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
+                      <button onClick={() => setSelectedConversation(null)} className="msg-back-btn" style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)' }}>
+                        ←
                       </button>
-                    </div>
-                    <div className="dashboard-v4-message-list">
-                      {messages.map(m => (
-                        <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
-                          <p>{m.content}</p>
-                          <p style={{ fontSize: 11, marginTop: 4, opacity: 0.7 }}>
-                            {new Date(m.created_at).toLocaleTimeString()}
-                          </p>
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {activeOther?.avatar_url ? (
+                          <img src={activeOther.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 13 }}>
+                            {activeOther?.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        <span style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', background: activeOnline?.color || '#9CA3AF', border: '2px solid white' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{activeOther?.name}</p>
+                          <span style={{ fontSize: 11, color: activeOnline?.color || '#9CA3AF' }}>{activeOnline?.label}</span>
                         </div>
-                      ))}
+                        {activeConv.task && (
+                          <a
+                            href={`/tasks/${activeConv.task.id}`}
+                            style={{ fontSize: 12, color: 'var(--orange-600)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                            onClick={(e) => { e.stopPropagation() }}
+                          >
+                            {activeConv.task.title} →
+                          </a>
+                        )}
+                      </div>
+                      {activeConv.task && (
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', background: 'rgba(224,122,95,0.1)', padding: '2px 8px', borderRadius: 6, flexShrink: 0 }}>
+                          ${activeConv.task.budget}
+                        </span>
+                      )}
                     </div>
-                    <div className="dashboard-v4-message-input">
-                      <input
-                        type="text"
+
+                    {/* Messages */}
+                    <div className="dashboard-v4-message-list" ref={el => { if (el) el.scrollTop = el.scrollHeight }}>
+                      {messagesLoading ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
+                          <div className="msg-spinner" />
+                          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: 0 }}>Loading messages...</p>
+                        </div>
+                      ) : messagesError ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
+                          <span style={{ fontSize: 24 }}>⚠️</span>
+                          <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>{messagesError}</p>
+                          <button onClick={() => fetchMessages(selectedConversation)} className="v4-btn v4-btn-secondary" style={{ fontSize: 12, padding: '4px 12px' }}>Retry</button>
+                        </div>
+                      ) : messages.length === 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: 14 }}>
+                          No messages yet — send one to start the conversation
+                        </div>
+                      ) : (
+                        messages.map(m => {
+                          const attachments = m.metadata?.attachments || []
+                          return (
+                          <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
+                            {m.sender_id !== user.id && m.sender?.name && (
+                              <p style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, opacity: 0.7 }}>{m.sender.name}</p>
+                            )}
+                            {m.content && <p style={{ margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</p>}
+                            {attachments.map(att => renderAttachment(att))}
+                            <p style={{ fontSize: 11, marginTop: 4, opacity: 0.6, margin: 0 }}>
+                              {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        )})
+                      )}
+                    </div>
+
+                    {/* Attachment preview strip */}
+                    {messageAttachments.length > 0 && (
+                      <div style={{ padding: '6px 16px', borderTop: '1px solid rgba(26,26,26,0.06)', display: 'flex', gap: 8, flexWrap: 'wrap', background: '#FAFAFA' }}>
+                        {messageAttachments.map((att, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'white', border: '1px solid rgba(26,26,26,0.1)', borderRadius: 8, padding: '4px 8px', fontSize: 12 }}>
+                            {att.type?.startsWith('image/') ? (
+                              <img src={att.url} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
+                            ) : <span>📎</span>}
+                            <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+                            <button onClick={() => setMessageAttachments(prev => prev.filter((_, j) => j !== i))}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-tertiary)', padding: 0, lineHeight: 1 }}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Input with attachment button (#7) */}
+                    <div className="dashboard-v4-message-input" style={{ alignItems: 'flex-end' }}>
+                      <input type="file" ref={fileInputRef} onChange={handleAttachmentUpload} multiple accept="image/*,.pdf,.doc,.docx,.txt" style={{ display: 'none' }} />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAttachment}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: uploadingAttachment ? 'var(--text-tertiary)' : 'var(--text-secondary)', flexShrink: 0 }}
+                        title="Attach file"
+                      >
+                        {uploadingAttachment ? '⏳' : '📎'}
+                      </button>
+                      <textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type a message..."
                         className="dashboard-v4-form-input"
-                        style={{ flex: 1 }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(e) }}
+                        style={{ flex: 1, resize: 'none', minHeight: 40, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
+                        rows={1}
+                        disabled={sendingMessage}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(e) } }}
+                        onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
                       />
-                      <button className="v4-btn v4-btn-primary" onClick={sendMessage}>Send</button>
+                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={sendingMessage || (!newMessage.trim() && messageAttachments.length === 0)} style={{ minHeight: 40 }}>
+                        {sendingMessage ? '...' : 'Send'}
+                      </button>
                     </div>
                   </>
                 ) : (
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
-                    Select a conversation to start messaging
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', gap: 8 }}>
+                    <MessageCircle size={28} />
+                    <p style={{ margin: 0 }}>Select a conversation to start messaging</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        )}
+          )
+        })()}
 
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
@@ -3828,7 +4341,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {notifications.length === 0 ? (
               <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">🔔</div>
+                <div className="dashboard-v4-empty-icon"><Bell size={24} /></div>
                 <p className="dashboard-v4-empty-title">No notifications yet</p>
                 <p className="dashboard-v4-empty-text">You'll see updates about your tasks here</p>
               </div>
@@ -3837,11 +4350,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 {notifications.map(n => (
                   <div
                     key={n.id}
-                    className={`dashboard-v4-notification ${!n.read_at ? 'unread' : ''}`}
+                    className={`dashboard-v4-notification ${!n.is_read ? 'unread' : ''}`}
                     onClick={() => navigateToNotification(n)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <div className="dashboard-v4-notification-icon">{NOTIFICATION_ICONS[n.type] || '🔔'}</div>
+                    <div className="dashboard-v4-notification-icon">{NOTIFICATION_ICONS[n.type] || <Bell size={18} />}</div>
                     <div className="dashboard-v4-notification-content">
                       <p className="dashboard-v4-notification-title">{n.title}</p>
                       <p className="dashboard-v4-notification-text">{n.message}</p>
@@ -4172,7 +4685,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               </button>
             </div>
             <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring?tab=settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring/settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
           </div>
 
           {/* Step 2: Install */}
@@ -4244,7 +4757,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* ===== PLATFORM CONFIGS ===== */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>💻</span> Platform-Specific Setup</h2>
+          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> Platform-Specific Setup</h2>
 
           <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
             <h3>Claude Desktop</h3>
@@ -4553,7 +5066,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* Headless Setup - NEW SECTION */}
         <section id="headless-setup" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🤖</span> Headless Agent Setup</h2>
+          <h2 className="mcp-v4-section-title"><span><Bot size={18} /></span> Headless Agent Setup</h2>
           <p style={{ color: '#666', marginBottom: 24, fontSize: 15 }}>
             Register your AI agent and get an API key without ever touching a browser. Perfect for automated deployments.
           </p>
@@ -4646,7 +5159,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
                   <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
                 )}
                 <a
-                  href="/dashboard/hiring?tab=settings"
+                  href="/dashboard/hiring/settings"
                   className="btn-v4 btn-v4-primary"
                 >
                   Manage API Keys →
@@ -4774,7 +5287,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* Usage Examples */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>📝</span> Usage Examples</h2>
+          <h2 className="mcp-v4-section-title"><span><FileText size={18} /></span> Usage Examples</h2>
 
           <div className="mcp-v4-card">
             <h3>Search for humans with specific skills</h3>
@@ -4826,11 +5339,11 @@ Signature required. Bring to our office at 123 Main St.",
 
         {/* Two Ways to Hire */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🔄</span> Two Ways to Hire</h2>
+          <h2 className="mcp-v4-section-title"><span><RefreshCw size={18} /></span> Two Ways to Hire</h2>
 
           <div className="mcp-v4-two-col">
             <div className="mcp-v4-card">
-              <h3>💬 Direct Conversation</h3>
+              <h3><MessageCircle size={16} style={{ display: 'inline', verticalAlign: '-2px' }} /> Direct Conversation</h3>
               <ol className="mcp-v4-list">
                 <li>Use <code>list_humans</code> to find someone</li>
                 <li>Call <code>start_conversation</code> to discuss</li>
@@ -4842,7 +5355,7 @@ Signature required. Bring to our office at 123 Main St.",
             </div>
 
             <div className="mcp-v4-card">
-              <h3>📋 Post a Task (Bounty)</h3>
+              <h3><ClipboardList size={16} style={{ display: 'inline', verticalAlign: '-2px' }} /> Post a Task (Bounty)</h3>
               <ol className="mcp-v4-list">
                 <li>Call <code>post_task</code> with details</li>
                 <li>Humans browse and accept tasks</li>
@@ -4856,7 +5369,7 @@ Signature required. Bring to our office at 123 Main St.",
 
         {/* Best Practices */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>✨</span> Best Practices</h2>
+          <h2 className="mcp-v4-section-title"><span><Sparkles size={18} /></span> Best Practices</h2>
 
           <div className="mcp-v4-two-col">
             <div className="mcp-v4-card">
@@ -4952,7 +5465,7 @@ Signature required. Bring to our office at 123 Main St.",
             <div>
               <h4 className="footer-v4-column-title">Platform</h4>
               <div className="footer-v4-links">
-                <a href="/dashboard/working?tab=browse" className="footer-v4-link">Browse Tasks</a>
+                <a href="/dashboard/working/browse" className="footer-v4-link">Browse Tasks</a>
                 <a href="/auth" className="footer-v4-link">Sign Up</a>
                 <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
               </div>
@@ -5203,7 +5716,7 @@ function App() {
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
-        navigate('/dashboard/working?tab=browse')
+        navigate('/dashboard/working/browse')
       } else {
         const errorData = await res.json().catch(() => ({}))
         console.error('[Onboarding] Failed:', errorData)
@@ -5280,10 +5793,10 @@ function App() {
       return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
-    // Dashboard route - requires auth (matches /dashboard/working and /dashboard/hiring)
-    if (path === '/dashboard/working' || path === '/dashboard/hiring') {
+    // Dashboard route - requires auth (matches /dashboard/working/... and /dashboard/hiring/...)
+    if (path.startsWith('/dashboard/working') || path.startsWith('/dashboard/hiring')) {
       if (!user || user.needs_onboarding) return <Loading />
-      return <Dashboard user={user} onLogout={logout} initialMode={path === '/dashboard/hiring' ? 'hiring' : 'working'} onUserUpdate={setUser} />
+      return <Dashboard user={user} onLogout={logout} initialMode={path.startsWith('/dashboard/hiring') ? 'hiring' : 'working'} onUserUpdate={setUser} />
     }
 
     // Bare /dashboard redirect (handled by useEffect above, but guard here too)

@@ -53,24 +53,20 @@ async function promotePendingBalances(supabase, createNotification) {
     // Process each cleared transaction
     for (const tx of cleared) {
       try {
-        // Update status to 'available' — race condition guard: only update if still 'pending'
-        const { data: updated, error: updateError } = await supabase
+        // Atomic update with status precondition to prevent double-promotion
+        const { data: promoted, error: updateError } = await supabase
           .from('pending_transactions')
           .update({
             status: 'available',
             cleared_at: new Date().toISOString()
           })
           .eq('id', tx.id)
-          .eq('status', 'pending') // Guard: prevent overwriting frozen/withdrawn
-          .select();
+          .eq('status', 'pending')
+          .select('id')
+          .single();
 
-        if (updateError) {
-          console.error(`[BalancePromoter] Error updating transaction ${tx.id}:`, updateError);
-          continue;
-        }
-
-        if (!updated || updated.length === 0) {
-          console.warn(`[BalancePromoter] Transaction ${tx.id} was no longer pending (may be frozen/disputed), skipping`);
+        if (updateError || !promoted) {
+          console.warn(`[BalancePromoter] Transaction ${tx.id} already promoted or status changed, skipping`);
           continue;
         }
 
@@ -111,7 +107,7 @@ async function promotePendingBalances(supabase, createNotification) {
               const result = await transferToWorker(supabase, tx.id, worker.stripe_account_id, tx.amount_cents, tx.task_id);
               console.log(`[BalancePromoter] Auto-transferred $${amount.toFixed(2)} to Stripe account ${worker.stripe_account_id} (transfer: ${result.transfer_id})`);
 
-              // Mark as withdrawn — race condition guard: only if still 'available'
+              // Mark as withdrawn with status precondition
               await supabase
                 .from('pending_transactions')
                 .update({
@@ -120,7 +116,7 @@ async function promotePendingBalances(supabase, createNotification) {
                   withdrawn_at: new Date().toISOString()
                 })
                 .eq('id', tx.id)
-                .eq('status', 'available'); // Guard: prevent double-transfer
+                .eq('status', 'available');
             }
           }
           // If worker doesn't have Connect set up, funds stay as 'available'
