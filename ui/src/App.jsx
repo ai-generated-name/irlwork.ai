@@ -4706,7 +4706,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             <div className="mcp-v4-tools-grid">
               {[
                 { name: 'list_humans', desc: 'Search humans by skill, rate, location with pagination' },
-                { name: 'get_human', desc: 'Get detailed profile with availability and wallet info' },
+                { name: 'get_human', desc: 'Get detailed profile with availability and payment info' },
                 { name: 'list_skills', desc: 'Get all available human skills and categories' },
                 { name: 'get_reviews', desc: 'Get reviews and ratings for a specific human' }
               ].map((tool, i) => (

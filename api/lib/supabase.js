@@ -101,7 +101,7 @@ async function listHumans(filters = {}) {
 async function getHumanProfile(id) {
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, wallet_address, wallet_chain')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness')
     .eq('id', id)
     .eq('type', 'human')
     .single();
@@ -163,57 +163,6 @@ async function assignTaskToHuman(taskId, humanId) {
   return data;
 }
 
-// ================== DEPOSIT OPERATIONS ==================
-
-async function createDeposit(depositData) {
-  const { data, error } = await supabase.from('deposits').insert(depositData).select().single();
-  if (error) throw error;
-  return data;
-}
-
-async function getDepositByTxHash(txHash) {
-  const { data, error } = await supabase.from('deposits').select('*').eq('tx_hash', txHash).single();
-  if (error) return null;
-  return data;
-}
-
-async function getUnmatchedDeposits() {
-  const { data, error } = await supabase
-    .from('deposits')
-    .select('*')
-    .is('matched_task_id', null)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data;
-}
-
-async function matchDepositToTask(depositId, taskId) {
-  const { data, error } = await supabase
-    .from('deposits')
-    .update({ 
-      matched_task_id: taskId,
-      matched_at: new Date().toISOString()
-    })
-    .eq('id', depositId)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-async function findTaskByDepositAmount(amountCents) {
-  const { data, error } = await supabase
-    .from('tasks')
-    .select('*')
-    .eq('deposit_amount_cents', amountCents)
-    .eq('escrow_status', 'unfunded')
-    .eq('status', 'open')
-    .limit(1)
-    .single();
-  if (error) return null;
-  return data;
-}
-
 // ================== PAYOUT OPERATIONS ==================
 
 async function createPayout(payoutData) {
@@ -250,15 +199,6 @@ async function getNotifications(userId) {
   return data;
 }
 
-// ================== POLLING HELPERS ==================
-
-// For deposit watcher - fetch recent transfers (requires indexer)
-async function fetchRecentTransfers(toAddress, fromBlock = null) {
-  // This would use an indexer API (Alchemy, QuickNode, The Graph)
-  // For now, return empty array
-  return [];
-}
-
 module.exports = {
   supabase,
   supabaseAdmin,
@@ -279,18 +219,10 @@ module.exports = {
   getTasksByAgent,
   updateTask,
   assignTaskToHuman,
-  // Deposit
-  createDeposit,
-  getDepositByTxHash,
-  getUnmatchedDeposits,
-  matchDepositToTask,
-  findTaskByDepositAmount,
   // Payout
   createPayout,
   getPayoutsByHuman,
   // Notifications
   createNotification,
   getNotifications,
-  // Polling
-  fetchRecentTransfers
 };

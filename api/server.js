@@ -2231,7 +2231,6 @@ app.post('/api/upload/proof', async (req, res) => {
 
     // Upload to R2 using AWS SDK
     let uploadSuccess = false;
-    let txHash = null;
 
     try {
       const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -2254,7 +2253,6 @@ app.post('/api/upload/proof', async (req, res) => {
       }));
 
       uploadSuccess = true;
-      txHash = '0x' + crypto.randomBytes(32).toString('hex');
     } catch (s3Error) {
       console.error('R2 upload error:', s3Error.message);
       // Fallback to demo URL
@@ -2262,11 +2260,10 @@ app.post('/api/upload/proof', async (req, res) => {
 
     const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${uniqueFilename}`;
     
-    res.json({ 
+    res.json({
       url: publicUrl,
       filename: uniqueFilename,
       success: uploadSuccess,
-      tx_hash: txHash,
       demo: !uploadSuccess
     });
   } catch (e) {
@@ -3188,24 +3185,41 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
       `/tasks/${task_id}`
     );
   } else if (refund_human) {
-    // Refund escrow to agent
+    // Refund escrow to agent via Stripe
+    if (task.stripe_payment_intent_id) {
+      try {
+        const { refundPayment } = require('./backend/services/stripeService');
+        await refundPayment(supabase, task_id, 'requested_by_customer');
+        console.log(`[Dispute] Refunded Stripe payment for task ${task_id}`);
+      } catch (refundErr) {
+        console.error(`[Dispute] Stripe refund failed for task ${task_id}:`, refundErr);
+        return res.status(500).json({ error: 'Failed to process Stripe refund: ' + refundErr.message });
+      }
+    }
+
+    // Update task with dispute resolution metadata
     await supabase
       .from('tasks')
       .update({
         status: 'cancelled',
-        escrow_status: 'refunded',
-        escrow_refunded_at: new Date().toISOString(),
         dispute_resolved_at: new Date().toISOString(),
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
       .eq('id', task_id);
-    
+
+    // Freeze any pending transactions for this task so worker can't withdraw
+    await supabase
+      .from('pending_transactions')
+      .update({ status: 'frozen', updated_at: new Date().toISOString() })
+      .eq('task_id', task_id)
+      .in('status', ['pending', 'available']);
+
     await createNotification(
       task.agent_id,
       'dispute_resolved',
       'Dispute Resolved - Refund',
-      `The dispute has been resolved. Escrow of $${task.escrow_amount} USD has been refunded.`,
+      `The dispute has been resolved. $${task.escrow_amount} USD has been refunded to your card.`,
       `/tasks/${task_id}`
     );
     await createNotification(

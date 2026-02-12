@@ -218,8 +218,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       const tasksWithHours = (tasks || []).map(task => ({
         ...task,
         hours_pending: Math.round((Date.now() - new Date(task.updated_at).getTime()) / (1000 * 60 * 60)),
-        expected_deposit: task.unique_deposit_amount || task.escrow_amount,
-        platform_wallet: process.env.PLATFORM_WALLET_ADDRESS
+        expected_deposit: task.unique_deposit_amount || task.escrow_amount
       }));
 
       res.json(tasksWithHours);

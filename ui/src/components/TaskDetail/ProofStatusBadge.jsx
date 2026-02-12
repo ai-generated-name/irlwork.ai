@@ -20,7 +20,7 @@ const STATUS_CONFIG = {
     label: 'Paid',
     icon: '✓',
     color: 'bg-[#D1FAE5] border-[#059669] text-[#059669]',
-    description: 'Payment has been released to your wallet'
+    description: 'Payment has been released to your bank account'
   },
   disputed: {
     label: 'Disputed',

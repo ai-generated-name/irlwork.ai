@@ -705,8 +705,23 @@ async function handleDisputeClosed(dispute, supabase, createNotification) {
  * Handle charge.refunded — update task status
  */
 async function handleChargeRefunded(charge, supabase) {
-  const taskId = charge.metadata?.task_id;
-  if (!taskId) return;
+  // Try charge metadata first, then fall back to looking up by payment_intent
+  let taskId = charge.metadata?.task_id;
+
+  if (!taskId && charge.payment_intent) {
+    const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent.id;
+    const { data: task } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('stripe_payment_intent_id', piId)
+      .single();
+    taskId = task?.id;
+  }
+
+  if (!taskId) {
+    console.warn(`[Stripe Webhook] charge.refunded — could not find task for charge ${charge.id}`);
+    return;
+  }
 
   console.log(`[Stripe Webhook] Charge refunded for task ${taskId}`);
 
