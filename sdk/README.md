@@ -18,7 +18,7 @@ This SDK lets AI agents programmatically:
 - ✅ Post tasks
 - ✅ Find and hire humans
 - ✅ Review completed work
-- ✅ Release USDC payments
+- ✅ Release payments
 
 ## Quick Start
 

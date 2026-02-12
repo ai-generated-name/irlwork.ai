@@ -3,6 +3,7 @@ import { MapPin, Clock, DollarSign, Star, Briefcase, Users, X, Check, Copy, Bot,
 import { supabase } from '../App'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
+import CityAutocomplete from '../components/CityAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 
@@ -14,15 +15,16 @@ const categories = [
   { value: '', label: 'All Skills' },
   { value: 'delivery', label: 'Delivery' },
   { value: 'photography', label: 'Photography' },
+  { value: 'data_collection', label: 'Data Collection' },
   { value: 'errands', label: 'Errands' },
   { value: 'cleaning', label: 'Cleaning' },
   { value: 'moving', label: 'Moving' },
-  { value: 'tech', label: 'Tech Support' },
-  { value: 'general', label: 'General' },
-  { value: 'data-collection', label: 'Data Collection' },
+  { value: 'manual_labor', label: 'Manual Labor' },
+  { value: 'inspection', label: 'Inspection' },
+  { value: 'tech', label: 'Tech' },
   { value: 'translation', label: 'Translation' },
   { value: 'verification', label: 'Verification' },
-  { value: 'tech-setup', label: 'Tech Setup' },
+  { value: 'general', label: 'General' },
 ]
 
 const sortOptions = [
@@ -49,24 +51,39 @@ function SkeletonCard() {
       display: 'flex',
       flexDirection: 'column',
       animation: 'browseShimmer 1.8s ease-in-out infinite',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      overflow: 'hidden',
+      position: 'relative'
     }}>
-      <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
-        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-tertiary)', flexShrink: 0 }} />
+      {/* Accent line */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'var(--bg-tertiary)', opacity: 0.5 }} />
+      {/* Header */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--bg-tertiary)', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ height: 16, width: '70%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 6 }} />
           <div style={{ height: 13, width: '50%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 4 }} />
           <div style={{ height: 13, width: '40%', background: 'var(--bg-tertiary)', borderRadius: 6 }} />
         </div>
       </div>
-      <div style={{ height: 14, width: '100%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 6 }} />
-      <div style={{ height: 14, width: '80%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 14 }} />
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        <div style={{ height: 26, width: 72, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
-        <div style={{ height: 26, width: 56, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
-        <div style={{ height: 26, width: 64, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
+      {/* Rating */}
+      <div style={{ height: 20, width: 80, background: 'var(--bg-tertiary)', borderRadius: 999, marginBottom: 10 }} />
+      {/* Social icons */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {[0,1,2,3].map(i => <div key={i} style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--bg-tertiary)' }} />)}
       </div>
-      <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', display: 'flex', justifyContent: 'space-between' }}>
-        <div style={{ height: 22, width: 60, background: 'var(--bg-tertiary)', borderRadius: 6 }} />
+      {/* Bio */}
+      <div style={{ height: 14, width: '100%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 6 }} />
+      <div style={{ height: 14, width: '80%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 16 }} />
+      {/* Skills */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        <div style={{ height: 28, width: 72, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
+        <div style={{ height: 28, width: 56, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
+        <div style={{ height: 28, width: 64, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
+      </div>
+      {/* Footer */}
+      <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid rgba(26,26,26,0.06)', display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ height: 24, width: 60, background: 'var(--bg-tertiary)', borderRadius: 6 }} />
         <div style={{ height: 38, width: 72, background: 'var(--bg-tertiary)', borderRadius: 10 }} />
       </div>
     </div>
@@ -89,13 +106,12 @@ export default function BrowsePage({ user }) {
 
   // Humans filters
   const [skillFilter, setSkillFilter] = useState('')
-  const [cityInput, setCityInput] = useState('')
+  const [cityFilter, setCityFilter] = useState('')
   const [countryInput, setCountryInput] = useState('')
   const [maxRate, setMaxRate] = useState('')
   const [humanSort, setHumanSort] = useState('rating')
 
   // Debounced values
-  const [debouncedCity, setDebouncedCity] = useState('')
   const [debouncedCountry, setDebouncedCountry] = useState('')
   const [debouncedMaxRate, setDebouncedMaxRate] = useState('')
 
@@ -104,11 +120,20 @@ export default function BrowsePage({ user }) {
   const [tasksLoading, setTasksLoading] = useState(false)
   const [taskCategoryFilter, setTaskCategoryFilter] = useState('')
   const [taskCityFilter, setTaskCityFilter] = useState('')
+  const [taskSearchQuery, setTaskSearchQuery] = useState('')
+  const [debouncedTaskSearch, setDebouncedTaskSearch] = useState('')
   const [taskSortBy, setTaskSortBy] = useState('newest')
+  const [userLocation, setUserLocation] = useState(null) // { lat, lng }
+  const [locationLoading, setLocationLoading] = useState(false)
+  const [nearMeActive, setNearMeActive] = useState(false)
+  const [nearMeRadius, setNearMeRadius] = useState(25) // km
 
   // Apply modal state
-  const [showApplyModal, setShowApplyModal] = useState(null)
-  const [applyMessage, setApplyMessage] = useState('')
+  const [showApplyModal, setShowApplyModal] = useState(null) // task object or null
+  const [applyWhyFit, setApplyWhyFit] = useState('')
+  const [applyAvailability, setApplyAvailability] = useState('')
+  const [applyQuestions, setApplyQuestions] = useState('')
+  const [applyCounterOffer, setApplyCounterOffer] = useState('')
   const [applyLoading, setApplyLoading] = useState(false)
   const [applySuccess, setApplySuccess] = useState(false)
   const [applyError, setApplyError] = useState('')
@@ -127,12 +152,6 @@ export default function BrowsePage({ user }) {
   // Expanded profile modal
   const [expandedHumanId, setExpandedHumanId] = useState(null)
 
-  // Debounce city input
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedCity(cityInput.trim()), 400)
-    return () => clearTimeout(t)
-  }, [cityInput])
-
   // Debounce country input
   useEffect(() => {
     const t = setTimeout(() => setDebouncedCountry(countryInput.trim()), 400)
@@ -145,22 +164,48 @@ export default function BrowsePage({ user }) {
     return () => clearTimeout(t)
   }, [maxRate])
 
+  // Debounce task search input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedTaskSearch(taskSearchQuery.trim()), 400)
+    return () => clearTimeout(t)
+  }, [taskSearchQuery])
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [skillFilter, debouncedCity, debouncedCountry, debouncedMaxRate, humanSort])
+  }, [skillFilter, cityFilter, debouncedCountry, debouncedMaxRate, humanSort])
 
   // Fetch humans
   useEffect(() => {
     if (viewMode !== 'humans') return
     fetchHumans()
-  }, [viewMode, currentPage, skillFilter, debouncedCity, debouncedCountry, debouncedMaxRate, humanSort])
+  }, [viewMode, currentPage, skillFilter, cityFilter, debouncedCountry, debouncedMaxRate, humanSort])
+
+  // Handle "Near Me" toggle
+  const handleNearMe = () => {
+    if (nearMeActive) {
+      setNearMeActive(false)
+      setUserLocation(null)
+      return
+    }
+    if (!navigator.geolocation) return
+    setLocationLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setNearMeActive(true)
+        setLocationLoading(false)
+      },
+      () => { setLocationLoading(false) },
+      { timeout: 10000 }
+    )
+  }
 
   // Fetch tasks
   useEffect(() => {
     if (viewMode !== 'tasks') return
     fetchTasks()
-  }, [viewMode, taskCategoryFilter, taskCityFilter, taskSortBy])
+  }, [viewMode, taskCategoryFilter, taskCityFilter, debouncedTaskSearch, taskSortBy, nearMeActive, nearMeRadius])
 
   // Real-time subscriptions
   useEffect(() => {
@@ -216,7 +261,7 @@ export default function BrowsePage({ user }) {
       params.set('offset', String((currentPage - 1) * ITEMS_PER_PAGE))
       params.set('sort', humanSort)
       if (skillFilter) params.set('skill', skillFilter)
-      if (debouncedCity) params.set('city', debouncedCity)
+      if (cityFilter) params.set('city', cityFilter)
       if (debouncedCountry) params.set('country', debouncedCountry)
       if (debouncedMaxRate) params.set('max_rate', debouncedMaxRate)
 
@@ -248,6 +293,13 @@ export default function BrowsePage({ user }) {
       const params = new URLSearchParams()
       if (taskCategoryFilter) params.append('category', taskCategoryFilter)
       if (taskCityFilter) params.append('city', taskCityFilter)
+      if (debouncedTaskSearch) params.append('search', debouncedTaskSearch)
+      if (nearMeActive && userLocation) {
+        params.append('user_lat', userLocation.lat)
+        params.append('user_lng', userLocation.lng)
+        params.append('radius_km', nearMeRadius)
+        params.append('sort', 'distance')
+      }
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`)
       if (res.ok) {
@@ -269,17 +321,34 @@ export default function BrowsePage({ user }) {
 
   async function handleApply() {
     if (!user || !showApplyModal) return
+    if (!applyWhyFit.trim() || !applyAvailability.trim()) return
+
     setApplyLoading(true)
     setApplyError('')
     try {
       const res = await fetch(`${API_URL}/tasks/${showApplyModal.id}/apply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
-        body: JSON.stringify({ cover_letter: applyMessage })
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user.id
+        },
+        body: JSON.stringify({
+          cover_letter: applyWhyFit.trim(),
+          availability: applyAvailability.trim(),
+          questions: applyQuestions.trim() || null,
+          proposed_rate: applyCounterOffer ? parseFloat(applyCounterOffer) : null,
+        })
       })
       if (res.ok) {
         setApplySuccess(true)
-        setTimeout(() => { setShowApplyModal(null); setApplyMessage(''); setApplySuccess(false) }, 2000)
+        setTimeout(() => {
+          setShowApplyModal(null)
+          setApplyWhyFit('')
+          setApplyAvailability('')
+          setApplyQuestions('')
+          setApplyCounterOffer('')
+          setApplySuccess(false)
+        }, 2000)
       } else {
         const err = await res.json()
         setApplyError(err.error || 'Failed to apply')
@@ -311,7 +380,7 @@ export default function BrowsePage({ user }) {
     try {
       const createRes = await fetch(`${API_URL}/tasks/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
         body: JSON.stringify({ title: hireTitle.trim(), description: hireDescription.trim(), budget: Number(hireBudget), category: hireCategory || 'general' })
       })
       if (!createRes.ok) { const err = await createRes.json(); throw new Error(err.error || 'Failed to create task') }
@@ -319,7 +388,7 @@ export default function BrowsePage({ user }) {
       const taskId = taskData.id || taskData.task?.id
       const assignRes = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
         body: JSON.stringify({ worker_id: showHireModal.id })
       })
       if (!assignRes.ok) { const err = await assignRes.json(); throw new Error(err.error || 'Task created but failed to assign human') }
@@ -389,7 +458,7 @@ export default function BrowsePage({ user }) {
     const label = categories.find(c => c.value === skillFilter)?.label || skillFilter
     activeFilters.push({ key: 'skill', label: `Skill: ${label}`, clear: () => setSkillFilter('') })
   }
-  if (debouncedCity) activeFilters.push({ key: 'city', label: `City: ${debouncedCity}`, clear: () => { setCityInput(''); setDebouncedCity('') } })
+  if (cityFilter) activeFilters.push({ key: 'city', label: `City: ${cityFilter}`, clear: () => setCityFilter('') })
   if (debouncedCountry) activeFilters.push({ key: 'country', label: `Country: ${debouncedCountry}`, clear: () => { setCountryInput(''); setDebouncedCountry('') } })
   if (debouncedMaxRate) activeFilters.push({ key: 'rate', label: `Max $${debouncedMaxRate}/hr`, clear: () => { setMaxRate(''); setDebouncedMaxRate('') } })
 
@@ -416,7 +485,7 @@ export default function BrowsePage({ user }) {
           <span className="logo-name-v4">irlwork.ai</span>
         </a>
         <div className="nav-links-v4">
-          <a href="/mcp" className="nav-link-v4">For Agents</a>
+          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
           <a href="/browse" className="nav-link-v4" style={{ color: 'var(--coral-500)' }}>Browse</a>
           {user ? (
             <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/dashboard')}>Dashboard</button>
@@ -547,14 +616,12 @@ export default function BrowsePage({ user }) {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     City
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Any city..."
-                    value={cityInput}
-                    onChange={(e) => setCityInput(e.target.value)}
-                    style={inputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(15,76,92,0.08)' }}
-                    onBlur={(e) => { e.target.style.borderColor = 'rgba(26,26,26,0.1)'; e.target.style.boxShadow = 'none' }}
+                  <CityAutocomplete
+                    value={cityFilter}
+                    onChange={(cityData) => {
+                      setCityFilter(cityData.city || '')
+                    }}
+                    placeholder="Search city..."
                   />
                 </div>
 
@@ -646,7 +713,7 @@ export default function BrowsePage({ user }) {
                   <button
                     onClick={() => {
                       setSkillFilter('')
-                      setCityInput(''); setDebouncedCity('')
+                      setCityFilter('')
                       setCountryInput(''); setDebouncedCountry('')
                       setMaxRate(''); setDebouncedMaxRate('')
                     }}
@@ -816,6 +883,24 @@ export default function BrowsePage({ user }) {
               flexWrap: 'wrap',
               justifyContent: 'center'
             }}>
+              <div style={{ position: 'relative', minWidth: 220 }}>
+                <Search size={16} style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-tertiary)',
+                  pointerEvents: 'none'
+                }} />
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="city-autocomplete-v4-input"
+                  style={{ minWidth: 220, paddingLeft: 36 }}
+                />
+              </div>
               <div style={{ minWidth: 160 }}>
                 <CustomDropdown
                   value={taskCategoryFilter}
@@ -832,6 +917,27 @@ export default function BrowsePage({ user }) {
                 className="city-autocomplete-v4-input"
                 style={{ minWidth: 180 }}
               />
+              <button
+                onClick={handleNearMe}
+                disabled={locationLoading}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 16px',
+                  borderRadius: 'var(--radius-md)',
+                  border: nearMeActive ? '2px solid var(--coral-500)' : '1px solid rgba(26,26,26,0.1)',
+                  background: nearMeActive ? 'rgba(224, 122, 95, 0.08)' : 'white',
+                  color: nearMeActive ? 'var(--coral-600)' : 'var(--text-secondary)',
+                  fontSize: 14,
+                  fontWeight: nearMeActive ? 600 : 400,
+                  cursor: locationLoading ? 'wait' : 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <MapPin size={15} />
+                {locationLoading ? 'Locating...' : nearMeActive ? `Near Me (${nearMeRadius}km)` : 'Near Me'}
+              </button>
               <div style={{ minWidth: 150 }}>
                 <CustomDropdown
                   value={taskSortBy}
@@ -906,14 +1012,16 @@ export default function BrowsePage({ user }) {
                         }}>
                           {task.category || 'General'}
                         </span>
-                        <span style={{
-                          padding: '4px 12px',
-                          background: task.escrow_status === 'funded' ? 'var(--success-bg)' : 'rgba(244, 213, 141, 0.3)',
-                          borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500,
-                          color: task.escrow_status === 'funded' ? 'var(--success)' : '#B8860B'
-                        }}>
-                          {task.escrow_status === 'funded' ? 'Funded' : 'Unfunded'}
-                        </span>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {task.task_type === 'bounty' && (
+                            <span style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500, background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>Bounty</span>
+                          )}
+                          {task.quantity > 1 && (
+                            <span style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500, background: 'rgba(59, 130, 246, 0.1)', color: '#2563EB' }}>
+                              {task.spots_filled || 0}/{task.quantity} spots
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8, lineHeight: 1.3 }}>
                         {task.title}
@@ -941,12 +1049,31 @@ export default function BrowsePage({ user }) {
                           <Clock size={16} />
                           {formatDate(task.created_at)}
                         </span>
+                        {task.deadline && (() => {
+                          const diffMs = new Date(task.deadline) - new Date();
+                          if (diffMs < 0) return null; // Past deadline tasks are auto-expired
+                          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                          let label, bg, color;
+                          if (diffHours < 1) { label = 'Due in < 1 hour'; bg = '#FEF3C7'; color = '#D97706'; }
+                          else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#D97706'; }
+                          else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#B45309'; }
+                          else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
+                          return (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '2px 10px', borderRadius: 'var(--radius-full)',
+                              fontSize: 12, fontWeight: 600, background: bg, color
+                            }}>
+                              <Clock size={12} />
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </div>
-                      {task.agent && (
-                        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
-                          Posted by <strong style={{ color: 'var(--text-secondary)' }}>{task.agent.name || task.agent.organization || 'Anonymous'}</strong>
-                        </div>
-                      )}
+                      <div style={{ paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
+                        Posted by <strong style={{ color: 'var(--text-secondary)' }}>{task.is_anonymous ? 'Anon AI Agent' : (task.agent?.name || task.agent?.organization || 'Anonymous')}</strong>
+                      </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -997,25 +1124,180 @@ export default function BrowsePage({ user }) {
                     <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Apply to Task</h2>
                     <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{showApplyModal.title}</p>
                   </div>
-                  <button onClick={() => { setShowApplyModal(null); setApplyMessage(''); setApplyError('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                  <button
+                    onClick={() => { setShowApplyModal(null); setApplyWhyFit(''); setApplyAvailability(''); setApplyQuestions(''); setApplyCounterOffer(''); setApplyError('') }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 4
+                    }}
+                  >
                     <X size={24} style={{ color: 'var(--text-tertiary)' }} />
                   </button>
                 </div>
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 8, color: 'var(--text-primary)' }}>Cover Letter (optional)</label>
+
+                {/* 1. Why you're a good fit (required) */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-primary)'
+                  }}>
+                    Why you're a good fit <span style={{ color: 'var(--coral-500)' }}>*</span>
+                  </label>
                   <textarea
-                    placeholder="Why are you a good fit for this task? Share your relevant experience..."
-                    value={applyMessage}
-                    onChange={(e) => setApplyMessage(e.target.value)}
-                    style={{ width: '100%', minHeight: 120, padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid rgba(26,26,26,0.1)', fontSize: 15, resize: 'vertical', fontFamily: 'inherit' }}
+                    placeholder="Share relevant experience, skills, or why you're the right person for this task..."
+                    value={applyWhyFit}
+                    onChange={(e) => setApplyWhyFit(e.target.value)}
+                    maxLength={500}
+                    style={{
+                      width: '100%',
+                      minHeight: 80,
+                      padding: 12,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      fontSize: 14,
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
                   />
                 </div>
+
+                {/* 2. Confirm availability (required) */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-primary)'
+                  }}>
+                    Confirm availability <span style={{ color: 'var(--coral-500)' }}>*</span>
+                  </label>
+                  <textarea
+                    placeholder="When can you start? How soon can you complete this?"
+                    value={applyAvailability}
+                    onChange={(e) => setApplyAvailability(e.target.value)}
+                    maxLength={200}
+                    style={{
+                      width: '100%',
+                      minHeight: 56,
+                      padding: 12,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      fontSize: 14,
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+
+                {/* 3. Questions about the task (optional) */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-secondary)'
+                  }}>
+                    Questions about the task
+                  </label>
+                  <textarea
+                    placeholder="Any questions or clarifications needed?"
+                    value={applyQuestions}
+                    onChange={(e) => setApplyQuestions(e.target.value)}
+                    maxLength={300}
+                    style={{
+                      width: '100%',
+                      minHeight: 56,
+                      padding: 12,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      fontSize: 14,
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+
+                {/* 4. Counter offer (optional) */}
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    marginBottom: 8,
+                    color: 'var(--text-secondary)'
+                  }}>
+                    Counter offer
+                  </label>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    border: '1px solid rgba(26,26,26,0.1)',
+                    borderRadius: 'var(--radius-md)',
+                    overflow: 'hidden'
+                  }}>
+                    <span style={{ padding: '10px 12px', background: 'var(--bg-tertiary)', fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={applyCounterOffer}
+                      onChange={(e) => setApplyCounterOffer(e.target.value)}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        border: 'none',
+                        fontSize: 14,
+                        fontFamily: 'inherit',
+                        outline: 'none'
+                      }}
+                    />
+                    <span style={{ padding: '10px 12px', background: 'var(--bg-tertiary)', fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>USDC</span>
+                  </div>
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    Task budget: ${showApplyModal.budget || 0} USDC
+                  </span>
+                </div>
+
                 {applyError && (
                   <div style={{ padding: 12, background: '#FEE2E2', borderRadius: 'var(--radius-md)', color: '#DC2626', fontSize: 14, marginBottom: 16 }}>{applyError}</div>
                 )}
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button onClick={() => { setShowApplyModal(null); setApplyMessage(''); setApplyError('') }} style={{ flex: 1, padding: 14, borderRadius: 'var(--radius-md)', border: '1px solid rgba(26,26,26,0.1)', background: 'white', fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={handleApply} disabled={applyLoading} style={{ flex: 1, padding: 14, borderRadius: 'var(--radius-md)', border: 'none', background: applyLoading ? 'var(--text-tertiary)' : 'var(--coral-500)', color: 'white', fontWeight: 600, cursor: applyLoading ? 'not-allowed' : 'pointer' }}>
+                  <button
+                    onClick={() => { setShowApplyModal(null); setApplyWhyFit(''); setApplyAvailability(''); setApplyQuestions(''); setApplyCounterOffer(''); setApplyError('') }}
+                    style={{
+                      flex: 1,
+                      padding: 14,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(26,26,26,0.1)',
+                      background: 'white',
+                      fontWeight: 500,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleApply}
+                    disabled={applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()}
+                    style={{
+                      flex: 1,
+                      padding: 14,
+                      borderRadius: 'var(--radius-md)',
+                      border: 'none',
+                      background: (applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()) ? 'var(--text-tertiary)' : 'var(--coral-500)',
+                      color: 'white',
+                      fontWeight: 600,
+                      cursor: (applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()) ? 'not-allowed' : 'pointer'
+                    }}
+                  >
                     {applyLoading ? 'Submitting...' : 'Submit Application'}
                   </button>
                 </div>
@@ -1245,9 +1527,9 @@ Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
             <div>
               <h4 className="footer-v4-column-title">For Agents</h4>
               <div className="footer-v4-links">
-                <a href="/mcp" className="footer-v4-link">API Docs</a>
-                <a href="/mcp" className="footer-v4-link">MCP Protocol</a>
-                <a href="/mcp" className="footer-v4-link">Integration</a>
+                <a href="/connect-agent" className="footer-v4-link">API Docs</a>
+                <a href="/connect-agent" className="footer-v4-link">MCP Protocol</a>
+                <a href="/connect-agent" className="footer-v4-link">Integration</a>
               </div>
             </div>
           </div>

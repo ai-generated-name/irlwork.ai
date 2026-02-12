@@ -21,14 +21,14 @@ export default function TopFilterBar({
   categoryFilter,
   onCategoryChange,
   onMenuClick,
-  categories = ['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general']
+  categories = ['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general']
 }) {
   // Format categories for CustomDropdown
   const categoryOptions = [
     { value: '', label: 'All Categories' },
     ...categories.map(c => ({
       value: c,
-      label: c.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+      label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
     }))
   ];
 

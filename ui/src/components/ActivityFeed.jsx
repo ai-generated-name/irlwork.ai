@@ -1,3 +1,5 @@
+import { Check, ClipboardList, Handshake, Pin } from 'lucide-react'
+
 export default function ActivityFeed({ activities = [] }) {
   const formatTimeAgo = (dateString) => {
     const date = new Date(dateString)
@@ -16,13 +18,13 @@ export default function ActivityFeed({ activities = [] }) {
   const getActivityIcon = (type) => {
     switch (type) {
       case 'completed':
-        return '✓'
+        return <Check size={16} />
       case 'posted':
-        return '📋'
+        return <ClipboardList size={16} />
       case 'accepted':
-        return '🤝'
+        return <Handshake size={16} />
       default:
-        return '📌'
+        return <Pin size={16} />
     }
   }
 

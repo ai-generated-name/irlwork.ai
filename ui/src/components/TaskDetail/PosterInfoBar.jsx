@@ -1,14 +1,15 @@
 import React from 'react';
+import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  errands: '🏃',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  other: '📋',
+  delivery: <Package size={16} />,
+  photography: <Camera size={16} />,
+  'data-collection': <BarChart3 size={16} />,
+  errands: <Footprints size={16} />,
+  'tech-setup': <Monitor size={16} />,
+  translation: <Globe size={16} />,
+  verification: <CheckCircle size={16} />,
+  other: <ClipboardList size={16} />,
 };
 
 function formatTimeAgo(dateString) {
@@ -83,10 +84,10 @@ export default function PosterInfoBar({ task }) {
                 <span>{poster.total_tasks_posted} task{poster.total_tasks_posted !== 1 ? 's' : ''} posted</span>
               </>
             )}
-            {!isAnonymous && poster.total_usdc_paid > 0 && (
+            {!isAnonymous && poster.total_paid > 0 && (
               <>
                 <span>·</span>
-                <span>${Number(poster.total_usdc_paid).toLocaleString()} paid</span>
+                <span>${Number(poster.total_paid).toLocaleString()} paid</span>
               </>
             )}
           </div>

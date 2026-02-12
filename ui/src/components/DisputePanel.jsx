@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Scale } from 'lucide-react'
 import API_URL from '../config/api'
 
 export default function DisputePanel({ user }) {
@@ -23,7 +24,7 @@ export default function DisputePanel({ user }) {
       setLoading(true)
       const params = filter !== 'all' ? `?status=${filter}` : ''
       const res = await fetch(`${API_URL}/disputes${params}`, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
 
       if (!res.ok) {
@@ -49,7 +50,7 @@ export default function DisputePanel({ user }) {
       const res = await fetch(`${API_URL}/disputes/${disputeId}/resolve`, {
         method: 'POST',
         headers: {
-          Authorization: user.id,
+          Authorization: user.token || user.id,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -171,7 +172,7 @@ export default function DisputePanel({ user }) {
       {disputes.length === 0 ? (
         <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
-            <span className="text-3xl">⚖️</span>
+            <Scale size={28} />
           </div>
           <p className="text-[#525252] font-medium text-sm md:text-base">No disputes found</p>
           <p className="text-xs md:text-sm text-[#8A8A8A] mt-2">

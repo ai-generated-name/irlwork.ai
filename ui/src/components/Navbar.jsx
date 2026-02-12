@@ -12,7 +12,7 @@ export default function Navbar() {
           <span className="logo-name-v4">irlwork.ai</span>
         </Link>
         <div className="nav-right">
-          <Link to="/mcp" className="nav-link">API Docs</Link>
+          <Link to="/connect-agent" className="nav-link">API Docs</Link>
           <Link to="/dashboard" className="nav-link">Dashboard</Link>
           <button className="btn btn-primary" onClick={() => navigate('/auth')}>
             Get Started
@@ -27,7 +27,7 @@ export default function Navbar() {
           <span className="logo-name-v4">irlwork.ai</span>
         </Link>
         <div className="nav-links-v4">
-          <Link to="/mcp" className="nav-link-v4">API Docs</Link>
+          <Link to="/connect-agent" className="nav-link-v4">API Docs</Link>
           <Link to="/dashboard" className="nav-link-v4">Dashboard</Link>
           <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>
             Get Started

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { AlertTriangle, Ban } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.irlwork.ai';
 
 const REPORT_REASONS = [
   { value: 'scam_fraud', label: 'Scam / Fraud', icon: '🚨' },
-  { value: 'misleading', label: 'Misleading', icon: '⚠️' },
-  { value: 'inappropriate', label: 'Inappropriate', icon: '🚫' },
+  { value: 'misleading', label: 'Misleading', icon: <AlertTriangle size={14} /> },
+  { value: 'inappropriate', label: 'Inappropriate', icon: <Ban size={14} /> },
   { value: 'spam', label: 'Spam', icon: '📧' },
   { value: 'illegal', label: 'Illegal activity', icon: '⛔' },
   { value: 'harassment', label: 'Harassment', icon: '😡' },
