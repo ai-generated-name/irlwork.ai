@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
+import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
 
 import API_URL from '../config/api';
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  errands: '🏃',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  other: '📋',
+  delivery: <Package size={16} />,
+  photography: <Camera size={16} />,
+  'data-collection': <BarChart3 size={16} />,
+  errands: <Footprints size={16} />,
+  'tech-setup': <Monitor size={16} />,
+  translation: <Globe size={16} />,
+  verification: <CheckCircle size={16} />,
+  other: <ClipboardList size={16} />,
 };
 
 export default function QuickApplyModal({
@@ -81,7 +82,7 @@ export default function QuickApplyModal({
     onClose();
   };
 
-  const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
+  const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={16} />;
 
   return (
     <div className="quick-apply-modal-overlay" onClick={handleClose}>

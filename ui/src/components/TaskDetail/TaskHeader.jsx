@@ -2,6 +2,7 @@
 // Displays task title, description, requirements, and metadata
 
 import React from 'react';
+import { CalendarDays, Timer, MapPin } from 'lucide-react';
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: 'bg-[#D1E9F0] text-[#0F4C5C]' },
@@ -67,14 +68,14 @@ export default function TaskHeader({ task }) {
       <div className="flex flex-wrap gap-x-3 gap-y-1.5 sm:gap-4 text-xs sm:text-sm text-[#525252]">
         {/* Posted Date */}
         <div className="flex items-center gap-1 sm:gap-2">
-          <span>📅</span>
+          <CalendarDays size={14} />
           <span>Posted {new Date(task.created_at).toLocaleDateString()}</span>
         </div>
 
         {/* Deadline */}
         {task.deadline && (
           <div className="flex items-center gap-1 sm:gap-2">
-            <span>⏰</span>
+            <Timer size={14} />
             <span>Due {new Date(task.deadline).toLocaleDateString()}</span>
           </div>
         )}
@@ -82,14 +83,14 @@ export default function TaskHeader({ task }) {
         {/* Duration */}
         {task.duration_hours && (
           <div className="flex items-center gap-1 sm:gap-2">
-            <span>⏱️</span>
+            <Timer size={14} />
             <span>~{task.duration_hours}h</span>
           </div>
         )}
 
         {/* Location */}
         <div className="flex items-center gap-1 sm:gap-2">
-          <span>📍</span>
+          <MapPin size={14} />
           <span>{task.city || task.location || 'Remote'}</span>
         </div>
 

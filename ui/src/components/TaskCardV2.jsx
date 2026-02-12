@@ -1,14 +1,15 @@
 import React from 'react';
+import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  errands: '🏃',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  other: '📋',
+  delivery: <Package size={16} />,
+  photography: <Camera size={16} />,
+  'data-collection': <BarChart3 size={16} />,
+  errands: <Footprints size={16} />,
+  'tech-setup': <Monitor size={16} />,
+  translation: <Globe size={16} />,
+  verification: <CheckCircle size={16} />,
+  other: <ClipboardList size={16} />,
 };
 
 function formatTimeAgo(dateString) {
@@ -37,7 +38,7 @@ export default function TaskCardV2({
   onReport = () => {},
   showReport = false,
 }) {
-  const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
+  const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={16} />;
   const categoryLabel = task.category?.replace('-', ' ') || 'General';
 
   return (
@@ -56,7 +57,7 @@ export default function TaskCardV2({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {task.is_remote ? (
             <div className="task-card-v2-remote-badge">
-              🌐 Remote
+              <Globe size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Remote
             </div>
           ) : task.distance_km != null ? (
             <div className="task-card-v2-distance">
@@ -125,7 +126,7 @@ export default function TaskCardV2({
         <div className="task-card-v2-location">
           {task.is_remote ? (
             <>
-              <span>🌐</span>
+              <Globe size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />
               {task.location || task.city ? `Remote · ${task.location || task.city}` : 'Remote — work from anywhere'}
             </>
           ) : (

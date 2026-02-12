@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Timer, CreditCard, ArrowDownLeft } from 'lucide-react'
 import API_URL from '../config/api'
 import { useToast } from '../context/ToastContext'
 import WithdrawalMethodPicker from './WithdrawalMethodPicker'
@@ -184,7 +185,7 @@ function EarningsDashboard({ user }) {
               <p className="text-xs text-[#D97706]/60 mt-0.5 md:mt-1">48-hour hold</p>
             </div>
             <div className="w-10 h-10 md:w-12 md:h-12 bg-[#D97706]/20 rounded-full flex items-center justify-center text-[#D97706] text-lg md:text-xl">
-              ⏱️
+              <Timer size={20} />
             </div>
           </div>
 
@@ -224,7 +225,7 @@ function EarningsDashboard({ user }) {
               <p className="text-xs text-[#059669]/60 mt-0.5 md:mt-1">Ready to withdraw</p>
             </div>
             <div className="w-10 h-10 md:w-12 md:h-12 bg-[#059669]/20 rounded-full flex items-center justify-center text-[#059669] text-lg md:text-xl">
-              💳
+              <CreditCard size={20} />
             </div>
           </div>
 
@@ -333,7 +334,7 @@ function EarningsDashboard({ user }) {
           </div>
         ) : (
           <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
-            <div className="text-3xl md:text-4xl mb-3 md:mb-4">💸</div>
+            <div className="mb-3 md:mb-4"><ArrowDownLeft size={28} /></div>
             <p className="text-[#525252] font-medium text-sm md:text-base">No transactions yet</p>
             <p className="text-xs md:text-sm text-[#8A8A8A] mt-2">
               Complete tasks to start earning

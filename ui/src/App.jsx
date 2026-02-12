@@ -1,5 +1,13 @@
 // irlwork.ai - Modern Clean UI
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import {
+  BarChart3, ClipboardList, Plus, Users, Handshake, MessageCircle,
+  CreditCard, User, Settings, Check, Timer, MapPin, DollarSign,
+  Star, CalendarDays, Search, ChevronDown, Upload, Bell,
+  FileText, CheckCircle, XCircle, Landmark, Scale, Ban, ArrowDownLeft,
+  Shield, Hourglass, Bot, FolderOpen, RefreshCw,
+  Monitor, Sparkles, AlertTriangle
+} from 'lucide-react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -31,7 +39,7 @@ import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIc
 
 import CityAutocomplete from './components/CityAutocomplete'
 import { TASK_CATEGORIES } from './components/CategoryPills'
-import { Copy, Check } from 'lucide-react'
+import { Copy } from 'lucide-react'
 import StandaloneTaskDetailPage from './pages/TaskDetailPage'
 
 // Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
@@ -50,7 +58,7 @@ class TabErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 40, textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
+          <div style={{ marginBottom: 16 }}><AlertTriangle size={32} /></div>
           <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>This section encountered an error</h3>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>Try switching to another tab or refreshing the page.</p>
           <button
@@ -104,25 +112,28 @@ const styles = {
 }
 
 // === Icons ===
+const ICON_SIZE = 18
 const Icons = {
-  task: '📋',
-  create: '➕',
-  humans: '👥',
-  hired: '🤝',
-  messages: '💬',
-  wallet: '💳',
-  profile: '👤',
-  settings: '⚙️',
-  check: '✓',
-  clock: '⏱️',
-  location: '📍',
-  dollar: '💰',
-  star: '⭐',
-  calendar: '📅',
-  search: '🔍',
-  filter: '🔽',
-  upload: '📤',
-  bell: '🔔',
+  dashboard: <BarChart3 size={ICON_SIZE} />,
+  task: <ClipboardList size={ICON_SIZE} />,
+  create: <Plus size={ICON_SIZE} />,
+  humans: <Users size={ICON_SIZE} />,
+  hired: <Handshake size={ICON_SIZE} />,
+  messages: <MessageCircle size={ICON_SIZE} />,
+  wallet: <CreditCard size={ICON_SIZE} />,
+  profile: <User size={ICON_SIZE} />,
+  settings: <Settings size={ICON_SIZE} />,
+  check: <Check size={ICON_SIZE} />,
+  clock: <Timer size={ICON_SIZE} />,
+  location: <MapPin size={ICON_SIZE} />,
+  dollar: <DollarSign size={ICON_SIZE} />,
+  star: <Star size={ICON_SIZE} />,
+  calendar: <CalendarDays size={ICON_SIZE} />,
+  search: <Search size={ICON_SIZE} />,
+  filter: <ChevronDown size={ICON_SIZE} />,
+  upload: <Upload size={ICON_SIZE} />,
+  bell: <Bell size={ICON_SIZE} />,
+  admin: <Shield size={ICON_SIZE} />,
 }
 
 // === Components ===
@@ -645,7 +656,7 @@ function AuthPage({ onLogin, onNavigate }) {
       <div className="auth-v4">
         <div className="auth-v4-container">
           <div className="auth-v4-error-modal">
-            <div className="auth-v4-error-icon">⚠️</div>
+            <div className="auth-v4-error-icon"><AlertTriangle size={24} /></div>
             <h2 className="auth-v4-error-title">{errorModal.title}</h2>
             <p className="auth-v4-error-message">{errorModal.message}</p>
             {errorModal.details && (
@@ -836,7 +847,7 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
               onClick={() => fileInputRef.current?.click()}
             >
               <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
-              <div className="text-3xl mb-2">📤</div>
+              <div className="text-3xl mb-2"><Upload size={28} /></div>
               <p className="text-gray-400 text-sm">Click to upload images</p>
             </div>
             {files.length > 0 && (
@@ -1189,7 +1200,7 @@ function ApiKeysTab({ user }) {
                   display: 'flex',
                   gap: 10
                 }}>
-                  <span style={{ fontSize: 16 }}>⚠️</span>
+                  <AlertTriangle size={16} />
                   <p style={{ fontSize: 13, color: '#92400E' }}>
                     Make sure to save this key securely. It won't be shown again.
                   </p>
@@ -1594,7 +1605,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Working mode: Dashboard, My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'dashboard', label: 'Dashboard', icon: Icons.dashboard },
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
@@ -1603,7 +1614,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Hiring mode: Dashboard, My Tasks, Humans, Messages, Payments
   const hiringNav = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'dashboard', label: 'Dashboard', icon: Icons.dashboard },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Humans', icon: Icons.humans },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
@@ -1612,7 +1623,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Add admin tab if user is admin
   const baseNav = hiringMode ? hiringNav : humanNav
-  const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: '🛡️' }] : baseNav
+  const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: Icons.admin }] : baseNav
 
   // Mark all notifications as read and remove them from the list
   const markAllNotificationsRead = async () => {
@@ -1936,23 +1947,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Notification icon map for all notification types
   const NOTIFICATION_ICONS = {
-    task_assigned: '📋',
-    proof_submitted: '📝',
-    proof_approved: '✅',
-    proof_rejected: '❌',
-    payment_released: '💰',
-    payment_approved: '💰',
-    payment_sent: '💸',
-    deposit_confirmed: '🏦',
-    dispute_opened: '⚖️',
-    dispute_filed: '⚖️',
-    dispute_created: '⚖️',
-    dispute_resolved: '✅',
-    rating_received: '⭐',
-    rating_visible: '⭐',
-    new_message: '💬',
-    assignment_cancelled: '🚫',
-    refund_processed: '💸',
+    task_assigned: <ClipboardList size={18} />,
+    proof_submitted: <FileText size={18} />,
+    proof_approved: <CheckCircle size={18} />,
+    proof_rejected: <XCircle size={18} />,
+    payment_released: <DollarSign size={18} />,
+    payment_approved: <DollarSign size={18} />,
+    payment_sent: <ArrowDownLeft size={18} />,
+    deposit_confirmed: <Landmark size={18} />,
+    dispute_opened: <Scale size={18} />,
+    dispute_filed: <Scale size={18} />,
+    dispute_created: <Scale size={18} />,
+    dispute_resolved: <CheckCircle size={18} />,
+    rating_received: <Star size={18} />,
+    rating_visible: <Star size={18} />,
+    new_message: <MessageCircle size={18} />,
+    assignment_cancelled: <Ban size={18} />,
+    refund_processed: <ArrowDownLeft size={18} />,
   }
 
   // Navigate to a notification's linked page
@@ -2278,7 +2289,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               onClick={() => !agentConnected && (window.location.href = '/connect-agent')}
               className={`dashboard-v4-connect-agent-btn-top ${agentConnected ? 'connected' : ''}`}
             >
-              <span className="dashboard-v4-connect-agent-icon">{agentConnected ? '✅' : '🤖'}</span>
+              <span className="dashboard-v4-connect-agent-icon">{agentConnected ? <CheckCircle size={16} /> : <Bot size={16} />}</span>
               <span>{agentConnected ? 'AI Agent Connected' : 'Connect to AI Agent'}</span>
               {!agentConnected && (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', opacity: 0.5 }}>
@@ -2342,6 +2353,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           )}
         </div>
 
+        {/* Connect to AI Agent CTA - only show in hiring mode */}
+        {hiringMode && (
+          <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+            <button
+              onClick={() => window.location.href = '/connect-agent'}
+              className="dashboard-v4-connect-agent-btn"
+            >
+              <span style={{ display: 'flex', alignItems: 'center' }}><Bot size={18} /></span>
+              <span>Connect to AI Agent</span>
+            </button>
+          </div>
+        )}
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
@@ -2490,7 +2513,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           onClick={() => navigateToNotification(n)}
                         >
                           <div className="dashboard-v4-notification-dropdown-icon">
-                            {NOTIFICATION_ICONS[n.type] || '🔔'}
+                            {NOTIFICATION_ICONS[n.type] || <Bell size={18} />}
                           </div>
                           <div className="dashboard-v4-notification-dropdown-content">
                             <p className="dashboard-v4-notification-dropdown-title">{n.title}</p>
@@ -2801,7 +2824,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <>
                 {loading ? (
                   <div className="dashboard-v4-empty">
-                    <div className="dashboard-v4-empty-icon">⏳</div>
+                    <div className="dashboard-v4-empty-icon"><Hourglass size={24} /></div>
                     <p className="dashboard-v4-empty-text">Loading...</p>
                   </div>
                 ) : postedTasks.length === 0 ? (
@@ -2831,10 +2854,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           </div>
 
                           <div className="dashboard-v4-task-meta">
-                            <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                            <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
+                            <span className="dashboard-v4-task-meta-item"><FolderOpen size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.category || 'General'}</span>
+                            <span className="dashboard-v4-task-meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
                             {task.assignee && (
-                              <span className="dashboard-v4-task-meta-item">👤 {task.assignee.name}</span>
+                              <span className="dashboard-v4-task-meta-item"><User size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.assignee.name}</span>
                             )}
                           </div>
 
@@ -2870,7 +2893,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                           <div>
                                             <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
                                             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                              ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                              <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
                                             </p>
                                             {app.cover_letter && (
                                               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
@@ -2909,7 +2932,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             </div>
                           )}
                           {task.status === 'paid' && (
-                            <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}>💸 Payment released</p>
+                            <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}><ArrowDownLeft size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Payment released</p>
                           )}
                         </div>
                       )
@@ -3891,7 +3914,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div className={`dashboard-v4-conversations ${selectedConversation ? 'hidden md:block' : 'block'}`}>
                 {conversations.length === 0 ? (
                   <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
+                    <div style={{ marginBottom: 8 }}><MessageCircle size={32} /></div>
                     <p style={{ fontWeight: 500, marginBottom: 4 }}>No conversations yet</p>
                     <p style={{ fontSize: 13 }}>Messages will appear here when you communicate about a task</p>
                   </div>
@@ -4006,7 +4029,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </>
                 ) : (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', gap: 8 }}>
-                    <span style={{ fontSize: 28 }}>💬</span>
+                    <MessageCircle size={28} />
                     <p style={{ margin: 0 }}>Select a conversation to start messaging</p>
                   </div>
                 )}
@@ -4030,7 +4053,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {notifications.length === 0 ? (
               <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">🔔</div>
+                <div className="dashboard-v4-empty-icon"><Bell size={24} /></div>
                 <p className="dashboard-v4-empty-title">No notifications yet</p>
                 <p className="dashboard-v4-empty-text">You'll see updates about your tasks here</p>
               </div>
@@ -4043,7 +4066,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     onClick={() => navigateToNotification(n)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <div className="dashboard-v4-notification-icon">{NOTIFICATION_ICONS[n.type] || '🔔'}</div>
+                    <div className="dashboard-v4-notification-icon">{NOTIFICATION_ICONS[n.type] || <Bell size={18} />}</div>
                     <div className="dashboard-v4-notification-content">
                       <p className="dashboard-v4-notification-title">{n.title}</p>
                       <p className="dashboard-v4-notification-text">{n.message}</p>
@@ -4446,7 +4469,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* ===== PLATFORM CONFIGS ===== */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>💻</span> Platform-Specific Setup</h2>
+          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> Platform-Specific Setup</h2>
 
           <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
             <h3>Claude Desktop</h3>
@@ -4755,7 +4778,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* Headless Setup - NEW SECTION */}
         <section id="headless-setup" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🤖</span> Headless Agent Setup</h2>
+          <h2 className="mcp-v4-section-title"><span><Bot size={18} /></span> Headless Agent Setup</h2>
           <p style={{ color: '#666', marginBottom: 24, fontSize: 15 }}>
             Register your AI agent and get an API key without ever touching a browser. Perfect for automated deployments.
           </p>
@@ -4976,7 +4999,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* Usage Examples */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>📝</span> Usage Examples</h2>
+          <h2 className="mcp-v4-section-title"><span><FileText size={18} /></span> Usage Examples</h2>
 
           <div className="mcp-v4-card">
             <h3>Search for humans with specific skills</h3>
@@ -5028,11 +5051,11 @@ Signature required. Bring to our office at 123 Main St.",
 
         {/* Two Ways to Hire */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🔄</span> Two Ways to Hire</h2>
+          <h2 className="mcp-v4-section-title"><span><RefreshCw size={18} /></span> Two Ways to Hire</h2>
 
           <div className="mcp-v4-two-col">
             <div className="mcp-v4-card">
-              <h3>💬 Direct Conversation</h3>
+              <h3><MessageCircle size={16} style={{ display: 'inline', verticalAlign: '-2px' }} /> Direct Conversation</h3>
               <ol className="mcp-v4-list">
                 <li>Use <code>list_humans</code> to find someone</li>
                 <li>Call <code>start_conversation</code> to discuss</li>
@@ -5044,7 +5067,7 @@ Signature required. Bring to our office at 123 Main St.",
             </div>
 
             <div className="mcp-v4-card">
-              <h3>📋 Post a Task (Bounty)</h3>
+              <h3><ClipboardList size={16} style={{ display: 'inline', verticalAlign: '-2px' }} /> Post a Task (Bounty)</h3>
               <ol className="mcp-v4-list">
                 <li>Call <code>post_task</code> with details</li>
                 <li>Humans browse and accept tasks</li>
@@ -5058,7 +5081,7 @@ Signature required. Bring to our office at 123 Main St.",
 
         {/* Best Practices */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>✨</span> Best Practices</h2>
+          <h2 className="mcp-v4-section-title"><span><Sparkles size={18} /></span> Best Practices</h2>
 
           <div className="mcp-v4-two-col">
             <div className="mcp-v4-card">
