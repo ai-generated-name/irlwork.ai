@@ -3,6 +3,7 @@ import { MapPin, Clock, DollarSign, Star, Briefcase, Users, X, Check, Copy, Bot,
 import { supabase } from '../App'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
+import CityAutocomplete from '../components/CityAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 
@@ -104,13 +105,12 @@ export default function BrowsePage({ user }) {
 
   // Humans filters
   const [skillFilter, setSkillFilter] = useState('')
-  const [cityInput, setCityInput] = useState('')
+  const [cityFilter, setCityFilter] = useState('')
   const [countryInput, setCountryInput] = useState('')
   const [maxRate, setMaxRate] = useState('')
   const [humanSort, setHumanSort] = useState('rating')
 
   // Debounced values
-  const [debouncedCity, setDebouncedCity] = useState('')
   const [debouncedCountry, setDebouncedCountry] = useState('')
   const [debouncedMaxRate, setDebouncedMaxRate] = useState('')
 
@@ -147,12 +147,6 @@ export default function BrowsePage({ user }) {
   // Expanded profile modal
   const [expandedHumanId, setExpandedHumanId] = useState(null)
 
-  // Debounce city input
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedCity(cityInput.trim()), 400)
-    return () => clearTimeout(t)
-  }, [cityInput])
-
   // Debounce country input
   useEffect(() => {
     const t = setTimeout(() => setDebouncedCountry(countryInput.trim()), 400)
@@ -174,13 +168,13 @@ export default function BrowsePage({ user }) {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [skillFilter, debouncedCity, debouncedCountry, debouncedMaxRate, humanSort])
+  }, [skillFilter, cityFilter, debouncedCountry, debouncedMaxRate, humanSort])
 
   // Fetch humans
   useEffect(() => {
     if (viewMode !== 'humans') return
     fetchHumans()
-  }, [viewMode, currentPage, skillFilter, debouncedCity, debouncedCountry, debouncedMaxRate, humanSort])
+  }, [viewMode, currentPage, skillFilter, cityFilter, debouncedCountry, debouncedMaxRate, humanSort])
 
   // Fetch tasks
   useEffect(() => {
@@ -242,7 +236,7 @@ export default function BrowsePage({ user }) {
       params.set('offset', String((currentPage - 1) * ITEMS_PER_PAGE))
       params.set('sort', humanSort)
       if (skillFilter) params.set('skill', skillFilter)
-      if (debouncedCity) params.set('city', debouncedCity)
+      if (cityFilter) params.set('city', cityFilter)
       if (debouncedCountry) params.set('country', debouncedCountry)
       if (debouncedMaxRate) params.set('max_rate', debouncedMaxRate)
 
@@ -433,7 +427,7 @@ export default function BrowsePage({ user }) {
     const label = categories.find(c => c.value === skillFilter)?.label || skillFilter
     activeFilters.push({ key: 'skill', label: `Skill: ${label}`, clear: () => setSkillFilter('') })
   }
-  if (debouncedCity) activeFilters.push({ key: 'city', label: `City: ${debouncedCity}`, clear: () => { setCityInput(''); setDebouncedCity('') } })
+  if (cityFilter) activeFilters.push({ key: 'city', label: `City: ${cityFilter}`, clear: () => setCityFilter('') })
   if (debouncedCountry) activeFilters.push({ key: 'country', label: `Country: ${debouncedCountry}`, clear: () => { setCountryInput(''); setDebouncedCountry('') } })
   if (debouncedMaxRate) activeFilters.push({ key: 'rate', label: `Max $${debouncedMaxRate}/hr`, clear: () => { setMaxRate(''); setDebouncedMaxRate('') } })
 
@@ -591,14 +585,12 @@ export default function BrowsePage({ user }) {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     City
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Any city..."
-                    value={cityInput}
-                    onChange={(e) => setCityInput(e.target.value)}
-                    style={inputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(15,76,92,0.08)' }}
-                    onBlur={(e) => { e.target.style.borderColor = 'rgba(26,26,26,0.1)'; e.target.style.boxShadow = 'none' }}
+                  <CityAutocomplete
+                    value={cityFilter}
+                    onChange={(cityData) => {
+                      setCityFilter(cityData.city || '')
+                    }}
+                    placeholder="Search city..."
                   />
                 </div>
 
@@ -690,7 +682,7 @@ export default function BrowsePage({ user }) {
                   <button
                     onClick={() => {
                       setSkillFilter('')
-                      setCityInput(''); setDebouncedCity('')
+                      setCityFilter('')
                       setCountryInput(''); setDebouncedCountry('')
                       setMaxRate(''); setDebouncedMaxRate('')
                     }}
