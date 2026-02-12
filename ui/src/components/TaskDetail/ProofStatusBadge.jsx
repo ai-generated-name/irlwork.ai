@@ -2,11 +2,12 @@
 // Simple status indicator after proof submission (countdown is shown in banner)
 
 import React from 'react';
+import { Hourglass, AlertTriangle } from 'lucide-react';
 
 const STATUS_CONFIG = {
   pending_review: {
     label: 'Pending Agent Review',
-    icon: '⏳',
+    icon: <Hourglass size={14} />,
     color: 'bg-[#FFE4DB] border-[#E07A5F] text-[#C45F4A]',
     description: 'Your proof has been submitted and is awaiting agent review'
   },
@@ -20,11 +21,11 @@ const STATUS_CONFIG = {
     label: 'Paid',
     icon: '✓',
     color: 'bg-[#D1FAE5] border-[#059669] text-[#059669]',
-    description: 'Payment has been released to your wallet'
+    description: 'Payment has been released to your bank account'
   },
   disputed: {
     label: 'Disputed',
-    icon: '⚠️',
+    icon: <AlertTriangle size={14} />,
     color: 'bg-[#FEE2E2] border-[#DC2626] text-[#DC2626]',
     description: 'The agent has disputed your proof. Please check messages for feedback.'
   },

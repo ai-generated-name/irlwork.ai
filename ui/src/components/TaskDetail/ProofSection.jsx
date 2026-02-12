@@ -2,6 +2,7 @@
 // Inline proof submission form (extracted from ProofSubmitModal logic)
 
 import React, { useState, useRef } from 'react';
+import { Upload, Hourglass, FileText } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import API_URL from '../../config/api';
 
@@ -38,7 +39,7 @@ export default function ProofSection({ task, user, onSubmit }) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: user?.id || '',
+        Authorization: user?.token || user?.id || '',
       },
       body: JSON.stringify({
         file: base64,
@@ -53,8 +54,17 @@ export default function ProofSection({ task, user, onSubmit }) {
 
   const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files || []);
+    // Reset file input immediately so user can always re-select
+    if (fileInputRef.current) fileInputRef.current.value = '';
     if (selected.length + files.length > 3) {
       toast.error('Maximum 3 files allowed');
+      return;
+    }
+
+    // Validate file sizes (20MB max per file, compress before upload)
+    const oversized = selected.find(f => f.size > 20 * 1024 * 1024);
+    if (oversized) {
+      toast.error('Each file must be under 20MB');
       return;
     }
 
@@ -66,7 +76,17 @@ export default function ProofSection({ task, user, onSubmit }) {
     try {
       const urls = [...uploadedUrls];
       for (const file of selected) {
-        const url = await uploadFile(file);
+        let fileToUpload = file;
+        // Compress images over 1MB (skip non-image or gif)
+        if (file.type.startsWith('image/') && file.type !== 'image/gif' && file.size > 1024 * 1024) {
+          const imageCompression = (await import('browser-image-compression')).default;
+          fileToUpload = await imageCompression(file, {
+            maxSizeMB: 2,
+            maxWidthOrHeight: 2000,
+            useWebWorker: true,
+          });
+        }
+        const url = await uploadFile(fileToUpload);
         urls.push(url);
       }
       setUploadedUrls(urls.slice(0, 3));
@@ -74,6 +94,8 @@ export default function ProofSection({ task, user, onSubmit }) {
     } catch (err) {
       console.error('Upload error:', err);
       toast.error('Failed to upload file(s)');
+      // Remove failed files from state so user can retry
+      setFiles(prev => prev.filter((_, i) => i < uploadedUrls.length));
     } finally {
       setUploading(false);
     }
@@ -138,7 +160,7 @@ export default function ProofSection({ task, user, onSubmit }) {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{uploading ? '⏳' : '📤'}</div>
+            <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{uploading ? <Hourglass size={24} /> : <Upload size={24} />}</div>
             <p className="text-[#525252] text-xs sm:text-sm">
               {uploading ? 'Uploading...' : 'Tap to upload images'}
             </p>
@@ -186,7 +208,7 @@ export default function ProofSection({ task, user, onSubmit }) {
 
         {/* Instructions */}
         <div className="bg-[#D1E9F0] border border-[rgba(15,76,92,0.2)] rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-[#0F4C5C]">
-          <p className="font-medium mb-1">📝 Tips:</p>
+          <p className="font-medium mb-1"><FileText size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Tips:</p>
           <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-[#525252]">
             <li>Describe work completed in detail</li>
             <li>Upload clear photos of finished task</li>

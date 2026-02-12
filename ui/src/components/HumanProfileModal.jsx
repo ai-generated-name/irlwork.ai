@@ -4,6 +4,7 @@ import { StarRating } from './HumanProfileCard'
 import { SocialIconsRow } from './SocialIcons'
 import ForAgentsBox from './ForAgentsBox'
 import { fixAvatarUrl } from '../utils/avatarUrl'
+import { formatTimezoneShort } from '../utils/timezone'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -194,7 +195,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                     {profile.timezone && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 8, color: 'var(--text-tertiary)', fontSize: 13 }}>
                         <Clock size={12} />
-                        {profile.timezone.replace(/_/g, ' ')}
+                        {formatTimezoneShort(profile.timezone)}
                       </span>
                     )}
                   </div>
