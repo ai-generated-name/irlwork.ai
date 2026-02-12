@@ -73,14 +73,40 @@ const PLATFORMS = {
 
 const PLATFORM_ORDER = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube']
 
-export function SocialIconsRow({ socialLinks, size = 18, gap = 8 }) {
+export function SocialIconsRow({ socialLinks, size = 18, gap = 8, alwaysShow = false }) {
   const [hoveredPlatform, setHoveredPlatform] = useState(null)
 
-  if (!socialLinks || typeof socialLinks !== 'object') return null
+  const links = (socialLinks && typeof socialLinks === 'object') ? socialLinks : {}
   const entries = PLATFORM_ORDER
-    .filter(p => socialLinks[p] && socialLinks[p].trim())
-    .map(p => [p, socialLinks[p]])
-  if (entries.length === 0) return null
+    .filter(p => links[p] && links[p].trim())
+    .map(p => [p, links[p]])
+
+  if (entries.length === 0 && !alwaysShow) return null
+
+  if (entries.length === 0 && alwaysShow) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap, minHeight: size + 4 }}>
+        {PLATFORM_ORDER.slice(0, 4).map(platform => {
+          const config = PLATFORMS[platform]
+          return (
+            <span
+              key={platform}
+              style={{
+                color: 'var(--text-tertiary, #9CA3AF)',
+                opacity: 0.25,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title={`No ${config.label} linked`}
+            >
+              {config.icon(size)}
+            </span>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap }}>
