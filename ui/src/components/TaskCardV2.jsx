@@ -120,6 +120,24 @@ export default function TaskCardV2({
         <p className="task-card-v2-description">{task.description}</p>
       )}
 
+      {/* Skills pills */}
+      {task.required_skills && task.required_skills.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+          {task.required_skills.slice(0, 3).map((skill, i) => (
+            <span key={i} style={{
+              display: 'inline-block', padding: '2px 8px', borderRadius: 12,
+              fontSize: 11, fontWeight: 500, background: '#EEF2FF', color: '#4338CA'
+            }}>{skill}</span>
+          ))}
+          {task.required_skills.length > 3 && (
+            <span style={{
+              display: 'inline-block', padding: '2px 8px', borderRadius: 12,
+              fontSize: 11, fontWeight: 500, background: '#F5F5F5', color: '#525252'
+            }}>+{task.required_skills.length - 3} more</span>
+          )}
+        </div>
+      )}
+
       {/* Budget + Duration + Deadline row */}
       <div className="task-card-v2-meta-row">
         <div className="task-card-v2-budget">

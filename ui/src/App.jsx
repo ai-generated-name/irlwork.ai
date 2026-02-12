@@ -1649,7 +1649,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     is_remote: false,
     duration_hours: '',
     deadline: '',
-    requirements: ''
+    requirements: '',
+    required_skills: [],
+    skillInput: ''
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
@@ -2181,7 +2183,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           is_remote: taskForm.is_remote,
           duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
           deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
-          requirements: taskForm.requirements.trim() || null
+          requirements: taskForm.requirements.trim() || null,
+          required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : []
         })
       })
 
@@ -2925,6 +2928,46 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       <span className="dashboard-v4-form-section-title">Location</span>
                     </div>
 
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">Required Skills (optional)</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
+                        {taskForm.required_skills.map((skill, i) => (
+                          <span key={i} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            background: '#EEF2FF', color: '#4338CA', borderRadius: 16,
+                            padding: '4px 10px', fontSize: 13, fontWeight: 500
+                          }}>
+                            {skill}
+                            <button type="button" onClick={() => setTaskForm(prev => ({
+                              ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
+                            }))} style={{
+                              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                              color: '#4338CA', fontSize: 16, lineHeight: 1, marginLeft: 2
+                            }}>×</button>
+                          </span>
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Type a skill and press Enter (e.g. photography, driving, coding)"
+                        className="dashboard-v4-form-input"
+                        value={taskForm.skillInput}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ',') {
+                            e.preventDefault()
+                            const skill = taskForm.skillInput.trim().toLowerCase()
+                            if (skill && !taskForm.required_skills.includes(skill)) {
+                              setTaskForm(prev => ({
+                                ...prev,
+                                required_skills: [...prev.required_skills, skill],
+                                skillInput: ''
+                              }))
+                            }
+                          }
+                        }}
+                      />
+                    </div>
                     <div className="dashboard-v4-form-group">
                       <label className="dashboard-v4-form-label">Is this task remote?</label>
                       <div className="dashboard-v4-toggle-group">
