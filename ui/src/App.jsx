@@ -3445,8 +3445,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     onChange={async (e) => {
                       const file = e.target.files?.[0]
                       if (!file) return
-                      if (file.size > 5 * 1024 * 1024) {
-                        toast.error('Image must be under 5MB')
+                      // Reset file input immediately so user can always re-select
+                      e.target.value = ''
+                      if (file.size > 20 * 1024 * 1024) {
+                        toast.error('Image must be under 20MB')
                         return
                       }
                       if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
@@ -3455,13 +3457,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       }
                       setAvatarUploading(true)
                       try {
+                        // Compress image client-side before upload
+                        let fileToUpload = file
+                        if (file.type !== 'image/gif' && file.size > 1024 * 1024) {
+                          const imageCompression = (await import('browser-image-compression')).default
+                          fileToUpload = await imageCompression(file, {
+                            maxSizeMB: 1,
+                            maxWidthOrHeight: 1200,
+                            useWebWorker: true,
+                            fileType: 'image/jpeg',
+                          })
+                        }
                         const reader = new FileReader()
                         reader.onload = async () => {
                           try {
                             const res = await fetch(`${API_URL}/upload/avatar`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                              body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: file.type })
+                              body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: fileToUpload.type })
                             })
                             if (res.ok) {
                               const data = await res.json()
@@ -3472,19 +3485,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                               localStorage.setItem('user', JSON.stringify(updatedUser))
                               toast.success('Profile photo updated!')
                             } else {
-                              toast.error('Failed to upload photo')
+                              const errData = await res.json().catch(() => ({}))
+                              toast.error(errData.error || 'Failed to upload photo')
                             }
                           } catch {
                             toast.error('Error uploading photo')
                           }
                           setAvatarUploading(false)
                         }
-                        reader.readAsDataURL(file)
+                        reader.onerror = () => {
+                          toast.error('Error reading file')
+                          setAvatarUploading(false)
+                        }
+                        reader.readAsDataURL(fileToUpload)
                       } catch {
-                        toast.error('Error reading file')
+                        toast.error('Error processing image')
                         setAvatarUploading(false)
                       }
-                      e.target.value = ''
                     }}
                   />
                 </div>

@@ -197,7 +197,7 @@ app.post('/api/stripe/webhooks',
   }
 );
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '30mb' }));
 
 // Rate limiting middleware (applied after JSON parsing)
 app.use(rateLimitMiddleware);
@@ -2310,6 +2310,13 @@ app.post('/api/upload/proof', async (req, res) => {
       return res.status(400).json({ error: 'No file provided' });
     }
 
+    // Server-side file size validation (10MB max for proof files)
+    const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
+    const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
+    if (fileSizeBytes > 10 * 1024 * 1024) {
+      return res.status(413).json({ error: 'File must be under 10MB' });
+    }
+
     // Generate unique filename
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
@@ -2407,6 +2414,13 @@ app.post('/api/upload/avatar', async (req, res) => {
   try {
     const { file, filename, mimeType } = req.body;
     if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    // Server-side file size validation (5MB max after compression)
+    const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
+    const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
+    if (fileSizeBytes > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Image must be under 5MB' });
+    }
 
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
@@ -2537,6 +2551,13 @@ app.post('/api/upload/feedback', async (req, res) => {
   try {
     const { file, filename, mimeType } = req.body;
     if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    // Server-side file size validation (10MB max for feedback files)
+    const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
+    const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
+    if (fileSizeBytes > 10 * 1024 * 1024) {
+      return res.status(413).json({ error: 'File must be under 10MB' });
+    }
 
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);

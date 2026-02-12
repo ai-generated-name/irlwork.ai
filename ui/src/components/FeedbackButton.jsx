@@ -103,11 +103,24 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
     setSubmitted(false)
   }, [])
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files || [])
-    if (selected.length + files.length > 3) return
-    setFiles((prev) => [...prev, ...selected].slice(0, 3))
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (selected.length + files.length > 3) return
+    // Validate file sizes
+    const oversized = selected.find(f => f.size > 20 * 1024 * 1024)
+    if (oversized) return
+    // Compress large images before adding to state
+    const processed = []
+    for (const file of selected) {
+      if (file.type.startsWith('image/') && file.type !== 'image/gif' && file.size > 1024 * 1024) {
+        const imageCompression = (await import('browser-image-compression')).default
+        processed.push(await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 2000, useWebWorker: true }))
+      } else {
+        processed.push(file)
+      }
+    }
+    setFiles((prev) => [...prev, ...processed].slice(0, 3))
   }
 
   const removeFile = (index) => {
