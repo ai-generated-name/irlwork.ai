@@ -64,31 +64,16 @@ const STEPS = [
   {
     id: 'connect',
     title: 'Connect Your AI Agent',
-    subtitle: 'Automate everything via API or MCP',
-    integrations: [
-      {
-        icon: (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-          </svg>
-        ),
-        title: 'MCP Server',
-        description: 'Add to Claude, ChatGPT, or any MCP-compatible agent',
-        action: 'View setup →',
-        href: '/mcp',
-      },
-      {
-        icon: (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
-          </svg>
-        ),
-        title: 'REST API',
-        description: 'Full API access with your API key',
-        action: 'Get API key →',
-        tabTarget: 'settings',
-      },
-    ],
+    subtitle: 'Give any AI agent the ability to hire humans — just copy one prompt',
+    connectAgent: {
+      steps: [
+        { number: '1', text: 'Go to the Connect Agent page' },
+        { number: '2', text: 'Copy the prompt into your AI agent (Claude, ChatGPT, etc.)' },
+        { number: '3', text: 'Ask your agent to hire a human — it handles the rest' },
+      ],
+      tip: 'The prompt includes your API key and MCP setup automatically. No extra configuration needed.',
+      href: '/connect-agent',
+    },
   },
 ]
 
@@ -116,6 +101,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
   const handleNext = () => {
     if (isLastStep) {
       handleComplete()
+      window.location.href = '/connect-agent'
     } else {
       setCurrentStep(prev => prev + 1)
     }
@@ -381,69 +367,57 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
             </div>
           )}
 
-          {/* Step 4: Integrations */}
-          {step.integrations && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 8 }}>
-              {step.integrations.map((int, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 14,
-                    padding: '18px 20px',
-                    background: 'var(--bg-tertiary)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(26, 26, 26, 0.04)',
-                  }}
-                >
-                  <div style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: 'rgba(15, 76, 92, 0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--teal)',
-                    flexShrink: 0,
-                  }}>
-                    {int.icon}
+          {/* Step 4: Connect Agent */}
+          {step.connectAgent && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {step.connectAgent.steps.map((s, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 14,
+                      padding: '14px 16px',
+                      background: i === 0 ? 'rgba(15, 76, 92, 0.06)' : 'var(--bg-tertiary)',
+                      border: i === 0 ? '1px solid rgba(15, 76, 92, 0.15)' : '1px solid rgba(26, 26, 26, 0.04)',
+                      borderRadius: 'var(--radius-md)',
+                    }}
+                  >
+                    <div style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      background: i === 0 ? 'linear-gradient(135deg, var(--teal), var(--teal-light))' : 'rgba(26, 26, 26, 0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: i === 0 ? 'white' : 'var(--text-secondary)',
+                      flexShrink: 0,
+                    }}>
+                      {s.number}
+                    </div>
+                    <p style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: i === 0 ? 500 : 400 }}>{s.text}</p>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)', marginBottom: 2 }}>{int.title}</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, lineHeight: 1.4 }}>{int.description}</p>
-                    {int.href ? (
-                      <a
-                        href={int.href}
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: 'var(--teal)',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        {int.action}
-                      </a>
-                    ) : (
-                      <button
-                        onClick={() => { onNavigate?.(int.tabTarget); handleComplete() }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: 'var(--teal)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {int.action}
-                      </button>
-                    )}
-                  </div>
+                ))}
+              </div>
+              {step.connectAgent.tip && (
+                <div style={{
+                  marginTop: 14,
+                  padding: '12px 16px',
+                  background: 'rgba(16, 185, 129, 0.06)',
+                  border: '1px solid rgba(16, 185, 129, 0.12)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: 13,
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5,
+                }}>
+                  <span style={{ fontWeight: 600, color: 'var(--success)' }}>Tip: </span>
+                  {step.connectAgent.tip}
                 </div>
-              ))}
+              )}
             </div>
           )}
 
@@ -493,7 +467,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                 e.target.style.boxShadow = 'var(--shadow-md)'
               }}
             >
-              {isLastStep ? 'Start Hiring' : 'Next'}
+              {isLastStep ? 'Go to Connect Agent →' : 'Next'}
             </button>
           </div>
         </div>
