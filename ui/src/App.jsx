@@ -39,6 +39,7 @@ const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
 import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
+import TimezoneDropdown from './components/TimezoneDropdown'
 import { TASK_CATEGORIES } from './components/CategoryPills'
 import { Copy } from 'lucide-react'
 import StandaloneTaskDetailPage from './pages/TaskDetailPage'
@@ -1625,6 +1626,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
+  const [profileTimezone, setProfileTimezone] = useState(user?.timezone || '')
   const [skillsList, setSkillsList] = useState(user?.skills || [])
   const [newSkillInput, setNewSkillInput] = useState('')
   const [languagesList, setLanguagesList] = useState(user?.languages || [])
@@ -3539,7 +3541,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   const formData = new FormData(e.target)
                   try {
                     const locationData = profileLocation || {}
-                    const timezoneVal = formData.get('timezone')?.trim()
                     const payload = {
                       name: formData.get('name'),
                       headline: formData.get('headline'),
@@ -3552,7 +3553,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       bio: formData.get('bio'),
                       travel_radius: parseInt(formData.get('travel_radius')) || 25
                     }
-                    if (timezoneVal) payload.timezone = timezoneVal
+                    if (profileTimezone) payload.timezone = profileTimezone
                     const res = await fetch(`${API_URL}/humans/profile`, {
                       method: 'PUT',
                       headers: { 'Content-Type': 'application/json', Authorization: user.id },
@@ -3610,7 +3611,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
                   <div className="dashboard-v4-form-group">
                     <label className="dashboard-v4-form-label">Timezone</label>
-                    <input type="text" name="timezone" defaultValue={user?.timezone || ''} className="dashboard-v4-form-input" placeholder="Auto-detected from city (e.g. America/New_York)" />
+                    <TimezoneDropdown
+                      value={profileTimezone}
+                      onChange={setProfileTimezone}
+                      className="dashboard-v4-form-input"
+                    />
                     <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Auto-set when you select a city. You can override manually.</p>
                   </div>
 
