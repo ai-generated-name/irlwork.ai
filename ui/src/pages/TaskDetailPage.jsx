@@ -7,7 +7,7 @@ import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
 import TaskTimeline from '../components/TaskDetail/TaskTimeline';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
-import BudgetCard from '../components/TaskDetail/BudgetCard';
+import PaymentCard from '../components/TaskDetail/PaymentCard';
 import StatsSection from '../components/TaskDetail/StatsSection';
 import ProofSection from '../components/TaskDetail/ProofSection';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
@@ -358,6 +358,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         borderBottom: '1px solid rgba(26,26,26,0.08)',
         position: 'sticky',
         top: 56,
+        marginTop: 56,
         background: 'white',
         zIndex: 10,
         boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
@@ -394,12 +395,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto px-3 pt-4 pb-6 sm:px-4 sm:pt-8 sm:pb-8 mt-14" style={{ maxWidth: 1280 }}>
-        {/* Countdown Banner (only when pending review) */}
-        {taskStatus?.dispute_window_info && (
-          <CountdownBanner disputeWindowInfo={taskStatus.dispute_window_info} />
-        )}
-
+      <main className="mx-auto px-3 pt-4 pb-6 sm:px-4 sm:pt-8 sm:pb-8" style={{ maxWidth: 1280 }}>
         {/* Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
           {/* Left Column - Task Details (60%) */}
@@ -411,21 +407,27 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               <TaskTimeline task={task} taskStatus={taskStatus} />
             )}
 
-            {/* Mobile-only: Budget card right after header so Apply is visible early */}
+            {/* Mobile-only: Payment card right after header so Apply is visible early */}
             <div className="lg:hidden">
-              <BudgetCard
+              <PaymentCard
                 task={task}
                 user={user}
+                isParticipant={isParticipant}
                 onApply={() => setShowApplyModal(true)}
               />
             </div>
 
-            {/* Show proof section if in progress (participants only) */}
+            {/* Countdown Banner (participant only, during dispute window) */}
+            {taskStatus?.dispute_window_info && (
+              <CountdownBanner disputeWindowInfo={taskStatus.dispute_window_info} />
+            )}
+
+            {/* Show proof section if in progress, or status badge if submitted (participants only) */}
             {isParticipant && task.status === 'in_progress' && (
               <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
             )}
 
-            {/* Messages - in left column beneath task info */}
+            {/* Messages - in left column beneath task info (participants only) */}
             {isParticipant && (
               <TaskMessageThread
                 conversation={conversation}
@@ -437,13 +439,14 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             )}
           </div>
 
-          {/* Right Column - Budget, Stats, Agent Profile, Escrow (40%) */}
+          {/* Right Column - Payment, Stats, Agent Profile */}
           <div className="lg:col-span-2 space-y-3 sm:space-y-4">
-            {/* Budget Card - hidden on mobile (shown inline above), visible on desktop sidebar */}
+            {/* Payment Card - hidden on mobile (shown inline above), visible on desktop sidebar */}
             <div className="hidden lg:block">
-              <BudgetCard
+              <PaymentCard
                 task={task}
                 user={user}
+                isParticipant={isParticipant}
                 onApply={() => setShowApplyModal(true)}
               />
             </div>
