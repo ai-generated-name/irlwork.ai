@@ -14,6 +14,7 @@ const {
   setDefaultPaymentMethod,
   createConnectAccount,
   createAccountLink,
+  createLoginLink,
   getConnectAccountStatus,
 } = require('../backend/services/stripeService');
 
@@ -152,6 +153,46 @@ function initStripeRoutes(supabase, getUserByToken, createNotification) {
       res.json(result);
     } catch (error) {
       console.error('[Stripe] Connect onboard error:', error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // GET /api/stripe/connect/dashboard - Get Stripe Express Dashboard link
+  // Workers can manage bank accounts, view payouts, update tax info here
+  // ============================================================================
+  router.get('/connect/dashboard', async (req, res) => {
+    try {
+      if (!req.user.stripe_account_id) {
+        return res.status(400).json({ error: 'No Stripe Connect account found. Set up your bank first.' });
+      }
+
+      if (!req.user.stripe_onboarding_complete) {
+        return res.status(400).json({ error: 'Please complete your bank setup first.' });
+      }
+
+      const dashboardUrl = await createLoginLink(req.user.stripe_account_id);
+      res.json({ dashboard_url: dashboardUrl });
+    } catch (error) {
+      console.error('[Stripe] Dashboard link error:', error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // POST /api/stripe/connect/update-bank - Re-onboard to change bank account
+  // Creates a new onboarding link so the worker can update their bank details
+  // ============================================================================
+  router.post('/connect/update-bank', async (req, res) => {
+    try {
+      if (!req.user.stripe_account_id) {
+        return res.status(400).json({ error: 'No Stripe Connect account found. Set up your bank first.' });
+      }
+
+      const onboardingUrl = await createAccountLink(req.user.stripe_account_id);
+      res.json({ onboarding_url: onboardingUrl });
+    } catch (error) {
+      console.error('[Stripe] Update bank error:', error.message);
       res.status(500).json({ error: error.message });
     }
   });

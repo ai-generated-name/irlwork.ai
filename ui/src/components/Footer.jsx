@@ -35,7 +35,7 @@ export default function Footer() {
             <div>
               <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-100)', marginBottom: 'var(--sp-3)' }}>Developers</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
-                <Link to="/mcp" style={{ fontSize: '14px', color: 'var(--text-40)', textDecoration: 'none' }}>API Docs</Link>
+                <Link to="/connect-agent" style={{ fontSize: '14px', color: 'var(--text-40)', textDecoration: 'none' }}>API Docs</Link>
                 <a href="https://github.com" target="_blank" rel="noopener noreferrer" style={{ fontSize: '14px', color: 'var(--text-40)', textDecoration: 'none' }}>GitHub</a>
               </div>
             </div>
@@ -86,7 +86,7 @@ export default function Footer() {
 
             <div className="footer-v4-links">
               <h4 className="footer-v4-heading">Developers</h4>
-              <Link to="/mcp" className="footer-v4-link">API Docs</Link>
+              <Link to="/connect-agent" className="footer-v4-link">API Docs</Link>
               <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="footer-v4-link">GitHub</a>
             </div>
 
