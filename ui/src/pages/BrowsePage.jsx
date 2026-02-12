@@ -104,6 +104,8 @@ export default function BrowsePage({ user }) {
   const [tasksLoading, setTasksLoading] = useState(false)
   const [taskCategoryFilter, setTaskCategoryFilter] = useState('')
   const [taskCityFilter, setTaskCityFilter] = useState('')
+  const [taskSearchQuery, setTaskSearchQuery] = useState('')
+  const [debouncedTaskSearch, setDebouncedTaskSearch] = useState('')
   const [taskSortBy, setTaskSortBy] = useState('newest')
 
   // Apply modal state
@@ -148,6 +150,12 @@ export default function BrowsePage({ user }) {
     return () => clearTimeout(t)
   }, [maxRate])
 
+  // Debounce task search input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedTaskSearch(taskSearchQuery.trim()), 400)
+    return () => clearTimeout(t)
+  }, [taskSearchQuery])
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
@@ -163,7 +171,7 @@ export default function BrowsePage({ user }) {
   useEffect(() => {
     if (viewMode !== 'tasks') return
     fetchTasks()
-  }, [viewMode, taskCategoryFilter, taskCityFilter, taskSortBy])
+  }, [viewMode, taskCategoryFilter, taskCityFilter, debouncedTaskSearch, taskSortBy])
 
   // Real-time subscriptions
   useEffect(() => {
@@ -251,6 +259,7 @@ export default function BrowsePage({ user }) {
       const params = new URLSearchParams()
       if (taskCategoryFilter) params.append('category', taskCategoryFilter)
       if (taskCityFilter) params.append('city', taskCityFilter)
+      if (debouncedTaskSearch) params.append('search', debouncedTaskSearch)
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`)
       if (res.ok) {
@@ -836,6 +845,24 @@ export default function BrowsePage({ user }) {
               flexWrap: 'wrap',
               justifyContent: 'center'
             }}>
+              <div style={{ position: 'relative', minWidth: 220 }}>
+                <Search size={16} style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-tertiary)',
+                  pointerEvents: 'none'
+                }} />
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="city-autocomplete-v4-input"
+                  style={{ minWidth: 220, paddingLeft: 36 }}
+                />
+              </div>
               <div style={{ minWidth: 160 }}>
                 <CustomDropdown
                   value={taskCategoryFilter}
@@ -961,6 +988,27 @@ export default function BrowsePage({ user }) {
                           <Clock size={16} />
                           {formatDate(task.created_at)}
                         </span>
+                        {task.deadline && (() => {
+                          const diffMs = new Date(task.deadline) - new Date();
+                          if (diffMs < 0) return null; // Past deadline tasks are auto-expired
+                          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                          let label, bg, color;
+                          if (diffHours < 1) { label = 'Due in < 1 hour'; bg = '#FEF3C7'; color = '#D97706'; }
+                          else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#D97706'; }
+                          else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#B45309'; }
+                          else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
+                          return (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '2px 10px', borderRadius: 'var(--radius-full)',
+                              fontSize: 12, fontWeight: 600, background: bg, color
+                            }}>
+                              <Clock size={12} />
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </div>
                       {task.agent && (
                         <div style={{ paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>

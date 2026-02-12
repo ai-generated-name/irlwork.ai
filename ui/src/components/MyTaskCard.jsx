@@ -43,20 +43,24 @@ export default function MyTaskCard({
   // Deadline urgency
   const getUrgencyClass = () => {
     if (!task.deadline) return '';
-    const daysLeft = Math.ceil((new Date(task.deadline) - new Date()) / (1000 * 60 * 60 * 24));
-    if (daysLeft < 0) return 'mytasks-card--overdue';
-    if (daysLeft <= 1) return 'mytasks-card--urgent';
-    if (daysLeft <= 3) return 'mytasks-card--soon';
+    const diffMs = new Date(task.deadline) - new Date();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffMs < 0) return '';
+    if (diffHours < 24) return 'mytasks-card--urgent';
+    if (diffDays <= 3) return 'mytasks-card--soon';
     return '';
   };
 
   const getDaysLeft = () => {
     if (!task.deadline) return null;
-    const daysLeft = Math.ceil((new Date(task.deadline) - new Date()) / (1000 * 60 * 60 * 24));
-    if (daysLeft < 0) return 'Overdue';
-    if (daysLeft === 0) return 'Due today';
-    if (daysLeft === 1) return '1 day left';
-    return `${daysLeft} days left`;
+    const diffMs = new Date(task.deadline) - new Date();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffMs < 0) return null;
+    if (diffHours < 1) return 'Due in < 1 hour';
+    if (diffHours < 24) return `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+    return `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
   };
 
   const urgencyClass = getUrgencyClass();

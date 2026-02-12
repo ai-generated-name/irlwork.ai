@@ -21,6 +21,9 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const BCRYPT_ROUNDS = 12;
 
+// Wallet address validation (Ethereum/Base network - 0x + 40 hex chars)
+const isValidWalletAddress = (addr) => /^0x[a-fA-F0-9]{40}$/.test(addr);
+
 const { createClient } = require('@supabase/supabase-js');
 
 // Background services
@@ -1557,7 +1560,12 @@ app.put('/api/humans/profile', async (req, res) => {
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
     if (name) updates.name = name;
-    if (wallet_address) updates.wallet_address = wallet_address;
+    if (wallet_address) {
+      if (!isValidWalletAddress(wallet_address)) {
+        return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Ethereum address (0x followed by 40 hex characters).' });
+      }
+      updates.wallet_address = wallet_address;
+    }
     if (hourly_rate) updates.hourly_rate = hourly_rate;
     if (bio !== undefined) updates.bio = bio;
     // Accept both 'skills' and 'categories' for backwards compatibility
@@ -1640,9 +1648,10 @@ app.get('/api/tasks', async (req, res) => {
   if (status) query = query.eq('status', status);
   if (my_tasks && user) query = query.eq('agent_id', user.id);
 
-  // Filter out moderated tasks from browse (unless viewing own tasks)
+  // Filter out moderated and expired tasks from browse (unless viewing own tasks)
   if (!my_tasks) {
     query = query.not('moderation_status', 'in', '("hidden","removed")');
+    query = query.not('status', 'eq', 'expired');
   }
 
   const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(100);
@@ -1690,24 +1699,49 @@ app.post('/api/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const user = await getUserByToken(req.headers.authorization);
-  if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, deadline, requirements } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, deadline, requirements, country, country_code, duration_hours } = req.body;
+
+  // Validate required fields
+  if (!title || !title.trim()) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  if (title.trim().length > 200) {
+    return res.status(400).json({ error: 'Title must be 200 characters or less' });
+  }
+  if (description && description.length > 5000) {
+    return res.status(400).json({ error: 'Description must be 5000 characters or less' });
+  }
+  if (requirements && requirements.length > 3000) {
+    return res.status(400).json({ error: 'Requirements must be 3000 characters or less' });
+  }
+  if (location && location.length > 300) {
+    return res.status(400).json({ error: 'Location must be 300 characters or less' });
+  }
+  if (!budget || parseFloat(budget) < 5) {
+    return res.status(400).json({ error: 'Budget must be at least $5' });
+  }
+  if (parseFloat(budget) > 100000) {
+    return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
+  }
 
   const id = uuidv4();
-  const budgetAmount = budget || 50;
+  const budgetAmount = parseFloat(budget) || 50;
 
   const { data: task, error } = await supabase
     .from('tasks')
     .insert({
       id,
       agent_id: user.id,
-      title,
+      title: title.trim(),
       description,
       category,
       location,
       latitude: latitude || null,
       longitude: longitude || null,
+      country: country || null,
+      country_code: country_code || null,
       budget: budgetAmount,
       status: 'open',
       task_type: 'direct',
@@ -1715,6 +1749,7 @@ app.post('/api/tasks', async (req, res) => {
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
       deadline: deadline || null,
+      duration_hours: duration_hours || null,
       requirements: requirements || null,
       created_at: new Date().toISOString()
     })
@@ -2649,14 +2684,14 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   // Verify task exists and user is assigned
   const { data: task, error: taskError } = await supabase
     .from('tasks')
-    .select('id, human_id, status, title')
+    .select('id, human_id, agent_id, status, title')
     .eq('id', taskId)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.human_id !== user.id) {
     return res.status(403).json({ error: 'Not assigned to this task' });
   }
@@ -2856,6 +2891,11 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     return res.status(403).json({ error: 'Not your task' });
   }
 
+  // Guard: task must be in pending_review or disputed status to approve
+  if (!['pending_review', 'disputed'].includes(task.status)) {
+    return res.status(400).json({ error: `Cannot approve task in '${task.status}' status` });
+  }
+
   // Get latest proof
   const { data: latestProof } = await supabase
     .from('task_proofs')
@@ -2869,23 +2909,37 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     return res.status(400).json({ error: 'No proof to approve' });
   }
 
-  // Update proof status to approved
-  await supabase
+  // Atomic update with status precondition to prevent double-approval
+  const { data: updatedProof, error: proofUpdateError } = await supabase
     .from('task_proofs')
     .update({
       status: 'approved',
       updated_at: new Date().toISOString()
     })
-    .eq('id', latestProof.id);
+    .eq('id', latestProof.id)
+    .neq('status', 'approved')
+    .select('id')
+    .single();
 
-  // Update task to 'approved' status
-  await supabase
+  if (proofUpdateError || !updatedProof) {
+    return res.status(409).json({ error: 'Proof has already been approved' });
+  }
+
+  // Atomic task status update with precondition
+  const { data: updatedTask, error: taskUpdateError } = await supabase
     .from('tasks')
     .update({
       status: 'approved',
       updated_at: new Date().toISOString()
     })
-    .eq('id', taskId);
+    .eq('id', taskId)
+    .in('status', ['pending_review', 'disputed'])
+    .select('id')
+    .single();
+
+  if (taskUpdateError || !updatedTask) {
+    return res.status(409).json({ error: 'Task has already been approved' });
+  }
 
   // Notify human
   await createNotification(
@@ -3174,18 +3228,16 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  // Check if user is admin
-  const { data: adminUser } = await supabase
-    .from('users')
-    .select('type')
-    .eq('id', user.id)
-    .single();
-  
-  if (adminUser?.type !== 'admin') {
+  // Check if user is admin via ADMIN_USER_IDS environment variable
+  const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+  if (!ADMIN_USER_IDS.includes(user.id)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  
-  const { task_id, resolution, refund_human = false, release_to_human = false, notes } = req.body;
+
+  const { task_id, resolution, refund_to_agent = false, release_to_human = false, notes,
+          // Support legacy parameter name for backwards compatibility
+          refund_human } = req.body;
+  const shouldRefundAgent = refund_to_agent || refund_human;
   
   // Get task
   const { data: task, error: taskError } = await supabase
@@ -3250,9 +3302,9 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
       `The dispute has been resolved in your favor. Payment of ${netAmount.toFixed(2)} USDC has been released.`,
       `/tasks/${task_id}`
     );
-  } else if (refund_human) {
-    // Refund escrow to agent
-    await supabase
+  } else if (shouldRefundAgent) {
+    // Refund escrow to agent (param was misleadingly named refund_human, now refund_to_agent)
+    const { data: refundResult, error: refundError } = await supabase
       .from('tasks')
       .update({
         status: 'cancelled',
@@ -3262,7 +3314,14 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', task_id);
+      .eq('id', task_id)
+      .eq('status', 'disputed')
+      .select('id')
+      .single();
+
+    if (refundError || !refundResult) {
+      return res.status(409).json({ error: 'Dispute has already been resolved.' });
+    }
     
     await createNotification(
       task.agent_id,
@@ -3280,7 +3339,7 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
     );
   } else {
     // Partial resolution - reset 48h timer for agent review
-    await supabase
+    const { data: partialResult, error: partialError } = await supabase
       .from('tasks')
       .update({
         status: 'pending_review',
@@ -3290,7 +3349,14 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
         notes,
         updated_at: new Date().toISOString()
       })
-      .eq('id', task_id);
+      .eq('id', task_id)
+      .eq('status', 'disputed')
+      .select('id')
+      .single();
+
+    if (partialError || !partialResult) {
+      return res.status(409).json({ error: 'Dispute has already been resolved.' });
+    }
   }
   
   res.json({ success: true, resolution });
@@ -5247,7 +5313,12 @@ app.put('/api/profile', async (req, res) => {
   if (state) updates.state = state;
   if (hourly_rate) updates.hourly_rate = hourly_rate;
   if (availability) updates.availability = availability;
-  if (wallet_address) updates.wallet_address = wallet_address;
+  if (wallet_address) {
+    if (!isValidWalletAddress(wallet_address)) {
+      return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Ethereum address (0x followed by 40 hex characters).' });
+    }
+    updates.wallet_address = wallet_address;
+  }
   if (skills) updates.skills = JSON.stringify(skills);
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
   if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
@@ -5480,6 +5551,84 @@ async function start() {
     // Start balance promoter (promotes pending → available after 48 hours)
     startBalancePromoter(supabase, createNotification);
     console.log('   ✅ Balance promoter started (15min interval)');
+
+    // Start task expiry service
+    // Two expiry rules:
+    //   1. Open tasks past their deadline with no one assigned → expire immediately
+    //   2. Open tasks with no deadline older than 30 days → expire as stale
+    const TASK_EXPIRY_DAYS = 30;
+    const TASK_EXPIRY_INTERVAL_MS = 60 * 60 * 1000; // Check every hour
+    async function expireOpenTasks() {
+      try {
+        const now = new Date().toISOString();
+
+        // Rule 1: Expire open tasks past their deadline (no human assigned)
+        const { data: deadlineExpired, error: deadlineErr } = await supabase
+          .from('tasks')
+          .update({
+            status: 'expired',
+            updated_at: now
+          })
+          .eq('status', 'open')
+          .is('human_id', null)
+          .not('deadline', 'is', null)
+          .lt('deadline', now)
+          .select('id, agent_id, title, deadline');
+
+        if (deadlineErr) {
+          console.error('[TaskExpiry] Deadline expiry error:', deadlineErr.message);
+        } else if (deadlineExpired && deadlineExpired.length > 0) {
+          console.log(`[TaskExpiry] Expired ${deadlineExpired.length} tasks past their deadline`);
+          for (const task of deadlineExpired) {
+            if (task.agent_id) {
+              await createNotification(
+                task.agent_id,
+                'task_expired',
+                'Task Expired',
+                `Your task "${task.title}" expired because its deadline passed without anyone accepting it. You can repost it anytime.`,
+                `/tasks/${task.id}`
+              );
+            }
+          }
+        }
+
+        // Rule 2: Expire open tasks without a deadline after 30 days
+        const cutoff = new Date(Date.now() - TASK_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        const { data: staleExpired, error: staleErr } = await supabase
+          .from('tasks')
+          .update({
+            status: 'expired',
+            updated_at: now
+          })
+          .eq('status', 'open')
+          .is('human_id', null)
+          .lt('created_at', cutoff)
+          .select('id, agent_id, title');
+
+        if (staleErr) {
+          console.error('[TaskExpiry] Stale expiry error:', staleErr.message);
+        } else if (staleExpired && staleExpired.length > 0) {
+          console.log(`[TaskExpiry] Expired ${staleExpired.length} stale tasks (>${TASK_EXPIRY_DAYS} days old)`);
+          for (const task of staleExpired) {
+            if (task.agent_id) {
+              await createNotification(
+                task.agent_id,
+                'task_expired',
+                'Task Expired',
+                `Your task "${task.title}" expired after ${TASK_EXPIRY_DAYS} days without applicants. You can repost it anytime.`,
+                `/tasks/${task.id}`
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[TaskExpiry] Error:', err.message);
+      }
+    }
+    // Run once on startup, then on interval
+    expireOpenTasks();
+    setInterval(expireOpenTasks, TASK_EXPIRY_INTERVAL_MS);
+    console.log(`   ✅ Task expiry service started (deadline + ${TASK_EXPIRY_DAYS}-day stale, hourly check)`);
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
@@ -5600,6 +5749,23 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     })
     .eq('id', user.id);
 
+  // Get the task details to notify the agent
+  const { data: acceptedTask } = await supabase
+    .from('tasks')
+    .select('agent_id, title')
+    .eq('id', id)
+    .single();
+
+  if (acceptedTask?.agent_id) {
+    await createNotification(
+      acceptedTask.agent_id,
+      'task_accepted',
+      'Task Accepted',
+      `${user.name || 'A worker'} has accepted your task "${acceptedTask.title}".`,
+      `/tasks/${id}`
+    );
+  }
+
   res.json({ success: true });
 });
 
@@ -5609,49 +5775,56 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
 
 app.post('/api/tasks/:id/start', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
-  
+
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .select('*')
     .eq('id', id)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.human_id !== user.id) {
     return res.status(403).json({ error: 'Not assigned to you' });
   }
-  
+
+  // Only allow starting tasks that are in 'assigned' or 'accepted' status
+  const startableStatuses = ['assigned', 'accepted'];
+  if (!startableStatuses.includes(task.status)) {
+    return res.status(400).json({ error: `Cannot start a task with status "${task.status}". Task must be assigned first.` });
+  }
+
   await supabase
     .from('tasks')
     .update({
       status: 'in_progress',
-      started_at: new Date().toISOString(),
+      work_started_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', id);
-  
+    .eq('id', id)
+    .in('status', startableStatuses);
+
   res.json({ success: true, status: 'in_progress' });
 });
 
 app.post('/api/tasks/:id/cancel', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
-  
+
   const { data: task } = await supabase
     .from('tasks')
-    .select('agent_id')
+    .select('agent_id, human_id, title, status, escrow_status')
     .eq('id', id)
     .single();
 
@@ -5659,10 +5832,33 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
+  // Only allow cancellation of tasks that haven't been paid or completed
+  const cancellableStatuses = ['open', 'assigned', 'in_progress'];
+  if (!cancellableStatuses.includes(task.status)) {
+    return res.status(400).json({
+      error: `Cannot cancel a task with status "${task.status}". Only open, assigned, or in-progress tasks can be cancelled.`
+    });
+  }
+
   await supabase
     .from('tasks')
-    .update({ status: 'cancelled' })
-    .eq('id', id);
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .in('status', cancellableStatuses);
+
+  // Notify the assigned human if one exists
+  if (task.human_id) {
+    await createNotification(
+      task.human_id,
+      'task_cancelled',
+      'Task Cancelled',
+      `The task "${task.title}" has been cancelled by the poster.`,
+      `/tasks/${id}`
+    );
+  }
 
   res.json({ success: true });
 });

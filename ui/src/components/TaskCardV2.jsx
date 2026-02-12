@@ -27,6 +27,22 @@ function formatTimeAgo(dateString) {
   return date.toLocaleDateString();
 }
 
+function getDeadlineInfo(deadline) {
+  if (!deadline) return null;
+  const now = new Date();
+  const due = new Date(deadline);
+  const diffMs = due - now;
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  // Past deadline - shouldn't appear in browse (backend expires these), but handle gracefully
+  if (diffMs < 0) return null;
+  if (diffHours < 1) return { label: 'Due in < 1 hour', level: 'urgent' };
+  if (diffHours < 24) return { label: `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`, level: 'urgent' };
+  if (diffDays <= 3) return { label: `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`, level: 'soon' };
+  return { label: `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`, level: 'normal' };
+}
+
 export default function TaskCardV2({
   task,
   isSelected = false,
@@ -104,21 +120,48 @@ export default function TaskCardV2({
         <p className="task-card-v2-description">{task.description}</p>
       )}
 
-      {/* Budget + Duration row */}
+      {/* Budget + Duration + Deadline row */}
       <div className="task-card-v2-meta-row">
         <div className="task-card-v2-budget">
           <span className="task-card-v2-budget-amount">${task.budget || 0}</span>
           <span className="task-card-v2-budget-label">USDC</span>
         </div>
-        {task.duration && (
-          <div className="task-card-v2-duration">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
-            {task.duration}
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {task.duration && (
+            <div className="task-card-v2-duration">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              {task.duration}
+            </div>
+          )}
+          {(() => {
+            const info = getDeadlineInfo(task.deadline);
+            if (!info) return null;
+            const colors = {
+              overdue: { bg: '#FEE2E2', color: '#DC2626' },
+              urgent: { bg: '#FEF3C7', color: '#D97706' },
+              soon: { bg: '#FEF3C7', color: '#B45309' },
+              normal: { bg: '#F0F9FF', color: '#0369A1' }
+            };
+            const c = colors[info.level];
+            return (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '3px 8px', borderRadius: 6,
+                fontSize: 12, fontWeight: 600,
+                background: c.bg, color: c.color
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                {info.label}
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       {/* Location + Escrow row */}
