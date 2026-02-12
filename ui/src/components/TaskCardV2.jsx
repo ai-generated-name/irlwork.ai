@@ -138,23 +138,14 @@ export default function TaskCardV2({
             </>
           )}
         </div>
-        <div className={`task-card-v2-escrow ${task.escrow_status === 'funded' ? 'funded' : 'unfunded'}`}>
-          {task.escrow_status === 'funded' ? (
-            <>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Funded
-            </>
-          ) : (
-            <>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-              </svg>
-              Unfunded
-            </>
-          )}
-        </div>
+        {task.escrow_status === 'funded' && (
+          <div className="task-card-v2-escrow funded">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Funded
+          </div>
+        )}
       </div>
 
       {/* Footer: Posted time + Apply button */}

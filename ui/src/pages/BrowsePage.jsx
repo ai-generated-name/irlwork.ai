@@ -906,14 +906,16 @@ export default function BrowsePage({ user }) {
                         }}>
                           {task.category || 'General'}
                         </span>
-                        <span style={{
-                          padding: '4px 12px',
-                          background: task.escrow_status === 'funded' ? 'var(--success-bg)' : 'rgba(244, 213, 141, 0.3)',
-                          borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500,
-                          color: task.escrow_status === 'funded' ? 'var(--success)' : '#B8860B'
-                        }}>
-                          {task.escrow_status === 'funded' ? 'Funded' : 'Unfunded'}
-                        </span>
+                        {task.escrow_status === 'funded' && (
+                          <span style={{
+                            padding: '4px 12px',
+                            background: 'var(--success-bg)',
+                            borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500,
+                            color: 'var(--success)'
+                          }}>
+                            Funded
+                          </span>
+                        )}
                       </div>
                       <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8, lineHeight: 1.3 }}>
                         {task.title}
