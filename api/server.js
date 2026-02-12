@@ -1632,7 +1632,7 @@ app.get('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, duration_hours, is_remote';
+  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, required_skills, moderation_status, duration_hours, is_remote';
   let query = supabase.from('tasks').select(safeTaskColumns);
 
   if (category) query = query.eq('category', category);
@@ -1692,10 +1692,11 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, is_anonymous } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
+  const skillsArray = Array.isArray(required_skills) ? required_skills : [];
 
   const { data: task, error } = await supabase
     .from('tasks')
@@ -1717,6 +1718,7 @@ app.post('/api/tasks', async (req, res) => {
       duration_hours: duration_hours || null,
       deadline: deadline || null,
       requirements: requirements || null,
+      required_skills: skillsArray,
       is_anonymous: !!is_anonymous,
       created_at: new Date().toISOString()
     })
@@ -4747,10 +4749,21 @@ app.get('/api/tasks/available', async (req, res) => {
     radius_km,
     search,
     sort = 'distance',
-    include_remote = 'true'
+    include_remote = 'true',
+    skills
   } = req.query;
 
   const includeRemote = include_remote !== 'false';
+  // Parse skills filter: comma-separated list of skills to match against required_skills
+  const skillsFilter = skills ? skills.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+  function filterBySkills(tasks) {
+    if (skillsFilter.length === 0) return tasks;
+    return tasks.filter(t => {
+      const reqSkills = Array.isArray(t.required_skills) ? t.required_skills : [];
+      if (reqSkills.length === 0) return true; // Tasks with no required skills match everyone
+      return reqSkills.some(rs => skillsFilter.includes(rs.toLowerCase()));
+    });
+  }
 
   // Helper: fetch remote tasks matching current filters
   async function fetchRemoteTasks(existingIds) {
@@ -4823,6 +4836,7 @@ app.get('/api/tasks/available', async (req, res) => {
         const existingIds = new Set(results.map(r => r.id));
         const remoteTasks = await fetchRemoteTasks(existingIds);
         results = results.concat(remoteTasks);
+        results = filterBySkills(results);
 
         return res.json({
           tasks: results,
@@ -4930,6 +4944,7 @@ app.get('/api/tasks/available', async (req, res) => {
       const remoteTasks = await fetchRemoteTasks(existingIds);
       results = results.concat(remoteTasks);
     }
+    results = filterBySkills(results);
 
     res.json({ tasks: results, total: results.length, hasMore: false });
   } catch (err) {
@@ -5089,10 +5104,11 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Agents only' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
+  const skillsArray = Array.isArray(required_skills) ? required_skills : [];
 
   const { data: task, error } = await supabase
     .from('tasks')
@@ -5115,6 +5131,7 @@ app.post('/api/tasks/create', async (req, res) => {
       duration_hours: duration_hours || null,
       deadline: deadline || null,
       requirements: requirements || null,
+      required_skills: skillsArray,
       created_at: new Date().toISOString()
     })
     .select()

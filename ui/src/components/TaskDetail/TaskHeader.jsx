@@ -53,6 +53,20 @@ export default function TaskHeader({ task }) {
         </div>
       )}
 
+      {/* Required Skills */}
+      {task.required_skills && task.required_skills.length > 0 && (
+        <div className="mb-3 sm:mb-6">
+          <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Required Skills</h3>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {task.required_skills.map((skill, i) => (
+              <span key={i} className="inline-block px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium bg-[#EEF2FF] text-[#4338CA]">
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Instructions (only visible to task participants - API strips for non-participants) */}
       {task.instructions && (
         <div className="mb-3 sm:mb-6">
