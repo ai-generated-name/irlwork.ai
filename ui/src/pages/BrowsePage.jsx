@@ -104,6 +104,8 @@ export default function BrowsePage({ user }) {
   const [tasksLoading, setTasksLoading] = useState(false)
   const [taskCategoryFilter, setTaskCategoryFilter] = useState('')
   const [taskCityFilter, setTaskCityFilter] = useState('')
+  const [taskSearchQuery, setTaskSearchQuery] = useState('')
+  const [debouncedTaskSearch, setDebouncedTaskSearch] = useState('')
   const [taskSortBy, setTaskSortBy] = useState('newest')
 
   // Apply modal state
@@ -148,6 +150,12 @@ export default function BrowsePage({ user }) {
     return () => clearTimeout(t)
   }, [maxRate])
 
+  // Debounce task search input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedTaskSearch(taskSearchQuery.trim()), 400)
+    return () => clearTimeout(t)
+  }, [taskSearchQuery])
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
@@ -163,7 +171,7 @@ export default function BrowsePage({ user }) {
   useEffect(() => {
     if (viewMode !== 'tasks') return
     fetchTasks()
-  }, [viewMode, taskCategoryFilter, taskCityFilter, taskSortBy])
+  }, [viewMode, taskCategoryFilter, taskCityFilter, debouncedTaskSearch, taskSortBy])
 
   // Real-time subscriptions
   useEffect(() => {
@@ -251,6 +259,7 @@ export default function BrowsePage({ user }) {
       const params = new URLSearchParams()
       if (taskCategoryFilter) params.append('category', taskCategoryFilter)
       if (taskCityFilter) params.append('city', taskCityFilter)
+      if (debouncedTaskSearch) params.append('search', debouncedTaskSearch)
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`)
       if (res.ok) {
@@ -836,6 +845,24 @@ export default function BrowsePage({ user }) {
               flexWrap: 'wrap',
               justifyContent: 'center'
             }}>
+              <div style={{ position: 'relative', minWidth: 220 }}>
+                <Search size={16} style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-tertiary)',
+                  pointerEvents: 'none'
+                }} />
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="city-autocomplete-v4-input"
+                  style={{ minWidth: 220, paddingLeft: 36 }}
+                />
+              </div>
               <div style={{ minWidth: 160 }}>
                 <CustomDropdown
                   value={taskCategoryFilter}

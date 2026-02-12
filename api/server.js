@@ -21,6 +21,9 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const BCRYPT_ROUNDS = 12;
 
+// Wallet address validation (Ethereum/Base network - 0x + 40 hex chars)
+const isValidWalletAddress = (addr) => /^0x[a-fA-F0-9]{40}$/.test(addr);
+
 const { createClient } = require('@supabase/supabase-js');
 
 // Background services
@@ -1557,7 +1560,12 @@ app.put('/api/humans/profile', async (req, res) => {
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
     if (name) updates.name = name;
-    if (wallet_address) updates.wallet_address = wallet_address;
+    if (wallet_address) {
+      if (!isValidWalletAddress(wallet_address)) {
+        return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Ethereum address (0x followed by 40 hex characters).' });
+      }
+      updates.wallet_address = wallet_address;
+    }
     if (hourly_rate) updates.hourly_rate = hourly_rate;
     if (bio !== undefined) updates.bio = bio;
     // Accept both 'skills' and 'categories' for backwards compatibility
@@ -1699,8 +1707,23 @@ app.post('/api/tasks', async (req, res) => {
   if (!title || !title.trim()) {
     return res.status(400).json({ error: 'Title is required' });
   }
+  if (title.trim().length > 200) {
+    return res.status(400).json({ error: 'Title must be 200 characters or less' });
+  }
+  if (description && description.length > 5000) {
+    return res.status(400).json({ error: 'Description must be 5000 characters or less' });
+  }
+  if (requirements && requirements.length > 3000) {
+    return res.status(400).json({ error: 'Requirements must be 3000 characters or less' });
+  }
+  if (location && location.length > 300) {
+    return res.status(400).json({ error: 'Location must be 300 characters or less' });
+  }
   if (!budget || parseFloat(budget) < 5) {
     return res.status(400).json({ error: 'Budget must be at least $5' });
+  }
+  if (parseFloat(budget) > 100000) {
+    return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
   }
 
   const id = uuidv4();
@@ -2868,6 +2891,11 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     return res.status(403).json({ error: 'Not your task' });
   }
 
+  // Guard: task must be in pending_review or disputed status to approve
+  if (!['pending_review', 'disputed'].includes(task.status)) {
+    return res.status(400).json({ error: `Cannot approve task in '${task.status}' status` });
+  }
+
   // Get latest proof
   const { data: latestProof } = await supabase
     .from('task_proofs')
@@ -2881,23 +2909,37 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     return res.status(400).json({ error: 'No proof to approve' });
   }
 
-  // Update proof status to approved
-  await supabase
+  // Atomic update with status precondition to prevent double-approval
+  const { data: updatedProof, error: proofUpdateError } = await supabase
     .from('task_proofs')
     .update({
       status: 'approved',
       updated_at: new Date().toISOString()
     })
-    .eq('id', latestProof.id);
+    .eq('id', latestProof.id)
+    .neq('status', 'approved')
+    .select('id')
+    .single();
 
-  // Update task to 'approved' status
-  await supabase
+  if (proofUpdateError || !updatedProof) {
+    return res.status(409).json({ error: 'Proof has already been approved' });
+  }
+
+  // Atomic task status update with precondition
+  const { data: updatedTask, error: taskUpdateError } = await supabase
     .from('tasks')
     .update({
       status: 'approved',
       updated_at: new Date().toISOString()
     })
-    .eq('id', taskId);
+    .eq('id', taskId)
+    .in('status', ['pending_review', 'disputed'])
+    .select('id')
+    .single();
+
+  if (taskUpdateError || !updatedTask) {
+    return res.status(409).json({ error: 'Task has already been approved' });
+  }
 
   // Notify human
   await createNotification(
@@ -3262,7 +3304,7 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
     );
   } else if (shouldRefundAgent) {
     // Refund escrow to agent (param was misleadingly named refund_human, now refund_to_agent)
-    await supabase
+    const { data: refundResult, error: refundError } = await supabase
       .from('tasks')
       .update({
         status: 'cancelled',
@@ -3272,7 +3314,14 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', task_id);
+      .eq('id', task_id)
+      .eq('status', 'disputed')
+      .select('id')
+      .single();
+
+    if (refundError || !refundResult) {
+      return res.status(409).json({ error: 'Dispute has already been resolved.' });
+    }
     
     await createNotification(
       task.agent_id,
@@ -3290,7 +3339,7 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
     );
   } else {
     // Partial resolution - reset 48h timer for agent review
-    await supabase
+    const { data: partialResult, error: partialError } = await supabase
       .from('tasks')
       .update({
         status: 'pending_review',
@@ -3300,7 +3349,14 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
         notes,
         updated_at: new Date().toISOString()
       })
-      .eq('id', task_id);
+      .eq('id', task_id)
+      .eq('status', 'disputed')
+      .select('id')
+      .single();
+
+    if (partialError || !partialResult) {
+      return res.status(409).json({ error: 'Dispute has already been resolved.' });
+    }
   }
   
   res.json({ success: true, resolution });
@@ -5257,7 +5313,12 @@ app.put('/api/profile', async (req, res) => {
   if (state) updates.state = state;
   if (hourly_rate) updates.hourly_rate = hourly_rate;
   if (availability) updates.availability = availability;
-  if (wallet_address) updates.wallet_address = wallet_address;
+  if (wallet_address) {
+    if (!isValidWalletAddress(wallet_address)) {
+      return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Ethereum address (0x followed by 40 hex characters).' });
+    }
+    updates.wallet_address = wallet_address;
+  }
   if (skills) updates.skills = JSON.stringify(skills);
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
   if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
