@@ -1,4 +1,5 @@
 import React from 'react'
+import { ClipboardList, CheckCircle, Handshake, FileText, AlertTriangle, DollarSign, Clock, Trophy, Star, BarChart3 } from 'lucide-react'
 
 const styles = {
   card: 'bg-white/5 border border-white/10 rounded-2xl p-6',
@@ -11,16 +12,16 @@ const styles = {
 }
 
 const Icons = {
-  tasks: '📋',
-  completed: '✅',
-  accepted: '🤝',
-  posted: '📝',
-  disputes: '⚠️',
-  money: '💰',
-  clock: '🕐',
-  trophy: '🏆',
-  star: '⭐',
-  chart: '📊',
+  tasks: <ClipboardList size={20} />,
+  completed: <CheckCircle size={20} />,
+  accepted: <Handshake size={20} />,
+  posted: <FileText size={20} />,
+  disputes: <AlertTriangle size={20} />,
+  money: <DollarSign size={20} />,
+  clock: <Clock size={20} />,
+  trophy: <Trophy size={20} />,
+  star: <Star size={20} />,
+  chart: <BarChart3 size={20} />,
 }
 
 function StatCard({ icon, label, value, subtitle }) {
@@ -63,7 +64,7 @@ function ReputationBadge({ completionRate, paymentRate }) {
   } else if (completionRate >= 80 && paymentRate >= 90) {
     badge = { label: 'Pro', color: 'bg-blue-500/20 text-blue-400', icon: '💎' }
   } else if (completionRate >= 70) {
-    badge = { label: 'Reliable', color: 'bg-green-500/20 text-green-400', icon: '✅' }
+    badge = { label: 'Reliable', color: 'bg-green-500/20 text-green-400', icon: <CheckCircle size={14} /> }
   } else if (completionRate >= 50) {
     badge = { label: 'Active', color: 'bg-orange-500/20 text-orange-400', icon: '⚡' }
   }

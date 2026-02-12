@@ -1,4 +1,5 @@
 import React from 'react';
+import { MapPin } from 'lucide-react';
 
 export default function LocationSection({ task }) {
   if (!task) return null;
@@ -19,7 +20,7 @@ export default function LocationSection({ task }) {
         Location
       </h3>
       <div className="flex items-center gap-3">
-        <span className="text-lg">📍</span>
+        <MapPin size={18} />
         <div>
           <p className="text-[#1A1A1A] font-medium">
             {locationStr || 'Remote'}

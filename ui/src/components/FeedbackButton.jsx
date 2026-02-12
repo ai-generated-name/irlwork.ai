@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { MessageCircle, Bug, Sparkles, Pin } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL + '/api'
@@ -35,10 +36,10 @@ const C = {
 const FONT = "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 
 const TYPES = [
-  { id: 'feedback', label: 'Feedback', icon: '💬' },
-  { id: 'bug', label: 'Bug', icon: '🐛' },
-  { id: 'feature_request', label: 'Feature', icon: '✨' },
-  { id: 'other', label: 'Other', icon: '📌' },
+  { id: 'feedback', label: 'Feedback', icon: <MessageCircle size={14} /> },
+  { id: 'bug', label: 'Bug', icon: <Bug size={14} /> },
+  { id: 'feature_request', label: 'Feature', icon: <Sparkles size={14} /> },
+  { id: 'other', label: 'Other', icon: <Pin size={14} /> },
 ]
 
 const URGENCY = [
@@ -297,7 +298,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                 fontSize: 15,
               }}
             >
-              💬
+              <MessageCircle size={15} />
             </div>
             <span style={{ fontWeight: 700, fontSize: 15, color: C.textPrimary, letterSpacing: '-0.01em' }}>
               Send Feedback

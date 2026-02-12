@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import API_URL from '../config/api'
 
@@ -275,7 +276,7 @@ export default function AdminDashboard({ user }) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
+          <div className="mb-4"><AlertTriangle size={48} /></div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Failed to Load Dashboard</h2>
           <p className="text-gray-500 mb-4">{error}</p>
           <button
@@ -290,14 +291,14 @@ export default function AdminDashboard({ user }) {
   }
 
   const queues = [
-    { id: 'dashboard', label: 'Overview', icon: '📊' },
-    { id: 'reports', label: 'Reports', icon: '🚩', count: dashboard?.pending_reports?.count, alert: dashboard?.pending_reports?.count > 0 },
-    { id: 'pending-deposits', label: 'Pending Deposits', icon: '💰', count: dashboard?.pending_deposits?.count },
-    { id: 'stale-deposits', label: 'Stale (>48h)', icon: '⚠️', count: dashboard?.stale_deposits_48h?.count, alert: dashboard?.stale_deposits_48h?.alert },
-    { id: 'pending-agent-approval', label: 'Awaiting Agent', icon: '👤', count: dashboard?.pending_agent_approval?.count },
-    { id: 'pending-release', label: 'Ready to Release', icon: '✅', count: dashboard?.pending_release?.count },
-    { id: 'pending-withdrawals', label: 'Pending Withdrawals', icon: '💸', count: dashboard?.pending_withdrawals?.count },
-    { id: 'feedback', label: 'Feedback', icon: '📝', count: dashboard?.feedback?.count },
+    { id: 'dashboard', label: 'Overview', icon: <BarChart3 size={16} /> },
+    { id: 'reports', label: 'Reports', icon: <Flag size={16} />, count: dashboard?.pending_reports?.count, alert: dashboard?.pending_reports?.count > 0 },
+    { id: 'pending-deposits', label: 'Pending Deposits', icon: <DollarSign size={16} />, count: dashboard?.pending_deposits?.count },
+    { id: 'stale-deposits', label: 'Stale (>48h)', icon: <AlertTriangle size={16} />, count: dashboard?.stale_deposits_48h?.count, alert: dashboard?.stale_deposits_48h?.alert },
+    { id: 'pending-agent-approval', label: 'Awaiting Agent', icon: <User size={16} />, count: dashboard?.pending_agent_approval?.count },
+    { id: 'pending-release', label: 'Ready to Release', icon: <CheckCircle size={16} />, count: dashboard?.pending_release?.count },
+    { id: 'pending-withdrawals', label: 'Pending Withdrawals', icon: <ArrowDownLeft size={16} />, count: dashboard?.pending_withdrawals?.count },
+    { id: 'feedback', label: 'Feedback', icon: <FileText size={16} />, count: dashboard?.feedback?.count },
   ]
 
   return (
@@ -355,7 +356,7 @@ export default function AdminDashboard({ user }) {
             title="Pending Reports"
             value={dashboard?.pending_reports?.count || 0}
             subtitle="Needs review"
-            icon="🚩"
+            icon={<Flag size={18} />}
             color={dashboard?.pending_reports?.count > 0 ? 'red' : 'gray'}
             alert={dashboard?.pending_reports?.count > 0}
           />
@@ -363,14 +364,14 @@ export default function AdminDashboard({ user }) {
             title="Pending Deposits"
             value={dashboard?.pending_deposits?.count || 0}
             subtitle={`$${dashboard?.pending_deposits?.total_usdc?.toFixed(2) || '0.00'} USDC expected`}
-            icon="💰"
+            icon={<DollarSign size={18} />}
             color="yellow"
           />
           <StatCard
             title="Stale Deposits (>48h)"
             value={dashboard?.stale_deposits_48h?.count || 0}
             subtitle="Needs attention"
-            icon="⚠️"
+            icon={<AlertTriangle size={18} />}
             color={dashboard?.stale_deposits_48h?.count > 0 ? 'red' : 'gray'}
             alert={dashboard?.stale_deposits_48h?.count > 0}
           />
@@ -378,35 +379,35 @@ export default function AdminDashboard({ user }) {
             title="Work In Progress"
             value={dashboard?.work_in_progress?.count || 0}
             subtitle={`$${dashboard?.work_in_progress?.total_usdc_held?.toFixed(2) || '0.00'} USDC held`}
-            icon="🔨"
+            icon={<Hammer size={18} />}
             color="blue"
           />
           <StatCard
             title="Awaiting Agent Approval"
             value={dashboard?.pending_agent_approval?.count || 0}
             subtitle="Proofs submitted"
-            icon="👤"
+            icon={<User size={18} />}
             color="purple"
           />
           <StatCard
             title="Ready to Release"
             value={dashboard?.pending_release?.count || 0}
             subtitle={`$${dashboard?.pending_release?.total_usdc_to_release?.toFixed(2) || '0.00'} USDC`}
-            icon="✅"
+            icon={<CheckCircle size={18} />}
             color="green"
           />
           <StatCard
             title="Pending Withdrawals"
             value={dashboard?.pending_withdrawals?.count || 0}
             subtitle={`$${dashboard?.pending_withdrawals?.total_usdc_to_send?.toFixed(2) || '0.00'} USDC to send`}
-            icon="💸"
+            icon={<ArrowDownLeft size={18} />}
             color="teal"
           />
           <StatCard
             title="Pending Feedback"
             value={dashboard?.feedback?.count || 0}
             subtitle="User reports & suggestions"
-            icon="📝"
+            icon={<FileText size={18} />}
             color={dashboard?.feedback?.count > 0 ? 'yellow' : 'gray'}
           />
           <div className="md:col-span-2 lg:col-span-3 bg-white rounded-xl border-2 border-gray-100 p-6">
@@ -449,7 +450,7 @@ export default function AdminDashboard({ user }) {
 
             {feedbackData.length === 0 ? (
               <div className="bg-white rounded-xl border-2 border-gray-100 p-12 text-center">
-                <div className="text-4xl mb-4">✨</div>
+                <div className="mb-4"><CheckCircle size={32} /></div>
                 <p className="text-gray-500">No feedback items</p>
               </div>
             ) : (
@@ -470,7 +471,7 @@ export default function AdminDashboard({ user }) {
         </div>
       ) : error ? (
         <div className="bg-white rounded-xl border-2 border-red-100 p-12 text-center">
-          <div className="text-4xl mb-4">⚠️</div>
+          <div className="mb-4"><AlertTriangle size={32} /></div>
           <p className="text-red-600 font-medium mb-2">{error}</p>
           <button
             onClick={() => { setError(null); fetchQueue(activeQueue); }}
@@ -481,7 +482,7 @@ export default function AdminDashboard({ user }) {
         </div>
       ) : queueData.length === 0 ? (
         <div className="bg-white rounded-xl border-2 border-gray-100 p-12 text-center">
-          <div className="text-4xl mb-4">✨</div>
+          <div className="mb-4"><CheckCircle size={32} /></div>
           <p className="text-gray-500">No items in this queue</p>
         </div>
       ) : activeQueue === 'reports' ? (

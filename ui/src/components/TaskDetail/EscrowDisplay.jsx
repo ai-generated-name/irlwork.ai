@@ -2,6 +2,7 @@
 // Shows escrow status with badge and details
 
 import React from 'react';
+import { Hourglass } from 'lucide-react';
 import EscrowBadge from '../EscrowBadge';
 
 export default function EscrowDisplay({ task }) {
@@ -26,7 +27,7 @@ export default function EscrowDisplay({ task }) {
         };
       case 'pending':
         return {
-          icon: '⏳',
+          icon: <Hourglass size={14} />,
           text: 'Waiting for agent to fund escrow...',
           color: 'text-[#D97706]'
         };
@@ -38,7 +39,7 @@ export default function EscrowDisplay({ task }) {
         };
       default:
         return {
-          icon: '⏳',
+          icon: <Hourglass size={14} />,
           text: 'Escrow status pending...',
           color: 'text-[#525252]'
         };
