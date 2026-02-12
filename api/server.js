@@ -4650,23 +4650,35 @@ app.post('/api/messages', async (req, res) => {
   }
 
   const id = uuidv4();
-  const insertData = {
+  const baseInsert = {
     id,
     conversation_id,
     sender_id: user.id,
     content: content || '',
     created_at: new Date().toISOString()
   };
-  // Only include metadata if it has attachments (column may not exist in all envs)
-  if (metadata.attachments) {
-    insertData.metadata = metadata;
-  }
 
-  const { data: message, error } = await supabase
-    .from('messages')
-    .insert(insertData)
-    .select()
-    .single();
+  // Try to include metadata (with attachments) — fall back to without if column doesn't exist
+  let message, error;
+  if (metadata.attachments) {
+    const withMeta = { ...baseInsert, metadata };
+    const result = await supabase.from('messages').insert(withMeta).select().single();
+    if (result.error && result.error.message?.includes('metadata')) {
+      // Column doesn't exist — retry without metadata, embed attachment URLs in content
+      const attachNote = metadata.attachments.map(a => `[📎 ${a.name}](${a.url})`).join('\n');
+      baseInsert.content = (baseInsert.content ? baseInsert.content + '\n\n' : '') + attachNote;
+      const retry = await supabase.from('messages').insert(baseInsert).select().single();
+      message = retry.data;
+      error = retry.error;
+    } else {
+      message = result.data;
+      error = result.error;
+    }
+  } else {
+    const result = await supabase.from('messages').insert(baseInsert).select().single();
+    message = result.data;
+    error = result.error;
+  }
 
   if (error) return res.status(500).json({ error: error.message });
 
