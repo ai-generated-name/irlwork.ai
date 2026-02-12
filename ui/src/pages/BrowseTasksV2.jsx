@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { MapPin, Search, Globe } from 'lucide-react';
 const TaskMap = lazy(() => import('../components/TaskMap'));
 import { TASK_CATEGORIES } from '../components/CategoryPills';
 import TaskCardV2 from '../components/TaskCardV2';
@@ -308,7 +309,7 @@ export default function BrowseTasksV2({
 
         {/* Location bar */}
         <div className="browse-tasks-v2-location-bar">
-          <span className="browse-tasks-v2-location-icon">📍</span>
+          <span className="browse-tasks-v2-location-icon"><MapPin size={16} /></span>
           <span className="browse-tasks-v2-location-label">Within</span>
           <CustomDropdown
             value={radius}
@@ -354,7 +355,7 @@ export default function BrowseTasksV2({
             type="button"
             title={includeRemote ? 'Remote tasks shown' : 'Remote tasks hidden'}
           >
-            <span>🌐</span> Remote
+            <Globe size={14} /> Remote
           </button>
           {user && user.type === 'human' && Array.isArray(user.skills) && user.skills.length > 0 && (
             <button
@@ -395,7 +396,7 @@ export default function BrowseTasksV2({
               </div>
             ) : tasks.length === 0 ? (
               <div className="browse-tasks-v2-empty">
-                <div className="browse-tasks-v2-empty-icon">🔍</div>
+                <div className="browse-tasks-v2-empty-icon"><Search size={24} /></div>
                 <h3>No tasks found</h3>
                 <p>
                   {radius !== 'anywhere'

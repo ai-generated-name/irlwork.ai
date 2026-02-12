@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { CreditCard } from 'lucide-react'
 import API_URL from '../config/api';
 
 const brandIcons = {
-  visa: '💳 Visa',
-  mastercard: '💳 Mastercard',
-  amex: '💳 Amex',
-  discover: '💳 Discover',
+  visa: 'Visa',
+  mastercard: 'Mastercard',
+  amex: 'Amex',
+  discover: 'Discover',
 };
 
 export default function PaymentMethodList({ user, onUpdate }) {
@@ -100,7 +101,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span style={{ fontSize: '0.875rem' }}>
-              {brandIcons[pm.brand] || `💳 ${pm.brand}`}
+              <><CreditCard size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {brandIcons[pm.brand] || pm.brand}</>
             </span>
             <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1a1a2e' }}>
               •••• {pm.last4}

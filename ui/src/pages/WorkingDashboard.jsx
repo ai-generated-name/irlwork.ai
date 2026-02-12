@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import API_URL from '../config/api'
+import ProfileCompleteness from '../components/ProfileCompleteness'
+import HowPaymentsWork from '../components/HowPaymentsWork'
 
 const ACTIVE_STATUSES = ['open', 'accepted', 'assigned', 'in_progress']
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed']
@@ -103,6 +105,8 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
   const safeNotifications = Array.isArray(notifications) ? notifications : []
   const unreadNotifs = safeNotifications.filter(n => !n.read_at)
 
+  const [showPaymentsExplainer, setShowPaymentsExplainer] = useState(false)
+
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Good morning'
@@ -112,6 +116,13 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
 
   return (
     <div className="working-dash">
+      {/* How Payments Work Modal */}
+      <HowPaymentsWork
+        isOpen={showPaymentsExplainer}
+        onClose={() => setShowPaymentsExplainer(false)}
+        mode="working"
+      />
+
       {/* Header */}
       <div className="working-dash-header">
         <h1 className="working-dash-greeting">
@@ -123,6 +134,9 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </p>
         )}
       </div>
+
+      {/* Profile Completeness Nudge */}
+      <ProfileCompleteness user={user} onNavigate={onNavigate} />
 
       {/* Stats Row */}
       <div className="working-dash-stats">
@@ -181,20 +195,42 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         <div className="working-dash-attention">
           <h3 className="working-dash-section-title">Needs Attention</h3>
           <div className="working-dash-attention-items">
-            {inProgressTasks.map(task => (
-              <button
-                key={task.id}
-                className="working-dash-attention-item"
-                onClick={() => window.location.href = `/tasks/${task.id}`}
-              >
-                <span className="working-dash-attention-badge working-dash-attention-badge--active">In Progress</span>
-                <span className="working-dash-attention-task-title">{task.title}</span>
-                <span className="working-dash-attention-budget">${task.budget}</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </button>
-            ))}
+            {inProgressTasks.map(task => {
+              let deadlineBadge = null;
+              if (task.deadline) {
+                const diffMs = new Date(task.deadline) - new Date();
+                if (diffMs > 0) {
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                let label, bg, color;
+                if (diffHours < 1) { label = 'Due in < 1 hour'; bg = '#FEF3C7'; color = '#D97706'; }
+                else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#D97706'; }
+                else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#B45309'; }
+                else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
+                deadlineBadge = (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: bg, color, whiteSpace: 'nowrap' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                    {label}
+                  </span>
+                );
+                } // end if (diffMs > 0)
+              }
+              return (
+                <button
+                  key={task.id}
+                  className="working-dash-attention-item"
+                  onClick={() => window.location.href = `/tasks/${task.id}`}
+                >
+                  <span className="working-dash-attention-badge working-dash-attention-badge--active">In Progress</span>
+                  {deadlineBadge}
+                  <span className="working-dash-attention-task-title">{task.title}</span>
+                  <span className="working-dash-attention-budget">${task.budget}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              );
+            })}
             {reviewTasks.map(task => (
               <button
                 key={task.id}
@@ -254,6 +290,12 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><path d="M1 10h22" />
           </svg>
           Earnings
+        </button>
+        <button className="working-dash-action" onClick={() => setShowPaymentsExplainer(true)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          How Payments Work
         </button>
       </div>
     </div>
