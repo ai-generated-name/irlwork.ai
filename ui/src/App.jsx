@@ -1605,8 +1605,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [conversationsError, setConversationsError] = useState(null)
   const [messagesError, setMessagesError] = useState(null)
   const [sendingMessage, setSendingMessage] = useState(false)
-  const [messageAttachments, setMessageAttachments] = useState([])
-  const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
@@ -2262,21 +2260,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const sendMessage = async (e) => {
     e.preventDefault()
-    if ((!newMessage.trim() && messageAttachments.length === 0) || !selectedConversation) return
+    if (!newMessage.trim() || !selectedConversation) return
     const msgContent = newMessage
-    const attachmentsToSend = [...messageAttachments]
     setNewMessage('') // Clear immediately for responsiveness
-    setMessageAttachments([])
     setSendingMessage(true)
     try {
-      const body = { conversation_id: selectedConversation, content: msgContent }
-      if (attachmentsToSend.length > 0) {
-        body.attachments = attachmentsToSend
-      }
       const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.id },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ conversation_id: selectedConversation, content: msgContent })
       })
       if (!res.ok) {
         throw new Error('Failed to send')
@@ -2285,60 +2277,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       fetchConversations()
     } catch (e) {
       setNewMessage(msgContent) // Restore on error
-      setMessageAttachments(attachmentsToSend)
       toast.error('Message failed to send. Please try again.')
     } finally {
       setSendingMessage(false)
-    }
-  }
-
-  // Upload attachment for messages (#7)
-  const handleAttachmentUpload = async (e) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
-    if (messageAttachments.length + files.length > 5) {
-      toast.error('Maximum 5 attachments per message')
-      return
-    }
-
-    setUploadingAttachment(true)
-    try {
-      for (const file of files) {
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} is too large. Maximum 10MB.`)
-          continue
-        }
-
-        const reader = new FileReader()
-        const base64 = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result)
-          reader.onerror = reject
-          reader.readAsDataURL(file)
-        })
-
-        const res = await fetch(`${API_URL}/upload/message-attachment`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: user.id },
-          body: JSON.stringify({ file: base64, filename: file.name, mimeType: file.type })
-        })
-
-        if (res.ok) {
-          const data = await res.json()
-          setMessageAttachments(prev => [...prev, {
-            url: data.url,
-            name: file.name,
-            type: file.type,
-            size: file.size
-          }])
-        } else {
-          toast.error(`Failed to upload ${file.name}`)
-        }
-      }
-    } catch (err) {
-      toast.error('Failed to upload attachment')
-    } finally {
-      setUploadingAttachment(false)
-      e.target.value = '' // Reset file input
     }
   }
 
@@ -4169,30 +4110,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             if (days < 7) return `${days}d`
             return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           }
-          // Helper: render attachment in a message
-          const renderAttachment = (att) => {
-            const isImage = att.type?.startsWith('image/')
-            if (isImage) {
-              return (
-                <a href={att.url} target="_blank" rel="noopener noreferrer" key={att.url} style={{ display: 'block', marginTop: 6 }}>
-                  <img src={att.url} alt={att.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover' }} />
-                </a>
-              )
-            }
-            return (
-              <a href={att.url} target="_blank" rel="noopener noreferrer" key={att.url}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '6px 10px', background: 'rgba(0,0,0,0.05)', borderRadius: 8, textDecoration: 'none', fontSize: 12, color: 'inherit' }}>
-                <span>📎</span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name || 'Attachment'}</span>
-                {att.size ? <span style={{ opacity: 0.6, flexShrink: 0 }}>({(att.size / 1024).toFixed(0)}KB)</span> : null}
-              </a>
-            )
-          }
-
           const activeConv = conversations.find(c => c.id === selectedConversation)
           const activeOther = activeConv ? getOtherParty(activeConv) : null
           const activeOnline = activeOther ? getOnlineStatus(activeOther) : null
-          const fileInputRef = React.createRef()
 
           return (
           <div>
@@ -4320,50 +4240,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           No messages yet — send one to start the conversation
                         </div>
                       ) : (
-                        messages.map(m => {
-                          const attachments = m.metadata?.attachments || []
-                          return (
+                        messages.map(m => (
                           <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
                             {m.sender_id !== user.id && m.sender?.name && (
                               <p style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, opacity: 0.7 }}>{m.sender.name}</p>
                             )}
-                            {m.content && <p style={{ margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</p>}
-                            {attachments.map(att => renderAttachment(att))}
+                            <p style={{ margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</p>
                             <p style={{ fontSize: 11, marginTop: 4, opacity: 0.6, margin: 0 }}>
                               {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                        )})
+                        ))
                       )}
                     </div>
 
-                    {/* Attachment preview strip */}
-                    {messageAttachments.length > 0 && (
-                      <div style={{ padding: '6px 16px', borderTop: '1px solid rgba(26,26,26,0.06)', display: 'flex', gap: 8, flexWrap: 'wrap', background: '#FAFAFA' }}>
-                        {messageAttachments.map((att, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'white', border: '1px solid rgba(26,26,26,0.1)', borderRadius: 8, padding: '4px 8px', fontSize: 12 }}>
-                            {att.type?.startsWith('image/') ? (
-                              <img src={att.url} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
-                            ) : <span>📎</span>}
-                            <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
-                            <button onClick={() => setMessageAttachments(prev => prev.filter((_, j) => j !== i))}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-tertiary)', padding: 0, lineHeight: 1 }}>×</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Input with attachment button (#7) */}
+                    {/* Input */}
                     <div className="dashboard-v4-message-input" style={{ alignItems: 'flex-end' }}>
-                      <input type="file" ref={fileInputRef} onChange={handleAttachmentUpload} multiple accept="image/*,.pdf,.doc,.docx,.txt" style={{ display: 'none' }} />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingAttachment}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: uploadingAttachment ? 'var(--text-tertiary)' : 'var(--text-secondary)', flexShrink: 0 }}
-                        title="Attach file"
-                      >
-                        {uploadingAttachment ? '⏳' : '📎'}
-                      </button>
                       <textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
@@ -4375,7 +4267,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(e) } }}
                         onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
                       />
-                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={sendingMessage || (!newMessage.trim() && messageAttachments.length === 0)} style={{ minHeight: 40 }}>
+                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={sendingMessage || !newMessage.trim()} style={{ minHeight: 40 }}>
                         {sendingMessage ? '...' : 'Send'}
                       </button>
                     </div>
