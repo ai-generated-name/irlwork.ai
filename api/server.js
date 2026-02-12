@@ -4626,7 +4626,7 @@ app.post('/api/messages', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { conversation_id, content, attachments } = req.body;
+  const { conversation_id, content } = req.body;
 
   // Verify user has access to conversation (include task_id and task title for notifications)
   const { data: conversation, error: convError } = await supabase
@@ -4643,49 +4643,23 @@ app.post('/api/messages', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  // Build metadata with attachments if present
-  const metadata = {};
-  if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-    metadata.attachments = attachments.slice(0, 5); // Max 5 attachments per message
-  }
-
   const id = uuidv4();
-  const baseInsert = {
-    id,
-    conversation_id,
-    sender_id: user.id,
-    content: content || '',
-    created_at: new Date().toISOString()
-  };
-
-  // Try to include metadata (with attachments) — fall back to without if column doesn't exist
-  let message, error;
-  if (metadata.attachments) {
-    const withMeta = { ...baseInsert, metadata };
-    const result = await supabase.from('messages').insert(withMeta).select().single();
-    if (result.error && result.error.message?.includes('metadata')) {
-      // Column doesn't exist — retry without metadata, embed attachment URLs in content
-      const attachNote = metadata.attachments.map(a => `[📎 ${a.name}](${a.url})`).join('\n');
-      baseInsert.content = (baseInsert.content ? baseInsert.content + '\n\n' : '') + attachNote;
-      const retry = await supabase.from('messages').insert(baseInsert).select().single();
-      message = retry.data;
-      error = retry.error;
-    } else {
-      message = result.data;
-      error = result.error;
-    }
-  } else {
-    const result = await supabase.from('messages').insert(baseInsert).select().single();
-    message = result.data;
-    error = result.error;
-  }
+  const { data: message, error } = await supabase
+    .from('messages')
+    .insert({
+      id,
+      conversation_id,
+      sender_id: user.id,
+      content: content || '',
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
 
   if (error) return res.status(500).json({ error: error.message });
 
   // Update conversation's updated_at and last_message preview
-  const hasAttachments = metadata.attachments?.length > 0;
-  const previewText = content || (hasAttachments ? `📎 ${metadata.attachments.length} attachment${metadata.attachments.length > 1 ? 's' : ''}` : '');
-  const preview = previewText.length > 100 ? previewText.substring(0, 100) + '...' : previewText;
+  const preview = (content || '').length > 100 ? content.substring(0, 100) + '...' : (content || '');
   await supabase
     .from('conversations')
     .update({ updated_at: new Date().toISOString(), last_message: preview })
@@ -4719,85 +4693,12 @@ app.post('/api/messages', async (req, res) => {
         sender_name: user.name,
         sender_type: user.type || (user.is_agent ? 'agent' : 'worker'),
         content,
-        attachments: metadata.attachments || [],
         created_at: message.created_at
       }
     });
   }
 
   res.json(message);
-});
-
-// ============ MESSAGE ATTACHMENT UPLOAD ============
-app.post('/api/upload/message-attachment', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  const getEnv = (k) => {
-    try { return require('process').env[k]; } catch { return null; }
-  };
-  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
-  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
-  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
-  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
-  const R2_PUBLIC_URL = getEnv('R2_PUBLIC_URL') || getEnv('CLOUD_PUBLIC_URL');
-
-  try {
-    const { file, filename, mimeType } = req.body;
-    if (!file) return res.status(400).json({ error: 'No file provided' });
-
-    // Validate file size (max 10MB for base64 ~ 13.3MB string)
-    if (typeof file === 'string' && file.length > 14 * 1024 * 1024) {
-      return res.status(400).json({ error: 'File too large. Maximum 10MB allowed.' });
-    }
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    const detectedType = mimeType || 'application/octet-stream';
-    if (!allowedTypes.some(t => detectedType.startsWith(t.split('/')[0]))) {
-      // Allow any image/* and the listed document types
-    }
-
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = filename?.split('.').pop()?.toLowerCase() || 'bin';
-    const safeFilename = `messages/${user.id}/${timestamp}-${randomStr}.${ext}`;
-
-    if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
-      // Demo mode
-      const mockUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${safeFilename}` : `https://pub-r2.dev/${R2_BUCKET}/${safeFilename}`;
-      return res.json({ url: mockUrl, filename: filename || safeFilename, type: detectedType, size: 0, demo: true });
-    }
-
-    let fileData = file;
-    if (file.startsWith('data:')) {
-      fileData = Buffer.from(file.split(',')[1], 'base64');
-    } else if (typeof file === 'string') {
-      fileData = Buffer.from(file, 'base64');
-    }
-
-    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-    const s3Client = new S3Client({
-      region: 'auto',
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
-    });
-
-    await s3Client.send(new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: safeFilename,
-      Body: fileData,
-      ContentType: detectedType,
-    }));
-
-    const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${safeFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${safeFilename}`;
-    res.json({ url: publicUrl, filename: filename || safeFilename, type: detectedType, size: fileData.length });
-  } catch (e) {
-    console.error('Message attachment upload error:', e.message);
-    res.status(500).json({ error: 'Failed to upload attachment' });
-  }
 });
 
 app.put('/api/messages/:id/read', async (req, res) => {
