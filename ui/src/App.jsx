@@ -3041,7 +3041,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   <input
                     ref={avatarInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
                     style={{ display: 'none' }}
                     onChange={async (e) => {
                       const file = e.target.files?.[0]
@@ -3052,57 +3052,72 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         toast.error('Image must be under 20MB')
                         return
                       }
-                      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
-                        toast.error('Please upload a JPG, PNG, WebP, or GIF image')
+                      // Accept common image types + HEIC/HEIF from iOS + empty type (iOS sometimes omits it)
+                      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']
+                      const ext = file.name?.split('.').pop()?.toLowerCase()
+                      const isImageByExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'].includes(ext)
+                      if (file.type && !allowedTypes.includes(file.type) && !isImageByExt) {
+                        toast.error('Please upload a JPG, PNG, WebP, GIF, or HEIC image')
                         return
                       }
                       setAvatarUploading(true)
                       try {
-                        // Compress image client-side before upload
+                        // Compress image client-side before upload (converts HEIC to JPEG too)
                         let fileToUpload = file
-                        if (file.type !== 'image/gif' && file.size > 1024 * 1024) {
+                        const isGif = file.type === 'image/gif' || ext === 'gif'
+                        if (!isGif) {
                           const imageCompression = (await import('browser-image-compression')).default
                           fileToUpload = await imageCompression(file, {
                             maxSizeMB: 1,
                             maxWidthOrHeight: 1200,
-                            useWebWorker: true,
+                            useWebWorker: typeof Worker !== 'undefined',
                             fileType: 'image/jpeg',
+                            initialQuality: 0.85,
                           })
                         }
-                        const reader = new FileReader()
-                        reader.onload = async () => {
-                          try {
-                            const res = await fetch(`${API_URL}/upload/avatar`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                              body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: fileToUpload.type })
-                            })
-                            if (res.ok) {
-                              const data = await res.json()
-                              // Use the API avatar proxy URL (always works)
-                              const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
-                              const updatedUser = { ...user, avatar_url: avatarProxyUrl }
-                              setUser(updatedUser)
-                              localStorage.setItem('user', JSON.stringify(updatedUser))
-                              toast.success('Profile photo updated!')
-                            } else {
-                              const errData = await res.json().catch(() => ({}))
-                              toast.error(errData.error || 'Failed to upload photo')
-                            }
-                          } catch {
-                            toast.error('Error uploading photo')
+                        // Use promise-based FileReader to avoid callback nesting
+                        const base64 = await new Promise((resolve, reject) => {
+                          const reader = new FileReader()
+                          reader.onload = () => resolve(reader.result)
+                          reader.onerror = () => reject(new Error('Failed to read file'))
+                          reader.readAsDataURL(fileToUpload)
+                        })
+                        // Upload with timeout for mobile networks
+                        const controller = new AbortController()
+                        const timeout = setTimeout(() => controller.abort(), 30000)
+                        try {
+                          const res = await fetch(`${API_URL}/upload/avatar`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                            body: JSON.stringify({ file: base64, filename: file.name, mimeType: fileToUpload.type || 'image/jpeg' }),
+                            signal: controller.signal,
+                          })
+                          clearTimeout(timeout)
+                          if (res.ok) {
+                            const data = await res.json()
+                            const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
+                            const updatedUser = { ...user, avatar_url: avatarProxyUrl }
+                            setUser(updatedUser)
+                            localStorage.setItem('user', JSON.stringify(updatedUser))
+                            toast.success('Profile photo updated!')
+                          } else {
+                            const errData = await res.json().catch(() => ({}))
+                            toast.error(errData.error || 'Failed to upload photo')
                           }
-                          setAvatarUploading(false)
+                        } catch (fetchErr) {
+                          clearTimeout(timeout)
+                          if (fetchErr.name === 'AbortError') {
+                            toast.error('Upload timed out — please try on a stronger connection')
+                          } else {
+                            console.error('Avatar upload error:', fetchErr)
+                            toast.error('Error uploading photo — check your connection and try again')
+                          }
                         }
-                        reader.onerror = () => {
-                          toast.error('Error reading file')
-                          setAvatarUploading(false)
-                        }
-                        reader.readAsDataURL(fileToUpload)
-                      } catch {
-                        toast.error('Error processing image')
-                        setAvatarUploading(false)
+                      } catch (err) {
+                        console.error('Avatar processing error:', err)
+                        toast.error('Error processing image — try a different photo')
                       }
+                      setAvatarUploading(false)
                     }}
                   />
                 </div>
