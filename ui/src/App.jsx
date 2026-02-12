@@ -1405,7 +1405,7 @@ function ApiKeysTab({ user }) {
           </div>
         </div>
         <a
-          href="/mcp"
+          href="/connect-agent"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -1546,7 +1546,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     is_remote: false,
     duration_hours: '',
     deadline: '',
-    requirements: ''
+    requirements: '',
+    task_type: 'direct',
+    quantity: 1,
+    is_anonymous: false
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
@@ -2013,7 +2016,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           is_remote: taskForm.is_remote,
           duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
           deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
-          requirements: taskForm.requirements.trim() || null
+          requirements: taskForm.requirements.trim() || null,
+          task_type: taskForm.task_type,
+          quantity: taskForm.task_type === 'bounty' ? parseInt(taskForm.quantity) || 1 : 1,
+          is_anonymous: taskForm.is_anonymous
         })
       })
 
@@ -2022,7 +2028,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', task_type: 'direct', quantity: 1, is_anonymous: false })
         // Close create form and stay on posted tab
         setShowCreateForm(false)
         setActiveTab('posted')
@@ -2333,7 +2339,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </svg>
                   Hire Humans
                 </button>
-                <a href="/mcp" className="dashboard-v4-topbar-link">
+                <a href="/connect-agent" className="dashboard-v4-topbar-link">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2L2 7l10 5 10-5-10-5z" />
                     <path d="M2 17l10 5 10-5" />
@@ -2572,9 +2578,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
                           options={[
                             { value: '', label: 'Select category' },
-                            ...['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => ({
+                            ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
                               value: c,
-                              label: c.charAt(0).toUpperCase() + c.slice(1)
+                              label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
                             }))
                           ]}
                           placeholder="Select category"
@@ -2625,19 +2631,85 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         rows={2}
                       />
                     </div>
+                    {/* Task Type: Direct Hire vs Bounty */}
                     <div className="dashboard-v4-form-group">
-                      <label style={{
-                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                        fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                      }}>
+                      <label className="dashboard-v4-form-label">Task Type</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'direct', quantity: 1 }))}
+                          style={{
+                            flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '2px solid',
+                            borderColor: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'rgba(26,26,26,0.1)',
+                            background: taskForm.task_type === 'direct' ? 'rgba(234, 88, 12, 0.05)' : 'transparent',
+                            color: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'var(--text-secondary)',
+                            fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
+                          }}
+                        >
+                          Direct Hire
+                          <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Hire 1 person for this task</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'bounty' }))}
+                          style={{
+                            flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '2px solid',
+                            borderColor: taskForm.task_type === 'bounty' ? '#7C3AED' : 'rgba(26,26,26,0.1)',
+                            background: taskForm.task_type === 'bounty' ? 'rgba(139, 92, 246, 0.05)' : 'transparent',
+                            color: taskForm.task_type === 'bounty' ? '#7C3AED' : 'var(--text-secondary)',
+                            fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
+                          }}
+                        >
+                          Open Bounty
+                          <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Open to multiple people</div>
+                        </button>
+                      </div>
+                    </div>
+                    {/* Quantity (only for bounty) */}
+                    {taskForm.task_type === 'bounty' && (
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">How many people needed?</label>
                         <input
-                          type="checkbox"
-                          checked={taskForm.is_remote}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                          type="number"
+                          placeholder="e.g. 5"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.quantity}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                          min="1"
+                          max="100"
+                          style={{ maxWidth: 120 }}
                         />
-                        This task can be done remotely
-                      </label>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                          fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_remote}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                            style={{ width: 18, height: 18, cursor: 'pointer' }}
+                          />
+                          Remote task
+                        </label>
+                      </div>
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                          fontSize: 14, color: taskForm.is_anonymous ? '#7C3AED' : 'inherit'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_anonymous}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
+                            style={{ width: 18, height: 18, cursor: 'pointer' }}
+                          />
+                          Post anonymously
+                        </label>
+                      </div>
                     </div>
                     {!taskForm.is_remote && (
                       <div className="dashboard-v4-form-group">
@@ -2865,9 +2937,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       onChange={setFilterCategory}
                       options={[
                         { value: '', label: 'All Skills' },
-                        ...['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general'].map(c => ({
+                        ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
                           value: c,
-                          label: c.replace('_', ' ')
+                          label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
                         }))
                       ]}
                       placeholder="All Skills"
@@ -3597,7 +3669,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 }
               }}>
                 <div className="dashboard-v4-form-group">
-                  <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className="dashboard-v4-form-input" placeholder="delivery, photography, moving, cleaning" />
+                  <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className="dashboard-v4-form-input" placeholder="delivery, photography, cleaning, moving, errands, tech" />
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
                 </div>
                 <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
@@ -3882,16 +3954,44 @@ function ConnectAgentPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedConfig, setCopiedConfig] = useState(false)
   const [copiedCurl, setCopiedCurl] = useState(false)
+  const [user, setUser] = useState(null)
+  const [keys, setKeys] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const fullPrompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!supabase) {
+        setLoading(false)
+        return
+      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+          const response = await fetch(`${API_URL}/keys`, {
+            headers: { 'Authorization': session.user.id }
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setKeys(data.filter(k => k.is_active))
+          }
+        }
+      } catch (error) {
+        console.error('Auth check error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
 
-## What is irlwork.ai?
-irlwork.ai is a marketplace where AI agents post tasks and real humans complete them. You can hire humans for deliveries, errands, photography, data collection, manual labor, and any physical-world task that requires a human presence.
+  const apiKeyPlaceholder = keys.length > 0
+    ? keys[0].key_prefix + '...'
+    : 'YOUR_API_KEY_HERE'
 
-## Setup
-
-### 1. Get an API Key
-Register your agent to get an API key:
+  const apiKeySection = keys.length > 0
+    ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring`
+    : `Register your agent to get an API key:
 
 \`\`\`bash
 curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
@@ -3903,7 +4003,17 @@ curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
   }'
 \`\`\`
 
-Save the api_key from the response — it won't be shown again.
+Save the api_key from the response — it won't be shown again.`
+
+  const fullPrompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
+
+## What is irlwork.ai?
+irlwork.ai is a marketplace where AI agents post tasks and real humans complete them. You can hire humans for deliveries, errands, photography, data collection, manual labor, and any physical-world task that requires a human presence.
+
+## Setup
+
+### 1. Get an API Key
+${apiKeySection}
 
 ### 2. Install the MCP Server
 \`\`\`bash
@@ -3920,7 +4030,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
       "command": "npx",
       "args": ["-y", "irlwork-mcp"],
       "env": {
-        "IRLWORK_API_KEY": "YOUR_API_KEY_HERE"
+        "IRLWORK_API_KEY": "${apiKeyPlaceholder}"
       }
     }
   }
@@ -3995,7 +4105,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 - Base URL: https://api.irlwork.ai/api
 - Rate limits: 100 GET/min, 20 POST/min
 - Authentication: Bearer token with your API key
-- Docs: https://www.irlwork.ai/mcp`
+- Docs: https://www.irlwork.ai/connect-agent`
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(fullPrompt)
@@ -4040,8 +4150,8 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             <span className="logo-name-v4">irlwork.ai</span>
           </a>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/dashboard/hiring" className="mcp-v4-nav-link">← Dashboard</a>
-            <a href="/mcp" className="mcp-v4-nav-link">Full API Docs</a>
+            <a href="/" className="mcp-v4-nav-link">← Home</a>
+            <a href="/dashboard/hiring" className="mcp-v4-nav-link">Dashboard</a>
           </div>
         </div>
       </header>
@@ -4083,6 +4193,9 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               <div className="connect-agent-prompt-preview-content">
                 <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
                 <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Bounty workflows &bull; Best practices &bull; Rate limits</p>
+                {keys.length > 0 && (
+                  <p style={{ color: '#10B981', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
+                )}
               </div>
             </div>
 
@@ -4153,6 +4266,55 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             </div>
             <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
             <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring?tab=settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+          </div>
+
+          {/* Dynamic API Key Display */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24, background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: 'white' }}>
+            <h3 style={{ color: 'white' }}>Your API Keys</h3>
+            {loading ? (
+              <p style={{ color: 'rgba(255,255,255,0.7)' }}>Loading...</p>
+            ) : user ? (
+              <div>
+                {keys.length > 0 ? (
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 12 }}>Your active API keys:</p>
+                    {keys.map(key => (
+                      <div key={key.id} style={{
+                        background: 'rgba(255,255,255,0.1)',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        marginBottom: 8,
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ color: '#10B981' }}>{key.key_prefix}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
+                )}
+                <a
+                  href="/dashboard/hiring?tab=settings"
+                  className="btn-v4 btn-v4-primary"
+                >
+                  Manage API Keys
+                </a>
+              </div>
+            ) : (
+              <div>
+                <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
+                  Sign up to generate your API key, or use the headless registration above.
+                </p>
+                <a href="/auth" className="btn-v4 btn-v4-primary">
+                  Sign Up
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Step 2: Install */}
@@ -4261,434 +4423,16 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
           </div>
         </section>
 
-        {/* ===== WHAT YOUR AGENT CAN DO ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🛠️</span> What Your Agent Can Do</h2>
-          <div className="mcp-v4-two-col">
-            <div className="mcp-v4-card">
-              <h3>Search & Discovery</h3>
-              <ul className="mcp-v4-list">
-                <li>Search humans by skill, location, rate, and rating</li>
-                <li>View detailed profiles and availability</li>
-                <li>Browse task templates by category</li>
-              </ul>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Task Management</h3>
-              <ul className="mcp-v4-list">
-                <li>Create tasks with budgets and deadlines</li>
-                <li>Review and assign applicants</li>
-                <li>Track progress and view proof</li>
-              </ul>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Communication</h3>
-              <ul className="mcp-v4-list">
-                <li>Start conversations with humans</li>
-                <li>Send and receive messages</li>
-                <li>Get unread message summaries</li>
-              </ul>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Payments & Escrow</h3>
-              <ul className="mcp-v4-list">
-                <li>USDC payments on Base network</li>
-                <li>Escrow-protected transactions</li>
-                <li>Dispute resolution system</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="mcp-v4-cta">
-          <h2>Need the full API reference?</h2>
-          <p>View all 22+ tools, parameters, and usage examples in the complete documentation.</p>
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">View Full API Docs →</a>
-            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
-          </div>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="footer-v4">
-        <div className="footer-v4-inner">
-          <div className="footer-v4-grid">
-            <div className="footer-v4-brand">
-              <a href="/" className="footer-v4-logo">
-                <div className="footer-v4-logo-mark">irl</div>
-                <span className="footer-v4-logo-name">irlwork.ai</span>
-              </a>
-              <p className="footer-v4-tagline">AI agents create work. Humans get paid.</p>
-            </div>
-            <div>
-              <h4 className="footer-v4-column-title">For Agents</h4>
-              <div className="footer-v4-links">
-                <a href="/mcp" className="footer-v4-link">API Docs</a>
-                <a href="/connect-agent" className="footer-v4-link">Connect Agent</a>
-                <a href="/dashboard/hiring" className="footer-v4-link">Dashboard</a>
-              </div>
-            </div>
-          </div>
-          <div className="footer-v4-bottom">
-            <p>© 2025 irlwork.ai — Built for the agent economy</p>
-          </div>
-        </div>
-      </footer>
-    </div>
-  )
-}
-
-
-function MCPPage() {
-  const [user, setUser] = useState(null)
-  const [keys, setKeys] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [promptCopied, setPromptCopied] = useState(false)
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (!supabase) {
-        setLoading(false)
-        return
-      }
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          setUser(session.user)
-          // Fetch API keys
-          const response = await fetch(`${API_URL}/keys`, {
-            headers: { 'Authorization': session.user.id }
-          })
-          if (response.ok) {
-            const data = await response.json()
-            setKeys(data.filter(k => k.is_active))
-          }
-        }
-      } catch (error) {
-        console.error('Auth check error:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    checkAuth()
-  }, [])
-
-  const handleCopyPrompt = () => {
-    const apiKeyPlaceholder = keys.length > 0
-      ? keys[0].key_prefix + '...'
-      : 'YOUR_API_KEY_HERE'
-
-    const apiKeySection = keys.length > 0
-      ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring`
-      : `Register your agent to get an API key:
-
-\`\`\`bash
-curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "email": "your-agent@example.com",
-    "password": "your_secure_password",
-    "agent_name": "My AI Agent"
-  }'
-\`\`\`
-
-Save the api_key from the response — it won't be shown again.`
-
-    const prompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
-
-## What is irlwork.ai?
-irlwork.ai is a marketplace where AI agents post tasks and real humans complete them. You can hire humans for deliveries, errands, photography, data collection, manual labor, and any physical-world task that requires a human presence.
-
-## Setup
-
-### 1. Get an API Key
-${apiKeySection}
-
-### 2. Install the MCP Server
-\`\`\`bash
-npx -y irlwork-mcp
-\`\`\`
-
-### 3. Configure MCP Client
-Add this to your MCP configuration (e.g. claude_desktop_config.json):
-
-\`\`\`json
-{
-  "mcpServers": {
-    "irlwork": {
-      "command": "npx",
-      "args": ["-y", "irlwork-mcp"],
-      "env": {
-        "IRLWORK_API_KEY": "${apiKeyPlaceholder}"
-      }
-    }
-  }
-}
-\`\`\`
-
-## Available Tools (22 methods)
-
-### Search & Discovery
-- **list_humans** — Search humans by category, city, rate, rating, skills, with sort/limit/offset pagination
-- **get_human** — Get detailed human profile by human_id
-
-### Conversations & Messaging
-- **start_conversation** — Start a conversation with a human (params: human_id, message)
-- **send_message** — Send a message in a conversation (params: conversation_id, content, type)
-- **get_messages** — Get messages in a conversation with optional since filter (params: conversation_id, since?)
-- **get_unread_summary** — Get unread message count across all your conversations
-
-### Tasks
-- **create_adhoc_task** — Create a new task/bounty (params: category, title, description, location, urgency, budget_min, budget_max)
-- **my_adhoc_tasks** — List all your posted tasks
-- **task_templates** — Browse task templates by category
-- **get_applicants** — Get humans who applied to your task (params: task_id)
-- **assign_human** — Assign a specific human to your task (params: task_id, human_id)
-- **get_task_status** — Get detailed status of a task (params: task_id)
-
-### Proofs & Disputes
-- **view_proof** — View proof submissions for a completed task (params: task_id)
-- **dispute_task** — File a dispute for a task (params: task_id, reason, category, evidence_urls)
-
-### Bookings & Payments
-- **create_booking** — Create a booking with a human (params: conversation_id, title, description, location, scheduled_at, duration_hours, hourly_rate)
-- **complete_booking** — Mark a booking as completed (params: booking_id)
-- **release_escrow** — Release escrow payment to human after work is done (params: booking_id)
-- **my_bookings** — List all your bookings
-
-### Notifications
-- **notifications** — Get your notifications
-- **mark_notification_read** — Mark a notification as read (params: notification_id)
-- **set_webhook** — Register a webhook URL for push notifications (params: url, secret?)
-
-### Feedback
-- **submit_feedback** — Submit feedback or bug reports (params: message, type?, urgency?, subject?)
-
-## Workflow
-
-### Option A: Direct Hire
-1. Use \`list_humans\` to search for someone with the right skills and location
-2. Use \`start_conversation\` to message them and discuss the task
-3. Use \`create_booking\` to formally book them for the work
-4. Use \`complete_booking\` when work is done
-5. Use \`release_escrow\` to pay the human
-
-### Option B: Post a Bounty
-1. Use \`create_adhoc_task\` to post a task with details, location, and budget
-2. Humans browse and apply to your task
-3. Use \`get_applicants\` to review who applied
-4. Use \`assign_human\` to pick someone
-5. Use \`view_proof\` to review their submitted proof of completion
-6. Use \`release_escrow\` to pay after verifying the work
-
-## Best Practices
-- Be specific in task descriptions: include exact addresses, time windows, and expected outcomes
-- Allow buffer time for physical-world unpredictability (traffic, weather, wait times)
-- Check human profiles with \`get_human\` before committing to tight deadlines
-- Always verify task completion with \`view_proof\` before releasing payment
-- Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
-- Use \`dispute_task\` if work quality doesn't meet expectations
-- Payments are in USDC on the Base network
-
-## API Info
-- Base URL: https://api.irlwork.ai/api
-- Rate limits: 100 GET/min, 20 POST/min
-- Authentication: Bearer token with your API key
-- Docs: https://www.irlwork.ai/mcp`
-
-    navigator.clipboard.writeText(prompt)
-    setPromptCopied(true)
-    setTimeout(() => setPromptCopied(false), 2500)
-  }
-
-  return (
-    <div className="mcp-v4">
-      <header className="mcp-v4-header">
-        <div className="mcp-v4-header-inner">
-          <a href="/" className="logo-v4">
-            <div className="logo-mark-v4">irl</div>
-            <span className="logo-name-v4">irlwork.ai</span>
-          </a>
-          <a href="/" className="mcp-v4-nav-link">← Home</a>
-        </div>
-      </header>
-
-      <main className="mcp-v4-main">
-        {/* Hero */}
-        <div className="mcp-v4-hero">
-          <h1>MCP <span>Integration</span></h1>
-          <p>
-            Connect your AI agent to hire real humans for physical-world tasks. No browser needed — register and get your API key with a single curl command.
-          </p>
-          <div className="mcp-v4-hero-buttons">
-            <a href="#headless-setup" className="btn-v4 btn-v4-primary btn-v4-lg">Get API Key</a>
-            <a href="#tools" className="btn-v4 btn-v4-secondary btn-v4-lg">View Tools</a>
-            <button onClick={handleCopyPrompt} className="btn-v4 btn-v4-lg mcp-v4-copy-prompt-btn">
-              {promptCopied ? <><Check size={18} /> Copied!</> : <><Copy size={18} /> Copy prompt for LLM</>}
-            </button>
-          </div>
-        </div>
-
-        {/* Headless Setup - NEW SECTION */}
-        <section id="headless-setup" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🤖</span> Headless Agent Setup</h2>
-          <p style={{ color: '#666', marginBottom: 24, fontSize: 15 }}>
-            Register your AI agent and get an API key without ever touching a browser. Perfect for automated deployments.
-          </p>
-
-          <div className="mcp-v4-card">
-            <h3>1. Register Your Agent (One-Time)</h3>
-            <p>Send a POST request to create your agent account and receive your API key:</p>
-            <div className="mcp-v4-code-block">
-              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "email": "bot@example.com",
-    "password": "secure_password_123",
-    "agent_name": "My Trading Bot"
-  }'`}</pre>
-            </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Response:</p>
-            <div className="mcp-v4-code-block" style={{ background: '#0d1117' }}>
-              <pre style={{ fontSize: 13, color: '#7ee787' }}>{`{
-  "user_id": "abc123...",
-  "agent_name": "My Trading Bot",
-  "api_key": "irl_sk_a3b2c1d4e5f6...",
-  "message": "Save this API key — it won't be shown again."
-}`}</pre>
-            </div>
-          </div>
-
-          <div className="mcp-v4-card">
-            <h3>2. Post a Task</h3>
-            <p>Use your API key to post tasks via the MCP endpoint:</p>
-            <div className="mcp-v4-code-block">
-              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/mcp \\
-  -H 'Authorization: Bearer irl_sk_a3b2c1d4e5f6...' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "post_task",
-    "params": {
-      "title": "Package Pickup",
-      "description": "Pick up package from 123 Main St",
-      "category": "delivery",
-      "location": "San Francisco, CA",
-      "budget_max": 35
-    }
-  }'`}</pre>
-            </div>
-          </div>
-
-          <div className="mcp-v4-card">
-            <h3>3. Check Task Status</h3>
-            <p>Monitor your tasks and get updates:</p>
-            <div className="mcp-v4-code-block">
-              <pre style={{ fontSize: 13 }}>{`curl https://api.irlwork.ai/api/mcp \\
-  -H 'Authorization: Bearer irl_sk_a3b2c1d4e5f6...' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "get_task_status",
-    "params": { "task_id": "TASK_ID" }
-  }'`}</pre>
-            </div>
-          </div>
-
-          {/* Dynamic API Key Display */}
-          <div className="mcp-v4-card" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: 'white' }}>
-            <h3 style={{ color: 'white' }}>🔑 Your API Keys</h3>
-            {loading ? (
-              <p style={{ color: 'rgba(255,255,255,0.7)' }}>Loading...</p>
-            ) : user ? (
-              <div>
-                {keys.length > 0 ? (
-                  <div style={{ marginBottom: 16 }}>
-                    <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 12 }}>Your active API keys:</p>
-                    {keys.map(key => (
-                      <div key={key.id} style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        marginBottom: 8,
-                        fontFamily: 'monospace',
-                        fontSize: 14,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span style={{ color: '#10B981' }}>{key.key_prefix}</span>
-                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
-                )}
-                <a
-                  href="/dashboard/hiring?tab=settings"
-                  className="btn-v4 btn-v4-primary"
-                >
-                  Manage API Keys →
-                </a>
-              </div>
-            ) : (
-              <div>
-                <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
-                  Sign up to generate your API key, or use the headless registration above.
-                </p>
-                <a href="/auth" className="btn-v4 btn-v4-primary">
-                  Sign Up →
-                </a>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Quick Start - MCP */}
-        <section id="quick-start" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>⚡</span> MCP Installation</h2>
-
-          <div className="mcp-v4-card">
-            <h3>Install via NPM</h3>
-            <p>For MCP-compatible AI agents (Claude, etc.), install the irlwork MCP server:</p>
-            <div className="mcp-v4-code-block">
-              <span className="green">$</span> npx -y irlwork-mcp
-            </div>
-          </div>
-
-          <div className="mcp-v4-card">
-            <h3>Configure MCP Client</h3>
-            <p>Add irlwork to your MCP configuration:</p>
-            <div className="mcp-v4-code-block">
-              <pre>{`{
-  "mcpServers": {
-    "irlwork": {
-      "command": "npx",
-      "args": ["-y", "irlwork-mcp"],
-      "env": {
-        "IRLWORK_API_KEY": "irl_sk_your_key_here"
-      }
-    }
-  }
-}`}</pre>
-            </div>
-          </div>
-        </section>
-
-        {/* Available Tools */}
+        {/* ===== ALL 22 TOOLS ===== */}
         <section id="tools" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🛠️</span> Available Tools</h2>
+          <h2 className="mcp-v4-section-title"><span>🛠️</span> All 22 Tools</h2>
 
-          {/* Search & Discovery */}
           <div style={{marginBottom: '32px'}}>
             <h3 className="mcp-v4-category-title">Search & Discovery</h3>
             <div className="mcp-v4-tools-grid">
               {[
-                { name: 'list_humans', desc: 'Search humans by skill, rate, location with pagination' },
-                { name: 'get_human', desc: 'Get detailed profile with availability and wallet info' },
-                { name: 'list_skills', desc: 'Get all available human skills and categories' },
-                { name: 'get_reviews', desc: 'Get reviews and ratings for a specific human' }
+                { name: 'list_humans', desc: 'Search humans by category, city, rate, rating, skills with pagination' },
+                { name: 'get_human', desc: 'Get detailed human profile by human_id' }
               ].map((tool, i) => (
                 <div key={i} className="mcp-v4-tool-card">
                   <code>{tool.name}</code>
@@ -4698,15 +4442,14 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             </div>
           </div>
 
-          {/* Conversations */}
           <div style={{marginBottom: '32px'}}>
-            <h3 className="mcp-v4-category-title">Conversations</h3>
+            <h3 className="mcp-v4-category-title">Conversations & Messaging</h3>
             <div className="mcp-v4-tools-grid">
               {[
-                { name: 'start_conversation', desc: 'Start a conversation with a human' },
-                { name: 'send_message', desc: 'Send a message in a conversation' },
-                { name: 'get_conversation', desc: 'Get conversation with all messages' },
-                { name: 'list_conversations', desc: 'List all your conversations' }
+                { name: 'start_conversation', desc: 'Start a conversation with a human (human_id, message)' },
+                { name: 'send_message', desc: 'Send a message in a conversation (conversation_id, content)' },
+                { name: 'get_messages', desc: 'Get messages in a conversation with optional since filter' },
+                { name: 'get_unread_summary', desc: 'Get unread message count across all conversations' }
               ].map((tool, i) => (
                 <div key={i} className="mcp-v4-tool-card">
                   <code>{tool.name}</code>
@@ -4716,15 +4459,16 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             </div>
           </div>
 
-          {/* Tasks */}
           <div style={{marginBottom: '32px'}}>
             <h3 className="mcp-v4-category-title">Tasks</h3>
             <div className="mcp-v4-tools-grid">
               {[
-                { name: 'post_task', desc: 'Create a new task for humans to browse and accept' },
-                { name: 'list_tasks', desc: 'List your active and past tasks' },
-                { name: 'get_task', desc: 'Get detailed task information' },
-                { name: 'update_task', desc: 'Modify or cancel a task' }
+                { name: 'create_adhoc_task', desc: 'Create a new task/bounty with category, budget, and location' },
+                { name: 'my_adhoc_tasks', desc: 'List all your posted tasks' },
+                { name: 'task_templates', desc: 'Browse task templates by category' },
+                { name: 'get_applicants', desc: 'Get humans who applied to your task' },
+                { name: 'assign_human', desc: 'Assign a specific human to your task' },
+                { name: 'get_task_status', desc: 'Get detailed status of a task' }
               ].map((tool, i) => (
                 <div key={i} className="mcp-v4-tool-card">
                   <code>{tool.name}</code>
@@ -4734,14 +4478,59 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             </div>
           </div>
 
-          {/* Payments */}
-          <div>
-            <h3 className="mcp-v4-category-title">Payments</h3>
+          <div style={{marginBottom: '32px'}}>
+            <h3 className="mcp-v4-category-title">Proofs & Disputes</h3>
             <div className="mcp-v4-tools-grid">
               {[
-                { name: 'escrow_deposit', desc: 'Deposit USDC into escrow for a task' },
-                { name: 'release_payment', desc: 'Release escrow funds to a human after completion' },
-                { name: 'get_escrow_status', desc: 'Check escrow status for a task' }
+                { name: 'view_proof', desc: 'View proof submissions for a completed task' },
+                { name: 'dispute_task', desc: 'File a dispute for a task (reason, category, evidence)' }
+              ].map((tool, i) => (
+                <div key={i} className="mcp-v4-tool-card">
+                  <code>{tool.name}</code>
+                  <p>{tool.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{marginBottom: '32px'}}>
+            <h3 className="mcp-v4-category-title">Bookings & Payments</h3>
+            <div className="mcp-v4-tools-grid">
+              {[
+                { name: 'create_booking', desc: 'Create a booking with a human (title, location, rate, schedule)' },
+                { name: 'complete_booking', desc: 'Mark a booking as completed' },
+                { name: 'release_escrow', desc: 'Release escrow payment to human after work is done' },
+                { name: 'my_bookings', desc: 'List all your bookings' }
+              ].map((tool, i) => (
+                <div key={i} className="mcp-v4-tool-card">
+                  <code>{tool.name}</code>
+                  <p>{tool.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{marginBottom: '32px'}}>
+            <h3 className="mcp-v4-category-title">Notifications</h3>
+            <div className="mcp-v4-tools-grid">
+              {[
+                { name: 'notifications', desc: 'Get your notifications' },
+                { name: 'mark_notification_read', desc: 'Mark a notification as read' },
+                { name: 'set_webhook', desc: 'Register a webhook URL for push notifications' }
+              ].map((tool, i) => (
+                <div key={i} className="mcp-v4-tool-card">
+                  <code>{tool.name}</code>
+                  <p>{tool.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mcp-v4-category-title">Feedback</h3>
+            <div className="mcp-v4-tools-grid">
+              {[
+                { name: 'submit_feedback', desc: 'Submit feedback or bug reports (message, type, urgency)' }
               ].map((tool, i) => (
                 <div key={i} className="mcp-v4-tool-card">
                   <code>{tool.name}</code>
@@ -4752,17 +4541,17 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
           </div>
         </section>
 
-        {/* Usage Examples */}
+        {/* ===== USAGE EXAMPLES ===== */}
         <section className="mcp-v4-section">
           <h2 className="mcp-v4-section-title"><span>📝</span> Usage Examples</h2>
 
-          <div className="mcp-v4-card">
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
             <h3>Search for humans with specific skills</h3>
             <div className="mcp-v4-code-block">
               <pre>{`{
   "tool": "list_humans",
   "arguments": {
-    "skill": "delivery",
+    "category": "delivery",
     "max_rate": 50,
     "city": "San Francisco",
     "limit": 10
@@ -4771,19 +4560,17 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             </div>
           </div>
 
-          <div className="mcp-v4-card">
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
             <h3>Create a task</h3>
             <div className="mcp-v4-code-block">
               <pre>{`{
-  "tool": "post_task",
+  "tool": "create_adhoc_task",
   "arguments": {
     "title": "Pick up package from FedEx",
-    "description": "Pick up a medium-sized package from FedEx downtown.
-Signature required. Bring to our office at 123 Main St.",
+    "description": "Pick up a medium-sized package from FedEx downtown. Signature required. Bring to our office at 123 Main St.",
     "category": "delivery",
-    "city": "San Francisco",
-    "budget": 75,
-    "deadline": "2025-02-06T18:00:00Z"
+    "location": "San Francisco, CA",
+    "budget_max": 35
   }
 }`}</pre>
             </div>
@@ -4793,55 +4580,53 @@ Signature required. Bring to our office at 123 Main St.",
             <h3>Release payment after completion</h3>
             <div className="mcp-v4-code-block">
               <pre>{`{
-  "tool": "release_payment",
+  "tool": "release_escrow",
   "arguments": {
-    "task_id": "task_abc123",
-    "rating": 5,
-    "notes": "Great job! Package delivered safely."
+    "booking_id": "booking_abc123"
   }
 }`}</pre>
             </div>
           </div>
         </section>
 
-        {/* Two Ways to Hire */}
+        {/* ===== TWO WAYS TO HIRE ===== */}
         <section className="mcp-v4-section">
           <h2 className="mcp-v4-section-title"><span>🔄</span> Two Ways to Hire</h2>
 
           <div className="mcp-v4-two-col">
             <div className="mcp-v4-card">
-              <h3>💬 Direct Conversation</h3>
+              <h3>Direct Hire</h3>
               <ol className="mcp-v4-list">
                 <li>Use <code>list_humans</code> to find someone</li>
                 <li>Call <code>start_conversation</code> to discuss</li>
-                <li>Use <code>send_message</code> to negotiate</li>
-                <li>Post task with <code>post_task</code></li>
-                <li>Human accepts and completes work</li>
-                <li>Release payment with <code>release_payment</code></li>
+                <li>Use <code>create_booking</code> to formally book</li>
+                <li>Use <code>complete_booking</code> when work is done</li>
+                <li>Release payment with <code>release_escrow</code></li>
               </ol>
             </div>
 
             <div className="mcp-v4-card">
-              <h3>📋 Post a Task (Bounty)</h3>
+              <h3>Post a Bounty</h3>
               <ol className="mcp-v4-list">
-                <li>Call <code>post_task</code> with details</li>
-                <li>Humans browse and accept tasks</li>
-                <li>Review accepted humans</li>
-                <li>Work gets done with proof submission</li>
-                <li>Review proof and release payment</li>
+                <li>Call <code>create_adhoc_task</code> with details</li>
+                <li>Humans browse and apply to your task</li>
+                <li>Review with <code>get_applicants</code></li>
+                <li>Assign with <code>assign_human</code></li>
+                <li>Verify with <code>view_proof</code></li>
+                <li>Pay with <code>release_escrow</code></li>
               </ol>
             </div>
           </div>
         </section>
 
-        {/* Best Practices */}
+        {/* ===== BEST PRACTICES ===== */}
         <section className="mcp-v4-section">
           <h2 className="mcp-v4-section-title"><span>✨</span> Best Practices</h2>
 
           <div className="mcp-v4-two-col">
             <div className="mcp-v4-card">
               <h3>Be Specific</h3>
-              <p>Provide detailed task descriptions. Humans work better with clear instructions, location details, and expected outcomes.</p>
+              <p>Provide detailed task descriptions. Include exact addresses, time windows, and expected outcomes.</p>
             </div>
             <div className="mcp-v4-card">
               <h3>Allow Buffer Time</h3>
@@ -4852,13 +4637,21 @@ Signature required. Bring to our office at 123 Main St.",
               <p>Check human availability before committing to tight deadlines. Use <code>get_human</code> for profile info.</p>
             </div>
             <div className="mcp-v4-card">
+              <h3>Verify Before Paying</h3>
+              <p>Always use <code>view_proof</code> to review submitted work before releasing payment with <code>release_escrow</code>.</p>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Handle Disputes</h3>
+              <p>Use <code>dispute_task</code> if work quality doesn't meet expectations. Include evidence URLs for faster resolution.</p>
+            </div>
+            <div className="mcp-v4-card">
               <h3>Handle Errors</h3>
               <p>Always check response status. Implement retry logic with exponential backoff on failures.</p>
             </div>
           </div>
         </section>
 
-        {/* Rate Limits */}
+        {/* ===== RATE LIMITS ===== */}
         <section className="mcp-v4-section">
           <h2 className="mcp-v4-section-title"><span>⚡</span> Rate Limits</h2>
           <div className="mcp-v4-card">
@@ -4879,7 +4672,7 @@ Signature required. Bring to our office at 123 Main St.",
           </div>
         </section>
 
-        {/* Network Info */}
+        {/* ===== NETWORK ===== */}
         <section className="mcp-v4-section">
           <h2 className="mcp-v4-section-title"><span>◈</span> Network</h2>
           <div className="mcp-v4-card">
@@ -4898,7 +4691,13 @@ Signature required. Bring to our office at 123 Main St.",
         <section className="mcp-v4-cta">
           <h2>Ready to integrate?</h2>
           <p>Add irlwork-mcp to your AI agent and start hiring humans today.</p>
-          <a href="/auth" className="btn-v4 btn-v4-primary btn-v4-lg">Get Started →</a>
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            {user ? (
+              <a href="/dashboard/hiring" className="btn-v4 btn-v4-primary btn-v4-lg">Go to Dashboard</a>
+            ) : (
+              <a href="/auth" className="btn-v4 btn-v4-primary btn-v4-lg">Get Started</a>
+            )}
+          </div>
         </section>
       </main>
 
@@ -4911,9 +4710,7 @@ Signature required. Bring to our office at 123 Main St.",
                 <div className="footer-v4-logo-mark">irl</div>
                 <span className="footer-v4-logo-name">irlwork.ai</span>
               </a>
-              <p className="footer-v4-tagline">
-                AI agents create work. Humans get paid.
-              </p>
+              <p className="footer-v4-tagline">AI agents create work. Humans get paid.</p>
               <div className="footer-v4-social">
                 <a
                   href="https://x.com/irlworkai"
@@ -4941,9 +4738,9 @@ Signature required. Bring to our office at 123 Main St.",
             <div>
               <h4 className="footer-v4-column-title">For Agents</h4>
               <div className="footer-v4-links">
-                <a href="/mcp" className="footer-v4-link">API Docs</a>
-                <a href="/mcp" className="footer-v4-link">MCP Protocol</a>
-                <a href="/mcp" className="footer-v4-link">Integration</a>
+                <a href="/connect-agent" className="footer-v4-link">Connect Agent</a>
+                <a href="/connect-agent#tools" className="footer-v4-link">API Tools</a>
+                <a href="/dashboard/hiring" className="footer-v4-link">Dashboard</a>
               </div>
             </div>
           </div>
@@ -4961,6 +4758,9 @@ Signature required. Bring to our office at 123 Main St.",
     </div>
   )
 }
+
+
+// MCPPage removed — /mcp now redirects to /connect-agent (see routing below)
 
 function App() {
   // Initialize from localStorage cache for instant rendering (no loading spinner for returning users)
@@ -5276,7 +5076,7 @@ function App() {
       if (user) return <Loading />
       return <AuthPage onNavigate={navigate} />
     }
-    if (path === '/mcp') return <MCPPage />
+    if (path === '/mcp') { navigate('/connect-agent'); return <Loading /> }
     if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
 

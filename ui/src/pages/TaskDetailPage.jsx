@@ -339,7 +339,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           <span className="logo-name-v4">irlwork.ai</span>
         </a>
         <div className="nav-links-v4" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <a href="/mcp" className="nav-link-v4">For Agents</a>
+          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
           <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
           {user ? (
             <a href="/dashboard" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>

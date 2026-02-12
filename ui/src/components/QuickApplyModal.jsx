@@ -5,11 +5,18 @@ import API_URL from '../config/api';
 const CATEGORY_ICONS = {
   delivery: '📦',
   photography: '📸',
+  data_collection: '📊',
   'data-collection': '📊',
   errands: '🏃',
+  cleaning: '🧹',
+  moving: '🚚',
+  manual_labor: '💪',
+  inspection: '🔍',
+  tech: '💻',
   'tech-setup': '💻',
   translation: '🌐',
   verification: '✅',
+  general: '📋',
   other: '📋',
 };
 

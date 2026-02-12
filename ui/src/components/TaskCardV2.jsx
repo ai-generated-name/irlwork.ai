@@ -4,10 +4,17 @@ const CATEGORY_ICONS = {
   delivery: '📦',
   photography: '📸',
   'data-collection': '📊',
+  data_collection: '📊',
   errands: '🏃',
+  cleaning: '🧹',
+  moving: '🚚',
+  manual_labor: '💪',
+  inspection: '🔍',
   'tech-setup': '💻',
+  tech: '💻',
   translation: '🌐',
   verification: '✅',
+  general: '📋',
   other: '📋',
 };
 
@@ -26,6 +33,11 @@ function formatTimeAgo(dateString) {
   return date.toLocaleDateString();
 }
 
+function formatCategory(cat) {
+  if (!cat) return 'General';
+  return cat.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export default function TaskCardV2({
   task,
   isSelected = false,
@@ -38,7 +50,13 @@ export default function TaskCardV2({
   showReport = false,
 }) {
   const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
-  const categoryLabel = task.category?.replace('-', ' ') || 'General';
+  const categoryLabel = formatCategory(task.category);
+  const isBounty = task.task_type === 'bounty';
+  const quantity = task.quantity || 1;
+  const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
+  const spotsRemaining = Math.max(0, quantity - spotsFilled);
+  const agentName = task.is_anonymous ? 'Anon AI Agent' : (task.agent?.name || task.agent_name || null);
+  const durationHours = task.duration_hours || task.duration;
 
   return (
     <div
@@ -47,13 +65,23 @@ export default function TaskCardV2({
       onMouseEnter={() => onHover(task.id)}
       onMouseLeave={() => onHover(null)}
     >
-      {/* Header row: Category + Distance */}
+      {/* Header row: Category + badges */}
       <div className="task-card-v2-header">
         <div className="task-card-v2-category">
           <span className="task-card-v2-category-icon">{categoryIcon}</span>
           <span className="task-card-v2-category-label">{categoryLabel}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {isBounty && (
+            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED', letterSpacing: '0.02em' }}>
+              Bounty
+            </span>
+          )}
+          {quantity > 1 && (
+            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: spotsFilled >= quantity ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: spotsFilled >= quantity ? '#059669' : '#2563EB' }}>
+              {spotsFilled}/{quantity} filled
+            </span>
+          )}
           {task.is_remote ? (
             <div className="task-card-v2-remote-badge">
               🌐 Remote
@@ -109,18 +137,18 @@ export default function TaskCardV2({
           <span className="task-card-v2-budget-amount">${task.budget || 0}</span>
           <span className="task-card-v2-budget-label">USDC</span>
         </div>
-        {task.duration && (
+        {durationHours && (
           <div className="task-card-v2-duration">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
-            {task.duration}
+            {durationHours}h
           </div>
         )}
       </div>
 
-      {/* Location + Escrow row */}
+      {/* Location row */}
       <div className="task-card-v2-meta-row">
         <div className="task-card-v2-location">
           {task.is_remote ? (
@@ -138,37 +166,33 @@ export default function TaskCardV2({
             </>
           )}
         </div>
-        <div className={`task-card-v2-escrow ${task.escrow_status === 'funded' ? 'funded' : 'unfunded'}`}>
-          {task.escrow_status === 'funded' ? (
-            <>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Funded
-            </>
-          ) : (
-            <>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-              </svg>
-              Unfunded
-            </>
-          )}
-        </div>
+        {task.applicant_count > 0 && (
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            {task.applicant_count} applied
+          </span>
+        )}
       </div>
 
-      {/* Footer: Posted time + Apply button */}
+      {/* Footer: Posted time + Agent + Apply */}
       <div className="task-card-v2-footer">
-        <span className="task-card-v2-posted">
-          Posted {formatTimeAgo(task.created_at)}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span className="task-card-v2-posted">
+            Posted {formatTimeAgo(task.created_at)}
+          </span>
+          {agentName && (
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+              by {agentName}
+            </span>
+          )}
+        </div>
         <button
           className={`task-card-v2-apply-btn ${hasApplied ? 'applied' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
             if (!hasApplied) onApply(task);
           }}
-          disabled={hasApplied}
+          disabled={hasApplied || (quantity > 1 && spotsRemaining === 0)}
         >
           {hasApplied ? (
             <>
@@ -177,6 +201,8 @@ export default function TaskCardV2({
               </svg>
               Applied
             </>
+          ) : (quantity > 1 && spotsRemaining === 0) ? (
+            'Filled'
           ) : (
             <>
               Apply
