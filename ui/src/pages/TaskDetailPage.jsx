@@ -5,17 +5,17 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../App';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
+import TaskTimeline from '../components/TaskDetail/TaskTimeline';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
-import BudgetCard from '../components/TaskDetail/BudgetCard';
+import PaymentCard from '../components/TaskDetail/PaymentCard';
 import StatsSection from '../components/TaskDetail/StatsSection';
-import EscrowDisplay from '../components/TaskDetail/EscrowDisplay';
 import ProofSection from '../components/TaskDetail/ProofSection';
-import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
 import QuickApplyModal from '../components/QuickApplyModal';
 import { v4 } from '../components/V4Layout';
 import { trackView } from '../utils/trackView';
 import ReportTaskModal from '../components/ReportTaskModal';
+import ShareOnXButton from '../components/ShareOnXButton';
 import API_URL from '../config/api';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
@@ -44,7 +44,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       try {
         // Fetch task details (works with or without auth)
-        const headers = user?.id ? { Authorization: user.id } : {};
+        const headers = user?.id ? { Authorization: user.token || user.id } : {};
         const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
         if (!taskRes.ok) throw new Error('Task not found');
         const taskData = await taskRes.json();
@@ -54,7 +54,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
         // Fetch agent profile for all viewers
         if (taskData.agent_id) {
-          const agentHeaders = user?.id ? { Authorization: user.id } : {};
+          const agentHeaders = user?.id ? { Authorization: user.token || user.id } : {};
           const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, { headers: agentHeaders });
           if (agentRes.ok) {
             const agentData = await agentRes.json();
@@ -65,7 +65,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         // Only fetch status, conversation for authenticated participants
         if (user && isTaskParticipant) {
           const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
-            headers: { Authorization: user.id }
+            headers: { Authorization: user.token || user.id }
           });
           if (statusRes.ok) {
             const statusData = await statusRes.json();
@@ -108,7 +108,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           if (user) {
             try {
               const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
-                headers: { Authorization: user.id }
+                headers: { Authorization: user.token || user.id }
               });
               if (statusRes.ok) {
                 const statusData = await statusRes.json();
@@ -132,7 +132,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     if (!user) return;
     try {
       const convRes = await fetch(`${API_URL}/conversations`, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       });
 
       if (convRes.ok) {
@@ -160,7 +160,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       }
 
       const res = await fetch(url, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       });
 
       if (res.ok) {
@@ -182,7 +182,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
           fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
             method: 'PUT',
-            headers: { Authorization: user.id }
+            headers: { Authorization: user.token || user.id }
           }).catch(() => {});
         }
       }
@@ -203,7 +203,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: user.id
+            Authorization: user.token || user.id
           },
           body: JSON.stringify({
             agent_id: task.agent_id,
@@ -225,12 +225,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
-        body: JSON.stringify({
-          conversation_id: convId,
-          content: content
-        })
+        body: JSON.stringify({ conversation_id: convId, content })
       });
 
       if (res.ok) {
@@ -253,7 +250,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({
           proof_text: proofText,
@@ -339,7 +336,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           <span className="logo-name-v4">irlwork.ai</span>
         </a>
         <div className="nav-links-v4" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <a href="/mcp" className="nav-link-v4">For Agents</a>
+          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
           <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
           {user ? (
             <a href="/dashboard" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
@@ -358,6 +355,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         borderBottom: '1px solid rgba(26,26,26,0.08)',
         position: 'sticky',
         top: 56,
+        marginTop: 56,
         background: 'white',
         zIndex: 10,
         boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
@@ -371,6 +369,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             <span>Back</span>
           </button>
           <div className="flex items-center gap-2 sm:gap-4">
+            {task && (
+              <ShareOnXButton task={task} variant="icon-text" />
+            )}
             {user && task && task.agent_id !== user.id && (
               <button
                 onClick={() => setShowReportModal(true)}
@@ -392,50 +393,38 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       {/* Main Content */}
       <main className="mx-auto px-3 pt-4 pb-24 sm:px-4 sm:pt-8 lg:pb-8 mt-14" style={{ maxWidth: 1280 }}>
-        {/* Countdown Banner (only when pending review) */}
-        {taskStatus?.dispute_window_info && (
-          <CountdownBanner disputeWindowInfo={taskStatus.dispute_window_info} />
-        )}
-
         {/* Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
           {/* Left Column - Task Details (60%) */}
           <div className="lg:col-span-3 space-y-3 sm:space-y-4 lg:space-y-6">
             <TaskHeader task={task} />
 
-            {/* Mobile-only: Compact budget info (no apply button — that's in the sticky bar) */}
+            {/* Task Timeline - only for participants once task is past open */}
+            {isParticipant && task.status !== 'open' && (
+              <TaskTimeline task={task} taskStatus={taskStatus} />
+            )}
+
+            {/* Mobile-only: Payment card right after header so Apply is visible early */}
             <div className="lg:hidden">
-              <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-[#059669] font-mono">
-                        ${Number(task.budget) || 0}
-                      </span>
-                      {task.budget_type === 'hourly' && <span className="text-sm text-[#525252]">/hr</span>}
-                    </div>
-                    <div className="text-xs text-[#8A8A8A] mt-0.5">
-                      {task.budget_type === 'hourly' ? 'Hourly Rate' : 'Fixed Price'} · USDC
-                    </div>
-                  </div>
-                  {task.created_at && (
-                    <span className="text-xs text-[#8A8A8A]">
-                      Posted {new Date(task.created_at).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-              </div>
+              <PaymentCard
+                task={task}
+                user={user}
+                isParticipant={isParticipant}
+                onApply={() => setShowApplyModal(true)}
+              />
             </div>
+
+            {/* Countdown Banner (participant only, during dispute window) */}
+            {taskStatus?.dispute_window_info && (
+              <CountdownBanner disputeWindowInfo={taskStatus.dispute_window_info} />
+            )}
 
             {/* Show proof section if in progress, or status badge if submitted (participants only) */}
             {isParticipant && task.status === 'in_progress' && (
               <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
             )}
-            {isParticipant && task.status !== 'in_progress' && (
-              <ProofStatusBadge task={task} proofs={taskStatus?.proofs} />
-            )}
 
-            {/* Messages - in left column beneath task info */}
+            {/* Messages - in left column beneath task info (participants only) */}
             {isParticipant && (
               <TaskMessageThread
                 conversation={conversation}
@@ -447,13 +436,14 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             )}
           </div>
 
-          {/* Right Column - Budget, Stats, Agent Profile, Escrow (40%) */}
+          {/* Right Column - Payment, Stats, Agent Profile */}
           <div className="lg:col-span-2 space-y-3 sm:space-y-4">
-            {/* Budget Card - hidden on mobile (shown inline above), visible on desktop sidebar */}
+            {/* Payment Card - hidden on mobile (shown inline above), visible on desktop sidebar */}
             <div className="hidden lg:block">
-              <BudgetCard
+              <PaymentCard
                 task={task}
                 user={user}
+                isParticipant={isParticipant}
                 onApply={() => setShowApplyModal(true)}
               />
             </div>
@@ -463,11 +453,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
             {/* Agent Profile Card */}
             <AgentProfileCard agent={agentProfile} />
-
-            {/* Escrow Display (participants only) */}
-            {isParticipant && (
-              <EscrowDisplay task={task} />
-            )}
           </div>
         </div>
       </main>

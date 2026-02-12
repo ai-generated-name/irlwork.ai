@@ -1,7 +1,8 @@
 // Agent Profile Card Component
-// Displays agent reputation metrics: rating, payment rate, jobs completed, total USDC paid
+// Displays agent reputation metrics: rating, jobs completed, total paid
 
 import React from 'react';
+import { Star, CheckCircle } from 'lucide-react';
 
 export default function AgentProfileCard({ agent }) {
   if (!agent) {
@@ -44,16 +45,12 @@ export default function AgentProfileCard({ agent }) {
           </div>
         </div>
         <div className="bg-[#FAF8F5] rounded-lg p-2.5 text-center">
-          <div className="text-xs text-[#525252] mb-0.5">Rate</div>
-          <div className="font-bold text-sm text-[#1A1A1A]">${agent.hourly_rate || 'N/A'}/hr</div>
-        </div>
-        <div className="bg-[#FAF8F5] rounded-lg p-2.5 text-center">
           <div className="text-xs text-[#525252] mb-0.5">Jobs Done</div>
           <div className="font-bold text-sm text-[#1A1A1A]">{agent.jobs_completed || agent.total_tasks_completed || 0}</div>
         </div>
         <div className="bg-[#FAF8F5] rounded-lg p-2.5 text-center">
           <div className="text-xs text-[#525252] mb-0.5">Total Paid</div>
-          <div className="font-bold text-sm text-[#059669]">${(agent.total_usdc_paid || 0).toLocaleString()}</div>
+          <div className="font-bold text-sm text-[#059669]">${(agent.total_paid || 0).toLocaleString()}</div>
         </div>
       </div>
 
@@ -62,7 +59,7 @@ export default function AgentProfileCard({ agent }) {
         {/* Rating */}
         <div className="flex justify-between items-center py-2 border-b border-[rgba(26,26,26,0.08)]">
           <span className="text-[#525252] flex items-center gap-2">
-            <span>⭐</span>
+            <Star size={14} />
             <span>Rating</span>
           </span>
           <span className="font-bold text-[#1A1A1A]">
@@ -74,21 +71,10 @@ export default function AgentProfileCard({ agent }) {
           </span>
         </div>
 
-        {/* Payment Rate */}
-        <div className="flex justify-between items-center py-2 border-b border-[rgba(26,26,26,0.08)]">
-          <span className="text-[#525252] flex items-center gap-2">
-            <span>💰</span>
-            <span>Payment Rate</span>
-          </span>
-          <span className="font-bold text-[#1A1A1A]">
-            ${agent.hourly_rate || 'N/A'}/hr
-          </span>
-        </div>
-
         {/* Jobs Completed */}
-        <div className="flex justify-between items-center py-2 border-b border-[rgba(26,26,26,0.08)]">
+        <div className="flex justify-between items-center py-2">
           <span className="text-[#525252] flex items-center gap-2">
-            <span>✅</span>
+            <CheckCircle size={14} />
             <span>Jobs Completed</span>
           </span>
           <span className="font-bold text-[#1A1A1A]">
@@ -96,20 +82,20 @@ export default function AgentProfileCard({ agent }) {
           </span>
         </div>
 
-        {/* Total USDC Paid */}
+        {/* Total Paid */}
         <div className="flex justify-between items-center py-2">
           <span className="text-[#525252] flex items-center gap-2">
             <span>💵</span>
             <span>Total Paid Out</span>
           </span>
           <span className="font-bold text-[#059669]">
-            ${(agent.total_usdc_paid || 0).toLocaleString()} USDC
+            ${(agent.total_paid || 0).toLocaleString()}
           </span>
         </div>
       </div>
 
       {/* Trust Indicator */}
-      {agent.total_usdc_paid > 1000 && (
+      {agent.total_paid > 1000 && (
         <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[rgba(26,26,26,0.08)]">
           <div className="flex items-center gap-2 text-[#059669] text-xs sm:text-sm">
             <span>✓</span>

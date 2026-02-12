@@ -1,7 +1,7 @@
 {
   "name": "irlwork-ai-api",
   "version": "1.0.0",
-  "description": "irlwork.ai API with Supabase and wallet integration",
+  "description": "irlwork.ai API with Supabase and Stripe Connect",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -18,8 +18,7 @@
     "geo-tz": "^8.1.5",
     "helmet": "^8.1.0",
     "stripe": "^20.3.1",
-    "uuid": "^9.0.1",
-    "viem": "^2.0.0"
+    "uuid": "^9.0.1"
   },
   "engines": {
     "node": ">=18.0.0"

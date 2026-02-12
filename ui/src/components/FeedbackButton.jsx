@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { MessageCircle, Bug, Sparkles, Pin } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL + '/api'
@@ -35,10 +36,10 @@ const C = {
 const FONT = "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 
 const TYPES = [
-  { id: 'feedback', label: 'Feedback', icon: '💬' },
-  { id: 'bug', label: 'Bug', icon: '🐛' },
-  { id: 'feature_request', label: 'Feature', icon: '✨' },
-  { id: 'other', label: 'Other', icon: '📌' },
+  { id: 'feedback', label: 'Feedback', icon: <MessageCircle size={14} /> },
+  { id: 'bug', label: 'Bug', icon: <Bug size={14} /> },
+  { id: 'feature_request', label: 'Feature', icon: <Sparkles size={14} /> },
+  { id: 'other', label: 'Other', icon: <Pin size={14} /> },
 ]
 
 const URGENCY = [
@@ -102,11 +103,24 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
     setSubmitted(false)
   }, [])
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files || [])
-    if (selected.length + files.length > 3) return
-    setFiles((prev) => [...prev, ...selected].slice(0, 3))
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (selected.length + files.length > 3) return
+    // Validate file sizes
+    const oversized = selected.find(f => f.size > 20 * 1024 * 1024)
+    if (oversized) return
+    // Compress large images before adding to state
+    const processed = []
+    for (const file of selected) {
+      if (file.type.startsWith('image/') && file.type !== 'image/gif' && file.size > 1024 * 1024) {
+        const imageCompression = (await import('browser-image-compression')).default
+        processed.push(await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 2000, useWebWorker: true }))
+      } else {
+        processed.push(file)
+      }
+    }
+    setFiles((prev) => [...prev, ...processed].slice(0, 3))
   }
 
   const removeFile = (index) => {
@@ -124,7 +138,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
         const base64 = await toBase64(files[i])
         const res = await fetch(`${API_URL}/upload/feedback`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
           body: JSON.stringify({
             file: base64,
             filename: files[i].name,
@@ -137,7 +151,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
 
       await fetch(`${API_URL}/feedback`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
         body: JSON.stringify({
           type,
           urgency,
@@ -297,7 +311,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                 fontSize: 15,
               }}
             >
-              💬
+              <MessageCircle size={15} />
             </div>
             <span style={{ fontWeight: 700, fontSize: 15, color: C.textPrimary, letterSpacing: '-0.01em' }}>
               Send Feedback
