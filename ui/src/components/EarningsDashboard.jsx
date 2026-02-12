@@ -148,69 +148,77 @@ function EarningsDashboard({ user }) {
 
       {/* Success Message */}
       {withdrawResult && (
-        <div className="bg-[#D1FAE5] border border-[#059669]/20 rounded-xl p-4">
-          <p className="text-[#059669] font-semibold">Withdrawal Successful!</p>
-          <p className="text-sm text-[#059669]/80 mt-1">
-            ${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account
-          </p>
+        <div className="bg-white border border-teal/20 rounded-xl p-4 flex items-start gap-3">
+          <div className="w-8 h-8 bg-teal/8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-[#1A1A1A] font-semibold text-sm">Withdrawal Successful</p>
+            <p className="text-sm text-[#525252] mt-0.5">
+              ${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account
+            </p>
+          </div>
         </div>
       )}
 
       {/* Balance Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        {/* Pending Balance Card - Amber/Yellow */}
-        <div className="bg-[#FEF3C7] border-2 border-[#D97706]/20 rounded-xl p-4 md:p-6">
+        {/* Pending Balance Card */}
+        <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 md:p-6">
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <div>
-              <h3 className="text-[#D97706] text-xs md:text-sm font-medium uppercase tracking-wide">Pending</h3>
-              <p className="text-xs text-[#D97706]/60 mt-0.5 md:mt-1">48-hour hold</p>
+              <h3 className="text-[#8A8A8A] text-xs md:text-sm font-medium uppercase tracking-wider">Pending</h3>
+              <p className="text-xs text-[#A3A3A3] mt-0.5 md:mt-1">48-hour hold</p>
             </div>
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-[#D97706]/20 rounded-full flex items-center justify-center text-[#D97706] text-lg md:text-xl">
-              <Timer size={20} />
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-[#F5F2ED] rounded-lg flex items-center justify-center">
+              <Timer size={18} className="text-[#8A8A8A]" />
             </div>
           </div>
 
-          <p className="text-3xl md:text-4xl font-bold text-[#92400E]">
+          <p className="text-3xl md:text-4xl font-bold text-[#1A1A1A] tracking-tight">
             ${balanceData?.pending?.toFixed(2) || '0.00'}
           </p>
 
           {pendingTransactions.length > 0 ? (
             <div className="mt-3 md:mt-4 space-y-2">
               {pendingTransactions.slice(0, 3).map(tx => (
-                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[#D97706]/10">
+                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(26,26,26,0.06)]">
                   <div>
-                    <p className="text-[#92400E]">Task #{tx.task_id?.substring(0, 8)}</p>
-                    <p className="text-xs text-[#D97706]/60">{formatDate(tx.clears_at)}</p>
+                    <p className="text-[#525252]">Task #{tx.task_id?.substring(0, 8)}</p>
+                    <p className="text-xs text-[#A3A3A3]">{formatDate(tx.clears_at)}</p>
                   </div>
-                  <p className="text-[#92400E] font-semibold">
+                  <p className="text-[#1A1A1A] font-semibold">
                     ${(tx.amount_cents / 100).toFixed(2)}
                   </p>
                 </div>
               ))}
               {pendingTransactions.length > 3 && (
-                <p className="text-xs text-[#D97706]/60 text-center pt-2">
+                <p className="text-xs text-[#A3A3A3] text-center pt-2">
                   +{pendingTransactions.length - 3} more pending
                 </p>
               )}
             </div>
           ) : (
-            <p className="text-[#D97706]/60 text-xs md:text-sm mt-3 md:mt-4">No pending transactions</p>
+            <p className="text-[#A3A3A3] text-xs md:text-sm mt-3 md:mt-4">No pending transactions</p>
           )}
         </div>
 
-        {/* Available Balance Card - Green */}
-        <div className="bg-[#D1FAE5] border-2 border-[#059669]/20 rounded-xl p-4 md:p-6">
+        {/* Available Balance Card */}
+        <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 md:p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-teal" />
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <div>
-              <h3 className="text-[#059669] text-xs md:text-sm font-medium uppercase tracking-wide">Available</h3>
-              <p className="text-xs text-[#059669]/60 mt-0.5 md:mt-1">Ready to withdraw</p>
+              <h3 className="text-teal text-xs md:text-sm font-medium uppercase tracking-wider">Available</h3>
+              <p className="text-xs text-[#A3A3A3] mt-0.5 md:mt-1">Ready to withdraw</p>
             </div>
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-[#059669]/20 rounded-full flex items-center justify-center text-[#059669] text-lg md:text-xl">
-              <CreditCard size={20} />
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-teal/8 rounded-lg flex items-center justify-center">
+              <CreditCard size={18} className="text-teal" />
             </div>
           </div>
 
-          <p className="text-3xl md:text-4xl font-bold text-[#065F46]">
+          <p className="text-3xl md:text-4xl font-bold text-[#1A1A1A] tracking-tight">
             ${balanceData?.available?.toFixed(2) || '0.00'}
           </p>
 
@@ -225,15 +233,15 @@ function EarningsDashboard({ user }) {
           )}
 
           {(!balanceData?.available_cents || balanceData.available_cents <= 0) && (
-            <p className="text-[#059669]/60 text-xs md:text-sm mt-3 md:mt-4">No funds available to withdraw yet</p>
+            <p className="text-[#A3A3A3] text-xs md:text-sm mt-3 md:mt-4">No funds available to withdraw yet</p>
           )}
 
           {availableTransactions.length > 0 && (
             <div className="mt-3 md:mt-4 space-y-2">
               {availableTransactions.slice(0, 2).map(tx => (
-                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[#059669]/10">
-                  <p className="text-[#065F46]">Task #{tx.task_id?.substring(0, 8)}</p>
-                  <p className="text-[#065F46] font-semibold">
+                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(26,26,26,0.06)]">
+                  <p className="text-[#525252]">Task #{tx.task_id?.substring(0, 8)}</p>
+                  <p className="text-[#1A1A1A] font-semibold">
                     ${(tx.amount_cents / 100).toFixed(2)}
                   </p>
                 </div>
@@ -257,7 +265,7 @@ function EarningsDashboard({ user }) {
               return (
                 <div
                   key={tx.id}
-                  className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4 hover:shadow-md transition-shadow"
+                  className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
                 >
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
@@ -266,9 +274,9 @@ function EarningsDashboard({ user }) {
                           {tx.task_title || `Task #${tx.task_id?.substring(0, 8)}`}
                         </p>
                         <span className={`
-                          px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0
-                          ${isPending ? 'bg-[#FEF3C7] text-[#D97706]' : ''}
-                          ${isAvailable ? 'bg-[#D1FAE5] text-[#059669]' : ''}
+                          px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide flex-shrink-0
+                          ${isPending ? 'bg-[#F5F2ED] text-[#8A8A8A]' : ''}
+                          ${isAvailable ? 'bg-teal/8 text-teal' : ''}
                           ${isWithdrawn ? 'bg-[#F5F2ED] text-[#525252]' : ''}
                         `}>
                           {tx.status}
@@ -286,7 +294,7 @@ function EarningsDashboard({ user }) {
                       </p>
 
                       {isPending && tx.clears_at && (
-                        <p className="text-xs text-[#D97706] mt-1">
+                        <p className="text-xs text-[#A3A3A3] mt-1">
                           Clears in {formatDate(tx.clears_at)}
                         </p>
                       )}
@@ -301,9 +309,9 @@ function EarningsDashboard({ user }) {
                     <div className="text-right flex-shrink-0">
                       <p className={`
                         text-lg md:text-xl font-bold
-                        ${isPending ? 'text-[#D97706]' : ''}
-                        ${isAvailable ? 'text-[#059669]' : ''}
-                        ${isWithdrawn ? 'text-[#525252]' : ''}
+                        ${isPending ? 'text-[#1A1A1A]' : ''}
+                        ${isAvailable ? 'text-teal' : ''}
+                        ${isWithdrawn ? 'text-[#8A8A8A]' : ''}
                       `}>
                         ${(tx.amount_cents / 100).toFixed(2)}
                       </p>
@@ -314,10 +322,12 @@ function EarningsDashboard({ user }) {
             })}
           </div>
         ) : (
-          <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
-            <div className="mb-3 md:mb-4"><ArrowDownLeft size={28} /></div>
+          <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
+            <div className="w-12 h-12 bg-[#F5F2ED] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
+              <ArrowDownLeft size={22} className="text-[#8A8A8A]" />
+            </div>
             <p className="text-[#525252] font-medium text-sm md:text-base">No transactions yet</p>
-            <p className="text-xs md:text-sm text-[#8A8A8A] mt-2">
+            <p className="text-xs md:text-sm text-[#A3A3A3] mt-1.5">
               Complete tasks to start earning
             </p>
           </div>
@@ -326,17 +336,17 @@ function EarningsDashboard({ user }) {
 
       {/* Withdrawal Confirmation Modal */}
       {showWithdrawConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Withdrawal</h3>
-            <p className="text-gray-600 mb-4">
-              Withdraw ${balanceData?.available?.toFixed(2)} to your bank account?
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-v4-xl">
+            <h3 className="text-lg font-bold text-[#1A1A1A] mb-1">Confirm Withdrawal</h3>
+            <p className="text-[#525252] text-sm mb-5">
+              Withdraw <span className="font-semibold text-[#1A1A1A]">${balanceData?.available?.toFixed(2)}</span> to your bank account?
             </p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2.5 text-[#525252] hover:bg-[#F5F2ED] rounded-xl text-sm font-medium transition-colors">
                 Cancel
               </button>
-              <button onClick={executeWithdraw} className="px-4 py-2 bg-[#059669] text-white rounded-lg hover:bg-[#047857]">
+              <button onClick={executeWithdraw} className="px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-semibold hover:bg-teal-dark transition-colors">
                 Confirm Withdrawal
               </button>
             </div>
