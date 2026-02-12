@@ -35,26 +35,46 @@ export default function ProofSection({ task, user, onSubmit }) {
   // Upload a single file to the backend
   const uploadFile = async (file) => {
     const base64 = await fileToBase64(file);
-    const res = await fetch(`${API_URL}/upload/proof`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: user?.token || user?.id || '',
-      },
-      body: JSON.stringify({
-        file: base64,
-        filename: file.name,
-        mimeType: file.type,
-      }),
-    });
-    if (!res.ok) throw new Error('Upload failed');
-    const data = await res.json();
-    return data.url;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    try {
+      const res = await fetch(`${API_URL}/upload/proof`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user?.token || user?.id || '',
+        },
+        body: JSON.stringify({
+          file: base64,
+          filename: file.name,
+          mimeType: file.type || 'image/jpeg',
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Upload failed');
+      }
+      const data = await res.json();
+      return data.url;
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err.name === 'AbortError') throw new Error('Upload timed out — try a stronger connection');
+      throw err;
+    }
   };
 
   const handleFileSelect = async (e) => {
-    const selected = Array.from(e.target.files || []);
-    // Reset file input immediately so user can always re-select
+    const rawFiles = Array.from(e.target.files || []);
+    // Clone file data BEFORE resetting input — iOS Safari invalidates
+    // File blobs when input.value is cleared
+    const selected = await Promise.all(
+      rawFiles.map(async (f) => {
+        const buf = await f.arrayBuffer();
+        return new File([buf], f.name, { type: f.type, lastModified: f.lastModified });
+      })
+    );
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (selected.length + files.length > 3) {
       toast.error('Maximum 3 files allowed');
@@ -77,14 +97,20 @@ export default function ProofSection({ task, user, onSubmit }) {
       const urls = [...uploadedUrls];
       for (const file of selected) {
         let fileToUpload = file;
-        // Compress images over 1MB (skip non-image or gif)
-        if (file.type.startsWith('image/') && file.type !== 'image/gif' && file.size > 1024 * 1024) {
-          const imageCompression = (await import('browser-image-compression')).default;
-          fileToUpload = await imageCompression(file, {
-            maxSizeMB: 2,
-            maxWidthOrHeight: 2000,
-            useWebWorker: true,
-          });
+        const ext = file.name?.split('.').pop()?.toLowerCase();
+        const isGif = file.type === 'image/gif' || ext === 'gif';
+        const isImage = file.type?.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(ext);
+        if (!isGif && isImage) {
+          try {
+            const imageCompression = (await import('browser-image-compression')).default;
+            fileToUpload = await imageCompression(file, {
+              maxSizeMB: 2,
+              maxWidthOrHeight: 2000,
+              useWebWorker: typeof Worker !== 'undefined',
+            });
+          } catch (compErr) {
+            console.warn('Compression failed, uploading original:', compErr);
+          }
         }
         const url = await uploadFile(fileToUpload);
         urls.push(url);
@@ -93,8 +119,7 @@ export default function ProofSection({ task, user, onSubmit }) {
       toast.success(`${selected.length} file(s) uploaded`);
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error('Failed to upload file(s)');
-      // Remove failed files from state so user can retry
+      toast.error(err.message || 'Failed to upload file(s)');
       setFiles(prev => prev.filter((_, i) => i < uploadedUrls.length));
     } finally {
       setUploading(false);
