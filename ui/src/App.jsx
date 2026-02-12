@@ -1546,8 +1546,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     is_remote: false,
     duration_hours: '',
     deadline: '',
-    requirements: ''
+    requirements: '',
+    required_skills: [],
+    task_type: 'direct',
+    max_humans: 1
   })
+  const [newTaskSkillInput, setNewTaskSkillInput] = useState('')
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
 
@@ -1991,6 +1995,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setCreateTaskError('Budget must be at least $5')
       return
     }
+    if (taskForm.required_skills.length === 0) {
+      setCreateTaskError('At least one required skill is needed')
+      return
+    }
 
     setCreatingTask(true)
     try {
@@ -2013,7 +2021,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           is_remote: taskForm.is_remote,
           duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
           deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
-          requirements: taskForm.requirements.trim() || null
+          requirements: taskForm.requirements.trim() || null,
+          required_skills: taskForm.required_skills,
+          task_type: taskForm.task_type,
+          max_humans: taskForm.max_humans
         })
       })
 
@@ -2022,7 +2033,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], task_type: 'direct', max_humans: 1 })
+        setNewTaskSkillInput('')
         // Close create form and stay on posted tab
         setShowCreateForm(false)
         setActiveTab('posted')
@@ -2616,28 +2628,134 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       </div>
                     </div>
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Requirements (optional)</label>
-                      <textarea
-                        placeholder="Any specific requirements or qualifications needed..."
-                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                        value={taskForm.requirements}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                        rows={2}
-                      />
+                      <label className="dashboard-v4-form-label">Required Skills <span style={{ color: 'var(--error)', fontWeight: 400 }}>*</span></label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
+                        {taskForm.required_skills.map((skill, idx) => (
+                          <span key={idx} style={{
+                            padding: '5px 10px',
+                            background: 'rgba(244,132,95,0.08)',
+                            borderRadius: 999,
+                            fontSize: 13,
+                            color: '#E07A5F',
+                            fontWeight: 500,
+                            border: '1px solid rgba(244,132,95,0.12)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}>
+                            {skill}
+                            <button
+                              type="button"
+                              onClick={() => setTaskForm(prev => ({ ...prev, required_skills: prev.required_skills.filter((_, i) => i !== idx) }))}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#E07A5F', display: 'flex', alignItems: 'center' }}
+                            >
+                              <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          type="text"
+                          value={newTaskSkillInput}
+                          onChange={(e) => setNewTaskSkillInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              const val = newTaskSkillInput.trim()
+                              if (val && !taskForm.required_skills.includes(val)) {
+                                setTaskForm(prev => ({ ...prev, required_skills: [...prev.required_skills, val] }))
+                                setNewTaskSkillInput('')
+                              }
+                            }
+                          }}
+                          className="dashboard-v4-form-input"
+                          placeholder="Type a skill and press Enter"
+                          style={{ flex: 1, marginBottom: 0 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = newTaskSkillInput.trim()
+                            if (val && !taskForm.required_skills.includes(val)) {
+                              setTaskForm(prev => ({ ...prev, required_skills: [...prev.required_skills, val] }))
+                              setNewTaskSkillInput('')
+                            }
+                          }}
+                          style={{
+                            padding: '10px 20px',
+                            background: 'linear-gradient(135deg, var(--orange-600) 0%, var(--orange-500) 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 'var(--radius-md)',
+                            fontWeight: 600,
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          Add
+                        </button>
+                      </div>
                     </div>
                     <div className="dashboard-v4-form-group">
-                      <label style={{
-                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                        fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={taskForm.is_remote}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                          style={{ width: 18, height: 18, cursor: 'pointer' }}
-                        />
-                        This task can be done remotely
-                      </label>
+                      <label className="dashboard-v4-form-label">Hiring Type</label>
+                      <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid rgba(26,26,26,0.1)' }}>
+                        <button
+                          type="button"
+                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'direct' }))}
+                          style={{
+                            flex: 1,
+                            padding: '10px 16px',
+                            border: 'none',
+                            background: taskForm.task_type === 'direct' ? 'linear-gradient(135deg, var(--orange-600) 0%, var(--orange-500) 100%)' : 'var(--bg-primary)',
+                            color: taskForm.task_type === 'direct' ? 'white' : 'var(--text-secondary)',
+                            fontWeight: 600,
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          Direct Hire
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'bounty' }))}
+                          style={{
+                            flex: 1,
+                            padding: '10px 16px',
+                            border: 'none',
+                            borderLeft: '1px solid rgba(26,26,26,0.1)',
+                            background: taskForm.task_type === 'bounty' ? 'linear-gradient(135deg, var(--orange-600) 0%, var(--orange-500) 100%)' : 'var(--bg-primary)',
+                            color: taskForm.task_type === 'bounty' ? 'white' : 'var(--text-secondary)',
+                            fontWeight: 600,
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          Bounty
+                        </button>
+                      </div>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>
+                        {taskForm.task_type === 'direct' ? 'Review applicants and hire someone directly.' : 'Anyone can complete and claim the bounty reward.'}
+                      </p>
+                    </div>
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">Number of People Needed</label>
+                      <input
+                        type="number"
+                        placeholder="1"
+                        className="dashboard-v4-form-input"
+                        value={taskForm.max_humans}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, max_humans: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        min="1"
+                        max="50"
+                        style={{ maxWidth: 120 }}
+                      />
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>
+                        {taskForm.max_humans > 1 ? `You can hire up to ${taskForm.max_humans} people for this task.` : 'Single person task.'}
+                      </p>
                     </div>
                     {!taskForm.is_remote && (
                       <div className="dashboard-v4-form-group">
@@ -2657,6 +2775,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     )}
+                    <div className="dashboard-v4-form-group">
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                        fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={taskForm.is_remote}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                        />
+                        This task can be done remotely
+                      </label>
+                    </div>
                     {createTaskError && (
                       <div className="dashboard-v4-form-error">{createTaskError}</div>
                     )}

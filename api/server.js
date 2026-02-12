@@ -1632,7 +1632,7 @@ app.get('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, duration_hours, is_remote';
+  const safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, created_at, updated_at, country, country_code, human_id, agent_id, requirements, moderation_status, duration_hours, is_remote, required_skills, max_humans';
   let query = supabase.from('tasks').select(safeTaskColumns);
 
   if (category) query = query.eq('category', category);
@@ -1692,7 +1692,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user || user.type !== 'agent') return res.status(401).json({ error: 'Agents only' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, is_anonymous } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, is_anonymous, required_skills, task_type, max_humans } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -1710,13 +1710,15 @@ app.post('/api/tasks', async (req, res) => {
       longitude: longitude || null,
       budget: budgetAmount,
       status: 'open',
-      task_type: 'direct',
+      task_type: task_type || 'direct',
       human_ids: [],
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
       duration_hours: duration_hours || null,
       deadline: deadline || null,
       requirements: requirements || null,
+      required_skills: Array.isArray(required_skills) ? required_skills : [],
+      max_humans: max_humans ? parseInt(max_humans) : 1,
       is_anonymous: !!is_anonymous,
       created_at: new Date().toISOString()
     })
