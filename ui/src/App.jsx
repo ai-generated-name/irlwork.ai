@@ -32,6 +32,7 @@ import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
 import FeedbackButton from './components/FeedbackButton'
+import DashboardTour from './components/DashboardTour'
 const StripeProvider = lazy(() => import('./components/StripeProvider'))
 const PaymentMethodForm = lazy(() => import('./components/PaymentMethodForm'))
 const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
@@ -1617,6 +1618,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [showProofReview, setShowProofReview] = useState(null)
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
 
+  // Dashboard tour state — show for first-time users who haven't completed the tour
+  const [showTour, setShowTour] = useState(() => {
+    return localStorage.getItem('irlwork_tour_completed') !== 'true'
+  })
+
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
   const [skillsList, setSkillsList] = useState(user?.skills || [])
@@ -2568,6 +2574,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
       {/* Sidebar Feedback Panel */}
       <FeedbackButton user={user} variant="sidebar" isOpen={feedbackOpen} onToggle={(v) => setFeedbackOpen(typeof v === 'boolean' ? v : !feedbackOpen)} />
+
+      {/* Dashboard Tour for first-time users */}
+      <DashboardTour
+        isOpen={showTour}
+        onComplete={() => setShowTour(false)}
+        hiringMode={hiringMode}
+      />
 
       {/* Main */}
       <main className="dashboard-v4-main">
