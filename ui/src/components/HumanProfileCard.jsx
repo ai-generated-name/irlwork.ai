@@ -1,6 +1,7 @@
 import React from 'react'
 import { MapPin, Star, Check, Globe, Clock } from 'lucide-react'
 import { SocialIconsRow } from './SocialIcons'
+import { formatTimezoneShort } from '../utils/timezone'
 
 function StarRating({ rating, count, showNewBadge = false }) {
   const numRating = parseFloat(rating) || 0
@@ -171,7 +172,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               {human.timezone && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
                   <Clock size={11} style={{ color: 'var(--text-tertiary)' }} />
-                  {human.timezone.replace(/_/g, ' ').split('/').pop()}
+                  {formatTimezoneShort(human.timezone)}
                 </span>
               )}
             </span>
