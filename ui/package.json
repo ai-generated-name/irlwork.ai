@@ -16,6 +16,7 @@
     "@stripe/stripe-js": "^8.7.0",
     "@supabase/supabase-js": "^2.39.0",
     "autoprefixer": "^10.4.16",
+    "browser-image-compression": "^2.0.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
     "postcss": "^8.4.31",

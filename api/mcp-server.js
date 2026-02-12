@@ -195,9 +195,9 @@ const handlers = {
   async create_adhoc_task(params) {
     const res = await fetch(`${API_URL}/ad-hoc`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': API_KEY 
+        'Authorization': API_KEY
       },
       body: JSON.stringify({
         category: params.category,
@@ -206,7 +206,32 @@ const handlers = {
         location: params.location,
         urgency: params.urgency || 'normal',
         budget_min: params.budget_min,
-        budget_max: params.budget_max
+        budget_max: params.budget_max,
+        required_skills: params.required_skills || []
+      })
+    })
+    return await res.json()
+  },
+
+  // Create a task (direct posting via /api/tasks)
+  async create_task(params) {
+    const res = await fetch(`${API_URL}/tasks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({
+        title: params.title,
+        description: params.description,
+        category: params.category,
+        budget: params.budget || 50,
+        location: params.location,
+        is_remote: params.is_remote || false,
+        duration_hours: params.duration_hours,
+        deadline: params.deadline,
+        requirements: params.requirements,
+        required_skills: params.required_skills || []
       })
     })
     return await res.json()
@@ -359,7 +384,7 @@ const PORT = process.env.MCP_PORT || 3004
 server.listen(PORT, () => {
   console.log(`🤖 Humanwork.ai MCP Server running on port ${PORT}`)
   console.log(`   API: ${API_URL}`)
-  console.log(`   Available Methods (22):`)
+  console.log(`   Available Methods (23):`)
   console.log(``)
   console.log(`   Core:`)
   console.log(`   - list_humans(params)`)
@@ -376,6 +401,7 @@ server.listen(PORT, () => {
   console.log(`   - my_bookings()`)
   console.log(``)
   console.log(`   Tasks & Applications:`)
+  console.log(`   - create_task(title, description, category, budget, location, required_skills, ...) [NEW]`)
   console.log(`   - create_adhoc_task(...)`)
   console.log(`   - my_adhoc_tasks()`)
   console.log(`   - task_templates(params)`)

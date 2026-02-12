@@ -1,6 +1,7 @@
 import React from 'react'
 import { MapPin, Star, Check, Globe, Clock } from 'lucide-react'
 import { SocialIconsRow } from './SocialIcons'
+import { formatTimezoneShort } from '../utils/timezone'
 
 function StarRating({ rating, count, showNewBadge = false }) {
   const numRating = parseFloat(rating) || 0
@@ -68,53 +69,70 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
-        position: 'relative'
+        position: 'relative',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        overflow: 'hidden'
       }}
       onClick={() => onExpand?.(human)}
       onMouseOver={(e) => {
         e.currentTarget.style.boxShadow = '0 8px 30px rgba(244,132,95,0.12), 0 4px 12px rgba(0,0,0,0.06)'
         e.currentTarget.style.transform = 'translateY(-3px)'
-        e.currentTarget.style.borderColor = 'rgba(244,132,95,0.2)'
+        e.currentTarget.style.borderColor = 'rgba(244,132,95,0.18)'
       }}
       onMouseOut={(e) => {
-        e.currentTarget.style.boxShadow = 'none'
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
         e.currentTarget.style.transform = 'translateY(0)'
         e.currentTarget.style.borderColor = 'rgba(26,26,26,0.06)'
       }}
     >
+      {/* Top accent line */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 3,
+        background: 'linear-gradient(90deg, #F4845F, #E07A5F)',
+        borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+        opacity: 0.6
+      }} />
+
       {/* Header: Avatar + Info */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 10 }}>
         {/* Avatar */}
-        {human.avatar_url ? (
-          <img
-            src={human.avatar_url}
-            alt={human.name || ''}
-            style={{
-              width: 52, height: 52, borderRadius: '50%',
-              objectFit: 'cover', flexShrink: 0,
-              boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
-            }}
-            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
-          />
-        ) : null}
-        <div style={{
-          width: 52,
-          height: 52,
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
-          display: human.avatar_url ? 'none' : 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontWeight: 700,
-          fontSize: 20,
-          flexShrink: 0,
-          boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
-        }}>
-          {human.name?.[0]?.toUpperCase() || '?'}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          {human.avatar_url ? (
+            <img
+              src={human.avatar_url}
+              alt={human.name || ''}
+              style={{
+                width: 56, height: 56, borderRadius: '50%',
+                objectFit: 'cover',
+                border: '2px solid rgba(244,132,95,0.2)',
+                boxShadow: '0 2px 8px rgba(244,132,95,0.15)'
+              }}
+              onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
+            />
+          ) : null}
+          <div style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+            display: human.avatar_url ? 'none' : 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontWeight: 700,
+            fontSize: 22,
+            border: '2px solid rgba(244,132,95,0.2)',
+            boxShadow: '0 2px 8px rgba(244,132,95,0.15)'
+          }}>
+            {human.name?.[0]?.toUpperCase() || '?'}
+          </div>
         </div>
 
-        {/* Name + Headline + Location + Rating */}
+        {/* Name + Headline + Location */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <h3 style={{
@@ -171,28 +189,36 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               {human.timezone && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
                   <Clock size={11} style={{ color: 'var(--text-tertiary)' }} />
-                  {human.timezone.replace(/_/g, ' ').split('/').pop()}
+                  {formatTimezoneShort(human.timezone)}
                 </span>
               )}
             </span>
           )}
-          <StarRating rating={human.rating} count={human.total_ratings_count || 0} showNewBadge={true} />
         </div>
+      </div>
+
+      {/* Rating - separated from header for cleaner hierarchy */}
+      <div style={{ marginBottom: 10 }}>
+        <StarRating rating={human.rating} count={human.total_ratings_count || 0} showNewBadge={true} />
+      </div>
+
+      {/* Social Links - always visible */}
+      <div style={{ marginBottom: 12 }}>
+        <SocialIconsRow socialLinks={human.social_links} size={16} gap={8} alwaysShow={true} />
       </div>
 
       {/* Bio */}
       <p style={{
-        fontSize: 14,
+        fontSize: 13.5,
         color: 'var(--text-secondary)',
-        marginBottom: 14,
         lineHeight: 1.55,
         display: '-webkit-box',
         WebkitLineClamp: 2,
         WebkitBoxOrient: 'vertical',
         overflow: 'hidden',
-        minHeight: 43,
+        minHeight: 42,
         flex: '0 0 auto',
-        margin: '0 0 14px 0'
+        margin: '0 0 16px 0'
       }}>
         {human.bio || 'No bio provided'}
       </p>
@@ -209,13 +235,14 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
           <span
             key={idx}
             style={{
-              padding: '4px 12px',
-              background: 'rgba(244,132,95,0.08)',
+              padding: '5px 12px',
+              background: 'rgba(244,132,95,0.06)',
               borderRadius: 'var(--radius-full, 999px)',
               fontSize: 12,
               color: '#E07A5F',
               fontWeight: 500,
-              border: '1px solid rgba(244,132,95,0.12)'
+              border: '1px solid rgba(244,132,95,0.10)',
+              letterSpacing: '0.01em'
             }}
           >
             {skill.replace(/_/g, ' ')}
@@ -223,7 +250,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         ))}
         {skills.length > maxSkills && (
           <span style={{
-            padding: '4px 10px',
+            padding: '5px 10px',
             fontSize: 12,
             color: 'var(--text-tertiary)',
             fontWeight: 500
@@ -248,34 +275,35 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         </div>
       )}
 
-      {/* Social Links */}
-      {human.social_links && typeof human.social_links === 'object' && Object.keys(human.social_links).length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <SocialIconsRow socialLinks={human.social_links} size={16} gap={8} />
-        </div>
-      )}
-
       {/* Footer: Rate + Hire Button */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginTop: 'auto',
-        paddingTop: 16,
+        paddingTop: 14,
         borderTop: '1px solid rgba(26,26,26,0.06)'
       }}>
-        <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
           <span style={{
-            fontSize: 22,
+            fontSize: 24,
             fontWeight: 700,
-            color: '#F4845F'
+            color: '#F4845F',
+            letterSpacing: '-0.02em'
           }}>
             ${human.hourly_rate || 25}
           </span>
           <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>/hr</span>
           {(human.jobs_completed > 0 || human.total_tasks_completed > 0) && (
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 12 }}>
-              {human.jobs_completed || human.total_tasks_completed || 0} jobs done
+            <span style={{
+              fontSize: 11,
+              color: 'var(--text-tertiary)',
+              marginLeft: 10,
+              padding: '2px 8px',
+              background: 'rgba(26,26,26,0.04)',
+              borderRadius: 999
+            }}>
+              {human.jobs_completed || human.total_tasks_completed || 0} jobs
             </span>
           )}
         </div>
@@ -294,7 +322,8 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
             border: 'none',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+            boxShadow: '0 2px 8px rgba(244,132,95,0.25)',
+            letterSpacing: '0.02em'
           }}
           onMouseOver={(e) => {
             e.currentTarget.style.boxShadow = '0 4px 16px rgba(244,132,95,0.35)'

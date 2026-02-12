@@ -5,6 +5,7 @@ import { SocialIconsRow } from '../components/SocialIcons'
 import ForAgentsBox from '../components/ForAgentsBox'
 import { PageLayoutV4 } from '../components/V4Layout'
 import API_URL from '../config/api'
+import { formatTimezoneShort } from '../utils/timezone'
 
 export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }) {
   const [profile, setProfile] = useState(null)
@@ -197,7 +198,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                       {profile.timezone && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, color: 'var(--text-tertiary, #8A8A8A)', fontSize: 14 }}>
                           <Clock size={13} />
-                          {profile.timezone.replace(/_/g, ' ')}
+                          {formatTimezoneShort(profile.timezone)}
                         </span>
                       )}
                     </div>

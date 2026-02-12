@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Timer, CreditCard, ArrowDownLeft } from 'lucide-react'
 import API_URL from '../config/api'
 import { useToast } from '../context/ToastContext'
 import WithdrawalMethodPicker from './WithdrawalMethodPicker'
@@ -29,7 +30,7 @@ function EarningsDashboard({ user }) {
     try {
       setLoading(true)
       const res = await fetch(`${API_URL}/wallet/balance`, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
 
       if (!res.ok) {
@@ -47,19 +48,13 @@ function EarningsDashboard({ user }) {
     }
   }
 
-  const handleWithdraw = (method) => {
+  const handleWithdraw = () => {
     if (!balanceData?.available_cents || balanceData.available_cents <= 0) {
       toast.error('No funds available to withdraw')
       return
     }
 
-    // Require wallet address for non-stripe withdrawals
-    if (method !== 'stripe' && !user?.wallet_address) {
-      toast.error('Please add a wallet address in your profile settings first')
-      return
-    }
-
-    setShowWithdrawConfirm(method || 'usdc')
+    setShowWithdrawConfirm('stripe')
   }
 
   const executeWithdraw = async () => {
@@ -78,7 +73,7 @@ function EarningsDashboard({ user }) {
         },
         body: JSON.stringify({
           amount_cents: balanceData.available_cents,
-          method: method || 'usdc'
+          method: 'stripe'
         })
       })
 
@@ -162,21 +157,8 @@ function EarningsDashboard({ user }) {
           <div>
             <p className="text-[#1A1A1A] font-semibold text-sm">Withdrawal Successful</p>
             <p className="text-sm text-[#525252] mt-0.5">
-              {withdrawResult.method === 'stripe'
-                ? `$${withdrawResult.amount_withdrawn} is being transferred to your bank account`
-                : `$${withdrawResult.amount_withdrawn} sent to ${withdrawResult.wallet_address?.substring(0, 10)}...`
-              }
+              ${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account
             </p>
-            {withdrawResult.tx_hash && (
-              <a
-                href={`https://basescan.org/tx/${withdrawResult.tx_hash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-teal hover:text-teal-dark underline mt-2 inline-block"
-              >
-                View on BaseScan
-              </a>
-            )}
           </div>
         </div>
       )}
@@ -191,9 +173,7 @@ function EarningsDashboard({ user }) {
               <p className="text-xs text-[#A3A3A3] mt-0.5 md:mt-1">48-hour hold</p>
             </div>
             <div className="w-9 h-9 md:w-10 md:h-10 bg-[#F5F2ED] rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 md:w-5 md:h-5 text-[#8A8A8A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <Timer size={18} className="text-[#8A8A8A]" />
             </div>
           </div>
 
@@ -234,9 +214,7 @@ function EarningsDashboard({ user }) {
               <p className="text-xs text-[#A3A3A3] mt-0.5 md:mt-1">Ready to withdraw</p>
             </div>
             <div className="w-9 h-9 md:w-10 md:h-10 bg-teal/8 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 md:w-5 md:h-5 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-              </svg>
+              <CreditCard size={18} className="text-teal" />
             </div>
           </div>
 
@@ -346,9 +324,7 @@ function EarningsDashboard({ user }) {
         ) : (
           <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
             <div className="w-12 h-12 bg-[#F5F2ED] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
-              <svg className="w-6 h-6 text-[#8A8A8A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-              </svg>
+              <ArrowDownLeft size={22} className="text-[#8A8A8A]" />
             </div>
             <p className="text-[#525252] font-medium text-sm md:text-base">No transactions yet</p>
             <p className="text-xs md:text-sm text-[#A3A3A3] mt-1.5">
@@ -358,23 +334,13 @@ function EarningsDashboard({ user }) {
         )}
       </div>
 
-      {/* Wallet Info */}
-      {user.wallet_address && (
-        <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4">
-          <p className="text-xs text-[#A3A3A3] uppercase tracking-wide font-medium mb-1">Withdrawal Address</p>
-          <p className="text-[#1A1A1A] font-mono text-xs md:text-sm break-all">
-            {user.wallet_address}
-          </p>
-        </div>
-      )}
-
       {/* Withdrawal Confirmation Modal */}
       {showWithdrawConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-v4-xl">
             <h3 className="text-lg font-bold text-[#1A1A1A] mb-1">Confirm Withdrawal</h3>
             <p className="text-[#525252] text-sm mb-5">
-              Withdraw <span className="font-semibold text-[#1A1A1A]">${balanceData?.available?.toFixed(2)}</span> to {showWithdrawConfirm === 'stripe' ? 'your bank account' : `${user.wallet_address?.substring(0, 10)}...`}?
+              Withdraw <span className="font-semibold text-[#1A1A1A]">${balanceData?.available?.toFixed(2)}</span> to your bank account?
             </p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2.5 text-[#525252] hover:bg-[#F5F2ED] rounded-xl text-sm font-medium transition-colors">
