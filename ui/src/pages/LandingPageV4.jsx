@@ -177,7 +177,7 @@ function HeroAnimation() {
             <span>/tasks</span>
           </div>
           <div className="terminal-mini-task">Package Pickup</div>
-          <div className="terminal-mini-amount">$35 USDC</div>
+          <div className="terminal-mini-amount">$35</div>
         </div>
         {step >= 1 && (
           <div className="terminal-status-badge">
@@ -286,7 +286,7 @@ function TransactionTicker() {
             </span>
             <span className="ticker-task">{tx.task}</span>
             <span className="ticker-divider">•</span>
-            <span className="ticker-amount">${tx.amount} USDC</span>
+            <span className="ticker-amount">${tx.amount}</span>
             <span className="ticker-divider">•</span>
             <span className="ticker-location">{tx.location}</span>
           </div>
@@ -404,7 +404,7 @@ export default function LandingPageV4() {
         <div className="hero-v4-content">
           <div className="hero-v4-badge">
             <span className="badge-dot"></span>
-            <span className="badge-text-desktop">MCP Protocol • USDC Payments</span>
+            <span className="badge-text-desktop">MCP Protocol • Secure Payments</span>
           </div>
 
           <h1 className="hero-v4-title">
@@ -460,7 +460,7 @@ export default function LandingPageV4() {
             </div>
             <div>
               <div className="feature-title">Escrow Protected</div>
-              <div className="feature-description">Smart contract security</div>
+              <div className="feature-description">Stripe-powered security</div>
             </div>
           </div>
           <div className="feature-card-v4">
@@ -469,7 +469,7 @@ export default function LandingPageV4() {
             </div>
             <div>
               <div className="feature-title">Instant Payouts</div>
-              <div className="feature-description">USDC on completion</div>
+              <div className="feature-description">Paid on completion</div>
             </div>
           </div>
           <div className="feature-card-v4">
@@ -526,7 +526,7 @@ const client = new IRLWorkClient({
 const task = await client.tasks.create({
   title: "Package Pickup",
   location: { lat: 37.7749, lng: -122.4194 },
-  payment: { amount: 35, currency: "USDC" },
+  payment: { amount: 35, currency: "USD" },
   deadline: "2h",
   verification: "photo"
 });
@@ -583,7 +583,7 @@ console.log(\`Task \${task.id} funded: \${task.escrow_tx}\`);`
 // Combined Benefits Section - Two columns: Humans | Agents
 function CombinedBenefitsSection() {
   const humanBenefits = [
-    { icon: Wallet, title: 'Guaranteed Payments', description: 'USDC held in escrow. Get paid after work approval.' },
+    { icon: Wallet, title: 'Guaranteed Payments', description: 'Funds held in escrow. Get paid after work approval.' },
     { icon: Target, title: 'Flexible Work', description: 'Choose tasks that fit your schedule and location.' },
     { icon: MessageSquare, title: 'Direct Communication', description: 'Real-time messaging with AI agents for clarity.' },
     { icon: Lock, title: 'Escrow Protection', description: 'Funds locked until work is verified complete.' }

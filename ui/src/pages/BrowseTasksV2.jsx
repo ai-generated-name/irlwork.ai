@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { MapPin, Search, Globe } from 'lucide-react';
 const TaskMap = lazy(() => import('../components/TaskMap'));
 import { TASK_CATEGORIES } from '../components/CategoryPills';
 import TaskCardV2 from '../components/TaskCardV2';
@@ -74,6 +75,7 @@ export default function BrowseTasksV2({
   const [sort, setSort] = useState('distance');
   const [radius, setRadius] = useState(initialRadius || '25');
   const [includeRemote, setIncludeRemote] = useState(true);
+  const [filterByMySkills, setFilterByMySkills] = useState(false);
 
   // Location state
   const [location, setLocation] = useState({
@@ -135,10 +137,18 @@ export default function BrowseTasksV2({
       if (location.city && radius !== 'anywhere') params.set('city', location.city);
       params.set('include_remote', includeRemote ? 'true' : 'false');
 
+      // Filter by user's skills if enabled
+      if (filterByMySkills && user?.skills) {
+        const userSkills = Array.isArray(user.skills) ? user.skills : [];
+        if (userSkills.length > 0) {
+          params.set('skills', userSkills.join(','));
+        }
+      }
+
       params.set('limit', '50');
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`, {
-        headers: user?.id ? { Authorization: user.id } : {}
+        headers: user?.id ? { Authorization: user.token || user.id } : {}
       });
       const data = await res.json();
 
@@ -155,7 +165,7 @@ export default function BrowseTasksV2({
     } finally {
       setLoading(false);
     }
-  }, [location, radius, category, debouncedSearch, sort, includeRemote]);
+  }, [location, radius, category, debouncedSearch, sort, includeRemote, filterByMySkills, user]);
 
   // Fetch on mount and when filters change
   useEffect(() => {
@@ -299,7 +309,7 @@ export default function BrowseTasksV2({
 
         {/* Location bar */}
         <div className="browse-tasks-v2-location-bar">
-          <span className="browse-tasks-v2-location-icon">📍</span>
+          <span className="browse-tasks-v2-location-icon"><MapPin size={16} /></span>
           <span className="browse-tasks-v2-location-label">Within</span>
           <CustomDropdown
             value={radius}
@@ -345,8 +355,19 @@ export default function BrowseTasksV2({
             type="button"
             title={includeRemote ? 'Remote tasks shown' : 'Remote tasks hidden'}
           >
-            <span>🌐</span> Remote
+            <Globe size={14} /> Remote
           </button>
+          {user && user.type === 'human' && Array.isArray(user.skills) && user.skills.length > 0 && (
+            <button
+              className={`browse-tasks-v2-remote-toggle ${filterByMySkills ? 'active' : ''}`}
+              onClick={() => setFilterByMySkills(!filterByMySkills)}
+              type="button"
+              title={filterByMySkills ? 'Showing tasks matching your skills' : 'Show tasks matching your skills'}
+              style={filterByMySkills ? { background: '#EEF2FF', color: '#4338CA', borderColor: '#C7D2FE' } : {}}
+            >
+              <span>🎯</span> My Skills
+            </button>
+          )}
         </div>
       </div>
 
@@ -375,7 +396,7 @@ export default function BrowseTasksV2({
               </div>
             ) : tasks.length === 0 ? (
               <div className="browse-tasks-v2-empty">
-                <div className="browse-tasks-v2-empty-icon">🔍</div>
+                <div className="browse-tasks-v2-empty-icon"><Search size={24} /></div>
                 <h3>No tasks found</h3>
                 <p>
                   {radius !== 'anywhere'

@@ -1,5 +1,13 @@
 // irlwork.ai - Modern Clean UI
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import {
+  BarChart3, ClipboardList, Plus, Users, Handshake, MessageCircle,
+  CreditCard, User, Settings, Check, Timer, MapPin, DollarSign,
+  Star, CalendarDays, Search, ChevronDown, Upload, Bell,
+  FileText, CheckCircle, XCircle, Landmark, Scale, Ban, ArrowDownLeft,
+  Shield, Hourglass, Bot, FolderOpen, RefreshCw,
+  Monitor, Sparkles, AlertTriangle
+} from 'lucide-react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -24,14 +32,16 @@ import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
 import HumanProfileModal from './components/HumanProfileModal'
 import FeedbackButton from './components/FeedbackButton'
+import DashboardTour from './components/DashboardTour'
 const StripeProvider = lazy(() => import('./components/StripeProvider'))
 const PaymentMethodForm = lazy(() => import('./components/PaymentMethodForm'))
 const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
 import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
+import TimezoneDropdown from './components/TimezoneDropdown'
 import { TASK_CATEGORIES } from './components/CategoryPills'
-import { Copy, Check } from 'lucide-react'
+import { Copy } from 'lucide-react'
 import StandaloneTaskDetailPage from './pages/TaskDetailPage'
 
 // Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
@@ -50,7 +60,7 @@ class TabErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 40, textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
+          <div style={{ marginBottom: 16 }}><AlertTriangle size={32} /></div>
           <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>This section encountered an error</h3>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>Try switching to another tab or refreshing the page.</p>
           <button
@@ -80,6 +90,8 @@ const safeSupabase = {
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
 import { fixAvatarUrl } from './utils/avatarUrl'
+import ApiKeysTab from './components/ApiKeysTab'
+// ConnectAgentPage defined inline below; MCPPage removed (redirects to /connect-agent)
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -104,25 +116,28 @@ const styles = {
 }
 
 // === Icons ===
+const ICON_SIZE = 18
 const Icons = {
-  task: '📋',
-  create: '➕',
-  humans: '👥',
-  hired: '🤝',
-  messages: '💬',
-  wallet: '💳',
-  profile: '👤',
-  settings: '⚙️',
-  check: '✓',
-  clock: '⏱️',
-  location: '📍',
-  dollar: '💰',
-  star: '⭐',
-  calendar: '📅',
-  search: '🔍',
-  filter: '🔽',
-  upload: '📤',
-  bell: '🔔',
+  dashboard: <BarChart3 size={ICON_SIZE} />,
+  task: <ClipboardList size={ICON_SIZE} />,
+  create: <Plus size={ICON_SIZE} />,
+  humans: <Users size={ICON_SIZE} />,
+  hired: <Handshake size={ICON_SIZE} />,
+  messages: <MessageCircle size={ICON_SIZE} />,
+  wallet: <CreditCard size={ICON_SIZE} />,
+  profile: <User size={ICON_SIZE} />,
+  settings: <Settings size={ICON_SIZE} />,
+  check: <Check size={ICON_SIZE} />,
+  clock: <Timer size={ICON_SIZE} />,
+  location: <MapPin size={ICON_SIZE} />,
+  dollar: <DollarSign size={ICON_SIZE} />,
+  star: <Star size={ICON_SIZE} />,
+  calendar: <CalendarDays size={ICON_SIZE} />,
+  search: <Search size={ICON_SIZE} />,
+  filter: <ChevronDown size={ICON_SIZE} />,
+  upload: <Upload size={ICON_SIZE} />,
+  bell: <Bell size={ICON_SIZE} />,
+  admin: <Shield size={ICON_SIZE} />,
 }
 
 // === Components ===
@@ -173,10 +188,18 @@ function Onboarding({ onComplete, user }) {
   const [nearbyTasks, setNearbyTasks] = useState([])
   const [loadingTasks, setLoadingTasks] = useState(false)
 
+  // Email verification state
+  const [verificationCode, setVerificationCode] = useState('')
+  const [verificationSent, setVerificationSent] = useState(false)
+  const [verificationSending, setVerificationSending] = useState(false)
+  const [verificationError, setVerificationError] = useState('')
+  const [verificationSuccess, setVerificationSuccess] = useState(false)
+  const [verifying, setVerifying] = useState(false)
+
   const userName = user?.name?.split(' ')[0] || 'there'
   const userAvatar = user?.avatar_url
 
-  const totalSteps = 4
+  const totalSteps = 5
   const progress = (step / totalSteps) * 100
 
   // Fetch nearby tasks after city selection
@@ -210,6 +233,57 @@ function Onboarding({ onComplete, user }) {
         ? prev.selectedCategories.filter(c => c !== value)
         : [...prev.selectedCategories, value]
     }))
+  }
+
+  const sendVerificationCode = async () => {
+    setVerificationSending(true)
+    setVerificationError('')
+    try {
+      const res = await fetch(`${API_URL}/auth/send-verification`, {
+        method: 'POST',
+        headers: { Authorization: user?.token || user?.id || '' }
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        if (data.message === 'Email already verified') {
+          setVerificationSuccess(true)
+        } else {
+          setVerificationSent(true)
+        }
+      } else {
+        setVerificationError(data.error || 'Failed to send verification code')
+      }
+    } catch (e) {
+      setVerificationError('Network error. Please try again.')
+    } finally {
+      setVerificationSending(false)
+    }
+  }
+
+  const verifyCode = async () => {
+    if (!verificationCode.trim()) return
+    setVerifying(true)
+    setVerificationError('')
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user?.token || user?.id || ''
+        },
+        body: JSON.stringify({ code: verificationCode.trim() })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setVerificationSuccess(true)
+      } else {
+        setVerificationError(data.error || 'Invalid code')
+      }
+    } catch (e) {
+      setVerificationError('Network error. Please try again.')
+    } finally {
+      setVerifying(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -478,8 +552,103 @@ function Onboarding({ onComplete, user }) {
 
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
-                {loading ? 'Setting up...' : 'Complete Setup'}
+              <button className="onboarding-v4-btn-next" onClick={() => setStep(5)} disabled={!form.hourly_rate}>
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Email Verification */}
+        {step === 5 && (
+          <div>
+            <h1 className="onboarding-v4-title">Verify your email</h1>
+            <p className="onboarding-v4-subtitle">
+              Verified accounts get more task offers and build trust with agents
+            </p>
+
+            {verificationSuccess ? (
+              <div style={{
+                padding: '20px', borderRadius: 12,
+                background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                textAlign: 'center', marginBottom: 20
+              }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>&#10003;</div>
+                <p style={{ color: '#059669', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
+                  {user?.email} is now verified
+                </p>
+              </div>
+            ) : !verificationSent ? (
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+                  We'll send a 6-digit code to <strong>{user?.email}</strong>
+                </p>
+                <button
+                  className="onboarding-v4-btn-next"
+                  style={{ width: '100%' }}
+                  onClick={sendVerificationCode}
+                  disabled={verificationSending}
+                >
+                  {verificationSending ? 'Sending...' : 'Send Verification Code'}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
+                  Enter the 6-digit code sent to <strong>{user?.email}</strong>
+                </p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={verificationCode}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                    setVerificationCode(val)
+                  }}
+                  className="onboarding-v4-input"
+                  style={{
+                    textAlign: 'center', fontSize: 24, fontWeight: 600,
+                    letterSpacing: 8, fontFamily: 'monospace'
+                  }}
+                  autoFocus
+                />
+                <button
+                  className="onboarding-v4-btn-next"
+                  style={{ width: '100%', marginTop: 12 }}
+                  onClick={verifyCode}
+                  disabled={verifying || verificationCode.length < 6}
+                >
+                  {verifying ? 'Verifying...' : 'Verify'}
+                </button>
+                <button
+                  onClick={sendVerificationCode}
+                  disabled={verificationSending}
+                  style={{
+                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
+                    fontSize: 13, cursor: 'pointer', marginTop: 8, width: '100%',
+                    textAlign: 'center'
+                  }}
+                >
+                  {verificationSending ? 'Sending...' : 'Resend code'}
+                </button>
+              </div>
+            )}
+
+            {verificationError && (
+              <div className="auth-v4-error" style={{ marginTop: 12 }}>{verificationError}</div>
+            )}
+
+            <div className="onboarding-v4-buttons" style={{ marginTop: 20 }}>
+              <button className="onboarding-v4-btn-back" onClick={() => setStep(4)}>Back</button>
+              <button
+                className="onboarding-v4-btn-next"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Setting up...' : verificationSuccess ? 'Complete Setup' : 'Skip for Now'}
               </button>
             </div>
           </div>
@@ -645,7 +814,7 @@ function AuthPage({ onLogin, onNavigate }) {
       <div className="auth-v4">
         <div className="auth-v4-container">
           <div className="auth-v4-error-modal">
-            <div className="auth-v4-error-icon">⚠️</div>
+            <div className="auth-v4-error-icon"><AlertTriangle size={24} /></div>
             <h2 className="auth-v4-error-title">{errorModal.title}</h2>
             <p className="auth-v4-error-message">{errorModal.message}</p>
             {errorModal.details && (
@@ -743,7 +912,7 @@ function AuthPage({ onLogin, onNavigate }) {
                 className="auth-v4-input"
                 style={{ paddingRight: 44 }}
                 required
-                minLength={6}
+                minLength={8}
                 id="auth-password"
                 aria-label="Password"
               />
@@ -786,20 +955,60 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
   const [proofText, setProofText] = useState('')
   const [files, setFiles] = useState([])
   const [uploadedUrls, setUploadedUrls] = useState([])
+  const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef(null)
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files || [])
     if (selected.length + files.length > 3) {
       toast.error('Maximum 3 files allowed')
       return
     }
-    setFiles(prev => [...prev, ...selected].slice(0, 3))
+    const newFiles = [...files, ...selected].slice(0, 3)
+    setFiles(newFiles)
+
+    // Upload each new file to the backend
+    setUploading(true)
+    try {
+      for (const file of selected) {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+        const res = await fetch(`${API_URL}/upload/proof`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: user?.token || task?.human_id || ''
+          },
+          body: JSON.stringify({ file: base64, filename: file.name, mimeType: file.type })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.url) {
+            setUploadedUrls(prev => [...prev, data.url])
+          }
+        } else {
+          toast.error(`Failed to upload ${file.name}`)
+        }
+      }
+    } catch (err) {
+      toast.error('Upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeFile = (index) => {
+    setFiles(prev => prev.filter((_, i) => i !== index))
+    setUploadedUrls(prev => prev.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async () => {
-    if (!proofText.trim() && uploadedUrls.length === 0) {
+    if (!proofText.trim() && uploadedUrls.length === 0 && files.length === 0) {
       toast.error('Please provide proof text or upload images')
       return
     }
@@ -812,54 +1021,80 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
-      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Submit Proof</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
+      <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Submit Proof</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}>✕</button>
         </div>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Describe your work</label>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Describe your work</label>
             <textarea
               value={proofText}
               onChange={(e) => setProofText(e.target.value)}
               placeholder="Describe what you did to complete this task..."
               rows={4}
-              className={`${styles.input} resize-none`}
+              className="onboarding-v4-input"
+              style={{ resize: 'vertical', fontFamily: 'inherit' }}
             />
           </div>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Upload Proof (max 3 files)</label>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Upload Proof (max 3 files)</label>
             <div
-              className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center cursor-pointer hover:border-orange-500 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: '2px dashed var(--border)',
+                borderRadius: 12,
+                padding: 24,
+                textAlign: 'center',
+                cursor: files.length >= 3 ? 'default' : 'pointer',
+                opacity: files.length >= 3 ? 0.5 : 1,
+                transition: 'border-color 0.2s'
+              }}
+              onClick={() => files.length < 3 && fileInputRef.current?.click()}
             >
-              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
-              <div className="text-3xl mb-2">📤</div>
-              <p className="text-gray-400 text-sm">Click to upload images</p>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
+              <div style={{ fontSize: 28, marginBottom: 8 }}><Upload size={28} /></div>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>
+                {files.length >= 3 ? 'Maximum files reached' : 'Click to upload images'}
+              </p>
             </div>
             {files.length > 0 && (
-              <div className="flex gap-2 mt-3 flex-wrap">
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                 {files.map((file, i) => (
-                  <div key={i} className="bg-white/10 rounded-lg p-2 text-sm text-white">
-                    {file.name.slice(0, 15)}...
+                  <div key={i} style={{
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    fontSize: 13,
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    <span>{file.name.length > 18 ? file.name.slice(0, 18) + '...' : file.name}</span>
+                    <button onClick={() => removeFile(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14, padding: 0 }}>✕</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          {uploadedUrls.length > 0 && (
-            <p className="text-green-400 text-sm flex items-center gap-2">
-              <span>✓</span> {uploadedUrls.length} files uploaded
+          {uploading && (
+            <p style={{ fontSize: 13, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="loading-v4-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Uploading files...
+            </p>
+          )}
+          {uploadedUrls.length > 0 && !uploading && (
+            <p style={{ fontSize: 13, color: '#10B981', display: 'flex', alignItems: 'center', gap: 8 }}>
+              ✓ {uploadedUrls.length} file{uploadedUrls.length !== 1 ? 's' : ''} uploaded
             </p>
           )}
         </div>
-        <div className="flex gap-3 mt-6">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={handleSubmit} disabled={submitting}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+          <button className="v4-btn v4-btn-primary" style={{ flex: 1 }} onClick={handleSubmit} disabled={submitting || uploading}>
             {submitting ? 'Submitting...' : 'Submit Proof'}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -872,552 +1107,79 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
   const [hours, setHours] = useState(24)
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
-      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Review Proof</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
+      <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Review Proof</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}>✕</button>
         </div>
-        <div className="space-y-4 mb-6">
-          <div className="bg-white/5 rounded-xl p-4">
-            <h3 className="font-semibold text-white mb-2">{task?.title}</h3>
-            <p className="text-gray-400 text-sm">{task?.description}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <div style={{ background: 'var(--bg-tertiary)', borderRadius: 12, padding: 16 }}>
+            <h3 style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>{task?.title}</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{task?.description}</p>
           </div>
           {task?.proof_description && (
-            <div className="bg-white/5 rounded-xl p-4">
-              <h4 className="text-gray-400 text-sm mb-2">Human's Proof:</h4>
-              <p className="text-white">{task.proof_description}</p>
+            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 12, padding: 16 }}>
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Human's Proof:</h4>
+              <p style={{ color: 'var(--text-primary)' }}>{task.proof_description}</p>
             </div>
           )}
           {task?.proof_urls?.length > 0 && (
             <div>
-              <h4 className="text-gray-400 text-sm mb-2">Proof Images:</h4>
-              <div className="flex gap-2 flex-wrap">
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Proof Images:</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {task.proof_urls.map((url, i) => (
-                  <img key={i} src={url} alt={`Proof ${i + 1}`} className="w-24 h-24 object-cover rounded-lg" />
+                  <img key={i} src={url} alt={`Proof ${i + 1}`} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
                 ))}
               </div>
             </div>
           )}
         </div>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-gray-400 text-sm mb-2">Feedback (required for reject)</label>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Feedback (required for reject)</label>
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Provide feedback..."
               rows={3}
-              className={`${styles.input} resize-none`}
+              className="onboarding-v4-input"
+              style={{ resize: 'vertical', fontFamily: 'inherit' }}
             />
           </div>
           {rejecting && (
             <div>
-              <label className="block text-gray-400 text-sm mb-2">Extend deadline by (hours)</label>
+              <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Extend deadline by (hours)</label>
               <input
                 type="number"
                 value={hours}
                 onChange={(e) => setHours(parseInt(e.target.value) || 0)}
                 min={1}
                 max={168}
-                className={styles.input}
+                className="onboarding-v4-input"
               />
             </div>
           )}
         </div>
-        <div className="flex gap-3 mt-6">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>Close</Button>
-          <Button variant="secondary" className="flex-1" onClick={() => setRejecting(!rejecting)}>
-            {rejecting ? 'Cancel Reject' : 'Reject & Request Changes'}
-          </Button>
-          <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={onApprove}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Close</button>
+          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={() => setRejecting(!rejecting)}>
+            {rejecting ? 'Cancel Reject' : 'Reject'}
+          </button>
+          <button className="v4-btn v4-btn-primary" style={{ flex: 1, background: '#10B981' }} onClick={onApprove}>
             Approve & Pay
-          </Button>
-        </div>
-        {rejecting && (
-          <Button className="w-full mt-3 bg-red-600 hover:bg-red-700" onClick={() => onReject({ feedback, extendHours: hours })} disabled={!feedback.trim()}>
-            Confirm Rejection
-          </Button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// API Keys Tab Component
-function ApiKeysTab({ user }) {
-  const [keys, setKeys] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState(false)
-  const [showModal, setShowModal] = useState(false)
-  const [newKeyName, setNewKeyName] = useState('')
-  const [newKey, setNewKey] = useState(null)
-  const [copied, setCopied] = useState(false)
-  const [confirmRevoke, setConfirmRevoke] = useState(null)
-  const [error, setError] = useState(null)
-  const [showRevoked, setShowRevoked] = useState(false)
-
-  const fetchKeys = async () => {
-    try {
-      const response = await fetch(`${API_URL}/keys`, {
-        headers: { 'Authorization': user?.id }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setKeys(data)
-      }
-    } catch (error) {
-      console.error('Error fetching keys:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchKeys()
-  }, [user?.id])
-
-  const generateKey = async () => {
-    setGenerating(true)
-    setError(null)
-    try {
-      const response = await fetch(`${API_URL}/keys/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': user?.id
-        },
-        body: JSON.stringify({ name: newKeyName || 'API Key' })
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setNewKey(data.api_key)
-        fetchKeys()
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        setError(errorData.error || `Failed to generate key (${response.status})`)
-        console.error('Generate key error:', response.status, errorData)
-      }
-    } catch (err) {
-      setError('Network error - check if API is running')
-      console.error('Error generating key:', err)
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  const revokeKey = async (keyId) => {
-    try {
-      const response = await fetch(`${API_URL}/keys/${keyId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': user?.id }
-      })
-      if (response.ok) {
-        setConfirmRevoke(null)
-        fetchKeys()
-      }
-    } catch (error) {
-      console.error('Error revoking key:', error)
-    }
-  }
-
-  const rotateKey = async (keyId) => {
-    try {
-      const response = await fetch(`${API_URL}/keys/${keyId}/rotate`, {
-        method: 'POST',
-        headers: { 'Authorization': user?.id }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setNewKey(data.api_key)
-        setShowModal(true)
-        fetchKeys()
-      }
-    } catch (error) {
-      console.error('Error rotating key:', error)
-    }
-  }
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Never'
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h1 className="dashboard-v4-page-title" style={{ marginBottom: 4 }}>API Keys</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-            Manage API keys for programmatic access to irlwork.ai
-          </p>
-        </div>
-        <button
-          className="v4-btn v4-btn-primary"
-          onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
-        >
-          + Generate New Key
-        </button>
-      </div>
-
-      {/* Generate Key Modal */}
-      {showModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 500, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            {!newKey ? (
-              <>
-                <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Generate New API Key</h2>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
-                  Give your key a name to help you remember what it's used for.
-                </p>
-                <input
-                  type="text"
-                  placeholder="e.g. Production, Development, Trading Bot"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    fontSize: 14,
-                    marginBottom: 20
-                  }}
-                  autoFocus
-                />
-                {error && (
-                  <div style={{
-                    background: '#FEE2E2',
-                    border: '1px solid #FECACA',
-                    borderRadius: 8,
-                    padding: '12px 16px',
-                    marginBottom: 20,
-                    color: '#DC2626',
-                    fontSize: 14
-                  }}>
-                    {error}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                  <button
-                    className="v4-btn v4-btn-secondary"
-                    onClick={() => { setShowModal(false); setNewKey(null); }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="v4-btn v4-btn-primary"
-                    onClick={generateKey}
-                    disabled={generating}
-                  >
-                    {generating ? 'Generating...' : 'Generate Key'}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                  <div style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #10B981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <span style={{ fontSize: 28 }}>✓</span>
-                  </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>API Key Generated</h2>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-                    Copy this key now. You won't be able to see it again.
-                  </p>
-                </div>
-
-                <div style={{
-                  background: '#F8F6F1',
-                  border: '1px solid #E5E2DC',
-                  borderRadius: 12,
-                  padding: 16,
-                  marginBottom: 20,
-                  position: 'relative'
-                }}>
-                  <code style={{
-                    color: '#1a1a1a',
-                    fontSize: 13,
-                    wordBreak: 'break-all',
-                    display: 'block',
-                    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace',
-                    paddingRight: 70,
-                    lineHeight: 1.5
-                  }}>
-                    {newKey}
-                  </code>
-                  <button
-                    onClick={() => copyToClipboard(newKey)}
-                    style={{
-                      position: 'absolute',
-                      top: '50%',
-                      right: 12,
-                      transform: 'translateY(-50%)',
-                      background: copied ? '#10B981' : '#FF6B35',
-                      border: 'none',
-                      borderRadius: 6,
-                      padding: '8px 14px',
-                      cursor: 'pointer',
-                      color: 'white',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      transition: 'all 0.2s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    {copied ? '✓ Copied!' : 'Copy'}
-                  </button>
-                </div>
-
-                <div style={{
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 20,
-                  display: 'flex',
-                  gap: 10
-                }}>
-                  <span style={{ fontSize: 16 }}>⚠️</span>
-                  <p style={{ fontSize: 13, color: '#92400E' }}>
-                    Make sure to save this key securely. It won't be shown again.
-                  </p>
-                </div>
-
-                <button
-                  className="v4-btn v4-btn-primary"
-                  style={{ width: '100%' }}
-                  onClick={() => { setShowModal(false); setNewKey(null); }}
-                >
-                  Done
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Revoke Confirmation Modal */}
-      {confirmRevoke && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 400, width: '90%' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: '#DC2626' }}>Revoke API Key?</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
-              Are you sure you want to revoke <strong>{confirmRevoke.name}</strong>? Any agents using this key will lose access immediately.
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button
-                className="v4-btn v4-btn-secondary"
-                onClick={() => setConfirmRevoke(null)}
-              >
-                Cancel
-              </button>
-              <button
-                style={{
-                  background: '#DC2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '10px 20px',
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-                onClick={() => revokeKey(confirmRevoke.id)}
-              >
-                Revoke Key
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filter Toggle */}
-      {keys.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            {keys.filter(k => k.is_active).length} active key{keys.filter(k => k.is_active).length !== 1 ? 's' : ''}
-            {keys.filter(k => !k.is_active).length > 0 && (
-              <span> · {keys.filter(k => !k.is_active).length} revoked</span>
-            )}
-          </div>
-          {keys.some(k => !k.is_active) && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-              <input
-                type="checkbox"
-                checked={showRevoked}
-                onChange={(e) => setShowRevoked(e.target.checked)}
-                style={{ width: 16, height: 16, accentColor: '#FF6B35' }}
-              />
-              Show revoked keys
-            </label>
-          )}
-        </div>
-      )}
-
-      {/* Keys List */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
-          Loading keys...
-        </div>
-      ) : keys.length === 0 ? (
-        <div className="v4-empty-state" style={{
-          background: 'white',
-          borderRadius: 16,
-          padding: 60,
-          textAlign: 'center',
-          border: '1px solid var(--border)'
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔑</div>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No API Keys Yet</h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-            Generate an API key to access irlwork.ai programmatically.
-          </p>
-          <button
-            className="v4-btn v4-btn-primary"
-            onClick={() => setShowModal(true)}
-          >
-            Generate Your First Key
           </button>
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {keys.filter(key => showRevoked || key.is_active).map(key => (
-            <div
-              key={key.id}
-              style={{
-                background: 'white',
-                borderRadius: 12,
-                padding: 20,
-                border: '1px solid var(--border)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 20,
-                opacity: key.is_active ? 1 : 0.6
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 600 }}>{key.name}</h3>
-                  <span style={{
-                    padding: '2px 8px',
-                    borderRadius: 6,
-                    fontSize: 11,
-                    fontWeight: 500,
-                    background: key.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    color: key.is_active ? '#059669' : '#DC2626'
-                  }}>
-                    {key.is_active ? 'Active' : 'Revoked'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 24, fontSize: 13, color: 'var(--text-secondary)' }}>
-                  <span>
-                    <code style={{ background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>
-                      {key.key_prefix}
-                    </code>
-                  </span>
-                  <span>Created: {formatDate(key.created_at)}</span>
-                  <span>Last used: {formatDate(key.last_used_at)}</span>
-                </div>
-              </div>
-
-              {key.is_active && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => rotateKey(key.id)}
-                    style={{
-                      background: 'var(--bg-tertiary)',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: 'var(--text-primary)'
-                    }}
-                  >
-                    Rotate
-                  </button>
-                  <button
-                    onClick={() => setConfirmRevoke(key)}
-                    style={{
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: '#DC2626'
-                    }}
-                  >
-                    Revoke
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Usage Instructions */}
-      <div style={{
-        marginTop: 32,
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        borderRadius: 16,
-        padding: 24,
-        color: 'white'
-      }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Using Your API Key</h3>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
-          Include your API key in the Authorization header of your requests:
-        </p>
-        <div style={{
-          background: 'rgba(0,0,0,0.3)',
-          borderRadius: 8,
-          padding: 16,
-          fontFamily: 'monospace',
-          fontSize: 13
-        }}>
-          <div style={{ color: '#8B8B8B', marginBottom: 4 }}># Post a task</div>
-          <div>
-            <span style={{ color: '#10B981' }}>curl</span> -X POST https://api.irlwork.ai/api/mcp/tasks \
-          </div>
-          <div style={{ paddingLeft: 20 }}>
-            -H <span style={{ color: '#F4845F' }}>'Authorization: Bearer irl_sk_...'</span> \
-          </div>
-          <div style={{ paddingLeft: 20 }}>
-            -H <span style={{ color: '#F4845F' }}>'Content-Type: application/json'</span> \
-          </div>
-          <div style={{ paddingLeft: 20 }}>
-            -d <span style={{ color: '#F4845F' }}>'{`{"title": "Package Pickup", "budget": 35}`}'</span>
-          </div>
-        </div>
-        <a
-          href="/connect-agent"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            marginTop: 16,
-            color: '#F4845F',
-            fontSize: 14,
-            textDecoration: 'none'
-          }}
-        >
-          View full API documentation →
-        </a>
+        {rejecting && (
+          <button
+            className="v4-btn"
+            style={{ width: '100%', marginTop: 12, background: '#DC2626', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: feedback.trim() ? 'pointer' : 'not-allowed', opacity: feedback.trim() ? 1 : 0.5 }}
+            onClick={() => onReject({ feedback, extendHours: hours })}
+            disabled={!feedback.trim()}
+          >
+            Confirm Rejection
+          </button>
+        )}
       </div>
     </div>
   )
@@ -1430,16 +1192,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     const saved = localStorage.getItem('irlwork_hiringMode')
     return saved === 'true'
   })
-  const [showCreateForm, setShowCreateForm] = useState(false)
   const [humansSubTab, setHumansSubTab] = useState('browse')
-  const [tasksSubTab, setTasksSubTab] = useState('tasks')
-
-  // Read initial tab from URL query param
-  const getInitialTab = () => {
+  const [tasksSubTab, setTasksSubTab] = useState(() => {
     const params = new URLSearchParams(window.location.search)
-    const tabParam = params.get('tab')
-    // Derive mode from URL path, fallback to localStorage
-    const isHiringFromUrl = window.location.pathname === '/dashboard/hiring'
+    return params.get('tab') === 'create-task' ? 'create' : 'tasks'
+  })
+
+  // Read initial tab from URL path: /dashboard/working/browse → 'browse'
+  const getInitialTab = () => {
+    const pathParts = window.location.pathname.split('/')
+    // pathParts: ['', 'dashboard', 'working', 'browse'] or ['', 'dashboard', 'hiring']
+    const isHiringFromUrl = pathParts[2] === 'hiring'
+    const tabSegment = pathParts[3] || null
+
+    // Also support legacy ?tab= query param for backwards compat
+    const params = new URLSearchParams(window.location.search)
+    const tabParam = tabSegment || params.get('tab')
 
     // Valid tabs for each mode
     const humanTabs = ['dashboard', 'tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
@@ -1466,13 +1234,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       if (!isHiringFromUrl && humanTabs.includes(mappedTab)) return mappedTab
     }
 
-    return 'dashboard'
+    return isHiringFromUrl ? 'posted' : 'tasks'
   }
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
 
-  // Helper to update URL query param without page reload
+  // Helper to update URL path without page reload
   const updateTabUrl = (tabId, mode) => {
     // Map internal tab IDs to URL-friendly names
     const urlMap = {
@@ -1488,7 +1256,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
     const urlTab = urlMap[tabId] || tabId
     const modeSegment = (mode !== undefined ? mode : hiringMode) ? 'hiring' : 'working'
-    const newUrl = `/dashboard/${modeSegment}?tab=${urlTab}`
+    const newUrl = `/dashboard/${modeSegment}/${urlTab}`
     window.history.pushState({}, '', newUrl)
   }
 
@@ -1509,6 +1277,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [messages, setMessages] = useState([])
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [newMessage, setNewMessage] = useState('')
+  const [messagesLoading, setMessagesLoading] = useState(false)
+  const [conversationsLoading, setConversationsLoading] = useState(false)
+  const [conversationsError, setConversationsError] = useState(null)
+  const [messagesError, setMessagesError] = useState(null)
+  const [sendingMessage, setSendingMessage] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
@@ -1516,12 +1289,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [radiusFilter, setRadiusFilter] = useState('50')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [agentConnected, setAgentConnected] = useState(() => localStorage.getItem('irlwork_agentConnected') === 'true')
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
 
+  // Dashboard tour state — show for first-time users who haven't completed the tour
+  const [showTour, setShowTour] = useState(() => {
+    return localStorage.getItem('irlwork_tour_completed') !== 'true'
+  })
+
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
+  const [profileTimezone, setProfileTimezone] = useState(user?.timezone || '')
   const [skillsList, setSkillsList] = useState(user?.skills || [])
   const [newSkillInput, setNewSkillInput] = useState('')
   const [languagesList, setLanguagesList] = useState(user?.languages || [])
@@ -1547,6 +1327,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     duration_hours: '',
     deadline: '',
     requirements: '',
+    required_skills: [],
+    skillInput: '',
     task_type: 'direct',
     quantity: 1,
     is_anonymous: false
@@ -1557,6 +1339,26 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   useEffect(() => {
     localStorage.setItem('irlwork_hiringMode', hiringMode)
   }, [hiringMode])
+
+  // Handle Stripe Connect onboarding return
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const stripeOnboard = params.get('stripe_onboard')
+    if (stripeOnboard === 'complete') {
+      toast.success('Bank account setup complete! You can now receive payments.')
+      setActiveTab('payments')
+      // Clean up URL param
+      params.delete('stripe_onboard')
+      const cleanUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`
+      window.history.replaceState({}, '', cleanUrl)
+    } else if (stripeOnboard === 'refresh') {
+      toast.info('Bank setup session expired. Please try again.')
+      setActiveTab('payments')
+      params.delete('stripe_onboard')
+      const cleanUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`
+      window.history.replaceState({}, '', cleanUrl)
+    }
+  }, [])
 
   // Pre-fill location filter with user's city
   useEffect(() => {
@@ -1579,7 +1381,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Unread counts for badges
   const [unreadMessages, setUnreadMessages] = useState(0)
-  const unreadNotifications = notifications.filter(n => !n.read_at).length
+  const unreadNotifications = notifications.filter(n => !n.is_read).length
 
   // Notification dropdown state
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
@@ -1590,7 +1392,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Working mode: Dashboard, My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'dashboard', label: 'Dashboard', icon: Icons.dashboard },
     { id: 'tasks', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Browse Tasks', icon: Icons.search },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
@@ -1599,7 +1401,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Hiring mode: Dashboard, My Tasks, Humans, Messages, Payments
   const hiringNav = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'dashboard', label: 'Dashboard', icon: Icons.dashboard },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Humans', icon: Icons.humans },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
@@ -1608,17 +1410,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Add admin tab if user is admin
   const baseNav = hiringMode ? hiringNav : humanNav
-  const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: '🛡️' }] : baseNav
+  const navItems = isAdmin ? [...baseNav, { id: 'admin', label: 'Admin', icon: Icons.admin }] : baseNav
 
   // Mark all notifications as read and remove them from the list
   const markAllNotificationsRead = async () => {
     try {
-      const unreadIds = notifications.filter(n => !n.read_at).map(n => n.id)
+      const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
       // Remove unread notifications from state immediately
-      setNotifications(prev => prev.filter(n => n.read_at))
+      setNotifications(prev => prev.filter(n => n.is_read))
       // Mark each as read in backend (fire and forget)
       for (const id of unreadIds) {
-        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
+        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } }).catch(() => {})
       }
     } catch (e) {
       console.error('Error marking all notifications read:', e)
@@ -1636,20 +1438,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   // Handle browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
-      // Detect mode from URL path
-      const path = window.location.pathname
-      if (path === '/dashboard/hiring' && !hiringMode) {
+      const pathParts = window.location.pathname.split('/')
+      const mode = pathParts[2] // 'working' or 'hiring'
+      const tabSegment = pathParts[3] || null
+      const isHiring = mode === 'hiring'
+
+      // Detect mode change from URL path
+      if (isHiring && !hiringMode) {
         setHiringMode(true)
         setActiveTabState('posted')
-      } else if (path === '/dashboard/working' && hiringMode) {
+      } else if (!isHiring && hiringMode) {
         setHiringMode(false)
         setActiveTabState('tasks')
       }
 
-      const params = new URLSearchParams(window.location.search)
-      const tabParam = params.get('tab')
+      // Also support legacy ?tab= query param
+      const tabParam = tabSegment || new URLSearchParams(window.location.search).get('tab')
       if (tabParam) {
-        const isHiring = path === '/dashboard/hiring'
+        const isHiring = mode === 'hiring'
         const tabMap = {
           'dashboard': 'dashboard',
           'create-task': 'posted',
@@ -1733,9 +1539,53 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
   }, [hiringMode, user, expandedTask])
 
+  // Poll for new messages when Messages tab is active and a conversation is selected
+  useEffect(() => {
+    if (activeTab !== 'messages' || !selectedConversation) return
+    const interval = setInterval(() => {
+      fetchMessages(selectedConversation, true) // skipMarkRead on polls — already marked on open
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [activeTab, selectedConversation])
+
+  // Background refresh: keep unread badge fresh
+  useEffect(() => {
+    if (!user) return
+    const interval = setInterval(() => {
+      fetchUnreadMessages()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [user])
+
+  // Real-time subscription for new messages
+  useEffect(() => {
+    if (!user) return
+
+    const messagesChannel = safeSupabase
+      .channel(`user-messages-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          // If we're viewing the conversation this message belongs to, refresh it
+          if (selectedConversation && payload.new?.conversation_id === selectedConversation) {
+            fetchMessages(selectedConversation, true)
+          }
+          // Always refresh unread count and conversation list
+          fetchUnreadMessages()
+          fetchConversations()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      safeSupabase.removeChannel(messagesChannel)
+    }
+  }, [user, selectedConversation])
+
   const fetchTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setTasks(data || [])
@@ -1774,7 +1624,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchHumans = async () => {
     try {
-      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setHumans(fixAvatarUrl(data || []))
@@ -1786,7 +1636,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchPostedTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setPostedTasks(data || [])
@@ -1801,7 +1651,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchApplicationsForTask = async (taskId) => {
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/applications`, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       if (res.ok) {
         const data = await res.json()
@@ -1819,7 +1669,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ human_id: humanId })
       })
@@ -1830,10 +1680,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
 
         // Show appropriate toast based on payment method
-        if (data.payment_method === 'stripe') {
+        if (data.amount_charged) {
           toast.success(`Worker assigned! $${data.amount_charged?.toFixed(2)} charged to your card.`)
         } else {
-          toast.success('Worker assigned! Send USDC to fund the escrow.')
+          toast.success('Worker assigned! Payment charged to your card.')
         }
       } else {
         const err = await res.json()
@@ -1852,7 +1702,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchWallet = async () => {
     try {
-      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setWallet(data || { balance: 0, transactions: [] })
@@ -1864,11 +1714,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         // Only show unread notifications — clicked/read ones are removed from the list
-        setNotifications((data || []).filter(n => !n.read_at))
+        setNotifications((data || []).filter(n => !n.is_read))
       }
     } catch (e) {
       debug('Could not fetch notifications')
@@ -1877,30 +1727,30 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const markNotificationRead = async (id) => {
     try {
-      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } })
+      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } })
       fetchNotifications()
     } catch (e) {}
   }
 
   // Notification icon map for all notification types
   const NOTIFICATION_ICONS = {
-    task_assigned: '📋',
-    proof_submitted: '📝',
-    proof_approved: '✅',
-    proof_rejected: '❌',
-    payment_released: '💰',
-    payment_approved: '💰',
-    payment_sent: '💸',
-    deposit_confirmed: '🏦',
-    dispute_opened: '⚖️',
-    dispute_filed: '⚖️',
-    dispute_created: '⚖️',
-    dispute_resolved: '✅',
-    rating_received: '⭐',
-    rating_visible: '⭐',
-    new_message: '💬',
-    assignment_cancelled: '🚫',
-    refund_processed: '💸',
+    task_assigned: <ClipboardList size={18} />,
+    proof_submitted: <FileText size={18} />,
+    proof_approved: <CheckCircle size={18} />,
+    proof_rejected: <XCircle size={18} />,
+    payment_released: <DollarSign size={18} />,
+    payment_approved: <DollarSign size={18} />,
+    payment_sent: <ArrowDownLeft size={18} />,
+    deposit_confirmed: <Landmark size={18} />,
+    dispute_opened: <Scale size={18} />,
+    dispute_filed: <Scale size={18} />,
+    dispute_created: <Scale size={18} />,
+    dispute_resolved: <CheckCircle size={18} />,
+    rating_received: <Star size={18} />,
+    rating_visible: <Star size={18} />,
+    new_message: <MessageCircle size={18} />,
+    assignment_cancelled: <Ban size={18} />,
+    refund_processed: <ArrowDownLeft size={18} />,
   }
 
   // Navigate to a notification's linked page
@@ -1908,7 +1758,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     // Remove the clicked notification from state immediately so it disappears from UI
     setNotifications(prev => prev.filter(n => n.id !== notification.id))
     // Mark as read in backend (fire and forget — no refetch needed since we already removed it)
-    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
+    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } }).catch(() => {})
     setNotificationDropdownOpen(false)
 
     const link = notification.link
@@ -1926,7 +1776,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       return
     }
 
-    // Dashboard with query params (e.g. /dashboard?task=xxx or /dashboard/hiring?tab=xxx)
+    // Dashboard links (e.g. /dashboard/hiring/payments or legacy /dashboard?task=xxx)
     if (link.startsWith('/dashboard')) {
       const params = new URLSearchParams(link.split('?')[1] || '')
       const taskId = params.get('task')
@@ -1934,7 +1784,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         window.location.href = `/tasks/${taskId}`
         return
       }
-      const tab = params.get('tab')
+      // Parse tab from path segment: /dashboard/working/browse → 'browse'
+      const linkParts = link.split('?')[0].split('/')
+      const tabFromPath = linkParts[3] || null
+      const tab = tabFromPath || params.get('tab')
       if (tab) {
         setActiveTab(tab)
       }
@@ -1958,23 +1811,33 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchConversations = async () => {
+    setConversationsLoading(prev => prev || conversations.length === 0) // Only show loading on first load
     try {
-      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setConversations(data || [])
+        setConversationsError(null)
+      } else {
+        setConversationsError('Failed to load conversations')
       }
-    } catch (e) {}
+    } catch (e) {
+      setConversationsError('Network error. Check your connection.')
+    } finally {
+      setConversationsLoading(false)
+    }
   }
 
   const fetchUnreadMessages = async () => {
     try {
-      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setUnreadMessages(data.count || 0)
       }
-    } catch (e) {}
+    } catch (e) {
+      debug('Could not fetch unread count')
+    }
   }
 
   const handleCreateTask = async (e) => {
@@ -1994,6 +1857,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setCreateTaskError('Budget must be at least $5')
       return
     }
+    if (!taskForm.is_remote && !taskForm.city.trim()) {
+      setCreateTaskError('City is required for in-person tasks')
+      return
+    }
 
     setCreatingTask(true)
     try {
@@ -2001,7 +1868,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({
           title: taskForm.title,
@@ -2017,6 +1884,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
           deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
           requirements: taskForm.requirements.trim() || null,
+          required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
           task_type: taskForm.task_type,
           quantity: taskForm.task_type === 'bounty' ? parseInt(taskForm.quantity) || 1 : 1,
           is_anonymous: taskForm.is_anonymous
@@ -2028,7 +1896,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', task_type: 'direct', quantity: 1, is_anonymous: false })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'direct', quantity: 1, is_anonymous: false })
         // Close create form and stay on posted tab
         setShowCreateForm(false)
         setActiveTab('posted')
@@ -2043,35 +1911,66 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
   }
 
-  const fetchMessages = async (conversationId) => {
+  const fetchMessages = async (conversationId, skipMarkRead = false) => {
+    if (!skipMarkRead) setMessagesLoading(true)
     try {
-      const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
-        setMessages(data || [])
+        // Sort by created_at to guarantee chronological order (#3)
+        const sorted = (data || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        setMessages(sorted)
+        setMessagesError(null)
+        // Mark messages as read when opening a conversation (matches TaskDetailPage pattern)
+        if (!skipMarkRead) {
+          fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
+            method: 'PUT',
+            headers: { Authorization: user.token || user.id }
+          }).then(() => {
+            fetchUnreadMessages()
+            fetchConversations()
+          }).catch(() => {})
+        }
+      } else {
+        setMessagesError('Failed to load messages')
       }
-    } catch (e) {}
+    } catch (e) {
+      setMessagesError('Network error. Check your connection.')
+    } finally {
+      setMessagesLoading(false)
+    }
   }
 
   const sendMessage = async (e) => {
     e.preventDefault()
     if (!newMessage.trim() || !selectedConversation) return
+    const msgContent = newMessage
+    setNewMessage('') // Clear immediately for responsiveness
+    setSendingMessage(true)
     try {
-      await fetch(`${API_URL}/messages`, {
+      const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
-        body: JSON.stringify({ conversation_id: selectedConversation, content: newMessage })
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+        body: JSON.stringify({ conversation_id: selectedConversation, content: msgContent })
       })
-      setNewMessage('')
-      fetchMessages(selectedConversation)
-    } catch (e) {}
+      if (!res.ok) {
+        throw new Error('Failed to send')
+      }
+      fetchMessages(selectedConversation, true)
+      fetchConversations()
+    } catch (e) {
+      setNewMessage(msgContent) // Restore on error
+      toast.error('Message failed to send. Please try again.')
+    } finally {
+      setSendingMessage(false)
+    }
   }
 
   const acceptTask = async (taskId) => {
     try {
       await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       fetchTasks()
     } catch (e) {
@@ -2083,7 +1982,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       await fetch(`${API_URL}/tasks/${taskId}/start`, {
         method: 'POST',
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       fetchTasks()
     } catch (e) {
@@ -2095,7 +1994,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       await fetch(`${API_URL}/tasks/${taskId}/approve`, { 
         method: 'POST',
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       fetchPostedTasks()
     } catch (e) {
@@ -2107,7 +2006,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/release`, { 
         method: 'POST',
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       if (res.ok) {
         toast.success('Payment released successfully!')
@@ -2127,7 +2026,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ proof_text: proofText, proof_urls: proofUrls })
       })
@@ -2144,7 +2043,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ feedback, extend_deadline_hours: extendHours })
       })
@@ -2200,7 +2099,48 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
         </a>
 
-        {/* Mode Switch - mobile only */}
+        {/* Connect to AI Agent CTA - top of sidebar in hiring mode */}
+        {hiringMode && (
+          <div className="dashboard-v4-connect-agent-sidebar-top">
+            <button
+              onClick={() => !agentConnected && (window.location.href = '/connect-agent')}
+              className={`dashboard-v4-connect-agent-btn-top ${agentConnected ? 'connected' : ''}`}
+            >
+              <span className="dashboard-v4-connect-agent-icon">{agentConnected ? <CheckCircle size={16} /> : <Bot size={16} />}</span>
+              <span>{agentConnected ? 'AI Agent Connected' : 'Connect to AI Agent'}</span>
+              {!agentConnected && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', opacity: 0.5 }}>
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
+
+
+        {/* Navigation */}
+        <nav className="dashboard-v4-nav">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id)
+                setSidebarOpen(false)
+              }}
+              className={`dashboard-v4-nav-item ${activeTab === item.id ? 'active' : ''}`}
+            >
+              <div className="dashboard-v4-nav-item-content">
+                <span className="dashboard-v4-nav-icon">{item.icon}</span>
+                <span className="dashboard-v4-nav-label">{item.label}</span>
+              </div>
+              {item.badge > 0 && (
+                <span className="dashboard-v4-nav-badge">{item.badge}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
           {hiringMode ? (
             <button
@@ -2225,32 +2165,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <path d="M22 21v-2a4 4 0 00-3-3.87" />
                 <path d="M16 3.13a4 4 0 010 7.75" />
               </svg>
-              Switch to Hiring
+              Hire Humans
             </button>
           )}
         </div>
-
-        {/* Navigation */}
-        <nav className="dashboard-v4-nav">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id)
-                setSidebarOpen(false)
-              }}
-              className={`dashboard-v4-nav-item ${activeTab === item.id ? 'active' : ''}`}
-            >
-              <div className="dashboard-v4-nav-item-content">
-                <span className="dashboard-v4-nav-icon">{item.icon}</span>
-                <span className="dashboard-v4-nav-label">{item.label}</span>
-              </div>
-              {item.badge > 0 && (
-                <span className="dashboard-v4-nav-badge">{item.badge}</span>
-              )}
-            </button>
-          ))}
-        </nav>
 
         {/* Connect to AI Agent CTA - only show in hiring mode */}
         {hiringMode && (
@@ -2259,7 +2177,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               onClick={() => window.location.href = '/connect-agent'}
               className="dashboard-v4-connect-agent-btn"
             >
-              <span style={{ fontSize: 18 }}>🤖</span>
+              <span style={{ display: 'flex', alignItems: 'center' }}><Bot size={18} /></span>
               <span>Connect to AI Agent</span>
             </button>
           </div>
@@ -2306,6 +2224,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       {/* Sidebar Feedback Panel */}
       <FeedbackButton user={user} variant="sidebar" isOpen={feedbackOpen} onToggle={(v) => setFeedbackOpen(typeof v === 'boolean' ? v : !feedbackOpen)} />
 
+      {/* Dashboard Tour for first-time users */}
+      <DashboardTour
+        isOpen={showTour}
+        onComplete={() => setShowTour(false)}
+        hiringMode={hiringMode}
+      />
+
       {/* Main */}
       <main className="dashboard-v4-main">
         {/* Top Header Bar */}
@@ -2351,7 +2276,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             ) : (
               <>
                 <button
-                  className="dashboard-v4-topbar-link"
+                  className="dashboard-v4-topbar-link dashboard-v4-topbar-cta dashboard-v4-topbar-cta-teal"
                   onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2408,11 +2333,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       notifications.slice(0, 5).map(n => (
                         <div
                           key={n.id}
-                          className={`dashboard-v4-notification-dropdown-item ${!n.read_at ? 'unread' : ''}`}
+                          className={`dashboard-v4-notification-dropdown-item ${!n.is_read ? 'unread' : ''}`}
                           onClick={() => navigateToNotification(n)}
                         >
                           <div className="dashboard-v4-notification-dropdown-icon">
-                            {NOTIFICATION_ICONS[n.type] || '🔔'}
+                            {NOTIFICATION_ICONS[n.type] || <Bell size={18} />}
                           </div>
                           <div className="dashboard-v4-notification-dropdown-content">
                             <p className="dashboard-v4-notification-dropdown-title">{n.title}</p>
@@ -2420,7 +2345,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                               {new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                          {!n.read_at && <div className="dashboard-v4-notification-dropdown-dot" />}
+                          {!n.is_read && <div className="dashboard-v4-notification-dropdown-dot" />}
                         </div>
                       ))
                     )}
@@ -2518,41 +2443,45 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              {tasksSubTab === 'tasks' && (
-                <button
-                  className="v4-btn v4-btn-primary"
-                  onClick={() => setShowCreateForm(!showCreateForm)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}
-                >
-                  {showCreateForm ? 'Cancel' : '+ Create Task'}
-                </button>
-              )}
-            </div>
+            <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
 
-            {/* Sub-tabs: Tasks / Disputes */}
+            {/* Sub-tabs: Create Task / Posted Tasks / Disputes */}
             <div className="dashboard-v4-sub-tabs">
               <button
-                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => setTasksSubTab('tasks')}
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); }}
               >
-                Tasks
+                + Create Task
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); }}
+              >
+                Posted Tasks
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
-                onClick={() => setTasksSubTab('disputes')}
+                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); }}
               >
                 Disputes
               </button>
             </div>
 
-            {tasksSubTab === 'tasks' && showCreateForm && (
-              <div style={{ marginTop: 16, marginBottom: 24 }}>
+            {tasksSubTab === 'create' && (
+              <div style={{ marginTop: 16 }}>
                 <div className="dashboard-v4-form">
+                  <h2 className="dashboard-v4-form-title">Create a New Task</h2>
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
+
+                    {/* Basic Info */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Basic Info</span>
+                    </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Task Title</label>
+                      <label className="dashboard-v4-form-label">
+                        Task Title <span className="dashboard-v4-form-required">*</span>
+                      </label>
                       <input
                         type="text"
                         placeholder="What do you need done?"
@@ -2561,8 +2490,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
                       />
                     </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Description</label>
+                      <label className="dashboard-v4-form-label">
+                        Description <span className="dashboard-v4-form-optional">(optional)</span>
+                      </label>
                       <textarea
                         placeholder="Provide details about the task..."
                         className="dashboard-v4-form-input dashboard-v4-form-textarea"
@@ -2570,9 +2502,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                       />
                     </div>
+
                     <div className="dashboard-form-grid-2col">
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Category</label>
+                        <label className="dashboard-v4-form-label">
+                          Category <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <CustomDropdown
                           value={taskForm.category}
                           onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
@@ -2587,7 +2522,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Budget (USD)</label>
+                        <label className="dashboard-v4-form-label">
+                          Budget (USD) <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <input
                           type="number"
                           placeholder="$"
@@ -2598,9 +2535,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     </div>
+
+                    {/* Schedule & Duration */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Schedule & Duration</span>
+                    </div>
+
                     <div className="dashboard-form-grid-2col">
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Duration (hours)</label>
+                        <label className="dashboard-v4-form-label">
+                          Duration (hours) <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
                         <input
                           type="number"
                           placeholder="e.g. 2"
@@ -2612,7 +2557,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Deadline</label>
+                        <label className="dashboard-v4-form-label">
+                          Deadline <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
                         <input
                           type="datetime-local"
                           className="dashboard-v4-form-input"
@@ -2621,14 +2568,50 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     </div>
+
+                    {/* Location */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Location</span>
+                    </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Requirements (optional)</label>
-                      <textarea
-                        placeholder="Any specific requirements or qualifications needed..."
-                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                        value={taskForm.requirements}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                        rows={2}
+                      <label className="dashboard-v4-form-label">Required Skills (optional)</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
+                        {taskForm.required_skills.map((skill, i) => (
+                          <span key={i} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            background: '#EEF2FF', color: '#4338CA', borderRadius: 16,
+                            padding: '4px 10px', fontSize: 13, fontWeight: 500
+                          }}>
+                            {skill}
+                            <button type="button" onClick={() => setTaskForm(prev => ({
+                              ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
+                            }))} style={{
+                              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                              color: '#4338CA', fontSize: 16, lineHeight: 1, marginLeft: 2
+                            }}>×</button>
+                          </span>
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Type a skill and press Enter (e.g. photography, driving, coding)"
+                        className="dashboard-v4-form-input"
+                        value={taskForm.skillInput}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ',') {
+                            e.preventDefault()
+                            const skill = taskForm.skillInput.trim().toLowerCase()
+                            if (skill && !taskForm.required_skills.includes(skill)) {
+                              setTaskForm(prev => ({
+                                ...prev,
+                                required_skills: [...prev.required_skills, skill],
+                                skillInput: ''
+                              }))
+                            }
+                          }
+                        }}
                       />
                     </div>
                     {/* Task Type: Direct Hire vs Bounty */}
@@ -2711,9 +2694,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         </label>
                       </div>
                     </div>
+
                     {!taskForm.is_remote && (
                       <div className="dashboard-v4-form-group">
-                        <label className="dashboard-v4-form-label">City</label>
+                        <label className="dashboard-v4-form-label">
+                          City <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <CityAutocomplete
                           value={taskForm.city}
                           onChange={(locationData) => setTaskForm(prev => ({
@@ -2729,6 +2715,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     )}
+
+                    {/* Additional Info */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Additional Info</span>
+                    </div>
+
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">
+                        Requirements <span className="dashboard-v4-form-optional">(optional)</span>
+                      </label>
+                      <textarea
+                        placeholder="Any specific requirements or qualifications needed..."
+                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                        value={taskForm.requirements}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                        rows={2}
+                      />
+                    </div>
+
                     {createTaskError && (
                       <div className="dashboard-v4-form-error">{createTaskError}</div>
                     )}
@@ -2744,7 +2749,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <>
                 {loading ? (
                   <div className="dashboard-v4-empty">
-                    <div className="dashboard-v4-empty-icon">⏳</div>
+                    <div className="dashboard-v4-empty-icon"><Hourglass size={24} /></div>
                     <p className="dashboard-v4-empty-text">Loading...</p>
                   </div>
                 ) : postedTasks.length === 0 ? (
@@ -2774,10 +2779,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           </div>
 
                           <div className="dashboard-v4-task-meta">
-                            <span className="dashboard-v4-task-meta-item">📂 {task.category || 'General'}</span>
-                            <span className="dashboard-v4-task-meta-item">📍 {task.city || 'Remote'}</span>
+                            <span className="dashboard-v4-task-meta-item"><FolderOpen size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.category || 'General'}</span>
+                            <span className="dashboard-v4-task-meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
                             {task.assignee && (
-                              <span className="dashboard-v4-task-meta-item">👤 {task.assignee.name}</span>
+                              <span className="dashboard-v4-task-meta-item"><User size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.assignee.name}</span>
                             )}
                           </div>
 
@@ -2813,10 +2818,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                           <div>
                                             <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
                                             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                              ⭐ {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                              <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
                                             </p>
                                             {app.cover_letter && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>"{app.cover_letter}"</p>
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
+                                            )}
+                                            {app.availability && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
+                                            )}
+                                            {app.questions && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
+                                            )}
+                                            {app.proposed_rate != null && (
+                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate} USDC</p>
                                             )}
                                           </div>
                                         </div>
@@ -2843,7 +2857,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             </div>
                           )}
                           {task.status === 'paid' && (
-                            <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}>💸 Payment released</p>
+                            <p style={{ color: 'var(--success)', fontSize: 14, marginTop: 12 }}><ArrowDownLeft size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Payment released</p>
                           )}
                         </div>
                       )
@@ -3050,7 +3064,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
                   </div>
                   <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                    When you assign a worker to a task, your default card will be charged automatically. If no card is saved, you'll be asked to fund via USDC instead.
+                    When you assign a worker to a task, your default card will be charged automatically. Please ensure you have a card saved before assigning workers.
                   </div>
                 </div>
               </StripeProvider>
@@ -3118,8 +3132,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     onChange={async (e) => {
                       const file = e.target.files?.[0]
                       if (!file) return
-                      if (file.size > 5 * 1024 * 1024) {
-                        toast.error('Image must be under 5MB')
+                      // Reset file input immediately so user can always re-select
+                      e.target.value = ''
+                      if (file.size > 20 * 1024 * 1024) {
+                        toast.error('Image must be under 20MB')
                         return
                       }
                       if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
@@ -3128,13 +3144,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       }
                       setAvatarUploading(true)
                       try {
+                        // Compress image client-side before upload
+                        let fileToUpload = file
+                        if (file.type !== 'image/gif' && file.size > 1024 * 1024) {
+                          const imageCompression = (await import('browser-image-compression')).default
+                          fileToUpload = await imageCompression(file, {
+                            maxSizeMB: 1,
+                            maxWidthOrHeight: 1200,
+                            useWebWorker: true,
+                            fileType: 'image/jpeg',
+                          })
+                        }
                         const reader = new FileReader()
                         reader.onload = async () => {
                           try {
                             const res = await fetch(`${API_URL}/upload/avatar`, {
                               method: 'POST',
-                              headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                              body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: file.type })
+                              headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                              body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: fileToUpload.type })
                             })
                             if (res.ok) {
                               const data = await res.json()
@@ -3145,19 +3172,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                               localStorage.setItem('user', JSON.stringify(updatedUser))
                               toast.success('Profile photo updated!')
                             } else {
-                              toast.error('Failed to upload photo')
+                              const errData = await res.json().catch(() => ({}))
+                              toast.error(errData.error || 'Failed to upload photo')
                             }
                           } catch {
                             toast.error('Error uploading photo')
                           }
                           setAvatarUploading(false)
                         }
-                        reader.readAsDataURL(file)
+                        reader.onerror = () => {
+                          toast.error('Error reading file')
+                          setAvatarUploading(false)
+                        }
+                        reader.readAsDataURL(fileToUpload)
                       } catch {
-                        toast.error('Error reading file')
+                        toast.error('Error processing image')
                         setAvatarUploading(false)
                       }
-                      e.target.value = ''
                     }}
                   />
                 </div>
@@ -3195,7 +3226,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   const formData = new FormData(e.target)
                   try {
                     const locationData = profileLocation || {}
-                    const timezoneVal = formData.get('timezone')?.trim()
                     const payload = {
                       name: formData.get('name'),
                       headline: formData.get('headline'),
@@ -3208,10 +3238,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       bio: formData.get('bio'),
                       travel_radius: parseInt(formData.get('travel_radius')) || 25
                     }
-                    if (timezoneVal) payload.timezone = timezoneVal
+                    if (profileTimezone) payload.timezone = profileTimezone
                     const res = await fetch(`${API_URL}/humans/profile`, {
                       method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                      headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                       body: JSON.stringify(payload)
                     })
                     if (res.ok) {
@@ -3266,7 +3296,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
                   <div className="dashboard-v4-form-group">
                     <label className="dashboard-v4-form-label">Timezone</label>
-                    <input type="text" name="timezone" defaultValue={user?.timezone || ''} className="dashboard-v4-form-input" placeholder="Auto-detected from city (e.g. America/New_York)" />
+                    <TimezoneDropdown
+                      value={profileTimezone}
+                      onChange={setProfileTimezone}
+                      className="dashboard-v4-form-input"
+                    />
                     <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Auto-set when you select a city. You can override manually.</p>
                   </div>
 
@@ -3350,7 +3384,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
                           method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                           body: JSON.stringify({ skills: skillsList })
                         })
                         if (res.ok) {
@@ -3446,7 +3480,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
                           method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                           body: JSON.stringify({ languages: languagesList })
                         })
                         if (res.ok) {
@@ -3483,7 +3517,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   try {
                     const res = await fetch(`${API_URL}/humans/profile`, {
                       method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                      headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                       body: JSON.stringify({ social_links })
                     })
                     if (res.ok) {
@@ -3566,7 +3600,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   const locationData = profileLocation || {}
                   const res = await fetch(`${API_URL}/humans/profile`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                     body: JSON.stringify({
                       name: formData.get('name'),
                       city: locationData.city || user?.city,
@@ -3645,7 +3679,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 try {
                   const res = await fetch(`${API_URL}/humans/profile`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                     body: JSON.stringify({ skills })
                   })
                   if (res.ok) {
@@ -3689,7 +3723,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 try {
                   const res = await fetch(`${API_URL}/humans/profile`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                     body: JSON.stringify({ social_links })
                   })
                   if (res.ok) {
@@ -3792,79 +3826,207 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         )}
 
         {/* Messages Tab */}
-        {activeTab === 'messages' && (
+        {activeTab === 'messages' && (() => {
+          // Helper: resolve the "other" party in a conversation
+          const getOtherParty = (c) => {
+            if (!c || !user) return { name: 'Unknown', avatar_url: null }
+            if (c.human_id === user.id) return c.agent || { name: 'Unknown Agent', avatar_url: null }
+            return c.human || { name: 'Unknown Human', avatar_url: null }
+          }
+          // Helper: online status from last_active_at (#8)
+          const getOnlineStatus = (party) => {
+            if (!party?.last_active_at) return { status: 'offline', label: 'Offline' }
+            const diff = Date.now() - new Date(party.last_active_at).getTime()
+            if (diff < 5 * 60 * 1000) return { status: 'online', label: 'Online', color: '#22C55E' }
+            if (diff < 30 * 60 * 1000) return { status: 'idle', label: 'Away', color: '#F59E0B' }
+            return { status: 'offline', label: 'Offline', color: '#9CA3AF' }
+          }
+          // Helper: relative time
+          const timeAgo = (dateStr) => {
+            if (!dateStr) return ''
+            const diff = Date.now() - new Date(dateStr).getTime()
+            const mins = Math.floor(diff / 60000)
+            if (mins < 1) return 'now'
+            if (mins < 60) return `${mins}m`
+            const hrs = Math.floor(mins / 60)
+            if (hrs < 24) return `${hrs}h`
+            const days = Math.floor(hrs / 24)
+            if (days < 7) return `${days}d`
+            return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          }
+          const activeConv = conversations.find(c => c.id === selectedConversation)
+          const activeOther = activeConv ? getOtherParty(activeConv) : null
+          const activeOnline = activeOther ? getOnlineStatus(activeOther) : null
+
+          return (
           <div>
             <h1 className="dashboard-v4-page-title">Messages</h1>
 
             <div className="dashboard-v4-messages">
               {/* Conversations List */}
-              <div className={`dashboard-v4-conversations ${selectedConversation ? 'hidden md:block' : 'block'}`}>
-                {conversations.length === 0 ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>No conversations yet</div>
+              <div className={`dashboard-v4-conversations ${selectedConversation ? 'msg-hide-mobile' : ''}`} style={{ overflowY: 'auto' }}>
+                {conversationsLoading && conversations.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: 'center' }}>
+                    <div className="msg-spinner" />
+                    <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 12 }}>Loading conversations...</p>
+                  </div>
+                ) : conversationsError && conversations.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
+                    <p style={{ fontWeight: 500, marginBottom: 8, color: 'var(--text-secondary)' }}>{conversationsError}</p>
+                    <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div style={{ marginBottom: 8 }}><MessageCircle size={32} /></div>
+                    <p style={{ fontWeight: 500, marginBottom: 4 }}>No conversations yet</p>
+                    <p style={{ fontSize: 13 }}>Messages will appear here when you communicate about a task</p>
+                  </div>
                 ) : (
-                  conversations.map(c => (
+                  conversations.map(c => {
+                    const other = getOtherParty(c)
+                    const online = getOnlineStatus(other)
+                    return (
                     <div
                       key={c.id}
                       className={`dashboard-v4-conversation-item ${selectedConversation === c.id ? 'active' : ''}`}
                       onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
                     >
-                      <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                        {c.other_user?.name?.charAt(0) || '?'}
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {other.avatar_url ? (
+                          <img src={other.avatar_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 15 }}>
+                            {other.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        {/* Online status dot (#8) */}
+                        <span style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: '50%', background: online.color, border: '2px solid white' }} title={online.label} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.otherUser?.name || 'Unknown'}</p>
-                        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last_message || 'No messages'}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <p style={{ fontWeight: c.unread > 0 ? 700 : 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, margin: 0 }}>{other.name}</p>
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{timeAgo(c.updated_at)}</span>
+                        </div>
+                        {c.task && (
+                          <p style={{ fontSize: 12, color: 'var(--orange-600)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '0 0 2px 0' }}>
+                            {c.task.title}
+                          </p>
+                        )}
+                        <p style={{ fontSize: 13, color: c.unread > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontWeight: c.unread > 0 ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{c.last_message || 'No messages yet'}</p>
                       </div>
                       {c.unread > 0 && (
-                        <span className="dashboard-v4-nav-badge">{c.unread}</span>
+                        <span style={{ background: 'var(--orange-600)', color: 'white', borderRadius: '50%', minWidth: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, padding: '0 5px' }}>
+                          {c.unread}
+                        </span>
                       )}
                     </div>
-                  ))
+                  )})
                 )}
               </div>
 
               {/* Messages Thread */}
-              <div className={`dashboard-v4-message-thread ${selectedConversation ? 'block' : 'hidden md:flex'}`}>
-                {selectedConversation ? (
+              <div className={`dashboard-v4-message-thread ${selectedConversation ? '' : 'msg-hide-mobile'}`}>
+                {selectedConversation && activeConv ? (
                   <>
-                    {/* Mobile Back Button */}
-                    <div className="flex md:hidden items-center gap-2" style={{ padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                      <button onClick={() => setSelectedConversation(null)} style={{ padding: 8, background: 'none', border: 'none', cursor: 'pointer' }}>
-                        ← Back
+                    {/* Thread Header: back button + other party + task link + online status */}
+                    <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(26,26,26,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
+                      <button onClick={() => setSelectedConversation(null)} className="msg-back-btn" style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)' }}>
+                        ←
                       </button>
-                    </div>
-                    <div className="dashboard-v4-message-list">
-                      {messages.map(m => (
-                        <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
-                          <p>{m.content}</p>
-                          <p style={{ fontSize: 11, marginTop: 4, opacity: 0.7 }}>
-                            {new Date(m.created_at).toLocaleTimeString()}
-                          </p>
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {activeOther?.avatar_url ? (
+                          <img src={activeOther.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 13 }}>
+                            {activeOther?.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        <span style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', background: activeOnline?.color || '#9CA3AF', border: '2px solid white' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{activeOther?.name}</p>
+                          <span style={{ fontSize: 11, color: activeOnline?.color || '#9CA3AF' }}>{activeOnline?.label}</span>
                         </div>
-                      ))}
+                        {activeConv.task && (
+                          <a
+                            href={`/tasks/${activeConv.task.id}`}
+                            style={{ fontSize: 12, color: 'var(--orange-600)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                            onClick={(e) => { e.stopPropagation() }}
+                          >
+                            {activeConv.task.title} →
+                          </a>
+                        )}
+                      </div>
+                      {activeConv.task && (
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', background: 'rgba(224,122,95,0.1)', padding: '2px 8px', borderRadius: 6, flexShrink: 0 }}>
+                          ${activeConv.task.budget}
+                        </span>
+                      )}
                     </div>
-                    <div className="dashboard-v4-message-input">
-                      <input
-                        type="text"
+
+                    {/* Messages */}
+                    <div className="dashboard-v4-message-list" ref={el => { if (el) el.scrollTop = el.scrollHeight }}>
+                      {messagesLoading ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
+                          <div className="msg-spinner" />
+                          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: 0 }}>Loading messages...</p>
+                        </div>
+                      ) : messagesError ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
+                          <span style={{ fontSize: 24 }}>⚠️</span>
+                          <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>{messagesError}</p>
+                          <button onClick={() => fetchMessages(selectedConversation)} className="v4-btn v4-btn-secondary" style={{ fontSize: 12, padding: '4px 12px' }}>Retry</button>
+                        </div>
+                      ) : messages.length === 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: 14 }}>
+                          No messages yet — send one to start the conversation
+                        </div>
+                      ) : (
+                        messages.map(m => (
+                          <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
+                            {m.sender_id !== user.id && m.sender?.name && (
+                              <p style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, opacity: 0.7 }}>{m.sender.name}</p>
+                            )}
+                            <p style={{ margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</p>
+                            <p style={{ fontSize: 11, marginTop: 4, opacity: 0.6, margin: 0 }}>
+                              {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Input */}
+                    <div className="dashboard-v4-message-input" style={{ alignItems: 'flex-end' }}>
+                      <textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type a message..."
                         className="dashboard-v4-form-input"
-                        style={{ flex: 1 }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(e) }}
+                        style={{ flex: 1, resize: 'none', minHeight: 40, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
+                        rows={1}
+                        disabled={sendingMessage}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(e) } }}
+                        onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
                       />
-                      <button className="v4-btn v4-btn-primary" onClick={sendMessage}>Send</button>
+                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={sendingMessage || !newMessage.trim()} style={{ minHeight: 40 }}>
+                        {sendingMessage ? '...' : 'Send'}
+                      </button>
                     </div>
                   </>
                 ) : (
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
-                    Select a conversation to start messaging
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', gap: 8 }}>
+                    <MessageCircle size={28} />
+                    <p style={{ margin: 0 }}>Select a conversation to start messaging</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        )}
+          )
+        })()}
 
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
@@ -3880,7 +4042,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {notifications.length === 0 ? (
               <div className="dashboard-v4-empty">
-                <div className="dashboard-v4-empty-icon">🔔</div>
+                <div className="dashboard-v4-empty-icon"><Bell size={24} /></div>
                 <p className="dashboard-v4-empty-title">No notifications yet</p>
                 <p className="dashboard-v4-empty-text">You'll see updates about your tasks here</p>
               </div>
@@ -3889,11 +4051,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 {notifications.map(n => (
                   <div
                     key={n.id}
-                    className={`dashboard-v4-notification ${!n.read_at ? 'unread' : ''}`}
+                    className={`dashboard-v4-notification ${!n.is_read ? 'unread' : ''}`}
                     onClick={() => navigateToNotification(n)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <div className="dashboard-v4-notification-icon">{NOTIFICATION_ICONS[n.type] || '🔔'}</div>
+                    <div className="dashboard-v4-notification-icon">{NOTIFICATION_ICONS[n.type] || <Bell size={18} />}</div>
                     <div className="dashboard-v4-notification-content">
                       <p className="dashboard-v4-notification-title">{n.title}</p>
                       <p className="dashboard-v4-notification-text">{n.message}</p>
@@ -4099,7 +4261,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 - Always verify task completion with \`view_proof\` before releasing payment
 - Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
 - Use \`dispute_task\` if work quality doesn't meet expectations
-- Payments are in USDC on the Base network
+- Payments are processed via Stripe
 
 ## API Info
 - Base URL: https://api.irlwork.ai/api
@@ -4265,7 +4427,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               </button>
             </div>
             <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring?tab=settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring/settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
           </div>
 
           {/* Dynamic API Key Display */}
@@ -4386,7 +4548,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* ===== PLATFORM CONFIGS ===== */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>💻</span> Platform-Specific Setup</h2>
+          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> Platform-Specific Setup</h2>
 
           <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
             <h3>Claude Desktop</h3>
@@ -4423,280 +4585,52 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
           </div>
         </section>
 
-        {/* ===== ALL 22 TOOLS ===== */}
-        <section id="tools" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🛠️</span> All 22 Tools</h2>
-
-          <div style={{marginBottom: '32px'}}>
-            <h3 className="mcp-v4-category-title">Search & Discovery</h3>
-            <div className="mcp-v4-tools-grid">
-              {[
-                { name: 'list_humans', desc: 'Search humans by category, city, rate, rating, skills with pagination' },
-                { name: 'get_human', desc: 'Get detailed human profile by human_id' }
-              ].map((tool, i) => (
-                <div key={i} className="mcp-v4-tool-card">
-                  <code>{tool.name}</code>
-                  <p>{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{marginBottom: '32px'}}>
-            <h3 className="mcp-v4-category-title">Conversations & Messaging</h3>
-            <div className="mcp-v4-tools-grid">
-              {[
-                { name: 'start_conversation', desc: 'Start a conversation with a human (human_id, message)' },
-                { name: 'send_message', desc: 'Send a message in a conversation (conversation_id, content)' },
-                { name: 'get_messages', desc: 'Get messages in a conversation with optional since filter' },
-                { name: 'get_unread_summary', desc: 'Get unread message count across all conversations' }
-              ].map((tool, i) => (
-                <div key={i} className="mcp-v4-tool-card">
-                  <code>{tool.name}</code>
-                  <p>{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{marginBottom: '32px'}}>
-            <h3 className="mcp-v4-category-title">Tasks</h3>
-            <div className="mcp-v4-tools-grid">
-              {[
-                { name: 'create_adhoc_task', desc: 'Create a new task/bounty with category, budget, and location' },
-                { name: 'my_adhoc_tasks', desc: 'List all your posted tasks' },
-                { name: 'task_templates', desc: 'Browse task templates by category' },
-                { name: 'get_applicants', desc: 'Get humans who applied to your task' },
-                { name: 'assign_human', desc: 'Assign a specific human to your task' },
-                { name: 'get_task_status', desc: 'Get detailed status of a task' }
-              ].map((tool, i) => (
-                <div key={i} className="mcp-v4-tool-card">
-                  <code>{tool.name}</code>
-                  <p>{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{marginBottom: '32px'}}>
-            <h3 className="mcp-v4-category-title">Proofs & Disputes</h3>
-            <div className="mcp-v4-tools-grid">
-              {[
-                { name: 'view_proof', desc: 'View proof submissions for a completed task' },
-                { name: 'dispute_task', desc: 'File a dispute for a task (reason, category, evidence)' }
-              ].map((tool, i) => (
-                <div key={i} className="mcp-v4-tool-card">
-                  <code>{tool.name}</code>
-                  <p>{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{marginBottom: '32px'}}>
-            <h3 className="mcp-v4-category-title">Bookings & Payments</h3>
-            <div className="mcp-v4-tools-grid">
-              {[
-                { name: 'create_booking', desc: 'Create a booking with a human (title, location, rate, schedule)' },
-                { name: 'complete_booking', desc: 'Mark a booking as completed' },
-                { name: 'release_escrow', desc: 'Release escrow payment to human after work is done' },
-                { name: 'my_bookings', desc: 'List all your bookings' }
-              ].map((tool, i) => (
-                <div key={i} className="mcp-v4-tool-card">
-                  <code>{tool.name}</code>
-                  <p>{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{marginBottom: '32px'}}>
-            <h3 className="mcp-v4-category-title">Notifications</h3>
-            <div className="mcp-v4-tools-grid">
-              {[
-                { name: 'notifications', desc: 'Get your notifications' },
-                { name: 'mark_notification_read', desc: 'Mark a notification as read' },
-                { name: 'set_webhook', desc: 'Register a webhook URL for push notifications' }
-              ].map((tool, i) => (
-                <div key={i} className="mcp-v4-tool-card">
-                  <code>{tool.name}</code>
-                  <p>{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mcp-v4-category-title">Feedback</h3>
-            <div className="mcp-v4-tools-grid">
-              {[
-                { name: 'submit_feedback', desc: 'Submit feedback or bug reports (message, type, urgency)' }
-              ].map((tool, i) => (
-                <div key={i} className="mcp-v4-tool-card">
-                  <code>{tool.name}</code>
-                  <p>{tool.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ===== USAGE EXAMPLES ===== */}
+        {/* ===== WHAT YOUR AGENT CAN DO ===== */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>📝</span> Usage Examples</h2>
-
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Search for humans with specific skills</h3>
-            <div className="mcp-v4-code-block">
-              <pre>{`{
-  "tool": "list_humans",
-  "arguments": {
-    "category": "delivery",
-    "max_rate": 50,
-    "city": "San Francisco",
-    "limit": 10
-  }
-}`}</pre>
-            </div>
-          </div>
-
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Create a task</h3>
-            <div className="mcp-v4-code-block">
-              <pre>{`{
-  "tool": "create_adhoc_task",
-  "arguments": {
-    "title": "Pick up package from FedEx",
-    "description": "Pick up a medium-sized package from FedEx downtown. Signature required. Bring to our office at 123 Main St.",
-    "category": "delivery",
-    "location": "San Francisco, CA",
-    "budget_max": 35
-  }
-}`}</pre>
-            </div>
-          </div>
-
-          <div className="mcp-v4-card">
-            <h3>Release payment after completion</h3>
-            <div className="mcp-v4-code-block">
-              <pre>{`{
-  "tool": "release_escrow",
-  "arguments": {
-    "booking_id": "booking_abc123"
-  }
-}`}</pre>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== TWO WAYS TO HIRE ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🔄</span> Two Ways to Hire</h2>
-
+          <h2 className="mcp-v4-section-title"><span>🛠️</span> What Your Agent Can Do</h2>
           <div className="mcp-v4-two-col">
             <div className="mcp-v4-card">
-              <h3>Direct Hire</h3>
-              <ol className="mcp-v4-list">
-                <li>Use <code>list_humans</code> to find someone</li>
-                <li>Call <code>start_conversation</code> to discuss</li>
-                <li>Use <code>create_booking</code> to formally book</li>
-                <li>Use <code>complete_booking</code> when work is done</li>
-                <li>Release payment with <code>release_escrow</code></li>
-              </ol>
-            </div>
-
-            <div className="mcp-v4-card">
-              <h3>Post a Bounty</h3>
-              <ol className="mcp-v4-list">
-                <li>Call <code>create_adhoc_task</code> with details</li>
-                <li>Humans browse and apply to your task</li>
-                <li>Review with <code>get_applicants</code></li>
-                <li>Assign with <code>assign_human</code></li>
-                <li>Verify with <code>view_proof</code></li>
-                <li>Pay with <code>release_escrow</code></li>
-              </ol>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== BEST PRACTICES ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>✨</span> Best Practices</h2>
-
-          <div className="mcp-v4-two-col">
-            <div className="mcp-v4-card">
-              <h3>Be Specific</h3>
-              <p>Provide detailed task descriptions. Include exact addresses, time windows, and expected outcomes.</p>
+              <h3>Search & Discovery</h3>
+              <ul className="mcp-v4-list">
+                <li>Search humans by skill, location, rate, and rating</li>
+                <li>View detailed profiles and availability</li>
+                <li>Browse task templates by category</li>
+              </ul>
             </div>
             <div className="mcp-v4-card">
-              <h3>Allow Buffer Time</h3>
-              <p>Physical world tasks can be unpredictable. Add extra time for traffic, wait times, and delays.</p>
+              <h3>Task Management</h3>
+              <ul className="mcp-v4-list">
+                <li>Create tasks with budgets and deadlines</li>
+                <li>Review and assign applicants</li>
+                <li>Track progress and view proof</li>
+              </ul>
             </div>
             <div className="mcp-v4-card">
-              <h3>Verify Availability</h3>
-              <p>Check human availability before committing to tight deadlines. Use <code>get_human</code> for profile info.</p>
+              <h3>Communication</h3>
+              <ul className="mcp-v4-list">
+                <li>Start conversations with humans</li>
+                <li>Send and receive messages</li>
+                <li>Get unread message summaries</li>
+              </ul>
             </div>
             <div className="mcp-v4-card">
-              <h3>Verify Before Paying</h3>
-              <p>Always use <code>view_proof</code> to review submitted work before releasing payment with <code>release_escrow</code>.</p>
+              <h3>Payments & Escrow</h3>
+              <ul className="mcp-v4-list">
+                <li>Payments via Stripe</li>
+                <li>Escrow-protected transactions</li>
+                <li>Dispute resolution system</li>
+              </ul>
             </div>
-            <div className="mcp-v4-card">
-              <h3>Handle Disputes</h3>
-              <p>Use <code>dispute_task</code> if work quality doesn't meet expectations. Include evidence URLs for faster resolution.</p>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Handle Errors</h3>
-              <p>Always check response status. Implement retry logic with exponential backoff on failures.</p>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== RATE LIMITS ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>⚡</span> Rate Limits</h2>
-          <div className="mcp-v4-card">
-            <div className="mcp-v4-stats">
-              <div>
-                <div className="mcp-v4-stat-value">100/min</div>
-                <div className="mcp-v4-stat-label">GET requests</div>
-              </div>
-              <div>
-                <div className="mcp-v4-stat-value">20/min</div>
-                <div className="mcp-v4-stat-label">POST requests</div>
-              </div>
-              <div>
-                <div className="mcp-v4-stat-value">429</div>
-                <div className="mcp-v4-stat-label">Rate limit error</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== NETWORK ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>◈</span> Network</h2>
-          <div className="mcp-v4-card">
-            <div className="mcp-v4-network-card">
-              <span className="mcp-v4-network-icon">◈</span>
-              <div>
-                <h3>Base</h3>
-                <p>USDC on Base network</p>
-              </div>
-            </div>
-            <p>All payments are settled in USDC on Base. Fast, low-fee transactions for global accessibility.</p>
           </div>
         </section>
 
         {/* CTA */}
         <section className="mcp-v4-cta">
-          <h2>Ready to integrate?</h2>
-          <p>Add irlwork-mcp to your AI agent and start hiring humans today.</p>
+          <h2>Need the full API reference?</h2>
+          <p>View all 22+ tools, parameters, and usage examples in the complete documentation.</p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            {user ? (
-              <a href="/dashboard/hiring" className="btn-v4 btn-v4-primary btn-v4-lg">Go to Dashboard</a>
-            ) : (
-              <a href="/auth" className="btn-v4 btn-v4-primary btn-v4-lg">Get Started</a>
-            )}
+            <a href="/connect-agent" className="btn-v4 btn-v4-primary btn-v4-lg">View Full API Docs →</a>
+            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
           </div>
         </section>
       </main>
@@ -4711,53 +4645,25 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
                 <span className="footer-v4-logo-name">irlwork.ai</span>
               </a>
               <p className="footer-v4-tagline">AI agents create work. Humans get paid.</p>
-              <div className="footer-v4-social">
-                <a
-                  href="https://x.com/irlworkai"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="footer-v4-social-link"
-                  aria-label="Follow us on X"
-                >
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                </a>
-              </div>
             </div>
-
-            <div>
-              <h4 className="footer-v4-column-title">Platform</h4>
-              <div className="footer-v4-links">
-                <a href="/dashboard/working?tab=browse" className="footer-v4-link">Browse Tasks</a>
-                <a href="/auth" className="footer-v4-link">Sign Up</a>
-                <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
-              </div>
-            </div>
-
             <div>
               <h4 className="footer-v4-column-title">For Agents</h4>
               <div className="footer-v4-links">
+                <a href="/connect-agent" className="footer-v4-link">API Docs</a>
                 <a href="/connect-agent" className="footer-v4-link">Connect Agent</a>
-                <a href="/connect-agent#tools" className="footer-v4-link">API Tools</a>
                 <a href="/dashboard/hiring" className="footer-v4-link">Dashboard</a>
               </div>
             </div>
           </div>
-
           <div className="footer-v4-bottom">
-            <p className="footer-v4-copyright">© 2026 irlwork.ai</p>
-            <div className="footer-v4-legal">
-              <a href="/privacy" className="footer-v4-legal-link">Privacy</a>
-              <a href="/terms" className="footer-v4-legal-link">Terms</a>
-              <a href="/security" className="footer-v4-legal-link">Security</a>
-            </div>
+            <p>© 2025 irlwork.ai — Built for the agent economy</p>
           </div>
         </div>
       </footer>
     </div>
   )
 }
+
 
 
 // MCPPage removed — /mcp now redirects to /connect-agent (see routing below)
@@ -4837,7 +4743,7 @@ function App() {
         debug('[Auth] Session:', session ? 'found' : 'none')
 
         if (session?.user) {
-          await fetchUserProfile(session.user)
+          await fetchUserProfile(session.user, session.access_token)
         } else {
           setUser(null)
           setLoading(false)
@@ -4855,11 +4761,15 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       debug('[Auth] State change:', event, session ? 'with session' : 'no session')
       if (event === 'TOKEN_REFRESHED') {
-        debug('[Auth] Token refreshed, skipping profile re-fetch')
+        debug('[Auth] Token refreshed, updating token on user')
+        // Update the stored token without re-fetching full profile
+        if (session?.access_token) {
+          setUser(prev => prev ? { ...prev, token: session.access_token } : prev)
+        }
         return
       }
       if (session?.user) {
-        await fetchUserProfile(session.user)
+        await fetchUserProfile(session.user, session.access_token)
       } else {
         setUser(null)
         setLoading(false)
@@ -4869,13 +4779,15 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  async function fetchUserProfile(supabaseUser) {
+  async function fetchUserProfile(supabaseUser, accessToken) {
     try {
       debug('[Auth] Fetching user profile...')
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 8000)
+      // Prefer JWT access_token for auth, fall back to UUID
+      const authToken = accessToken || supabaseUser.id
       const res = await fetch(`${API_URL}/auth/verify`, {
-        headers: { Authorization: supabaseUser.id },
+        headers: { Authorization: authToken },
         signal: controller.signal
       })
       clearTimeout(timeout)
@@ -4886,8 +4798,11 @@ function App() {
 
         // Trust backend completely - no localStorage merge
         // Always use Supabase auth email (source of truth for sign-in email)
-        const finalUser = fixAvatarUrl({ ...data.user, email: supabaseUser.email || data.user.email, supabase_user: true })
-        localStorage.setItem('user', JSON.stringify(finalUser)) // Cache for next load
+        // Store JWT token on user object for subsequent API calls
+        const finalUser = fixAvatarUrl({ ...data.user, email: supabaseUser.email || data.user.email, token: accessToken || null, supabase_user: true })
+        // Don't cache JWT in localStorage (it expires) — only cache profile data
+        const cacheUser = { ...finalUser, token: undefined }
+        localStorage.setItem('user', JSON.stringify(cacheUser))
         setUser(finalUser)
       } else if (res.status === 404) {
         // New user - needs onboarding
@@ -4897,10 +4812,12 @@ function App() {
           email: supabaseUser.email,
           name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
           avatar_url: supabaseUser.user_metadata?.avatar_url || '',
+          token: accessToken || null,
           supabase_user: true,
           needs_onboarding: true
         }
-        localStorage.setItem('user', JSON.stringify(newUser))
+        const cacheUser = { ...newUser, token: undefined }
+        localStorage.setItem('user', JSON.stringify(cacheUser))
         setUser(newUser)
       } else {
         debug('[Auth] Backend error:', res.status)
@@ -4908,12 +4825,13 @@ function App() {
         const cached = JSON.parse(localStorage.getItem('user') || 'null')
         if (cached && !cached.needs_onboarding) {
           debug('[Auth] Using cached profile (API error fallback)')
-          setUser({ ...cached, supabase_user: true })
+          setUser({ ...cached, token: accessToken || null, supabase_user: true })
         } else {
           const newUser = {
             id: supabaseUser.id,
             email: supabaseUser.email,
             name: supabaseUser.user_metadata?.full_name || 'User',
+            token: accessToken || null,
             supabase_user: true,
             needs_onboarding: true
           }
@@ -4926,13 +4844,14 @@ function App() {
       const cached = JSON.parse(localStorage.getItem('user') || 'null')
       if (cached && !cached.needs_onboarding) {
         debug('[Auth] Using cached profile (network error fallback)')
-        setUser({ ...cached, supabase_user: true })
+        setUser({ ...cached, token: accessToken || null, supabase_user: true })
       } else {
         setUser({
           id: supabaseUser.id,
           email: supabaseUser.email,
           name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
           avatar_url: supabaseUser.user_metadata?.avatar_url || '',
+          token: accessToken || null,
           supabase_user: true,
           needs_onboarding: true
         })
@@ -4958,7 +4877,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({
           email: user.email,
@@ -4983,7 +4902,7 @@ function App() {
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
-        navigate('/dashboard/working?tab=browse')
+        navigate('/dashboard/working/browse')
       } else {
         const errorData = await res.json().catch(() => ({}))
         console.error('[Onboarding] Failed:', errorData)
@@ -5060,10 +4979,10 @@ function App() {
       return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
-    // Dashboard route - requires auth (matches /dashboard/working and /dashboard/hiring)
-    if (path === '/dashboard/working' || path === '/dashboard/hiring') {
+    // Dashboard route - requires auth (matches /dashboard/working/... and /dashboard/hiring/...)
+    if (path.startsWith('/dashboard/working') || path.startsWith('/dashboard/hiring')) {
       if (!user || user.needs_onboarding) return <Loading />
-      return <Dashboard user={user} onLogout={logout} initialMode={path === '/dashboard/hiring' ? 'hiring' : 'working'} onUserUpdate={setUser} />
+      return <Dashboard user={user} onLogout={logout} initialMode={path.startsWith('/dashboard/hiring') ? 'hiring' : 'working'} onUserUpdate={setUser} />
     }
 
     // Bare /dashboard redirect (handled by useEffect above, but guard here too)

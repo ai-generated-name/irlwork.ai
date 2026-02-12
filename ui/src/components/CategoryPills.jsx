@@ -1,4 +1,5 @@
 import React from 'react';
+import { Search, Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react'
 
 const TASK_CATEGORIES = [
   { value: '', label: 'All', icon: '🔍' },

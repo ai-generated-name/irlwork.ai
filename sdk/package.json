@@ -13,7 +13,7 @@
     "ai-agents",
     "task-marketplace",
     "human-work",
-    "usdc-payments"
+    "stripe-payments"
   ],
   "author": "IRL Work <team@irlwork.ai>",
   "license": "MIT",

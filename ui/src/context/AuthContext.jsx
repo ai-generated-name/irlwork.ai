@@ -23,7 +23,7 @@ export function AuthProvider({ children }) {
         debug('[Auth] Got session:', session ? 'exists' : 'none')
         if (session?.user) {
           debug('[Auth] User ID:', session.user.id)
-          fetchUserProfile(session.user.id, session.user.email)
+          fetchUserProfile(session.user.id, session.user.email, session.access_token)
         } else {
           setLoading(false)
         }
@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
         if (session?.user) {
-          await fetchUserProfile(session.user.id, session.user.email)
+          await fetchUserProfile(session.user.id, session.user.email, session.access_token)
         } else {
           setUser(null)
           setLoading(false)
@@ -49,14 +49,15 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchUserProfile = async (userId, supabaseEmail) => {
+  const fetchUserProfile = async (userId, supabaseEmail, accessToken) => {
     debug('[Auth] Fetching profile for user:', userId)
 
     try {
       debug('[Auth] Calling API:', API_URL + '/auth/verify')
-
+      // Prefer JWT access_token for auth, fall back to UUID
+      const authToken = accessToken || userId
       const res = await fetch(API_URL + '/auth/verify', {
-        headers: { Authorization: userId }
+        headers: { Authorization: authToken }
       })
 
       debug('[Auth] API response status:', res.status)
@@ -64,7 +65,8 @@ export function AuthProvider({ children }) {
         const data = await res.json()
         debug('[Auth] Got user from API:', data.user?.id)
         // Always use Supabase auth email (source of truth for sign-in email)
-        setUser({ ...data.user, email: supabaseEmail || data.user.email, supabase_user: true })
+        // Store JWT token for subsequent API calls
+        setUser({ ...data.user, email: supabaseEmail || data.user.email, token: accessToken || null, supabase_user: true })
       } else {
         debug('[Auth] API returned non-OK status, using fallback')
         const { data: { session } } = await supabase.auth.getSession()
@@ -164,7 +166,7 @@ export function AuthProvider({ children }) {
       ...options,
       headers: {
         ...options.headers,
-        Authorization: user?.id || ''
+        Authorization: user?.token || user?.id || ''
       }
     })
 
