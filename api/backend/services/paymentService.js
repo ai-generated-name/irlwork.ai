@@ -20,7 +20,7 @@ const { v4: uuidv4 } = require('uuid');
  * @returns {object} Payment release result
  */
 async function releasePaymentToPending(supabase, taskId, humanId, agentId, createNotification) {
-  const PLATFORM_FEE_PERCENT = 15;
+  const { PLATFORM_FEE_PERCENT } = require('../../config/constants');
 
   // Get task details
   const { data: task, error: taskError } = await supabase
@@ -33,22 +33,14 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Task not found');
   }
 
-  const escrowAmount = task.escrow_amount || task.budget || 50;
+  const escrowAmount = task.escrow_amount || task.budget;
+  if (!escrowAmount || escrowAmount <= 0) {
+    throw new Error('Task has no valid escrow amount or budget set');
+  }
 
   // Calculate fees
   const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
   const netAmount = escrowAmount - platformFee;
-
-  // Get human's wallet
-  const { data: human, error: humanError } = await supabase
-    .from('users')
-    .select('wallet_address')
-    .eq('id', humanId)
-    .single();
-
-  if (humanError || !human?.wallet_address) {
-    throw new Error('Human has no wallet address');
-  }
 
   // Convert to cents for database storage
   const netAmountCents = Math.round(netAmount * 100);
@@ -66,7 +58,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
       task_id: taskId,
       amount_cents: netAmountCents,
       status: 'pending',
-      payout_method: task.payment_method || 'usdc',
+      payout_method: 'stripe',
       clears_at: clearsAt.toISOString(),
       created_at: new Date().toISOString()
     })
@@ -78,25 +70,31 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Failed to create pending transaction');
   }
 
-  // Update task escrow status
-  await supabase
+  // Update task escrow status — atomic guard prevents double-release
+  const { data: releasedTask, error: releaseError } = await supabase
     .from('tasks')
     .update({
       escrow_status: 'released',
       escrow_released_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', taskId);
+    .eq('id', taskId)
+    .in('escrow_status', ['deposited', 'held'])
+    .select('id')
+    .single();
 
-  // Record payout (without tx_hash yet, as payment is pending)
+  if (releaseError || !releasedTask) {
+    throw new Error('Payment has already been released or is in a disputed state');
+  }
+
+  // Record payout (Stripe transfer will happen after 48-hour hold)
   await supabase.from('payouts').insert({
     id: uuidv4(),
     task_id: taskId,
     human_id: humanId,
-    tx_hash: null, // No tx_hash yet - payment pending dispute window
     amount_cents: netAmountCents,
     fee_cents: platformFeeCents,
-    wallet_address: human.wallet_address,
+    payout_method: 'stripe',
     status: 'pending',
     created_at: new Date().toISOString()
   });
@@ -109,8 +107,8 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   await supabase.rpc('increment_user_stat', { user_id_param: humanId, stat_name: 'total_tasks_completed', increment_by: 1 });
   await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', humanId);
 
-  // Update agent's total_usdc_paid (atomic increment)
-  await supabase.rpc('increment_user_stat', { user_id_param: agentId, stat_name: 'total_usdc_paid', increment_by: netAmount });
+  // Update agent's total paid (atomic increment)
+  await supabase.rpc('increment_user_stat', { user_id_param: agentId, stat_name: 'total_paid', increment_by: netAmount });
   await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', agentId);
 
   // Notify human about pending payment with 48-hour hold
@@ -119,7 +117,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
       humanId,
       'payment_pending',
       'Payment Released - Pending Clearance',
-      `Your payment of $${netAmount.toFixed(2)} USDC has been released and will be available for withdrawal on ${clearsAt.toLocaleDateString()} at ${clearsAt.toLocaleTimeString()}. This 48-hour hold period allows for dispute resolution.`
+      `Your payment of $${netAmount.toFixed(2)} has been released and will be available for withdrawal on ${clearsAt.toLocaleDateString()} at ${clearsAt.toLocaleTimeString()}. This 48-hour hold period allows for dispute resolution.`
     );
   }
 

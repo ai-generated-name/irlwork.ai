@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
+import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
 
 import API_URL from '../config/api';
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  errands: '🏃',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  other: '📋',
+  delivery: <Package size={16} />,
+  photography: <Camera size={16} />,
+  'data-collection': <BarChart3 size={16} />,
+  errands: <Footprints size={16} />,
+  'tech-setup': <Monitor size={16} />,
+  translation: <Globe size={16} />,
+  verification: <CheckCircle size={16} />,
+  other: <ClipboardList size={16} />,
 };
 
 export default function QuickApplyModal({
@@ -20,15 +21,21 @@ export default function QuickApplyModal({
   onSuccess,
   userToken,
 }) {
-  const [coverLetter, setCoverLetter] = useState('');
+  const [whyFit, setWhyFit] = useState('');
+  const [availability, setAvailability] = useState('');
+  const [questions, setQuestions] = useState('');
+  const [counterOffer, setCounterOffer] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
   if (!isOpen || !task) return null;
 
+  const canSubmit = whyFit.trim().length > 0 && availability.trim().length > 0;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canSubmit) return;
     setLoading(true);
     setError(null);
 
@@ -40,7 +47,10 @@ export default function QuickApplyModal({
           'Authorization': userToken || '',
         },
         body: JSON.stringify({
-          cover_letter: coverLetter.trim() || null,
+          cover_letter: whyFit.trim(),
+          availability: availability.trim(),
+          questions: questions.trim() || null,
+          proposed_rate: counterOffer ? parseFloat(counterOffer) : null,
         }),
       });
 
@@ -63,13 +73,16 @@ export default function QuickApplyModal({
   };
 
   const handleClose = () => {
-    setCoverLetter('');
+    setWhyFit('');
+    setAvailability('');
+    setQuestions('');
+    setCounterOffer('');
     setError(null);
     setSuccess(false);
     onClose();
   };
 
-  const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
+  const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={16} />;
 
   return (
     <div className="quick-apply-modal-overlay" onClick={handleClose}>
@@ -109,7 +122,7 @@ export default function QuickApplyModal({
               <h3 className="quick-apply-modal-task-title">{task.title}</h3>
               <div className="quick-apply-modal-task-meta">
                 <span className="quick-apply-modal-task-budget">
-                  ${task.budget || 0} USDC
+                  ${task.budget || 0} USD
                 </span>
                 {task.distance_km != null && (
                   <span className="quick-apply-modal-task-distance">
@@ -121,18 +134,77 @@ export default function QuickApplyModal({
 
             {/* Form */}
             <form onSubmit={handleSubmit}>
+              {/* 1. Why you're a good fit (required) */}
               <div className="quick-apply-modal-field">
-                <label htmlFor="coverLetter">Message to task poster (optional)</label>
+                <label htmlFor="whyFit">
+                  Why you're a good fit <span className="quick-apply-modal-required">*</span>
+                </label>
                 <textarea
-                  id="coverLetter"
-                  value={coverLetter}
-                  onChange={(e) => setCoverLetter(e.target.value)}
-                  placeholder="Introduce yourself, share relevant experience, or ask questions about the task..."
-                  rows={4}
+                  id="whyFit"
+                  value={whyFit}
+                  onChange={(e) => setWhyFit(e.target.value)}
+                  placeholder="Share relevant experience, skills, or why you're the right person for this task..."
+                  rows={3}
                   maxLength={500}
                 />
                 <span className="quick-apply-modal-field-hint">
-                  {coverLetter.length}/500 characters
+                  {whyFit.length}/500 characters
+                </span>
+              </div>
+
+              {/* 2. Confirm availability (required) */}
+              <div className="quick-apply-modal-field">
+                <label htmlFor="availability">
+                  Confirm availability <span className="quick-apply-modal-required">*</span>
+                </label>
+                <textarea
+                  id="availability"
+                  value={availability}
+                  onChange={(e) => setAvailability(e.target.value)}
+                  placeholder="When can you start? How soon can you complete this?"
+                  rows={2}
+                  maxLength={200}
+                />
+                <span className="quick-apply-modal-field-hint">
+                  {availability.length}/200 characters
+                </span>
+              </div>
+
+              {/* 3. Questions about the task (optional) */}
+              <div className="quick-apply-modal-field">
+                <label htmlFor="questions">Questions about the task</label>
+                <textarea
+                  id="questions"
+                  value={questions}
+                  onChange={(e) => setQuestions(e.target.value)}
+                  placeholder="Any questions or clarifications needed?"
+                  rows={2}
+                  maxLength={300}
+                />
+                <span className="quick-apply-modal-field-hint">
+                  {questions.length}/300 characters
+                </span>
+              </div>
+
+              {/* 4. Counter offer (optional) */}
+              <div className="quick-apply-modal-field">
+                <label htmlFor="counterOffer">Counter offer</label>
+                <div className="quick-apply-modal-counter-offer">
+                  <span className="quick-apply-modal-currency-prefix">$</span>
+                  <input
+                    id="counterOffer"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={counterOffer}
+                    onChange={(e) => setCounterOffer(e.target.value)}
+                    placeholder="0.00"
+                    className="quick-apply-modal-counter-input"
+                  />
+                  <span className="quick-apply-modal-currency-suffix">USDC</span>
+                </div>
+                <span className="quick-apply-modal-field-hint">
+                  Task budget: ${task.budget || 0} USDC
                 </span>
               </div>
 
@@ -159,7 +231,7 @@ export default function QuickApplyModal({
                 <button
                   type="submit"
                   className="quick-apply-modal-btn primary"
-                  disabled={loading}
+                  disabled={loading || !canSubmit}
                 >
                   {loading ? (
                     <>

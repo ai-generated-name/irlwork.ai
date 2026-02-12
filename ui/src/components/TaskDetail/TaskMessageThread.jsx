@@ -25,7 +25,7 @@ export default function TaskMessageThread({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Poll for new messages every 3 seconds
+  // Poll for new messages every 3 seconds (parent passes incremental loader)
   useEffect(() => {
     if (!conversation) return;
 
@@ -52,6 +52,9 @@ export default function TaskMessageThread({
     }
   };
 
+  // Sort messages by created_at to guarantee order
+  const sortedMessages = [...(messages || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
   return (
     <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] flex flex-col h-[320px] sm:h-[420px] lg:h-[500px] shadow-sm">
       {/* Header */}
@@ -66,13 +69,13 @@ export default function TaskMessageThread({
           <div className="flex items-center justify-center h-full text-[#525252] text-xs sm:text-sm">
             No messages yet. Send a message to start the conversation.
           </div>
-        ) : messages.length === 0 ? (
+        ) : sortedMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-[#525252] text-xs sm:text-sm">
             No messages yet. Be the first to send a message!
           </div>
         ) : (
           <>
-            {messages.map(m => (
+            {sortedMessages.map(m => (
               <div
                 key={m.id}
                 className={`flex ${m.sender_id === user.id ? 'justify-end' : 'justify-start'}`}
@@ -92,7 +95,7 @@ export default function TaskMessageThread({
                         : 'text-[#8A8A8A]'
                     }`}
                   >
-                    {new Date(m.created_at).toLocaleTimeString()}
+                    {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
               </div>
@@ -103,14 +106,17 @@ export default function TaskMessageThread({
       </div>
 
       {/* Message Input */}
-      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(26,26,26,0.08)] flex gap-2 sm:gap-3 bg-white rounded-b-2xl">
-        <input
-          type="text"
+      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(26,26,26,0.08)] flex gap-2 sm:gap-3 items-end bg-white rounded-b-2xl">
+        <textarea
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message..."
           className={`${styles.input} flex-1 !py-2.5 sm:!py-3 text-sm`}
+          style={{ resize: 'none', minHeight: 40, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
+          rows={1}
           disabled={sending}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) } }}
+          onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
         />
         <button
           type="submit"

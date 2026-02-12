@@ -1,15 +1,16 @@
 import React from 'react';
 import EscrowBadge from './EscrowBadge';
+import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, MapPin, CalendarDays, Bot } from 'lucide-react';
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  errands: '🏃',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  other: '📋',
+  delivery: <Package size={16} />,
+  photography: <Camera size={16} />,
+  'data-collection': <BarChart3 size={16} />,
+  errands: <Footprints size={16} />,
+  'tech-setup': <Monitor size={16} />,
+  translation: <Globe size={16} />,
+  verification: <CheckCircle size={16} />,
+  other: <ClipboardList size={16} />,
 };
 
 const STATUS_CONFIG = {
@@ -36,26 +37,30 @@ export default function MyTaskCard({
   if (!task) return null;
 
   const status = STATUS_CONFIG[task.status] || { label: task.status || 'Unknown', className: '' };
-  const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
+  const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={16} />;
   const categoryLabel = task.category?.replace('-', ' ') || 'General';
 
   // Deadline urgency
   const getUrgencyClass = () => {
     if (!task.deadline) return '';
-    const daysLeft = Math.ceil((new Date(task.deadline) - new Date()) / (1000 * 60 * 60 * 24));
-    if (daysLeft < 0) return 'mytasks-card--overdue';
-    if (daysLeft <= 1) return 'mytasks-card--urgent';
-    if (daysLeft <= 3) return 'mytasks-card--soon';
+    const diffMs = new Date(task.deadline) - new Date();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffMs < 0) return '';
+    if (diffHours < 24) return 'mytasks-card--urgent';
+    if (diffDays <= 3) return 'mytasks-card--soon';
     return '';
   };
 
   const getDaysLeft = () => {
     if (!task.deadline) return null;
-    const daysLeft = Math.ceil((new Date(task.deadline) - new Date()) / (1000 * 60 * 60 * 24));
-    if (daysLeft < 0) return 'Overdue';
-    if (daysLeft === 0) return 'Due today';
-    if (daysLeft === 1) return '1 day left';
-    return `${daysLeft} days left`;
+    const diffMs = new Date(task.deadline) - new Date();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffMs < 0) return null;
+    if (diffHours < 1) return 'Due in < 1 hour';
+    if (diffHours < 24) return `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+    return `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
   };
 
   const urgencyClass = getUrgencyClass();
@@ -83,8 +88,8 @@ export default function MyTaskCard({
         </div>
         <div className="mytasks-card__meta">
           <span className="mytasks-card__meta-item">{categoryIcon} {categoryLabel}</span>
-          <span className="mytasks-card__meta-item">📍 {task.city || 'Remote'}</span>
-          <span className="mytasks-card__meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+          <span className="mytasks-card__meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
+          <span className="mytasks-card__meta-item"><CalendarDays size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
           <span className="mytasks-card__arrow">→</span>
         </div>
       </div>
@@ -108,9 +113,9 @@ export default function MyTaskCard({
 
       <div className="mytasks-card__meta">
         <span className="mytasks-card__meta-item">{categoryIcon} {categoryLabel}</span>
-        <span className="mytasks-card__meta-item">📍 {task.city || 'Remote'}</span>
-        <span className="mytasks-card__meta-item">📅 {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
-        {task.agent_name && <span className="mytasks-card__meta-item">🤖 {task.agent_name}</span>}
+        <span className="mytasks-card__meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
+        <span className="mytasks-card__meta-item"><CalendarDays size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+        {task.agent_name && <span className="mytasks-card__meta-item"><Bot size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.agent_name}</span>}
         {daysLeftLabel && (
           <span className={`mytasks-card__meta-item mytasks-card__deadline ${urgencyClass}`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: 'inline', verticalAlign: '-2px' }}>
