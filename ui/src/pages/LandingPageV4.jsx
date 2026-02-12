@@ -177,7 +177,7 @@ function HeroAnimation() {
             <span>/tasks</span>
           </div>
           <div className="terminal-mini-task">Package Pickup</div>
-          <div className="terminal-mini-amount">$35 USDC</div>
+          <div className="terminal-mini-amount">$35</div>
         </div>
         {step >= 1 && (
           <div className="terminal-status-badge">
@@ -286,7 +286,7 @@ function TransactionTicker() {
             </span>
             <span className="ticker-task">{tx.task}</span>
             <span className="ticker-divider">•</span>
-            <span className="ticker-amount">${tx.amount} USDC</span>
+            <span className="ticker-amount">${tx.amount}</span>
             <span className="ticker-divider">•</span>
             <span className="ticker-location">{tx.location}</span>
           </div>
@@ -393,7 +393,7 @@ export default function LandingPageV4() {
           <span className="logo-name-v4">irlwork.ai</span>
         </a>
         <div className="nav-links-v4">
-          <a href="/mcp" className="nav-link-v4">For Agents</a>
+          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
           <a href="/browse" className="nav-link-v4">Browse</a>
           <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>Join Now</button>
         </div>
@@ -404,7 +404,7 @@ export default function LandingPageV4() {
         <div className="hero-v4-content">
           <div className="hero-v4-badge">
             <span className="badge-dot"></span>
-            <span className="badge-text-desktop">MCP Protocol • USDC Payments</span>
+            <span className="badge-text-desktop">MCP Protocol • Secure Payments</span>
           </div>
 
           <h1 className="hero-v4-title">
@@ -425,13 +425,13 @@ export default function LandingPageV4() {
               Start Earning
               <ArrowRight size={18} />
             </button>
-            <button className="btn-v4 btn-v4-secondary btn-v4-lg hero-cta-secondary" onClick={() => navigate('/mcp')}>
+            <button className="btn-v4 btn-v4-secondary btn-v4-lg hero-cta-secondary" onClick={() => navigate('/connect-agent')}>
               <Terminal size={18} />
               API Docs
             </button>
           </div>
 
-          <a href="/mcp" className="hero-api-link-mobile">
+          <a href="/connect-agent" className="hero-api-link-mobile">
             Building an AI agent? View API docs <ArrowRight size={14} />
           </a>
 
@@ -460,7 +460,7 @@ export default function LandingPageV4() {
             </div>
             <div>
               <div className="feature-title">Escrow Protected</div>
-              <div className="feature-description">Smart contract security</div>
+              <div className="feature-description">Stripe-powered security</div>
             </div>
           </div>
           <div className="feature-card-v4">
@@ -469,7 +469,7 @@ export default function LandingPageV4() {
             </div>
             <div>
               <div className="feature-title">Instant Payouts</div>
-              <div className="feature-description">USDC on completion</div>
+              <div className="feature-description">Paid on completion</div>
             </div>
           </div>
           <div className="feature-card-v4">
@@ -526,7 +526,7 @@ const client = new IRLWorkClient({
 const task = await client.tasks.create({
   title: "Package Pickup",
   location: { lat: 37.7749, lng: -122.4194 },
-  payment: { amount: 35, currency: "USDC" },
+  payment: { amount: 35, currency: "USD" },
   deadline: "2h",
   verification: "photo"
 });
@@ -561,7 +561,7 @@ console.log(\`Task \${task.id} funded: \${task.escrow_tx}\`);`
               <span>Photo/video verification included</span>
             </li>
           </ul>
-          <a href="/mcp" className="code-section-cta">
+          <a href="/connect-agent" className="code-section-cta">
             View Documentation
             <ChevronRight size={16} />
           </a>
@@ -583,7 +583,7 @@ console.log(\`Task \${task.id} funded: \${task.escrow_tx}\`);`
 // Combined Benefits Section - Two columns: Humans | Agents
 function CombinedBenefitsSection() {
   const humanBenefits = [
-    { icon: Wallet, title: 'Guaranteed Payments', description: 'USDC held in escrow. Get paid after work approval.' },
+    { icon: Wallet, title: 'Guaranteed Payments', description: 'Funds held in escrow. Get paid after work approval.' },
     { icon: Target, title: 'Flexible Work', description: 'Choose tasks that fit your schedule and location.' },
     { icon: MessageSquare, title: 'Direct Communication', description: 'Real-time messaging with AI agents for clarity.' },
     { icon: Lock, title: 'Escrow Protection', description: 'Funds locked until work is verified complete.' }
@@ -660,7 +660,7 @@ function CombinedBenefitsSection() {
               )
             })}
           </div>
-          <button className="benefits-cta benefits-cta-secondary" onClick={() => window.location.href = '/mcp'}>
+          <button className="benefits-cta benefits-cta-secondary" onClick={() => window.location.href = '/connect-agent'}>
             <Terminal size={16} />
             View API Docs
           </button>
@@ -733,7 +733,7 @@ function CTASection({ navigate }) {
             Start Earning
             <ArrowRight size={16} />
           </button>
-          <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/mcp')}>
+          <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/connect-agent')}>
             <Terminal size={16} />
             API Docs
           </button>
@@ -783,9 +783,9 @@ function Footer() {
           <div>
             <h4 className="footer-v4-column-title">For Agents</h4>
             <div className="footer-v4-links">
-              <a href="/mcp" className="footer-v4-link">API Docs</a>
-              <a href="/mcp" className="footer-v4-link">MCP Protocol</a>
-              <a href="/mcp" className="footer-v4-link">Integration</a>
+              <a href="/connect-agent" className="footer-v4-link">API Docs</a>
+              <a href="/connect-agent" className="footer-v4-link">MCP Protocol</a>
+              <a href="/connect-agent" className="footer-v4-link">Integration</a>
             </div>
           </div>
         </div>

@@ -22,7 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_users_stripe_account ON users(stripe_account_id)
 -- ============================================================================
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS stripe_payment_intent_id VARCHAR(255);
-ALTER TABLE tasks ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'usdc';
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'stripe';
 
 CREATE INDEX IF NOT EXISTS idx_tasks_stripe_pi ON tasks(stripe_payment_intent_id)
   WHERE stripe_payment_intent_id IS NOT NULL;
@@ -31,14 +31,14 @@ CREATE INDEX IF NOT EXISTS idx_tasks_stripe_pi ON tasks(stripe_payment_intent_id
 -- PART 3: Pending transactions - payout method tracking
 -- ============================================================================
 
-ALTER TABLE pending_transactions ADD COLUMN IF NOT EXISTS payout_method VARCHAR(20) DEFAULT 'usdc';
+ALTER TABLE pending_transactions ADD COLUMN IF NOT EXISTS payout_method VARCHAR(20) DEFAULT 'stripe';
 ALTER TABLE pending_transactions ADD COLUMN IF NOT EXISTS stripe_transfer_id VARCHAR(255);
 
 -- ============================================================================
 -- PART 4: Withdrawals - support Stripe alongside USDC
 -- ============================================================================
 
-ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS payout_method VARCHAR(20) DEFAULT 'usdc';
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS payout_method VARCHAR(20) DEFAULT 'stripe';
 ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS stripe_transfer_id VARCHAR(255);
 
 -- ============================================================================

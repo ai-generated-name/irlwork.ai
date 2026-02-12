@@ -1,7 +1,7 @@
 const { stripe } = require('../lib/stripe');
 const { v4: uuidv4 } = require('uuid');
 
-const PLATFORM_FEE_PERCENT = 0.15; // 15% platform fee
+const { PLATFORM_FEE_PERCENT } = require('../../config/constants');
 
 // ============================================================================
 // CUSTOMER MANAGEMENT (Agents)
@@ -251,6 +251,17 @@ async function getConnectAccountStatus(stripeAccountId) {
   };
 }
 
+/**
+ * Generate a login link for the worker's Stripe Express Dashboard.
+ * Allows workers to manage bank accounts, view payouts, update tax info.
+ */
+async function createLoginLink(stripeAccountId) {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
+  return loginLink.url;
+}
+
 // ============================================================================
 // TRANSFERS (Platform → Worker)
 // ============================================================================
@@ -287,14 +298,83 @@ async function transferToWorker(supabase, pendingTransactionId, workerStripeAcco
 }
 
 // ============================================================================
+// REFUNDS
+// ============================================================================
+
+/**
+ * Refund a PaymentIntent directly by ID (no DB lookup).
+ * Used for immediate rollbacks, e.g. when a race condition causes a duplicate charge.
+ */
+async function refundPaymentIntent(paymentIntentId, reason = 'duplicate') {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  const refund = await stripe.refunds.create({
+    payment_intent: paymentIntentId,
+    reason,
+    metadata: { platform: 'irlwork', reason }
+  });
+
+  return { refund_id: refund.id, status: refund.status, amount: refund.amount };
+}
+
+/**
+ * Refund a payment to the agent's card by task ID.
+ * Used when disputes are resolved in the agent's favor or tasks are cancelled.
+ */
+async function refundPayment(supabase, taskId, reason = 'requested_by_customer') {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  // Get the payment intent ID from the task
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('stripe_payment_intent_id, escrow_status')
+    .eq('id', taskId)
+    .single();
+
+  if (!task?.stripe_payment_intent_id) {
+    throw new Error('No Stripe payment found for this task');
+  }
+
+  if (task.escrow_status === 'refunded') {
+    throw new Error('Payment has already been refunded');
+  }
+
+  const refund = await stripe.refunds.create({
+    payment_intent: task.stripe_payment_intent_id,
+    reason,
+    metadata: {
+      task_id: taskId,
+      platform: 'irlwork'
+    }
+  });
+
+  // Update task escrow status
+  await supabase
+    .from('tasks')
+    .update({
+      escrow_status: 'refunded',
+      escrow_refunded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId);
+
+  return {
+    refund_id: refund.id,
+    status: refund.status,
+    amount: refund.amount
+  };
+}
+
+// ============================================================================
 // WEBHOOK HANDLING
 // ============================================================================
 
 /**
  * Process a Stripe webhook event with idempotency.
+ * Events are recorded AFTER processing to ensure retry on failure.
  */
 async function handleWebhookEvent(event, supabase, createNotification) {
-  // Idempotency check
+  // Idempotency check — skip if already processed
   const { data: existing } = await supabase
     .from('stripe_events')
     .select('id')
@@ -306,13 +386,7 @@ async function handleWebhookEvent(event, supabase, createNotification) {
     return;
   }
 
-  // Record the event before processing
-  await supabase.from('stripe_events').insert({
-    id: event.id,
-    type: event.type,
-    processed_at: new Date().toISOString()
-  });
-
+  // Process the event FIRST, then record it (so failed processing gets retried)
   switch (event.type) {
     case 'payment_intent.succeeded':
       await handlePaymentIntentSucceeded(event.data.object, supabase, createNotification);
@@ -334,9 +408,36 @@ async function handleWebhookEvent(event, supabase, createNotification) {
       await handleTransferFailed(event.data.object, supabase, createNotification);
       break;
 
+    case 'charge.dispute.created':
+      await handleDisputeCreated(event.data.object, supabase, createNotification);
+      break;
+
+    case 'charge.dispute.closed':
+      await handleDisputeClosed(event.data.object, supabase, createNotification);
+      break;
+
+    case 'charge.refunded':
+      await handleChargeRefunded(event.data.object, supabase);
+      break;
+
+    case 'payout.failed':
+      await handlePayoutFailed(event.data.object, event.account, supabase, createNotification);
+      break;
+
+    case 'payout.paid':
+      await handlePayoutPaid(event.data.object, event.account, supabase, createNotification);
+      break;
+
     default:
       console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
   }
+
+  // Record AFTER successful processing — if we crash before here, Stripe will retry
+  await supabase.from('stripe_events').insert({
+    id: event.id,
+    type: event.type,
+    processed_at: new Date().toISOString()
+  });
 }
 
 async function handlePaymentIntentSucceeded(paymentIntent, supabase, createNotification) {
@@ -430,7 +531,18 @@ async function handleTransferFailed(transfer, supabase, createNotification) {
 
   if (!pendingTxId) return;
 
-  console.error(`[Stripe Webhook] Transfer failed: ${transfer.id}`);
+  console.error(`[Stripe Webhook] Transfer reversed/failed: ${transfer.id}`);
+
+  // Revert pending_transaction back to 'available' so worker can retry
+  await supabase
+    .from('pending_transactions')
+    .update({
+      status: 'available',
+      stripe_transfer_id: null,
+      notes: `Transfer ${transfer.id} was reversed — funds reverted to available`
+    })
+    .eq('id', pendingTxId)
+    .eq('status', 'withdrawn'); // Only revert if it was marked withdrawn
 
   // Get the worker from pending_transaction
   const { data: pendingTx } = await supabase
@@ -444,7 +556,234 @@ async function handleTransferFailed(transfer, supabase, createNotification) {
       pendingTx.user_id,
       'transfer_failed',
       'Payout Failed',
-      'Your bank payout could not be completed. Please verify your bank account details and try again.',
+      'Your bank payout could not be completed. Your funds are available for withdrawal — please verify your bank account details and try again.',
+      '/payments'
+    );
+  }
+}
+
+// ============================================================================
+// DISPUTE HANDLING
+// ============================================================================
+
+/**
+ * Handle charge.dispute.created — freeze pending_transactions so worker can't withdraw
+ */
+async function handleDisputeCreated(dispute, supabase, createNotification) {
+  const chargeId = dispute.charge;
+  if (!chargeId) return;
+
+  console.error(`[Stripe Webhook] Dispute created: ${dispute.id} for charge ${chargeId}`);
+
+  // Find the charge to get the payment intent
+  let paymentIntentId;
+  try {
+    const charge = await stripe.charges.retrieve(chargeId);
+    paymentIntentId = charge.payment_intent;
+  } catch (e) {
+    console.error(`[Stripe Webhook] Could not retrieve charge ${chargeId}:`, e.message);
+    return;
+  }
+
+  if (!paymentIntentId) return;
+
+  // Find the task by payment intent
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id')
+    .eq('stripe_payment_intent_id', paymentIntentId)
+    .single();
+
+  if (!task) {
+    console.error(`[Stripe Webhook] No task found for payment_intent ${paymentIntentId}`);
+    return;
+  }
+
+  // Freeze all pending_transactions for this task
+  await supabase
+    .from('pending_transactions')
+    .update({
+      status: 'frozen',
+      notes: `Frozen due to dispute ${dispute.id}`
+    })
+    .eq('task_id', task.id)
+    .in('status', ['pending', 'available']);
+
+  // Also freeze payouts
+  await supabase
+    .from('payouts')
+    .update({ status: 'frozen' })
+    .eq('task_id', task.id)
+    .in('status', ['pending', 'available']);
+
+  // Update task
+  await supabase
+    .from('tasks')
+    .update({
+      escrow_status: 'disputed',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', task.id);
+
+  console.log(`[Stripe Webhook] Froze funds for task ${task.id} due to dispute ${dispute.id}`);
+}
+
+/**
+ * Handle charge.dispute.closed — resolve based on outcome
+ */
+async function handleDisputeClosed(dispute, supabase, createNotification) {
+  const chargeId = dispute.charge;
+  if (!chargeId) return;
+
+  console.log(`[Stripe Webhook] Dispute closed: ${dispute.id}, status: ${dispute.status}`);
+
+  let paymentIntentId;
+  try {
+    const charge = await stripe.charges.retrieve(chargeId);
+    paymentIntentId = charge.payment_intent;
+  } catch (e) {
+    return;
+  }
+
+  if (!paymentIntentId) return;
+
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id')
+    .eq('stripe_payment_intent_id', paymentIntentId)
+    .single();
+
+  if (!task) return;
+
+  if (dispute.status === 'won') {
+    // Platform won — unfreeze funds for worker
+    await supabase
+      .from('pending_transactions')
+      .update({
+        status: 'available',
+        notes: `Unfrozen — dispute ${dispute.id} won by platform`
+      })
+      .eq('task_id', task.id)
+      .eq('status', 'frozen');
+
+    await supabase
+      .from('payouts')
+      .update({ status: 'available' })
+      .eq('task_id', task.id)
+      .eq('status', 'frozen');
+
+    await supabase
+      .from('tasks')
+      .update({ escrow_status: 'released', updated_at: new Date().toISOString() })
+      .eq('id', task.id);
+
+  } else {
+    // Platform lost — agent gets refund (Stripe handles this automatically on dispute loss)
+    await supabase
+      .from('pending_transactions')
+      .update({
+        status: 'cancelled',
+        notes: `Cancelled — dispute ${dispute.id} lost by platform`
+      })
+      .eq('task_id', task.id)
+      .eq('status', 'frozen');
+
+    await supabase
+      .from('payouts')
+      .update({ status: 'cancelled' })
+      .eq('task_id', task.id)
+      .eq('status', 'frozen');
+
+    await supabase
+      .from('tasks')
+      .update({ escrow_status: 'refunded', updated_at: new Date().toISOString() })
+      .eq('id', task.id);
+  }
+}
+
+/**
+ * Handle charge.refunded — update task status
+ */
+async function handleChargeRefunded(charge, supabase) {
+  // Try charge metadata first, then fall back to looking up by payment_intent
+  let taskId = charge.metadata?.task_id;
+
+  if (!taskId && charge.payment_intent) {
+    const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent.id;
+    const { data: task } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('stripe_payment_intent_id', piId)
+      .single();
+    taskId = task?.id;
+  }
+
+  if (!taskId) {
+    console.warn(`[Stripe Webhook] charge.refunded — could not find task for charge ${charge.id}`);
+    return;
+  }
+
+  console.log(`[Stripe Webhook] Charge refunded for task ${taskId}`);
+
+  await supabase
+    .from('tasks')
+    .update({
+      escrow_status: 'refunded',
+      escrow_refunded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId);
+}
+
+/**
+ * Handle payout.failed — worker's bank rejected the transfer
+ * @param {object} payout - Stripe payout object
+ * @param {string} connectedAccountId - The Connect account ID (event.account, e.g. acct_xxx)
+ */
+async function handlePayoutFailed(payout, connectedAccountId, supabase, createNotification) {
+  console.error(`[Stripe Webhook] Payout failed: ${payout.id}, connected account: ${connectedAccountId}`);
+
+  // Find the worker by their Stripe Connect account ID (event.account, NOT payout.destination which is the bank account ID)
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('stripe_account_id', connectedAccountId)
+    .single();
+
+  if (user && createNotification) {
+    await createNotification(
+      user.id,
+      'payout_failed',
+      'Bank Deposit Failed',
+      'Your bank rejected the deposit. Please check your bank account details in your Stripe dashboard and try withdrawing again.',
+      '/payments'
+    );
+  }
+}
+
+/**
+ * Handle payout.paid — worker's bank deposit has landed.
+ * @param {object} payout - Stripe payout object
+ * @param {string} connectedAccountId - The Connect account ID (event.account, e.g. acct_xxx)
+ */
+async function handlePayoutPaid(payout, connectedAccountId, supabase, createNotification) {
+  if (!connectedAccountId) return;
+
+  const amountDollars = (payout.amount / 100).toFixed(2);
+
+  // Find worker by their Stripe Connect account ID (event.account, NOT payout.destination which is the bank account ID)
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('stripe_account_id', connectedAccountId)
+    .single();
+
+  if (user && createNotification) {
+    await createNotification(
+      user.id,
+      'payout_paid',
+      'Bank Deposit Received',
+      `$${amountDollars} has been deposited to your bank account.`,
       '/payments'
     );
   }
@@ -459,8 +798,10 @@ module.exports = {
   chargeAgentForTask,
   createConnectAccount,
   createAccountLink,
+  createLoginLink,
   getConnectAccountStatus,
   transferToWorker,
+  refundPayment,
+  refundPaymentIntent,
   handleWebhookEvent,
-  PLATFORM_FEE_PERCENT,
 };
