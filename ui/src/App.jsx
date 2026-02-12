@@ -3079,9 +3079,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                               fileType: 'image/jpeg',
                               initialQuality: 0.85,
                             })
+                            console.log(`[Avatar] Compressed: ${(file.size/1024).toFixed(0)}KB → ${(fileToUpload.size/1024).toFixed(0)}KB`)
                           } catch (compErr) {
-                            console.warn('Compression failed, uploading original:', compErr)
-                            // Fall through with original file
+                            console.warn('[Avatar] Compression failed:', compErr.message || compErr)
+                            // If original file is too large to upload safely, reject it
+                            if (file.size > 4 * 1024 * 1024) {
+                              toast.error('Could not process this image — try a screenshot or smaller photo')
+                              setAvatarUploading(false)
+                              return
+                            }
                           }
                         }
                         // Use promise-based FileReader to avoid callback nesting
@@ -3091,35 +3097,44 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           reader.onerror = () => reject(new Error('Failed to read file'))
                           reader.readAsDataURL(fileToUpload)
                         })
-                        // Upload with timeout for mobile networks
+                        console.log(`[Avatar] Base64 size: ${(base64.length/1024/1024).toFixed(1)}MB`)
+                        // Upload with timeout for mobile networks (60s)
                         const controller = new AbortController()
-                        const timeout = setTimeout(() => controller.abort(), 30000)
+                        const timeout = setTimeout(() => controller.abort(), 60000)
                         try {
+                          const payload = JSON.stringify({ file: base64, filename: file.name, mimeType: fileToUpload.type || 'image/jpeg' })
+                          console.log(`[Avatar] Uploading ${(payload.length / 1024 / 1024).toFixed(1)}MB payload`)
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: user.id },
-                            body: JSON.stringify({ file: base64, filename: file.name, mimeType: fileToUpload.type || 'image/jpeg' }),
+                            body: payload,
                             signal: controller.signal,
                           })
                           clearTimeout(timeout)
                           if (res.ok) {
                             const data = await res.json()
+                            if (data.success === false) {
+                              console.warn('[Avatar] Server returned success:false — R2 upload may have failed')
+                            }
                             const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
                             const updatedUser = { ...user, avatar_url: avatarProxyUrl }
                             setUser(updatedUser)
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                             toast.success('Profile photo updated!')
                           } else {
-                            const errData = await res.json().catch(() => ({}))
-                            toast.error(errData.error || 'Failed to upload photo')
+                            const errText = await res.text().catch(() => '')
+                            let errMsg = 'Failed to upload photo'
+                            try { errMsg = JSON.parse(errText).error || errMsg } catch {}
+                            console.error(`[Avatar] Server error ${res.status}: ${errText}`)
+                            toast.error(errMsg)
                           }
                         } catch (fetchErr) {
                           clearTimeout(timeout)
                           if (fetchErr.name === 'AbortError') {
                             toast.error('Upload timed out — please try on a stronger connection')
                           } else {
-                            console.error('Avatar upload error:', fetchErr)
-                            toast.error('Error uploading photo — check your connection and try again')
+                            console.error('[Avatar] Fetch exception:', fetchErr.name, fetchErr.message)
+                            toast.error(`Upload failed: ${fetchErr.message || 'network error'}`)
                           }
                         }
                       } catch (err) {
