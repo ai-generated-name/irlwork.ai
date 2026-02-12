@@ -3,14 +3,21 @@ import EscrowBadge from './EscrowBadge';
 import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, MapPin, CalendarDays, Bot } from 'lucide-react';
 
 const CATEGORY_ICONS = {
-  delivery: <Package size={16} />,
-  photography: <Camera size={16} />,
-  'data-collection': <BarChart3 size={16} />,
-  errands: <Footprints size={16} />,
-  'tech-setup': <Monitor size={16} />,
-  translation: <Globe size={16} />,
-  verification: <CheckCircle size={16} />,
-  other: <ClipboardList size={16} />,
+  delivery: '📦',
+  photography: '📸',
+  data_collection: '📊',
+  'data-collection': '📊',
+  errands: '🏃',
+  cleaning: '🧹',
+  moving: '🚚',
+  manual_labor: '💪',
+  inspection: '🔍',
+  tech: '💻',
+  'tech-setup': '💻',
+  translation: '🌐',
+  verification: '✅',
+  general: '📋',
+  other: '📋',
 };
 
 const STATUS_CONFIG = {

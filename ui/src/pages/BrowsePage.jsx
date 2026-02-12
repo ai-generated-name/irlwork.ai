@@ -15,15 +15,16 @@ const categories = [
   { value: '', label: 'All Skills' },
   { value: 'delivery', label: 'Delivery' },
   { value: 'photography', label: 'Photography' },
+  { value: 'data_collection', label: 'Data Collection' },
   { value: 'errands', label: 'Errands' },
   { value: 'cleaning', label: 'Cleaning' },
   { value: 'moving', label: 'Moving' },
-  { value: 'tech', label: 'Tech Support' },
-  { value: 'general', label: 'General' },
-  { value: 'data-collection', label: 'Data Collection' },
+  { value: 'manual_labor', label: 'Manual Labor' },
+  { value: 'inspection', label: 'Inspection' },
+  { value: 'tech', label: 'Tech' },
   { value: 'translation', label: 'Translation' },
   { value: 'verification', label: 'Verification' },
-  { value: 'tech-setup', label: 'Tech Setup' },
+  { value: 'general', label: 'General' },
 ]
 
 const sortOptions = [
@@ -484,7 +485,7 @@ export default function BrowsePage({ user }) {
           <span className="logo-name-v4">irlwork.ai</span>
         </a>
         <div className="nav-links-v4">
-          <a href="/mcp" className="nav-link-v4">For Agents</a>
+          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
           <a href="/browse" className="nav-link-v4" style={{ color: 'var(--coral-500)' }}>Browse</a>
           {user ? (
             <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/dashboard')}>Dashboard</button>
@@ -1011,14 +1012,16 @@ export default function BrowsePage({ user }) {
                         }}>
                           {task.category || 'General'}
                         </span>
-                        <span style={{
-                          padding: '4px 12px',
-                          background: task.escrow_status === 'funded' ? 'var(--success-bg)' : 'rgba(244, 213, 141, 0.3)',
-                          borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500,
-                          color: task.escrow_status === 'funded' ? 'var(--success)' : '#B8860B'
-                        }}>
-                          {task.escrow_status === 'funded' ? 'Funded' : 'Unfunded'}
-                        </span>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {task.task_type === 'bounty' && (
+                            <span style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500, background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>Bounty</span>
+                          )}
+                          {task.quantity > 1 && (
+                            <span style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500, background: 'rgba(59, 130, 246, 0.1)', color: '#2563EB' }}>
+                              {task.spots_filled || 0}/{task.quantity} spots
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8, lineHeight: 1.3 }}>
                         {task.title}
@@ -1068,11 +1071,9 @@ export default function BrowsePage({ user }) {
                           );
                         })()}
                       </div>
-                      {task.agent && (
-                        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
-                          Posted by <strong style={{ color: 'var(--text-secondary)' }}>{task.agent.name || task.agent.organization || 'Anonymous'}</strong>
-                        </div>
-                      )}
+                      <div style={{ paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
+                        Posted by <strong style={{ color: 'var(--text-secondary)' }}>{task.is_anonymous ? 'Anon AI Agent' : (task.agent?.name || task.agent?.organization || 'Anonymous')}</strong>
+                      </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -1526,9 +1527,9 @@ Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
             <div>
               <h4 className="footer-v4-column-title">For Agents</h4>
               <div className="footer-v4-links">
-                <a href="/mcp" className="footer-v4-link">API Docs</a>
-                <a href="/mcp" className="footer-v4-link">MCP Protocol</a>
-                <a href="/mcp" className="footer-v4-link">Integration</a>
+                <a href="/connect-agent" className="footer-v4-link">API Docs</a>
+                <a href="/connect-agent" className="footer-v4-link">MCP Protocol</a>
+                <a href="/connect-agent" className="footer-v4-link">Integration</a>
               </div>
             </div>
           </div>

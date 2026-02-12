@@ -80,7 +80,7 @@ export function NavbarV4({ user, onLogout }) {
       </button>
 
       <div className={`navbar-v4-links${mobileMenuOpen ? ' open' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-        <a href="/mcp" style={{
+        <a href="/connect-agent" style={{
           color: v4.colors.textSecondary,
           textDecoration: 'none',
           fontSize: 14,
@@ -200,8 +200,8 @@ export function FooterV4() {
               marginBottom: 16,
             }}>For Agents</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <a href="/mcp" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 14 }}>API Docs</a>
-              <a href="/mcp" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 14 }}>Integration</a>
+              <a href="/connect-agent" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 14 }}>API Docs</a>
+              <a href="/connect-agent" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 14 }}>Integration</a>
             </div>
           </div>
         </div>

@@ -145,7 +145,7 @@ export default function ForAgentsBox({ human }) {
       {/* Links */}
       <div style={{ display: 'flex', gap: 12 }}>
         <a
-          href="/mcp"
+          href="/connect-agent"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
