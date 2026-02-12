@@ -44,7 +44,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       try {
         // Fetch task details (works with or without auth)
-        const headers = user?.id ? { Authorization: user.id } : {};
+        const headers = user?.id ? { Authorization: user.token || user.id } : {};
         const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
         if (!taskRes.ok) throw new Error('Task not found');
         const taskData = await taskRes.json();
@@ -54,7 +54,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
         // Fetch agent profile for all viewers
         if (taskData.agent_id) {
-          const agentHeaders = user?.id ? { Authorization: user.id } : {};
+          const agentHeaders = user?.id ? { Authorization: user.token || user.id } : {};
           const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, { headers: agentHeaders });
           if (agentRes.ok) {
             const agentData = await agentRes.json();
@@ -65,7 +65,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         // Only fetch status, conversation for authenticated participants
         if (user && isTaskParticipant) {
           const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
-            headers: { Authorization: user.id }
+            headers: { Authorization: user.token || user.id }
           });
           if (statusRes.ok) {
             const statusData = await statusRes.json();
@@ -108,7 +108,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           if (user) {
             try {
               const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
-                headers: { Authorization: user.id }
+                headers: { Authorization: user.token || user.id }
               });
               if (statusRes.ok) {
                 const statusData = await statusRes.json();
@@ -132,7 +132,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     if (!user) return;
     try {
       const convRes = await fetch(`${API_URL}/conversations`, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       });
 
       if (convRes.ok) {
@@ -160,7 +160,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       }
 
       const res = await fetch(url, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       });
 
       if (res.ok) {
@@ -182,7 +182,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
           fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
             method: 'PUT',
-            headers: { Authorization: user.id }
+            headers: { Authorization: user.token || user.id }
           }).catch(() => {});
         }
       }
@@ -203,7 +203,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: user.id
+            Authorization: user.token || user.id
           },
           body: JSON.stringify({
             agent_id: task.agent_id,
@@ -225,7 +225,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ conversation_id: convId, content })
       });
@@ -250,7 +250,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({
           proof_text: proofText,

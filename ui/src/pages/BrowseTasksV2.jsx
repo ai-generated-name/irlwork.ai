@@ -148,7 +148,7 @@ export default function BrowseTasksV2({
       params.set('limit', '50');
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`, {
-        headers: user?.id ? { Authorization: user.id } : {}
+        headers: user?.id ? { Authorization: user.token || user.id } : {}
       });
       const data = await res.json();
 

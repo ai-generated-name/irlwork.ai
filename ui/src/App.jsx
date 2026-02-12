@@ -90,6 +90,9 @@ const safeSupabase = {
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
 import { fixAvatarUrl } from './utils/avatarUrl'
+import ApiKeysTab from './components/ApiKeysTab'
+import ConnectAgentPage from './pages/ConnectAgentPage'
+import MCPPage from './pages/MCPPage'
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -186,10 +189,18 @@ function Onboarding({ onComplete, user }) {
   const [nearbyTasks, setNearbyTasks] = useState([])
   const [loadingTasks, setLoadingTasks] = useState(false)
 
+  // Email verification state
+  const [verificationCode, setVerificationCode] = useState('')
+  const [verificationSent, setVerificationSent] = useState(false)
+  const [verificationSending, setVerificationSending] = useState(false)
+  const [verificationError, setVerificationError] = useState('')
+  const [verificationSuccess, setVerificationSuccess] = useState(false)
+  const [verifying, setVerifying] = useState(false)
+
   const userName = user?.name?.split(' ')[0] || 'there'
   const userAvatar = user?.avatar_url
 
-  const totalSteps = 4
+  const totalSteps = 5
   const progress = (step / totalSteps) * 100
 
   // Fetch nearby tasks after city selection
@@ -223,6 +234,57 @@ function Onboarding({ onComplete, user }) {
         ? prev.selectedCategories.filter(c => c !== value)
         : [...prev.selectedCategories, value]
     }))
+  }
+
+  const sendVerificationCode = async () => {
+    setVerificationSending(true)
+    setVerificationError('')
+    try {
+      const res = await fetch(`${API_URL}/auth/send-verification`, {
+        method: 'POST',
+        headers: { Authorization: user?.token || user?.id || '' }
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        if (data.message === 'Email already verified') {
+          setVerificationSuccess(true)
+        } else {
+          setVerificationSent(true)
+        }
+      } else {
+        setVerificationError(data.error || 'Failed to send verification code')
+      }
+    } catch (e) {
+      setVerificationError('Network error. Please try again.')
+    } finally {
+      setVerificationSending(false)
+    }
+  }
+
+  const verifyCode = async () => {
+    if (!verificationCode.trim()) return
+    setVerifying(true)
+    setVerificationError('')
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user?.token || user?.id || ''
+        },
+        body: JSON.stringify({ code: verificationCode.trim() })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setVerificationSuccess(true)
+      } else {
+        setVerificationError(data.error || 'Invalid code')
+      }
+    } catch (e) {
+      setVerificationError('Network error. Please try again.')
+    } finally {
+      setVerifying(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -491,8 +553,103 @@ function Onboarding({ onComplete, user }) {
 
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
-                {loading ? 'Setting up...' : 'Complete Setup'}
+              <button className="onboarding-v4-btn-next" onClick={() => setStep(5)} disabled={!form.hourly_rate}>
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Email Verification */}
+        {step === 5 && (
+          <div>
+            <h1 className="onboarding-v4-title">Verify your email</h1>
+            <p className="onboarding-v4-subtitle">
+              Verified accounts get more task offers and build trust with agents
+            </p>
+
+            {verificationSuccess ? (
+              <div style={{
+                padding: '20px', borderRadius: 12,
+                background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                textAlign: 'center', marginBottom: 20
+              }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>&#10003;</div>
+                <p style={{ color: '#059669', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
+                  {user?.email} is now verified
+                </p>
+              </div>
+            ) : !verificationSent ? (
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+                  We'll send a 6-digit code to <strong>{user?.email}</strong>
+                </p>
+                <button
+                  className="onboarding-v4-btn-next"
+                  style={{ width: '100%' }}
+                  onClick={sendVerificationCode}
+                  disabled={verificationSending}
+                >
+                  {verificationSending ? 'Sending...' : 'Send Verification Code'}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
+                  Enter the 6-digit code sent to <strong>{user?.email}</strong>
+                </p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={verificationCode}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                    setVerificationCode(val)
+                  }}
+                  className="onboarding-v4-input"
+                  style={{
+                    textAlign: 'center', fontSize: 24, fontWeight: 600,
+                    letterSpacing: 8, fontFamily: 'monospace'
+                  }}
+                  autoFocus
+                />
+                <button
+                  className="onboarding-v4-btn-next"
+                  style={{ width: '100%', marginTop: 12 }}
+                  onClick={verifyCode}
+                  disabled={verifying || verificationCode.length < 6}
+                >
+                  {verifying ? 'Verifying...' : 'Verify'}
+                </button>
+                <button
+                  onClick={sendVerificationCode}
+                  disabled={verificationSending}
+                  style={{
+                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
+                    fontSize: 13, cursor: 'pointer', marginTop: 8, width: '100%',
+                    textAlign: 'center'
+                  }}
+                >
+                  {verificationSending ? 'Sending...' : 'Resend code'}
+                </button>
+              </div>
+            )}
+
+            {verificationError && (
+              <div className="auth-v4-error" style={{ marginTop: 12 }}>{verificationError}</div>
+            )}
+
+            <div className="onboarding-v4-buttons" style={{ marginTop: 20 }}>
+              <button className="onboarding-v4-btn-back" onClick={() => setStep(4)}>Back</button>
+              <button
+                className="onboarding-v4-btn-next"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Setting up...' : verificationSuccess ? 'Complete Setup' : 'Skip for Now'}
               </button>
             </div>
           </div>
@@ -826,7 +983,7 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: task?.human_id || ''
+            Authorization: user?.token || task?.human_id || ''
           },
           body: JSON.stringify({ file: base64, filename: file.name, mimeType: file.type })
         })
@@ -1024,485 +1181,6 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
             Confirm Rejection
           </button>
         )}
-      </div>
-    </div>
-  )
-}
-
-// API Keys Tab Component
-function ApiKeysTab({ user }) {
-  const [keys, setKeys] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState(false)
-  const [showModal, setShowModal] = useState(false)
-  const [newKeyName, setNewKeyName] = useState('')
-  const [newKey, setNewKey] = useState(null)
-  const [copied, setCopied] = useState(false)
-  const [confirmRevoke, setConfirmRevoke] = useState(null)
-  const [error, setError] = useState(null)
-  const [showRevoked, setShowRevoked] = useState(false)
-
-  const fetchKeys = async () => {
-    try {
-      const response = await fetch(`${API_URL}/keys`, {
-        headers: { 'Authorization': user?.id }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setKeys(data)
-      }
-    } catch (error) {
-      console.error('Error fetching keys:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchKeys()
-  }, [user?.id])
-
-  const generateKey = async () => {
-    setGenerating(true)
-    setError(null)
-    try {
-      const response = await fetch(`${API_URL}/keys/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': user?.id
-        },
-        body: JSON.stringify({ name: newKeyName || 'API Key' })
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setNewKey(data.api_key)
-        fetchKeys()
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        setError(errorData.error || `Failed to generate key (${response.status})`)
-        console.error('Generate key error:', response.status, errorData)
-      }
-    } catch (err) {
-      setError('Network error - check if API is running')
-      console.error('Error generating key:', err)
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  const revokeKey = async (keyId) => {
-    try {
-      const response = await fetch(`${API_URL}/keys/${keyId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': user?.id }
-      })
-      if (response.ok) {
-        setConfirmRevoke(null)
-        fetchKeys()
-      }
-    } catch (error) {
-      console.error('Error revoking key:', error)
-    }
-  }
-
-  const rotateKey = async (keyId) => {
-    try {
-      const response = await fetch(`${API_URL}/keys/${keyId}/rotate`, {
-        method: 'POST',
-        headers: { 'Authorization': user?.id }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setNewKey(data.api_key)
-        setShowModal(true)
-        fetchKeys()
-      }
-    } catch (error) {
-      console.error('Error rotating key:', error)
-    }
-  }
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Never'
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h1 className="dashboard-v4-page-title" style={{ marginBottom: 4 }}>API Keys</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-            Manage API keys for programmatic access to irlwork.ai
-          </p>
-        </div>
-        <button
-          className="v4-btn v4-btn-primary"
-          onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
-        >
-          + Generate New Key
-        </button>
-      </div>
-
-      {/* Generate Key Modal */}
-      {showModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 500, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            {!newKey ? (
-              <>
-                <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Generate New API Key</h2>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
-                  Give your key a name to help you remember what it's used for.
-                </p>
-                <input
-                  type="text"
-                  placeholder="e.g. Production, Development, Trading Bot"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    fontSize: 14,
-                    marginBottom: 20
-                  }}
-                  autoFocus
-                />
-                {error && (
-                  <div style={{
-                    background: '#FEE2E2',
-                    border: '1px solid #FECACA',
-                    borderRadius: 8,
-                    padding: '12px 16px',
-                    marginBottom: 20,
-                    color: '#DC2626',
-                    fontSize: 14
-                  }}>
-                    {error}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                  <button
-                    className="v4-btn v4-btn-secondary"
-                    onClick={() => { setShowModal(false); setNewKey(null); }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="v4-btn v4-btn-primary"
-                    onClick={generateKey}
-                    disabled={generating}
-                  >
-                    {generating ? 'Generating...' : 'Generate Key'}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                  <div style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #10B981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <span style={{ fontSize: 28 }}>✓</span>
-                  </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>API Key Generated</h2>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-                    Copy this key now. You won't be able to see it again.
-                  </p>
-                </div>
-
-                <div style={{
-                  background: '#F8F6F1',
-                  border: '1px solid #E5E2DC',
-                  borderRadius: 12,
-                  padding: 16,
-                  marginBottom: 20,
-                  position: 'relative'
-                }}>
-                  <code style={{
-                    color: '#1a1a1a',
-                    fontSize: 13,
-                    wordBreak: 'break-all',
-                    display: 'block',
-                    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace',
-                    paddingRight: 70,
-                    lineHeight: 1.5
-                  }}>
-                    {newKey}
-                  </code>
-                  <button
-                    onClick={() => copyToClipboard(newKey)}
-                    style={{
-                      position: 'absolute',
-                      top: '50%',
-                      right: 12,
-                      transform: 'translateY(-50%)',
-                      background: copied ? '#10B981' : '#FF6B35',
-                      border: 'none',
-                      borderRadius: 6,
-                      padding: '8px 14px',
-                      cursor: 'pointer',
-                      color: 'white',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      transition: 'all 0.2s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    {copied ? '✓ Copied!' : 'Copy'}
-                  </button>
-                </div>
-
-                <div style={{
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 20,
-                  display: 'flex',
-                  gap: 10
-                }}>
-                  <AlertTriangle size={16} />
-                  <p style={{ fontSize: 13, color: '#92400E' }}>
-                    Make sure to save this key securely. It won't be shown again.
-                  </p>
-                </div>
-
-                <button
-                  className="v4-btn v4-btn-primary"
-                  style={{ width: '100%' }}
-                  onClick={() => { setShowModal(false); setNewKey(null); }}
-                >
-                  Done
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Revoke Confirmation Modal */}
-      {confirmRevoke && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 400, width: '90%' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: '#DC2626' }}>Revoke API Key?</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
-              Are you sure you want to revoke <strong>{confirmRevoke.name}</strong>? Any agents using this key will lose access immediately.
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button
-                className="v4-btn v4-btn-secondary"
-                onClick={() => setConfirmRevoke(null)}
-              >
-                Cancel
-              </button>
-              <button
-                style={{
-                  background: '#DC2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '10px 20px',
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-                onClick={() => revokeKey(confirmRevoke.id)}
-              >
-                Revoke Key
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filter Toggle */}
-      {keys.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            {keys.filter(k => k.is_active).length} active key{keys.filter(k => k.is_active).length !== 1 ? 's' : ''}
-            {keys.filter(k => !k.is_active).length > 0 && (
-              <span> · {keys.filter(k => !k.is_active).length} revoked</span>
-            )}
-          </div>
-          {keys.some(k => !k.is_active) && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-              <input
-                type="checkbox"
-                checked={showRevoked}
-                onChange={(e) => setShowRevoked(e.target.checked)}
-                style={{ width: 16, height: 16, accentColor: '#FF6B35' }}
-              />
-              Show revoked keys
-            </label>
-          )}
-        </div>
-      )}
-
-      {/* Keys List */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
-          Loading keys...
-        </div>
-      ) : keys.length === 0 ? (
-        <div className="v4-empty-state" style={{
-          background: 'white',
-          borderRadius: 16,
-          padding: 60,
-          textAlign: 'center',
-          border: '1px solid var(--border)'
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔑</div>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No API Keys Yet</h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-            Generate an API key to access irlwork.ai programmatically.
-          </p>
-          <button
-            className="v4-btn v4-btn-primary"
-            onClick={() => setShowModal(true)}
-          >
-            Generate Your First Key
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {keys.filter(key => showRevoked || key.is_active).map(key => (
-            <div
-              key={key.id}
-              style={{
-                background: 'white',
-                borderRadius: 12,
-                padding: 20,
-                border: '1px solid var(--border)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 20,
-                opacity: key.is_active ? 1 : 0.6
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 600 }}>{key.name}</h3>
-                  <span style={{
-                    padding: '2px 8px',
-                    borderRadius: 6,
-                    fontSize: 11,
-                    fontWeight: 500,
-                    background: key.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    color: key.is_active ? '#059669' : '#DC2626'
-                  }}>
-                    {key.is_active ? 'Active' : 'Revoked'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 24, fontSize: 13, color: 'var(--text-secondary)' }}>
-                  <span>
-                    <code style={{ background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>
-                      {key.key_prefix}
-                    </code>
-                  </span>
-                  <span>Created: {formatDate(key.created_at)}</span>
-                  <span>Last used: {formatDate(key.last_used_at)}</span>
-                </div>
-              </div>
-
-              {key.is_active && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => rotateKey(key.id)}
-                    style={{
-                      background: 'var(--bg-tertiary)',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: 'var(--text-primary)'
-                    }}
-                  >
-                    Rotate
-                  </button>
-                  <button
-                    onClick={() => setConfirmRevoke(key)}
-                    style={{
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: '#DC2626'
-                    }}
-                  >
-                    Revoke
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Usage Instructions */}
-      <div style={{
-        marginTop: 32,
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        borderRadius: 16,
-        padding: 24,
-        color: 'white'
-      }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Using Your API Key</h3>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
-          Include your API key in the Authorization header of your requests:
-        </p>
-        <div style={{
-          background: 'rgba(0,0,0,0.3)',
-          borderRadius: 8,
-          padding: 16,
-          fontFamily: 'monospace',
-          fontSize: 13
-        }}>
-          <div style={{ color: '#8B8B8B', marginBottom: 4 }}># Post a task</div>
-          <div>
-            <span style={{ color: '#10B981' }}>curl</span> -X POST https://api.irlwork.ai/api/mcp/tasks \
-          </div>
-          <div style={{ paddingLeft: 20 }}>
-            -H <span style={{ color: '#F4845F' }}>'Authorization: Bearer irl_sk_...'</span> \
-          </div>
-          <div style={{ paddingLeft: 20 }}>
-            -H <span style={{ color: '#F4845F' }}>'Content-Type: application/json'</span> \
-          </div>
-          <div style={{ paddingLeft: 20 }}>
-            -d <span style={{ color: '#F4845F' }}>'{`{"title": "Package Pickup", "budget": 35}`}'</span>
-          </div>
-        </div>
-        <a
-          href="/mcp"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            marginTop: 16,
-            color: '#F4845F',
-            fontSize: 14,
-            textDecoration: 'none'
-          }}
-        >
-          View full API documentation →
-        </a>
       </div>
     </div>
   )
@@ -1740,7 +1418,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setNotifications(prev => prev.filter(n => n.is_read))
       // Mark each as read in backend (fire and forget)
       for (const id of unreadIds) {
-        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
+        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } }).catch(() => {})
       }
     } catch (e) {
       console.error('Error marking all notifications read:', e)
@@ -1905,7 +1583,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setTasks(data || [])
@@ -1944,7 +1622,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchHumans = async () => {
     try {
-      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setHumans(fixAvatarUrl(data || []))
@@ -1956,7 +1634,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchPostedTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setPostedTasks(data || [])
@@ -1971,7 +1649,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchApplicationsForTask = async (taskId) => {
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/applications`, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       if (res.ok) {
         const data = await res.json()
@@ -1989,7 +1667,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ human_id: humanId })
       })
@@ -2022,7 +1700,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchWallet = async () => {
     try {
-      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setWallet(data || { balance: 0, transactions: [] })
@@ -2034,7 +1712,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         // Only show unread notifications — clicked/read ones are removed from the list
@@ -2047,7 +1725,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const markNotificationRead = async (id) => {
     try {
-      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } })
+      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } })
       fetchNotifications()
     } catch (e) {}
   }
@@ -2078,7 +1756,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     // Remove the clicked notification from state immediately so it disappears from UI
     setNotifications(prev => prev.filter(n => n.id !== notification.id))
     // Mark as read in backend (fire and forget — no refetch needed since we already removed it)
-    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
+    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } }).catch(() => {})
     setNotificationDropdownOpen(false)
 
     const link = notification.link
@@ -2133,7 +1811,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchConversations = async () => {
     setConversationsLoading(prev => prev || conversations.length === 0) // Only show loading on first load
     try {
-      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setConversations(data || [])
@@ -2150,7 +1828,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchUnreadMessages = async () => {
     try {
-      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         setUnreadMessages(data.count || 0)
@@ -2188,7 +1866,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({
           title: taskForm.title,
@@ -2231,7 +1909,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchMessages = async (conversationId, skipMarkRead = false) => {
     if (!skipMarkRead) setMessagesLoading(true)
     try {
-      const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.id } })
+      const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.token || user.id } })
       if (res.ok) {
         const data = await res.json()
         // Sort by created_at to guarantee chronological order (#3)
@@ -2242,7 +1920,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         if (!skipMarkRead) {
           fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
             method: 'PUT',
-            headers: { Authorization: user.id }
+            headers: { Authorization: user.token || user.id }
           }).then(() => {
             fetchUnreadMessages()
             fetchConversations()
@@ -2267,7 +1945,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
         body: JSON.stringify({ conversation_id: selectedConversation, content: msgContent })
       })
       if (!res.ok) {
@@ -2287,7 +1965,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       fetchTasks()
     } catch (e) {
@@ -2299,7 +1977,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       await fetch(`${API_URL}/tasks/${taskId}/start`, {
         method: 'POST',
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       fetchTasks()
     } catch (e) {
@@ -2311,7 +1989,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       await fetch(`${API_URL}/tasks/${taskId}/approve`, { 
         method: 'POST',
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       fetchPostedTasks()
     } catch (e) {
@@ -2323,7 +2001,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/release`, { 
         method: 'POST',
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       if (res.ok) {
         toast.success('Payment released successfully!')
@@ -2343,7 +2021,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ proof_text: proofText, proof_urls: proofUrls })
       })
@@ -2360,7 +2038,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ feedback, extend_deadline_hours: extendHours })
       })
@@ -3416,7 +3094,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           try {
                             const res = await fetch(`${API_URL}/upload/avatar`, {
                               method: 'POST',
-                              headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                              headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                               body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: fileToUpload.type })
                             })
                             if (res.ok) {
@@ -3497,7 +3175,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     if (profileTimezone) payload.timezone = profileTimezone
                     const res = await fetch(`${API_URL}/humans/profile`, {
                       method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                      headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                       body: JSON.stringify(payload)
                     })
                     if (res.ok) {
@@ -3640,7 +3318,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
                           method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                           body: JSON.stringify({ skills: skillsList })
                         })
                         if (res.ok) {
@@ -3736,7 +3414,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
                           method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                           body: JSON.stringify({ languages: languagesList })
                         })
                         if (res.ok) {
@@ -3773,7 +3451,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   try {
                     const res = await fetch(`${API_URL}/humans/profile`, {
                       method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                      headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                       body: JSON.stringify({ social_links })
                     })
                     if (res.ok) {
@@ -3856,7 +3534,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   const locationData = profileLocation || {}
                   const res = await fetch(`${API_URL}/humans/profile`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                     body: JSON.stringify({
                       name: formData.get('name'),
                       city: locationData.city || user?.city,
@@ -3935,7 +3613,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 try {
                   const res = await fetch(`${API_URL}/humans/profile`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                     body: JSON.stringify({ skills })
                   })
                   if (res.ok) {
@@ -3979,7 +3657,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 try {
                   const res = await fetch(`${API_URL}/humans/profile`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.id },
+                    headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
                     body: JSON.stringify({ social_links })
                   })
                   if (res.ok) {
@@ -5527,7 +5205,7 @@ function App() {
         debug('[Auth] Session:', session ? 'found' : 'none')
 
         if (session?.user) {
-          await fetchUserProfile(session.user)
+          await fetchUserProfile(session.user, session.access_token)
         } else {
           setUser(null)
           setLoading(false)
@@ -5545,11 +5223,15 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       debug('[Auth] State change:', event, session ? 'with session' : 'no session')
       if (event === 'TOKEN_REFRESHED') {
-        debug('[Auth] Token refreshed, skipping profile re-fetch')
+        debug('[Auth] Token refreshed, updating token on user')
+        // Update the stored token without re-fetching full profile
+        if (session?.access_token) {
+          setUser(prev => prev ? { ...prev, token: session.access_token } : prev)
+        }
         return
       }
       if (session?.user) {
-        await fetchUserProfile(session.user)
+        await fetchUserProfile(session.user, session.access_token)
       } else {
         setUser(null)
         setLoading(false)
@@ -5559,13 +5241,15 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  async function fetchUserProfile(supabaseUser) {
+  async function fetchUserProfile(supabaseUser, accessToken) {
     try {
       debug('[Auth] Fetching user profile...')
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 8000)
+      // Prefer JWT access_token for auth, fall back to UUID
+      const authToken = accessToken || supabaseUser.id
       const res = await fetch(`${API_URL}/auth/verify`, {
-        headers: { Authorization: supabaseUser.id },
+        headers: { Authorization: authToken },
         signal: controller.signal
       })
       clearTimeout(timeout)
@@ -5576,8 +5260,11 @@ function App() {
 
         // Trust backend completely - no localStorage merge
         // Always use Supabase auth email (source of truth for sign-in email)
-        const finalUser = fixAvatarUrl({ ...data.user, email: supabaseUser.email || data.user.email, supabase_user: true })
-        localStorage.setItem('user', JSON.stringify(finalUser)) // Cache for next load
+        // Store JWT token on user object for subsequent API calls
+        const finalUser = fixAvatarUrl({ ...data.user, email: supabaseUser.email || data.user.email, token: accessToken || null, supabase_user: true })
+        // Don't cache JWT in localStorage (it expires) — only cache profile data
+        const cacheUser = { ...finalUser, token: undefined }
+        localStorage.setItem('user', JSON.stringify(cacheUser))
         setUser(finalUser)
       } else if (res.status === 404) {
         // New user - needs onboarding
@@ -5587,10 +5274,12 @@ function App() {
           email: supabaseUser.email,
           name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
           avatar_url: supabaseUser.user_metadata?.avatar_url || '',
+          token: accessToken || null,
           supabase_user: true,
           needs_onboarding: true
         }
-        localStorage.setItem('user', JSON.stringify(newUser))
+        const cacheUser = { ...newUser, token: undefined }
+        localStorage.setItem('user', JSON.stringify(cacheUser))
         setUser(newUser)
       } else {
         debug('[Auth] Backend error:', res.status)
@@ -5598,12 +5287,13 @@ function App() {
         const cached = JSON.parse(localStorage.getItem('user') || 'null')
         if (cached && !cached.needs_onboarding) {
           debug('[Auth] Using cached profile (API error fallback)')
-          setUser({ ...cached, supabase_user: true })
+          setUser({ ...cached, token: accessToken || null, supabase_user: true })
         } else {
           const newUser = {
             id: supabaseUser.id,
             email: supabaseUser.email,
             name: supabaseUser.user_metadata?.full_name || 'User',
+            token: accessToken || null,
             supabase_user: true,
             needs_onboarding: true
           }
@@ -5616,13 +5306,14 @@ function App() {
       const cached = JSON.parse(localStorage.getItem('user') || 'null')
       if (cached && !cached.needs_onboarding) {
         debug('[Auth] Using cached profile (network error fallback)')
-        setUser({ ...cached, supabase_user: true })
+        setUser({ ...cached, token: accessToken || null, supabase_user: true })
       } else {
         setUser({
           id: supabaseUser.id,
           email: supabaseUser.email,
           name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
           avatar_url: supabaseUser.user_metadata?.avatar_url || '',
+          token: accessToken || null,
           supabase_user: true,
           needs_onboarding: true
         })
@@ -5648,7 +5339,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({
           email: user.email,

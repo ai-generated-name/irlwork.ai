@@ -30,7 +30,7 @@ function EarningsDashboard({ user }) {
     try {
       setLoading(true)
       const res = await fetch(`${API_URL}/wallet/balance`, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
 
       if (!res.ok) {

@@ -122,6 +122,10 @@ export default function BrowsePage({ user }) {
   const [taskSearchQuery, setTaskSearchQuery] = useState('')
   const [debouncedTaskSearch, setDebouncedTaskSearch] = useState('')
   const [taskSortBy, setTaskSortBy] = useState('newest')
+  const [userLocation, setUserLocation] = useState(null) // { lat, lng }
+  const [locationLoading, setLocationLoading] = useState(false)
+  const [nearMeActive, setNearMeActive] = useState(false)
+  const [nearMeRadius, setNearMeRadius] = useState(25) // km
 
   // Apply modal state
   const [showApplyModal, setShowApplyModal] = useState(null) // task object or null
@@ -176,11 +180,31 @@ export default function BrowsePage({ user }) {
     fetchHumans()
   }, [viewMode, currentPage, skillFilter, cityFilter, debouncedCountry, debouncedMaxRate, humanSort])
 
+  // Handle "Near Me" toggle
+  const handleNearMe = () => {
+    if (nearMeActive) {
+      setNearMeActive(false)
+      setUserLocation(null)
+      return
+    }
+    if (!navigator.geolocation) return
+    setLocationLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setNearMeActive(true)
+        setLocationLoading(false)
+      },
+      () => { setLocationLoading(false) },
+      { timeout: 10000 }
+    )
+  }
+
   // Fetch tasks
   useEffect(() => {
     if (viewMode !== 'tasks') return
     fetchTasks()
-  }, [viewMode, taskCategoryFilter, taskCityFilter, debouncedTaskSearch, taskSortBy])
+  }, [viewMode, taskCategoryFilter, taskCityFilter, debouncedTaskSearch, taskSortBy, nearMeActive, nearMeRadius])
 
   // Real-time subscriptions
   useEffect(() => {
@@ -269,6 +293,12 @@ export default function BrowsePage({ user }) {
       if (taskCategoryFilter) params.append('category', taskCategoryFilter)
       if (taskCityFilter) params.append('city', taskCityFilter)
       if (debouncedTaskSearch) params.append('search', debouncedTaskSearch)
+      if (nearMeActive && userLocation) {
+        params.append('user_lat', userLocation.lat)
+        params.append('user_lng', userLocation.lng)
+        params.append('radius_km', nearMeRadius)
+        params.append('sort', 'distance')
+      }
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`)
       if (res.ok) {
@@ -349,7 +379,7 @@ export default function BrowsePage({ user }) {
     try {
       const createRes = await fetch(`${API_URL}/tasks/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
         body: JSON.stringify({ title: hireTitle.trim(), description: hireDescription.trim(), budget: Number(hireBudget), category: hireCategory || 'general' })
       })
       if (!createRes.ok) { const err = await createRes.json(); throw new Error(err.error || 'Failed to create task') }
@@ -357,7 +387,7 @@ export default function BrowsePage({ user }) {
       const taskId = taskData.id || taskData.task?.id
       const assignRes = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
         body: JSON.stringify({ worker_id: showHireModal.id })
       })
       if (!assignRes.ok) { const err = await assignRes.json(); throw new Error(err.error || 'Task created but failed to assign human') }
@@ -886,6 +916,27 @@ export default function BrowsePage({ user }) {
                 className="city-autocomplete-v4-input"
                 style={{ minWidth: 180 }}
               />
+              <button
+                onClick={handleNearMe}
+                disabled={locationLoading}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 16px',
+                  borderRadius: 'var(--radius-md)',
+                  border: nearMeActive ? '2px solid var(--coral-500)' : '1px solid rgba(26,26,26,0.1)',
+                  background: nearMeActive ? 'rgba(224, 122, 95, 0.08)' : 'white',
+                  color: nearMeActive ? 'var(--coral-600)' : 'var(--text-secondary)',
+                  fontSize: 14,
+                  fontWeight: nearMeActive ? 600 : 400,
+                  cursor: locationLoading ? 'wait' : 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <MapPin size={15} />
+                {locationLoading ? 'Locating...' : nearMeActive ? `Near Me (${nearMeRadius}km)` : 'Near Me'}
+              </button>
               <div style={{ minWidth: 150 }}>
                 <CustomDropdown
                   value={taskSortBy}

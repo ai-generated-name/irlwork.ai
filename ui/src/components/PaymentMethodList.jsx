@@ -17,7 +17,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
   const fetchMethods = async () => {
     try {
       const res = await fetch(`${API_URL}/stripe/payment-methods`, {
-        headers: { Authorization: user.id },
+        headers: { Authorization: user.token || user.id },
       });
       if (res.ok) {
         const data = await res.json();
@@ -43,7 +43,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
     try {
       await fetch(`${API_URL}/stripe/payment-methods/${pmId}`, {
         method: 'DELETE',
-        headers: { Authorization: user.id },
+        headers: { Authorization: user.token || user.id },
       });
       setMethods(methods.filter(m => m.id !== pmId));
     } catch (e) {
@@ -57,7 +57,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
     try {
       await fetch(`${API_URL}/stripe/payment-methods/${pmId}/default`, {
         method: 'POST',
-        headers: { Authorization: user.id },
+        headers: { Authorization: user.token || user.id },
       });
       setMethods(methods.map(m => ({ ...m, is_default: m.id === pmId })));
     } catch (e) {

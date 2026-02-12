@@ -39,7 +39,7 @@ export default function ProofSection({ task, user, onSubmit }) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: user?.id || '',
+        Authorization: user?.token || user?.id || '',
       },
       body: JSON.stringify({
         file: base64,

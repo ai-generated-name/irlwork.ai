@@ -14,7 +14,7 @@ export default function ConnectBankButton({ user, compact = false }) {
   const fetchStatus = async () => {
     try {
       const res = await fetch(`${API_URL}/stripe/connect/status`, {
-        headers: { Authorization: user.id },
+        headers: { Authorization: user.token || user.id },
       });
       if (res.ok) {
         setStatus(await res.json());
@@ -34,7 +34,7 @@ export default function ConnectBankButton({ user, compact = false }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id,
+          Authorization: user.token || user.id,
         },
       });
 
