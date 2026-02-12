@@ -1441,16 +1441,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     const saved = localStorage.getItem('irlwork_hiringMode')
     return saved === 'true'
   })
-  const [showCreateForm, setShowCreateForm] = useState(false)
   const [humansSubTab, setHumansSubTab] = useState('browse')
-  const [tasksSubTab, setTasksSubTab] = useState('tasks')
-
-  // Read initial tab from URL query param
-  const getInitialTab = () => {
+  const [tasksSubTab, setTasksSubTab] = useState(() => {
     const params = new URLSearchParams(window.location.search)
-    const tabParam = params.get('tab')
-    // Derive mode from URL path, fallback to localStorage
-    const isHiringFromUrl = window.location.pathname === '/dashboard/hiring'
+    return params.get('tab') === 'create-task' ? 'create' : 'tasks'
+  })
+
+  // Read initial tab from URL path: /dashboard/working/browse → 'browse'
+  const getInitialTab = () => {
+    const pathParts = window.location.pathname.split('/')
+    // pathParts: ['', 'dashboard', 'working', 'browse'] or ['', 'dashboard', 'hiring']
+    const isHiringFromUrl = pathParts[2] === 'hiring'
+    const tabSegment = pathParts[3] || null
+
+    // Also support legacy ?tab= query param for backwards compat
+    const params = new URLSearchParams(window.location.search)
+    const tabParam = tabSegment || params.get('tab')
 
     // Valid tabs for each mode
     const humanTabs = ['dashboard', 'tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
@@ -1477,13 +1483,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       if (!isHiringFromUrl && humanTabs.includes(mappedTab)) return mappedTab
     }
 
-    return 'dashboard'
+    return isHiringFromUrl ? 'posted' : 'tasks'
   }
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
 
-  // Helper to update URL query param without page reload
+  // Helper to update URL path without page reload
   const updateTabUrl = (tabId, mode) => {
     // Map internal tab IDs to URL-friendly names
     const urlMap = {
@@ -1499,7 +1505,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
     const urlTab = urlMap[tabId] || tabId
     const modeSegment = (mode !== undefined ? mode : hiringMode) ? 'hiring' : 'working'
-    const newUrl = `/dashboard/${modeSegment}?tab=${urlTab}`
+    const newUrl = `/dashboard/${modeSegment}/${urlTab}`
     window.history.pushState({}, '', newUrl)
   }
 
@@ -1527,6 +1533,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [radiusFilter, setRadiusFilter] = useState('50')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [agentConnected, setAgentConnected] = useState(() => localStorage.getItem('irlwork_agentConnected') === 'true')
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
@@ -1644,20 +1651,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   // Handle browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
-      // Detect mode from URL path
-      const path = window.location.pathname
-      if (path === '/dashboard/hiring' && !hiringMode) {
+      const pathParts = window.location.pathname.split('/')
+      const mode = pathParts[2] // 'working' or 'hiring'
+      const tabSegment = pathParts[3] || null
+      const isHiring = mode === 'hiring'
+
+      // Detect mode change from URL path
+      if (isHiring && !hiringMode) {
         setHiringMode(true)
         setActiveTabState('posted')
-      } else if (path === '/dashboard/working' && hiringMode) {
+      } else if (!isHiring && hiringMode) {
         setHiringMode(false)
         setActiveTabState('tasks')
       }
 
-      const params = new URLSearchParams(window.location.search)
-      const tabParam = params.get('tab')
+      // Also support legacy ?tab= query param
+      const tabParam = tabSegment || new URLSearchParams(window.location.search).get('tab')
       if (tabParam) {
-        const isHiring = path === '/dashboard/hiring'
+        const isHiring = mode === 'hiring'
         const tabMap = {
           'dashboard': 'dashboard',
           'create-task': 'posted',
@@ -1934,7 +1945,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       return
     }
 
-    // Dashboard with query params (e.g. /dashboard?task=xxx or /dashboard/hiring?tab=xxx)
+    // Dashboard links (e.g. /dashboard/hiring/payments or legacy /dashboard?task=xxx)
     if (link.startsWith('/dashboard')) {
       const params = new URLSearchParams(link.split('?')[1] || '')
       const taskId = params.get('task')
@@ -1942,7 +1953,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         window.location.href = `/tasks/${taskId}`
         return
       }
-      const tab = params.get('tab')
+      // Parse tab from path segment: /dashboard/working/browse → 'browse'
+      const linkParts = link.split('?')[0].split('/')
+      const tabFromPath = linkParts[3] || null
+      const tab = tabFromPath || params.get('tab')
       if (tab) {
         setActiveTab(tab)
       }
@@ -2002,6 +2016,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setCreateTaskError('Budget must be at least $5')
       return
     }
+    if (!taskForm.is_remote && !taskForm.city.trim()) {
+      setCreateTaskError('City is required for in-person tasks')
+      return
+    }
 
     setCreatingTask(true)
     try {
@@ -2034,8 +2052,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
-        // Close create form and stay on posted tab
-        setShowCreateForm(false)
+        // Switch to posted tasks list
+        setTasksSubTab('tasks')
         setActiveTab('posted')
       } else {
         const err = await res.json()
@@ -2061,15 +2079,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const sendMessage = async (e) => {
     e.preventDefault()
     if (!newMessage.trim() || !selectedConversation) return
+    const msgContent = newMessage
+    setNewMessage('') // Clear immediately for responsiveness
     try {
       await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.id },
-        body: JSON.stringify({ conversation_id: selectedConversation, content: newMessage })
+        body: JSON.stringify({ conversation_id: selectedConversation, content: msgContent })
       })
-      setNewMessage('')
       fetchMessages(selectedConversation)
-    } catch (e) {}
+      // Update conversation list to show new last_message preview
+      fetchConversations()
+    } catch (e) {
+      setNewMessage(msgContent) // Restore on error
+    }
   }
 
   const acceptTask = async (taskId) => {
@@ -2205,7 +2228,48 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
         </a>
 
-        {/* Mode Switch - mobile only */}
+        {/* Connect to AI Agent CTA - top of sidebar in hiring mode */}
+        {hiringMode && (
+          <div className="dashboard-v4-connect-agent-sidebar-top">
+            <button
+              onClick={() => !agentConnected && (window.location.href = '/connect-agent')}
+              className={`dashboard-v4-connect-agent-btn-top ${agentConnected ? 'connected' : ''}`}
+            >
+              <span className="dashboard-v4-connect-agent-icon">{agentConnected ? <CheckCircle size={16} /> : <Bot size={16} />}</span>
+              <span>{agentConnected ? 'AI Agent Connected' : 'Connect to AI Agent'}</span>
+              {!agentConnected && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', opacity: 0.5 }}>
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
+
+
+        {/* Navigation */}
+        <nav className="dashboard-v4-nav">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id)
+                setSidebarOpen(false)
+              }}
+              className={`dashboard-v4-nav-item ${activeTab === item.id ? 'active' : ''}`}
+            >
+              <div className="dashboard-v4-nav-item-content">
+                <span className="dashboard-v4-nav-icon">{item.icon}</span>
+                <span className="dashboard-v4-nav-label">{item.label}</span>
+              </div>
+              {item.badge > 0 && (
+                <span className="dashboard-v4-nav-badge">{item.badge}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
           {hiringMode ? (
             <button
@@ -2230,32 +2294,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <path d="M22 21v-2a4 4 0 00-3-3.87" />
                 <path d="M16 3.13a4 4 0 010 7.75" />
               </svg>
-              Switch to Hiring
+              Hire Humans
             </button>
           )}
         </div>
-
-        {/* Navigation */}
-        <nav className="dashboard-v4-nav">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id)
-                setSidebarOpen(false)
-              }}
-              className={`dashboard-v4-nav-item ${activeTab === item.id ? 'active' : ''}`}
-            >
-              <div className="dashboard-v4-nav-item-content">
-                <span className="dashboard-v4-nav-icon">{item.icon}</span>
-                <span className="dashboard-v4-nav-label">{item.label}</span>
-              </div>
-              {item.badge > 0 && (
-                <span className="dashboard-v4-nav-badge">{item.badge}</span>
-              )}
-            </button>
-          ))}
-        </nav>
 
         {/* Connect to AI Agent CTA - only show in hiring mode */}
         {hiringMode && (
@@ -2356,7 +2398,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             ) : (
               <>
                 <button
-                  className="dashboard-v4-topbar-link"
+                  className="dashboard-v4-topbar-link dashboard-v4-topbar-cta dashboard-v4-topbar-cta-teal"
                   onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2523,41 +2565,45 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              {tasksSubTab === 'tasks' && (
-                <button
-                  className="v4-btn v4-btn-primary"
-                  onClick={() => setShowCreateForm(!showCreateForm)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}
-                >
-                  {showCreateForm ? 'Cancel' : '+ Create Task'}
-                </button>
-              )}
-            </div>
+            <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
 
-            {/* Sub-tabs: Tasks / Disputes */}
+            {/* Sub-tabs: Create Task / Posted Tasks / Disputes */}
             <div className="dashboard-v4-sub-tabs">
               <button
-                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => setTasksSubTab('tasks')}
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); }}
               >
-                Tasks
+                + Create Task
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); }}
+              >
+                Posted Tasks
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
-                onClick={() => setTasksSubTab('disputes')}
+                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); }}
               >
                 Disputes
               </button>
             </div>
 
-            {tasksSubTab === 'tasks' && showCreateForm && (
-              <div style={{ marginTop: 16, marginBottom: 24 }}>
+            {tasksSubTab === 'create' && (
+              <div style={{ marginTop: 16 }}>
                 <div className="dashboard-v4-form">
+                  <h2 className="dashboard-v4-form-title">Create a New Task</h2>
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
+
+                    {/* Basic Info */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Basic Info</span>
+                    </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Task Title</label>
+                      <label className="dashboard-v4-form-label">
+                        Task Title <span className="dashboard-v4-form-required">*</span>
+                      </label>
                       <input
                         type="text"
                         placeholder="What do you need done?"
@@ -2566,8 +2612,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
                       />
                     </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Description</label>
+                      <label className="dashboard-v4-form-label">
+                        Description <span className="dashboard-v4-form-optional">(optional)</span>
+                      </label>
                       <textarea
                         placeholder="Provide details about the task..."
                         className="dashboard-v4-form-input dashboard-v4-form-textarea"
@@ -2575,9 +2624,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                       />
                     </div>
+
                     <div className="dashboard-form-grid-2col">
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Category</label>
+                        <label className="dashboard-v4-form-label">
+                          Category <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <CustomDropdown
                           value={taskForm.category}
                           onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
@@ -2592,7 +2644,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Budget (USD)</label>
+                        <label className="dashboard-v4-form-label">
+                          Budget (USD) <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <input
                           type="number"
                           placeholder="$"
@@ -2603,9 +2657,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     </div>
+
+                    {/* Schedule & Duration */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Schedule & Duration</span>
+                    </div>
+
                     <div className="dashboard-form-grid-2col">
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Duration (hours)</label>
+                        <label className="dashboard-v4-form-label">
+                          Duration (hours) <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
                         <input
                           type="number"
                           placeholder="e.g. 2"
@@ -2617,7 +2679,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                       <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">Deadline</label>
+                        <label className="dashboard-v4-form-label">
+                          Deadline <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
                         <input
                           type="datetime-local"
                           className="dashboard-v4-form-input"
@@ -2626,33 +2690,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     </div>
-                    <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Requirements (optional)</label>
-                      <textarea
-                        placeholder="Any specific requirements or qualifications needed..."
-                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                        value={taskForm.requirements}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                        rows={2}
-                      />
+
+                    {/* Location */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Location</span>
                     </div>
+
                     <div className="dashboard-v4-form-group">
-                      <label style={{
-                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                        fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={taskForm.is_remote}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                          style={{ width: 18, height: 18, cursor: 'pointer' }}
-                        />
-                        This task can be done remotely
-                      </label>
+                      <label className="dashboard-v4-form-label">Is this task remote?</label>
+                      <div className="dashboard-v4-toggle-group">
+                        <button
+                          type="button"
+                          className={`dashboard-v4-toggle-btn ${taskForm.is_remote ? 'active' : ''}`}
+                          onClick={() => setTaskForm(prev => ({ ...prev, is_remote: true }))}
+                        >
+                          Yes, remote
+                        </button>
+                        <button
+                          type="button"
+                          className={`dashboard-v4-toggle-btn ${!taskForm.is_remote ? 'active' : ''}`}
+                          onClick={() => setTaskForm(prev => ({ ...prev, is_remote: false }))}
+                        >
+                          No, in-person
+                        </button>
+                      </div>
                     </div>
+
                     {!taskForm.is_remote && (
                       <div className="dashboard-v4-form-group">
-                        <label className="dashboard-v4-form-label">City</label>
+                        <label className="dashboard-v4-form-label">
+                          City <span className="dashboard-v4-form-required">*</span>
+                        </label>
                         <CityAutocomplete
                           value={taskForm.city}
                           onChange={(locationData) => setTaskForm(prev => ({
@@ -2668,6 +2736,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     )}
+
+                    {/* Additional Info */}
+                    <div className="dashboard-v4-form-section">
+                      <span className="dashboard-v4-form-section-title">Additional Info</span>
+                    </div>
+
+                    <div className="dashboard-v4-form-group">
+                      <label className="dashboard-v4-form-label">
+                        Requirements <span className="dashboard-v4-form-optional">(optional)</span>
+                      </label>
+                      <textarea
+                        placeholder="Any specific requirements or qualifications needed..."
+                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                        value={taskForm.requirements}
+                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                        rows={2}
+                      />
+                    </div>
+
                     {createTaskError && (
                       <div className="dashboard-v4-form-error">{createTaskError}</div>
                     )}
@@ -2755,7 +2842,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                               <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
                                             </p>
                                             {app.cover_letter && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>"{app.cover_letter}"</p>
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
+                                            )}
+                                            {app.availability && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
+                                            )}
+                                            {app.questions && (
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
+                                            )}
+                                            {app.proposed_rate != null && (
+                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate} USDC</p>
                                             )}
                                           </div>
                                         </div>
@@ -3731,7 +3827,31 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         )}
 
         {/* Messages Tab */}
-        {activeTab === 'messages' && (
+        {activeTab === 'messages' && (() => {
+          // Helper: resolve the "other" party in a conversation
+          const getOtherParty = (c) => {
+            if (!c || !user) return { name: 'Unknown', avatar_url: null }
+            // If current user is the human, the other party is the agent (and vice versa)
+            if (c.human_id === user.id) return c.agent || { name: 'Unknown Agent', avatar_url: null }
+            return c.human || { name: 'Unknown Human', avatar_url: null }
+          }
+          // Helper: relative time
+          const timeAgo = (dateStr) => {
+            if (!dateStr) return ''
+            const diff = Date.now() - new Date(dateStr).getTime()
+            const mins = Math.floor(diff / 60000)
+            if (mins < 1) return 'now'
+            if (mins < 60) return `${mins}m`
+            const hrs = Math.floor(mins / 60)
+            if (hrs < 24) return `${hrs}h`
+            const days = Math.floor(hrs / 24)
+            if (days < 7) return `${days}d`
+            return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          }
+          const activeConv = conversations.find(c => c.id === selectedConversation)
+          const activeOther = activeConv ? getOtherParty(activeConv) : null
+
+          return (
           <div>
             <h1 className="dashboard-v4-page-title">Messages</h1>
 
@@ -3739,49 +3859,101 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               {/* Conversations List */}
               <div className={`dashboard-v4-conversations ${selectedConversation ? 'hidden md:block' : 'block'}`}>
                 {conversations.length === 0 ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>No conversations yet</div>
+                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div style={{ marginBottom: 8 }}><MessageCircle size={32} /></div>
+                    <p style={{ fontWeight: 500, marginBottom: 4 }}>No conversations yet</p>
+                    <p style={{ fontSize: 13 }}>Messages will appear here when you communicate about a task</p>
+                  </div>
                 ) : (
-                  conversations.map(c => (
+                  conversations.map(c => {
+                    const other = getOtherParty(c)
+                    return (
                     <div
                       key={c.id}
                       className={`dashboard-v4-conversation-item ${selectedConversation === c.id ? 'active' : ''}`}
                       onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
                     >
-                      <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                        {c.other_user?.name?.charAt(0) || '?'}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.otherUser?.name || 'Unknown'}</p>
-                        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last_message || 'No messages'}</p>
-                      </div>
-                      {c.unread > 0 && (
-                        <span className="dashboard-v4-nav-badge">{c.unread}</span>
+                      {other.avatar_url ? (
+                        <img src={other.avatar_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 15, flexShrink: 0 }}>
+                          {other.name?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
                       )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <p style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, margin: 0 }}>{other.name}</p>
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{timeAgo(c.updated_at)}</span>
+                        </div>
+                        {c.task && (
+                          <p style={{ fontSize: 12, color: 'var(--orange-600)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '0 0 2px 0' }}>
+                            {c.task.title}
+                          </p>
+                        )}
+                        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{c.last_message || 'No messages yet'}</p>
+                      </div>
                     </div>
-                  ))
+                  )})
                 )}
               </div>
 
               {/* Messages Thread */}
               <div className={`dashboard-v4-message-thread ${selectedConversation ? 'block' : 'hidden md:flex'}`}>
-                {selectedConversation ? (
+                {selectedConversation && activeConv ? (
                   <>
-                    {/* Mobile Back Button */}
-                    <div className="flex md:hidden items-center gap-2" style={{ padding: 12, borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
-                      <button onClick={() => setSelectedConversation(null)} style={{ padding: 8, background: 'none', border: 'none', cursor: 'pointer' }}>
-                        ← Back
+                    {/* Thread Header: back button + other party + task link */}
+                    <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(26,26,26,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
+                      <button onClick={() => setSelectedConversation(null)} className="md:hidden" style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)' }}>
+                        ←
                       </button>
-                    </div>
-                    <div className="dashboard-v4-message-list">
-                      {messages.map(m => (
-                        <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
-                          <p>{m.content}</p>
-                          <p style={{ fontSize: 11, marginTop: 4, opacity: 0.7 }}>
-                            {new Date(m.created_at).toLocaleTimeString()}
-                          </p>
+                      {activeOther?.avatar_url ? (
+                        <img src={activeOther.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>
+                          {activeOther?.name?.charAt(0)?.toUpperCase() || '?'}
                         </div>
-                      ))}
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{activeOther?.name}</p>
+                        {activeConv.task && (
+                          <a
+                            href={`/tasks/${activeConv.task.id}`}
+                            style={{ fontSize: 12, color: 'var(--orange-600)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                            onClick={(e) => { e.stopPropagation() }}
+                          >
+                            {activeConv.task.title} →
+                          </a>
+                        )}
+                      </div>
+                      {activeConv.task && (
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', background: 'rgba(224,122,95,0.1)', padding: '2px 8px', borderRadius: 6, flexShrink: 0 }}>
+                          ${activeConv.task.budget}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Messages */}
+                    <div className="dashboard-v4-message-list" ref={el => { if (el) el.scrollTop = el.scrollHeight }}>
+                      {messages.length === 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: 14 }}>
+                          No messages yet — send one to start the conversation
+                        </div>
+                      ) : (
+                        messages.map(m => (
+                          <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
+                            {m.sender_id !== user.id && m.sender?.name && (
+                              <p style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, opacity: 0.7 }}>{m.sender.name}</p>
+                            )}
+                            <p style={{ margin: 0, lineHeight: 1.5 }}>{m.content}</p>
+                            <p style={{ fontSize: 11, marginTop: 4, opacity: 0.6, margin: 0 }}>
+                              {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Input */}
                     <div className="dashboard-v4-message-input">
                       <input
                         type="text"
@@ -3792,18 +3964,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         style={{ flex: 1 }}
                         onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(e) }}
                       />
-                      <button className="v4-btn v4-btn-primary" onClick={sendMessage}>Send</button>
+                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={!newMessage.trim()}>Send</button>
                     </div>
                   </>
                 ) : (
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
-                    Select a conversation to start messaging
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', gap: 8 }}>
+                    <MessageCircle size={28} />
+                    <p style={{ margin: 0 }}>Select a conversation to start messaging</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        )}
+          )
+        })()}
 
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
@@ -4163,7 +4337,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               </button>
             </div>
             <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring?tab=settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring/settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
           </div>
 
           {/* Step 2: Install */}
@@ -4637,7 +4811,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
                   <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
                 )}
                 <a
-                  href="/dashboard/hiring?tab=settings"
+                  href="/dashboard/hiring/settings"
                   className="btn-v4 btn-v4-primary"
                 >
                   Manage API Keys →
@@ -4943,7 +5117,7 @@ Signature required. Bring to our office at 123 Main St.",
             <div>
               <h4 className="footer-v4-column-title">Platform</h4>
               <div className="footer-v4-links">
-                <a href="/dashboard/working?tab=browse" className="footer-v4-link">Browse Tasks</a>
+                <a href="/dashboard/working/browse" className="footer-v4-link">Browse Tasks</a>
                 <a href="/auth" className="footer-v4-link">Sign Up</a>
                 <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
               </div>
@@ -5194,7 +5368,7 @@ function App() {
         debug('[Onboarding] Success, user:', finalUser)
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
-        navigate('/dashboard/working?tab=browse')
+        navigate('/dashboard/working/browse')
       } else {
         const errorData = await res.json().catch(() => ({}))
         console.error('[Onboarding] Failed:', errorData)
@@ -5271,10 +5445,10 @@ function App() {
       return <Onboarding onComplete={handleOnboardingComplete} user={user} />
     }
 
-    // Dashboard route - requires auth (matches /dashboard/working and /dashboard/hiring)
-    if (path === '/dashboard/working' || path === '/dashboard/hiring') {
+    // Dashboard route - requires auth (matches /dashboard/working/... and /dashboard/hiring/...)
+    if (path.startsWith('/dashboard/working') || path.startsWith('/dashboard/hiring')) {
       if (!user || user.needs_onboarding) return <Loading />
-      return <Dashboard user={user} onLogout={logout} initialMode={path === '/dashboard/hiring' ? 'hiring' : 'working'} onUserUpdate={setUser} />
+      return <Dashboard user={user} onLogout={logout} initialMode={path.startsWith('/dashboard/hiring') ? 'hiring' : 'working'} onUserUpdate={setUser} />
     }
 
     // Bare /dashboard redirect (handled by useEffect above, but guard here too)
