@@ -20,14 +20,10 @@ export default function TaskHeader({ task }) {
 
   return (
     <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
-      {/* Status Badge + Budget inline on mobile */}
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
+      {/* Status Badge */}
+      <div className="flex items-center mb-3 sm:mb-4">
         <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
-        </span>
-        {/* Compact budget shown inline on mobile only */}
-        <span className="lg:hidden text-lg font-bold text-[#059669] font-mono">
-          ${task.budget} <span className="text-xs font-normal text-[#8A8A8A]">USDC</span>
         </span>
       </div>
 
@@ -102,16 +98,6 @@ export default function TaskHeader({ task }) {
         )}
       </div>
 
-      {/* Budget - Large and Prominent (desktop only, mobile shows inline above + BudgetCard) */}
-      <div className="hidden lg:block mt-6 pt-6 border-t border-[rgba(26,26,26,0.08)]">
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-[#059669] font-mono">
-            ${task.budget}
-          </span>
-          <span className="text-xl text-[#525252]">USDC</span>
-        </div>
-        <p className="text-[#8A8A8A] text-sm mt-1">Payment for this task</p>
-      </div>
     </div>
   );
 }

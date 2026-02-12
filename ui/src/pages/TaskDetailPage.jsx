@@ -391,7 +391,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto px-3 pt-4 pb-6 sm:px-4 sm:pt-8 sm:pb-8 mt-14" style={{ maxWidth: 1280 }}>
+      <main className="mx-auto px-3 pt-4 pb-24 sm:px-4 sm:pt-8 lg:pb-8 mt-14" style={{ maxWidth: 1280 }}>
         {/* Countdown Banner (only when pending review) */}
         {taskStatus?.dispute_window_info && (
           <CountdownBanner disputeWindowInfo={taskStatus.dispute_window_info} />
@@ -403,13 +403,28 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           <div className="lg:col-span-3 space-y-3 sm:space-y-4 lg:space-y-6">
             <TaskHeader task={task} />
 
-            {/* Mobile-only: Budget card right after header so Apply is visible early */}
+            {/* Mobile-only: Compact budget info (no apply button — that's in the sticky bar) */}
             <div className="lg:hidden">
-              <BudgetCard
-                task={task}
-                user={user}
-                onApply={() => setShowApplyModal(true)}
-              />
+              <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-[#059669] font-mono">
+                        ${Number(task.budget) || 0}
+                      </span>
+                      {task.budget_type === 'hourly' && <span className="text-sm text-[#525252]">/hr</span>}
+                    </div>
+                    <div className="text-xs text-[#8A8A8A] mt-0.5">
+                      {task.budget_type === 'hourly' ? 'Hourly Rate' : 'Fixed Price'} · USDC
+                    </div>
+                  </div>
+                  {task.created_at && (
+                    <span className="text-xs text-[#8A8A8A]">
+                      Posted {new Date(task.created_at).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Show proof section if in progress, or status badge if submitted (participants only) */}
@@ -473,6 +488,40 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         onSuccess={() => setHasApplied(true)}
         userToken={user?.id}
       />
+
+      {/* Mobile Sticky Apply Bar */}
+      {task.status === 'open' && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(26,26,26,0.12)] px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+          style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+        >
+          <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
+            <div className="flex items-baseline gap-1 shrink-0">
+              <span className="text-xl font-bold text-[#059669] font-mono">
+                ${Number(task.budget) || 0}
+              </span>
+              {task.budget_type === 'hourly' && <span className="text-sm text-[#525252]">/hr</span>}
+              <span className="text-xs text-[#8A8A8A] ml-1">USDC</span>
+            </div>
+            {user && task.agent_id !== user.id && !hasApplied ? (
+              <button
+                onClick={() => setShowApplyModal(true)}
+                className="flex-1 max-w-[200px] py-2.5 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-sm shadow-md"
+              >
+                Apply for This Task
+              </button>
+            ) : hasApplied ? (
+              <span className="text-sm font-medium text-[#059669]">Applied ✓</span>
+            ) : !user ? (
+              <a
+                href="/auth"
+                className="flex-1 max-w-[200px] py-2.5 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block"
+              >
+                Sign In to Apply
+              </a>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
