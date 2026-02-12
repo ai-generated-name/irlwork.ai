@@ -4327,7 +4327,7 @@ app.post('/api/notifications/:id/read', async (req, res) => {
 
   const { error } = await supabase
     .from('notifications')
-    .update({ read_at: new Date().toISOString() })
+    .update({ is_read: true })
     .eq('id', req.params.id)
     .eq('user_id', user.id);
 
@@ -4693,10 +4693,10 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
   if (conversation.task_id) {
     await supabase
       .from('notifications')
-      .update({ read_at: new Date().toISOString() })
+      .update({ is_read: true })
       .eq('user_id', user.id)
       .eq('type', 'new_message')
-      .is('read_at', null)
+      .eq('is_read', false)
       .like('link', `%${conversation.task_id}%`);
   }
 
