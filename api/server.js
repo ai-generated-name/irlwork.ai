@@ -2715,11 +2715,13 @@ app.post('/api/upload/avatar', async (req, res) => {
 
   try {
     const { file, filename, mimeType } = req.body;
+    console.log(`[Avatar Upload] User: ${user.id}, Filename: ${filename}, MimeType: ${mimeType}, HasFile: ${!!file}`);
     if (!file) return res.status(400).json({ error: 'No file provided' });
 
     // Server-side file size validation (5MB max after compression)
     const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
     const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
+    console.log(`[Avatar Upload] Decoded file size: ${(fileSizeBytes / 1024 / 1024).toFixed(2)}MB`);
     if (fileSizeBytes > 5 * 1024 * 1024) {
       return res.status(413).json({ error: 'Image must be under 5MB' });
     }
@@ -2736,7 +2738,6 @@ app.post('/api/upload/avatar', async (req, res) => {
       fileData = Buffer.from(file, 'base64');
     }
 
-    let uploadSuccess = false;
     try {
       const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
       const s3Client = new S3Client({
@@ -2751,9 +2752,9 @@ app.post('/api/upload/avatar', async (req, res) => {
         Body: fileData,
         ContentType: mimeType || 'image/jpeg',
       }));
-      uploadSuccess = true;
     } catch (s3Error) {
       console.error('R2 avatar upload error:', s3Error.message);
+      return res.status(502).json({ error: 'Failed to upload to storage. Please try again.' });
     }
 
     // Use R2 public URL if configured, otherwise use API proxy endpoint (always works)
@@ -2762,13 +2763,18 @@ app.post('/api/upload/avatar', async (req, res) => {
       : `${API_BASE}/api/avatar/${user.id}`;
 
     // Save both the display URL and the R2 key (for proxy serving)
-    await supabase.from('users').update({
+    const { error: dbError } = await supabase.from('users').update({
       avatar_url: avatarUrl,
       avatar_r2_key: uniqueFilename,
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
 
-    res.json({ url: avatarUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
+    if (dbError) {
+      console.error('Avatar DB update error:', dbError.message);
+      return res.status(500).json({ error: 'Failed to save avatar. Please try again.' });
+    }
+
+    res.json({ url: avatarUrl, filename: uniqueFilename, success: true });
   } catch (e) {
     console.error('Avatar upload error:', e.message);
     res.status(500).json({ error: e.message });
@@ -4408,7 +4414,7 @@ app.post('/api/mcp', async (req, res) => {
           spots_filled: newSpotsFilled,
           spots_remaining: Math.max(0, maxQuantity - newSpotsFilled),
           message: isBounty && !allSpotsFilled
-            ? `Worker assigned (${newSpotsFilled}/${maxQuantity} spots filled). Task remains open for more applicants.`
+            ? `Human assigned (${newSpotsFilled}/${maxQuantity} spots filled). Payment charged. Task remains open.`
             : 'Worker assigned and payment charged. Work can begin immediately.'
         });
         break;
