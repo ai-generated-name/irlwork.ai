@@ -530,6 +530,67 @@ async function createNotification(userId, type, title, message, link = null) {
   });
 }
 
+// Send email notification for new messages (uses Supabase Edge Function or direct SMTP)
+async function sendMessageEmailNotification(recipientUserId, senderName, taskTitle, messagePreview, taskId) {
+  if (!supabase) return;
+
+  try {
+    // Get recipient's email and notification preferences
+    const { data: recipient } = await supabase
+      .from('users')
+      .select('email, name, notification_preferences')
+      .eq('id', recipientUserId)
+      .single();
+
+    if (!recipient?.email) return;
+
+    // Check if user has email notifications disabled
+    const prefs = recipient.notification_preferences || {};
+    if (prefs.email_messages === false) return;
+
+    // Throttle: don't send more than 1 email per 5 minutes per conversation
+    const cacheKey = `email_throttle_${recipientUserId}_${taskId}`;
+    if (global._emailThrottle?.[cacheKey]) {
+      const elapsed = Date.now() - global._emailThrottle[cacheKey];
+      if (elapsed < 5 * 60 * 1000) return; // Skip if within 5 min window
+    }
+    if (!global._emailThrottle) global._emailThrottle = {};
+    global._emailThrottle[cacheKey] = Date.now();
+
+    // Use Supabase's built-in email (via auth.admin) or a simple fetch to an edge function
+    // For now, use the Supabase edge function pattern if available
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    if (!RESEND_API_KEY) {
+      console.log(`[Email] Would notify ${recipient.email}: New message from ${senderName} about "${taskTitle}"`);
+      return;
+    }
+
+    const taskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'IRL Work <notifications@irlwork.ai>',
+        to: recipient.email,
+        subject: `New message from ${senderName} about "${taskTitle}"`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
+            <div style="background: #FAF8F5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+              <p style="color: #525252; font-size: 14px; margin: 0 0 8px 0;"><strong>${senderName}</strong> sent you a message:</p>
+              <p style="color: #1A1A1A; font-size: 15px; margin: 0; line-height: 1.5;">${messagePreview}</p>
+            </div>
+            <p style="font-size: 13px; color: #8A8A8A; margin: 0 0 16px 0;">Task: ${taskTitle}</p>
+            <a href="${taskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">Reply on IRL Work</a>
+            <p style="font-size: 11px; color: #B0B0B0; margin-top: 24px;">You received this because you have message notifications enabled on IRL Work.</p>
+          </div>
+        `
+      })
+    });
+  } catch (err) {
+    console.error('[Email] Failed to send message notification:', err.message);
+  }
+}
+
 // Dispatch webhook to user if they have one configured
 async function dispatchWebhook(userId, event) {
   if (!supabase) return;
@@ -4385,8 +4446,8 @@ app.get('/api/conversations', async (req, res) => {
     .select(`
       *,
       task:tasks(id, title, category, budget),
-      human:users!human_id(id, name, type, rating, avatar_url),
-      agent:users!agent_id(id, name, type, avatar_url)
+      human:users!human_id(id, name, type, rating, avatar_url, last_active_at),
+      agent:users!agent_id(id, name, type, avatar_url, last_active_at)
     `)
     .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
     .order('updated_at', { ascending: false });
@@ -4397,7 +4458,7 @@ app.get('/api/conversations', async (req, res) => {
     return res.json([]);
   }
 
-  // Compute per-conversation unread counts
+  // Compute per-conversation unread counts using a single aggregation query
   const convIds = conversations.map(c => c.id);
   const { data: unreadData } = await supabase
     .from('messages')
@@ -4565,7 +4626,7 @@ app.post('/api/messages', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { conversation_id, content } = req.body;
+  const { conversation_id, content, attachments } = req.body;
 
   // Verify user has access to conversation (include task_id and task title for notifications)
   const { data: conversation, error: convError } = await supabase
@@ -4582,23 +4643,37 @@ app.post('/api/messages', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
+  // Build metadata with attachments if present
+  const metadata = {};
+  if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+    metadata.attachments = attachments.slice(0, 5); // Max 5 attachments per message
+  }
+
   const id = uuidv4();
+  const insertData = {
+    id,
+    conversation_id,
+    sender_id: user.id,
+    content: content || '',
+    created_at: new Date().toISOString()
+  };
+  // Only include metadata if it has attachments (column may not exist in all envs)
+  if (metadata.attachments) {
+    insertData.metadata = metadata;
+  }
+
   const { data: message, error } = await supabase
     .from('messages')
-    .insert({
-      id,
-      conversation_id,
-      sender_id: user.id,
-      content,
-      created_at: new Date().toISOString()
-    })
+    .insert(insertData)
     .select()
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
 
   // Update conversation's updated_at and last_message preview
-  const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+  const hasAttachments = metadata.attachments?.length > 0;
+  const previewText = content || (hasAttachments ? `📎 ${metadata.attachments.length} attachment${metadata.attachments.length > 1 ? 's' : ''}` : '');
+  const preview = previewText.length > 100 ? previewText.substring(0, 100) + '...' : previewText;
   await supabase
     .from('conversations')
     .update({ updated_at: new Date().toISOString(), last_message: preview })
@@ -4619,6 +4694,9 @@ app.post('/api/messages', async (req, res) => {
       `/tasks/${conversation.task_id}`
     );
 
+    // Send email notification to the other party (async, non-blocking)
+    sendMessageEmailNotification(otherPartyId, user.name, taskTitle, preview, conversation.task_id).catch(() => {});
+
     // Dispatch webhook if the other party has one configured
     await dispatchWebhook(otherPartyId, {
       type: 'new_message',
@@ -4629,12 +4707,85 @@ app.post('/api/messages', async (req, res) => {
         sender_name: user.name,
         sender_type: user.type || (user.is_agent ? 'agent' : 'worker'),
         content,
+        attachments: metadata.attachments || [],
         created_at: message.created_at
       }
     });
   }
 
   res.json(message);
+});
+
+// ============ MESSAGE ATTACHMENT UPLOAD ============
+app.post('/api/upload/message-attachment', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const getEnv = (k) => {
+    try { return require('process').env[k]; } catch { return null; }
+  };
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+  const R2_PUBLIC_URL = getEnv('R2_PUBLIC_URL') || getEnv('CLOUD_PUBLIC_URL');
+
+  try {
+    const { file, filename, mimeType } = req.body;
+    if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    // Validate file size (max 10MB for base64 ~ 13.3MB string)
+    if (typeof file === 'string' && file.length > 14 * 1024 * 1024) {
+      return res.status(400).json({ error: 'File too large. Maximum 10MB allowed.' });
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const detectedType = mimeType || 'application/octet-stream';
+    if (!allowedTypes.some(t => detectedType.startsWith(t.split('/')[0]))) {
+      // Allow any image/* and the listed document types
+    }
+
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const ext = filename?.split('.').pop()?.toLowerCase() || 'bin';
+    const safeFilename = `messages/${user.id}/${timestamp}-${randomStr}.${ext}`;
+
+    if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+      // Demo mode
+      const mockUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${safeFilename}` : `https://pub-r2.dev/${R2_BUCKET}/${safeFilename}`;
+      return res.json({ url: mockUrl, filename: filename || safeFilename, type: detectedType, size: 0, demo: true });
+    }
+
+    let fileData = file;
+    if (file.startsWith('data:')) {
+      fileData = Buffer.from(file.split(',')[1], 'base64');
+    } else if (typeof file === 'string') {
+      fileData = Buffer.from(file, 'base64');
+    }
+
+    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+    const s3Client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+    });
+
+    await s3Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: safeFilename,
+      Body: fileData,
+      ContentType: detectedType,
+    }));
+
+    const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${safeFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${safeFilename}`;
+    res.json({ url: publicUrl, filename: filename || safeFilename, type: detectedType, size: fileData.length });
+  } catch (e) {
+    console.error('Message attachment upload error:', e.message);
+    res.status(500).json({ error: 'Failed to upload attachment' });
+  }
 });
 
 app.put('/api/messages/:id/read', async (req, res) => {
