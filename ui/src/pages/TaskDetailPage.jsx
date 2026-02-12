@@ -5,12 +5,11 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../App';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
+import TaskTimeline from '../components/TaskDetail/TaskTimeline';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
 import BudgetCard from '../components/TaskDetail/BudgetCard';
 import StatsSection from '../components/TaskDetail/StatsSection';
-import EscrowDisplay from '../components/TaskDetail/EscrowDisplay';
 import ProofSection from '../components/TaskDetail/ProofSection';
-import ProofStatusBadge from '../components/TaskDetail/ProofStatusBadge';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
 import QuickApplyModal from '../components/QuickApplyModal';
 import { v4 } from '../components/V4Layout';
@@ -407,6 +406,11 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           <div className="lg:col-span-3 space-y-3 sm:space-y-4 lg:space-y-6">
             <TaskHeader task={task} />
 
+            {/* Task Timeline - only for participants once task is past open */}
+            {isParticipant && task.status !== 'open' && (
+              <TaskTimeline task={task} taskStatus={taskStatus} />
+            )}
+
             {/* Mobile-only: Budget card right after header so Apply is visible early */}
             <div className="lg:hidden">
               <BudgetCard
@@ -416,12 +420,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               />
             </div>
 
-            {/* Show proof section if in progress, or status badge if submitted (participants only) */}
+            {/* Show proof section if in progress (participants only) */}
             {isParticipant && task.status === 'in_progress' && (
               <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
-            )}
-            {isParticipant && task.status !== 'in_progress' && (
-              <ProofStatusBadge task={task} proofs={taskStatus?.proofs} />
             )}
 
             {/* Messages - in left column beneath task info */}
@@ -452,11 +453,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
             {/* Agent Profile Card */}
             <AgentProfileCard agent={agentProfile} />
-
-            {/* Escrow Display (participants only) */}
-            {isParticipant && (
-              <EscrowDisplay task={task} />
-            )}
           </div>
         </div>
       </main>
