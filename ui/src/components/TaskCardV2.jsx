@@ -34,11 +34,12 @@ function getDeadlineInfo(deadline) {
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffMs < 0) return { label: 'Overdue', level: 'overdue' };
-  if (diffHours < 24) return { label: diffHours <= 1 ? 'Due soon' : `${diffHours}h left`, level: 'urgent' };
-  if (diffDays <= 3) return { label: `${diffDays}d left`, level: 'soon' };
-  if (diffDays <= 7) return { label: `${diffDays}d left`, level: 'normal' };
-  return { label: due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), level: 'normal' };
+  // Past deadline - shouldn't appear in browse (backend expires these), but handle gracefully
+  if (diffMs < 0) return null;
+  if (diffHours < 1) return { label: 'Due in < 1 hour', level: 'urgent' };
+  if (diffHours < 24) return { label: `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`, level: 'urgent' };
+  if (diffDays <= 3) return { label: `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`, level: 'soon' };
+  return { label: `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`, level: 'normal' };
 }
 
 export default function TaskCardV2({

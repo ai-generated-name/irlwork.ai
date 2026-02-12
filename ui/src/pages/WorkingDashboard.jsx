@@ -185,19 +185,21 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
               let deadlineBadge = null;
               if (task.deadline) {
                 const diffMs = new Date(task.deadline) - new Date();
+                if (diffMs > 0) {
                 const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                 const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
                 let label, bg, color;
-                if (diffMs < 0) { label = 'Overdue'; bg = '#FEE2E2'; color = '#DC2626'; }
-                else if (diffHours < 24) { label = diffHours <= 1 ? 'Due soon' : `${diffHours}h left`; bg = '#FEF3C7'; color = '#D97706'; }
-                else if (diffDays <= 3) { label = `${diffDays}d left`; bg = '#FEF3C7'; color = '#B45309'; }
-                else { label = `${diffDays}d left`; bg = '#F0F9FF'; color = '#0369A1'; }
+                if (diffHours < 1) { label = 'Due in < 1 hour'; bg = '#FEF3C7'; color = '#D97706'; }
+                else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#D97706'; }
+                else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#B45309'; }
+                else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
                 deadlineBadge = (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: bg, color, whiteSpace: 'nowrap' }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                     {label}
                   </span>
                 );
+                } // end if (diffMs > 0)
               }
               return (
                 <button

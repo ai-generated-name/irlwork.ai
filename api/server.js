@@ -5491,31 +5491,64 @@ async function start() {
     startBalancePromoter(supabase, createNotification);
     console.log('   ✅ Balance promoter started (15min interval)');
 
-    // Start task expiry service (auto-expires unfilled open tasks after 30 days)
+    // Start task expiry service
+    // Two expiry rules:
+    //   1. Open tasks past their deadline with no one assigned → expire immediately
+    //   2. Open tasks with no deadline older than 30 days → expire as stale
     const TASK_EXPIRY_DAYS = 30;
     const TASK_EXPIRY_INTERVAL_MS = 60 * 60 * 1000; // Check every hour
     async function expireOpenTasks() {
       try {
-        const cutoff = new Date(Date.now() - TASK_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
-        const { data: expiredTasks, error } = await supabase
+        const now = new Date().toISOString();
+
+        // Rule 1: Expire open tasks past their deadline (no human assigned)
+        const { data: deadlineExpired, error: deadlineErr } = await supabase
           .from('tasks')
           .update({
             status: 'expired',
-            updated_at: new Date().toISOString()
+            updated_at: now
+          })
+          .eq('status', 'open')
+          .is('human_id', null)
+          .not('deadline', 'is', null)
+          .lt('deadline', now)
+          .select('id, agent_id, title, deadline');
+
+        if (deadlineErr) {
+          console.error('[TaskExpiry] Deadline expiry error:', deadlineErr.message);
+        } else if (deadlineExpired && deadlineExpired.length > 0) {
+          console.log(`[TaskExpiry] Expired ${deadlineExpired.length} tasks past their deadline`);
+          for (const task of deadlineExpired) {
+            if (task.agent_id) {
+              await createNotification(
+                task.agent_id,
+                'task_expired',
+                'Task Expired',
+                `Your task "${task.title}" expired because its deadline passed without anyone accepting it. You can repost it anytime.`,
+                `/tasks/${task.id}`
+              );
+            }
+          }
+        }
+
+        // Rule 2: Expire open tasks without a deadline after 30 days
+        const cutoff = new Date(Date.now() - TASK_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        const { data: staleExpired, error: staleErr } = await supabase
+          .from('tasks')
+          .update({
+            status: 'expired',
+            updated_at: now
           })
           .eq('status', 'open')
           .is('human_id', null)
           .lt('created_at', cutoff)
           .select('id, agent_id, title');
 
-        if (error) {
-          console.error('[TaskExpiry] Error expiring tasks:', error.message);
-          return;
-        }
-
-        if (expiredTasks && expiredTasks.length > 0) {
-          console.log(`[TaskExpiry] Expired ${expiredTasks.length} unfilled tasks older than ${TASK_EXPIRY_DAYS} days`);
-          for (const task of expiredTasks) {
+        if (staleErr) {
+          console.error('[TaskExpiry] Stale expiry error:', staleErr.message);
+        } else if (staleExpired && staleExpired.length > 0) {
+          console.log(`[TaskExpiry] Expired ${staleExpired.length} stale tasks (>${TASK_EXPIRY_DAYS} days old)`);
+          for (const task of staleExpired) {
             if (task.agent_id) {
               await createNotification(
                 task.agent_id,
@@ -5534,7 +5567,7 @@ async function start() {
     // Run once on startup, then on interval
     expireOpenTasks();
     setInterval(expireOpenTasks, TASK_EXPIRY_INTERVAL_MS);
-    console.log(`   ✅ Task expiry service started (${TASK_EXPIRY_DAYS}-day threshold, hourly check)`);
+    console.log(`   ✅ Task expiry service started (deadline + ${TASK_EXPIRY_DAYS}-day stale, hourly check)`);
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
