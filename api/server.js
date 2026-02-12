@@ -1640,9 +1640,10 @@ app.get('/api/tasks', async (req, res) => {
   if (status) query = query.eq('status', status);
   if (my_tasks && user) query = query.eq('agent_id', user.id);
 
-  // Filter out moderated tasks from browse (unless viewing own tasks)
+  // Filter out moderated and expired tasks from browse (unless viewing own tasks)
   if (!my_tasks) {
     query = query.not('moderation_status', 'in', '("hidden","removed")');
+    query = query.not('status', 'eq', 'expired');
   }
 
   const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(100);
@@ -5489,6 +5490,51 @@ async function start() {
     // Start balance promoter (promotes pending → available after 48 hours)
     startBalancePromoter(supabase, createNotification);
     console.log('   ✅ Balance promoter started (15min interval)');
+
+    // Start task expiry service (auto-expires unfilled open tasks after 30 days)
+    const TASK_EXPIRY_DAYS = 30;
+    const TASK_EXPIRY_INTERVAL_MS = 60 * 60 * 1000; // Check every hour
+    async function expireOpenTasks() {
+      try {
+        const cutoff = new Date(Date.now() - TASK_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        const { data: expiredTasks, error } = await supabase
+          .from('tasks')
+          .update({
+            status: 'expired',
+            updated_at: new Date().toISOString()
+          })
+          .eq('status', 'open')
+          .is('human_id', null)
+          .lt('created_at', cutoff)
+          .select('id, agent_id, title');
+
+        if (error) {
+          console.error('[TaskExpiry] Error expiring tasks:', error.message);
+          return;
+        }
+
+        if (expiredTasks && expiredTasks.length > 0) {
+          console.log(`[TaskExpiry] Expired ${expiredTasks.length} unfilled tasks older than ${TASK_EXPIRY_DAYS} days`);
+          for (const task of expiredTasks) {
+            if (task.agent_id) {
+              await createNotification(
+                task.agent_id,
+                'task_expired',
+                'Task Expired',
+                `Your task "${task.title}" expired after ${TASK_EXPIRY_DAYS} days without applicants. You can repost it anytime.`,
+                `/tasks/${task.id}`
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[TaskExpiry] Error:', err.message);
+      }
+    }
+    // Run once on startup, then on interval
+    expireOpenTasks();
+    setInterval(expireOpenTasks, TASK_EXPIRY_INTERVAL_MS);
+    console.log(`   ✅ Task expiry service started (${TASK_EXPIRY_DAYS}-day threshold, hourly check)`);
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }

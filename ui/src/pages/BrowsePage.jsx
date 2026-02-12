@@ -961,6 +961,27 @@ export default function BrowsePage({ user }) {
                           <Clock size={16} />
                           {formatDate(task.created_at)}
                         </span>
+                        {task.deadline && (() => {
+                          const diffMs = new Date(task.deadline) - new Date();
+                          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                          let label, bg, color;
+                          if (diffMs < 0) { label = 'Overdue'; bg = '#FEE2E2'; color = '#DC2626'; }
+                          else if (diffHours < 24) { label = diffHours <= 1 ? 'Due soon' : `${diffHours}h left`; bg = '#FEF3C7'; color = '#D97706'; }
+                          else if (diffDays <= 3) { label = `${diffDays}d left`; bg = '#FEF3C7'; color = '#B45309'; }
+                          else if (diffDays <= 7) { label = `${diffDays}d left`; bg = '#F0F9FF'; color = '#0369A1'; }
+                          else { label = new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); bg = '#F0F9FF'; color = '#0369A1'; }
+                          return (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '2px 10px', borderRadius: 'var(--radius-full)',
+                              fontSize: 12, fontWeight: 600, background: bg, color
+                            }}>
+                              <Clock size={12} />
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </div>
                       {task.agent && (
                         <div style={{ paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>

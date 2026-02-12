@@ -181,20 +181,40 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         <div className="working-dash-attention">
           <h3 className="working-dash-section-title">Needs Attention</h3>
           <div className="working-dash-attention-items">
-            {inProgressTasks.map(task => (
-              <button
-                key={task.id}
-                className="working-dash-attention-item"
-                onClick={() => window.location.href = `/tasks/${task.id}`}
-              >
-                <span className="working-dash-attention-badge working-dash-attention-badge--active">In Progress</span>
-                <span className="working-dash-attention-task-title">{task.title}</span>
-                <span className="working-dash-attention-budget">${task.budget}</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </button>
-            ))}
+            {inProgressTasks.map(task => {
+              let deadlineBadge = null;
+              if (task.deadline) {
+                const diffMs = new Date(task.deadline) - new Date();
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                let label, bg, color;
+                if (diffMs < 0) { label = 'Overdue'; bg = '#FEE2E2'; color = '#DC2626'; }
+                else if (diffHours < 24) { label = diffHours <= 1 ? 'Due soon' : `${diffHours}h left`; bg = '#FEF3C7'; color = '#D97706'; }
+                else if (diffDays <= 3) { label = `${diffDays}d left`; bg = '#FEF3C7'; color = '#B45309'; }
+                else { label = `${diffDays}d left`; bg = '#F0F9FF'; color = '#0369A1'; }
+                deadlineBadge = (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: bg, color, whiteSpace: 'nowrap' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                    {label}
+                  </span>
+                );
+              }
+              return (
+                <button
+                  key={task.id}
+                  className="working-dash-attention-item"
+                  onClick={() => window.location.href = `/tasks/${task.id}`}
+                >
+                  <span className="working-dash-attention-badge working-dash-attention-badge--active">In Progress</span>
+                  {deadlineBadge}
+                  <span className="working-dash-attention-task-title">{task.title}</span>
+                  <span className="working-dash-attention-budget">${task.budget}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              );
+            })}
             {reviewTasks.map(task => (
               <button
                 key={task.id}
