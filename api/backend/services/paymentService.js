@@ -20,7 +20,7 @@ const { v4: uuidv4 } = require('uuid');
  * @returns {object} Payment release result
  */
 async function releasePaymentToPending(supabase, taskId, humanId, agentId, createNotification) {
-  const PLATFORM_FEE_PERCENT = 15;
+  const { PLATFORM_FEE_PERCENT } = require('../../config/constants');
 
   // Get task details
   const { data: task, error: taskError } = await supabase
@@ -108,7 +108,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', humanId);
 
   // Update agent's total paid (atomic increment)
-  await supabase.rpc('increment_user_stat', { user_id_param: agentId, stat_name: 'total_usdc_paid', increment_by: netAmount });
+  await supabase.rpc('increment_user_stat', { user_id_param: agentId, stat_name: 'total_paid', increment_by: netAmount });
   await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', agentId);
 
   // Notify human about pending payment with 48-hour hold

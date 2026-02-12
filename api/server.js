@@ -221,7 +221,8 @@ const supabase = supabaseUrl && supabaseKey
   : null;
 
 // Configuration
-const PLATFORM_FEE_PERCENT = 15;
+const { PLATFORM_FEE_PERCENT } = require('./config/constants');
+const { isAdmin } = require('./middleware/adminAuth');
 
 // Data categories
 const QUICK_CATEGORIES = [
@@ -954,7 +955,7 @@ app.get('/api/auth/verify', async (req, res) => {
       total_tasks_posted: user.total_tasks_posted || 0,
       total_tasks_accepted: user.total_tasks_accepted || 0,
       total_disputes_filed: user.total_disputes_filed || 0,
-      total_usdc_paid: parseFloat(user.total_usdc_paid) || 0,
+      total_paid: parseFloat(user.total_paid) || 0,
       last_active_at: user.last_active_at,
       // Derived metrics
       completion_rate: completionRate,
@@ -1469,7 +1470,7 @@ app.get('/api/users/:id', async (req, res) => {
   const isSelf = requester && requester.id === req.params.id;
 
   const columns = isSelf
-    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, type, avatar_url'
+    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_paid, type, avatar_url'
     : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url';
 
   const { data: user, error } = await supabase
@@ -1752,7 +1753,7 @@ app.get('/api/tasks/:id', async (req, res, next) => {
     } else {
       const { data: agentData } = await supabase
         .from('users')
-        .select('id, name, type, city, state, total_tasks_posted, total_usdc_paid, rating, review_count, verified, created_at')
+        .select('id, name, type, city, state, total_tasks_posted, total_paid, rating, review_count, verified, created_at')
         .eq('id', task.agent_id)
         .single();
       poster = agentData || null;
@@ -3117,132 +3118,12 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
 });
 
 // ============ ADMIN DISPUTE RESOLUTION ============
+// DEPRECATED: Use POST /api/disputes/:id/resolve instead
 app.post('/api/admin/resolve-dispute', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  // Check if user is admin
-  const { data: adminUser } = await supabase
-    .from('users')
-    .select('type')
-    .eq('id', user.id)
-    .single();
-  
-  if (adminUser?.type !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  const { task_id, resolution, refund_human = false, release_to_human = false, notes } = req.body;
-  
-  // Get task
-  const { data: task, error: taskError } = await supabase
-    .from('tasks')
-    .select('*')
-    .eq('id', task_id)
-    .single();
-  
-  if (taskError || !task) {
-    return res.status(404).json({ error: 'Task not found' });
-  }
-  
-  if (task.status !== 'disputed') {
-    return res.status(400).json({ error: 'Task is not disputed' });
-  }
-  
-  // Resolve based on decision
-  if (release_to_human) {
-    // Release payment to human via Stripe pipeline (48-hour hold + auto-transfer)
-    try {
-      await releasePaymentToPending(supabase, task_id, task.human_id, task.agent_id, createNotification);
-    } catch (e) {
-      return res.status(409).json({ error: e.message || 'Payment has already been released.' });
-    }
-
-    // Update task with dispute resolution metadata
-    await supabase
-      .from('tasks')
-      .update({
-        status: 'paid',
-        dispute_resolved_at: new Date().toISOString(),
-        dispute_resolution: resolution,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', task_id);
-
-    const escrowAmount = task.escrow_amount || task.budget || 50;
-    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-    const netAmount = escrowAmount - platformFee;
-
-    await createNotification(
-      task.human_id,
-      'dispute_resolved',
-      'Dispute Resolved - Favorable',
-      `The dispute has been resolved in your favor. Payment of $${netAmount.toFixed(2)} USD has been released.`,
-      `/tasks/${task_id}`
-    );
-  } else if (refund_human) {
-    // Refund escrow to agent via Stripe
-    if (task.stripe_payment_intent_id) {
-      try {
-        const { refundPayment } = require('./backend/services/stripeService');
-        await refundPayment(supabase, task_id, 'requested_by_customer');
-        console.log(`[Dispute] Refunded Stripe payment for task ${task_id}`);
-      } catch (refundErr) {
-        console.error(`[Dispute] Stripe refund failed for task ${task_id}:`, refundErr);
-        return res.status(500).json({ error: 'Failed to process Stripe refund: ' + refundErr.message });
-      }
-    }
-
-    // Update task with dispute resolution metadata
-    await supabase
-      .from('tasks')
-      .update({
-        status: 'cancelled',
-        dispute_resolved_at: new Date().toISOString(),
-        dispute_resolution: resolution,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', task_id);
-
-    // Freeze any pending transactions for this task so worker can't withdraw
-    await supabase
-      .from('pending_transactions')
-      .update({ status: 'frozen', updated_at: new Date().toISOString() })
-      .eq('task_id', task_id)
-      .in('status', ['pending', 'available']);
-
-    await createNotification(
-      task.agent_id,
-      'dispute_resolved',
-      'Dispute Resolved - Refund',
-      `The dispute has been resolved. $${task.escrow_amount} USD has been refunded to your card.`,
-      `/tasks/${task_id}`
-    );
-    await createNotification(
-      task.human_id,
-      'dispute_resolved',
-      'Dispute Resolved',
-      `The dispute has been resolved. ${notes || 'See details in your dashboard.'}`,
-      `/tasks/${task_id}`
-    );
-  } else {
-    // Partial resolution - reset 48h timer for agent review
-    await supabase
-      .from('tasks')
-      .update({
-        status: 'pending_review',
-        proof_submitted_at: new Date().toISOString(),
-        dispute_resolved_at: new Date().toISOString(),
-        dispute_resolution: resolution,
-        notes,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', task_id);
-  }
-  
-  res.json({ success: true, resolution });
+  res.status(410).json({
+    error: 'This endpoint is deprecated. Use POST /api/disputes/:id/resolve instead.',
+    migration: 'Pass { resolution, resolution_notes, refund_agent, release_to_human } to /api/disputes/:disputeId/resolve'
+  });
 });
 
 // DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
@@ -4940,7 +4821,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
       id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
       verified, availability, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at, social_links,
+      total_disputes_filed, total_paid, last_active_at, social_links,
       headline, languages, timezone, travel_radius, avatar_url
     `)
     .eq('id', req.params.id)
@@ -5077,7 +4958,7 @@ app.get('/api/profile', async (req, res) => {
     total_tasks_posted: profile.total_tasks_posted || 0,
     total_tasks_accepted: profile.total_tasks_accepted || 0,
     total_disputes_filed: profile.total_disputes_filed || 0,
-    total_usdc_paid: parseFloat(profile.total_usdc_paid) || 0,
+    total_paid: parseFloat(profile.total_paid) || 0,
     last_active_at: profile.last_active_at,
     // Derived metrics
     completion_rate: completionRate,
@@ -5221,7 +5102,7 @@ app.get('/api/wallet/status', async (req, res) => {
 app.get('/api/admin/pending-stats', async (req, res) => {
   try {
     const user = await getUserByToken(req.headers.authorization);
-    if (!user || user.role !== 'admin') {
+    if (!user || !isAdmin(user.id)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
@@ -5711,16 +5592,16 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  // Admin check: only admins can resolve disputes
-  if (user.role !== 'admin') {
+  // Admin check: only admins can resolve disputes (uses ADMIN_USER_IDS env var)
+  if (!isAdmin(user.id)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
   const { id } = req.params;
-  const { resolution, resolution_notes, refund_agent } = req.body;
+  const { resolution, resolution_notes, refund_agent = false, release_to_human = false } = req.body;
 
-  if (!resolution || !['approved', 'rejected'].includes(resolution)) {
-    return res.status(400).json({ error: 'Valid resolution required (approved or rejected)' });
+  if (!resolution || !['approved', 'rejected', 'partial'].includes(resolution)) {
+    return res.status(400).json({ error: 'Valid resolution required (approved, rejected, or partial)' });
   }
 
   const { data: dispute, error: disputeError } = await supabase
@@ -5737,6 +5618,9 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     return res.status(400).json({ error: 'Dispute has already been resolved' });
   }
 
+  const task = dispute.task;
+  const taskTitle = task?.title || 'Unknown';
+
   // Update dispute status
   await supabase
     .from('disputes')
@@ -5748,11 +5632,16 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     })
     .eq('id', id);
 
-  if (resolution === 'approved' && refund_agent) {
-    // Agent wins: refund the actual Stripe PaymentIntent + update DB
-    if (dispute.task?.stripe_payment_intent_id) {
-      const { refundPayment } = require('./backend/services/stripeService');
-      await refundPayment(supabase, dispute.task_id, 'requested_by_customer');
+  if (refund_agent) {
+    // === REFUND AGENT: Return escrow via Stripe + freeze worker's pending balance ===
+    if (task?.stripe_payment_intent_id) {
+      try {
+        const { refundPayment } = require('./backend/services/stripeService');
+        await refundPayment(supabase, dispute.task_id, 'requested_by_customer');
+      } catch (refundErr) {
+        console.error(`[Dispute] Stripe refund failed for task ${dispute.task_id}:`, refundErr);
+        return res.status(500).json({ error: 'Failed to process Stripe refund: ' + refundErr.message });
+      }
     }
 
     // Freeze any pending_transactions for this task (prevent human from withdrawing)
@@ -5763,54 +5652,104 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       .in('status', ['pending', 'available']);
 
     // Update payout status
-    await supabase
-      .from('payouts')
-      .update({ status: 'refunded' })
-      .eq('id', dispute.payout.id);
+    if (dispute.payout?.id) {
+      await supabase.from('payouts').update({ status: 'refunded' }).eq('id', dispute.payout.id);
+    }
 
-    // Update task escrow status
+    // Update task
     await supabase
       .from('tasks')
-      .update({ escrow_status: 'refunded', status: 'cancelled', updated_at: new Date().toISOString() })
+      .update({
+        escrow_status: 'refunded',
+        status: 'cancelled',
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', dispute.task_id);
 
-    // Notify both parties
     await createNotification(
-      dispute.filed_by,
-      'dispute_resolved',
-      'Dispute Resolved - Refund Issued',
-      `Your dispute for task "${dispute.task.title}" was approved. A refund has been issued.`,
+      dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Refund Issued',
+      `Your dispute for task "${taskTitle}" was approved. A refund has been issued.`,
+      `/disputes/${id}`
+    );
+    await createNotification(
+      dispute.filed_against, 'dispute_resolved', 'Dispute Resolved - Payment Withheld',
+      `The dispute for task "${taskTitle}" was resolved against you. Payment has been withheld.`,
       `/disputes/${id}`
     );
 
-    await createNotification(
-      dispute.filed_against,
-      'dispute_resolved',
-      'Dispute Resolved - Payment Withheld',
-      `The dispute for task "${dispute.task.title}" was resolved against you. Payment has been withheld.`,
-      `/disputes/${id}`
-    );
-  } else {
-    // Human wins: release the payment
+  } else if (release_to_human) {
+    // === RELEASE TO HUMAN: Pay the worker via Stripe pipeline ===
+    try {
+      await releasePaymentToPending(supabase, dispute.task_id, task.human_id, task.agent_id, createNotification);
+    } catch (e) {
+      return res.status(409).json({ error: e.message || 'Payment has already been released.' });
+    }
+
     await supabase
-      .from('payouts')
-      .update({ status: 'available' })
-      .eq('id', dispute.payout.id);
+      .from('tasks')
+      .update({
+        status: 'paid',
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', dispute.task_id);
 
-    // Notify both parties
+    const escrowAmount = task.escrow_amount || task.budget;
+    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+    const netAmount = escrowAmount - platformFee;
+
     await createNotification(
-      dispute.filed_against,
-      'dispute_resolved',
-      'Dispute Resolved - Payment Released',
-      `The dispute for task "${dispute.task.title}" was resolved in your favor. Payment has been released.`,
+      dispute.filed_against, 'dispute_resolved', 'Dispute Resolved - Payment Released',
+      `The dispute for task "${taskTitle}" was resolved in your favor. Payment of $${netAmount.toFixed(2)} has been released.`,
+      `/disputes/${id}`
+    );
+    await createNotification(
+      dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Payment Released to Human',
+      `The dispute for task "${taskTitle}" was resolved in favor of the human.`,
       `/disputes/${id}`
     );
 
+  } else if (resolution === 'partial') {
+    // === PARTIAL RESOLUTION: Reset task for re-review ===
+    await supabase
+      .from('tasks')
+      .update({
+        status: 'pending_review',
+        proof_submitted_at: new Date().toISOString(),
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', dispute.task_id);
+
     await createNotification(
-      dispute.filed_by,
-      'dispute_resolved',
-      'Dispute Resolved - Payment Released to Human',
-      `The dispute for task "${dispute.task.title}" was resolved in favor of the human.`,
+      dispute.filed_by, 'dispute_resolved', 'Dispute Partially Resolved',
+      `The dispute for task "${taskTitle}" has been partially resolved. The task has been returned for re-review.`,
+      `/disputes/${id}`
+    );
+    await createNotification(
+      dispute.filed_against, 'dispute_resolved', 'Dispute Partially Resolved',
+      `The dispute for task "${taskTitle}" has been partially resolved. Please re-review and resubmit.`,
+      `/disputes/${id}`
+    );
+
+  } else {
+    // Default: Human wins — release the payment
+    if (dispute.payout?.id) {
+      await supabase.from('payouts').update({ status: 'available' }).eq('id', dispute.payout.id);
+    }
+
+    await createNotification(
+      dispute.filed_against, 'dispute_resolved', 'Dispute Resolved - Payment Released',
+      `The dispute for task "${taskTitle}" was resolved in your favor. Payment has been released.`,
+      `/disputes/${id}`
+    );
+    await createNotification(
+      dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Payment Released to Human',
+      `The dispute for task "${taskTitle}" was resolved in favor of the human.`,
       `/disputes/${id}`
     );
   }

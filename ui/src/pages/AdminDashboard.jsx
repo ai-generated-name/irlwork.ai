@@ -315,7 +315,7 @@ export default function AdminDashboard({ user }) {
           <StatCard
             title="Work In Progress"
             value={dashboard?.work_in_progress?.count || 0}
-            subtitle={`$${dashboard?.work_in_progress?.total_usdc_held?.toFixed(2) || '0.00'} USD held`}
+            subtitle={`$${dashboard?.work_in_progress?.total_usd_held?.toFixed(2) || '0.00'} USD held`}
             icon="🔨"
             color="blue"
           />
@@ -329,7 +329,7 @@ export default function AdminDashboard({ user }) {
           <StatCard
             title="Ready to Release"
             value={dashboard?.pending_release?.count || 0}
-            subtitle={`$${dashboard?.pending_release?.total_usdc_to_release?.toFixed(2) || '0.00'} USD`}
+            subtitle={`$${dashboard?.pending_release?.total_usd_to_release?.toFixed(2) || '0.00'} USD`}
             icon="✅"
             color="green"
           />
@@ -349,7 +349,7 @@ export default function AdminDashboard({ user }) {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Total USD Processed</p>
-                <p className="text-2xl font-bold text-gray-900">${dashboard?.totals?.total_usdc_processed?.toFixed(2) || '0.00'}</p>
+                <p className="text-2xl font-bold text-gray-900">${dashboard?.totals?.total_usd_processed?.toFixed(2) || '0.00'}</p>
               </div>
             </div>
           </div>

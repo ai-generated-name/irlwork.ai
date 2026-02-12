@@ -9,8 +9,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
-// Platform fee (15%)
-const PLATFORM_FEE_PERCENT = 15;
+const { PLATFORM_FEE_PERCENT } = require('../config/constants');
 
 // Cents-based fee calculation to avoid floating-point rounding errors
 function calculateFees(depositAmount) {
@@ -159,7 +158,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       res.json({
         pending_deposits: {
           count: (pendingDeposits || []).length,
-          total_usdc: pendingDepositsTotal
+          total_usd: pendingDepositsTotal
         },
         stale_deposits_48h: {
           count: (staleDeposits || []).length,
@@ -167,25 +166,25 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         },
         work_in_progress: {
           count: (inProgress || []).length,
-          total_usdc_held: inProgressTotal
+          total_usd_held: inProgressTotal
         },
         pending_agent_approval: {
           count: (pendingAgentApproval || []).length
         },
         pending_release: {
           count: (pendingRelease || []).length,
-          total_usdc_to_release: pendingReleaseTotal
+          total_usd_to_release: pendingReleaseTotal
         },
         pending_withdrawals: {
           count: (pendingWithdrawals || []).length,
-          total_usdc_to_send: pendingWithdrawalsTotal
+          total_usd_to_send: pendingWithdrawalsTotal
         },
         pending_reports: {
           count: (pendingReports || []).length
         },
         totals: {
           platform_fees_earned: platformFeesTotal,
-          total_usdc_processed: totalProcessed
+          total_usd_processed: totalProcessed
         },
         feedback: {
           count: (pendingFeedback || []).length
