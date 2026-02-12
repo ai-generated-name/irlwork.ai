@@ -5034,21 +5034,19 @@ app.get('/api/humans/directory', async (req, res) => {
 
 app.get('/api/humans/:id/profile', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { data: user, error } = await supabase
+
+  // Use SELECT * to avoid 404s when columns from migrations haven't been applied yet
+  let { data: user, error } = await supabase
     .from('users')
-    .select(`
-      id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
-      verified, availability, wallet_address, created_at, profile_completeness,
-      total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at, social_links,
-      headline, languages, timezone, travel_radius, avatar_url
-    `)
+    .select('*')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
 
-  if (error || !user) return res.status(404).json({ error: 'Human not found' });
+  if (error || !user) {
+    console.error('Human profile fetch error:', error?.message || 'User not found', 'id:', req.params.id);
+    return res.status(404).json({ error: 'Human not found' });
+  }
 
   // Get visible ratings for this user
   const { data: reviews } = await supabase
@@ -5061,12 +5059,12 @@ app.get('/api/humans/:id/profile', async (req, res) => {
     .limit(10);
 
   // Calculate derived metrics
-  const completionRate = user.total_tasks_accepted > 0
-    ? ((user.total_tasks_completed / user.total_tasks_accepted) * 100).toFixed(1)
+  const completionRate = (user.total_tasks_accepted || 0) > 0
+    ? (((user.total_tasks_completed || 0) / user.total_tasks_accepted) * 100).toFixed(1)
     : null;
 
-  const paymentRate = user.total_tasks_completed > 0
-    ? (((user.total_tasks_completed - (user.total_disputes_filed || 0)) / user.total_tasks_completed) * 100).toFixed(1)
+  const paymentRate = (user.total_tasks_completed || 0) > 0
+    ? ((((user.total_tasks_completed || 0) - (user.total_disputes_filed || 0)) / user.total_tasks_completed) * 100).toFixed(1)
     : null;
 
   res.json({
@@ -5074,6 +5072,7 @@ app.get('/api/humans/:id/profile', async (req, res) => {
     skills: safeParseJsonArray(user.skills),
     languages: safeParseJsonArray(user.languages),
     reviews: reviews || [],
+    total_ratings_count: (reviews || []).length,
     // Derived metrics
     completion_rate: completionRate,
     payment_rate: paymentRate
