@@ -65,8 +65,16 @@ export default function ProofSection({ task, user, onSubmit }) {
   };
 
   const handleFileSelect = async (e) => {
-    const selected = Array.from(e.target.files || []);
-    // Reset file input immediately so user can always re-select
+    const rawFiles = Array.from(e.target.files || []);
+    // Clone file data BEFORE resetting input — iOS Safari invalidates
+    // File blobs when input.value is cleared
+    const selected = await Promise.all(
+      rawFiles.map(async (f) => {
+        const buf = await f.arrayBuffer();
+        return new File([buf], f.name, { type: f.type, lastModified: f.lastModified });
+      })
+    );
+    // Now safe to reset so user can always re-select
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (selected.length + files.length > 3) {
       toast.error('Maximum 3 files allowed');

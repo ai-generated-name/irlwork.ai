@@ -3044,9 +3044,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
                     style={{ display: 'none' }}
                     onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      // Reset file input immediately so user can always re-select
+                      const origFile = e.target.files?.[0]
+                      if (!origFile) return
+                      // Clone file data into a standalone Blob BEFORE resetting input.
+                      // iOS Safari invalidates the File blob when input.value is cleared.
+                      const fileData = await origFile.arrayBuffer()
+                      const file = new File([fileData], origFile.name, { type: origFile.type, lastModified: origFile.lastModified })
+                      // Now safe to reset so user can always re-select
                       e.target.value = ''
                       if (file.size > 20 * 1024 * 1024) {
                         toast.error('Image must be under 20MB')
@@ -3066,14 +3070,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         let fileToUpload = file
                         const isGif = file.type === 'image/gif' || ext === 'gif'
                         if (!isGif) {
-                          const imageCompression = (await import('browser-image-compression')).default
-                          fileToUpload = await imageCompression(file, {
-                            maxSizeMB: 1,
-                            maxWidthOrHeight: 1200,
-                            useWebWorker: typeof Worker !== 'undefined',
-                            fileType: 'image/jpeg',
-                            initialQuality: 0.85,
-                          })
+                          try {
+                            const imageCompression = (await import('browser-image-compression')).default
+                            fileToUpload = await imageCompression(file, {
+                              maxSizeMB: 1,
+                              maxWidthOrHeight: 1200,
+                              useWebWorker: typeof Worker !== 'undefined',
+                              fileType: 'image/jpeg',
+                              initialQuality: 0.85,
+                            })
+                          } catch (compErr) {
+                            console.warn('Compression failed, uploading original:', compErr)
+                            // Fall through with original file
+                          }
                         }
                         // Use promise-based FileReader to avoid callback nesting
                         const base64 = await new Promise((resolve, reject) => {
