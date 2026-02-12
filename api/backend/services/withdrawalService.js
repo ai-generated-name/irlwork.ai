@@ -99,18 +99,29 @@ async function processWithdrawal(supabase, userId, amountCents = null, sendUSDC,
       txHash = '0x' + crypto.randomBytes(32).toString('hex');
     }
 
-    // Mark transactions as withdrawn
+    // Mark transactions as withdrawn with status precondition to prevent double-withdrawal
     const withdrawnAt = new Date().toISOString();
+    let actuallyWithdrawn = 0;
 
     for (const tx of txsToWithdraw) {
-      await supabase
+      const { data: updated, error: updateErr } = await supabase
         .from('pending_transactions')
         .update({
           status: 'withdrawn',
           withdrawn_at: withdrawnAt,
           notes: `Withdrawn via tx: ${txHash}`
         })
-        .eq('id', tx.id);
+        .eq('id', tx.id)
+        .eq('status', 'available')
+        .select('id')
+        .single();
+
+      if (updateErr || !updated) {
+        console.warn(`[Withdrawal] Transaction ${tx.id} already withdrawn or status changed, skipping`);
+        continue;
+      }
+
+      actuallyWithdrawn++;
 
       // Update corresponding payout with tx_hash
       await supabase
@@ -121,6 +132,10 @@ async function processWithdrawal(supabase, userId, amountCents = null, sendUSDC,
         })
         .eq('task_id', tx.task_id)
         .eq('human_id', userId);
+    }
+
+    if (actuallyWithdrawn === 0) {
+      throw new Error('Withdrawal already processed. No transactions were available.');
     }
 
     // Create withdrawal record for audit trail
@@ -266,8 +281,8 @@ async function processStripeWithdrawal(supabase, userId, amountCents = null, cre
       );
       transferIds.push(result.transfer_id);
 
-      // Mark transaction as withdrawn
-      await supabase
+      // Mark transaction as withdrawn with status precondition
+      const { data: updated, error: updateErr } = await supabase
         .from('pending_transactions')
         .update({
           status: 'withdrawn',
@@ -275,7 +290,15 @@ async function processStripeWithdrawal(supabase, userId, amountCents = null, cre
           withdrawn_at: new Date().toISOString(),
           notes: `Stripe transfer: ${result.transfer_id}`
         })
-        .eq('id', tx.id);
+        .eq('id', tx.id)
+        .eq('status', 'available')
+        .select('id')
+        .single();
+
+      if (updateErr || !updated) {
+        console.warn(`[Stripe Withdrawal] Transaction ${tx.id} already withdrawn, skipping`);
+        continue;
+      }
     }
 
     // Create withdrawal record

@@ -2,6 +2,7 @@
 // Inline proof submission form (extracted from ProofSubmitModal logic)
 
 import React, { useState, useRef } from 'react';
+import { Upload, Hourglass, FileText } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import API_URL from '../../config/api';
 
@@ -138,7 +139,7 @@ export default function ProofSection({ task, user, onSubmit }) {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{uploading ? '⏳' : '📤'}</div>
+            <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{uploading ? <Hourglass size={24} /> : <Upload size={24} />}</div>
             <p className="text-[#525252] text-xs sm:text-sm">
               {uploading ? 'Uploading...' : 'Tap to upload images'}
             </p>
@@ -186,7 +187,7 @@ export default function ProofSection({ task, user, onSubmit }) {
 
         {/* Instructions */}
         <div className="bg-[#D1E9F0] border border-[rgba(15,76,92,0.2)] rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-[#0F4C5C]">
-          <p className="font-medium mb-1">📝 Tips:</p>
+          <p className="font-medium mb-1"><FileText size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Tips:</p>
           <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-[#525252]">
             <li>Describe work completed in detail</li>
             <li>Upload clear photos of finished task</li>

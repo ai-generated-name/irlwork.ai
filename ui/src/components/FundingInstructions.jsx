@@ -1,6 +1,7 @@
 // Funding Instructions Component
 // Shows deposit instructions when posting a task
 import React from 'react';
+import { DollarSign } from 'lucide-react'
 
 export default function FundingInstructions({
   taskId,
@@ -62,7 +63,7 @@ export default function FundingInstructions({
     <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-6">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
-          <span className="text-orange-400 text-xl">💰</span>
+          <DollarSign size={20} className="text-orange-400" />
         </div>
         <div>
           <h3 className="text-white font-bold">Fund Task Escrow</h3>

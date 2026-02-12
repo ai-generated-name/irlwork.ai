@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -87,14 +88,14 @@ function FitBounds({ tasks }) {
 }
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  errands: '🏃',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  other: '📋',
+  delivery: <Package size={20} />,
+  photography: <Camera size={20} />,
+  'data-collection': <BarChart3 size={20} />,
+  errands: <Footprints size={20} />,
+  'tech-setup': <Monitor size={20} />,
+  translation: <Globe size={20} />,
+  verification: <CheckCircle size={20} />,
+  other: <ClipboardList size={20} />,
 };
 
 export default function TaskMap({
@@ -157,7 +158,7 @@ export default function TaskMap({
           <Popup>
             <div style={{ minWidth: 200, fontFamily: 'DM Sans, sans-serif' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>{CATEGORY_ICONS[task.category] || '📋'}</span>
+                <span style={{ fontSize: 20 }}>{CATEGORY_ICONS[task.category] || <ClipboardList size={20} />}</span>
                 <span style={{
                   fontSize: 11,
                   color: '#525252',
