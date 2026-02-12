@@ -84,8 +84,8 @@ async function listHumans(filters = {}) {
   if (filters.city) {
     query = query.ilike('city', `%${filters.city}%`);
   }
- _rate) {
-    if (filters.min query = query.gte('hourly_rate', parseFloat(filters.min_rate));
+  if (filters.min_rate) {
+    query = query.gte('hourly_rate', parseFloat(filters.min_rate));
   }
   if (filters.max_rate) {
     query = query.lte('hourly_rate', parseFloat(filters.max_rate));

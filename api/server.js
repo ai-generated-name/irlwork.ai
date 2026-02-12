@@ -2870,10 +2870,8 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   res.json({
     success: true,
     status: 'approved',
-    payment_method: task.payment_method || 'usdc',
-    message: task.payment_method === 'stripe'
-      ? 'Proof approved. Payment released to pending balance with 48-hour hold.'
-      : 'Proof approved. Payment will be processed by the platform.'
+    payment_method: task.payment_method || 'stripe',
+    message: 'Proof approved. Payment released to pending balance with 48-hour hold.'
   });
 });
 
@@ -3548,27 +3546,6 @@ async function deliverWebhook(agentId, payload) {
     // Don't throw - webhook failures shouldn't break the main flow
   }
 }
-
-// Agent webhook endpoint (auto-generated per agent)
-app.post('/webhooks/:agent_id', async (req, res) => {
-  const { agent_id } = req.params;
-  const event = req.body;
-  
-  console.log(`[WEBHOOK RECEIVED] Agent ${agent_id}:`, event);
-  
-  // Verify agent exists
-  const { data: agent } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', agent_id)
-    .single();
-  
-  if (!agent) {
-    return res.status(404).json({ error: 'Agent not found' });
-  }
-  
-  res.json({ received: true, agent_id });
-});
 
 // Get webhook URL for an agent
 app.get('/api/agents/:id/webhook-url', async (req, res) => {
@@ -5541,9 +5518,10 @@ app.post('/api/disputes', async (req, res) => {
     return res.status(403).json({ error: 'Only the task agent can file a dispute' });
   }
 
-  // Task must be completed
-  if (task.status !== 'completed') {
-    return res.status(400).json({ error: 'Can only dispute completed tasks' });
+  // Task must be in a disputable status (includes post-approval during 48-hour hold)
+  const disputeableStatuses = ['pending_review', 'completed', 'approved', 'paid'];
+  if (!disputeableStatuses.includes(task.status)) {
+    return res.status(400).json({ error: 'Cannot dispute a task in this status' });
   }
 
   // Get the pending payout for this task
@@ -5771,7 +5749,20 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     .eq('id', id);
 
   if (resolution === 'approved' && refund_agent) {
-    // Agent wins: refund the payment and update payout status
+    // Agent wins: refund the actual Stripe PaymentIntent + update DB
+    if (dispute.task?.stripe_payment_intent_id) {
+      const { refundPayment } = require('./backend/services/stripeService');
+      await refundPayment(supabase, dispute.task_id, 'requested_by_customer');
+    }
+
+    // Freeze any pending_transactions for this task (prevent human from withdrawing)
+    await supabase
+      .from('pending_transactions')
+      .update({ status: 'frozen', updated_at: new Date().toISOString() })
+      .eq('task_id', dispute.task_id)
+      .in('status', ['pending', 'available']);
+
+    // Update payout status
     await supabase
       .from('payouts')
       .update({ status: 'refunded' })
@@ -5780,7 +5771,7 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     // Update task escrow status
     await supabase
       .from('tasks')
-      .update({ escrow_status: 'refunded' })
+      .update({ escrow_status: 'refunded', status: 'cancelled', updated_at: new Date().toISOString() })
       .eq('id', dispute.task_id);
 
     // Notify both parties
