@@ -2518,16 +2518,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-
-            {/* Sub-tabs: Create Task / Posted Tasks / Disputes */}
-            <div className="dashboard-v4-sub-tabs">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
               <button
-                className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
+                className="hiring-dash-create-btn"
                 onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); }}
               >
                 + Create Task
               </button>
+            </div>
+
+            {/* Sub-tabs: Posted Tasks / Disputes */}
+            <div className="dashboard-v4-sub-tabs">
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
                 onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); }}
