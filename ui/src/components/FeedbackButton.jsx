@@ -109,12 +109,19 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
     // Validate file sizes
     const oversized = selected.find(f => f.size > 20 * 1024 * 1024)
     if (oversized) return
-    // Compress large images before adding to state
+    // Compress images before adding to state (handles HEIC from iOS too)
     const processed = []
     for (const file of selected) {
-      if (file.type.startsWith('image/') && file.type !== 'image/gif' && file.size > 1024 * 1024) {
-        const imageCompression = (await import('browser-image-compression')).default
-        processed.push(await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 2000, useWebWorker: true }))
+      const ext = file.name?.split('.').pop()?.toLowerCase()
+      const isGif = file.type === 'image/gif' || ext === 'gif'
+      const isImage = file.type?.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(ext)
+      if (!isGif && isImage) {
+        try {
+          const imageCompression = (await import('browser-image-compression')).default
+          processed.push(await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 2000, useWebWorker: typeof Worker !== 'undefined' }))
+        } catch {
+          processed.push(file)
+        }
       } else {
         processed.push(file)
       }
@@ -135,17 +142,26 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
       const urls = [...uploadedUrls]
       for (let i = urls.length; i < files.length; i++) {
         const base64 = await toBase64(files[i])
-        const res = await fetch(`${API_URL}/upload/feedback`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: user.id },
-          body: JSON.stringify({
-            file: base64,
-            filename: files[i].name,
-            mimeType: files[i].type,
-          }),
-        })
-        const data = await res.json()
-        if (data.url) urls.push(data.url)
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 45000)
+        try {
+          const res = await fetch(`${API_URL}/upload/feedback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: user.id },
+            body: JSON.stringify({
+              file: base64,
+              filename: files[i].name,
+              mimeType: files[i].type || 'image/jpeg',
+            }),
+            signal: controller.signal,
+          })
+          clearTimeout(timeout)
+          const data = await res.json()
+          if (data.url) urls.push(data.url)
+        } catch (uploadErr) {
+          clearTimeout(timeout)
+          console.error('Feedback file upload error:', uploadErr)
+        }
       }
 
       await fetch(`${API_URL}/feedback`, {
