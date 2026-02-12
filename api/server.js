@@ -176,7 +176,7 @@ app.post('/api/stripe/webhooks',
 
     if (!webhookSecret) {
       console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured');
-      return res.status(500).json({ error: 'Webhook secret not configured' });
+      return res.status(200).json({ received: true, warning: 'Webhook secret not configured' });
     }
 
     let event;
@@ -224,8 +224,8 @@ const supabase = supabaseUrl && supabaseKey
   : null;
 
 // Configuration
-const PLATFORM_FEE_PERCENT = 15;
-const USDC_DECIMALS = 6;
+const { PLATFORM_FEE_PERCENT } = require('./config/constants');
+const { isAdmin } = require('./middleware/adminAuth');
 
 // Data categories
 const QUICK_CATEGORIES = [
@@ -1007,7 +1007,6 @@ app.get('/api/auth/verify', async (req, res) => {
       longitude: user.longitude,
       country: user.country,
       country_code: user.country_code,
-      wallet_address: user.wallet_address,
       deposit_address: user.deposit_address,
       skills: safeParseJsonArray(user.skills),
       social_links: user.social_links || {},
@@ -1020,7 +1019,7 @@ app.get('/api/auth/verify', async (req, res) => {
       total_tasks_posted: user.total_tasks_posted || 0,
       total_tasks_accepted: user.total_tasks_accepted || 0,
       total_disputes_filed: user.total_disputes_filed || 0,
-      total_usdc_paid: parseFloat(user.total_usdc_paid) || 0,
+      total_paid: parseFloat(user.total_paid) || 0,
       last_active_at: user.last_active_at,
       // Derived metrics
       completion_rate: completionRate,
@@ -1531,12 +1530,11 @@ app.get('/api/humans', async (req, res) => {
 app.get('/api/users/:id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  // Only return wallet_address to the user themselves (not to public)
   const requester = await getUserByToken(req.headers.authorization);
   const isSelf = requester && requester.id === req.params.id;
 
   const columns = isSelf
-    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_usdc_paid, wallet_address, type, avatar_url'
+    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_paid, type, avatar_url'
     : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url';
 
   const { data: user, error } = await supabase
@@ -1615,18 +1613,12 @@ app.put('/api/humans/profile', async (req, res) => {
       }
     }
 
-    const { name, wallet_address, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
+    const { name, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
 
     const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true, type: 'human', account_type: 'human' };
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
     if (name) updates.name = name;
-    if (wallet_address) {
-      if (!isValidWalletAddress(wallet_address)) {
-        return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Ethereum address (0x followed by 40 hex characters).' });
-      }
-      updates.wallet_address = wallet_address;
-    }
     if (hourly_rate) updates.hourly_rate = hourly_rate;
     if (bio !== undefined) updates.bio = bio;
     // Accept both 'skills' and 'categories' for backwards compatibility
@@ -1853,7 +1845,7 @@ app.get('/api/tasks/:id', async (req, res, next) => {
     } else {
       const { data: agentData } = await supabase
         .from('users')
-        .select('id, name, type, city, state, total_tasks_posted, total_usdc_paid, rating, review_count, verified, created_at')
+        .select('id, name, type, city, state, total_tasks_posted, total_paid, rating, review_count, verified, created_at')
         .eq('id', task.agent_id)
         .single();
       poster = agentData || null;
@@ -2035,7 +2027,6 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
 
 // Agent assigns a human to a task
 // Stripe path: charges agent immediately, task goes to in_progress
-// USDC path: sets pending_deposit, agent must send USDC manually
 app.post('/api/tasks/:id/assign', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
@@ -2126,8 +2117,8 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
         supabase, user.id, taskId, amountCents, payment_method_id || null
       );
 
-      // Task goes straight to in_progress — no waiting for manual deposit
-      const { error } = await supabase
+      // Task goes straight to in_progress — atomic guard prevents double-charge
+      const { data: updatedTask, error } = await supabase
         .from('tasks')
         .update({
           human_id: human_id,
@@ -2140,9 +2131,22 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
           payment_method: 'stripe',
           updated_at: new Date().toISOString()
         })
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .eq('status', 'open')
+        .select('id')
+        .single();
 
-      if (error) return res.status(500).json({ error: error.message });
+      if (error || !updatedTask) {
+        // Task was already assigned concurrently — refund the charge
+        try {
+          const { refundPaymentIntent } = require('./backend/services/stripeService');
+          await refundPaymentIntent(charge.payment_intent_id, 'duplicate');
+          console.log(`[Assign] Refunded duplicate charge for task ${taskId}`);
+        } catch (refundErr) {
+          console.error(`[Assign] CRITICAL: Failed to refund duplicate charge for task ${taskId}:`, refundErr);
+        }
+        return res.status(409).json({ error: 'Task was already assigned to another worker' });
+      }
 
       await finalizeAssignment(
         `You've been selected for "${task.title}". Payment is confirmed — you can begin work now!`
@@ -2168,43 +2172,11 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     }
   }
 
-  // ============ USDC PATH: Manual deposit flow (existing) ============
-  const randomCents = (Math.random() * 99 + 1) / 100;
-  const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
-
-  const { error } = await supabase
-    .from('tasks')
-    .update({
-      human_id: human_id,
-      status: 'assigned',
-      escrow_status: 'pending_deposit',
-      unique_deposit_amount: uniqueDepositAmount,
-      deposit_amount_cents: Math.round(uniqueDepositAmount * 100),
-      payment_method: 'usdc',
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', taskId);
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  await finalizeAssignment(
-    `You've been selected for "${task.title}". Funding is in progress — you'll be notified when work can begin.`
-  );
-
-  res.json({
-    success: true,
-    task_id: taskId,
-    worker: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
-    human: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
-    escrow_status: 'pending_deposit',
-    payment_method: 'usdc',
-    deposit_instructions: {
-      wallet_address: process.env.PLATFORM_WALLET_ADDRESS,
-      amount_usdc: uniqueDepositAmount,
-      network: 'Base',
-      note: 'Send exactly this amount. Your human will be notified once deposit is confirmed by the platform.'
-    },
-    message: 'Human selected. Please send the exact USDC amount to complete the assignment.'
+  // No payment method available — agent must add a card first
+  return res.status(402).json({
+    error: 'No payment method available',
+    code: 'payment_method_required',
+    message: 'Please add a payment method before assigning workers.'
   });
 });
 
@@ -2241,15 +2213,15 @@ app.get('/api/agent/tasks', async (req, res) => {
   res.json(tasks || []);
 });
 
-// Release payment for a task
+// Release payment for a task — uses Stripe pipeline with 48-hour hold
 app.post('/api/tasks/:id/release', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   const { id } = req.params;
-  
+
   // Get task details
   const { data: task, error: taskError } = await supabase
     .from('tasks')
@@ -2265,63 +2237,41 @@ app.post('/api/tasks/:id/release', async (req, res) => {
   if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
-  
+
   // Task must be completed or approved
   if (task.status !== 'completed' && task.status !== 'approved') {
     return res.status(400).json({ error: 'Task must be completed before releasing payment' });
   }
-  
+
   // Check if escrow was deposited
   if (task.escrow_status !== 'deposited' && task.escrow_status !== 'held') {
     return res.status(400).json({ error: 'No escrow deposit found for this task' });
   }
-  
-  // Calculate payment
-  const budget = parseFloat(task.budget) || 0;
-  const platformFee = budget * (PLATFORM_FEE_PERCENT / 100);
-  const netAmount = budget - platformFee;
-  
-  // Generate simulated transaction
-  const txHash = '0x' + crypto.randomBytes(32).toString('hex');
-  
-  // Update task (atomic check on escrow_status to prevent double-release)
-  const { data: updatedRelease, error: updateError } = await supabase
-    .from('tasks')
-    .update({
-      escrow_status: 'released',
-      escrow_released_at: new Date().toISOString(),
-      status: 'paid',
-      release_tx: txHash
-    })
-    .eq('id', id)
-    .in('escrow_status', ['deposited', 'held'])
-    .select('id')
-    .single();
 
-  if (updateError || !updatedRelease) {
-    return res.status(409).json({ error: 'Payment has already been released or is being processed.' });
+  try {
+    // Use the proper Stripe pipeline with 48-hour hold
+    await releasePaymentToPending(supabase, id, task.human_id, user.id, createNotification);
+
+    // Update task status to paid
+    await supabase
+      .from('tasks')
+      .update({ status: 'paid', updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    const budget = parseFloat(task.budget) || 0;
+    const platformFee = Math.round(budget * PLATFORM_FEE_PERCENT) / 100;
+    const netAmount = budget - platformFee;
+
+    res.json({
+      success: true,
+      amount: budget,
+      platformFee,
+      netAmount,
+      assignee: task.assignee
+    });
+  } catch (e) {
+    return res.status(409).json({ error: e.message || 'Payment release failed' });
   }
-  
-  // NOTE: Previously inserted into a 'transactions' table that doesn't exist.
-  // Transaction data is tracked via payouts + pending_transactions tables.
-
-  // Create notification for human
-  await createNotification(
-    task.human_id,
-    'payment_released',
-    'Payment Released',
-    `Your payment of ${netAmount.toFixed(2)} USDC has been sent to your wallet.`,
-    `/tasks/${id}`
-  );
-
-  res.json({
-    success: true,
-    txHash,
-    amount: budget,
-    platformFee,
-    netAmount,
-    assignee: task.assignee
-  });
 });
 
 // ============ R2 FILE UPLOAD ============
@@ -2376,7 +2326,6 @@ app.post('/api/upload/proof', async (req, res) => {
 
     // Upload to R2 using AWS SDK
     let uploadSuccess = false;
-    let txHash = null;
 
     try {
       const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -2399,7 +2348,6 @@ app.post('/api/upload/proof', async (req, res) => {
       }));
 
       uploadSuccess = true;
-      txHash = '0x' + crypto.randomBytes(32).toString('hex');
     } catch (s3Error) {
       console.error('R2 upload error:', s3Error.message);
       // Fallback to demo URL
@@ -2407,11 +2355,10 @@ app.post('/api/upload/proof', async (req, res) => {
 
     const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${uniqueFilename}`;
     
-    res.json({ 
+    res.json({
       url: publicUrl,
       filename: uniqueFilename,
       success: uploadSuccess,
-      tx_hash: txHash,
       demo: !uploadSuccess
     });
   } catch (e) {
@@ -3037,10 +2984,8 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   res.json({
     success: true,
     status: 'approved',
-    payment_method: task.payment_method || 'usdc',
-    message: task.payment_method === 'stripe'
-      ? 'Proof approved. Payment released to pending balance with 48-hour hold.'
-      : 'Proof approved. Payment will be processed by the platform.'
+    payment_method: task.payment_method || 'stripe',
+    message: 'Proof approved. Payment released to pending balance with 48-hour hold.'
   });
 });
 
@@ -3286,12 +3231,13 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
 });
 
 // ============ ADMIN DISPUTE RESOLUTION ============
+// DEPRECATED: Use POST /api/disputes/:id/resolve instead
 app.post('/api/admin/resolve-dispute', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
   // Check if user is admin via ADMIN_USER_IDS environment variable
   const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
   if (!ADMIN_USER_IDS.includes(user.id)) {
@@ -3302,22 +3248,22 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
           // Support legacy parameter name for backwards compatibility
           refund_human } = req.body;
   const shouldRefundAgent = refund_to_agent || refund_human;
-  
+
   // Get task
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .select('*')
     .eq('id', task_id)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.status !== 'disputed') {
     return res.status(400).json({ error: 'Task is not disputed' });
   }
-  
+
   // Resolve based on decision
   if (release_to_human) {
     // Release payment to human
@@ -3325,7 +3271,7 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
     const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
     const netAmount = escrowAmount - platformFee;
     const txHash = '0x' + crypto.randomBytes(32).toString('hex');
-    
+
     const { data: disputeRelease, error: disputeReleaseErr } = await supabase
       .from('tasks')
       .update({
@@ -3358,7 +3304,7 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
       dispute_resolved: true,
       created_at: new Date().toISOString()
     });
-    
+
     await createNotification(
       task.human_id,
       'dispute_resolved',
@@ -3386,7 +3332,7 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
     if (refundError || !refundResult) {
       return res.status(409).json({ error: 'Dispute has already been resolved.' });
     }
-    
+
     await createNotification(
       task.agent_id,
       'dispute_resolved',
@@ -3422,7 +3368,7 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
       return res.status(409).json({ error: 'Dispute has already been resolved.' });
     }
   }
-  
+
   res.json({ success: true, resolution });
 });
 
@@ -3727,27 +3673,6 @@ async function deliverWebhook(agentId, payload) {
     // Don't throw - webhook failures shouldn't break the main flow
   }
 }
-
-// Agent webhook endpoint (auto-generated per agent)
-app.post('/webhooks/:agent_id', async (req, res) => {
-  const { agent_id } = req.params;
-  const event = req.body;
-  
-  console.log(`[WEBHOOK RECEIVED] Agent ${agent_id}:`, event);
-  
-  // Verify agent exists
-  const { data: agent } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', agent_id)
-    .single();
-  
-  if (!agent) {
-    return res.status(404).json({ error: 'Agent not found' });
-  }
-  
-  res.json({ received: true, agent_id });
-});
 
 // Get webhook URL for an agent
 app.get('/api/agents/:id/webhook-url', async (req, res) => {
@@ -4067,52 +3992,73 @@ app.post('/api/mcp', async (req, res) => {
           throw new Error('Task not found');
         }
 
-        // PHASE 1: Generate unique deposit amount NOW
         const budgetAmount = taskData.escrow_amount || taskData.budget || 50;
-        const randomCents = (Math.random() * 99 + 1) / 100;
-        const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
-
+        const budgetCents = Math.round(budgetAmount * 100);
         const deadline = new Date(Date.now() + deadline_hours * 60 * 60 * 1000).toISOString();
 
-        const { error: taskError } = await supabase
+        // Charge agent via Stripe
+        const { chargeAgentForTask } = require('./backend/services/stripeService');
+
+        let chargeResult;
+        try {
+          chargeResult = await chargeAgentForTask(supabase, user.id, task_id, budgetCents);
+        } catch (stripeError) {
+          return res.status(402).json({
+            error: 'Payment failed',
+            details: stripeError.message,
+            code: 'payment_failed',
+            message: 'Please add a payment method before assigning workers.'
+          });
+        }
+
+        // Atomic guard: only update if task is still open (prevents double-charge)
+        const { data: updatedMcpTask, error: taskError } = await supabase
           .from('tasks')
           .update({
             human_id,
-            status: 'assigned',  // PHASE 1: Not in_progress - must wait for deposit confirmation
-            escrow_status: 'pending_deposit',  // PHASE 1: Trigger deposit flow
-            unique_deposit_amount: uniqueDepositAmount,
-            deposit_amount_cents: Math.round(uniqueDepositAmount * 100),
+            status: 'in_progress',
+            escrow_status: 'deposited',
+            escrow_amount: budgetAmount,
+            escrow_deposited_at: new Date().toISOString(),
+            stripe_payment_intent_id: chargeResult.payment_intent_id,
+            payment_method: 'stripe',
             assigned_at: new Date().toISOString(),
             deadline,
             instructions,
             updated_at: new Date().toISOString()
           })
-          .eq('id', task_id);
+          .eq('id', task_id)
+          .eq('status', 'open')
+          .select('id')
+          .single();
 
-        if (taskError) throw taskError;
+        if (taskError || !updatedMcpTask) {
+          // Task was already assigned concurrently — refund
+          try {
+            const { refundPaymentIntent } = require('./backend/services/stripeService');
+            await refundPaymentIntent(chargeResult.payment_intent_id, 'duplicate');
+          } catch (refundErr) {
+            console.error(`[MCP Hire] CRITICAL: Failed to refund duplicate charge for task ${task_id}:`, refundErr);
+          }
+          return res.status(409).json({ error: 'Task was already assigned to another worker' });
+        }
 
         // Notify human
         await createNotification(
           human_id,
           'task_assigned',
           'You\'ve Been Selected!',
-          `You've been selected for "${taskData.title}". Funding is in progress — you'll be notified when work can begin.`,
+          `You've been selected for "${taskData.title}". Payment has been secured — you can begin work immediately.`,
           `/tasks/${task_id}`
         );
 
-        // PHASE 1: Return deposit instructions to agent
         res.json({
           success: true,
           assigned_at: new Date().toISOString(),
           deadline,
-          escrow_status: 'pending_deposit',
-          deposit_instructions: {
-            wallet_address: process.env.PLATFORM_WALLET_ADDRESS,
-            amount_usdc: uniqueDepositAmount,
-            network: 'Base',
-            note: 'Send exactly this amount. Your human will be notified once deposit is confirmed by the platform.'
-          },
-          message: 'Human selected. Please send the exact USDC amount to complete the assignment.'
+          escrow_status: 'deposited',
+          payment_method: 'stripe',
+          message: 'Worker assigned and payment charged. Work can begin immediately.'
         });
         break;
       }
@@ -4242,84 +4188,34 @@ app.post('/api/mcp', async (req, res) => {
             .eq('id', latestProof.id);
         }
         
-        // Calculate payment
+        // Update task status to approved first
+        await supabase
+          .from('tasks')
+          .update({ status: 'approved', updated_at: new Date().toISOString() })
+          .eq('id', task_id);
+
+        // Release payment via Stripe (same flow as non-MCP approve)
+        try {
+          await releasePaymentToPending(supabase, task_id, task.human_id, user.id, createNotification);
+          console.log(`[MCP Approve] Released payment for task ${task_id}`);
+        } catch (e) {
+          return res.status(409).json({ error: e.message || 'Payment release failed.' });
+        }
+
+        // Mark as paid after successful release
+        await supabase
+          .from('tasks')
+          .update({ status: 'paid', updated_at: new Date().toISOString() })
+          .eq('id', task_id);
+
         const escrowAmount = task.escrow_amount || task.budget || 50;
         const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
         const netAmount = escrowAmount - platformFee;
-        
-        // Get human's wallet
-        const { data: human, error: humanError } = await supabase
-          .from('users')
-          .select('wallet_address')
-          .eq('id', task.human_id)
-          .single();
-        
-        // Simulate payment if no wallet
-        let txHash = null;
-        if (human?.wallet_address && process.env.PLATFORM_WALLET_PRIVATE_KEY) {
-          try {
-            const { sendUSDC } = require('./lib/wallet');
-            txHash = await sendUSDC(human.wallet_address, netAmount);
-          } catch (e) {
-            console.error('Wallet error:', e.message);
-            txHash = '0x' + crypto.randomBytes(32).toString('hex');
-          }
-        } else {
-          console.log(`[SIMULATED] Sending ${netAmount} USDC to ${human?.wallet_address || 'human wallet'}`);
-          txHash = '0x' + crypto.randomBytes(32).toString('hex');
-        }
-        
-        // Update task (atomic check to prevent double-release)
-        const { data: mcpRelease, error: mcpReleaseErr } = await supabase
-          .from('tasks')
-          .update({
-            status: 'paid',
-            escrow_status: 'released',
-            escrow_released_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', task_id)
-          .in('escrow_status', ['deposited', 'held'])
-          .select('id')
-          .single();
 
-        if (mcpReleaseErr || !mcpRelease) {
-          return res.status(409).json({ error: 'Payment has already been released.' });
-        }
-
-        // Record payout
-        await supabase.from('payouts').insert({
-          id: uuidv4(),
-          task_id,
-          human_id: task.human_id,
-          agent_id: user.id,
-          gross_amount: escrowAmount,
-          platform_fee: platformFee,
-          net_amount: netAmount,
-          wallet_address: human?.wallet_address || null,
-          tx_hash: txHash,
-          status: 'completed',
-          processed_at: new Date().toISOString(),
-          created_at: new Date().toISOString()
-        });
-        
-        // Update human stats (atomic increment via RPC)
-        await supabase.rpc('increment_user_stat', { user_id_param: task.human_id, stat_name: 'jobs_completed', increment_by: 1 });
-        
-        // Notify human
-        await createNotification(
-          task.human_id,
-          'payment_released',
-          'Payment Released!',
-          `Your payment of ${netAmount.toFixed(2)} USDC has been sent.`,
-          `/tasks/${task_id}`
-        );
-        
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           status: 'paid',
-          net_amount: netAmount,
-          tx_hash: txHash
+          net_amount: netAmount
         });
         break;
       }
@@ -5329,9 +5225,9 @@ app.get('/api/humans/:id/profile', async (req, res) => {
     .from('users')
     .select(`
       id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed,
-      verified, availability, wallet_address, created_at, profile_completeness,
+      verified, availability, created_at, profile_completeness,
       total_tasks_completed, total_tasks_posted, total_tasks_accepted,
-      total_disputes_filed, total_usdc_paid, last_active_at, social_links,
+      total_disputes_filed, total_paid, last_active_at, social_links,
       headline, languages, timezone, travel_radius, avatar_url
     `)
     .eq('id', req.params.id)
@@ -5454,7 +5350,6 @@ app.get('/api/profile', async (req, res) => {
     bio: profile.bio,
     avatar_url: profile.avatar_url || '',
     hourly_rate: profile.hourly_rate,
-    wallet_address: profile.wallet_address,
     skills: safeParseJsonArray(profile.skills),
     languages: safeParseJsonArray(profile.languages),
     travel_radius: profile.travel_radius || 25,
@@ -5470,7 +5365,7 @@ app.get('/api/profile', async (req, res) => {
     total_tasks_posted: profile.total_tasks_posted || 0,
     total_tasks_accepted: profile.total_tasks_accepted || 0,
     total_disputes_filed: profile.total_disputes_filed || 0,
-    total_usdc_paid: parseFloat(profile.total_usdc_paid) || 0,
+    total_paid: parseFloat(profile.total_paid) || 0,
     last_active_at: profile.last_active_at,
     // Derived metrics
     completion_rate: completionRate,
@@ -5484,7 +5379,7 @@ app.put('/api/profile', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { name, bio, city, state, hourly_rate, skills, availability, wallet_address, avatar_url, languages, travel_radius, social_links } = req.body;
+  const { name, bio, city, state, hourly_rate, skills, availability, avatar_url, languages, travel_radius, social_links } = req.body;
 
   const updates = { updated_at: new Date().toISOString(), verified: true };
 
@@ -5494,12 +5389,6 @@ app.put('/api/profile', async (req, res) => {
   if (state) updates.state = state;
   if (hourly_rate) updates.hourly_rate = hourly_rate;
   if (availability) updates.availability = availability;
-  if (wallet_address) {
-    if (!isValidWalletAddress(wallet_address)) {
-      return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Ethereum address (0x followed by 40 hex characters).' });
-    }
-    updates.wallet_address = wallet_address;
-  }
   if (skills) updates.skills = JSON.stringify(skills);
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
   if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
@@ -5534,8 +5423,6 @@ app.get('/api/wallet/balance', async (req, res) => {
 
     res.json({
       user_id: user.id,
-      wallet_address: user.wallet_address,
-      has_wallet: !!user.wallet_address,
       ...balance
     });
   } catch (error) {
@@ -5544,46 +5431,26 @@ app.get('/api/wallet/balance', async (req, res) => {
   }
 });
 
-// DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
-// Withdrawals are now handled manually by admin
 app.post('/api/wallet/withdraw', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { amount_cents, method } = req.body; // method: 'stripe' | 'usdc'
+  const { amount_cents } = req.body;
 
-  if (!method || !['stripe', 'usdc'].includes(method)) {
-    return res.status(400).json({ error: 'Invalid method. Use "stripe" or "usdc".' });
+  if (!user.stripe_account_id) {
+    return res.status(400).json({
+      error: 'No bank account connected',
+      action: 'connect_stripe',
+      message: 'Connect your bank account to withdraw funds.'
+    });
   }
 
   try {
-    if (method === 'stripe') {
-      if (!user.stripe_account_id) {
-        return res.status(400).json({
-          error: 'No bank account connected',
-          action: 'connect_stripe',
-          message: 'Connect your bank account to withdraw via Stripe.'
-        });
-      }
-
-      const { processStripeWithdrawal } = require('./backend/services/withdrawalService');
-      const result = await processStripeWithdrawal(supabase, user.id, amount_cents || null, createNotification);
-      return res.json(result);
-    } else {
-      // USDC path
-      if (!user.wallet_address) {
-        return res.status(400).json({
-          error: 'No wallet address configured',
-          message: 'Add a Base network wallet address in your profile to withdraw USDC.'
-        });
-      }
-
-      const { sendUSDC } = require('./backend/lib/wallet');
-      const result = await processWithdrawal(supabase, user.id, amount_cents || null, sendUSDC, createNotification);
-      return res.json(result);
-    }
+    const { processStripeWithdrawal } = require('./backend/services/withdrawalService');
+    const result = await processStripeWithdrawal(supabase, user.id, amount_cents || null, createNotification);
+    return res.json(result);
   } catch (error) {
     console.error('[Withdraw] Error:', error.message);
     return res.status(400).json({ error: error.message });
@@ -5614,21 +5481,8 @@ app.get('/api/wallet/status', async (req, res) => {
 
     const balance = await getWalletBalance(supabase, user.id);
 
-    // Also get on-chain USDC balance if wallet is configured
-    let onChainBalance = 0;
-    if (user.wallet_address && process.env.BASE_RPC_URL) {
-      try {
-        const { getBalance } = require('./lib/wallet');
-        onChainBalance = await getBalance(user.wallet_address);
-      } catch (e) {
-        console.error('Error fetching on-chain balance:', e);
-      }
-    }
-
     res.json({
-      wallet_address: user.wallet_address,
-      has_wallet: !!user.wallet_address,
-      currency: 'USDC',
+      currency: 'USD',
 
       // Platform-tracked balances
       pending: balance.pending,           // Funds in 48-hour dispute window
@@ -5640,8 +5494,8 @@ app.get('/api/wallet/status', async (req, res) => {
       available_cents: balance.available_cents,
       total_cents: balance.total_cents,
 
-      // On-chain balance (for reference)
-      on_chain_balance: onChainBalance,
+      // Stripe Connect status
+      has_bank_account: !!user.stripe_account_id && !!user.stripe_onboarding_complete,
 
       // Transaction details
       transactions: balance.transactions
@@ -5655,7 +5509,7 @@ app.get('/api/wallet/status', async (req, res) => {
 app.get('/api/admin/pending-stats', async (req, res) => {
   try {
     const user = await getUserByToken(req.headers.authorization);
-    if (!user || user.role !== 'admin') {
+    if (!user || !isAdmin(user.id)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
@@ -6077,9 +5931,10 @@ app.post('/api/disputes', async (req, res) => {
     return res.status(403).json({ error: 'Only the task agent can file a dispute' });
   }
 
-  // Task must be completed
-  if (task.status !== 'completed') {
-    return res.status(400).json({ error: 'Can only dispute completed tasks' });
+  // Task must be in a disputable status (includes post-approval during 48-hour hold)
+  const disputeableStatuses = ['pending_review', 'completed', 'approved', 'paid'];
+  if (!disputeableStatuses.includes(task.status)) {
+    return res.status(400).json({ error: 'Cannot dispute a task in this status' });
   }
 
   // Get the pending payout for this task
@@ -6269,16 +6124,16 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  // Admin check: only admins can resolve disputes
-  if (user.role !== 'admin') {
+  // Admin check: only admins can resolve disputes (uses ADMIN_USER_IDS env var)
+  if (!isAdmin(user.id)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
   const { id } = req.params;
-  const { resolution, resolution_notes, refund_agent } = req.body;
+  const { resolution, resolution_notes, refund_agent = false, release_to_human = false } = req.body;
 
-  if (!resolution || !['approved', 'rejected'].includes(resolution)) {
-    return res.status(400).json({ error: 'Valid resolution required (approved or rejected)' });
+  if (!resolution || !['approved', 'rejected', 'partial'].includes(resolution)) {
+    return res.status(400).json({ error: 'Valid resolution required (approved, rejected, or partial)' });
   }
 
   const { data: dispute, error: disputeError } = await supabase
@@ -6295,6 +6150,9 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     return res.status(400).json({ error: 'Dispute has already been resolved' });
   }
 
+  const task = dispute.task;
+  const taskTitle = task?.title || 'Unknown';
+
   // Update dispute status
   await supabase
     .from('disputes')
@@ -6306,56 +6164,124 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     })
     .eq('id', id);
 
-  if (resolution === 'approved' && refund_agent) {
-    // Agent wins: refund the payment and update payout status
-    await supabase
-      .from('payouts')
-      .update({ status: 'refunded' })
-      .eq('id', dispute.payout.id);
+  if (refund_agent) {
+    // === REFUND AGENT: Return escrow via Stripe + freeze worker's pending balance ===
+    if (task?.stripe_payment_intent_id) {
+      try {
+        const { refundPayment } = require('./backend/services/stripeService');
+        await refundPayment(supabase, dispute.task_id, 'requested_by_customer');
+      } catch (refundErr) {
+        console.error(`[Dispute] Stripe refund failed for task ${dispute.task_id}:`, refundErr);
+        return res.status(500).json({ error: 'Failed to process Stripe refund: ' + refundErr.message });
+      }
+    }
 
-    // Update task escrow status
+    // Freeze any pending_transactions for this task (prevent human from withdrawing)
+    await supabase
+      .from('pending_transactions')
+      .update({ status: 'frozen', updated_at: new Date().toISOString() })
+      .eq('task_id', dispute.task_id)
+      .in('status', ['pending', 'available']);
+
+    // Update payout status
+    if (dispute.payout?.id) {
+      await supabase.from('payouts').update({ status: 'refunded' }).eq('id', dispute.payout.id);
+    }
+
+    // Update task
     await supabase
       .from('tasks')
-      .update({ escrow_status: 'refunded' })
+      .update({
+        escrow_status: 'refunded',
+        status: 'cancelled',
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', dispute.task_id);
 
-    // Notify both parties
     await createNotification(
-      dispute.filed_by,
-      'dispute_resolved',
-      'Dispute Resolved - Refund Issued',
-      `Your dispute for task "${dispute.task.title}" was approved. A refund has been issued.`,
+      dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Refund Issued',
+      `Your dispute for task "${taskTitle}" was approved. A refund has been issued.`,
+      `/disputes/${id}`
+    );
+    await createNotification(
+      dispute.filed_against, 'dispute_resolved', 'Dispute Resolved - Payment Withheld',
+      `The dispute for task "${taskTitle}" was resolved against you. Payment has been withheld.`,
       `/disputes/${id}`
     );
 
-    await createNotification(
-      dispute.filed_against,
-      'dispute_resolved',
-      'Dispute Resolved - Payment Withheld',
-      `The dispute for task "${dispute.task.title}" was resolved against you. Payment has been withheld.`,
-      `/disputes/${id}`
-    );
-  } else {
-    // Human wins: release the payment
+  } else if (release_to_human) {
+    // === RELEASE TO HUMAN: Pay the worker via Stripe pipeline ===
+    try {
+      await releasePaymentToPending(supabase, dispute.task_id, task.human_id, task.agent_id, createNotification);
+    } catch (e) {
+      return res.status(409).json({ error: e.message || 'Payment has already been released.' });
+    }
+
     await supabase
-      .from('payouts')
-      .update({ status: 'available' })
-      .eq('id', dispute.payout.id);
+      .from('tasks')
+      .update({
+        status: 'paid',
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', dispute.task_id);
 
-    // Notify both parties
+    const escrowAmount = task.escrow_amount || task.budget;
+    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+    const netAmount = escrowAmount - platformFee;
+
     await createNotification(
-      dispute.filed_against,
-      'dispute_resolved',
-      'Dispute Resolved - Payment Released',
-      `The dispute for task "${dispute.task.title}" was resolved in your favor. Payment has been released.`,
+      dispute.filed_against, 'dispute_resolved', 'Dispute Resolved - Payment Released',
+      `The dispute for task "${taskTitle}" was resolved in your favor. Payment of $${netAmount.toFixed(2)} has been released.`,
+      `/disputes/${id}`
+    );
+    await createNotification(
+      dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Payment Released to Human',
+      `The dispute for task "${taskTitle}" was resolved in favor of the human.`,
       `/disputes/${id}`
     );
 
+  } else if (resolution === 'partial') {
+    // === PARTIAL RESOLUTION: Reset task for re-review ===
+    await supabase
+      .from('tasks')
+      .update({
+        status: 'pending_review',
+        proof_submitted_at: new Date().toISOString(),
+        dispute_resolved_at: new Date().toISOString(),
+        dispute_resolution: resolution,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', dispute.task_id);
+
     await createNotification(
-      dispute.filed_by,
-      'dispute_resolved',
-      'Dispute Resolved - Payment Released to Human',
-      `The dispute for task "${dispute.task.title}" was resolved in favor of the human.`,
+      dispute.filed_by, 'dispute_resolved', 'Dispute Partially Resolved',
+      `The dispute for task "${taskTitle}" has been partially resolved. The task has been returned for re-review.`,
+      `/disputes/${id}`
+    );
+    await createNotification(
+      dispute.filed_against, 'dispute_resolved', 'Dispute Partially Resolved',
+      `The dispute for task "${taskTitle}" has been partially resolved. Please re-review and resubmit.`,
+      `/disputes/${id}`
+    );
+
+  } else {
+    // Default: Human wins — release the payment
+    if (dispute.payout?.id) {
+      await supabase.from('payouts').update({ status: 'available' }).eq('id', dispute.payout.id);
+    }
+
+    await createNotification(
+      dispute.filed_against, 'dispute_resolved', 'Dispute Resolved - Payment Released',
+      `The dispute for task "${taskTitle}" was resolved in your favor. Payment has been released.`,
+      `/disputes/${id}`
+    );
+    await createNotification(
+      dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Payment Released to Human',
+      `The dispute for task "${taskTitle}" was resolved in favor of the human.`,
       `/disputes/${id}`
     );
   }

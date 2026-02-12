@@ -48,19 +48,13 @@ function EarningsDashboard({ user }) {
     }
   }
 
-  const handleWithdraw = (method) => {
+  const handleWithdraw = () => {
     if (!balanceData?.available_cents || balanceData.available_cents <= 0) {
       toast.error('No funds available to withdraw')
       return
     }
 
-    // Require wallet address for non-stripe withdrawals
-    if (method !== 'stripe' && !user?.wallet_address) {
-      toast.error('Please add a wallet address in your profile settings first')
-      return
-    }
-
-    setShowWithdrawConfirm(method || 'usdc')
+    setShowWithdrawConfirm('stripe')
   }
 
   const executeWithdraw = async () => {
@@ -79,7 +73,7 @@ function EarningsDashboard({ user }) {
         },
         body: JSON.stringify({
           amount_cents: balanceData.available_cents,
-          method: method || 'usdc'
+          method: 'stripe'
         })
       })
 
@@ -157,21 +151,8 @@ function EarningsDashboard({ user }) {
         <div className="bg-[#D1FAE5] border border-[#059669]/20 rounded-xl p-4">
           <p className="text-[#059669] font-semibold">Withdrawal Successful!</p>
           <p className="text-sm text-[#059669]/80 mt-1">
-            {withdrawResult.method === 'stripe'
-              ? `$${withdrawResult.amount_withdrawn} is being transferred to your bank account`
-              : `$${withdrawResult.amount_withdrawn} sent to ${withdrawResult.wallet_address?.substring(0, 10)}...`
-            }
+            ${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account
           </p>
-          {withdrawResult.tx_hash && (
-            <a
-              href={`https://basescan.org/tx/${withdrawResult.tx_hash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-[#059669] hover:text-[#047857] underline mt-2 inline-block"
-            >
-              View on BaseScan
-            </a>
-          )}
         </div>
       )}
 
@@ -343,23 +324,13 @@ function EarningsDashboard({ user }) {
         )}
       </div>
 
-      {/* Wallet Info */}
-      {user.wallet_address && (
-        <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4">
-          <p className="text-xs text-[#8A8A8A] mb-1">Withdrawal Address</p>
-          <p className="text-[#1A1A1A] font-mono text-xs md:text-sm break-all">
-            {user.wallet_address}
-          </p>
-        </div>
-      )}
-
       {/* Withdrawal Confirmation Modal */}
       {showWithdrawConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Withdrawal</h3>
             <p className="text-gray-600 mb-4">
-              Withdraw ${balanceData?.available?.toFixed(2)} to {showWithdrawConfirm === 'stripe' ? 'your bank account' : `${user.wallet_address?.substring(0, 10)}...`}?
+              Withdraw ${balanceData?.available?.toFixed(2)} to your bank account?
             </p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">

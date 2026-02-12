@@ -84,10 +84,10 @@ export default function PosterInfoBar({ task }) {
                 <span>{poster.total_tasks_posted} task{poster.total_tasks_posted !== 1 ? 's' : ''} posted</span>
               </>
             )}
-            {!isAnonymous && poster.total_usdc_paid > 0 && (
+            {!isAnonymous && poster.total_paid > 0 && (
               <>
                 <span>·</span>
-                <span>${Number(poster.total_usdc_paid).toLocaleString()} paid</span>
+                <span>${Number(poster.total_paid).toLocaleString()} paid</span>
               </>
             )}
           </div>

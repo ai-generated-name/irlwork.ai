@@ -37,6 +37,10 @@ export default function TaskHeader({ task }) {
         <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
         </span>
+        {/* Compact budget shown inline on mobile only */}
+        <span className="lg:hidden text-lg font-bold text-[#059669] font-mono">
+          ${task.budget} <span className="text-xs font-normal text-[#8A8A8A]">USD</span>
+        </span>
       </div>
 
       {/* Title */}
@@ -122,6 +126,16 @@ export default function TaskHeader({ task }) {
             <span>{task.category}</span>
           </div>
         )}
+      </div>
+
+      {/* Budget - Large and Prominent (desktop only, mobile shows inline above) */}
+      <div className="hidden lg:block mt-6 pt-6 border-t border-[rgba(26,26,26,0.08)]">
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-bold text-[#059669] font-mono">
+            ${task.budget}
+          </span>
+          <span className="text-xl text-[#525252]">USD</span>
+        </div>
       </div>
 
       {/* Skills Needed */}
