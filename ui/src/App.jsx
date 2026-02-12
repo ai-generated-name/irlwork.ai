@@ -187,10 +187,18 @@ function Onboarding({ onComplete, user }) {
   const [nearbyTasks, setNearbyTasks] = useState([])
   const [loadingTasks, setLoadingTasks] = useState(false)
 
+  // Email verification state
+  const [verificationCode, setVerificationCode] = useState('')
+  const [verificationSent, setVerificationSent] = useState(false)
+  const [verificationSending, setVerificationSending] = useState(false)
+  const [verificationError, setVerificationError] = useState('')
+  const [verificationSuccess, setVerificationSuccess] = useState(false)
+  const [verifying, setVerifying] = useState(false)
+
   const userName = user?.name?.split(' ')[0] || 'there'
   const userAvatar = user?.avatar_url
 
-  const totalSteps = 4
+  const totalSteps = 5
   const progress = (step / totalSteps) * 100
 
   // Fetch nearby tasks after city selection
@@ -224,6 +232,57 @@ function Onboarding({ onComplete, user }) {
         ? prev.selectedCategories.filter(c => c !== value)
         : [...prev.selectedCategories, value]
     }))
+  }
+
+  const sendVerificationCode = async () => {
+    setVerificationSending(true)
+    setVerificationError('')
+    try {
+      const res = await fetch(`${API_URL}/auth/send-verification`, {
+        method: 'POST',
+        headers: { Authorization: user?.token || user?.id || '' }
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        if (data.message === 'Email already verified') {
+          setVerificationSuccess(true)
+        } else {
+          setVerificationSent(true)
+        }
+      } else {
+        setVerificationError(data.error || 'Failed to send verification code')
+      }
+    } catch (e) {
+      setVerificationError('Network error. Please try again.')
+    } finally {
+      setVerificationSending(false)
+    }
+  }
+
+  const verifyCode = async () => {
+    if (!verificationCode.trim()) return
+    setVerifying(true)
+    setVerificationError('')
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user?.token || user?.id || ''
+        },
+        body: JSON.stringify({ code: verificationCode.trim() })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setVerificationSuccess(true)
+      } else {
+        setVerificationError(data.error || 'Invalid code')
+      }
+    } catch (e) {
+      setVerificationError('Network error. Please try again.')
+    } finally {
+      setVerifying(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -492,8 +551,103 @@ function Onboarding({ onComplete, user }) {
 
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={handleSubmit} disabled={loading || !form.hourly_rate}>
-                {loading ? 'Setting up...' : 'Complete Setup'}
+              <button className="onboarding-v4-btn-next" onClick={() => setStep(5)} disabled={!form.hourly_rate}>
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Email Verification */}
+        {step === 5 && (
+          <div>
+            <h1 className="onboarding-v4-title">Verify your email</h1>
+            <p className="onboarding-v4-subtitle">
+              Verified accounts get more task offers and build trust with agents
+            </p>
+
+            {verificationSuccess ? (
+              <div style={{
+                padding: '20px', borderRadius: 12,
+                background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                textAlign: 'center', marginBottom: 20
+              }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>&#10003;</div>
+                <p style={{ color: '#059669', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
+                  {user?.email} is now verified
+                </p>
+              </div>
+            ) : !verificationSent ? (
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+                  We'll send a 6-digit code to <strong>{user?.email}</strong>
+                </p>
+                <button
+                  className="onboarding-v4-btn-next"
+                  style={{ width: '100%' }}
+                  onClick={sendVerificationCode}
+                  disabled={verificationSending}
+                >
+                  {verificationSending ? 'Sending...' : 'Send Verification Code'}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
+                  Enter the 6-digit code sent to <strong>{user?.email}</strong>
+                </p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={verificationCode}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                    setVerificationCode(val)
+                  }}
+                  className="onboarding-v4-input"
+                  style={{
+                    textAlign: 'center', fontSize: 24, fontWeight: 600,
+                    letterSpacing: 8, fontFamily: 'monospace'
+                  }}
+                  autoFocus
+                />
+                <button
+                  className="onboarding-v4-btn-next"
+                  style={{ width: '100%', marginTop: 12 }}
+                  onClick={verifyCode}
+                  disabled={verifying || verificationCode.length < 6}
+                >
+                  {verifying ? 'Verifying...' : 'Verify'}
+                </button>
+                <button
+                  onClick={sendVerificationCode}
+                  disabled={verificationSending}
+                  style={{
+                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
+                    fontSize: 13, cursor: 'pointer', marginTop: 8, width: '100%',
+                    textAlign: 'center'
+                  }}
+                >
+                  {verificationSending ? 'Sending...' : 'Resend code'}
+                </button>
+              </div>
+            )}
+
+            {verificationError && (
+              <div className="auth-v4-error" style={{ marginTop: 12 }}>{verificationError}</div>
+            )}
+
+            <div className="onboarding-v4-buttons" style={{ marginTop: 20 }}>
+              <button className="onboarding-v4-btn-back" onClick={() => setStep(4)}>Back</button>
+              <button
+                className="onboarding-v4-btn-next"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Setting up...' : verificationSuccess ? 'Complete Setup' : 'Skip for Now'}
               </button>
             </div>
           </div>

@@ -1037,6 +1037,20 @@ app.post('/api/auth/onboard', async (req, res) => {
       + (bio ? 0.1 : 0)
       + (avatar_url ? 0.1 : 0);
 
+    // Check if email was verified during onboarding (before DB row existed)
+    let emailVerifiedAt = null;
+    const { data: emailVerification } = await supabase
+      .from('email_verifications')
+      .select('verified_at')
+      .eq('user_id', userId)
+      .not('verified_at', 'is', null)
+      .single();
+    if (emailVerification?.verified_at) {
+      emailVerifiedAt = emailVerification.verified_at;
+      // Clean up the verification record
+      await supabase.from('email_verifications').delete().eq('user_id', userId);
+    }
+
     // Upsert user with onboarding data
     const { data, error } = await supabase
       .from('users')
@@ -1061,7 +1075,8 @@ app.post('/api/auth/onboard', async (req, res) => {
         availability: 'available',
         profile_completeness,
         needs_onboarding: false,
-        onboarding_completed_at: new Date().toISOString()
+        onboarding_completed_at: new Date().toISOString(),
+        ...(emailVerifiedAt ? { email_verified_at: emailVerifiedAt } : {})
       }, { onConflict: 'id' })
       .select()
       .single();
@@ -1091,12 +1106,29 @@ app.post('/api/auth/onboard', async (req, res) => {
 app.post('/api/auth/send-verification', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  if (user.email_verified_at) {
-    return res.json({ success: true, message: 'Email already verified' });
+  // Try normal auth first, then fall back to JWT-only for onboarding users (no DB row yet)
+  let userId, userEmail;
+  const dbUser = await getUserByToken(req.headers.authorization);
+  if (dbUser) {
+    if (dbUser.email_verified_at) {
+      return res.json({ success: true, message: 'Email already verified' });
+    }
+    userId = dbUser.id;
+    userEmail = dbUser.email;
+  } else {
+    // Onboarding user: valid JWT but no users table row yet
+    const cleanToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    try {
+      const { data: { user: authUser }, error } = await supabase.auth.getUser(cleanToken);
+      if (!authUser || error) return res.status(401).json({ error: 'Unauthorized' });
+      userId = authUser.id;
+      userEmail = authUser.email;
+    } catch (e) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
   }
+
+  if (!userEmail) return res.status(400).json({ error: 'No email associated with account' });
 
   // Generate 6-digit verification code
   const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1107,8 +1139,8 @@ app.post('/api/auth/send-verification', async (req, res) => {
     .from('email_verifications')
     .upsert({
       id: uuidv4(),
-      user_id: user.id,
-      email: user.email,
+      user_id: userId,
+      email: userEmail,
       code,
       expires_at: expiresAt,
       created_at: new Date().toISOString()
@@ -1131,18 +1163,18 @@ app.post('/api/auth/send-verification', async (req, res) => {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_API_KEY}` },
         body: JSON.stringify({
           from: FROM_EMAIL,
-          to: [user.email],
+          to: [userEmail],
           subject: 'Verify your irlwork.ai email',
           html: `<h2>Email Verification</h2><p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 30 minutes.</p>`
         })
       });
-      console.log(`[EmailVerify] Sent verification email to ${user.email}`);
+      console.log(`[EmailVerify] Sent verification email to ${userEmail}`);
     } catch (emailErr) {
       console.error('[EmailVerify] Failed to send email:', emailErr.message);
       return res.status(500).json({ error: 'Failed to send verification email' });
     }
   } else {
-    console.log(`[EmailVerify] DEV MODE — Verification code for ${user.email}: ${code}`);
+    console.log(`[EmailVerify] DEV MODE — Verification code for ${userEmail}: ${code}`);
   }
 
   res.json({ success: true, message: 'Verification code sent to your email' });
@@ -1152,11 +1184,24 @@ app.post('/api/auth/send-verification', async (req, res) => {
 app.post('/api/auth/verify-email', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  if (user.email_verified_at) {
-    return res.json({ success: true, message: 'Email already verified' });
+  // Try normal auth first, then fall back to JWT-only for onboarding users
+  let userId, hasDbRow = false;
+  const dbUser = await getUserByToken(req.headers.authorization);
+  if (dbUser) {
+    if (dbUser.email_verified_at) {
+      return res.json({ success: true, message: 'Email already verified' });
+    }
+    userId = dbUser.id;
+    hasDbRow = true;
+  } else {
+    const cleanToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    try {
+      const { data: { user: authUser }, error } = await supabase.auth.getUser(cleanToken);
+      if (!authUser || error) return res.status(401).json({ error: 'Unauthorized' });
+      userId = authUser.id;
+    } catch (e) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
   }
 
   const { code } = req.body;
@@ -1166,7 +1211,7 @@ app.post('/api/auth/verify-email', async (req, res) => {
   const { data: verification, error: lookupError } = await supabase
     .from('email_verifications')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('code', code.trim())
     .single();
 
@@ -1178,18 +1223,26 @@ app.post('/api/auth/verify-email', async (req, res) => {
     return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
   }
 
-  // Mark email as verified
-  const { error: updateError } = await supabase
-    .from('users')
-    .update({ email_verified_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq('id', user.id);
+  if (hasDbRow) {
+    // User has a DB row — mark email as verified directly
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ email_verified_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', userId);
 
-  if (updateError) {
-    return res.status(500).json({ error: 'Failed to verify email' });
+    if (updateError) {
+      return res.status(500).json({ error: 'Failed to verify email' });
+    }
+    // Clean up verification record
+    await supabase.from('email_verifications').delete().eq('user_id', userId);
+  } else {
+    // Onboarding user — mark the verification record as verified so the onboard endpoint can pick it up
+    await supabase
+      .from('email_verifications')
+      .update({ verified_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('code', code.trim());
   }
-
-  // Clean up verification record
-  await supabase.from('email_verifications').delete().eq('user_id', user.id);
 
   res.json({ success: true, message: 'Email verified successfully' });
 });
