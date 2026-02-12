@@ -49,24 +49,39 @@ function SkeletonCard() {
       display: 'flex',
       flexDirection: 'column',
       animation: 'browseShimmer 1.8s ease-in-out infinite',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      overflow: 'hidden',
+      position: 'relative'
     }}>
-      <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
-        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-tertiary)', flexShrink: 0 }} />
+      {/* Accent line */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'var(--bg-tertiary)', opacity: 0.5 }} />
+      {/* Header */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--bg-tertiary)', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ height: 16, width: '70%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 6 }} />
           <div style={{ height: 13, width: '50%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 4 }} />
           <div style={{ height: 13, width: '40%', background: 'var(--bg-tertiary)', borderRadius: 6 }} />
         </div>
       </div>
-      <div style={{ height: 14, width: '100%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 6 }} />
-      <div style={{ height: 14, width: '80%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 14 }} />
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        <div style={{ height: 26, width: 72, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
-        <div style={{ height: 26, width: 56, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
-        <div style={{ height: 26, width: 64, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
+      {/* Rating */}
+      <div style={{ height: 20, width: 80, background: 'var(--bg-tertiary)', borderRadius: 999, marginBottom: 10 }} />
+      {/* Social icons */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {[0,1,2,3].map(i => <div key={i} style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--bg-tertiary)' }} />)}
       </div>
-      <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', display: 'flex', justifyContent: 'space-between' }}>
-        <div style={{ height: 22, width: 60, background: 'var(--bg-tertiary)', borderRadius: 6 }} />
+      {/* Bio */}
+      <div style={{ height: 14, width: '100%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 6 }} />
+      <div style={{ height: 14, width: '80%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 16 }} />
+      {/* Skills */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        <div style={{ height: 28, width: 72, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
+        <div style={{ height: 28, width: 56, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
+        <div style={{ height: 28, width: 64, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
+      </div>
+      {/* Footer */}
+      <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid rgba(26,26,26,0.06)', display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ height: 24, width: 60, background: 'var(--bg-tertiary)', borderRadius: 6 }} />
         <div style={{ height: 38, width: 72, background: 'var(--bg-tertiary)', borderRadius: 10 }} />
       </div>
     </div>

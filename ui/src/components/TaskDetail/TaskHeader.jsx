@@ -1,8 +1,19 @@
 // Task Header Component
-// Displays task title, description, requirements, and metadata
+// Displays task title, description, requirements, skills, and metadata
 
 import React from 'react';
 import { CalendarDays, Timer, MapPin } from 'lucide-react';
+
+const CATEGORY_ICONS = {
+  delivery: '📦',
+  photography: '📸',
+  'data-collection': '📊',
+  errands: '🏃',
+  'tech-setup': '💻',
+  translation: '🌐',
+  verification: '✅',
+  other: '📋',
+};
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: 'bg-[#D1E9F0] text-[#0F4C5C]' },
@@ -21,14 +32,10 @@ export default function TaskHeader({ task }) {
 
   return (
     <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
-      {/* Status Badge + Budget inline on mobile */}
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
+      {/* Status Badge */}
+      <div className="mb-3 sm:mb-4">
         <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
-        </span>
-        {/* Compact budget shown inline on mobile only */}
-        <span className="lg:hidden text-lg font-bold text-[#059669] font-mono">
-          ${task.budget} <span className="text-xs font-normal text-[#8A8A8A]">USDC</span>
         </span>
       </div>
 
@@ -103,16 +110,17 @@ export default function TaskHeader({ task }) {
         )}
       </div>
 
-      {/* Budget - Large and Prominent (desktop only, mobile shows inline above + BudgetCard) */}
-      <div className="hidden lg:block mt-6 pt-6 border-t border-[rgba(26,26,26,0.08)]">
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-[#059669] font-mono">
-            ${task.budget}
-          </span>
-          <span className="text-xl text-[#525252]">USDC</span>
+      {/* Skills Needed */}
+      {task.category && (
+        <div className="mt-3 sm:mt-6 pt-3 sm:pt-6 border-t border-[rgba(26,26,26,0.08)]">
+          <h3 className="text-xs font-bold text-[#8A8A8A] uppercase tracking-wider mb-2 sm:mb-3">Skills Needed</h3>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium bg-[rgba(15,76,92,0.1)] text-[#0F4C5C]">
+              {CATEGORY_ICONS[task.category] || '📋'} {task.category.replace('-', ' ')}
+            </span>
+          </div>
         </div>
-        <p className="text-[#8A8A8A] text-sm mt-1">Payment for this task</p>
-      </div>
+      )}
     </div>
   );
 }
