@@ -421,11 +421,11 @@ async function handleWebhookEvent(event, supabase, createNotification) {
       break;
 
     case 'payout.failed':
-      await handlePayoutFailed(event.data.object, supabase, createNotification);
+      await handlePayoutFailed(event.data.object, event.account, supabase, createNotification);
       break;
 
     case 'payout.paid':
-      await handlePayoutPaid(event.data.object, supabase, createNotification);
+      await handlePayoutPaid(event.data.object, event.account, supabase, createNotification);
       break;
 
     default:
@@ -737,15 +737,17 @@ async function handleChargeRefunded(charge, supabase) {
 
 /**
  * Handle payout.failed — worker's bank rejected the transfer
+ * @param {object} payout - Stripe payout object
+ * @param {string} connectedAccountId - The Connect account ID (event.account, e.g. acct_xxx)
  */
-async function handlePayoutFailed(payout, supabase, createNotification) {
-  console.error(`[Stripe Webhook] Payout failed: ${payout.id}, account: ${payout.destination}`);
+async function handlePayoutFailed(payout, connectedAccountId, supabase, createNotification) {
+  console.error(`[Stripe Webhook] Payout failed: ${payout.id}, connected account: ${connectedAccountId}`);
 
-  // Find the worker by Stripe account
+  // Find the worker by their Stripe Connect account ID (event.account, NOT payout.destination which is the bank account ID)
   const { data: user } = await supabase
     .from('users')
     .select('id')
-    .eq('stripe_account_id', payout.destination)
+    .eq('stripe_account_id', connectedAccountId)
     .single();
 
   if (user && createNotification) {
@@ -761,17 +763,19 @@ async function handlePayoutFailed(payout, supabase, createNotification) {
 
 /**
  * Handle payout.paid — worker's bank deposit has landed.
+ * @param {object} payout - Stripe payout object
+ * @param {string} connectedAccountId - The Connect account ID (event.account, e.g. acct_xxx)
  */
-async function handlePayoutPaid(payout, supabase, createNotification) {
-  if (!payout?.destination) return;
+async function handlePayoutPaid(payout, connectedAccountId, supabase, createNotification) {
+  if (!connectedAccountId) return;
 
   const amountDollars = (payout.amount / 100).toFixed(2);
 
-  // Find worker by Stripe account ID
+  // Find worker by their Stripe Connect account ID (event.account, NOT payout.destination which is the bank account ID)
   const { data: user } = await supabase
     .from('users')
     .select('id')
-    .eq('stripe_account_id', payout.destination)
+    .eq('stripe_account_id', connectedAccountId)
     .single();
 
   if (user && createNotification) {
