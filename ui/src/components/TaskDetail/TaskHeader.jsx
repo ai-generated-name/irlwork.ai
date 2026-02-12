@@ -37,6 +37,10 @@ export default function TaskHeader({ task }) {
         <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
         </span>
+        {/* Compact budget shown inline on mobile only */}
+        <span className="lg:hidden text-lg font-bold text-[#059669] font-mono">
+          ${task.budget} <span className="text-xs font-normal text-[#8A8A8A]">USD</span>
+        </span>
       </div>
 
       {/* Title */}
@@ -58,6 +62,20 @@ export default function TaskHeader({ task }) {
           <p className="text-[#525252] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
             {task.requirements}
           </p>
+        </div>
+      )}
+
+      {/* Required Skills */}
+      {task.required_skills && task.required_skills.length > 0 && (
+        <div className="mb-3 sm:mb-6">
+          <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Required Skills</h3>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {task.required_skills.map((skill, i) => (
+              <span key={i} className="inline-block px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium bg-[#EEF2FF] text-[#4338CA]">
+                {skill}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
@@ -108,6 +126,16 @@ export default function TaskHeader({ task }) {
             <span>{task.category}</span>
           </div>
         )}
+      </div>
+
+      {/* Budget - Large and Prominent (desktop only, mobile shows inline above) */}
+      <div className="hidden lg:block mt-6 pt-6 border-t border-[rgba(26,26,26,0.08)]">
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-bold text-[#059669] font-mono">
+            ${task.budget}
+          </span>
+          <span className="text-xl text-[#525252]">USD</span>
+        </div>
       </div>
 
       {/* Skills Needed */}

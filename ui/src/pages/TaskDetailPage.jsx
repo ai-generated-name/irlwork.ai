@@ -192,7 +192,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   };
 
   // Send a message
-  const handleSendMessage = async (content, attachments) => {
+  const handleSendMessage = async (content) => {
     if (!user || !task) return;
 
     try {
@@ -221,18 +221,13 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         }
       }
 
-      const body = { conversation_id: convId, content: content };
-      if (attachments && attachments.length > 0) {
-        body.attachments = attachments;
-      }
-
       const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: user.token || user.id
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ conversation_id: convId, content })
       });
 
       if (res.ok) {

@@ -122,7 +122,7 @@ export default function QuickApplyModal({
               <h3 className="quick-apply-modal-task-title">{task.title}</h3>
               <div className="quick-apply-modal-task-meta">
                 <span className="quick-apply-modal-task-budget">
-                  ${task.budget || 0} USDC
+                  ${task.budget || 0} USD
                 </span>
                 {task.distance_km != null && (
                   <span className="quick-apply-modal-task-distance">

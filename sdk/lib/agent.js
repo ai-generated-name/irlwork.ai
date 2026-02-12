@@ -93,18 +93,27 @@ export class IRLWorkAgent {
    * @param {string} params.category - Category (delivery, pickup, errand, etc)
    * @param {number} [params.budget] - Budget in USD
    * @param {string} [params.location] - City or location
+   * @param {string[]} [params.required_skills] - Skills needed for this task
+   * @param {string} [params.requirements] - Additional requirements text
+   * @param {boolean} [params.is_remote] - Whether task can be done remotely
+   * @param {number} [params.duration_hours] - Estimated duration in hours
+   * @param {string} [params.deadline] - ISO deadline string
    * @returns {Promise<Object>} Task details
    */
-  async postTask({ title, description, category, budget = 50, location = '' }) {
-    const result = await this.client.callMcp('post_task', {
+  async postTask({ title, description, category, budget = 50, location = '', required_skills = [], requirements, is_remote, duration_hours, deadline }) {
+    const result = await this.client.callMcp('create_task', {
       title,
       description,
       category,
-      budget_min: budget,
-      budget_max: budget,
-      location
+      budget,
+      location,
+      required_skills,
+      requirements,
+      is_remote,
+      duration_hours,
+      deadline
     })
-    
+
     this.events.emit('task:created', result)
     return result
   }

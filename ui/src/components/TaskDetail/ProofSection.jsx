@@ -54,8 +54,17 @@ export default function ProofSection({ task, user, onSubmit }) {
 
   const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files || []);
+    // Reset file input immediately so user can always re-select
+    if (fileInputRef.current) fileInputRef.current.value = '';
     if (selected.length + files.length > 3) {
       toast.error('Maximum 3 files allowed');
+      return;
+    }
+
+    // Validate file sizes (20MB max per file, compress before upload)
+    const oversized = selected.find(f => f.size > 20 * 1024 * 1024);
+    if (oversized) {
+      toast.error('Each file must be under 20MB');
       return;
     }
 
@@ -67,7 +76,17 @@ export default function ProofSection({ task, user, onSubmit }) {
     try {
       const urls = [...uploadedUrls];
       for (const file of selected) {
-        const url = await uploadFile(file);
+        let fileToUpload = file;
+        // Compress images over 1MB (skip non-image or gif)
+        if (file.type.startsWith('image/') && file.type !== 'image/gif' && file.size > 1024 * 1024) {
+          const imageCompression = (await import('browser-image-compression')).default;
+          fileToUpload = await imageCompression(file, {
+            maxSizeMB: 2,
+            maxWidthOrHeight: 2000,
+            useWebWorker: true,
+          });
+        }
+        const url = await uploadFile(fileToUpload);
         urls.push(url);
       }
       setUploadedUrls(urls.slice(0, 3));
@@ -75,6 +94,8 @@ export default function ProofSection({ task, user, onSubmit }) {
     } catch (err) {
       console.error('Upload error:', err);
       toast.error('Failed to upload file(s)');
+      // Remove failed files from state so user can retry
+      setFiles(prev => prev.filter((_, i) => i < uploadedUrls.length));
     } finally {
       setUploading(false);
     }

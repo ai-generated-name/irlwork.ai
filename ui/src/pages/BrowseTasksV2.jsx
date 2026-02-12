@@ -75,6 +75,7 @@ export default function BrowseTasksV2({
   const [sort, setSort] = useState('distance');
   const [radius, setRadius] = useState(initialRadius || '25');
   const [includeRemote, setIncludeRemote] = useState(true);
+  const [filterByMySkills, setFilterByMySkills] = useState(false);
 
   // Location state
   const [location, setLocation] = useState({
@@ -136,6 +137,14 @@ export default function BrowseTasksV2({
       if (location.city && radius !== 'anywhere') params.set('city', location.city);
       params.set('include_remote', includeRemote ? 'true' : 'false');
 
+      // Filter by user's skills if enabled
+      if (filterByMySkills && user?.skills) {
+        const userSkills = Array.isArray(user.skills) ? user.skills : [];
+        if (userSkills.length > 0) {
+          params.set('skills', userSkills.join(','));
+        }
+      }
+
       params.set('limit', '50');
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`, {
@@ -156,7 +165,7 @@ export default function BrowseTasksV2({
     } finally {
       setLoading(false);
     }
-  }, [location, radius, category, debouncedSearch, sort, includeRemote]);
+  }, [location, radius, category, debouncedSearch, sort, includeRemote, filterByMySkills, user]);
 
   // Fetch on mount and when filters change
   useEffect(() => {
@@ -348,6 +357,17 @@ export default function BrowseTasksV2({
           >
             <Globe size={14} /> Remote
           </button>
+          {user && user.type === 'human' && Array.isArray(user.skills) && user.skills.length > 0 && (
+            <button
+              className={`browse-tasks-v2-remote-toggle ${filterByMySkills ? 'active' : ''}`}
+              onClick={() => setFilterByMySkills(!filterByMySkills)}
+              type="button"
+              title={filterByMySkills ? 'Showing tasks matching your skills' : 'Show tasks matching your skills'}
+              style={filterByMySkills ? { background: '#EEF2FF', color: '#4338CA', borderColor: '#C7D2FE' } : {}}
+            >
+              <span>🎯</span> My Skills
+            </button>
+          )}
         </div>
       </div>
 
