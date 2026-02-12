@@ -406,20 +406,6 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 /**
- * Authenticate a request by token.
- *
- * ARCHITECTURE NOTE: The frontend currently sends the Supabase user UUID as the
- * Authorization header (not a JWT or session token). This means any caller who
- * knows a user's UUID can authenticate as that user. This is acceptable for the
- * current trust model where the API is only called by our own frontend (which
- * obtains the UUID via Supabase Auth), but should be migrated to proper JWT
- * verification (supabase.auth.getUser(jwt)) for production hardening.
- *
- * TODO: Migrate to JWT-based auth — validate the Supabase access_token instead
- * of accepting raw UUIDs. This will require frontend changes to send the JWT
- * from supabase.auth.getSession().
- */
-/**
  * Build the correct avatar URL for a user, using the API proxy endpoint.
  * This ensures avatars always work regardless of R2 public URL configuration.
  */
@@ -432,14 +418,52 @@ function getAvatarUrl(user, req) {
   return `${protocol}://${host}/api/avatar/${user.id}`;
 }
 
+/**
+ * Authenticate a request by token.
+ *
+ * Authentication is checked in order of preference:
+ * 1. Supabase JWT (access_token from supabase.auth.getSession) — most secure
+ * 2. UUID (legacy fallback — being phased out)
+ * 3. API key (irl_sk_... format for programmatic access)
+ * 4. Legacy API key in users table
+ */
 async function getUserByToken(token) {
   if (!token || !supabase) return null;
 
   // Remove "Bearer " prefix if present
   const cleanToken = token.replace(/^Bearer\s+/i, '');
 
-  // Check if it's a UUID (user ID) — see architecture note above
+  // 1. Try Supabase JWT verification (preferred auth method)
+  // JWTs are not UUIDs and not API keys, so try JWT first for non-UUID, non-API-key tokens
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(cleanToken) && !cleanToken.startsWith('irl_sk_')) {
+    try {
+      const { data: { user: authUser }, error } = await supabase.auth.getUser(cleanToken);
+      if (authUser && !error) {
+        // JWT verified — look up user in our DB by Supabase auth user ID
+        const { data: dbUser } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+        if (dbUser) return dbUser;
+
+        // Fall back to email lookup (handles ID mismatch from OAuth)
+        if (authUser.email) {
+          const { data: byEmail } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', authUser.email)
+            .single();
+          if (byEmail) return byEmail;
+        }
+      }
+    } catch (e) {
+      // JWT verification failed — continue to other auth methods
+    }
+  }
+
+  // 2. Legacy UUID auth (backward compatibility — will be removed in future)
   if (uuidRegex.test(cleanToken)) {
     const { data } = await supabase
       .from('users')
@@ -814,8 +838,11 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
+  // Return email_verified status
+  const email_verified = !!user.email_verified_at;
+
   res.json({
-    user: { id: user.id, email: user.email, name: user.name, type: user.type },
+    user: { id: user.id, email: user.email, name: user.name, type: user.type, email_verified },
     token: crypto.randomBytes(32).toString('hex')
   });
 });
@@ -954,6 +981,7 @@ app.get('/api/auth/verify', async (req, res) => {
       profile_completeness: user.profile_completeness,
       needs_onboarding: needsOnboarding,
       verified: user.verified,
+      email_verified: !!user.email_verified_at,
       // Reputation metrics
       total_tasks_completed: user.total_tasks_completed || 0,
       total_tasks_posted: user.total_tasks_posted || 0,
@@ -1056,6 +1084,114 @@ app.post('/api/auth/onboard', async (req, res) => {
     console.error('Onboarding exception:', e);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ============ EMAIL VERIFICATION ============
+// Send verification code (6-digit code stored in DB)
+app.post('/api/auth/send-verification', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  if (user.email_verified_at) {
+    return res.json({ success: true, message: 'Email already verified' });
+  }
+
+  // Generate 6-digit verification code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 min expiry
+
+  // Store verification code (upsert by user_id)
+  const { error } = await supabase
+    .from('email_verifications')
+    .upsert({
+      id: uuidv4(),
+      user_id: user.id,
+      email: user.email,
+      code,
+      expires_at: expiresAt,
+      created_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+  if (error) {
+    console.error('[EmailVerify] Error storing code:', error);
+    return res.status(500).json({ error: 'Failed to generate verification code' });
+  }
+
+  // Send email via configured provider (Resend, SendGrid, etc.)
+  // If no email provider configured, log to console (development mode)
+  const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@irlwork.ai';
+
+  if (RESEND_API_KEY) {
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: FROM_EMAIL,
+          to: [user.email],
+          subject: 'Verify your irlwork.ai email',
+          html: `<h2>Email Verification</h2><p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 30 minutes.</p>`
+        })
+      });
+      console.log(`[EmailVerify] Sent verification email to ${user.email}`);
+    } catch (emailErr) {
+      console.error('[EmailVerify] Failed to send email:', emailErr.message);
+      return res.status(500).json({ error: 'Failed to send verification email' });
+    }
+  } else {
+    console.log(`[EmailVerify] DEV MODE — Verification code for ${user.email}: ${code}`);
+  }
+
+  res.json({ success: true, message: 'Verification code sent to your email' });
+});
+
+// Verify code
+app.post('/api/auth/verify-email', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  if (user.email_verified_at) {
+    return res.json({ success: true, message: 'Email already verified' });
+  }
+
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'Verification code is required' });
+
+  // Look up the verification code
+  const { data: verification, error: lookupError } = await supabase
+    .from('email_verifications')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('code', code.trim())
+    .single();
+
+  if (lookupError || !verification) {
+    return res.status(400).json({ error: 'Invalid verification code' });
+  }
+
+  if (new Date(verification.expires_at) < new Date()) {
+    return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
+  }
+
+  // Mark email as verified
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ email_verified_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', user.id);
+
+  if (updateError) {
+    return res.status(500).json({ error: 'Failed to verify email' });
+  }
+
+  // Clean up verification record
+  await supabase.from('email_verifications').delete().eq('user_id', user.id);
+
+  res.json({ success: true, message: 'Email verified successfully' });
 });
 
 // ============ HEADLESS AGENT REGISTRATION ============

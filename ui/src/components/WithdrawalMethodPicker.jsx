@@ -14,7 +14,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, onWithd
   const fetchConnectStatus = async () => {
     try {
       const res = await fetch(`${API_URL}/stripe/connect/status`, {
-        headers: { Authorization: user.id },
+        headers: { Authorization: user.token || user.id },
       });
       if (res.ok) setConnectStatus(await res.json());
     } catch (e) {

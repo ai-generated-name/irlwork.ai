@@ -25,7 +25,7 @@ export default function AdminDashboard({ user }) {
   const fetchDashboard = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/admin/dashboard`, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       if (!res.ok) {
         if (res.status === 403) {
@@ -53,7 +53,7 @@ export default function AdminDashboard({ user }) {
       if (queue === 'feedback') {
         const statusParam = feedbackFilter !== 'all' ? `?status=${feedbackFilter}` : ''
         const res = await fetch(`${API_URL}/admin/feedback${statusParam}`, {
-          headers: { Authorization: user.id }
+          headers: { Authorization: user.token || user.id }
         })
         if (!res.ok) throw new Error('Failed to fetch feedback')
         const data = await res.json()
@@ -73,7 +73,7 @@ export default function AdminDashboard({ user }) {
       }
 
       const res = await fetch(`${API_URL}${endpoints[queue]}`, {
-        headers: { Authorization: user.id }
+        headers: { Authorization: user.token || user.id }
       })
       if (!res.ok) throw new Error('Failed to fetch queue')
       const data = await res.json()
@@ -105,7 +105,7 @@ export default function AdminDashboard({ user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ tx_hash: txHash, amount_received: parseFloat(amount) })
       })
@@ -130,7 +130,7 @@ export default function AdminDashboard({ user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({})
       })
@@ -154,7 +154,7 @@ export default function AdminDashboard({ user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ tx_hash: txHash, amount_sent: parseFloat(amount) })
       })
@@ -187,7 +187,7 @@ export default function AdminDashboard({ user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({})
       })
@@ -211,7 +211,7 @@ export default function AdminDashboard({ user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ action, notes, suspend_days })
       })
@@ -236,7 +236,7 @@ export default function AdminDashboard({ user }) {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || user.id
         },
         body: JSON.stringify({ status, admin_notes: adminNotes })
       })

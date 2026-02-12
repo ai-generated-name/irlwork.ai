@@ -125,7 +125,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
         const base64 = await toBase64(files[i])
         const res = await fetch(`${API_URL}/upload/feedback`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
           body: JSON.stringify({
             file: base64,
             filename: files[i].name,
@@ -138,7 +138,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
 
       await fetch(`${API_URL}/feedback`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
         body: JSON.stringify({
           type,
           urgency,
