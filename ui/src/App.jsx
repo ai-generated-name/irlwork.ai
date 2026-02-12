@@ -1598,6 +1598,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [messages, setMessages] = useState([])
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [newMessage, setNewMessage] = useState('')
+  const [messagesLoading, setMessagesLoading] = useState(false)
+  const [conversationsLoading, setConversationsLoading] = useState(false)
+  const [conversationsError, setConversationsError] = useState(null)
+  const [messagesError, setMessagesError] = useState(null)
+  const [sendingMessage, setSendingMessage] = useState(false)
+  const [messageAttachments, setMessageAttachments] = useState([])
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
@@ -2096,13 +2103,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchConversations = async () => {
+    setConversationsLoading(prev => prev || conversations.length === 0) // Only show loading on first load
     try {
       const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
         setConversations(data || [])
+        setConversationsError(null)
+      } else {
+        setConversationsError('Failed to load conversations')
       }
-    } catch (e) {}
+    } catch (e) {
+      setConversationsError('Network error. Check your connection.')
+    } finally {
+      setConversationsLoading(false)
+    }
   }
 
   const fetchUnreadMessages = async () => {
@@ -2112,7 +2127,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         const data = await res.json()
         setUnreadMessages(data.count || 0)
       }
-    } catch (e) {}
+    } catch (e) {
+      debug('Could not fetch unread count')
+    }
   }
 
   const handleCreateTask = async (e) => {
@@ -2183,11 +2200,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchMessages = async (conversationId, skipMarkRead = false) => {
+    if (!skipMarkRead) setMessagesLoading(true)
     try {
       const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.id } })
       if (res.ok) {
         const data = await res.json()
-        setMessages(data || [])
+        // Sort by created_at to guarantee chronological order (#3)
+        const sorted = (data || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        setMessages(sorted)
+        setMessagesError(null)
         // Mark messages as read when opening a conversation (matches TaskDetailPage pattern)
         if (!skipMarkRead) {
           fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
@@ -2198,26 +2219,95 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             fetchConversations()
           }).catch(() => {})
         }
+      } else {
+        setMessagesError('Failed to load messages')
       }
-    } catch (e) {}
+    } catch (e) {
+      setMessagesError('Network error. Check your connection.')
+    } finally {
+      setMessagesLoading(false)
+    }
   }
 
   const sendMessage = async (e) => {
     e.preventDefault()
-    if (!newMessage.trim() || !selectedConversation) return
+    if ((!newMessage.trim() && messageAttachments.length === 0) || !selectedConversation) return
     const msgContent = newMessage
+    const attachmentsToSend = [...messageAttachments]
     setNewMessage('') // Clear immediately for responsiveness
+    setMessageAttachments([])
+    setSendingMessage(true)
     try {
-      await fetch(`${API_URL}/messages`, {
+      const body = { conversation_id: selectedConversation, content: msgContent }
+      if (attachmentsToSend.length > 0) {
+        body.attachments = attachmentsToSend
+      }
+      const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.id },
-        body: JSON.stringify({ conversation_id: selectedConversation, content: msgContent })
+        body: JSON.stringify(body)
       })
-      fetchMessages(selectedConversation)
-      // Update conversation list to show new last_message preview
+      if (!res.ok) {
+        throw new Error('Failed to send')
+      }
+      fetchMessages(selectedConversation, true)
       fetchConversations()
     } catch (e) {
       setNewMessage(msgContent) // Restore on error
+      setMessageAttachments(attachmentsToSend)
+      toast.error('Message failed to send. Please try again.')
+    } finally {
+      setSendingMessage(false)
+    }
+  }
+
+  // Upload attachment for messages (#7)
+  const handleAttachmentUpload = async (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    if (messageAttachments.length + files.length > 5) {
+      toast.error('Maximum 5 attachments per message')
+      return
+    }
+
+    setUploadingAttachment(true)
+    try {
+      for (const file of files) {
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is too large. Maximum 10MB.`)
+          continue
+        }
+
+        const reader = new FileReader()
+        const base64 = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+
+        const res = await fetch(`${API_URL}/upload/message-attachment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: user.id },
+          body: JSON.stringify({ file: base64, filename: file.name, mimeType: file.type })
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          setMessageAttachments(prev => [...prev, {
+            url: data.url,
+            name: file.name,
+            type: file.type,
+            size: file.size
+          }])
+        } else {
+          toast.error(`Failed to upload ${file.name}`)
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to upload attachment')
+    } finally {
+      setUploadingAttachment(false)
+      e.target.value = '' // Reset file input
     }
   }
 
@@ -3957,9 +4047,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           // Helper: resolve the "other" party in a conversation
           const getOtherParty = (c) => {
             if (!c || !user) return { name: 'Unknown', avatar_url: null }
-            // If current user is the human, the other party is the agent (and vice versa)
             if (c.human_id === user.id) return c.agent || { name: 'Unknown Agent', avatar_url: null }
             return c.human || { name: 'Unknown Human', avatar_url: null }
+          }
+          // Helper: online status from last_active_at (#8)
+          const getOnlineStatus = (party) => {
+            if (!party?.last_active_at) return { status: 'offline', label: 'Offline' }
+            const diff = Date.now() - new Date(party.last_active_at).getTime()
+            if (diff < 5 * 60 * 1000) return { status: 'online', label: 'Online', color: '#22C55E' }
+            if (diff < 30 * 60 * 1000) return { status: 'idle', label: 'Away', color: '#F59E0B' }
+            return { status: 'offline', label: 'Offline', color: '#9CA3AF' }
           }
           // Helper: relative time
           const timeAgo = (dateStr) => {
@@ -3974,8 +4071,30 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             if (days < 7) return `${days}d`
             return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           }
+          // Helper: render attachment in a message
+          const renderAttachment = (att) => {
+            const isImage = att.type?.startsWith('image/')
+            if (isImage) {
+              return (
+                <a href={att.url} target="_blank" rel="noopener noreferrer" key={att.url} style={{ display: 'block', marginTop: 6 }}>
+                  <img src={att.url} alt={att.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'cover' }} />
+                </a>
+              )
+            }
+            return (
+              <a href={att.url} target="_blank" rel="noopener noreferrer" key={att.url}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '6px 10px', background: 'rgba(0,0,0,0.05)', borderRadius: 8, textDecoration: 'none', fontSize: 12, color: 'inherit' }}>
+                <span>📎</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name || 'Attachment'}</span>
+                {att.size ? <span style={{ opacity: 0.6, flexShrink: 0 }}>({(att.size / 1024).toFixed(0)}KB)</span> : null}
+              </a>
+            )
+          }
+
           const activeConv = conversations.find(c => c.id === selectedConversation)
           const activeOther = activeConv ? getOtherParty(activeConv) : null
+          const activeOnline = activeOther ? getOnlineStatus(activeOther) : null
+          const fileInputRef = React.createRef()
 
           return (
           <div>
@@ -3983,8 +4102,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             <div className="dashboard-v4-messages">
               {/* Conversations List */}
-              <div className={`dashboard-v4-conversations ${selectedConversation ? 'hidden md:block' : 'block'}`}>
-                {conversations.length === 0 ? (
+              <div className={`dashboard-v4-conversations ${selectedConversation ? 'msg-hide-mobile' : ''}`} style={{ overflowY: 'auto' }}>
+                {conversationsLoading && conversations.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: 'center' }}>
+                    <div className="msg-spinner" />
+                    <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 12 }}>Loading conversations...</p>
+                  </div>
+                ) : conversationsError && conversations.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
+                    <p style={{ fontWeight: 500, marginBottom: 8, color: 'var(--text-secondary)' }}>{conversationsError}</p>
+                    <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
+                  </div>
+                ) : conversations.length === 0 ? (
                   <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                     <div style={{ marginBottom: 8 }}><MessageCircle size={32} /></div>
                     <p style={{ fontWeight: 500, marginBottom: 4 }}>No conversations yet</p>
@@ -3993,19 +4123,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 ) : (
                   conversations.map(c => {
                     const other = getOtherParty(c)
+                    const online = getOnlineStatus(other)
                     return (
                     <div
                       key={c.id}
                       className={`dashboard-v4-conversation-item ${selectedConversation === c.id ? 'active' : ''}`}
                       onClick={() => { setSelectedConversation(c.id); fetchMessages(c.id) }}
                     >
-                      {other.avatar_url ? (
-                        <img src={other.avatar_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                      ) : (
-                        <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 15, flexShrink: 0 }}>
-                          {other.name?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                      )}
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {other.avatar_url ? (
+                          <img src={other.avatar_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 40, height: 40, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 15 }}>
+                            {other.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        {/* Online status dot (#8) */}
+                        <span style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: '50%', background: online.color, border: '2px solid white' }} title={online.label} />
+                      </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                           <p style={{ fontWeight: c.unread > 0 ? 700 : 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, margin: 0 }}>{other.name}</p>
@@ -4029,23 +4164,29 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
 
               {/* Messages Thread */}
-              <div className={`dashboard-v4-message-thread ${selectedConversation ? 'block' : 'hidden md:flex'}`}>
+              <div className={`dashboard-v4-message-thread ${selectedConversation ? '' : 'msg-hide-mobile'}`}>
                 {selectedConversation && activeConv ? (
                   <>
-                    {/* Thread Header: back button + other party + task link */}
+                    {/* Thread Header: back button + other party + task link + online status */}
                     <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(26,26,26,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
-                      <button onClick={() => setSelectedConversation(null)} className="md:hidden" style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)' }}>
+                      <button onClick={() => setSelectedConversation(null)} className="msg-back-btn" style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)' }}>
                         ←
                       </button>
-                      {activeOther?.avatar_url ? (
-                        <img src={activeOther.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>
-                          {activeOther?.name?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                      )}
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {activeOther?.avatar_url ? (
+                          <img src={activeOther.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 13 }}>
+                            {activeOther?.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        <span style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', background: activeOnline?.color || '#9CA3AF', border: '2px solid white' }} />
+                      </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{activeOther?.name}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{activeOther?.name}</p>
+                          <span style={{ fontSize: 11, color: activeOnline?.color || '#9CA3AF' }}>{activeOnline?.label}</span>
+                        </div>
                         {activeConv.task && (
                           <a
                             href={`/tasks/${activeConv.task.id}`}
@@ -4065,38 +4206,80 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
                     {/* Messages */}
                     <div className="dashboard-v4-message-list" ref={el => { if (el) el.scrollTop = el.scrollHeight }}>
-                      {messages.length === 0 ? (
+                      {messagesLoading ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
+                          <div className="msg-spinner" />
+                          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: 0 }}>Loading messages...</p>
+                        </div>
+                      ) : messagesError ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
+                          <span style={{ fontSize: 24 }}>⚠️</span>
+                          <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>{messagesError}</p>
+                          <button onClick={() => fetchMessages(selectedConversation)} className="v4-btn v4-btn-secondary" style={{ fontSize: 12, padding: '4px 12px' }}>Retry</button>
+                        </div>
+                      ) : messages.length === 0 ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: 14 }}>
                           No messages yet — send one to start the conversation
                         </div>
                       ) : (
-                        messages.map(m => (
+                        messages.map(m => {
+                          const attachments = m.metadata?.attachments || []
+                          return (
                           <div key={m.id} className={`dashboard-v4-message ${m.sender_id === user.id ? 'sent' : 'received'}`}>
                             {m.sender_id !== user.id && m.sender?.name && (
                               <p style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, opacity: 0.7 }}>{m.sender.name}</p>
                             )}
-                            <p style={{ margin: 0, lineHeight: 1.5 }}>{m.content}</p>
+                            {m.content && <p style={{ margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</p>}
+                            {attachments.map(att => renderAttachment(att))}
                             <p style={{ fontSize: 11, marginTop: 4, opacity: 0.6, margin: 0 }}>
                               {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                        ))
+                        )})
                       )}
                     </div>
 
-                    {/* Input */}
+                    {/* Attachment preview strip */}
+                    {messageAttachments.length > 0 && (
+                      <div style={{ padding: '6px 16px', borderTop: '1px solid rgba(26,26,26,0.06)', display: 'flex', gap: 8, flexWrap: 'wrap', background: '#FAFAFA' }}>
+                        {messageAttachments.map((att, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'white', border: '1px solid rgba(26,26,26,0.1)', borderRadius: 8, padding: '4px 8px', fontSize: 12 }}>
+                            {att.type?.startsWith('image/') ? (
+                              <img src={att.url} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
+                            ) : <span>📎</span>}
+                            <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+                            <button onClick={() => setMessageAttachments(prev => prev.filter((_, j) => j !== i))}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-tertiary)', padding: 0, lineHeight: 1 }}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Input with attachment button (#7) */}
                     <div className="dashboard-v4-message-input" style={{ alignItems: 'flex-end' }}>
+                      <input type="file" ref={fileInputRef} onChange={handleAttachmentUpload} multiple accept="image/*,.pdf,.doc,.docx,.txt" style={{ display: 'none' }} />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAttachment}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: uploadingAttachment ? 'var(--text-tertiary)' : 'var(--text-secondary)', flexShrink: 0 }}
+                        title="Attach file"
+                      >
+                        {uploadingAttachment ? '⏳' : '📎'}
+                      </button>
                       <textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type a message... (Shift+Enter for newline)"
+                        placeholder="Type a message..."
                         className="dashboard-v4-form-input"
                         style={{ flex: 1, resize: 'none', minHeight: 40, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
                         rows={1}
+                        disabled={sendingMessage}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(e) } }}
                         onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
                       />
-                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={!newMessage.trim()} style={{ minHeight: 40 }}>Send</button>
+                      <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={sendingMessage || (!newMessage.trim() && messageAttachments.length === 0)} style={{ minHeight: 40 }}>
+                        {sendingMessage ? '...' : 'Send'}
+                      </button>
                     </div>
                   </>
                 ) : (
