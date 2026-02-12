@@ -1583,7 +1583,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Unread counts for badges
   const [unreadMessages, setUnreadMessages] = useState(0)
-  const unreadNotifications = notifications.filter(n => !n.read_at).length
+  const unreadNotifications = notifications.filter(n => !n.is_read).length
 
   // Notification dropdown state
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
@@ -1617,9 +1617,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   // Mark all notifications as read and remove them from the list
   const markAllNotificationsRead = async () => {
     try {
-      const unreadIds = notifications.filter(n => !n.read_at).map(n => n.id)
+      const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
       // Remove unread notifications from state immediately
-      setNotifications(prev => prev.filter(n => n.read_at))
+      setNotifications(prev => prev.filter(n => n.is_read))
       // Mark each as read in backend (fire and forget)
       for (const id of unreadIds) {
         fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.id } }).catch(() => {})
@@ -1920,7 +1920,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       if (res.ok) {
         const data = await res.json()
         // Only show unread notifications — clicked/read ones are removed from the list
-        setNotifications((data || []).filter(n => !n.read_at))
+        setNotifications((data || []).filter(n => !n.is_read))
       }
     } catch (e) {
       debug('Could not fetch notifications')
@@ -2486,7 +2486,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       notifications.slice(0, 5).map(n => (
                         <div
                           key={n.id}
-                          className={`dashboard-v4-notification-dropdown-item ${!n.read_at ? 'unread' : ''}`}
+                          className={`dashboard-v4-notification-dropdown-item ${!n.is_read ? 'unread' : ''}`}
                           onClick={() => navigateToNotification(n)}
                         >
                           <div className="dashboard-v4-notification-dropdown-icon">
@@ -2498,7 +2498,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                               {new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                          {!n.read_at && <div className="dashboard-v4-notification-dropdown-dot" />}
+                          {!n.is_read && <div className="dashboard-v4-notification-dropdown-dot" />}
                         </div>
                       ))
                     )}
@@ -4039,7 +4039,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 {notifications.map(n => (
                   <div
                     key={n.id}
-                    className={`dashboard-v4-notification ${!n.read_at ? 'unread' : ''}`}
+                    className={`dashboard-v4-notification ${!n.is_read ? 'unread' : ''}`}
                     onClick={() => navigateToNotification(n)}
                     style={{ cursor: 'pointer' }}
                   >
