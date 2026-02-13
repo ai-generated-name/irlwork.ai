@@ -3203,12 +3203,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           clearTimeout(timeout)
                           if (res.ok) {
                             const data = await res.json()
-                            const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
-                            const updatedUser = { ...user, avatar_url: avatarProxyUrl }
+                            // Use the URL returned by the server (includes cache-buster),
+                            // with an extra client timestamp to bust any in-flight browser cache
+                            const avatarUrl = data.url
+                              ? `${data.url}${data.url.includes('?') ? '&' : '?'}t=${Date.now()}`
+                              : `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
+                            const updatedUser = { ...user, avatar_url: avatarUrl }
                             onUserUpdate(updatedUser)
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                             // Update the humans array so browse cards reflect the new avatar instantly
-                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: avatarProxyUrl } : h))
+                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: avatarUrl } : h))
                             toast.success('Profile photo updated!')
                           } else {
                             const errText = await res.text().catch(() => '')
