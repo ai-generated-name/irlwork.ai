@@ -464,7 +464,7 @@ export default function ApiKeysTab({ user }) {
           </div>
         </div>
         <a
-          href="/mcp"
+          href="/connect-agent"
           style={{
             display: 'inline-flex',
             alignItems: 'center',

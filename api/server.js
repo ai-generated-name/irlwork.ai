@@ -1911,7 +1911,7 @@ app.get('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  let safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, human_ids, created_at, updated_at, country, country_code, human_id, agent_id, requirements, required_skills, moderation_status, is_remote';
+  let safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, human_ids, created_at, updated_at, country, country_code, human_id, agent_id, requirements, required_skills, moderation_status, is_remote, max_humans';
   if (taskColumnFlags.spots_filled) safeTaskColumns += ', spots_filled';
   if (taskColumnFlags.is_anonymous) safeTaskColumns += ', is_anonymous';
   if (taskColumnFlags.duration_hours) safeTaskColumns += ', duration_hours';
@@ -1975,7 +1975,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Authentication required' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, country, country_code } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code } = req.body;
 
   // Validate required fields
   if (!title || !title.trim()) {
@@ -2028,6 +2028,7 @@ app.post('/api/tasks', async (req, res) => {
       duration_hours: duration_hours || null,
       requirements: requirements || null,
       required_skills: skillsArray,
+      max_humans: max_humans ? parseInt(max_humans) : 1,
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,
@@ -2715,11 +2716,13 @@ app.post('/api/upload/avatar', async (req, res) => {
 
   try {
     const { file, filename, mimeType } = req.body;
+    console.log(`[Avatar Upload] User: ${user.id}, Filename: ${filename}, MimeType: ${mimeType}, HasFile: ${!!file}`);
     if (!file) return res.status(400).json({ error: 'No file provided' });
 
     // Server-side file size validation (5MB max after compression)
     const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
     const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
+    console.log(`[Avatar Upload] Decoded file size: ${(fileSizeBytes / 1024 / 1024).toFixed(2)}MB`);
     if (fileSizeBytes > 5 * 1024 * 1024) {
       return res.status(413).json({ error: 'Image must be under 5MB' });
     }
@@ -2736,7 +2739,6 @@ app.post('/api/upload/avatar', async (req, res) => {
       fileData = Buffer.from(file, 'base64');
     }
 
-    let uploadSuccess = false;
     try {
       const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
       const s3Client = new S3Client({
@@ -2751,9 +2753,9 @@ app.post('/api/upload/avatar', async (req, res) => {
         Body: fileData,
         ContentType: mimeType || 'image/jpeg',
       }));
-      uploadSuccess = true;
     } catch (s3Error) {
       console.error('R2 avatar upload error:', s3Error.message);
+      return res.status(502).json({ error: 'Failed to upload to storage. Please try again.' });
     }
 
     // Use R2 public URL if configured, otherwise use API proxy endpoint (always works)
@@ -2762,13 +2764,18 @@ app.post('/api/upload/avatar', async (req, res) => {
       : `${API_BASE}/api/avatar/${user.id}`;
 
     // Save both the display URL and the R2 key (for proxy serving)
-    await supabase.from('users').update({
+    const { error: dbError } = await supabase.from('users').update({
       avatar_url: avatarUrl,
       avatar_r2_key: uniqueFilename,
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
 
-    res.json({ url: avatarUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
+    if (dbError) {
+      console.error('Avatar DB update error:', dbError.message);
+      return res.status(500).json({ error: 'Failed to save avatar. Please try again.' });
+    }
+
+    res.json({ url: avatarUrl, filename: uniqueFilename, success: true });
   } catch (e) {
     console.error('Avatar upload error:', e.message);
     res.status(500).json({ error: e.message });
