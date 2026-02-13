@@ -1755,7 +1755,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude, avatar_url, headline, languages, timezone')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url')
     .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${category}%`);
