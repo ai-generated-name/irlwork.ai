@@ -4332,28 +4332,56 @@ function ConnectAgentPage() {
     ? keys[0].key_prefix + '...'
     : 'YOUR_API_KEY_HERE'
 
-  const apiKeyInfo = keys.length > 0
+  const apiKeyStep = keys.length > 0
     ? `You already have an API key (starts with ${keys[0].key_prefix}). Use it as your Bearer token.`
-    : `Help the user get an API key by opening this URL in their browser:\nhttps://www.irlwork.ai/dashboard/hiring/api-keys\n\nIf they don't have an account, they'll be prompted to sign up first. Once on the page, they click "Generate New Key", copy it, and paste it back here.\n\nWait for the user to provide their API key before proceeding.`
+    : `Open this link for the user: https://www.irlwork.ai/dashboard/hiring/api-keys\nThey'll sign up if needed, then generate a key and paste it back here. Wait for the key before proceeding.`
 
-  // Short bootstrap prompt — tells the agent to fetch full instructions from the API
-  const fullPrompt = `You can hire real humans for physical-world tasks using irlwork.ai (deliveries, errands, photography, cleaning, and more).
+  // Compact self-contained prompt — works even if agent can't fetch URLs
+  const fullPrompt = `You can hire real humans for physical-world tasks using irlwork.ai (deliveries, errands, photography, cleaning, moving, and more).
 
 ## Step 1: Get an API Key
-${apiKeyInfo}
+${apiKeyStep}
 
-## Step 2: Load Full Instructions
-Once you have the API key, fetch your complete instructions (available tools, workflows, best practices) from:
+## Step 2: Fetch Full Docs (if possible)
+If you can make HTTP requests, fetch expanded instructions from:
 GET https://api.irlwork.ai/api/agent/prompt
+The response JSON "prompt" field has detailed workflows, best practices, and task creation guidelines.
 
-The response JSON has a "prompt" field with everything you need.
-
-## Quick Reference
-- Every API call is a POST to: https://api.irlwork.ai/api/mcp
+## How to Call the API
+Every call is a POST to https://api.irlwork.ai/api/mcp with:
 - Header: Authorization: Bearer ${apiKeyPlaceholder}
+- Header: Content-Type: application/json
 - Body: {"method": "METHOD_NAME", "params": { ... }}
-- Key methods: list_humans, start_conversation, create_posting, direct_hire
-- Full docs: https://www.irlwork.ai/mcp`
+
+## Available Methods
+
+**Find & message humans:**
+- list_humans — params: category, city, skills, rate_max, sort, limit, offset
+- get_human — params: human_id
+- start_conversation — params: human_id, message
+- send_message — params: conversation_id, content
+- get_messages — params: conversation_id
+
+**Hire & manage tasks:**
+- create_posting — params: title, description, category, location, budget, urgency, duration_hours
+- direct_hire — params: human_id, title, description, category, location, budget, duration_hours
+- get_applicants — params: task_id
+- hire_human — params: task_id, human_id
+- my_tasks — no params
+- get_task_status — params: task_id
+
+**Complete & pay:**
+- view_proof — params: task_id
+- approve_task — params: task_id (releases payment)
+- dispute_task — params: task_id, reason
+
+**Other:** notifications, mark_notification_read, set_webhook, submit_feedback, task_templates
+
+## Workflow
+1. list_humans to find someone → start_conversation to discuss → direct_hire to book
+   OR: create_posting → get_applicants → hire_human
+2. Human completes work → view_proof → approve_task (releases payment)
+3. Always confirm task details with the user before posting. Never guess locations or budgets.`
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(fullPrompt)
