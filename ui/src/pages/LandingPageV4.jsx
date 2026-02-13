@@ -395,7 +395,7 @@ export default function LandingPageV4() {
         </a>
         <div className="nav-links-v4">
           <a href="/connect-agent" className="nav-link-v4">For Agents</a>
-          <a href="/browse" className="nav-link-v4">Browse</a>
+          <a href="/browse?mode=humans" className="nav-link-v4">Browse</a>
           <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>Join Now</button>
         </div>
       </nav>

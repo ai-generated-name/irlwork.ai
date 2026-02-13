@@ -487,7 +487,7 @@ export default function BrowsePage({ user }) {
         </a>
         <div className="nav-links-v4">
           <a href="/connect-agent" className="nav-link-v4">For Agents</a>
-          <a href="/browse" className="nav-link-v4" style={{ color: 'var(--coral-500)' }}>Browse</a>
+          <a href="/browse?mode=humans" className="nav-link-v4" style={{ color: 'var(--coral-500)' }}>Browse</a>
           {user ? (
             <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/dashboard')}>Dashboard</button>
           ) : (
@@ -536,7 +536,7 @@ export default function BrowsePage({ user }) {
           margin: '0 auto 28px'
         }}>
           <button
-            onClick={() => setViewMode('tasks')}
+            onClick={() => { setViewMode('tasks'); window.history.replaceState(null, '', '/browse?mode=tasks') }}
             style={{
               padding: '10px 22px',
               borderRadius: 'var(--radius-full)',
@@ -557,7 +557,7 @@ export default function BrowsePage({ user }) {
             Tasks
           </button>
           <button
-            onClick={() => setViewMode('humans')}
+            onClick={() => { setViewMode('humans'); window.history.replaceState(null, '', '/browse?mode=humans') }}
             style={{
               padding: '10px 22px',
               borderRadius: 'var(--radius-full)',
