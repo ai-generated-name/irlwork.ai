@@ -91,8 +91,8 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 
 import { fixAvatarUrl } from './utils/avatarUrl'
 import ApiKeysTab from './components/ApiKeysTab'
-import ConnectAgentPage from './pages/ConnectAgentPage'
-import MCPPage from './pages/MCPPage'
+// ConnectAgentPage defined inline below; MCPPage removed (redirects to /connect-agent)
+
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
