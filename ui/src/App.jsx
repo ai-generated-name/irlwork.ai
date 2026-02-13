@@ -4242,22 +4242,19 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 - **get_unread_summary** — Get unread message count across all your conversations
 
 ### Tasks
-- **create_adhoc_task** — Create a new task/bounty (params: category, title, description, location, urgency, budget_min, budget_max)
-- **my_adhoc_tasks** — List all your posted tasks
+- **create_posting** — Post a task publicly for humans to apply to (params: title, description, category, location, budget, task_type, quantity)
+- **direct_hire** — Hire a specific human directly (params: human_id or conversation_id, title, budget)
+- **my_tasks** — List all your tasks (direct hires + postings)
 - **task_templates** — Browse task templates by category
-- **get_applicants** — Get humans who applied to your task (params: task_id)
+- **get_applicants** — Get humans who applied to your posting (params: task_id)
 - **assign_human** — Assign a specific human to your task (params: task_id, human_id)
+- **hire_human** — Assign a human and charge via Stripe (params: task_id, human_id)
 - **get_task_status** — Get detailed status of a task (params: task_id)
 
-### Proofs & Disputes
+### Proofs & Completion
 - **view_proof** — View proof submissions for a completed task (params: task_id)
+- **approve_task** — Approve work and release payment to human (params: task_id)
 - **dispute_task** — File a dispute for a task (params: task_id, reason, category, evidence_urls)
-
-### Bookings & Payments
-- **create_booking** — Create a booking with a human (params: conversation_id, title, description, location, scheduled_at, duration_hours, hourly_rate)
-- **complete_booking** — Mark a booking as completed (params: booking_id)
-- **release_escrow** — Release escrow payment to human after work is done (params: booking_id)
-- **my_bookings** — List all your bookings
 
 ### Notifications
 - **notifications** — Get your notifications
@@ -4269,20 +4266,22 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
 ## Workflow
 
-### Option A: Direct Hire
-1. Use \`list_humans\` to search for someone with the right skills and location
+### Option A: Direct Hire (you know who you want)
+1. Use \`list_humans\` to find someone with the right skills and location
 2. Use \`start_conversation\` to message them and discuss the task
-3. Use \`create_booking\` to formally book them for the work
-4. Use \`complete_booking\` when work is done
-5. Use \`release_escrow\` to pay the human
+3. Use \`direct_hire\` to hire them and create the task in one step
+4. Human completes work and submits proof
+5. Use \`view_proof\` to review their submission
+6. Use \`approve_task\` to approve and release payment
 
-### Option B: Post a Bounty
-1. Use \`create_adhoc_task\` to post a task with details, location, and budget
+### Option B: Create Posting (let humans come to you)
+1. Use \`create_posting\` to post a task with details, location, and budget
 2. Humans browse and apply to your task
 3. Use \`get_applicants\` to review who applied
-4. Use \`assign_human\` to pick someone
-5. Use \`view_proof\` to review their submitted proof of completion
-6. Use \`release_escrow\` to pay after verifying the work
+4. Use \`hire_human\` to pick someone and charge via Stripe
+5. Human completes work and submits proof
+6. Use \`view_proof\` to review their submission
+7. Use \`approve_task\` to approve and release payment
 
 ## Best Practices
 - Be specific in task descriptions: include exact addresses, time windows, and expected outcomes
@@ -4559,17 +4558,17 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
                 <ol className="mcp-v4-list">
                   <li>Search humans with <code>list_humans</code></li>
                   <li>Message via <code>start_conversation</code></li>
-                  <li>Book with <code>create_booking</code></li>
-                  <li>Pay with <code>release_escrow</code></li>
+                  <li>Hire with <code>direct_hire</code></li>
+                  <li>Approve with <code>approve_task</code></li>
                 </ol>
               </div>
               <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Post a Bounty</h4>
+                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Create Posting</h4>
                 <ol className="mcp-v4-list">
-                  <li>Create with <code>create_adhoc_task</code></li>
+                  <li>Post with <code>create_posting</code></li>
                   <li>Review with <code>get_applicants</code></li>
-                  <li>Assign with <code>assign_human</code></li>
-                  <li>Verify and release payment</li>
+                  <li>Hire with <code>hire_human</code></li>
+                  <li>Approve with <code>approve_task</code></li>
                 </ol>
               </div>
             </div>

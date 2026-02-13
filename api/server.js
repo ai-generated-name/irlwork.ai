@@ -4768,9 +4768,10 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
-      // ===== Aliases for mcp-server.js tool names =====
+      // ===== Task creation (aliased for backward compat) =====
+      case 'create_posting':
       case 'create_adhoc_task': {
-        // Alias for post_task — same implementation
+        // Create a public posting for humans to apply to
         if (!params.title) return res.status(400).json({ error: 'title is required' });
         const id = uuidv4();
         const budgetAmount = params.budget || params.budget_max || params.budget_min || 50;
@@ -4808,8 +4809,9 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
+      case 'my_postings':
       case 'my_adhoc_tasks': {
-        // Alias for get_tasks
+        // List all your posted tasks
         const { data: tasks, error } = await supabase
           .from('tasks')
           .select('*')
@@ -5181,9 +5183,10 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
-      // ===== Bookings =====
+      // ===== Direct Hire =====
+      case 'direct_hire':
       case 'create_booking': {
-        // Create a task-based booking from a conversation or direct human_id
+        // Hire a specific human directly (from conversation or by human_id)
         const { conversation_id, human_id: directHumanId, title, description, location, scheduled_at, duration_hours, hourly_rate, budget, category } = params;
         if (!title) return res.status(400).json({ error: 'title is required' });
 
@@ -5234,8 +5237,9 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
+      case 'complete_task':
       case 'complete_booking': {
-        // Mark a task/booking as completed (triggers proof review)
+        // Mark a task as completed (triggers proof review)
         const booking_id = params.booking_id || params.task_id;
         if (!booking_id) return res.status(400).json({ error: 'booking_id or task_id is required' });
 
@@ -5331,8 +5335,9 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
+      case 'my_tasks':
       case 'my_bookings': {
-        // Returns all tasks for this agent (bookings = tasks in this system)
+        // List all tasks for this agent
         const { data: tasks, error } = await supabase
           .from('tasks')
           .select('*')
