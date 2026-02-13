@@ -3210,7 +3210,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             : fileToUpload.type === 'image/gif' ? 'gif'
                             : 'jpg'
                           const uploadFilename = file.name.replace(/\.[^.]+$/, `.${uploadExt}`)
-                          const payload = JSON.stringify({ file: base64, filename: uploadFilename, mimeType: fileToUpload.type || 'image/jpeg' })
+                          // Use the matching MIME type for the derived extension — if compression failed
+                          // on HEIC, fileToUpload.type would still be 'image/heic' which the server rejects
+                          const uploadMime = uploadExt === 'jpg' ? 'image/jpeg'
+                            : uploadExt === 'png' ? 'image/png'
+                            : uploadExt === 'webp' ? 'image/webp'
+                            : uploadExt === 'gif' ? 'image/gif'
+                            : 'image/jpeg'
+                          const payload = JSON.stringify({ file: base64, filename: uploadFilename, mimeType: uploadMime })
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },

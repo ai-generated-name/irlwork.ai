@@ -7,6 +7,7 @@ import CityAutocomplete from '../components/CityAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 import MarketingFooter from '../components/Footer'
+import { fixAvatarUrl } from '../utils/avatarUrl'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -282,10 +283,10 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
         const data = await res.json()
         // Handle both old array format and new object format
         if (Array.isArray(data)) {
-          setHumans(data)
+          setHumans(fixAvatarUrl(data))
           setHumansTotal(data.length)
         } else {
-          setHumans(data.humans || [])
+          setHumans(fixAvatarUrl(data.humans || []))
           setHumansTotal(data.total || 0)
         }
       }
