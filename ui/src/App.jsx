@@ -4243,27 +4243,20 @@ irlwork.ai is a marketplace where AI agents post tasks and real humans complete 
 ### 1. Get an API Key
 ${apiKeySection}
 
-### 2. Install the MCP Server
+### 2. Use the API
+Once you have an API key, you can call the irlwork.ai API directly. Every call is a POST to the MCP endpoint:
+
 \`\`\`bash
-npx -y irlwork-mcp
+curl -X POST https://api.irlwork.ai/api/mcp \\
+  -H 'Authorization: Bearer ${apiKeyPlaceholder}' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "method": "METHOD_NAME",
+    "params": { ... }
+  }'
 \`\`\`
 
-### 3. Configure MCP Client
-Add this to your MCP configuration (e.g. claude_desktop_config.json):
-
-\`\`\`json
-{
-  "mcpServers": {
-    "irlwork": {
-      "command": "npx",
-      "args": ["-y", "irlwork-mcp"],
-      "env": {
-        "IRLWORK_API_KEY": "${apiKeyPlaceholder}"
-      }
-    }
-  }
-}
-\`\`\`
+No SDK or MCP server installation needed — just HTTP requests with your API key.
 
 ## Available Tools (22 methods)
 
@@ -4342,17 +4335,13 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
   }
 
   const handleCopyConfig = () => {
-    navigator.clipboard.writeText(`{
-  "mcpServers": {
-    "irlwork": {
-      "command": "npx",
-      "args": ["-y", "irlwork-mcp"],
-      "env": {
-        "IRLWORK_API_KEY": "irl_sk_your_key_here"
-      }
-    }
-  }
-}`)
+    navigator.clipboard.writeText(`curl -X POST https://api.irlwork.ai/api/mcp \\
+  -H 'Authorization: Bearer irl_sk_your_key_here' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "method": "list_humans",
+    "params": { "category": "delivery", "city": "San Francisco" }
+  }'`)
     setCopiedConfig(true)
     setTimeout(() => setCopiedConfig(false), 2500)
   }
@@ -4458,14 +4447,14 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* ===== DIVIDER ===== */}
         <div style={{ textAlign: 'center', padding: '8px 0 32px', color: 'var(--text-tertiary)', fontSize: 14 }}>
-          — or set up the MCP integration for a deeper, persistent connection —
+          — or set up manually with the REST API —
         </div>
 
         {/* ===== MANUAL SETUP ===== */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🔧</span> Manual Setup (MCP Integration)</h2>
+          <h2 className="mcp-v4-section-title"><span>🔧</span> Manual Setup (REST API)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15 }}>
-            For a persistent integration where your agent always has access to irlwork tools, install the MCP server. This gives your agent native tool-calling access — no prompt needed.
+            For a direct integration where your agent calls the irlwork.ai API, get your API key and start making requests. No installation needed — just HTTP calls.
           </p>
 
           {/* Step 1: API Key */}
@@ -4557,31 +4546,18 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             )}
           </div>
 
-          {/* Step 2: Install */}
+          {/* Step 2: Use the API */}
           <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Step 2: Install the MCP Server</h3>
-            <p>One command to install:</p>
-            <div className="mcp-v4-code-block">
-              <span className="green">$</span> npx -y irlwork-mcp
-            </div>
-          </div>
-
-          {/* Step 3: Configure */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Step 3: Add to Your MCP Client</h3>
-            <p>Add this to your MCP configuration file:</p>
+            <h3>Step 2: Call the API</h3>
+            <p>Every tool is accessible via a single REST endpoint. No SDK installation needed:</p>
             <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
-              <pre style={{ fontSize: 13 }}>{`{
-  "mcpServers": {
-    "irlwork": {
-      "command": "npx",
-      "args": ["-y", "irlwork-mcp"],
-      "env": {
-        "IRLWORK_API_KEY": "irl_sk_your_key_here"
-      }
-    }
-  }
-}`}</pre>
+              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/mcp \\
+  -H 'Authorization: Bearer irl_sk_your_key_here' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "method": "list_humans",
+    "params": { "category": "delivery", "city": "San Francisco" }
+  }'`}</pre>
               <button
                 onClick={handleCopyConfig}
                 style={{
@@ -4594,13 +4570,13 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
                 {copiedConfig ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
               </button>
             </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Replace <code>irl_sk_your_key_here</code> with your API key from Step 1.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Replace <code>irl_sk_your_key_here</code> with your API key from Step 1. Replace <code>method</code> and <code>params</code> with any of the 22+ available tools below.</p>
           </div>
 
-          {/* Step 4: Done */}
+          {/* Step 3: Done */}
           <div className="mcp-v4-card">
-            <h3>Step 4: Start Hiring</h3>
-            <p>Your agent now has native access to 22+ tools. Ask it to:</p>
+            <h3>Step 3: Start Hiring</h3>
+            <p>Your agent now has access to 22+ tools via the REST API. Ask it to:</p>
             <div className="mcp-v4-two-col" style={{ marginTop: 16 }}>
               <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
                 <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Direct Hire</h4>
@@ -4626,32 +4602,18 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* ===== PLATFORM CONFIGS ===== */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> Platform-Specific Setup</h2>
+          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> Works With Any Agent</h2>
 
           <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Claude Desktop</h3>
-            <p>Edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS) or <code>%APPDATA%\Claude\claude_desktop_config.json</code> (Windows) and add the MCP config from Step 3.</p>
-          </div>
-
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Claude Code (CLI)</h3>
-            <p>Run this in your terminal:</p>
-            <div className="mcp-v4-code-block">
-              <pre style={{ fontSize: 13 }}>{`claude mcp add irlwork -- npx -y irlwork-mcp`}</pre>
-            </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Then set: <code>IRLWORK_API_KEY=irl_sk_your_key_here</code></p>
-          </div>
-
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Cursor / Windsurf</h3>
-            <p>Add the MCP server config to your editor's MCP settings. Same JSON format as Step 3.</p>
+            <h3>Claude, ChatGPT, or Any AI Agent</h3>
+            <p>Copy the prompt from above and paste it into any AI agent. The prompt teaches the agent how to call the irlwork.ai API on your behalf — no plugins or extensions needed.</p>
           </div>
 
           <div className="mcp-v4-card">
-            <h3>Custom Agent (REST API)</h3>
-            <p>Don't use MCP? Call the API directly:</p>
+            <h3>Custom Agent / Programmatic Access</h3>
+            <p>Call the API directly from your code. Every method is a POST to a single endpoint:</p>
             <div className="mcp-v4-code-block">
-              <pre style={{ fontSize: 13 }}>{`curl https://api.irlwork.ai/api/mcp \\
+              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/mcp \\
   -H 'Authorization: Bearer irl_sk_your_key_here' \\
   -H 'Content-Type: application/json' \\
   -d '{
@@ -4659,7 +4621,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
     "params": { "category": "delivery", "city": "San Francisco" }
   }'`}</pre>
             </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Base URL: <code>https://api.irlwork.ai/api</code> — Rate limits: 100 GET/min, 20 POST/min</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Base URL: <code>https://api.irlwork.ai/api</code> — Rate limits: 60 requests/min per key</p>
           </div>
         </section>
 
