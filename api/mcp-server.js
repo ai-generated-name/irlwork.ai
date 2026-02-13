@@ -171,14 +171,6 @@ const handlers = {
     return await res.json()
   },
 
-  // List all your posted tasks/postings
-  async my_postings() {
-    const res = await fetch(`${API_URL}/ad-hoc?my_tasks=true`, {
-      headers: { 'Authorization': API_KEY }
-    })
-    return await res.json()
-  },
-
   // List all your tasks (direct hires + postings)
   async my_tasks() {
     const res = await fetch(`${API_URL}/bookings`, {
@@ -331,11 +323,17 @@ const handlers = {
   }
 }
 
-// Backward-compatible aliases (old names still work)
+// Backward-compatible aliases (old names → canonical handlers)
+handlers.post_task = handlers.create_posting
 handlers.create_adhoc_task = handlers.create_posting
+handlers.create_task = handlers.create_posting
 handlers.create_booking = handlers.direct_hire
-handlers.my_adhoc_tasks = handlers.my_postings
+handlers.get_tasks = handlers.my_tasks
+handlers.my_postings = handlers.my_tasks
+handlers.my_adhoc_tasks = handlers.my_tasks
 handlers.my_bookings = handlers.my_tasks
+handlers.release_escrow = handlers.approve_task
+handlers.release_payment = handlers.approve_task
 handlers.complete_booking = async (params) => {
   const taskId = params.booking_id || params.task_id;
   const res = await fetch(`${API_URL}/bookings/${taskId}/complete`, {
@@ -345,16 +343,6 @@ handlers.complete_booking = async (params) => {
   return await res.json()
 }
 handlers.complete_task = handlers.complete_booking
-handlers.release_escrow = async (params) => {
-  const taskId = params.booking_id || params.task_id;
-  const res = await fetch(`${API_URL}/bookings/${taskId}/release-escrow`, {
-    method: 'POST',
-    headers: { 'Authorization': API_KEY }
-  })
-  return await res.json()
-}
-// Also keep create_task as alias
-handlers.create_task = handlers.create_posting
 
 // MCP Protocol Server
 const server = http.createServer((req, res) => {
@@ -420,7 +408,7 @@ server.listen(PORT, () => {
   console.log(`     list_humans, get_human, task_templates`)
   console.log(``)
   console.log(`   Tasks:`)
-  console.log(`     create_posting, direct_hire, my_postings, my_tasks`)
+  console.log(`     create_posting, direct_hire, my_tasks`)
   console.log(`     get_applicants, assign_human, hire_human, get_task_status`)
   console.log(``)
   console.log(`   Conversations:`)
@@ -436,9 +424,9 @@ server.listen(PORT, () => {
   console.log(`     submit_feedback`)
   console.log(``)
   console.log(`   Aliases (backward compat):`)
-  console.log(`     create_adhoc_task → create_posting`)
+  console.log(`     post_task, create_adhoc_task, create_task → create_posting`)
   console.log(`     create_booking → direct_hire`)
-  console.log(`     my_adhoc_tasks → my_postings`)
-  console.log(`     my_bookings → my_tasks`)
+  console.log(`     get_tasks, my_postings, my_adhoc_tasks, my_bookings → my_tasks`)
+  console.log(`     release_escrow, release_payment → approve_task`)
   console.log(`     complete_booking → complete_task`)
 })

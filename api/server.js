@@ -4350,51 +4350,6 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
       
-      case 'post_task': {
-        if (!params.title) return res.status(400).json({ error: 'title is required' });
-        const id = uuidv4();
-        const budgetAmount = params.budget || params.budget_max || params.budget_min || 50;
-        const taskType = params.task_type === 'bounty' ? 'bounty' : 'direct';
-        const taskQuantity = taskType === 'bounty' ? Math.max(1, parseInt(params.quantity) || 1) : 1;
-
-        const { data: task, error } = await supabase
-          .from('tasks')
-          .insert(buildTaskInsertData({
-            id,
-            agent_id: user.id,
-            title: params.title,
-            description: params.description,
-            category: params.category || 'other',
-            location: params.location,
-            latitude: params.latitude || null,
-            longitude: params.longitude || null,
-            budget: budgetAmount,
-            status: 'open',
-            task_type: taskType,
-            quantity: taskQuantity,
-            human_ids: [],
-            escrow_amount: budgetAmount,
-            is_remote: !!params.is_remote,
-            created_at: new Date().toISOString()
-          }, {
-            is_anonymous: !!params.is_anonymous,
-            duration_hours: params.duration_hours || null,
-          }))
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        res.json({
-          id: task.id,
-          status: 'open',
-          task_type: taskType,
-          quantity: taskQuantity,
-          message: 'Task posted successfully.'
-        });
-        break;
-      }
-      
       case 'hire_human': {
         // Hiring triggers escrow deposit flow - human cannot start until deposit confirmed
         const { task_id, human_id, deadline_hours = 24, instructions } = params;
@@ -4521,28 +4476,6 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
       
-      case 'release_payment': {
-        // DISABLED FOR PHASE 1 MANUAL OPERATIONS
-        // Payment release is now handled manually by the platform admin
-        res.status(410).json({
-          error: 'Automatic payment release is disabled for Phase 1. When you approve proof, payment will be processed manually by the platform.',
-          message: 'Use approve_task to approve the work. Payment will be released by the platform after verification.'
-        });
-        break;
-      }
-      
-      case 'get_tasks': {
-        const { data: tasks, error } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('agent_id', user.id)
-          .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        res.json(tasks || []);
-        break;
-      }
-      
       case 'complete_task': {
         // Human submits proof of completion via new proof system
         const { task_id, proof_text, proof_urls } = params;
@@ -4600,8 +4533,11 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
       
+      // ===== Approve & release payment (canonical: approve_task) =====
+      case 'release_payment':
+      case 'release_escrow':
       case 'approve_task': {
-        const { task_id } = params;
+        const task_id = params.task_id || params.booking_id;
         
         const { data: task, error: taskError } = await supabase
           .from('tasks')
@@ -4768,7 +4704,8 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
-      // ===== Task creation (aliased for backward compat) =====
+      // ===== Task creation (canonical: create_posting) =====
+      case 'post_task':
       case 'create_posting':
       case 'create_adhoc_task': {
         // Create a public posting for humans to apply to
@@ -4806,20 +4743,6 @@ app.post('/api/mcp', async (req, res) => {
 
         if (error) throw error;
         res.json({ id: task.id, status: 'open', task_type: taskType, quantity: taskQuantity, message: 'Task posted successfully.' });
-        break;
-      }
-
-      case 'my_postings':
-      case 'my_adhoc_tasks': {
-        // List all your posted tasks
-        const { data: tasks, error } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('agent_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        res.json(tasks || []);
         break;
       }
 
@@ -5237,9 +5160,8 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
-      case 'complete_task':
       case 'complete_booking': {
-        // Mark a task as completed (triggers proof review)
+        // Agent marks a task for review (backward-compat alias)
         const booking_id = params.booking_id || params.task_id;
         if (!booking_id) return res.status(400).json({ error: 'booking_id or task_id is required' });
 
@@ -5262,79 +5184,10 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
-      case 'release_escrow': {
-        // Alias for approve_task — releases payment
-        const taskId = params.booking_id || params.task_id;
-        if (!taskId) return res.status(400).json({ error: 'booking_id or task_id is required' });
-
-        const { data: task, error: taskError } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('id', taskId)
-          .single();
-
-        if (taskError || !task) return res.status(404).json({ error: 'Task not found' });
-        if (task.agent_id !== user.id) return res.status(403).json({ error: 'Not your task' });
-
-        // Get latest proof and approve it
-        const { data: latestProof } = await supabase
-          .from('task_proofs')
-          .select('id')
-          .eq('task_id', taskId)
-          .order('submitted_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (latestProof) {
-          await supabase
-            .from('task_proofs')
-            .update({ status: 'approved', updated_at: new Date().toISOString() })
-            .eq('id', latestProof.id);
-        }
-
-        // Calculate payment
-        const escrowAmount = task.escrow_amount || task.budget || 50;
-        const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-        const netAmount = escrowAmount - platformFee;
-
-        // Update task status (atomic check)
-        const { data: released, error: releaseErr } = await supabase
-          .from('tasks')
-          .update({
-            status: 'paid',
-            escrow_status: 'released',
-            escrow_released_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', taskId)
-          .in('escrow_status', ['deposited', 'held', 'pending_deposit', 'awaiting_worker'])
-          .select('id')
-          .single();
-
-        if (releaseErr || !released) {
-          return res.status(409).json({ error: 'Payment has already been released or task is not in a releasable state.' });
-        }
-
-        // Notify human
-        if (task.human_id) {
-          await createNotification(
-            task.human_id,
-            'payment_released',
-            'Payment Released!',
-            `Your payment of ${netAmount.toFixed(2)} USDC has been sent.`,
-            `/tasks/${taskId}`
-          );
-        }
-
-        res.json({
-          success: true,
-          status: 'paid',
-          net_amount: netAmount,
-          message: 'Escrow released successfully'
-        });
-        break;
-      }
-
+      // ===== List tasks (canonical: my_tasks) =====
+      case 'get_tasks':
+      case 'my_postings':
+      case 'my_adhoc_tasks':
       case 'my_tasks':
       case 'my_bookings': {
         // List all tasks for this agent
