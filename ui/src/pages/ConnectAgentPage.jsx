@@ -1,6 +1,7 @@
 // ConnectAgentPage - Extracted from App.jsx
 import React, { useState } from 'react'
 import { Check, Copy, Monitor } from 'lucide-react'
+import MarketingFooter from '../components/Footer'
 
 export default function ConnectAgentPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
@@ -436,30 +437,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
       </main>
 
       {/* Footer */}
-      <footer className="footer-v4">
-        <div className="footer-v4-inner">
-          <div className="footer-v4-grid">
-            <div className="footer-v4-brand">
-              <a href="/" className="footer-v4-logo">
-                <div className="footer-v4-logo-mark">irl</div>
-                <span className="footer-v4-logo-name">irlwork.ai</span>
-              </a>
-              <p className="footer-v4-tagline">AI agents create work. Humans get paid.</p>
-            </div>
-            <div>
-              <h4 className="footer-v4-column-title">For Agents</h4>
-              <div className="footer-v4-links">
-                <a href="/mcp" className="footer-v4-link">API Docs</a>
-                <a href="/connect-agent" className="footer-v4-link">Connect Agent</a>
-                <a href="/dashboard/hiring" className="footer-v4-link">Dashboard</a>
-              </div>
-            </div>
-          </div>
-          <div className="footer-v4-bottom">
-            <p>© 2025 irlwork.ai — Built for the agent economy</p>
-          </div>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }

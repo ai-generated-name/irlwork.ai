@@ -31,6 +31,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   const isParticipant = user && task && (task.agent_id === user.id || task.human_id === user.id);
 
@@ -41,6 +42,10 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
+      setLoadingTimeout(false);
+
+      // Show timeout message after 15 seconds
+      const timeoutId = setTimeout(() => setLoadingTimeout(true), 15000);
 
       try {
         // Fetch task details (works with or without auth)
@@ -79,7 +84,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         console.error('Error fetching task data:', err);
         setError(err.message);
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
+        setLoadingTimeout(false);
       }
     };
 
@@ -305,6 +312,17 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         <div className="flex flex-col items-center">
           <div className="w-12 h-12 border-4 border-[#F5F2ED] border-t-[#0F4C5C] rounded-full animate-spin mb-4"></div>
           <div className="text-[#525252] text-lg">Loading task details...</div>
+          {loadingTimeout && (
+            <div className="mt-4 text-center">
+              <p className="text-[#8A8A8A] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-[#0F4C5C] underline text-sm hover:text-[#0A3540]"
+              >
+                Retry
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -336,7 +354,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           <span className="logo-name-v4">irlwork.ai</span>
         </a>
         <div className="nav-links-v4" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <a href="/mcp" className="nav-link-v4">For Agents</a>
+          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
           <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
           {user ? (
             <a href="/dashboard" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
@@ -392,7 +410,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto px-3 pt-4 pb-6 sm:px-4 sm:pt-8 sm:pb-8" style={{ maxWidth: 1280 }}>
+      <main className="mx-auto px-3 pt-4 pb-24 sm:px-4 sm:pt-8 lg:pb-8 mt-14" style={{ maxWidth: 1280 }}>
         {/* Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
           {/* Left Column - Task Details (60%) */}
@@ -473,6 +491,40 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         onSuccess={() => setHasApplied(true)}
         userToken={user?.id}
       />
+
+      {/* Mobile Sticky Apply Bar */}
+      {task.status === 'open' && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(26,26,26,0.12)] px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+          style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+        >
+          <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
+            <div className="flex items-baseline gap-1 shrink-0">
+              <span className="text-xl font-bold text-[#059669] font-mono">
+                ${Number(task.budget) || 0}
+              </span>
+              {task.budget_type === 'hourly' && <span className="text-sm text-[#525252]">/hr</span>}
+              <span className="text-xs text-[#8A8A8A] ml-1">USDC</span>
+            </div>
+            {user && task.agent_id !== user.id && !hasApplied ? (
+              <button
+                onClick={() => setShowApplyModal(true)}
+                className="flex-1 max-w-[200px] py-2.5 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-sm shadow-md"
+              >
+                Apply for This Task
+              </button>
+            ) : hasApplied ? (
+              <span className="text-sm font-medium text-[#059669]">Applied ✓</span>
+            ) : !user ? (
+              <a
+                href="/auth"
+                className="flex-1 max-w-[200px] py-2.5 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block"
+              >
+                Sign In to Apply
+              </a>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

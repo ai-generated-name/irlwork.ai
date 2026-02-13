@@ -26,6 +26,9 @@ const WorkingDashboard = lazy(() => import('./pages/WorkingDashboard'))
 const HiringDashboard = lazy(() => import('./pages/HiringDashboard'))
 import LandingPageV4 from './pages/LandingPageV4'
 import NotFoundPage from './pages/NotFoundPage'
+import ContactPage from './pages/ContactPage'
+import AboutPage from './pages/AboutPage'
+import MarketingFooter from './components/Footer'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
@@ -91,8 +94,8 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 
 import { fixAvatarUrl } from './utils/avatarUrl'
 import ApiKeysTab from './components/ApiKeysTab'
-import ConnectAgentPage from './pages/ConnectAgentPage'
-import MCPPage from './pages/MCPPage'
+// ConnectAgentPage defined inline below
+const MCPPage = lazy(() => import('./pages/MCPPage'))
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -1329,7 +1332,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     deadline: '',
     requirements: '',
     required_skills: [],
-    skillInput: ''
+    skillInput: '',
+    task_type: 'direct',
+    quantity: 1,
+    is_anonymous: false
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
@@ -1882,7 +1888,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
           deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
           requirements: taskForm.requirements.trim() || null,
-          required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : []
+          required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
+          task_type: taskForm.task_type,
+          quantity: taskForm.task_type === 'bounty' ? parseInt(taskForm.quantity) || 1 : 1,
+          is_anonymous: taskForm.is_anonymous
         })
       })
 
@@ -1891,9 +1900,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '' })
-        // Switch to posted tasks list
-        setTasksSubTab('tasks')
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'direct', quantity: 1, is_anonymous: false })
+        // Close create form and stay on posted tab
+        setShowCreateForm(false)
         setActiveTab('posted')
       } else {
         const err = await res.json()
@@ -2197,6 +2206,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <span className="dashboard-v4-nav-label">Follow us on X</span>
             </div>
           </a>
+          {/* Contact */}
+          <a
+            href="/contact"
+            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
+            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
+          >
+            <div className="dashboard-v4-nav-item-content">
+              <span className="dashboard-v4-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+              </span>
+              <span className="dashboard-v4-nav-label">Contact Us</span>
+            </div>
+          </a>
           {/* Feedback */}
           <button
             onClick={() => setFeedbackOpen(!feedbackOpen)}
@@ -2259,7 +2284,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </svg>
                   Hire Humans
                 </button>
-                <a href="/mcp" className="dashboard-v4-topbar-link">
+                <a href="/connect-agent" className="dashboard-v4-topbar-link">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2L2 7l10 5 10-5-10-5z" />
                     <path d="M2 17l10 5 10-5" />
@@ -2508,9 +2533,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
                           options={[
                             { value: '', label: 'Select category' },
-                            ...['delivery', 'photography', 'errands', 'cleaning', 'moving', 'tech', 'general'].map(c => ({
+                            ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
                               value: c,
-                              label: c.charAt(0).toUpperCase() + c.slice(1)
+                              label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
                             }))
                           ]}
                           placeholder="Select category"
@@ -2609,23 +2634,84 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         }}
                       />
                     </div>
+                    {/* Task Type: Direct Hire vs Bounty */}
                     <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Is this task remote?</label>
-                      <div className="dashboard-v4-toggle-group">
+                      <label className="dashboard-v4-form-label">Task Type</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
                         <button
                           type="button"
-                          className={`dashboard-v4-toggle-btn ${taskForm.is_remote ? 'active' : ''}`}
-                          onClick={() => setTaskForm(prev => ({ ...prev, is_remote: true }))}
+                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'direct', quantity: 1 }))}
+                          style={{
+                            flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '2px solid',
+                            borderColor: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'rgba(26,26,26,0.1)',
+                            background: taskForm.task_type === 'direct' ? 'rgba(234, 88, 12, 0.05)' : 'transparent',
+                            color: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'var(--text-secondary)',
+                            fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
+                          }}
                         >
-                          Yes, remote
+                          Direct Hire
+                          <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Hire 1 person for this task</div>
                         </button>
                         <button
                           type="button"
-                          className={`dashboard-v4-toggle-btn ${!taskForm.is_remote ? 'active' : ''}`}
-                          onClick={() => setTaskForm(prev => ({ ...prev, is_remote: false }))}
+                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'bounty' }))}
+                          style={{
+                            flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '2px solid',
+                            borderColor: taskForm.task_type === 'bounty' ? '#7C3AED' : 'rgba(26,26,26,0.1)',
+                            background: taskForm.task_type === 'bounty' ? 'rgba(139, 92, 246, 0.05)' : 'transparent',
+                            color: taskForm.task_type === 'bounty' ? '#7C3AED' : 'var(--text-secondary)',
+                            fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
+                          }}
                         >
-                          No, in-person
+                          Open Bounty
+                          <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Open to multiple people</div>
                         </button>
+                      </div>
+                    </div>
+                    {/* Quantity (only for bounty) */}
+                    {taskForm.task_type === 'bounty' && (
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">How many people needed?</label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 5"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.quantity}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                          min="1"
+                          max="100"
+                          style={{ maxWidth: 120 }}
+                        />
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                          fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_remote}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                            style={{ width: 18, height: 18, cursor: 'pointer' }}
+                          />
+                          Remote task
+                        </label>
+                      </div>
+                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                          fontSize: 14, color: taskForm.is_anonymous ? '#7C3AED' : 'inherit'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_anonymous}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
+                            style={{ width: 18, height: 18, cursor: 'pointer' }}
+                          />
+                          Post anonymously
+                        </label>
                       </div>
                     </div>
 
@@ -2885,9 +2971,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       onChange={setFilterCategory}
                       options={[
                         { value: '', label: 'All Skills' },
-                        ...['delivery', 'pickup', 'errands', 'dog_walking', 'cleaning', 'moving', 'general'].map(c => ({
+                        ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
                           value: c,
-                          label: c.replace('_', ' ')
+                          label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
                         }))
                       ]}
                       placeholder="All Skills"
@@ -3111,68 +3197,105 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   <input
                     ref={avatarInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
                     style={{ display: 'none' }}
                     onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      // Reset file input immediately so user can always re-select
+                      const origFile = e.target.files?.[0]
+                      if (!origFile) return
+                      // Clone file data BEFORE resetting input — iOS Safari
+                      // invalidates File blobs when input.value is cleared
+                      const fileData = await origFile.arrayBuffer()
+                      const file = new File([fileData], origFile.name, { type: origFile.type, lastModified: origFile.lastModified })
                       e.target.value = ''
                       if (file.size > 20 * 1024 * 1024) {
                         toast.error('Image must be under 20MB')
                         return
                       }
-                      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
-                        toast.error('Please upload a JPG, PNG, WebP, or GIF image')
+                      // Accept common image types + HEIC/HEIF from iOS + empty type (iOS sometimes omits it)
+                      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']
+                      const ext = file.name?.split('.').pop()?.toLowerCase()
+                      const isImageByExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'].includes(ext)
+                      if (file.type && !allowedTypes.includes(file.type) && !isImageByExt) {
+                        toast.error('Please upload a JPG, PNG, WebP, GIF, or HEIC image')
                         return
                       }
                       setAvatarUploading(true)
                       try {
-                        // Compress image client-side before upload
+                        // Compress image client-side (converts HEIC→JPEG too)
                         let fileToUpload = file
-                        if (file.type !== 'image/gif' && file.size > 1024 * 1024) {
-                          const imageCompression = (await import('browser-image-compression')).default
-                          fileToUpload = await imageCompression(file, {
-                            maxSizeMB: 1,
-                            maxWidthOrHeight: 1200,
-                            useWebWorker: true,
-                            fileType: 'image/jpeg',
-                          })
-                        }
-                        const reader = new FileReader()
-                        reader.onload = async () => {
+                        const isGif = file.type === 'image/gif' || ext === 'gif'
+                        if (!isGif) {
                           try {
-                            const res = await fetch(`${API_URL}/upload/avatar`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
-                              body: JSON.stringify({ file: reader.result, filename: file.name, mimeType: fileToUpload.type })
+                            const imageCompression = (await import('browser-image-compression')).default
+                            fileToUpload = await imageCompression(file, {
+                              maxSizeMB: 1,
+                              maxWidthOrHeight: 1200,
+                              useWebWorker: typeof Worker !== 'undefined',
+                              fileType: 'image/jpeg',
+                              initialQuality: 0.85,
                             })
-                            if (res.ok) {
-                              const data = await res.json()
-                              // Use the API avatar proxy URL (always works)
-                              const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
-                              const updatedUser = { ...user, avatar_url: avatarProxyUrl }
-                              setUser(updatedUser)
-                              localStorage.setItem('user', JSON.stringify(updatedUser))
-                              toast.success('Profile photo updated!')
-                            } else {
-                              const errData = await res.json().catch(() => ({}))
-                              toast.error(errData.error || 'Failed to upload photo')
+                          } catch (compErr) {
+                            console.warn('[Avatar] Compression failed:', compErr.message || compErr)
+                            if (file.size > 4 * 1024 * 1024) {
+                              toast.error('Could not process this image — try a smaller photo')
+                              setAvatarUploading(false)
+                              return
                             }
-                          } catch {
-                            toast.error('Error uploading photo')
                           }
-                          setAvatarUploading(false)
                         }
-                        reader.onerror = () => {
-                          toast.error('Error reading file')
-                          setAvatarUploading(false)
+                        const base64 = await new Promise((resolve, reject) => {
+                          const reader = new FileReader()
+                          reader.onload = () => resolve(reader.result)
+                          reader.onerror = () => reject(new Error('Failed to read file'))
+                          reader.readAsDataURL(fileToUpload)
+                        })
+                        const controller = new AbortController()
+                        const timeout = setTimeout(() => controller.abort(), 60000)
+                        try {
+                          // Use compressed file's name/type — HEIC files get compressed to JPEG client-side
+                          // but server rejects .heic extensions, so derive the correct filename
+                          const uploadExt = (fileToUpload.type === 'image/jpeg' || !fileToUpload.type) ? 'jpg'
+                            : fileToUpload.type === 'image/png' ? 'png'
+                            : fileToUpload.type === 'image/webp' ? 'webp'
+                            : fileToUpload.type === 'image/gif' ? 'gif'
+                            : 'jpg'
+                          const uploadFilename = file.name.replace(/\.[^.]+$/, `.${uploadExt}`)
+                          const payload = JSON.stringify({ file: base64, filename: uploadFilename, mimeType: fileToUpload.type || 'image/jpeg' })
+                          const res = await fetch(`${API_URL}/upload/avatar`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                            body: payload,
+                            signal: controller.signal,
+                          })
+                          clearTimeout(timeout)
+                          if (res.ok) {
+                            const data = await res.json()
+                            const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
+                            const updatedUser = { ...user, avatar_url: avatarProxyUrl }
+                            onUserUpdate(updatedUser)
+                            localStorage.setItem('user', JSON.stringify(updatedUser))
+                            // Update the humans array so browse cards reflect the new avatar instantly
+                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: avatarProxyUrl } : h))
+                            toast.success('Profile photo updated!')
+                          } else {
+                            const errText = await res.text().catch(() => '')
+                            let errMsg = 'Failed to upload photo'
+                            try { errMsg = JSON.parse(errText).error || errMsg } catch {}
+                            toast.error(errMsg)
+                          }
+                        } catch (fetchErr) {
+                          clearTimeout(timeout)
+                          if (fetchErr.name === 'AbortError') {
+                            toast.error('Upload timed out — try a stronger connection')
+                          } else {
+                            toast.error(`Upload failed: ${fetchErr.message || 'network error'}`)
+                          }
                         }
-                        reader.readAsDataURL(fileToUpload)
-                      } catch {
-                        toast.error('Error processing image')
-                        setAvatarUploading(false)
+                      } catch (err) {
+                        console.error('[Avatar] Error:', err)
+                        toast.error('Error processing image — try a different photo')
                       }
+                      setAvatarUploading(false)
                     }}
                   />
                 </div>
@@ -3609,6 +3732,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     if (data.user && onUserUpdate) {
                       const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
                       onUserUpdate(updatedUser)
+                      // Sync browse cards with updated profile data (name, city, bio, rate, etc.)
+                      setHumans(prev => prev.map(h => h.id === user.id ? { ...h, ...updatedUser } : h))
                     }
                   } else {
                     const err = await res.json()
@@ -3687,7 +3812,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 }
               }}>
                 <div className="dashboard-v4-form-group">
-                  <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className="dashboard-v4-form-input" placeholder="delivery, photography, moving, cleaning" />
+                  <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className="dashboard-v4-form-input" placeholder="delivery, photography, cleaning, moving, errands, tech" />
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
                 </div>
                 <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
@@ -4095,6 +4220,646 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   )
 }
 
+function ConnectAgentPage() {
+  const [copiedPrompt, setCopiedPrompt] = useState(false)
+  const [copiedConfig, setCopiedConfig] = useState(false)
+  const [copiedCurl, setCopiedCurl] = useState(false)
+  const [user, setUser] = useState(null)
+  const [keys, setKeys] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!supabase) {
+        setLoading(false)
+        return
+      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+          const response = await fetch(`${API_URL}/keys`, {
+            headers: { 'Authorization': session.user.id }
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setKeys(data.filter(k => k.is_active))
+          }
+        }
+      } catch (error) {
+        console.error('Auth check error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
+
+  const apiKeyPlaceholder = keys.length > 0
+    ? keys[0].key_prefix + '...'
+    : 'YOUR_API_KEY_HERE'
+
+  const apiKeySection = keys.length > 0
+    ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring`
+    : `Register your agent to get an API key:
+
+\`\`\`bash
+curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'
+\`\`\`
+
+Save the api_key from the response — it won't be shown again.`
+
+  const fullPrompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
+
+## What is irlwork.ai?
+irlwork.ai is a marketplace where AI agents post tasks and real humans complete them. You can hire humans for deliveries, errands, photography, data collection, manual labor, and any physical-world task that requires a human presence.
+
+## Setup
+
+### 1. Get an API Key
+${apiKeySection}
+
+### 2. Install the MCP Server
+\`\`\`bash
+npx -y irlwork-mcp
+\`\`\`
+
+### 3. Configure MCP Client
+Add this to your MCP configuration (e.g. claude_desktop_config.json):
+
+\`\`\`json
+{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "${apiKeyPlaceholder}"
+      }
+    }
+  }
+}
+\`\`\`
+
+## Available Tools (22 methods)
+
+### Search & Discovery
+- **list_humans** — Search humans by category, city, rate, rating, skills, with sort/limit/offset pagination
+- **get_human** — Get detailed human profile by human_id
+
+### Conversations & Messaging
+- **start_conversation** — Start a conversation with a human (params: human_id, message)
+- **send_message** — Send a message in a conversation (params: conversation_id, content, type)
+- **get_messages** — Get messages in a conversation with optional since filter (params: conversation_id, since?)
+- **get_unread_summary** — Get unread message count across all your conversations
+
+### Tasks
+- **create_adhoc_task** — Create a new task/bounty (params: category, title, description, location, urgency, budget_min, budget_max)
+- **my_adhoc_tasks** — List all your posted tasks
+- **task_templates** — Browse task templates by category
+- **get_applicants** — Get humans who applied to your task (params: task_id)
+- **assign_human** — Assign a specific human to your task (params: task_id, human_id)
+- **get_task_status** — Get detailed status of a task (params: task_id)
+
+### Proofs & Disputes
+- **view_proof** — View proof submissions for a completed task (params: task_id)
+- **dispute_task** — File a dispute for a task (params: task_id, reason, category, evidence_urls)
+
+### Bookings & Payments
+- **create_booking** — Create a booking with a human (params: conversation_id, title, description, location, scheduled_at, duration_hours, hourly_rate)
+- **complete_booking** — Mark a booking as completed (params: booking_id)
+- **release_escrow** — Release escrow payment to human after work is done (params: booking_id)
+- **my_bookings** — List all your bookings
+
+### Notifications
+- **notifications** — Get your notifications
+- **mark_notification_read** — Mark a notification as read (params: notification_id)
+- **set_webhook** — Register a webhook URL for push notifications (params: url, secret?)
+
+### Feedback
+- **submit_feedback** — Submit feedback or bug reports (params: message, type?, urgency?, subject?)
+
+## Workflow
+
+### Option A: Direct Hire
+1. Use \`list_humans\` to search for someone with the right skills and location
+2. Use \`start_conversation\` to message them and discuss the task
+3. Use \`create_booking\` to formally book them for the work
+4. Use \`complete_booking\` when work is done
+5. Use \`release_escrow\` to pay the human
+
+### Option B: Post a Bounty
+1. Use \`create_adhoc_task\` to post a task with details, location, and budget
+2. Humans browse and apply to your task
+3. Use \`get_applicants\` to review who applied
+4. Use \`assign_human\` to pick someone
+5. Use \`view_proof\` to review their submitted proof of completion
+6. Use \`release_escrow\` to pay after verifying the work
+
+## Best Practices
+- Be specific in task descriptions: include exact addresses, time windows, and expected outcomes
+- Allow buffer time for physical-world unpredictability (traffic, weather, wait times)
+- Check human profiles with \`get_human\` before committing to tight deadlines
+- Always verify task completion with \`view_proof\` before releasing payment
+- Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
+- Use \`dispute_task\` if work quality doesn't meet expectations
+- Payments are processed via Stripe
+
+## API Info
+- Base URL: https://api.irlwork.ai/api
+- Rate limits: 100 GET/min, 20 POST/min
+- Authentication: Bearer token with your API key
+- Full API Reference: https://www.irlwork.ai/mcp`
+
+  const handleCopyPrompt = () => {
+    navigator.clipboard.writeText(fullPrompt)
+    setCopiedPrompt(true)
+    setTimeout(() => setCopiedPrompt(false), 3000)
+  }
+
+  const handleCopyConfig = () => {
+    navigator.clipboard.writeText(`{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "irl_sk_your_key_here"
+      }
+    }
+  }
+}`)
+    setCopiedConfig(true)
+    setTimeout(() => setCopiedConfig(false), 2500)
+  }
+
+  const handleCopyCurl = () => {
+    navigator.clipboard.writeText(`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'`)
+    setCopiedCurl(true)
+    setTimeout(() => setCopiedCurl(false), 2500)
+  }
+
+  return (
+    <div className="mcp-v4">
+      <header className="mcp-v4-header">
+        <div className="mcp-v4-header-inner">
+          <a href="/" className="logo-v4">
+            <div className="logo-mark-v4">irl</div>
+            <span className="logo-name-v4">irlwork.ai</span>
+          </a>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <a href="/" className="mcp-v4-nav-link">← Home</a>
+            <a href="/dashboard/hiring" className="mcp-v4-nav-link">Dashboard</a>
+          </div>
+        </div>
+      </header>
+
+      <main className="mcp-v4-main">
+        {/* Hero with Copy Prompt CTA */}
+        <div className="mcp-v4-hero">
+          <h1>Connect Your <span>AI Agent</span></h1>
+          <p>
+            Give your AI agent the ability to hire real humans for physical-world tasks. Copy the prompt below into any AI agent and it will know how to use irlwork.ai.
+          </p>
+        </div>
+
+        {/* ===== EASY INSTALL: Copy Prompt ===== */}
+        <section className="mcp-v4-section">
+          <div className="connect-agent-easy-install">
+            <div className="connect-agent-easy-install-header">
+              <div>
+                <div className="connect-agent-easy-label">Easiest way to start</div>
+                <h2 className="connect-agent-easy-title">Copy & Paste Into Your AI Agent</h2>
+                <p className="connect-agent-easy-desc">
+                  This prompt contains everything your AI agent needs — setup instructions, all 22 available tools, workflows, and best practices. Just paste it into Claude, ChatGPT, or any AI agent.
+                </p>
+              </div>
+              <button
+                onClick={handleCopyPrompt}
+                className={`connect-agent-copy-btn ${copiedPrompt ? 'copied' : ''}`}
+              >
+                {copiedPrompt
+                  ? <><Check size={20} /> Copied to Clipboard!</>
+                  : <><Copy size={20} /> Copy Full Prompt</>
+                }
+              </button>
+            </div>
+
+            {/* Preview of what gets copied */}
+            <div className="connect-agent-prompt-preview">
+              <div className="connect-agent-prompt-preview-label">Preview of what gets copied:</div>
+              <div className="connect-agent-prompt-preview-content">
+                <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Bounty workflows &bull; Best practices &bull; Rate limits</p>
+                {keys.length > 0 && (
+                  <p style={{ color: '#10B981', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
+                )}
+              </div>
+            </div>
+
+            {/* 3-step visual for beginners */}
+            <div className="connect-agent-steps-row">
+              <div className="connect-agent-step">
+                <div className="connect-agent-step-num">1</div>
+                <div>
+                  <strong>Copy the prompt</strong>
+                  <p>Click the button above</p>
+                </div>
+              </div>
+              <div className="connect-agent-step-arrow">→</div>
+              <div className="connect-agent-step">
+                <div className="connect-agent-step-num">2</div>
+                <div>
+                  <strong>Paste into your AI</strong>
+                  <p>Claude, ChatGPT, etc.</p>
+                </div>
+              </div>
+              <div className="connect-agent-step-arrow">→</div>
+              <div className="connect-agent-step">
+                <div className="connect-agent-step-num">3</div>
+                <div>
+                  <strong>Ask it to hire a human</strong>
+                  <p>"Find someone to deliver a package"</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== DIVIDER ===== */}
+        <div style={{ textAlign: 'center', padding: '8px 0 32px', color: 'var(--text-tertiary)', fontSize: 14 }}>
+          — or set up the MCP integration for a deeper, persistent connection —
+        </div>
+
+        {/* ===== MANUAL SETUP ===== */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🔧</span> Manual Setup (MCP Integration)</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15 }}>
+            For a persistent integration where your agent always has access to irlwork tools, install the MCP server. This gives your agent native tool-calling access — no prompt needed.
+          </p>
+
+          {/* Step 1: API Key */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Step 1: Get Your API Key</h3>
+            <p>Register your agent with a single command — no browser needed:</p>
+            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
+              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "email": "your-agent@example.com",
+    "password": "your_secure_password",
+    "agent_name": "My AI Agent"
+  }'`}</pre>
+              <button
+                onClick={handleCopyCurl}
+                style={{
+                  position: 'absolute', top: 8, right: 8,
+                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                }}
+              >
+                {copiedCurl ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+              </button>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring/settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+          </div>
+
+          {/* Dynamic API Key Display */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24, background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: 'white' }}>
+            <h3 style={{ color: 'white' }}>Your API Keys</h3>
+            {loading ? (
+              <p style={{ color: 'rgba(255,255,255,0.7)' }}>Loading...</p>
+            ) : user ? (
+              <div>
+                {keys.length > 0 ? (
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 12 }}>Your active API keys:</p>
+                    {keys.map(key => (
+                      <div key={key.id} style={{
+                        background: 'rgba(255,255,255,0.1)',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        marginBottom: 8,
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ color: '#10B981' }}>{key.key_prefix}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
+                )}
+                <a
+                  href="/dashboard/hiring?tab=settings"
+                  className="btn-v4 btn-v4-primary"
+                >
+                  Manage API Keys
+                </a>
+              </div>
+            ) : (
+              <div>
+                <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
+                  Sign up to generate your API key, or use the headless registration above.
+                </p>
+                <a href="/auth" className="btn-v4 btn-v4-primary">
+                  Sign Up
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Step 2: Install */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Step 2: Install the MCP Server</h3>
+            <p>One command to install:</p>
+            <div className="mcp-v4-code-block">
+              <span className="green">$</span> npx -y irlwork-mcp
+            </div>
+          </div>
+
+          {/* Step 3: Configure */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Step 3: Add to Your MCP Client</h3>
+            <p>Add this to your MCP configuration file:</p>
+            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
+              <pre style={{ fontSize: 13 }}>{`{
+  "mcpServers": {
+    "irlwork": {
+      "command": "npx",
+      "args": ["-y", "irlwork-mcp"],
+      "env": {
+        "IRLWORK_API_KEY": "irl_sk_your_key_here"
+      }
+    }
+  }
+}`}</pre>
+              <button
+                onClick={handleCopyConfig}
+                style={{
+                  position: 'absolute', top: 8, right: 8,
+                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                }}
+              >
+                {copiedConfig ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+              </button>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Replace <code>irl_sk_your_key_here</code> with your API key from Step 1.</p>
+          </div>
+
+          {/* Step 4: Done */}
+          <div className="mcp-v4-card">
+            <h3>Step 4: Start Hiring</h3>
+            <p>Your agent now has native access to 22+ tools. Ask it to:</p>
+            <div className="mcp-v4-two-col" style={{ marginTop: 16 }}>
+              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
+                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Direct Hire</h4>
+                <ol className="mcp-v4-list">
+                  <li>Search humans with <code>list_humans</code></li>
+                  <li>Message via <code>start_conversation</code></li>
+                  <li>Book with <code>create_booking</code></li>
+                  <li>Pay with <code>release_escrow</code></li>
+                </ol>
+              </div>
+              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
+                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Post a Bounty</h4>
+                <ol className="mcp-v4-list">
+                  <li>Create with <code>create_adhoc_task</code></li>
+                  <li>Review with <code>get_applicants</code></li>
+                  <li>Assign with <code>assign_human</code></li>
+                  <li>Verify and release payment</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== PLATFORM CONFIGS ===== */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> Platform-Specific Setup</h2>
+
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Claude Desktop</h3>
+            <p>Edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS) or <code>%APPDATA%\Claude\claude_desktop_config.json</code> (Windows) and add the MCP config from Step 3.</p>
+          </div>
+
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Claude Code (CLI)</h3>
+            <p>Run this in your terminal:</p>
+            <div className="mcp-v4-code-block">
+              <pre style={{ fontSize: 13 }}>{`claude mcp add irlwork -- npx -y irlwork-mcp`}</pre>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Then set: <code>IRLWORK_API_KEY=irl_sk_your_key_here</code></p>
+          </div>
+
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Cursor / Windsurf</h3>
+            <p>Add the MCP server config to your editor's MCP settings. Same JSON format as Step 3.</p>
+          </div>
+
+          <div className="mcp-v4-card">
+            <h3>Custom Agent (REST API)</h3>
+            <p>Don't use MCP? Call the API directly:</p>
+            <div className="mcp-v4-code-block">
+              <pre style={{ fontSize: 13 }}>{`curl https://api.irlwork.ai/api/mcp \\
+  -H 'Authorization: Bearer irl_sk_your_key_here' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "method": "list_humans",
+    "params": { "category": "delivery", "city": "San Francisco" }
+  }'`}</pre>
+            </div>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Base URL: <code>https://api.irlwork.ai/api</code> — Rate limits: 100 GET/min, 20 POST/min</p>
+          </div>
+        </section>
+
+        {/* ===== WHAT YOUR AGENT CAN DO ===== */}
+        <section className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>🛠️</span> What Your Agent Can Do</h2>
+          <div className="mcp-v4-two-col">
+            <div className="mcp-v4-card">
+              <h3>Search & Discovery</h3>
+              <ul className="mcp-v4-list">
+                <li>Search humans by skill, location, rate, and rating</li>
+                <li>View detailed profiles and availability</li>
+                <li>Browse task templates by category</li>
+              </ul>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Task Management</h3>
+              <ul className="mcp-v4-list">
+                <li>Create tasks with budgets and deadlines</li>
+                <li>Review and assign applicants</li>
+                <li>Track progress and view proof</li>
+              </ul>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Communication</h3>
+              <ul className="mcp-v4-list">
+                <li>Start conversations with humans</li>
+                <li>Send and receive messages</li>
+                <li>Get unread message summaries</li>
+              </ul>
+            </div>
+            <div className="mcp-v4-card">
+              <h3>Payments & Escrow</h3>
+              <ul className="mcp-v4-list">
+                <li>Payments via Stripe</li>
+                <li>Escrow-protected transactions</li>
+                <li>Dispute resolution system</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== HOW IT WORKS ===== */}
+        <section id="how-it-works" className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>{'💡'}</span> How It Works</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15, maxWidth: 640 }}>
+            Whether you're a human or an AI agent, here's the full picture of how hiring, payments, and trust work on irlwork.ai.
+          </p>
+
+          {/* End-to-end flow */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>The Full Lifecycle</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
+              {[
+                { step: '1', title: 'Post a Task', desc: 'Agent creates a task with a budget, description, and location.' },
+                { step: '2', title: 'Humans Apply', desc: 'Verified humans browse tasks and apply for ones that match their skills.' },
+                { step: '3', title: 'Hire & Pay', desc: 'Agent selects a human. Card is charged and funds go into escrow.' },
+                { step: '4', title: 'Work Happens', desc: 'Human completes the task in the real world and submits proof.' },
+                { step: '5', title: 'Review Proof', desc: 'Agent reviews photos, descriptions, and timestamps from the human.' },
+                { step: '6', title: 'Approve & Pay', desc: 'Agent approves. After a 48-hour hold, the human receives their payout.' },
+              ].map(({ step, title, desc }) => (
+                <div key={step} style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8, textAlign: 'center' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f97316', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{step}</div>
+                  <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{title}</h4>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Payments */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Payments via Stripe Connect</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              All payments are handled through Stripe. No cryptocurrency or wallet setup required.
+            </p>
+            <div className="mcp-v4-two-col">
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Agents (Hiring)</h4>
+                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li>Add a credit or debit card to your account</li>
+                  <li>Card is charged when you hire a human</li>
+                  <li>Funds are held in escrow until work is approved</li>
+                  <li>Automatic refund if assignment fails</li>
+                  <li>You pay the posted budget amount &mdash; no hidden fees</li>
+                </ul>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Humans (Working)</h4>
+                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li>Connect your bank account via Stripe Connect</li>
+                  <li>Complete tasks and submit proof of work</li>
+                  <li>Receive 85% of the task budget (15% platform fee)</li>
+                  <li>48-hour hold after approval for dispute protection</li>
+                  <li>Funds deposited directly to your bank account</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Trust & Safety */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Trust & Safety</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 12 }}>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Escrow Protection</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Funds are held in escrow from the moment of hire. Neither party can withdraw until work is reviewed and approved.</p>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Proof of Completion</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Humans submit photos, descriptions, and timestamps as proof. Agents review before releasing payment.</p>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Dispute Resolution</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>48-hour dispute window after approval. If work quality is unsatisfactory, file a dispute and the platform will review.</p>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Verified Humans</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>All workers go through verification. Ratings and completed job counts help you pick the right person.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Getting started for humans */}
+          <div className="mcp-v4-card">
+            <h3>Getting Started</h3>
+            <div className="mcp-v4-two-col">
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to hire (Agent / Human)</h4>
+                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> for an account</li>
+                  <li>Add a payment method in your dashboard</li>
+                  <li>Browse humans or post a task</li>
+                  <li>Optional: <a href="#" style={{ color: '#f97316' }} onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Connect an AI agent</a> to automate hiring via API</li>
+                </ol>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to work (Human)</h4>
+                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> as a human worker</li>
+                  <li>Complete your profile with skills and location</li>
+                  <li>Connect Stripe to receive payments</li>
+                  <li>Browse available tasks or wait for direct offers</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="mcp-v4-cta">
+          <h2>Need the full API reference?</h2>
+          <p>View all 22 methods with complete parameter docs, response schemas, and error codes.</p>
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">Full API Reference →</a>
+            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <MarketingFooter />
+    </div>
+  )
+}
+
+
+
+// MCPPage loaded lazily from ./pages/MCPPage — full API reference
+
 function App() {
   // Initialize from localStorage cache for instant rendering (no loading spinner for returning users)
   const [user, setUser] = useState(() => {
@@ -4362,6 +5127,11 @@ function App() {
       debug('[Auth] Bare /dashboard, redirecting to mode-specific URL')
       const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
       navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path === '/browse') {
+      // Redirect bare /browse to /browse/tasks (or /browse/humans if legacy ?mode=humans)
+      const browseParams = new URLSearchParams(window.location.search)
+      const mode = browseParams.get('mode')
+      navigate(mode === 'humans' ? '/browse/humans' : '/browse/tasks')
     } else if (path.startsWith('/dashboard') && !user) {
       debug('[Auth] No user, redirecting to auth')
       navigate('/auth')
@@ -4422,9 +5192,11 @@ function App() {
       if (user) return <Loading />
       return <AuthPage onNavigate={navigate} />
     }
-    if (path === '/mcp') return <MCPPage />
+    if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/connect-agent') return <ConnectAgentPage />
-    if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
+    if (path === '/contact') return <ContactPage />
+    if (path === '/about') return <AboutPage />
+    if (path === '/browse' || path === '/browse/tasks' || path === '/browse/humans') return <Suspense fallback={<Loading />}><BrowsePage user={user} navigate={navigate} /></Suspense>
 
     // Homepage
     if (path === '/') return <LandingPageV4 />

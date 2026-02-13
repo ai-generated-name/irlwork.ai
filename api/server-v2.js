@@ -485,7 +485,7 @@ app.post('/api/auth/register/human', (req, res) => {
     res.json({ user: { id, email, name, type: 'human', hourly_rate, location_city }, token: crypto.randomBytes(32).toString('hex') });
   } catch (e) {
     if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'Email exists' });
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -501,7 +501,7 @@ app.post('/api/auth/register/agent', (req, res) => {
     res.json({ user: { id, email, name, type: 'agent' }, api_key });
   } catch (e) {
     if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'Email exists' });
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

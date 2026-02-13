@@ -6,6 +6,7 @@ import CustomDropdown from '../components/CustomDropdown'
 import CityAutocomplete from '../components/CityAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
+import MarketingFooter from '../components/Footer'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -15,15 +16,16 @@ const categories = [
   { value: '', label: 'All Skills' },
   { value: 'delivery', label: 'Delivery' },
   { value: 'photography', label: 'Photography' },
+  { value: 'data_collection', label: 'Data Collection' },
   { value: 'errands', label: 'Errands' },
   { value: 'cleaning', label: 'Cleaning' },
   { value: 'moving', label: 'Moving' },
-  { value: 'tech', label: 'Tech Support' },
-  { value: 'general', label: 'General' },
-  { value: 'data-collection', label: 'Data Collection' },
+  { value: 'manual_labor', label: 'Manual Labor' },
+  { value: 'inspection', label: 'Inspection' },
+  { value: 'tech', label: 'Tech' },
   { value: 'translation', label: 'Translation' },
   { value: 'verification', label: 'Verification' },
-  { value: 'tech-setup', label: 'Tech Setup' },
+  { value: 'general', label: 'General' },
 ]
 
 const sortOptions = [
@@ -89,12 +91,20 @@ function SkeletonCard() {
   )
 }
 
-export default function BrowsePage({ user }) {
+export default function BrowsePage({ user, navigate: navigateProp }) {
   const toast = useToast()
-  // Parse URL params to allow direct linking to humans view via /browse?mode=humans
-  const urlParams = new URLSearchParams(window.location.search)
-  const initialMode = urlParams.get('mode') === 'tasks' ? 'tasks' : 'humans'
-  const [viewMode, setViewMode] = useState(initialMode)
+  // Parse mode from URL path: /browse/tasks or /browse/humans (default: tasks)
+  // Also support legacy ?mode= query param for backwards compat
+  const getInitialMode = () => {
+    const path = window.location.pathname
+    if (path === '/browse/humans') return 'humans'
+    if (path === '/browse/tasks') return 'tasks'
+    // Legacy query param support
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('mode') === 'humans') return 'humans'
+    return 'tasks'
+  }
+  const [viewMode, setViewMode] = useState(getInitialMode)
   const gridRef = useRef(null)
 
   // Humans state
@@ -419,7 +429,7 @@ export default function BrowsePage({ user }) {
     return date.toLocaleDateString()
   }
 
-  const navigate = (path) => { window.location.href = path }
+  const navigate = navigateProp || ((path) => { window.location.href = path })
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(humansTotal / ITEMS_PER_PAGE))
@@ -484,8 +494,8 @@ export default function BrowsePage({ user }) {
           <span className="logo-name-v4">irlwork.ai</span>
         </a>
         <div className="nav-links-v4">
-          <a href="/mcp" className="nav-link-v4">For Agents</a>
-          <a href="/browse" className="nav-link-v4" style={{ color: 'var(--coral-500)' }}>Browse</a>
+          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
+          <a href="/browse/tasks" className="nav-link-v4" style={{ color: 'var(--coral-500)' }}>Browse</a>
           {user ? (
             <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/dashboard')}>Dashboard</button>
           ) : (
@@ -534,7 +544,7 @@ export default function BrowsePage({ user }) {
           margin: '0 auto 28px'
         }}>
           <button
-            onClick={() => setViewMode('tasks')}
+            onClick={() => { setViewMode('tasks'); navigate('/browse/tasks') }}
             style={{
               padding: '10px 22px',
               borderRadius: 'var(--radius-full)',
@@ -555,7 +565,7 @@ export default function BrowsePage({ user }) {
             Tasks
           </button>
           <button
-            onClick={() => setViewMode('humans')}
+            onClick={() => { setViewMode('humans'); navigate('/browse/humans') }}
             style={{
               padding: '10px 22px',
               borderRadius: 'var(--radius-full)',
@@ -1011,14 +1021,16 @@ export default function BrowsePage({ user }) {
                         }}>
                           {task.category || 'General'}
                         </span>
-                        <span style={{
-                          padding: '4px 12px',
-                          background: task.escrow_status === 'funded' ? 'var(--success-bg)' : 'rgba(244, 213, 141, 0.3)',
-                          borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500,
-                          color: task.escrow_status === 'funded' ? 'var(--success)' : '#B8860B'
-                        }}>
-                          {task.escrow_status === 'funded' ? 'Funded' : 'Unfunded'}
-                        </span>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {task.task_type === 'bounty' && (
+                            <span style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500, background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>Bounty</span>
+                          )}
+                          {task.quantity > 1 && (
+                            <span style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500, background: 'rgba(59, 130, 246, 0.1)', color: '#2563EB' }}>
+                              {task.spots_filled || 0}/{task.quantity} spots
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8, lineHeight: 1.3 }}>
                         {task.title}
@@ -1068,11 +1080,9 @@ export default function BrowsePage({ user }) {
                           );
                         })()}
                       </div>
-                      {task.agent && (
-                        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
-                          Posted by <strong style={{ color: 'var(--text-secondary)' }}>{task.agent.name || task.agent.organization || 'Anonymous'}</strong>
-                        </div>
-                      )}
+                      <div style={{ paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
+                        Posted by <strong style={{ color: 'var(--text-secondary)' }}>{task.is_anonymous ? 'Anon AI Agent' : (task.agent?.name || task.agent?.organization || 'Anonymous')}</strong>
+                      </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -1494,55 +1504,7 @@ Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
       )}
 
       {/* Footer */}
-      <footer className="footer-v4">
-        <div className="footer-v4-inner">
-          <div className="footer-v4-grid">
-            <div className="footer-v4-brand">
-              <a href="/" className="footer-v4-logo">
-                <div className="footer-v4-logo-mark">irl</div>
-                <span className="footer-v4-logo-name">irlwork.ai</span>
-              </a>
-              <p className="footer-v4-tagline">
-                AI agents create work. Humans get paid.
-              </p>
-              <div className="footer-v4-social">
-                <a href="https://x.com/irlworkai" target="_blank" rel="noopener noreferrer" className="footer-v4-social-link" aria-label="Follow us on X">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                </a>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="footer-v4-column-title">Platform</h4>
-              <div className="footer-v4-links">
-                <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
-                <a href="/auth" className="footer-v4-link">Sign Up</a>
-                <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="footer-v4-column-title">For Agents</h4>
-              <div className="footer-v4-links">
-                <a href="/mcp" className="footer-v4-link">API Docs</a>
-                <a href="/mcp" className="footer-v4-link">MCP Protocol</a>
-                <a href="/mcp" className="footer-v4-link">Integration</a>
-              </div>
-            </div>
-          </div>
-
-          <div className="footer-v4-bottom">
-            <p className="footer-v4-copyright">&copy; 2026 irlwork.ai</p>
-            <div className="footer-v4-legal">
-              <a href="/privacy" className="footer-v4-legal-link">Privacy</a>
-              <a href="/terms" className="footer-v4-legal-link">Terms</a>
-              <a href="/security" className="footer-v4-legal-link">Security</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <MarketingFooter />
 
       <style>{`
         @keyframes spin {

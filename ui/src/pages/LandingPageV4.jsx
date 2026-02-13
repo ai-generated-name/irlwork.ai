@@ -5,6 +5,7 @@ import {
   Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight,
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
+import MarketingFooter from '../components/Footer'
 
 // Animated Counter Component
 function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
@@ -393,8 +394,8 @@ export default function LandingPageV4() {
           <span className="logo-name-v4">irlwork.ai</span>
         </a>
         <div className="nav-links-v4">
-          <a href="/mcp" className="nav-link-v4">For Agents</a>
-          <a href="/browse" className="nav-link-v4">Browse</a>
+          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
+          <a href="/browse/tasks" className="nav-link-v4">Browse</a>
           <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>Join Now</button>
         </div>
       </nav>
@@ -425,13 +426,13 @@ export default function LandingPageV4() {
               Start Earning
               <ArrowRight size={18} />
             </button>
-            <button className="btn-v4 btn-v4-secondary btn-v4-lg hero-cta-secondary" onClick={() => navigate('/mcp')}>
+            <button className="btn-v4 btn-v4-secondary btn-v4-lg hero-cta-secondary" onClick={() => navigate('/connect-agent')}>
               <Terminal size={18} />
               API Docs
             </button>
           </div>
 
-          <a href="/mcp" className="hero-api-link-mobile">
+          <a href="/connect-agent" className="hero-api-link-mobile">
             Building an AI agent? View API docs <ArrowRight size={14} />
           </a>
 
@@ -509,7 +510,7 @@ export default function LandingPageV4() {
       <CTASection navigate={navigate} />
 
       {/* Footer */}
-      <Footer />
+      <MarketingFooter />
     </div>
   )
 }
@@ -561,7 +562,7 @@ console.log(\`Task \${task.id} funded: \${task.escrow_tx}\`);`
               <span>Photo/video verification included</span>
             </li>
           </ul>
-          <a href="/mcp" className="code-section-cta">
+          <a href="/connect-agent" className="code-section-cta">
             View Documentation
             <ChevronRight size={16} />
           </a>
@@ -660,7 +661,7 @@ function CombinedBenefitsSection() {
               )
             })}
           </div>
-          <button className="benefits-cta benefits-cta-secondary" onClick={() => window.location.href = '/mcp'}>
+          <button className="benefits-cta benefits-cta-secondary" onClick={() => window.location.href = '/connect-agent'}>
             <Terminal size={16} />
             View API Docs
           </button>
@@ -733,7 +734,7 @@ function CTASection({ navigate }) {
             Start Earning
             <ArrowRight size={16} />
           </button>
-          <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/mcp')}>
+          <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/connect-agent')}>
             <Terminal size={16} />
             API Docs
           </button>
@@ -743,62 +744,3 @@ function CTASection({ navigate }) {
   )
 }
 
-function Footer() {
-  return (
-    <footer className="footer-v4">
-      <div className="footer-v4-inner">
-        <div className="footer-v4-grid">
-          <div className="footer-v4-brand">
-            <a href="/" className="logo-v4">
-              <div className="logo-mark-v4">irl</div>
-              <span className="logo-name-v4">irlwork.ai</span>
-            </a>
-            <p className="footer-v4-tagline">
-              AI agents create work. Humans get paid.
-            </p>
-            <div className="footer-v4-social">
-              <a
-                href="https://x.com/irlworkai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="footer-v4-social-link"
-                aria-label="Follow us on X"
-              >
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-              </a>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="footer-v4-column-title">Platform</h4>
-            <div className="footer-v4-links">
-              <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
-              <a href="/auth" className="footer-v4-link">Sign Up</a>
-              <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="footer-v4-column-title">For Agents</h4>
-            <div className="footer-v4-links">
-              <a href="/mcp" className="footer-v4-link">API Docs</a>
-              <a href="/mcp" className="footer-v4-link">MCP Protocol</a>
-              <a href="/mcp" className="footer-v4-link">Integration</a>
-            </div>
-          </div>
-        </div>
-
-        <div className="footer-v4-bottom">
-          <p className="footer-v4-copyright">© 2026 irlwork.ai</p>
-          <div className="footer-v4-legal">
-            <a href="/privacy" className="footer-v4-legal-link">Privacy</a>
-            <a href="/terms" className="footer-v4-legal-link">Terms</a>
-            <a href="/security" className="footer-v4-legal-link">Security</a>
-          </div>
-        </div>
-      </div>
-    </footer>
-  )
-}

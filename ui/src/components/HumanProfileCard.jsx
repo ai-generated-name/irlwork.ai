@@ -1,5 +1,5 @@
 import React from 'react'
-import { MapPin, Star, Check, Globe, Clock } from 'lucide-react'
+import { MapPin, Star, Globe, Clock } from 'lucide-react'
 import { SocialIconsRow } from './SocialIcons'
 import { formatTimezoneShort } from '../utils/timezone'
 
@@ -134,34 +134,18 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
 
         {/* Name + Headline + Location */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <h3 style={{
-              fontSize: 16,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              margin: 0,
-              lineHeight: 1.3
-            }}>
-              {human.name || 'Anonymous'}
-            </h3>
-            {human.verified && (
-              <div style={{
-                width: 18,
-                height: 18,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #10B981, #059669)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Check size={10} style={{ color: 'white' }} />
-              </div>
-            )}
-          </div>
+          <h3 style={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            margin: 0,
+            lineHeight: 1.3
+          }}>
+            {human.name || 'Anonymous'}
+          </h3>
           {human.headline && (
             <p style={{
               fontSize: 13,
@@ -182,9 +166,12 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               display: 'flex',
               alignItems: 'center',
               gap: 3,
-              marginTop: 2
+              marginTop: 2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
             }}>
-              <MapPin size={12} style={{ color: '#F4845F' }} />
+              <MapPin size={12} style={{ color: '#F4845F', flexShrink: 0 }} />
               {human.city}{human.state ? `, ${human.state}` : ''}
               {human.timezone && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
@@ -202,10 +189,12 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         <StarRating rating={human.rating} count={human.total_ratings_count || 0} showNewBadge={true} />
       </div>
 
-      {/* Social Links - always visible */}
-      <div style={{ marginBottom: 12 }}>
-        <SocialIconsRow socialLinks={human.social_links} size={16} gap={8} alwaysShow={true} />
-      </div>
+      {/* Social Links - only show if user has linked accounts */}
+      {human.social_links && typeof human.social_links === 'object' && Object.keys(human.social_links).length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <SocialIconsRow socialLinks={human.social_links} size={16} gap={8} />
+        </div>
+      )}
 
       {/* Bio */}
       <p style={{
