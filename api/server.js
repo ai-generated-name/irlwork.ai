@@ -479,11 +479,15 @@ setInterval(() => {
  */
 function getAvatarUrl(user, req) {
   if (!user || !user.avatar_r2_key) return user?.avatar_url || '';
-  // Derive base URL from request headers (works in dev and production)
+  // If avatar_url already points to our proxy with a cache-buster, use it as-is
+  // This ensures the URL matches what the upload endpoint returned to the client
+  if (user.avatar_url && user.avatar_url.includes('/api/avatar/') && user.avatar_url.includes('?v=')) {
+    return user.avatar_url;
+  }
+  // Otherwise, construct a proxy URL with cache-buster from updated_at
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   if (!host) return user.avatar_url || '';
-  // Include cache-buster from updated_at so browsers always serve the latest avatar
   const cacheBuster = user.updated_at ? new Date(user.updated_at).getTime() : Date.now();
   return `${protocol}://${host}/api/avatar/${user.id}?v=${cacheBuster}`;
 }
@@ -1759,7 +1763,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url')
     .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${category}%`);
@@ -2757,12 +2761,17 @@ app.post('/api/upload/avatar', async (req, res) => {
     const avatarData = file.startsWith('data:') ? file : `data:${mimeType || 'image/jpeg'};base64,${file}`;
 
     const avatarUrl = `${API_BASE}/api/avatar/${user.id}?v=${timestamp}`;
-    await supabase.from('users').update({
+    const { error: demoDbErr } = await supabase.from('users').update({
       avatar_url: avatarUrl,
       avatar_r2_key: uniqueFilename,
       avatar_data: avatarData,
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
+
+    if (demoDbErr) {
+      console.error('[Avatar DEMO] DB update error:', demoDbErr.message);
+      return res.status(500).json({ error: 'Failed to save avatar' });
+    }
 
     return res.json({ url: avatarUrl, filename: uniqueFilename, success: true, demo: true });
   }
@@ -6120,7 +6129,7 @@ app.get('/api/humans/directory', async (req, res) => {
   // Build data query with sorting
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
     .eq('type', 'human')
     .eq('verified', true);
 

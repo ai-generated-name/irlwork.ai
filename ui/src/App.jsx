@@ -3302,14 +3302,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           clearTimeout(timeout)
                           if (res.ok) {
                             const data = await res.json()
-                            // Use the base64 data URL for instant display — no network round-trip,
-                            // no proxy dependency, guaranteed to show immediately.
-                            // Subsequent page loads will use the proxy URL from the DB.
-                            const updatedUser = { ...user, avatar_url: base64 }
+                            // Use the server-returned proxy URL (with cache-buster) for display.
+                            // This is the same URL that /auth/verify returns, so it persists across reloads.
+                            // The proxy endpoint serves the image from R2 or DB base64 fallback.
+                            const avatarUrl = data.url || base64
+                            const updatedUser = { ...user, avatar_url: avatarUrl }
                             onUserUpdate(updatedUser)
-                            localStorage.setItem('user', JSON.stringify(updatedUser))
+                            // Store proxy URL in localStorage — matches what fetchUserProfile returns
+                            const cacheUser = { ...updatedUser, token: undefined }
+                            localStorage.setItem('user', JSON.stringify(cacheUser))
                             // Update the humans array so browse cards reflect the new avatar instantly
-                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: base64 } : h))
+                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: avatarUrl } : h))
                             toast.success('Profile photo updated!')
                           } else {
                             const errText = await res.text().catch(() => '')

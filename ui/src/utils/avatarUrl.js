@@ -10,7 +10,9 @@ export function fixAvatarUrl(userOrUsers) {
     // If avatar_url is a direct R2 public URL, replace with proxy URL
     // R2 public URLs look like: pub-{accountId}.r2.dev/avatars/...
     if (u.avatar_url.includes('.public/') || u.avatar_url.includes('.r2.dev/')) {
-      return { ...u, avatar_url: `${API_URL}/avatar/${u.id}` };
+      // Include cache-buster from updated_at to avoid stale browser cache
+      const cacheBuster = u.updated_at ? new Date(u.updated_at).getTime() : Date.now();
+      return { ...u, avatar_url: `${API_URL}/avatar/${u.id}?v=${cacheBuster}` };
     }
     return u;
   };
