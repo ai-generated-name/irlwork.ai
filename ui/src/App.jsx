@@ -3252,13 +3252,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         if (!isGif) {
                           try {
                             const imageCompression = (await import('browser-image-compression')).default
-                            fileToUpload = await imageCompression(file, {
+                            const compressed = await imageCompression(file, {
                               maxSizeMB: 1,
                               maxWidthOrHeight: 1200,
                               useWebWorker: typeof Worker !== 'undefined',
                               fileType: 'image/jpeg',
                               initialQuality: 0.85,
                             })
+                            // Sanity check: if compression produced a tiny file, use original instead
+                            if (compressed.size < 5000) {
+                              console.warn(`[Avatar] Compression produced tiny file (${compressed.size} bytes), using original (${file.size} bytes)`)
+                              // Still need to convert to JPEG for HEIC compatibility — try without fileType forcing
+                              try {
+                                const retried = await imageCompression(file, {
+                                  maxSizeMB: 2,
+                                  maxWidthOrHeight: 1600,
+                                  useWebWorker: typeof Worker !== 'undefined',
+                                  initialQuality: 0.9,
+                                })
+                                if (retried.size > 5000) {
+                                  fileToUpload = retried
+                                } else {
+                                  // Both attempts failed — use original if small enough
+                                  fileToUpload = file.size <= 5 * 1024 * 1024 ? file : compressed
+                                }
+                              } catch {
+                                fileToUpload = file.size <= 5 * 1024 * 1024 ? file : compressed
+                              }
+                            } else {
+                              fileToUpload = compressed
+                            }
                           } catch (compErr) {
                             console.warn('[Avatar] Compression failed:', compErr.message || compErr)
                             if (file.size > 4 * 1024 * 1024) {
