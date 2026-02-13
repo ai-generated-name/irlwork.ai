@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import MyTaskCard from '../components/MyTaskCard';
 
-const ACTIVE_STATUSES = ['open', 'accepted', 'assigned', 'in_progress'];
+const ACTIVE_STATUSES = ['pending_acceptance', 'open', 'accepted', 'assigned', 'in_progress'];
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed'];
 const COMPLETED_STATUSES = ['paid'];
 const OTHER_STATUSES = ['disputed', 'cancelled'];
@@ -45,6 +45,7 @@ export default function MyTasksPage({
   tasks,
   loading,
   acceptTask,
+  declineTask,
   onStartWork,
   setShowProofSubmit,
   notifications,
@@ -68,6 +69,7 @@ export default function MyTasksPage({
 
   const cardActions = {
     onAccept: acceptTask,
+    onDecline: declineTask,
     onStartWork: onStartWork,
     onSubmitProof: (taskId) => setShowProofSubmit(taskId),
     onClick: handleCardClick,

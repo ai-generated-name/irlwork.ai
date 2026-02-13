@@ -168,24 +168,28 @@ export class IRLWorkAgent {
   }
   
   /**
-   * Hire a human for a task
+   * Hire a human for a task.
+   *
+   * This sends an offer to the human — they have 24 hours to accept or decline.
+   * The agent's card is NOT charged until the human accepts.
+   * A pre-linked payment card is required before calling this method.
+   *
    * @param {Object} params
    * @param {string} params.taskId - Task ID
    * @param {string} params.humanId - Human ID to hire
    * @param {string} [params.instructions] - Special instructions for human
-   * @param {number} [params.deadlineHours] - Hours to complete (default 24)
+   * @param {number} [params.deadlineHours] - Hours to complete after acceptance (default 24)
+   * @returns {Promise<Object>} Result with status 'pending_acceptance' and review_deadline
    */
   async hireHuman({ taskId, humanId, instructions = '', deadlineHours = 24 }) {
-    const deadline = new Date(Date.now() + deadlineHours * 60 * 60 * 1000).toISOString()
-    
     const result = await this.client.callMcp('hire_human', {
       task_id: taskId,
       human_id: humanId,
       instructions,
-      deadline
+      deadline_hours: deadlineHours
     })
-    
-    this.events.emit('human:hired', { taskId, humanId })
+
+    this.events.emit('human:offered', { taskId, humanId, reviewDeadline: result.review_deadline })
     return result
   }
   
@@ -221,6 +225,36 @@ export class IRLWorkAgent {
     return result
   }
   
+  // ============ ERROR REPORTING ============
+
+  /**
+   * Report an error to the platform.
+   * Use this when the agent encounters an issue so the platform team
+   * can investigate and resolve it.
+   *
+   * @param {Object} params
+   * @param {string} params.action - What the agent was trying to do (e.g. "hire_human", "approve_task")
+   * @param {string} params.errorMessage - Human-readable error description
+   * @param {string} [params.errorCode] - Machine-readable error code (e.g. "payment_failed")
+   * @param {string} [params.errorLog] - Raw error log or stack trace
+   * @param {string} [params.taskId] - Related task ID, if applicable
+   * @param {Object} [params.context] - Any additional context
+   * @returns {Promise<Object>} Confirmation with report ID
+   */
+  async reportError({ action, errorMessage, errorCode, errorLog, taskId, context }) {
+    const result = await this.client.callMcp('report_error', {
+      action,
+      error_message: errorMessage,
+      error_code: errorCode,
+      error_log: errorLog,
+      task_id: taskId,
+      context
+    })
+
+    this.events.emit('error:reported', { action, errorMessage, errorCode, taskId })
+    return result
+  }
+
   // ============ WEBHOOK HANDLER ============
   
   /**

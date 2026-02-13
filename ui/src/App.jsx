@@ -1972,13 +1972,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const acceptTask = async (taskId) => {
     try {
-      await fetch(`${API_URL}/tasks/${taskId}/accept`, {
+      const res = await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
         headers: { Authorization: user.token || user.id }
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        if (data.code === 'payment_error') {
+          debug('Payment failed — the agent\'s card could not be charged. Contact the agent.')
+          return
+        }
+      }
       fetchTasks()
     } catch (e) {
       debug('Could not accept task')
+    }
+  }
+
+  const declineTask = async (taskId, reason = '') => {
+    try {
+      await fetch(`${API_URL}/tasks/${taskId}/decline`, {
+        method: 'POST',
+        headers: {
+          Authorization: user.token || user.id,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+      })
+      fetchTasks()
+    } catch (e) {
+      debug('Could not decline task')
     }
   }
 
@@ -2074,6 +2097,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const getStatusLabel = (status) => {
     const labels = {
       open: 'Open',
+      pending_acceptance: 'Pending Acceptance',
       accepted: 'Accepted',
       in_progress: 'In Progress',
       pending_review: 'Pending Review',
@@ -2903,6 +2927,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 tasks={tasks}
                 loading={loading}
                 acceptTask={acceptTask}
+                declineTask={declineTask}
                 onStartWork={startWork}
                 setShowProofSubmit={setShowProofSubmit}
                 notifications={notifications}
