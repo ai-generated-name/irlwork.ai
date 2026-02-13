@@ -3207,6 +3207,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             const updatedUser = { ...user, avatar_url: avatarProxyUrl }
                             onUserUpdate(updatedUser)
                             localStorage.setItem('user', JSON.stringify(updatedUser))
+                            // Update the humans array so browse cards reflect the new avatar instantly
+                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: avatarProxyUrl } : h))
                             toast.success('Profile photo updated!')
                           } else {
                             const errText = await res.text().catch(() => '')
@@ -3663,6 +3665,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     if (data.user && onUserUpdate) {
                       const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
                       onUserUpdate(updatedUser)
+                      // Sync browse cards with updated profile data (name, city, bio, rate, etc.)
+                      setHumans(prev => prev.map(h => h.id === user.id ? { ...h, ...updatedUser } : h))
                     }
                   } else {
                     const err = await res.json()
