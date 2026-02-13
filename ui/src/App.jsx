@@ -3185,7 +3185,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         const controller = new AbortController()
                         const timeout = setTimeout(() => controller.abort(), 60000)
                         try {
-                          const payload = JSON.stringify({ file: base64, filename: file.name, mimeType: fileToUpload.type || 'image/jpeg' })
+                          // Use compressed file's name/type — HEIC files get compressed to JPEG client-side
+                          // but server rejects .heic extensions, so derive the correct filename
+                          const uploadExt = (fileToUpload.type === 'image/jpeg' || !fileToUpload.type) ? 'jpg'
+                            : fileToUpload.type === 'image/png' ? 'png'
+                            : fileToUpload.type === 'image/webp' ? 'webp'
+                            : fileToUpload.type === 'image/gif' ? 'gif'
+                            : 'jpg'
+                          const uploadFilename = file.name.replace(/\.[^.]+$/, `.${uploadExt}`)
+                          const payload = JSON.stringify({ file: base64, filename: uploadFilename, mimeType: fileToUpload.type || 'image/jpeg' })
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
@@ -3197,7 +3205,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             const data = await res.json()
                             const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
                             const updatedUser = { ...user, avatar_url: avatarProxyUrl }
-                            setUser(updatedUser)
+                            onUserUpdate(updatedUser)
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                             toast.success('Profile photo updated!')
                           } else {
