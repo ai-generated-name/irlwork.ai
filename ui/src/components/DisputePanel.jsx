@@ -288,18 +288,12 @@ export default function DisputePanel({ user }) {
                         <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Filed By</p>
                         <p className="text-sm text-[#525252]">
                           {filedByName}
-                          {dispute.filed_by_user?.email && (
-                            <span className="text-[#8A8A8A] text-xs block">{dispute.filed_by_user.email}</span>
-                          )}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Filed Against</p>
                         <p className="text-sm text-[#525252]">
                           {filedAgainstName}
-                          {dispute.filed_against_user?.email && (
-                            <span className="text-[#8A8A8A] text-xs block">{dispute.filed_against_user.email}</span>
-                          )}
                         </p>
                       </div>
                     </div>

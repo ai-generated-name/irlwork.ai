@@ -30,7 +30,7 @@ export default function AgentProfileCard({ agent }) {
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="font-bold text-[#1A1A1A] text-base sm:text-lg truncate">{agent.name || 'Agent'}</h3>
-          <p className="text-[#525252] text-xs sm:text-sm truncate">{agent.email || 'AI Agent'}</p>
+          <p className="text-[#525252] text-xs sm:text-sm truncate">AI Agent</p>
         </div>
       </div>
 
