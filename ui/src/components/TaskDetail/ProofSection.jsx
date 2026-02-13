@@ -16,6 +16,7 @@ export default function ProofSection({ task, user, onSubmit }) {
   const [files, setFiles] = useState([]);
   const [uploadedUrls, setUploadedUrls] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(''); // e.g. "Uploading 1/3..."
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -93,9 +94,12 @@ export default function ProofSection({ task, user, onSubmit }) {
 
     // Upload immediately
     setUploading(true);
+    setUploadProgress(`Uploading 1/${selected.length}...`);
     try {
       const urls = [...uploadedUrls];
-      for (const file of selected) {
+      for (let idx = 0; idx < selected.length; idx++) {
+        setUploadProgress(`Uploading ${idx + 1}/${selected.length}...`);
+        const file = selected[idx];
         let fileToUpload = file;
         const ext = file.name?.split('.').pop()?.toLowerCase();
         const isGif = file.type === 'image/gif' || ext === 'gif';
@@ -123,6 +127,7 @@ export default function ProofSection({ task, user, onSubmit }) {
       setFiles(prev => prev.filter((_, i) => i < uploadedUrls.length));
     } finally {
       setUploading(false);
+      setUploadProgress('');
     }
   };
 
@@ -187,7 +192,7 @@ export default function ProofSection({ task, user, onSubmit }) {
             />
             <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{uploading ? <Hourglass size={24} /> : <Upload size={24} />}</div>
             <p className="text-[#525252] text-xs sm:text-sm">
-              {uploading ? 'Uploading...' : 'Tap to upload images'}
+              {uploading ? (uploadProgress || 'Uploading...') : 'Tap to upload images'}
             </p>
             <p className="text-[#8A8A8A] text-xs mt-0.5 sm:mt-1">PNG, JPG, or JPEG (max 3)</p>
           </div>
@@ -228,7 +233,7 @@ export default function ProofSection({ task, user, onSubmit }) {
           disabled={submitting || uploading}
           className="w-full bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
         >
-          {submitting ? 'Submitting...' : uploading ? 'Uploading files...' : 'Submit Proof'}
+          {submitting ? 'Submitting...' : uploading ? (uploadProgress || 'Uploading files...') : 'Submit Proof'}
         </button>
 
         {/* Instructions */}
