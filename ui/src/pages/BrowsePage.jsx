@@ -1376,7 +1376,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>copy this and paste it into your AI agent's chat:</span>
                     <button
                       onClick={() => {
-                        const snippet = `I want to hire a human from irlwork.ai for a task.\n\nName: ${showHireModal.name}\nProfile: https://www.irlwork.ai/humans/${showHireModal.id}\nSkills: ${(showHireModal.skills || []).join(', ') || 'General'}\nRate: $${showHireModal.hourly_rate || 25}/hr\n\nTo contact this human, use the irlwork.ai MCP server. Add this to your MCP config:\n\n{\n  "mcpServers": {\n    "irlwork": {\n      "command": "npx",\n      "args": ["irlwork-mcp"],\n      "env": {\n        "IRLWORK_API_KEY": "YOUR_API_KEY_HERE"\n      }\n    }\n  }\n}\n\nThen use the start_conversation tool with humanId "${showHireModal.id}" to message them.\n\nGet your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`
+                        const snippet = `I want to hire a human from irlwork.ai for a task.\n\nName: ${showHireModal.name}\nProfile: https://www.irlwork.ai/humans/${showHireModal.id}\nSkills: ${(showHireModal.skills || []).join(', ') || 'General'}\nRate: $${showHireModal.hourly_rate || 25}/hr\n\nTo contact this human, use the irlwork.ai MCP server.\n\nIf you don't have an API key yet, help me set one up:\n- Open https://www.irlwork.ai/auth in my browser so I can create an account\n- Once I'm logged in, I can generate an API key from Dashboard > Settings > API Keys\n\nOnce you have the API key, add this to your MCP config:\n\n{\n  "mcpServers": {\n    "irlwork": {\n      "command": "npx",\n      "args": ["irlwork-mcp"],\n      "env": {\n        "IRLWORK_API_KEY": "YOUR_API_KEY_HERE"\n      }\n    }\n  }\n}\n\nThen use the start_conversation tool with humanId "${showHireModal.id}" to message them.`
                         navigator.clipboard.writeText(snippet)
                         toast.success('Copied to clipboard!')
                       }}
@@ -1393,7 +1393,13 @@ Profile: https://www.irlwork.ai/humans/${showHireModal.id}
 Skills: ${(showHireModal.skills || []).join(', ') || 'General'}
 Rate: $${showHireModal.hourly_rate || 25}/hr
 
-To contact this human, use the irlwork.ai MCP server. Add this to your MCP config:
+To contact this human, use the irlwork.ai MCP server.
+
+If you don't have an API key yet, help me set one up:
+- Open https://www.irlwork.ai/auth in my browser so I can create an account
+- Once I'm logged in, I can generate an API key from Dashboard > Settings > API Keys
+
+Once you have the API key, add this to your MCP config:
 
 {
   "mcpServers": {
@@ -1407,17 +1413,15 @@ To contact this human, use the irlwork.ai MCP server. Add this to your MCP confi
   }
 }
 
-Then use the start_conversation tool with humanId "${showHireModal.id}" to message them.
-
-Get your API key at: https://www.irlwork.ai/dashboard (API Keys tab)`}
+Then use the start_conversation tool with humanId "${showHireModal.id}" to message them.`}
                   </div>
                   <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                     <div style={{ fontSize: 14, color: '#10B981', fontWeight: 500, marginBottom: 12 }}>how to use this</div>
                     <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.8 }}>
                       <li>Copy the snippet above</li>
                       <li>Paste it into your AI agent's chat (Claude, ChatGPT, etc.)</li>
-                      <li>Your agent will set up the MCP server and contact this human</li>
-                      <li>You'll need an <a href="/dashboard?tab=api-keys" style={{ color: '#10B981', textDecoration: 'underline' }}>API key</a> — get one from your dashboard</li>
+                      <li>Your agent will help you create an account and get an API key</li>
+                      <li>Once set up, your agent will contact this human for you</li>
                     </ol>
                   </div>
                 </div>

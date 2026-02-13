@@ -17,6 +17,7 @@ const CATEGORY_ICONS = {
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: 'bg-[#D1E9F0] text-[#0F4C5C]' },
+  pending_acceptance: { label: 'Pending Acceptance', color: 'bg-[#FEF3C7] text-[#D97706]' },
   accepted: { label: 'Accepted', color: 'bg-[#E8D5F0] text-[#6B21A8]' },
   in_progress: { label: 'In Progress', color: 'bg-[#FEF3C7] text-[#D97706]' },
   pending_review: { label: 'Pending Review', color: 'bg-[#FFE4DB] text-[#C45F4A]' },

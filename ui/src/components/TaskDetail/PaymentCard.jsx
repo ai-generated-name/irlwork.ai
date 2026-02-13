@@ -24,6 +24,8 @@ export default function PaymentCard({ task, user, isParticipant, onApply }) {
         return { icon: '✓', text: 'Funds secured in escrow. Work can begin safely.', color: 'text-[#059669]' };
       case 'released':
         return { icon: '✓', text: 'Payment has been released to you.', color: 'text-[#059669]' };
+      case 'unfunded':
+        return { icon: '⏳', text: 'Card will be charged when you accept. No charge until then.', color: 'text-[#D97706]' };
       case 'pending':
         return { icon: '⏳', text: 'Waiting for agent to fund escrow...', color: 'text-[#D97706]' };
       case 'refunded':
