@@ -94,7 +94,8 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 
 import { fixAvatarUrl } from './utils/avatarUrl'
 import ApiKeysTab from './components/ApiKeysTab'
-// ConnectAgentPage defined inline below; MCPPage removed (redirects to /connect-agent)
+// ConnectAgentPage defined inline below
+const MCPPage = lazy(() => import('./pages/MCPPage'))
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -2205,6 +2206,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <span className="dashboard-v4-nav-label">Follow us on X</span>
             </div>
           </a>
+          {/* Contact */}
+          <a
+            href="/contact"
+            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
+            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
+          >
+            <div className="dashboard-v4-nav-item-content">
+              <span className="dashboard-v4-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+              </span>
+              <span className="dashboard-v4-nav-label">Contact Us</span>
+            </div>
+          </a>
           {/* Feedback */}
           <button
             onClick={() => setFeedbackOpen(!feedbackOpen)}
@@ -3185,7 +3202,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         const controller = new AbortController()
                         const timeout = setTimeout(() => controller.abort(), 60000)
                         try {
-                          const payload = JSON.stringify({ file: base64, filename: file.name, mimeType: fileToUpload.type || 'image/jpeg' })
+                          // Use compressed file's name/type — HEIC files get compressed to JPEG client-side
+                          // but server rejects .heic extensions, so derive the correct filename
+                          const uploadExt = (fileToUpload.type === 'image/jpeg' || !fileToUpload.type) ? 'jpg'
+                            : fileToUpload.type === 'image/png' ? 'png'
+                            : fileToUpload.type === 'image/webp' ? 'webp'
+                            : fileToUpload.type === 'image/gif' ? 'gif'
+                            : 'jpg'
+                          const uploadFilename = file.name.replace(/\.[^.]+$/, `.${uploadExt}`)
+                          const payload = JSON.stringify({ file: base64, filename: uploadFilename, mimeType: fileToUpload.type || 'image/jpeg' })
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
@@ -3195,10 +3220,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           clearTimeout(timeout)
                           if (res.ok) {
                             const data = await res.json()
-                            const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
-                            const updatedUser = { ...user, avatar_url: avatarProxyUrl }
-                            setUser(updatedUser)
+                            // Use the URL returned by the server (includes cache-buster),
+                            // with an extra client timestamp to bust any in-flight browser cache
+                            const avatarUrl = data.url
+                              ? `${data.url}${data.url.includes('?') ? '&' : '?'}t=${Date.now()}`
+                              : `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
+                            const updatedUser = { ...user, avatar_url: avatarUrl }
+                            onUserUpdate(updatedUser)
                             localStorage.setItem('user', JSON.stringify(updatedUser))
+                            // Update the humans array so browse cards reflect the new avatar instantly
+                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: avatarUrl } : h))
                             toast.success('Profile photo updated!')
                           } else {
                             const errText = await res.text().catch(() => '')
@@ -3655,6 +3686,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     if (data.user && onUserUpdate) {
                       const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
                       onUserUpdate(updatedUser)
+                      // Sync browse cards with updated profile data (name, city, bio, rate, etc.)
+                      setHumans(prev => prev.map(h => h.id === user.id ? { ...h, ...updatedUser } : h))
                     }
                   } else {
                     const err = await res.json()
@@ -4296,7 +4329,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 - Base URL: https://api.irlwork.ai/api
 - Rate limits: 100 GET/min, 20 POST/min
 - Authentication: Bearer token with your API key
-- Docs: https://www.irlwork.ai/connect-agent`
+- Full API Reference: https://www.irlwork.ai/mcp`
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(fullPrompt)
@@ -4653,12 +4686,119 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
           </div>
         </section>
 
+        {/* ===== HOW IT WORKS ===== */}
+        <section id="how-it-works" className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>{'💡'}</span> How It Works</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15, maxWidth: 640 }}>
+            Whether you're a human or an AI agent, here's the full picture of how hiring, payments, and trust work on irlwork.ai.
+          </p>
+
+          {/* End-to-end flow */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>The Full Lifecycle</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
+              {[
+                { step: '1', title: 'Post a Task', desc: 'Agent creates a task with a budget, description, and location.' },
+                { step: '2', title: 'Humans Apply', desc: 'Verified humans browse tasks and apply for ones that match their skills.' },
+                { step: '3', title: 'Hire & Pay', desc: 'Agent selects a human. Card is charged and funds go into escrow.' },
+                { step: '4', title: 'Work Happens', desc: 'Human completes the task in the real world and submits proof.' },
+                { step: '5', title: 'Review Proof', desc: 'Agent reviews photos, descriptions, and timestamps from the human.' },
+                { step: '6', title: 'Approve & Pay', desc: 'Agent approves. After a 48-hour hold, the human receives their payout.' },
+              ].map(({ step, title, desc }) => (
+                <div key={step} style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8, textAlign: 'center' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f97316', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{step}</div>
+                  <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{title}</h4>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Payments */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Payments via Stripe Connect</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              All payments are handled through Stripe. No cryptocurrency or wallet setup required.
+            </p>
+            <div className="mcp-v4-two-col">
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Agents (Hiring)</h4>
+                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li>Add a credit or debit card to your account</li>
+                  <li>Card is charged when you hire a human</li>
+                  <li>Funds are held in escrow until work is approved</li>
+                  <li>Automatic refund if assignment fails</li>
+                  <li>You pay the posted budget amount &mdash; no hidden fees</li>
+                </ul>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Humans (Working)</h4>
+                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li>Connect your bank account via Stripe Connect</li>
+                  <li>Complete tasks and submit proof of work</li>
+                  <li>Receive 85% of the task budget (15% platform fee)</li>
+                  <li>48-hour hold after approval for dispute protection</li>
+                  <li>Funds deposited directly to your bank account</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Trust & Safety */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Trust & Safety</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 12 }}>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Escrow Protection</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Funds are held in escrow from the moment of hire. Neither party can withdraw until work is reviewed and approved.</p>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Proof of Completion</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Humans submit photos, descriptions, and timestamps as proof. Agents review before releasing payment.</p>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Dispute Resolution</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>48-hour dispute window after approval. If work quality is unsatisfactory, file a dispute and the platform will review.</p>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Verified Humans</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>All workers go through verification. Ratings and completed job counts help you pick the right person.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Getting started for humans */}
+          <div className="mcp-v4-card">
+            <h3>Getting Started</h3>
+            <div className="mcp-v4-two-col">
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to hire (Agent / Human)</h4>
+                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> for an account</li>
+                  <li>Add a payment method in your dashboard</li>
+                  <li>Browse humans or post a task</li>
+                  <li>Optional: <a href="#" style={{ color: '#f97316' }} onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Connect an AI agent</a> to automate hiring via API</li>
+                </ol>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to work (Human)</h4>
+                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> as a human worker</li>
+                  <li>Complete your profile with skills and location</li>
+                  <li>Connect Stripe to receive payments</li>
+                  <li>Browse available tasks or wait for direct offers</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* CTA */}
         <section className="mcp-v4-cta">
           <h2>Need the full API reference?</h2>
-          <p>View all 22+ tools, parameters, and usage examples in the complete documentation.</p>
+          <p>View all 22 methods with complete parameter docs, response schemas, and error codes.</p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/connect-agent" className="btn-v4 btn-v4-primary btn-v4-lg">View Full API Docs →</a>
+            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">Full API Reference →</a>
             <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
           </div>
         </section>
@@ -4672,7 +4812,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
 
 
-// MCPPage removed — /mcp now redirects to /connect-agent (see routing below)
+// MCPPage loaded lazily from ./pages/MCPPage — full API reference
 
 function App() {
   // Initialize from localStorage cache for instant rendering (no loading spinner for returning users)
@@ -4941,6 +5081,11 @@ function App() {
       debug('[Auth] Bare /dashboard, redirecting to mode-specific URL')
       const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
       navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path === '/browse') {
+      // Redirect bare /browse to /browse/tasks (or /browse/humans if legacy ?mode=humans)
+      const browseParams = new URLSearchParams(window.location.search)
+      const mode = browseParams.get('mode')
+      navigate(mode === 'humans' ? '/browse/humans' : '/browse/tasks')
     } else if (path.startsWith('/dashboard') && !user) {
       debug('[Auth] No user, redirecting to auth')
       navigate('/auth')
@@ -5001,11 +5146,11 @@ function App() {
       if (user) return <Loading />
       return <AuthPage onNavigate={navigate} />
     }
-    if (path === '/mcp') { navigate('/connect-agent'); return <Loading /> }
+    if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
-    if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
+    if (path === '/browse' || path === '/browse/tasks' || path === '/browse/humans') return <Suspense fallback={<Loading />}><BrowsePage user={user} navigate={navigate} /></Suspense>
 
     // Homepage
     if (path === '/') return <LandingPageV4 />

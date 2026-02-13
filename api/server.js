@@ -1755,7 +1755,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, latitude, longitude, avatar_url, headline, languages, timezone')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url')
     .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${category}%`);
@@ -2748,7 +2748,8 @@ app.post('/api/upload/avatar', async (req, res) => {
     console.log(`[R2 DEMO] Would upload avatar to R2 key: ${uniqueFilename}`);
 
     // Use API proxy URL as the avatar URL (always accessible)
-    const avatarUrl = `${API_BASE}/api/avatar/${user.id}`;
+    // Include cache-buster so browsers serve the fresh image on all pages
+    const avatarUrl = `${API_BASE}/api/avatar/${user.id}?v=${timestamp}`;
     await supabase.from('users').update({ avatar_url: avatarUrl, avatar_r2_key: uniqueFilename, updated_at: new Date().toISOString() }).eq('id', user.id);
 
     return res.json({ url: avatarUrl, filename: uniqueFilename, success: true, demo: true });
@@ -2796,17 +2797,18 @@ app.post('/api/upload/avatar', async (req, res) => {
         Key: uniqueFilename,
         Body: fileData,
         ContentType: mimeType || 'image/jpeg',
-        ContentDisposition: 'attachment',
+        ContentDisposition: 'inline',
       }));
     } catch (s3Error) {
       console.error('R2 avatar upload error:', s3Error.message);
       return res.status(502).json({ error: 'Failed to upload to storage. Please try again.' });
     }
 
-    // Use R2 public URL if configured, otherwise use API proxy endpoint (always works)
-    const avatarUrl = R2_PUBLIC_URL
-      ? `${R2_PUBLIC_URL}/${uniqueFilename}`
-      : `${API_BASE}/api/avatar/${user.id}`;
+    // Always use the API proxy URL — it reliably serves the image inline.
+    // R2 public URLs can break (CORS, ContentDisposition: attachment, bucket config)
+    // and the proxy is always accessible. The R2 key is stored separately for the proxy to use.
+    // Include cache-buster so browsers/CDNs serve the fresh image on all pages.
+    const avatarUrl = `${API_BASE}/api/avatar/${user.id}?v=${timestamp}`;
 
     // Save both the display URL and the R2 key (for proxy serving)
     const { error: dbError } = await supabase.from('users').update({
@@ -2859,7 +2861,7 @@ app.get('/api/avatar/:userId', async (req, res) => {
       const result = await s3Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: user.avatar_r2_key }));
 
       res.set('Content-Type', result.ContentType || 'image/jpeg');
-      res.set('Cache-Control', 'public, max-age=3600');
+      res.set('Cache-Control', 'public, max-age=300');
       return result.Body.pipe(res);
     }
 
