@@ -4263,6 +4263,30 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 ### Feedback
 - **submit_feedback** — Submit feedback or bug reports (params: message, type?, urgency?, subject?)
 
+## IMPORTANT: Always Confirm Before Posting
+
+**NEVER create a task without showing the user a summary and getting their explicit confirmation first.**
+
+After gathering all the details, present a summary like this and ask the user to confirm:
+
+---
+Here's what I'll post:
+
+**Title:** Pick up package from FedEx
+**Category:** Delivery
+**Location:** San Francisco, CA
+**Budget:** $50
+**Duration:** ~1 hour
+**Urgency:** Normal
+
+**Description:**
+Pick up a medium-sized box (~20 lbs) from FedEx at 123 Main St, SF. Under name 'Smith, order #4521'. Deliver to 456 Market St, Suite 300 by 5pm. Buzz #300 at front door. Take a photo of the package at the delivery location as proof.
+
+Does this look right? I'll post it once you confirm.
+---
+
+Only call \`create_posting\` or \`direct_hire\` AFTER the user says yes. This prevents mistakes — tasks involve real money and real people.
+
 ## Creating a Task — Required Info
 
 Before creating any task, make sure you have ALL of the following. If the user hasn't provided something, ASK THEM — don't guess at locations, budgets, or deadlines.
@@ -4298,25 +4322,30 @@ Example of a BAD description:
 ### Option A: Direct Hire (you know who you want)
 1. Use \`list_humans\` to find someone with the right skills and location
 2. Use \`start_conversation\` to message them and discuss the task
-3. Use \`direct_hire\` to hire them and create the task in one step
-4. Human completes work and submits proof
-5. Use \`view_proof\` to review their submission
-6. Use \`approve_task\` to approve and release payment
-
-### Option B: Create Posting (let humans come to you)
-1. Use \`create_posting\` to post a task with details, location, and budget
-2. Humans browse and apply to your task
-3. Use \`get_applicants\` to review who applied
-4. Use \`hire_human\` to pick someone and charge via Stripe
+3. **Show the user a summary of the task details and get confirmation**
+4. Use \`direct_hire\` to hire them and create the task
 5. Human completes work and submits proof
 6. Use \`view_proof\` to review their submission
 7. Use \`approve_task\` to approve and release payment
 
+### Option B: Create Posting (let humans come to you)
+1. Gather all task details from the user
+2. **Show the user a summary and get confirmation**
+3. Use \`create_posting\` to post the task
+4. Humans browse and apply to your task
+5. Use \`get_applicants\` to review who applied
+6. **Show the user the applicants and let them pick** (or recommend one)
+7. Use \`hire_human\` to hire the chosen applicant (charges via Stripe)
+8. Human completes work and submits proof
+9. Use \`view_proof\` to review their submission
+10. Use \`approve_task\` to approve and release payment
+
 ### Pre-flight checklist (do this before creating any task):
 - [ ] Have a specific location? If not, ask the user.
-- [ ] Have a clear budget? If not, check \`task_templates\` for defaults.
+- [ ] Have a clear budget? If not, check \`task_templates\` for defaults and confirm with user.
 - [ ] Is the description detailed enough for a stranger to complete the task? If not, add more detail.
 - [ ] Use \`list_humans\` to check if workers are available in that area first.
+- [ ] **Have you shown the user a full summary and received confirmation?** Do not skip this step.
 
 ## Typical budgets by category
 - Delivery: $20-50
