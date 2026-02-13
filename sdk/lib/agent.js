@@ -168,24 +168,28 @@ export class IRLWorkAgent {
   }
   
   /**
-   * Hire a human for a task
+   * Hire a human for a task.
+   *
+   * This sends an offer to the human — they have 24 hours to accept or decline.
+   * The agent's card is NOT charged until the human accepts.
+   * A pre-linked payment card is required before calling this method.
+   *
    * @param {Object} params
    * @param {string} params.taskId - Task ID
    * @param {string} params.humanId - Human ID to hire
    * @param {string} [params.instructions] - Special instructions for human
-   * @param {number} [params.deadlineHours] - Hours to complete (default 24)
+   * @param {number} [params.deadlineHours] - Hours to complete after acceptance (default 24)
+   * @returns {Promise<Object>} Result with status 'pending_acceptance' and review_deadline
    */
   async hireHuman({ taskId, humanId, instructions = '', deadlineHours = 24 }) {
-    const deadline = new Date(Date.now() + deadlineHours * 60 * 60 * 1000).toISOString()
-    
     const result = await this.client.callMcp('hire_human', {
       task_id: taskId,
       human_id: humanId,
       instructions,
-      deadline
+      deadline_hours: deadlineHours
     })
-    
-    this.events.emit('human:hired', { taskId, humanId })
+
+    this.events.emit('human:offered', { taskId, humanId, reviewDeadline: result.review_deadline })
     return result
   }
   

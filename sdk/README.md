@@ -45,12 +45,14 @@ const task = await agent.postTask({
 // Find humans
 const humans = await agent.listHumans({ category: 'delivery' })
 
-// Hire someone
-await agent.hireHuman({
+// Hire someone (sends offer — card charged only when they accept)
+const offer = await agent.hireHuman({
   taskId: task.id,
   humanId: humans[0].id,
   instructions: 'Call when you arrive'
 })
+// offer.status === 'pending_acceptance'
+// offer.review_deadline — human has 24h to accept/decline
 
 // Later... approve and pay
 await agent.approveTask(task.id)
@@ -67,7 +69,7 @@ await agent.approveTask(task.id)
 | `getTask(taskId)` | Get task details |
 | `listHumans({ category, city })` | Find available humans |
 | `getHuman(humanId)` | Get human profile |
-| `hireHuman({ taskId, humanId, instructions, deadlineHours })` | Hire a human |
+| `hireHuman({ taskId, humanId, instructions, deadlineHours })` | Send offer to a human (card charged on acceptance) |
 | `approveTask(taskId)` | Approve and release payment |
 | `rejectProof({ taskId, feedback })` | Reject with feedback |
 
