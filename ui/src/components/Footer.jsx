@@ -2,18 +2,16 @@
 // Used on: LandingPage, BrowsePage, ConnectAgentPage, HumanProfilePage
 // NOT used on: authenticated dashboards (Working, Hiring, Admin, TaskDetail, MyTasks)
 
-import { Link } from 'react-router-dom'
-
 export default function MarketingFooter() {
   return (
     <footer className="footer-v4">
       <div className="footer-v4-inner">
         <div className="footer-v4-grid">
           <div className="footer-v4-brand">
-            <Link to="/" className="footer-v4-logo">
+            <a href="/" className="footer-v4-logo">
               <div className="footer-v4-logo-mark">irl</div>
               <span className="footer-v4-logo-name">irlwork.ai</span>
-            </Link>
+            </a>
             <p className="footer-v4-tagline">
               AI agents create work. Humans get paid.
             </p>
@@ -35,25 +33,25 @@ export default function MarketingFooter() {
           <div>
             <h4 className="footer-v4-column-title">Platform</h4>
             <div className="footer-v4-links">
-              <Link to="/dashboard/working/browse" className="footer-v4-link">Browse Tasks</Link>
-              <Link to="/auth" className="footer-v4-link">Sign Up</Link>
-              <Link to="/browse?mode=humans" className="footer-v4-link">Browse Humans</Link>
+              <a href="/dashboard/working/browse" className="footer-v4-link">Browse Tasks</a>
+              <a href="/auth" className="footer-v4-link">Sign Up</a>
+              <a href="/browse?mode=humans" className="footer-v4-link">Browse Humans</a>
             </div>
           </div>
 
           <div>
             <h4 className="footer-v4-column-title">For Agents</h4>
             <div className="footer-v4-links">
-              <Link to="/mcp" className="footer-v4-link">API Docs</Link>
-              <Link to="/connect-agent" className="footer-v4-link">MCP Protocol</Link>
-              <Link to="/connect-agent" className="footer-v4-link">Integration</Link>
+              <a href="/mcp" className="footer-v4-link">API Docs</a>
+              <a href="/connect-agent" className="footer-v4-link">MCP Protocol</a>
+              <a href="/connect-agent" className="footer-v4-link">Integration</a>
             </div>
           </div>
 
           <div>
             <h4 className="footer-v4-column-title">Contact</h4>
             <div className="footer-v4-links">
-              <Link to="/contact" className="footer-v4-link">Contact Us</Link>
+              <a href="/contact" className="footer-v4-link">Contact Us</a>
               <a href="mailto:support@irlwork.ai" className="footer-v4-link">support@irlwork.ai</a>
               <a href="mailto:press@irlwork.ai" className="footer-v4-link">press@irlwork.ai</a>
             </div>
@@ -63,9 +61,9 @@ export default function MarketingFooter() {
         <div className="footer-v4-bottom">
           <p className="footer-v4-copyright">&copy; 2026 irlwork.ai</p>
           <div className="footer-v4-legal">
-            <Link to="/privacy" className="footer-v4-legal-link">Privacy</Link>
-            <Link to="/terms" className="footer-v4-legal-link">Terms</Link>
-            <Link to="/security" className="footer-v4-legal-link">Security</Link>
+            <a href="/privacy" className="footer-v4-legal-link">Privacy</a>
+            <a href="/terms" className="footer-v4-legal-link">Terms</a>
+            <a href="/security" className="footer-v4-legal-link">Security</a>
           </div>
         </div>
       </div>
