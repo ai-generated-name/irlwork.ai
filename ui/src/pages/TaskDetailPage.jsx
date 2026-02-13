@@ -51,7 +51,10 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         // Fetch task details (works with or without auth)
         const headers = user?.id ? { Authorization: user.token || user.id } : {};
         const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
-        if (!taskRes.ok) throw new Error('Task not found');
+        if (!taskRes.ok) {
+          const errBody = await taskRes.json().catch(() => ({}));
+          throw new Error(errBody.error || `Task not found (${taskRes.status})`);
+        }
         const taskData = await taskRes.json();
         setTask(taskData);
 
@@ -334,6 +337,23 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
         <div className="text-center">
           <div className="text-[#DC2626] text-xl mb-4">Error: {error}</div>
+          <button
+            onClick={() => onNavigate?.('/dashboard')}
+            className="bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard against task being null after loading completes (shouldn't happen, but defensive)
+  if (!task) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-[#DC2626] text-xl mb-4">Error: Task not found</div>
           <button
             onClick={() => onNavigate?.('/dashboard')}
             className="bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-2 px-6 rounded-xl transition-colors"

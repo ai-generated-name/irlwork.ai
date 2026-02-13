@@ -4,6 +4,7 @@ import { supabase } from '../App'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
 import CityAutocomplete from '../components/CityAutocomplete'
+import SkillAutocomplete from '../components/SkillAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 import MarketingFooter from '../components/Footer'
@@ -613,11 +614,11 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Skill
                   </label>
-                  <CustomDropdown
+                  <SkillAutocomplete
                     value={skillFilter}
                     onChange={setSkillFilter}
-                    options={categories}
-                    placeholder="All Skills"
+                    placeholder="Search skills..."
+                    allLabel="All Skills"
                   />
                 </div>
 
@@ -912,11 +913,11 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 />
               </div>
               <div style={{ minWidth: 160 }}>
-                <CustomDropdown
+                <SkillAutocomplete
                   value={taskCategoryFilter}
                   onChange={setTaskCategoryFilter}
-                  options={categories}
-                  placeholder="All Categories"
+                  placeholder="Search categories..."
+                  allLabel="All Categories"
                 />
               </div>
               <input
@@ -1376,7 +1377,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>copy this and paste it into your AI agent's chat:</span>
                     <button
                       onClick={() => {
-                        const snippet = `I want to hire a human from irlwork.ai for a task.\n\nName: ${showHireModal.name}\nProfile: https://www.irlwork.ai/humans/${showHireModal.id}\nSkills: ${(showHireModal.skills || []).join(', ') || 'General'}\nRate: $${showHireModal.hourly_rate || 25}/hr\n\nTo contact this human, use the irlwork.ai MCP server.\n\nIf you don't have an API key yet, help me set one up:\n- Open https://www.irlwork.ai/auth in my browser so I can create an account\n- Once I'm logged in, I can generate an API key from Dashboard > Settings > API Keys\n\nOnce you have the API key, add this to your MCP config:\n\n{\n  "mcpServers": {\n    "irlwork": {\n      "command": "npx",\n      "args": ["irlwork-mcp"],\n      "env": {\n        "IRLWORK_API_KEY": "YOUR_API_KEY_HERE"\n      }\n    }\n  }\n}\n\nThen use the start_conversation tool with humanId "${showHireModal.id}" to message them.`
+                        const snippet = `I want to hire a human from irlwork.ai for a task.\n\nName: ${showHireModal.name}\nProfile: https://www.irlwork.ai/humans/${showHireModal.id}\nSkills: ${(showHireModal.skills || []).join(', ') || 'General'}\nRate: $${showHireModal.hourly_rate || 25}/hr\n\nTo contact this human, use the irlwork.ai API.\n\nIf you don't have an API key yet, help me set one up:\n- Open https://www.irlwork.ai/auth in my browser so I can create an account\n- Once I'm logged in, I can generate an API key from Dashboard > Settings > API Keys\n\nOnce you have the API key, call the API like this:\n\ncurl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"method": "start_conversation", "params": {"human_id": "${showHireModal.id}"}}'\n\nUse the start_conversation method with human_id "${showHireModal.id}" to message them.`
                         navigator.clipboard.writeText(snippet)
                         toast.success('Copied to clipboard!')
                       }}
@@ -1393,27 +1394,21 @@ Profile: https://www.irlwork.ai/humans/${showHireModal.id}
 Skills: ${(showHireModal.skills || []).join(', ') || 'General'}
 Rate: $${showHireModal.hourly_rate || 25}/hr
 
-To contact this human, use the irlwork.ai MCP server.
+To contact this human, use the irlwork.ai API.
 
 If you don't have an API key yet, help me set one up:
 - Open https://www.irlwork.ai/auth in my browser so I can create an account
 - Once I'm logged in, I can generate an API key from Dashboard > Settings > API Keys
 
-Once you have the API key, add this to your MCP config:
+Once you have the API key, call the API:
 
-{
-  "mcpServers": {
-    "irlwork": {
-      "command": "npx",
-      "args": ["irlwork-mcp"],
-      "env": {
-        "IRLWORK_API_KEY": "YOUR_API_KEY_HERE"
-      }
-    }
-  }
-}
+POST https://api.irlwork.ai/api/mcp
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
 
-Then use the start_conversation tool with humanId "${showHireModal.id}" to message them.`}
+{"method": "start_conversation", "params": {"human_id": "${showHireModal.id}"}}
+
+Use the start_conversation method with human_id "${showHireModal.id}" to message them.`}
                   </div>
                   <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                     <div style={{ fontSize: 14, color: '#10B981', fontWeight: 500, marginBottom: 12 }}>how to use this</div>

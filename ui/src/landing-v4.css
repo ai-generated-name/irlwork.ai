@@ -6730,6 +6730,21 @@ select.select-v4-dark option:checked,
   font-size: 14px;
 }
 
+/* ─── SKILL AUTOCOMPLETE ─── */
+.skill-autocomplete-item {
+  justify-content: space-between;
+}
+
+.skill-autocomplete-check {
+  flex-shrink: 0;
+  color: var(--teal);
+}
+
+.skill-autocomplete-item.skill-active .city-autocomplete-v4-item-name {
+  font-weight: 600;
+  color: var(--teal);
+}
+
 /* ─── CUSTOM DROPDOWN COMPONENT ─── */
 .custom-dropdown {
   position: relative;

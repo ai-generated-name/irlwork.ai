@@ -874,6 +874,7 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
     feedback: 'Feedback',
     bug: 'Bug Report',
     feature_request: 'Feature Request',
+    agent_error: 'Agent Error',
     other: 'Other',
   }
 
@@ -986,6 +987,51 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
             <div>
               <p className="text-xs font-semibold text-gray-500 mb-1">Page</p>
               <p className="text-xs text-gray-400 font-mono break-all">{item.page_url}</p>
+            </div>
+          )}
+
+          {/* Agent Error Metadata */}
+          {item.metadata && item.type === 'agent_error' && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500">Error Details</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {item.metadata.action && (
+                  <div>
+                    <span className="text-gray-400">Action:</span>{' '}
+                    <span className="font-mono text-gray-700">{item.metadata.action}</span>
+                  </div>
+                )}
+                {item.metadata.error_code && (
+                  <div>
+                    <span className="text-gray-400">Error Code:</span>{' '}
+                    <span className="font-mono text-red-600">{item.metadata.error_code}</span>
+                  </div>
+                )}
+                {item.metadata.task_id && (
+                  <div>
+                    <span className="text-gray-400">Task:</span>{' '}
+                    <a href={`/tasks/${item.metadata.task_id}`} className="font-mono text-teal hover:underline">
+                      {item.metadata.task_id.slice(0, 8)}...
+                    </a>
+                  </div>
+                )}
+              </div>
+              {item.metadata.error_log && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Error Log</p>
+                  <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 overflow-x-auto max-h-48 overflow-y-auto font-mono whitespace-pre-wrap break-all">
+                    {item.metadata.error_log}
+                  </pre>
+                </div>
+              )}
+              {item.metadata.context && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Context</p>
+                  <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 overflow-x-auto max-h-32 overflow-y-auto font-mono whitespace-pre-wrap break-all">
+                    {JSON.stringify(item.metadata.context, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
 
