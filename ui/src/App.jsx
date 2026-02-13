@@ -5049,6 +5049,11 @@ function App() {
       debug('[Auth] Bare /dashboard, redirecting to mode-specific URL')
       const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
       navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path === '/browse') {
+      // Redirect bare /browse to /browse/tasks (or /browse/humans if legacy ?mode=humans)
+      const browseParams = new URLSearchParams(window.location.search)
+      const mode = browseParams.get('mode')
+      navigate(mode === 'humans' ? '/browse/humans' : '/browse/tasks')
     } else if (path.startsWith('/dashboard') && !user) {
       debug('[Auth] No user, redirecting to auth')
       navigate('/auth')
@@ -5113,7 +5118,7 @@ function App() {
     if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
-    if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
+    if (path === '/browse' || path === '/browse/tasks' || path === '/browse/humans') return <Suspense fallback={<Loading />}><BrowsePage user={user} navigate={navigate} /></Suspense>
 
     // Homepage
     if (path === '/') return <LandingPageV4 />
