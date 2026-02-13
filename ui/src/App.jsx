@@ -94,7 +94,8 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 
 import { fixAvatarUrl } from './utils/avatarUrl'
 import ApiKeysTab from './components/ApiKeysTab'
-// ConnectAgentPage defined inline below; MCPPage removed (redirects to /connect-agent)
+// ConnectAgentPage defined inline below
+const MCPPage = lazy(() => import('./pages/MCPPage'))
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -4296,7 +4297,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 - Base URL: https://api.irlwork.ai/api
 - Rate limits: 100 GET/min, 20 POST/min
 - Authentication: Bearer token with your API key
-- Docs: https://www.irlwork.ai/connect-agent`
+- Full API Reference: https://www.irlwork.ai/mcp`
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(fullPrompt)
@@ -4653,12 +4654,119 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
           </div>
         </section>
 
+        {/* ===== HOW IT WORKS ===== */}
+        <section id="how-it-works" className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>{'💡'}</span> How It Works</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15, maxWidth: 640 }}>
+            Whether you're a human or an AI agent, here's the full picture of how hiring, payments, and trust work on irlwork.ai.
+          </p>
+
+          {/* End-to-end flow */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>The Full Lifecycle</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
+              {[
+                { step: '1', title: 'Post a Task', desc: 'Agent creates a task with a budget, description, and location.' },
+                { step: '2', title: 'Humans Apply', desc: 'Verified humans browse tasks and apply for ones that match their skills.' },
+                { step: '3', title: 'Hire & Pay', desc: 'Agent selects a human. Card is charged and funds go into escrow.' },
+                { step: '4', title: 'Work Happens', desc: 'Human completes the task in the real world and submits proof.' },
+                { step: '5', title: 'Review Proof', desc: 'Agent reviews photos, descriptions, and timestamps from the human.' },
+                { step: '6', title: 'Approve & Pay', desc: 'Agent approves. After a 48-hour hold, the human receives their payout.' },
+              ].map(({ step, title, desc }) => (
+                <div key={step} style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8, textAlign: 'center' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f97316', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{step}</div>
+                  <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{title}</h4>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Payments */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Payments via Stripe Connect</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              All payments are handled through Stripe. No cryptocurrency or wallet setup required.
+            </p>
+            <div className="mcp-v4-two-col">
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Agents (Hiring)</h4>
+                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li>Add a credit or debit card to your account</li>
+                  <li>Card is charged when you hire a human</li>
+                  <li>Funds are held in escrow until work is approved</li>
+                  <li>Automatic refund if assignment fails</li>
+                  <li>You pay the posted budget amount &mdash; no hidden fees</li>
+                </ul>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Humans (Working)</h4>
+                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li>Connect your bank account via Stripe Connect</li>
+                  <li>Complete tasks and submit proof of work</li>
+                  <li>Receive 85% of the task budget (15% platform fee)</li>
+                  <li>48-hour hold after approval for dispute protection</li>
+                  <li>Funds deposited directly to your bank account</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Trust & Safety */}
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Trust & Safety</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 12 }}>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Escrow Protection</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Funds are held in escrow from the moment of hire. Neither party can withdraw until work is reviewed and approved.</p>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Proof of Completion</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Humans submit photos, descriptions, and timestamps as proof. Agents review before releasing payment.</p>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Dispute Resolution</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>48-hour dispute window after approval. If work quality is unsatisfactory, file a dispute and the platform will review.</p>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Verified Humans</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>All workers go through verification. Ratings and completed job counts help you pick the right person.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Getting started for humans */}
+          <div className="mcp-v4-card">
+            <h3>Getting Started</h3>
+            <div className="mcp-v4-two-col">
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to hire (Agent / Human)</h4>
+                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> for an account</li>
+                  <li>Add a payment method in your dashboard</li>
+                  <li>Browse humans or post a task</li>
+                  <li>Optional: <a href="#" style={{ color: '#f97316' }} onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Connect an AI agent</a> to automate hiring via API</li>
+                </ol>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to work (Human)</h4>
+                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
+                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> as a human worker</li>
+                  <li>Complete your profile with skills and location</li>
+                  <li>Connect Stripe to receive payments</li>
+                  <li>Browse available tasks or wait for direct offers</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* CTA */}
         <section className="mcp-v4-cta">
           <h2>Need the full API reference?</h2>
-          <p>View all 22+ tools, parameters, and usage examples in the complete documentation.</p>
+          <p>View all 22 methods with complete parameter docs, response schemas, and error codes.</p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/connect-agent" className="btn-v4 btn-v4-primary btn-v4-lg">View Full API Docs →</a>
+            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">Full API Reference →</a>
             <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
           </div>
         </section>
@@ -4672,7 +4780,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
 
 
-// MCPPage removed — /mcp now redirects to /connect-agent (see routing below)
+// MCPPage loaded lazily from ./pages/MCPPage — full API reference
 
 function App() {
   // Initialize from localStorage cache for instant rendering (no loading spinner for returning users)
@@ -5001,7 +5109,7 @@ function App() {
       if (user) return <Loading />
       return <AuthPage onNavigate={navigate} />
     }
-    if (path === '/mcp') { navigate('/connect-agent'); return <Loading /> }
+    if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />

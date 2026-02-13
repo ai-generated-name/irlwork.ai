@@ -57,9 +57,9 @@ export default function MarketingFooter() {
           <div>
             <h4 className="footer-v4-column-title">For Agents</h4>
             <div className="footer-v4-links">
-              <a href="/connect-agent" className="footer-v4-link">API Docs</a>
+              <a href="/mcp" className="footer-v4-link">API Docs</a>
               <a href="/connect-agent" className="footer-v4-link">MCP Protocol</a>
-              <a href="/connect-agent" className="footer-v4-link">Integration</a>
+              <a href="/connect-agent#how-it-works" className="footer-v4-link">Integration</a>
             </div>
           </div>
 
