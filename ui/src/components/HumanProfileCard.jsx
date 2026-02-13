@@ -173,19 +173,6 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
             }}>
               <MapPin size={12} style={{ color: '#F4845F', flexShrink: 0 }} />
               {human.city}{human.state ? `, ${human.state}` : ''}
-            </span>
-          )}
-          {human.timezone && (
-            <span style={{
-              fontSize: 12,
-              color: 'var(--text-tertiary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-              marginTop: 2
-            }}>
-              <MapPin size={12} style={{ color: '#F4845F' }} />
-              {human.city}{human.state ? `, ${human.state}` : ''}
               {human.timezone && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
                   <Clock size={11} style={{ color: 'var(--text-tertiary)' }} />
