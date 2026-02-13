@@ -103,6 +103,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         <div style={{ position: 'relative', flexShrink: 0 }}>
           {human.avatar_url ? (
             <img
+              key={human.avatar_url}
               src={human.avatar_url}
               alt={human.name || ''}
               style={{

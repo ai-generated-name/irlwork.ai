@@ -2837,7 +2837,7 @@ app.get('/api/avatar/:userId', async (req, res) => {
     const { data: user } = await supabase.from('users').select('avatar_url, avatar_r2_key, name').eq('id', req.params.userId).single();
     if (!user) return res.status(404).send('No avatar');
 
-    // If avatar_r2_key exists, serve directly from R2
+    // If avatar_r2_key exists and R2 is configured, serve directly from R2
     if (user.avatar_r2_key) {
       const getEnv = (k) => {
         try { return require('process').env[k]; } catch { return null; }
@@ -2847,22 +2847,26 @@ app.get('/api/avatar/:userId', async (req, res) => {
       const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
       const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
 
-      if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
-        return res.status(404).send('Storage not configured');
+      if (R2_ACCOUNT_ID && R2_ACCESS_KEY && R2_SECRET_KEY) {
+        try {
+          const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+          const s3Client = new S3Client({
+            region: 'auto',
+            endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+            credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+          });
+
+          const result = await s3Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: user.avatar_r2_key }));
+
+          res.set('Content-Type', result.ContentType || 'image/jpeg');
+          res.set('Cache-Control', 'public, max-age=300');
+          return result.Body.pipe(res);
+        } catch (r2Err) {
+          console.error('Avatar R2 fetch error:', r2Err.message);
+          // Fall through to external URL redirect or 404
+        }
       }
-
-      const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
-      const s3Client = new S3Client({
-        region: 'auto',
-        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-        credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
-      });
-
-      const result = await s3Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: user.avatar_r2_key }));
-
-      res.set('Content-Type', result.ContentType || 'image/jpeg');
-      res.set('Cache-Control', 'public, max-age=300');
-      return result.Body.pipe(res);
+      // R2 not configured or fetch failed — fall through to fallback below
     }
 
     // Fallback: if avatar_url is an external URL (e.g., Google profile pic), redirect to it
