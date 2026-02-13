@@ -481,7 +481,9 @@ function getAvatarUrl(user, req) {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   if (!host) return user.avatar_url || '';
-  return `${protocol}://${host}/api/avatar/${user.id}`;
+  // Include cache-buster from updated_at so browsers always serve the latest avatar
+  const cacheBuster = user.updated_at ? new Date(user.updated_at).getTime() : Date.now();
+  return `${protocol}://${host}/api/avatar/${user.id}?v=${cacheBuster}`;
 }
 
 /**
@@ -2738,19 +2740,26 @@ app.post('/api/upload/avatar', async (req, res) => {
   const API_BASE = host ? `${protocol}://${host}` : (getEnv('API_URL') || `http://localhost:${PORT}`);
 
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
-    // Demo mode — no R2 creds, use API proxy URL so avatar still works via /api/avatar/:id
+    // Demo mode — no R2 creds, store base64 in DB so proxy can serve it
     const { file, filename, mimeType } = req.body;
     const fileCheck = validateUploadFile(filename, mimeType);
     if (!fileCheck.valid) return res.status(400).json({ error: fileCheck.error });
+    if (!file) return res.status(400).json({ error: 'No file provided' });
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
     const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${fileCheck.ext}`;
-    console.log(`[R2 DEMO] Would upload avatar to R2 key: ${uniqueFilename}`);
+    console.log(`[R2 DEMO] Storing avatar in DB for user: ${user.id}`);
 
-    // Use API proxy URL as the avatar URL (always accessible)
-    // Include cache-buster so browsers serve the fresh image on all pages
+    // Store the base64 data URL in DB so the proxy endpoint can serve it
+    const avatarData = file.startsWith('data:') ? file : `data:${mimeType || 'image/jpeg'};base64,${file}`;
+
     const avatarUrl = `${API_BASE}/api/avatar/${user.id}?v=${timestamp}`;
-    await supabase.from('users').update({ avatar_url: avatarUrl, avatar_r2_key: uniqueFilename, updated_at: new Date().toISOString() }).eq('id', user.id);
+    await supabase.from('users').update({
+      avatar_url: avatarUrl,
+      avatar_r2_key: uniqueFilename,
+      avatar_data: avatarData,
+      updated_at: new Date().toISOString()
+    }).eq('id', user.id);
 
     return res.json({ url: avatarUrl, filename: uniqueFilename, success: true, demo: true });
   }
@@ -2784,6 +2793,23 @@ app.post('/api/upload/avatar', async (req, res) => {
       fileData = Buffer.from(file, 'base64');
     }
 
+    // Delete old R2 avatar if it exists
+    const oldR2Key = user.avatar_r2_key;
+    if (oldR2Key) {
+      try {
+        const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+        const s3Client = new S3Client({
+          region: 'auto',
+          endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+          credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+        });
+        await s3Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: oldR2Key }));
+        console.log(`[Avatar] Deleted old R2 avatar: ${oldR2Key}`);
+      } catch (delErr) {
+        console.warn(`[Avatar] Failed to delete old R2 avatar (non-fatal): ${delErr.message}`);
+      }
+    }
+
     try {
       const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
       const s3Client = new S3Client({
@@ -2810,10 +2836,14 @@ app.post('/api/upload/avatar', async (req, res) => {
     // Include cache-buster so browsers/CDNs serve the fresh image on all pages.
     const avatarUrl = `${API_BASE}/api/avatar/${user.id}?v=${timestamp}`;
 
-    // Save both the display URL and the R2 key (for proxy serving)
+    // Store base64 in DB as fallback when R2 is unavailable
+    const avatarDataUrl = file.startsWith('data:') ? file : `data:${mimeType || 'image/jpeg'};base64,${file}`;
+
+    // Save display URL, R2 key, and base64 fallback
     const { error: dbError } = await supabase.from('users').update({
       avatar_url: avatarUrl,
       avatar_r2_key: uniqueFilename,
+      avatar_data: avatarDataUrl,
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
 
@@ -2829,12 +2859,12 @@ app.post('/api/upload/avatar', async (req, res) => {
   }
 });
 
-// ============ AVATAR SERVE (proxy from R2) ============
+// ============ AVATAR SERVE (proxy from R2, fallback to DB base64) ============
 app.get('/api/avatar/:userId', async (req, res) => {
   if (!supabase) return res.status(404).send('Not found');
 
   try {
-    const { data: user } = await supabase.from('users').select('avatar_url, avatar_r2_key, name').eq('id', req.params.userId).single();
+    const { data: user } = await supabase.from('users').select('avatar_url, avatar_r2_key, avatar_data, name').eq('id', req.params.userId).single();
     if (!user) return res.status(404).send('No avatar');
 
     // If avatar_r2_key exists and R2 is configured, serve directly from R2
@@ -2863,10 +2893,27 @@ app.get('/api/avatar/:userId', async (req, res) => {
           return result.Body.pipe(res);
         } catch (r2Err) {
           console.error('Avatar R2 fetch error:', r2Err.message);
-          // Fall through to external URL redirect or 404
+          // Fall through to DB base64 fallback
         }
       }
-      // R2 not configured or fetch failed — fall through to fallback below
+    }
+
+    // Fallback: serve from avatar_data (base64 stored in DB)
+    if (user.avatar_data) {
+      try {
+        // Parse data URL: "data:image/jpeg;base64,/9j/4AAQ..."
+        const matches = user.avatar_data.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+          const contentType = matches[1];
+          const base64Body = matches[2];
+          const imgBuffer = Buffer.from(base64Body, 'base64');
+          res.set('Content-Type', contentType);
+          res.set('Cache-Control', 'public, max-age=300');
+          return res.send(imgBuffer);
+        }
+      } catch (b64Err) {
+        console.error('Avatar base64 decode error:', b64Err.message);
+      }
     }
 
     // Fallback: if avatar_url is an external URL (e.g., Google profile pic), redirect to it
