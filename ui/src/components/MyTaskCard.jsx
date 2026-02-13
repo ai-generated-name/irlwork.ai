@@ -22,6 +22,7 @@ const CATEGORY_ICONS = {
 
 const STATUS_CONFIG = {
   open: { label: 'Open', className: 'mytasks-status--open' },
+  pending_acceptance: { label: 'Pending Acceptance', className: 'mytasks-status--pending' },
   accepted: { label: 'Accepted', className: 'mytasks-status--accepted' },
   assigned: { label: 'Assigned', className: 'mytasks-status--accepted' },
   in_progress: { label: 'In Progress', className: 'mytasks-status--in-progress' },
@@ -37,6 +38,7 @@ export default function MyTaskCard({
   task,
   variant = 'active', // 'active' | 'review' | 'compact'
   onAccept,
+  onDecline,
   onStartWork,
   onSubmitProof,
   onClick,
@@ -136,6 +138,14 @@ export default function MyTaskCard({
 
       <div className="mytasks-card__footer">
         <div className="mytasks-card__actions">
+          {task.status === 'pending_acceptance' && onAccept && (
+            <>
+              <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onAccept)}>Accept Task</button>
+              {onDecline && (
+                <button className="v4-btn v4-btn-secondary" onClick={(e) => handleAction(e, onDecline)}>Decline</button>
+              )}
+            </>
+          )}
           {task.status === 'open' && onAccept && (
             <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onAccept)}>Accept Task</button>
           )}

@@ -103,6 +103,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         <div style={{ position: 'relative', flexShrink: 0 }}>
           {human.avatar_url ? (
             <img
+              key={human.avatar_url}
               src={human.avatar_url}
               alt={human.name || ''}
               style={{
@@ -172,19 +173,6 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               textOverflow: 'ellipsis'
             }}>
               <MapPin size={12} style={{ color: '#F4845F', flexShrink: 0 }} />
-              {human.city}{human.state ? `, ${human.state}` : ''}
-            </span>
-          )}
-          {human.timezone && (
-            <span style={{
-              fontSize: 12,
-              color: 'var(--text-tertiary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-              marginTop: 2
-            }}>
-              <MapPin size={12} style={{ color: '#F4845F' }} />
               {human.city}{human.state ? `, ${human.state}` : ''}
               {human.timezone && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>

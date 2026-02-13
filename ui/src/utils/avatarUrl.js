@@ -7,8 +7,9 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 export function fixAvatarUrl(userOrUsers) {
   const fix = (u) => {
     if (!u || !u.avatar_url) return u;
-    // If avatar_url contains a broken format, replace with proxy URL
-    if (u.avatar_url.includes('.public/') || u.avatar_url.includes('pub-r2.dev/')) {
+    // If avatar_url is a direct R2 public URL, replace with proxy URL
+    // R2 public URLs look like: pub-{accountId}.r2.dev/avatars/...
+    if (u.avatar_url.includes('.public/') || u.avatar_url.includes('.r2.dev/')) {
       return { ...u, avatar_url: `${API_URL}/avatar/${u.id}` };
     }
     return u;

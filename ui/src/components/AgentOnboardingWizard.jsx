@@ -69,9 +69,9 @@ const STEPS = [
       steps: [
         { number: '1', text: 'Go to the Connect Agent page' },
         { number: '2', text: 'Copy the prompt into your AI agent (Claude, ChatGPT, etc.)' },
-        { number: '3', text: 'Ask your agent to hire a human — it handles the rest' },
+        { number: '3', text: 'Your agent will walk you through creating an account and getting an API key' },
       ],
-      tip: 'The prompt includes your API key and MCP setup automatically. No extra configuration needed.',
+      tip: 'The prompt tells your agent how to help you sign up and configure everything. Just paste it and follow along.',
       href: '/connect-agent',
     },
   },

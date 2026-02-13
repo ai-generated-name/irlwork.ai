@@ -1972,13 +1972,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const acceptTask = async (taskId) => {
     try {
-      await fetch(`${API_URL}/tasks/${taskId}/accept`, {
+      const res = await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
         headers: { Authorization: user.token || user.id }
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        if (data.code === 'payment_error') {
+          debug('Payment failed — the agent\'s card could not be charged. Contact the agent.')
+          return
+        }
+      }
       fetchTasks()
     } catch (e) {
       debug('Could not accept task')
+    }
+  }
+
+  const declineTask = async (taskId, reason = '') => {
+    try {
+      await fetch(`${API_URL}/tasks/${taskId}/decline`, {
+        method: 'POST',
+        headers: {
+          Authorization: user.token || user.id,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+      })
+      fetchTasks()
+    } catch (e) {
+      debug('Could not decline task')
     }
   }
 
@@ -2074,6 +2097,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const getStatusLabel = (status) => {
     const labels = {
       open: 'Open',
+      pending_acceptance: 'Pending Acceptance',
       accepted: 'Accepted',
       in_progress: 'In Progress',
       pending_review: 'Pending Review',
@@ -2204,6 +2228,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 </svg>
               </span>
               <span className="dashboard-v4-nav-label">Follow us on X</span>
+            </div>
+          </a>
+          {/* Contact */}
+          <a
+            href="/contact"
+            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
+            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
+          >
+            <div className="dashboard-v4-nav-item-content">
+              <span className="dashboard-v4-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+              </span>
+              <span className="dashboard-v4-nav-label">Contact Us</span>
             </div>
           </a>
           {/* Feedback */}
@@ -2371,7 +2411,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               >
                 <div className="dashboard-v4-user-avatar">
                   {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                    <img key={user.avatar_url} src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                   ) : null}
                   <span style={{ display: user?.avatar_url ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                     {user?.name?.charAt(0) || '?'}
@@ -2387,7 +2427,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   <div className="dashboard-v4-user-dropdown-header">
                     <div className="dashboard-v4-user-dropdown-avatar">
                       {user?.avatar_url ? (
-                        <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                        <img key={user.avatar_url} src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                       ) : null}
                       <span style={{ display: user?.avatar_url ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                         {user?.name?.charAt(0) || '?'}
@@ -2887,6 +2927,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 tasks={tasks}
                 loading={loading}
                 acceptTask={acceptTask}
+                declineTask={declineTask}
                 onStartWork={startWork}
                 setShowProofSubmit={setShowProofSubmit}
                 notifications={notifications}
@@ -3097,7 +3138,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   onClick={() => avatarInputRef.current?.click()}
                 >
                   {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt={user?.name || ''} style={{
+                    <img key={user.avatar_url} src={user.avatar_url} alt={user?.name || ''} style={{
                       width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
                       boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
                     }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
@@ -3186,7 +3227,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         const controller = new AbortController()
                         const timeout = setTimeout(() => controller.abort(), 60000)
                         try {
-                          const payload = JSON.stringify({ file: base64, filename: file.name, mimeType: fileToUpload.type || 'image/jpeg' })
+                          // Use compressed file's name/type — HEIC files get compressed to JPEG client-side
+                          // but server rejects .heic extensions, so derive the correct filename
+                          const uploadExt = (fileToUpload.type === 'image/jpeg' || !fileToUpload.type) ? 'jpg'
+                            : fileToUpload.type === 'image/png' ? 'png'
+                            : fileToUpload.type === 'image/webp' ? 'webp'
+                            : fileToUpload.type === 'image/gif' ? 'gif'
+                            : 'jpg'
+                          const uploadFilename = file.name.replace(/\.[^.]+$/, `.${uploadExt}`)
+                          // Use the matching MIME type for the derived extension — if compression failed
+                          // on HEIC, fileToUpload.type would still be 'image/heic' which the server rejects
+                          const uploadMime = uploadExt === 'jpg' ? 'image/jpeg'
+                            : uploadExt === 'png' ? 'image/png'
+                            : uploadExt === 'webp' ? 'image/webp'
+                            : uploadExt === 'gif' ? 'image/gif'
+                            : 'image/jpeg'
+                          const payload = JSON.stringify({ file: base64, filename: uploadFilename, mimeType: uploadMime })
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
@@ -3196,10 +3252,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           clearTimeout(timeout)
                           if (res.ok) {
                             const data = await res.json()
-                            const avatarProxyUrl = `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
-                            const updatedUser = { ...user, avatar_url: avatarProxyUrl }
-                            setUser(updatedUser)
+                            // Use the base64 data URL for instant display — no network round-trip,
+                            // no proxy dependency, guaranteed to show immediately.
+                            // Subsequent page loads will use the proxy URL from the DB.
+                            const updatedUser = { ...user, avatar_url: base64 }
+                            onUserUpdate(updatedUser)
                             localStorage.setItem('user', JSON.stringify(updatedUser))
+                            // Update the humans array so browse cards reflect the new avatar instantly
+                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: base64 } : h))
                             toast.success('Profile photo updated!')
                           } else {
                             const errText = await res.text().catch(() => '')
@@ -3656,6 +3716,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     if (data.user && onUserUpdate) {
                       const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
                       onUserUpdate(updatedUser)
+                      // Sync browse cards with updated profile data (name, city, bio, rate, etc.)
+                      setHumans(prev => prev.map(h => h.id === user.id ? { ...h, ...updatedUser } : h))
                     }
                   } else {
                     const err = await res.json()
@@ -4196,19 +4258,27 @@ function ConnectAgentPage() {
 
   const apiKeySection = keys.length > 0
     ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring`
-    : `Register your agent to get an API key:
+    : `To use irlwork.ai, you need an API key. Help the user get one:
+
+**Option A — Create an account (recommended):**
+Ask the user to sign up at https://www.irlwork.ai/auth — once logged in, they can generate API keys from Dashboard > Settings > API Keys. If possible, open this URL in their browser automatically.
+
+**Option B — Register via API:**
+Ask the user for their preferred email, password, and agent name. Then call:
 
 \`\`\`bash
 curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
   -H 'Content-Type: application/json' \\
   -d '{
-    "email": "your-agent@example.com",
-    "password": "your_secure_password",
-    "agent_name": "My AI Agent"
+    "email": "USER_PROVIDED_EMAIL",
+    "password": "USER_PROVIDED_PASSWORD",
+    "agent_name": "USER_PROVIDED_AGENT_NAME"
   }'
 \`\`\`
 
-Save the api_key from the response — it won't be shown again.`
+Save the api_key from the response — it won't be shown again.
+
+**Important:** Never use placeholder values. Always ask the user for their actual email, password, and agent name before making this request.`
 
   // Build the full prompt from the API template (single source of truth)
   // Falls back to a minimal prompt if the API fetch hasn't completed yet
@@ -4244,9 +4314,9 @@ Save the api_key from the response — it won't be shown again.`
     navigator.clipboard.writeText(`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
   -H 'Content-Type: application/json' \\
   -d '{
-    "email": "your-agent@example.com",
-    "password": "your_secure_password",
-    "agent_name": "My AI Agent"
+    "email": "YOUR_EMAIL",
+    "password": "YOUR_PASSWORD",
+    "agent_name": "YOUR_AGENT_NAME"
   }'`)
     setCopiedCurl(true)
     setTimeout(() => setCopiedCurl(false), 2500)
@@ -4331,8 +4401,8 @@ Save the api_key from the response — it won't be shown again.`
               <div className="connect-agent-step">
                 <div className="connect-agent-step-num">3</div>
                 <div>
-                  <strong>Ask it to hire a human</strong>
-                  <p>"Find someone to deliver a package"</p>
+                  <strong>Your agent walks you through setup</strong>
+                  <p>It will help you create an account and get an API key</p>
                 </div>
               </div>
             </div>
@@ -4354,29 +4424,41 @@ Save the api_key from the response — it won't be shown again.`
           {/* Step 1: API Key */}
           <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
             <h3>Step 1: Get Your API Key</h3>
-            <p>Register your agent with a single command — no browser needed:</p>
-            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
-              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
+            <p>Create an account or register via the API to get your key:</p>
+
+            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16, marginBottom: 16 }}>
+              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Option A: Sign up on the website (recommended)</h4>
+              <p style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>Create an account, then generate API keys from your dashboard.</p>
+              <a href="/auth" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px' }}>Sign Up / Log In →</a>
+            </div>
+
+            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16 }}>
+              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Option B: Register via API</h4>
+              <p style={{ color: '#666', fontSize: 13, marginBottom: 8 }}>Replace the placeholder values with your own email, password, and agent name:</p>
+              <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
+                <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
   -H 'Content-Type: application/json' \\
   -d '{
-    "email": "your-agent@example.com",
-    "password": "your_secure_password",
-    "agent_name": "My AI Agent"
+    "email": "YOUR_EMAIL",
+    "password": "YOUR_PASSWORD",
+    "agent_name": "YOUR_AGENT_NAME"
   }'`}</pre>
-              <button
-                onClick={handleCopyCurl}
-                style={{
-                  position: 'absolute', top: 8, right: 8,
-                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
-                }}
-              >
-                {copiedCurl ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
-              </button>
+                <button
+                  onClick={handleCopyCurl}
+                  style={{
+                    position: 'absolute', top: 8, right: 8,
+                    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                  }}
+                >
+                  {copiedCurl ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                </button>
+              </div>
+              <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
             </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 8 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring/settings" style={{ color: 'var(--orange-600)' }}>Dashboard → API Keys</a> tab.</p>
+
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring/settings" style={{ color: 'var(--orange-600)' }}>Dashboard → Settings → API Keys</a> tab.</p>
           </div>
 
           {/* Dynamic API Key Display */}
@@ -4419,7 +4501,7 @@ Save the api_key from the response — it won't be shown again.`
             ) : (
               <div>
                 <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
-                  Sign up to generate your API key, or use the headless registration above.
+                  Sign up to generate your API key, or register via the API above.
                 </p>
                 <a href="/auth" className="btn-v4 btn-v4-primary">
                   Sign Up
@@ -4968,6 +5050,11 @@ function App() {
       debug('[Auth] Bare /dashboard, redirecting to mode-specific URL')
       const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
       navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path === '/browse') {
+      // Redirect bare /browse to /browse/tasks (or /browse/humans if legacy ?mode=humans)
+      const browseParams = new URLSearchParams(window.location.search)
+      const mode = browseParams.get('mode')
+      navigate(mode === 'humans' ? '/browse/humans' : '/browse/tasks')
     } else if (path.startsWith('/dashboard') && !user) {
       debug('[Auth] No user, redirecting to auth')
       navigate('/auth')
@@ -5032,7 +5119,7 @@ function App() {
     if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
-    if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
+    if (path === '/browse' || path === '/browse/tasks' || path === '/browse/humans') return <Suspense fallback={<Loading />}><BrowsePage user={user} navigate={navigate} /></Suspense>
 
     // Homepage
     if (path === '/') return <LandingPageV4 />
