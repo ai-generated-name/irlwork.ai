@@ -3990,11 +3990,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
         {/* API Keys Tab - Hiring mode only */}
         {activeTab === 'api-keys' && (
-          <div>
-            <h1 className="dashboard-v4-page-title">API Keys</h1>
-            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
-              <ApiKeysTab user={user} />
-            </div>
+          <div style={{ maxWidth: 700 }}>
+            <ApiKeysTab user={user} />
           </div>
         )}
 
