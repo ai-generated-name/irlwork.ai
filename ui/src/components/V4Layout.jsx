@@ -2,6 +2,7 @@
 // Provides consistent navbar, footer, and styling across all pages
 
 import React, { useState } from 'react'
+import MarketingFooter from './Footer'
 
 // V4 Design Tokens as CSS-in-JS for non-landing pages
 export const v4 = {
@@ -140,95 +141,6 @@ export function NavbarV4({ user, onLogout }) {
   )
 }
 
-// Shared Footer Component
-export function FooterV4() {
-  return (
-    <footer className="footer-v4" style={{
-      background: v4.colors.teal900,
-      color: 'white',
-      padding: '64px 32px 48px',
-      fontFamily: v4.fonts.display,
-    }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div className="footer-v4-grid" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 48,
-          marginBottom: 48,
-        }}>
-          {/* Brand */}
-          <div className="footer-v4-brand" style={{ gridColumn: 'span 2' }}>
-            <a href="/" className="logo-v4" style={{ marginBottom: 16 }}>
-              <div className="logo-mark-v4">irl</div>
-              <span className="logo-name-v4">irlwork.ai</span>
-            </a>
-            <p style={{
-              color: 'rgba(255,255,255,0.7)',
-              fontSize: 14,
-              lineHeight: 1.6,
-              maxWidth: 350,
-            }}>
-              AI agents create work. Humans get paid.
-            </p>
-          </div>
-
-          {/* Platform Links */}
-          <div>
-            <h4 style={{
-              fontSize: 12,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              color: 'rgba(255,255,255,0.5)',
-              marginBottom: 16,
-            }}>Platform</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <a href="/dashboard" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 14 }}>Browse Tasks</a>
-              <a href="/auth" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 14 }}>Sign Up</a>
-              <a href="/" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 14 }}>How It Works</a>
-            </div>
-          </div>
-
-          {/* For Agents */}
-          <div>
-            <h4 style={{
-              fontSize: 12,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              color: 'rgba(255,255,255,0.5)',
-              marginBottom: 16,
-            }}>For Agents</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <a href="/connect-agent" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 14 }}>API Docs</a>
-              <a href="/connect-agent" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 14 }}>Integration</a>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom */}
-        <div className="footer-v4-bottom" style={{
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-          paddingTop: 32,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
-            © 2026 irl work.ai — All rights reserved
-          </p>
-          <div style={{ display: 'flex', gap: 24 }}>
-            <a href="/privacy" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none', fontSize: 14 }}>Privacy Policy</a>
-            <a href="/terms" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none', fontSize: 14 }}>Terms of Service</a>
-          </div>
-        </div>
-      </div>
-    </footer>
-  )
-}
-
 // Page Layout Wrapper
 export function PageLayoutV4({ children, user, onLogout, showNavbar = true, showFooter = true }) {
   return (
@@ -242,7 +154,7 @@ export function PageLayoutV4({ children, user, onLogout, showNavbar = true, show
       <main style={{ paddingTop: showNavbar ? 80 : 0 }}>
         {children}
       </main>
-      {showFooter && <FooterV4 />}
+      {showFooter && <MarketingFooter />}
     </div>
   )
 }
@@ -432,4 +344,4 @@ export function BadgeV4({ children, variant = 'default', style = {} }) {
   )
 }
 
-export default { v4, NavbarV4, FooterV4, PageLayoutV4, ButtonV4, InputV4, CardV4, LoadingV4, BadgeV4 }
+export default { v4, NavbarV4, PageLayoutV4, ButtonV4, InputV4, CardV4, LoadingV4, BadgeV4 }

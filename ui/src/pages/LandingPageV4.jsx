@@ -5,6 +5,7 @@ import {
   Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight,
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
+import MarketingFooter from '../components/Footer'
 
 // Animated Counter Component
 function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
@@ -509,7 +510,7 @@ export default function LandingPageV4() {
       <CTASection navigate={navigate} />
 
       {/* Footer */}
-      <Footer />
+      <MarketingFooter />
     </div>
   )
 }
