@@ -25,15 +25,30 @@ export default function TaskMessageThread({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Poll for new messages every 3 seconds (parent passes incremental loader)
+  // Poll for new messages every 3 seconds, pausing when tab is hidden
   useEffect(() => {
     if (!conversation) return;
 
-    const interval = setInterval(() => {
-      onLoadMessages?.();
-    }, 3000);
+    let interval = null;
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(() => { onLoadMessages?.(); }, 3000);
+    };
+    const stopPolling = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        onLoadMessages?.(); // Fetch immediately on return
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
 
-    return () => clearInterval(interval);
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => { stopPolling(); document.removeEventListener('visibilitychange', handleVisibility); };
   }, [conversation, onLoadMessages]);
 
   const handleSubmit = async (e) => {
