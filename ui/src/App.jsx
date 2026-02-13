@@ -4682,11 +4682,10 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
               </div>
             </div>
             <div>
-              <h4 className="footer-v4-column-title">Contact</h4>
+              <h4 className="footer-v4-column-title">Company</h4>
               <div className="footer-v4-links">
+                <a href="/" className="footer-v4-link">About Us</a>
                 <a href="/contact" className="footer-v4-link">Contact Us</a>
-                <a href="mailto:support@irlwork.ai" className="footer-v4-link">support@irlwork.ai</a>
-                <a href="mailto:press@irlwork.ai" className="footer-v4-link">press@irlwork.ai</a>
               </div>
             </div>
           </div>
