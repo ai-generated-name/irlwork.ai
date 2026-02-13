@@ -2997,14 +2997,51 @@ app.get('/api/avatar/:userId', async (req, res) => {
   }
 });
 
-// Debug endpoint — check avatar storage status for a user
+// Debug endpoint — check avatar storage status and test R2 fetch
 app.get('/api/avatar/:userId/debug', async (req, res) => {
   if (!supabase) return res.json({ error: 'No DB' });
-  const { data: user } = await supabase.from('users').select('id, avatar_url, avatar_r2_key, avatar_data, updated_at').eq('id', req.params.userId).single();
-  if (!user) return res.json({ error: 'User not found' });
+  const { data: user, error: dbErr } = await supabase.from('users').select('id, avatar_url, avatar_r2_key, avatar_data, updated_at').eq('id', req.params.userId).single();
+  if (!user) return res.json({ error: 'User not found', dbErr: dbErr?.message });
 
   const getEnv = (k) => { try { return require('process').env[k]; } catch { return null; } };
-  const hasR2 = !!(getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID'));
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+  const hasR2 = !!(R2_ACCOUNT_ID && R2_ACCESS_KEY && R2_SECRET_KEY);
+
+  // Test R2 fetch if configured and key exists
+  let r2_test = 'NOT_TESTED';
+  if (hasR2 && user.avatar_r2_key) {
+    try {
+      const { S3Client, HeadObjectCommand } = require('@aws-sdk/client-s3');
+      const s3Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+      });
+      const head = await s3Client.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: user.avatar_r2_key }));
+      r2_test = `OK — ${head.ContentLength} bytes, type=${head.ContentType}`;
+    } catch (r2Err) {
+      r2_test = `FAILED — ${r2Err.name}: ${r2Err.message}`;
+    }
+  }
+
+  // Test avatar_data decode
+  let avatar_data_test = 'NOT_TESTED';
+  if (user.avatar_data) {
+    const matches = user.avatar_data.match(/^data:([^;]+);base64,(.+)$/);
+    if (matches) {
+      try {
+        const buf = Buffer.from(matches[2], 'base64');
+        avatar_data_test = `OK — ${buf.length} bytes decoded, type=${matches[1]}`;
+      } catch (e) {
+        avatar_data_test = `DECODE_FAILED — ${e.message}`;
+      }
+    } else {
+      avatar_data_test = `INVALID_FORMAT — starts with: ${user.avatar_data.substring(0, 50)}`;
+    }
+  }
 
   res.json({
     user_id: user.id,
@@ -3012,8 +3049,12 @@ app.get('/api/avatar/:userId/debug', async (req, res) => {
     avatar_r2_key: user.avatar_r2_key || null,
     has_avatar_data: !!user.avatar_data,
     avatar_data_length: user.avatar_data ? user.avatar_data.length : 0,
+    avatar_data_preview: user.avatar_data ? user.avatar_data.substring(0, 60) + '...' : null,
     updated_at: user.updated_at,
     r2_configured: hasR2,
+    r2_bucket: R2_BUCKET,
+    r2_test,
+    avatar_data_test,
     diagnosis: !user.avatar_url ? 'NO_AVATAR_URL' :
                !user.avatar_r2_key && !user.avatar_data ? 'NO_STORAGE' :
                hasR2 && user.avatar_r2_key ? 'SHOULD_WORK_VIA_R2' :
