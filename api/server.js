@@ -2805,7 +2805,7 @@ app.post('/api/upload/avatar', async (req, res) => {
 
   try {
     const { file, filename, mimeType } = req.body;
-    console.log(`[Avatar Upload] User: ${user.id}, Filename: ${filename}, MimeType: ${mimeType}, HasFile: ${!!file}`);
+    console.log(`[Avatar Upload] User: ${user.id}, Filename: ${filename}, MimeType: ${mimeType}, HasFile: ${!!file}, FileStringLength: ${file?.length || 0}`);
     if (!file) return res.status(400).json({ error: 'No file provided' });
 
     // Validate file type
@@ -2815,7 +2815,11 @@ app.post('/api/upload/avatar', async (req, res) => {
     // Server-side file size validation (5MB max after compression)
     const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
     const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
-    console.log(`[Avatar Upload] Decoded file size: ${(fileSizeBytes / 1024 / 1024).toFixed(2)}MB`);
+    console.log(`[Avatar Upload] Base64 length: ${base64Data.length}, Decoded file size: ${fileSizeBytes} bytes (${(fileSizeBytes / 1024).toFixed(1)}KB)`);
+    if (fileSizeBytes < 1024) {
+      console.error(`[Avatar Upload] WARNING: File suspiciously small (${fileSizeBytes} bytes). Possible truncation or corrupt upload.`);
+      return res.status(400).json({ error: `Image too small (${fileSizeBytes} bytes) — file may be corrupted. Please try again.` });
+    }
     if (fileSizeBytes > 5 * 1024 * 1024) {
       return res.status(413).json({ error: 'Image must be under 5MB' });
     }
@@ -2908,7 +2912,7 @@ app.post('/api/upload/avatar', async (req, res) => {
     const { data: verify } = await supabase.from('users').select('avatar_url, avatar_r2_key').eq('id', user.id).single();
     console.log(`[Avatar Upload] Verified save: avatar_url=${verify?.avatar_url?.substring(0, 80)}, r2_key=${verify?.avatar_r2_key}`);
 
-    res.json({ url: avatarUrl, filename: uniqueFilename, success: true });
+    res.json({ url: avatarUrl, filename: uniqueFilename, success: true, bytes_uploaded: fileSizeBytes });
   } catch (e) {
     console.error('Avatar upload error:', e.message);
     res.status(500).json({ error: 'Internal server error' });
