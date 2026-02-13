@@ -3769,221 +3769,231 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
-            {/* Notification Preferences */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
-              <form onSubmit={async (e) => {
-                e.preventDefault()
-                const formData = new FormData(e.target)
-                try {
-                  const locationData = profileLocation || {}
-                  const res = await fetch(`${API_URL}/humans/profile`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
-                    body: JSON.stringify({
-                      name: formData.get('name'),
-                      city: locationData.city || user?.city,
-                      latitude: locationData.latitude ?? user?.latitude,
-                      longitude: locationData.longitude ?? user?.longitude,
-                      country: locationData.country || user?.country,
-                      country_code: locationData.country_code || user?.country_code,
-                      hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
-                      bio: formData.get('bio'),
-                      travel_radius: parseInt(formData.get('travel_radius')) || 25
-                    })
-                  })
-                  if (res.ok) {
-                    const data = await res.json()
-                    // Update localStorage with new user data
-                    if (data.user) {
-                      const updatedUser = { ...data.user, skills: safeArr(data.user.skills), supabase_user: true }
-                      localStorage.setItem('user', JSON.stringify(updatedUser))
-                    }
-                    toast.success('Profile updated!')
-                    setProfileLocation(null)
-                    if (data.user && onUserUpdate) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
-                      onUserUpdate(updatedUser)
-                      // Sync browse cards with updated profile data (name, city, bio, rate, etc.)
-                      setHumans(prev => prev.map(h => h.id === user.id ? { ...h, ...updatedUser } : h))
-                    }
-                  } else {
-                    const err = await res.json()
-                    toast.error(err.error || 'Unknown error')
-                  }
-                } catch (err) {
-                  toast.error('Error saving profile')
-                }
-              }}>
-                <div className="dashboard-form-grid-2col">
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Full Name</label>
-                    <input type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
+            {/* Availability — Working mode only */}
+            {!hiringMode && (
+              <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Availability</h2>
+
+                {/* Status */}
+                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div>
+                      <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Status</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Controls whether agents can find and hire you</p>
+                    </div>
+                    <span className={`v4-badge ${user?.availability === 'available' ? 'v4-badge-success' : user?.availability === 'busy' ? 'v4-badge-orange' : 'v4-badge'}`}>
+                      {user?.availability === 'available' ? 'Available' : user?.availability === 'busy' ? 'Busy' : 'Unavailable'}
+                    </span>
                   </div>
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">City</label>
-                    <CityAutocomplete
-                      value={profileLocation?.city || user?.city || ''}
-                      onChange={setProfileLocation}
-                      placeholder="San Francisco"
-                      className="dashboard-v4-city-input"
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {['available', 'busy', 'unavailable'].map(status => (
+                    <button
+                      key={status}
+                      className={`v4-btn ${user?.availability === status ? 'v4-btn-primary' : 'v4-btn-secondary'}`}
+                      style={{ flex: 1, textTransform: 'capitalize', fontSize: 13 }}
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`${API_URL}/humans/profile`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                            body: JSON.stringify({ availability: status })
+                          })
+                          if (res.ok) {
+                            const data = await res.json()
+                            if (data.user) {
+                              const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
+                              setUser(updatedUser)
+                              localStorage.setItem('user', JSON.stringify(updatedUser))
+                            }
+                            toast.success(`Status set to ${status}`)
+                          }
+                        } catch { toast.error('Failed to update status') }
+                      }}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
+                  {user?.availability === 'busy' ? 'You\'ll appear in search but marked as busy — agents can still message you.' : user?.availability === 'unavailable' ? 'You\'re hidden from search. No new task invitations will be sent.' : 'You\'re visible and open to new tasks.'}
+                </p>
+              </div>
+            )}
+
+            {/* Privacy & Visibility */}
+            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Privacy & Visibility</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Show profile in search results</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Allow agents to discover you when browsing workers</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={localStorage.getItem('irlwork_profile_searchable') !== 'false'}
+                      onChange={(e) => {
+                        localStorage.setItem('irlwork_profile_searchable', e.target.checked)
+                        toast.success(e.target.checked ? 'Profile visible in search' : 'Profile hidden from search')
+                      }}
+                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
                     />
                   </div>
                 </div>
-
-                <div className="dashboard-form-grid-2col">
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
-                    <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
+                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Show online status</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Let others see when you're currently active</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={localStorage.getItem('irlwork_show_online') !== 'false'}
+                      onChange={(e) => {
+                        localStorage.setItem('irlwork_show_online', e.target.checked)
+                        toast.success(e.target.checked ? 'Online status visible' : 'Online status hidden')
+                      }}
+                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
+                    />
                   </div>
-                  <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
-                    <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className="dashboard-v4-form-input" />
+                </div>
+                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Show earnings on profile</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Display your total earned amount publicly</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={localStorage.getItem('irlwork_show_earnings') === 'true'}
+                      onChange={(e) => {
+                        localStorage.setItem('irlwork_show_earnings', e.target.checked)
+                        toast.success(e.target.checked ? 'Earnings visible on profile' : 'Earnings hidden from profile')
+                      }}
+                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
+                    />
                   </div>
                 </div>
-
-                <div className="dashboard-v4-form-group">
-                  <label className="dashboard-v4-form-label">Bio</label>
-                  <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" placeholder="Tell agents about yourself..." />
-                </div>
-
-                <button type="submit" className="dashboard-v4-form-submit">Save Changes</button>
-              </form>
+              </div>
             </div>
 
+            {/* Notification Preferences */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Skills</h2>
-              <form onSubmit={async (e) => {
-                e.preventDefault()
-                const formData = new FormData(e.target)
-                const skills = formData.get('skills').split(',').map(s => s.trim()).filter(Boolean)
-                try {
-                  const res = await fetch(`${API_URL}/humans/profile`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
-                    body: JSON.stringify({ skills })
-                  })
-                  if (res.ok) {
-                    const data = await res.json()
-                    // Update localStorage with new user data
-                    if (data.user) {
-                      const updatedUser = { ...data.user, skills: safeArr(data.user.skills), supabase_user: true }
-                      localStorage.setItem('user', JSON.stringify(updatedUser))
-                    }
-                    toast.success('Skills updated!')
-                    if (data.user && onUserUpdate) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
-                      onUserUpdate(updatedUser)
-                    }
-                  } else {
-                    const err = await res.json()
-                    toast.error(err.error || 'Unknown error')
-                  }
-                } catch (err) {
-                  toast.error('Error saving skills')
-                }
-              }}>
-                <div className="dashboard-v4-form-group">
-                  <input type="text" name="skills" defaultValue={user?.skills?.join(', ') || ''} className="dashboard-v4-form-input" placeholder="delivery, photography, cleaning, moving, errands, tech" />
-                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Separate skills with commas</p>
-                </div>
-                <button type="submit" className="dashboard-v4-form-submit">Update Skills</button>
-              </form>
-            </div>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notifications</h2>
 
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Social Links</h2>
-              <form onSubmit={async (e) => {
-                e.preventDefault()
-                const formData = new FormData(e.target)
-                const social_links = {}
-                PLATFORM_ORDER.forEach(p => {
-                  const val = formData.get(p)?.trim()
-                  if (val) social_links[p] = val
-                })
-                try {
-                  const res = await fetch(`${API_URL}/humans/profile`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
-                    body: JSON.stringify({ social_links })
-                  })
-                  if (res.ok) {
-                    const data = await res.json()
-                    if (data.user) {
-                      const updatedUser = { ...data.user, skills: safeArr(data.user.skills), supabase_user: true }
-                      localStorage.setItem('user', JSON.stringify(updatedUser))
-                    }
-                    toast.success('Social links updated!')
-                    if (data.user && onUserUpdate) {
-                      const updatedUser = { ...data.user, skills: JSON.parse(data.user.skills || '[]'), supabase_user: true }
-                      onUserUpdate(updatedUser)
-                    }
-                  } else {
-                    const err = await res.json()
-                    toast.error(err.error || 'Unknown error')
-                  }
-                } catch (err) {
-                  toast.error('Error saving social links')
-                }
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {PLATFORM_ORDER.map(platform => {
-                    const config = PLATFORMS[platform]
-                    return (
-                      <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', flexShrink: 0, width: 20 }}>
-                          {config.icon(18)}
-                        </div>
-                        <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', width: 80, flexShrink: 0 }}>{config.label}</label>
-                        <input
-                          type="text"
-                          name={platform}
-                          defaultValue={user?.social_links?.[platform] || ''}
-                          placeholder={config.placeholder}
-                          maxLength={100}
-                          className="dashboard-v4-form-input"
-                          style={{ marginBottom: 0 }}
-                        />
-                      </div>
-                    )
-                  })}
+              {/* Channel toggle */}
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Email notifications</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Receive notifications via email when you're offline</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={localStorage.getItem('irlwork_email_notifs') !== 'false'}
+                    onChange={(e) => {
+                      localStorage.setItem('irlwork_email_notifs', e.target.checked)
+                      toast.success(e.target.checked ? 'Email notifications enabled' : 'Email notifications disabled')
+                    }}
+                    style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
+                  />
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or handle, not the full URL</p>
-                <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
-              </form>
-            </div>
+              </div>
 
-            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notification Preferences</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                  <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
-                  <span style={{ color: 'var(--text-primary)' }}>Task assignments</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                  <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
-                  <span style={{ color: 'var(--text-primary)' }}>Payment notifications</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                  <input type="checkbox" defaultChecked style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
-                  <span style={{ color: 'var(--text-primary)' }}>Messages from agents</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                  <input type="checkbox" style={{ width: 20, height: 20, borderRadius: 4, accentColor: 'var(--orange-500)' }} />
-                  <span style={{ color: 'var(--text-primary)' }}>Marketing & updates</span>
-                </label>
+              {/* Category toggles */}
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 12 }}>Notify me about</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {(hiringMode ? [
+                  { key: 'new_applications', label: 'New applications', desc: 'When someone applies to your posted task' },
+                  { key: 'task_completed', label: 'Task completions', desc: 'When a worker marks a task as done' },
+                  { key: 'messages', label: 'Messages', desc: 'New messages from workers' },
+                  { key: 'reviews', label: 'Reviews received', desc: 'When a worker leaves you a review' },
+                ] : [
+                  { key: 'task_assignments', label: 'Task assignments', desc: 'When you\'re assigned or invited to a task' },
+                  { key: 'task_updates', label: 'Task updates', desc: 'Status changes on tasks you\'re working on' },
+                  { key: 'payments', label: 'Payments', desc: 'Payment received, pending, or failed' },
+                  { key: 'messages', label: 'Messages', desc: 'New messages from agents' },
+                  { key: 'reviews', label: 'Reviews received', desc: 'When an agent leaves you a review' },
+                ]).map(({ key, label, desc }) => (
+                  <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', padding: '8px 0' }}>
+                    <input
+                      type="checkbox"
+                      defaultChecked={localStorage.getItem(`irlwork_notif_${key}`) !== 'false'}
+                      onChange={(e) => localStorage.setItem(`irlwork_notif_${key}`, e.target.checked)}
+                      style={{ width: 18, height: 18, marginTop: 2, accentColor: 'var(--orange-500)', flexShrink: 0 }}
+                    />
+                    <div>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14 }}>{label}</span>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{desc}</p>
+                    </div>
+                  </label>
+                ))}
+
+                <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: 12, marginTop: 4 }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', padding: '8px 0' }}>
+                    <input
+                      type="checkbox"
+                      defaultChecked={localStorage.getItem('irlwork_notif_marketing') === 'true'}
+                      onChange={(e) => localStorage.setItem('irlwork_notif_marketing', e.target.checked)}
+                      style={{ width: 18, height: 18, marginTop: 2, accentColor: 'var(--orange-500)', flexShrink: 0 }}
+                    />
+                    <div>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14 }}>Marketing & updates</span>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Product news, tips, and feature announcements</p>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
 
             {/* Account */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
+
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Email</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{user?.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Member since</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
               <button
                 className="v4-btn v4-btn-secondary"
-                style={{ width: '100%', color: '#EF4444' }}
+                style={{ width: '100%', marginBottom: 12 }}
                 onClick={onLogout}
               >
                 Sign Out
               </button>
+
+              <div style={{ padding: 16, border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-lg)', background: 'rgba(239,68,68,0.04)' }}>
+                <p style={{ fontWeight: 500, color: '#EF4444', marginBottom: 4, fontSize: 14 }}>Danger Zone</p>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Deactivating your account hides your profile and pauses all activity. You can reactivate anytime by signing back in.</p>
+                <button
+                  className="v4-btn v4-btn-secondary"
+                  style={{ fontSize: 13, color: '#EF4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to deactivate your account? Your profile will be hidden and all active tasks will be paused. You can reactivate by signing back in.')) {
+                      toast.success('Account deactivated')
+                      onLogout()
+                    }
+                  }}
+                >
+                  Deactivate Account
+                </button>
+              </div>
             </div>
           </div>
         )}
