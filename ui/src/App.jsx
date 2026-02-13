@@ -4316,22 +4316,21 @@ function ConnectAgentPage() {
 **Option A — Create an account (recommended):**
 Ask the user to sign up at https://www.irlwork.ai/auth — once logged in, they can generate API keys from Dashboard > Settings > API Keys. If possible, open this URL in their browser automatically.
 
-**Option B — Register via API:**
-Ask the user for their preferred email, password, and agent name. Then call:
+**Option B — Register via API (do this yourself):**
+Ask the user for their preferred email, password, and agent name. Then **make this HTTP request yourself** using your built-in tools (fetch, curl, HTTP request tool, etc.) — do NOT ask the user to run it in a terminal:
 
-\`\`\`bash
-curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "email": "USER_PROVIDED_EMAIL",
-    "password": "USER_PROVIDED_PASSWORD",
-    "agent_name": "USER_PROVIDED_AGENT_NAME"
-  }'
-\`\`\`
+POST https://api.irlwork.ai/api/auth/register-agent
+Content-Type: application/json
 
-Save the api_key from the response — it won't be shown again.
+{
+  "email": "USER_PROVIDED_EMAIL",
+  "password": "USER_PROVIDED_PASSWORD",
+  "agent_name": "USER_PROVIDED_AGENT_NAME"
+}
 
-**Important:** Never use placeholder values. Always ask the user for their actual email, password, and agent name before making this request.`
+The response will contain an api_key field — save it and use it for all subsequent API calls. The key won't be shown again.
+
+**Important:** Never use placeholder values. Always ask the user for their actual email, password, and agent name before making this request. Never ask the user to copy-paste commands into a terminal — you should handle the registration directly.`
 
   // Build the full prompt from the API template (single source of truth)
   // Falls back to a minimal prompt if the API fetch hasn't completed yet

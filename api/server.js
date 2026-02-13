@@ -2517,10 +2517,15 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
 
 // ============ AGENT PROMPT (dynamic, single source of truth) ============
 app.get('/api/agent/prompt', (req, res) => {
-  const { AGENT_PROMPT, PROMPT_VERSION } = require('./agent-prompt');
+  const { AGENT_PROMPT, PROMPT_VERSION, DEFAULT_API_KEY_SECTION } = require('./agent-prompt');
+  // Replace placeholders with defaults so the prompt is ready to use out of the box
+  const prompt = AGENT_PROMPT
+    .replace('{{API_KEY_SECTION}}', DEFAULT_API_KEY_SECTION)
+    .replace('{{API_KEY_PLACEHOLDER}}', 'YOUR_API_KEY');
   res.json({
     version: PROMPT_VERSION,
-    prompt: AGENT_PROMPT,
+    prompt,
+    template: AGENT_PROMPT,
     updated_at: new Date().toISOString()
   });
 });
