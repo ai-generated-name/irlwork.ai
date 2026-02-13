@@ -2816,9 +2816,12 @@ app.post('/api/upload/avatar', async (req, res) => {
     const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
     const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
     console.log(`[Avatar Upload] Base64 length: ${base64Data.length}, Decoded file size: ${fileSizeBytes} bytes (${(fileSizeBytes / 1024).toFixed(1)}KB)`);
-    if (fileSizeBytes < 1024) {
+    if (fileSizeBytes < 500) {
       console.error(`[Avatar Upload] WARNING: File suspiciously small (${fileSizeBytes} bytes). Possible truncation or corrupt upload.`);
       return res.status(400).json({ error: `Image too small (${fileSizeBytes} bytes) — file may be corrupted. Please try again.` });
+    }
+    if (fileSizeBytes < 5000) {
+      console.warn(`[Avatar Upload] WARNING: File is very small (${fileSizeBytes} bytes). May be low quality.`);
     }
     if (fileSizeBytes > 5 * 1024 * 1024) {
       return res.status(413).json({ error: 'Image must be under 5MB' });
@@ -2921,6 +2924,10 @@ app.post('/api/upload/avatar', async (req, res) => {
 
 // ============ AVATAR SERVE (proxy from R2, fallback to DB base64) ============
 app.get('/api/avatar/:userId', async (req, res) => {
+  // Allow cross-origin image loading (fixes ERR_BLOCKED_BY_RESPONSE.NotSameOrigin)
+  res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.set('Access-Control-Allow-Origin', '*');
+
   if (!supabase) return res.status(404).send('Not found');
 
   try {
