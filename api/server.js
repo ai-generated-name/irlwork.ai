@@ -2103,13 +2103,18 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
+  // Use SELECT * for the agent join to avoid 404s when columns from migrations
+  // haven't been applied yet (same fix as /api/humans/:id/profile in 9df2499)
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('*, agent:users!tasks_agent_id_fkey(id, name, type, city, state, total_tasks_posted, total_paid, rating, review_count, verified, created_at)')
+    .select('*, agent:users!tasks_agent_id_fkey(*)')
     .eq('id', req.params.id)
     .single();
 
-  if (error || !task) return res.status(404).json({ error: 'Not found' });
+  if (error || !task) {
+    console.error('Task detail fetch error:', error?.message || 'Task not found', 'id:', req.params.id);
+    return res.status(404).json({ error: 'Not found' });
+  }
 
   // Extract poster from joined agent data (single query instead of N+1)
   let poster = null;
@@ -2766,12 +2771,34 @@ app.post('/api/upload/avatar', async (req, res) => {
     const avatarData = file.startsWith('data:') ? file : `data:${mimeType || 'image/jpeg'};base64,${file}`;
 
     const avatarUrl = `${API_BASE}/api/avatar/${user.id}?v=${timestamp}`;
-    const { error: demoDbErr } = await supabase.from('users').update({
+    // Try saving with avatar_data; if column doesn't exist, save without it
+    let demoDbErr;
+    const result = await supabase.from('users').update({
       avatar_url: avatarUrl,
       avatar_r2_key: uniqueFilename,
       avatar_data: avatarData,
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
+    demoDbErr = result.error;
+
+    if (demoDbErr && demoDbErr.message && demoDbErr.message.includes('avatar_data')) {
+      console.log('[Avatar DEMO] avatar_data column not found, saving without it');
+      const result2 = await supabase.from('users').update({
+        avatar_url: avatarUrl,
+        avatar_r2_key: uniqueFilename,
+        updated_at: new Date().toISOString()
+      }).eq('id', user.id);
+      demoDbErr = result2.error;
+    }
+
+    if (demoDbErr) {
+      console.error('[Avatar DEMO] DB update error:', demoDbErr.message);
+      return res.status(500).json({ error: 'Failed to save avatar' });
+    }
+
+    // Verify the save actually worked
+    const { data: verify } = await supabase.from('users').select('avatar_url').eq('id', user.id).single();
+    console.log(`[Avatar DEMO] Saved. avatar_url=${verify?.avatar_url?.substring(0, 80)}`);
 
     if (demoDbErr) {
       console.error('[Avatar DEMO] DB update error:', demoDbErr.message);
@@ -2783,7 +2810,7 @@ app.post('/api/upload/avatar', async (req, res) => {
 
   try {
     const { file, filename, mimeType } = req.body;
-    console.log(`[Avatar Upload] User: ${user.id}, Filename: ${filename}, MimeType: ${mimeType}, HasFile: ${!!file}`);
+    console.log(`[Avatar Upload] User: ${user.id}, Filename: ${filename}, MimeType: ${mimeType}, HasFile: ${!!file}, FileStringLength: ${file?.length || 0}`);
     if (!file) return res.status(400).json({ error: 'No file provided' });
 
     // Validate file type
@@ -2793,7 +2820,14 @@ app.post('/api/upload/avatar', async (req, res) => {
     // Server-side file size validation (5MB max after compression)
     const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
     const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
-    console.log(`[Avatar Upload] Decoded file size: ${(fileSizeBytes / 1024 / 1024).toFixed(2)}MB`);
+    console.log(`[Avatar Upload] Base64 length: ${base64Data.length}, Decoded file size: ${fileSizeBytes} bytes (${(fileSizeBytes / 1024).toFixed(1)}KB)`);
+    if (fileSizeBytes < 500) {
+      console.error(`[Avatar Upload] WARNING: File suspiciously small (${fileSizeBytes} bytes). Possible truncation or corrupt upload.`);
+      return res.status(400).json({ error: `Image too small (${fileSizeBytes} bytes) — file may be corrupted. Please try again.` });
+    }
+    if (fileSizeBytes < 5000) {
+      console.warn(`[Avatar Upload] WARNING: File is very small (${fileSizeBytes} bytes). May be low quality.`);
+    }
     if (fileSizeBytes > 5 * 1024 * 1024) {
       return res.status(413).json({ error: 'Image must be under 5MB' });
     }
@@ -2857,19 +2891,36 @@ app.post('/api/upload/avatar', async (req, res) => {
     const avatarDataUrl = file.startsWith('data:') ? file : `data:${mimeType || 'image/jpeg'};base64,${file}`;
 
     // Save display URL, R2 key, and base64 fallback
-    const { error: dbError } = await supabase.from('users').update({
+    let dbError;
+    const dbResult = await supabase.from('users').update({
       avatar_url: avatarUrl,
       avatar_r2_key: uniqueFilename,
       avatar_data: avatarDataUrl,
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
+    dbError = dbResult.error;
+
+    // If avatar_data column doesn't exist, save without it
+    if (dbError && dbError.message && dbError.message.includes('avatar_data')) {
+      console.log('[Avatar Upload] avatar_data column not found, saving without it');
+      const dbResult2 = await supabase.from('users').update({
+        avatar_url: avatarUrl,
+        avatar_r2_key: uniqueFilename,
+        updated_at: new Date().toISOString()
+      }).eq('id', user.id);
+      dbError = dbResult2.error;
+    }
 
     if (dbError) {
       console.error('Avatar DB update error:', dbError.message);
       return res.status(500).json({ error: 'Failed to save avatar. Please try again.' });
     }
 
-    res.json({ url: avatarUrl, filename: uniqueFilename, success: true });
+    // Verify the save actually worked
+    const { data: verify } = await supabase.from('users').select('avatar_url, avatar_r2_key').eq('id', user.id).single();
+    console.log(`[Avatar Upload] Verified save: avatar_url=${verify?.avatar_url?.substring(0, 80)}, r2_key=${verify?.avatar_r2_key}`);
+
+    res.json({ url: avatarUrl, filename: uniqueFilename, success: true, bytes_uploaded: fileSizeBytes });
   } catch (e) {
     console.error('Avatar upload error:', e.message);
     res.status(500).json({ error: 'Internal server error' });
@@ -2878,10 +2929,27 @@ app.post('/api/upload/avatar', async (req, res) => {
 
 // ============ AVATAR SERVE (proxy from R2, fallback to DB base64) ============
 app.get('/api/avatar/:userId', async (req, res) => {
+  // Allow cross-origin image loading (fixes ERR_BLOCKED_BY_RESPONSE.NotSameOrigin)
+  res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.set('Access-Control-Allow-Origin', '*');
+
   if (!supabase) return res.status(404).send('Not found');
 
   try {
-    const { data: user } = await supabase.from('users').select('avatar_url, avatar_r2_key, avatar_data, name').eq('id', req.params.userId).single();
+    // Try to fetch with avatar_data column; if column doesn't exist, retry without it
+    let user, fetchErr;
+    const result1 = await supabase.from('users').select('avatar_url, avatar_r2_key, avatar_data, name').eq('id', req.params.userId).single();
+    if (result1.error && result1.error.message && result1.error.message.includes('avatar_data')) {
+      // avatar_data column doesn't exist yet — query without it
+      console.log('[Avatar Serve] avatar_data column not found, querying without it');
+      const result2 = await supabase.from('users').select('avatar_url, avatar_r2_key, name').eq('id', req.params.userId).single();
+      user = result2.data;
+      fetchErr = result2.error;
+    } else {
+      user = result1.data;
+      fetchErr = result1.error;
+    }
+    console.log(`[Avatar Serve] userId=${req.params.userId}, found=${!!user}, r2_key=${user?.avatar_r2_key || 'none'}, avatar_data=${user?.avatar_data ? `${user.avatar_data.length} chars` : 'NULL'}, fetchErr=${fetchErr?.message || 'none'}`);
     if (!user) return res.status(404).send('No avatar');
 
     // If avatar_r2_key exists and R2 is configured, serve directly from R2
@@ -2943,6 +3011,72 @@ app.get('/api/avatar/:userId', async (req, res) => {
     console.error('Avatar serve error:', e.message);
     res.status(404).send('Not found');
   }
+});
+
+// Debug endpoint — check avatar storage status and test R2 fetch
+app.get('/api/avatar/:userId/debug', async (req, res) => {
+  if (!supabase) return res.json({ error: 'No DB' });
+  const { data: user, error: dbErr } = await supabase.from('users').select('id, avatar_url, avatar_r2_key, avatar_data, updated_at').eq('id', req.params.userId).single();
+  if (!user) return res.json({ error: 'User not found', dbErr: dbErr?.message });
+
+  const getEnv = (k) => { try { return require('process').env[k]; } catch { return null; } };
+  const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
+  const R2_ACCESS_KEY = getEnv('R2KEY') || getEnv('CLOUD_KEY') || getEnv('R2_ACCESS_KEY');
+  const R2_SECRET_KEY = getEnv('R2SECRET') || getEnv('CLOUD_SECRET') || getEnv('R2_SECRET_KEY');
+  const R2_BUCKET = getEnv('R2BUCKET') || getEnv('CLOUD_BUCKET') || getEnv('R2_BUCKET') || 'irlwork-proofs';
+  const hasR2 = !!(R2_ACCOUNT_ID && R2_ACCESS_KEY && R2_SECRET_KEY);
+
+  // Test R2 fetch if configured and key exists
+  let r2_test = 'NOT_TESTED';
+  if (hasR2 && user.avatar_r2_key) {
+    try {
+      const { S3Client, HeadObjectCommand } = require('@aws-sdk/client-s3');
+      const s3Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+      });
+      const head = await s3Client.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: user.avatar_r2_key }));
+      r2_test = `OK — ${head.ContentLength} bytes, type=${head.ContentType}`;
+    } catch (r2Err) {
+      r2_test = `FAILED — ${r2Err.name}: ${r2Err.message}`;
+    }
+  }
+
+  // Test avatar_data decode
+  let avatar_data_test = 'NOT_TESTED';
+  if (user.avatar_data) {
+    const matches = user.avatar_data.match(/^data:([^;]+);base64,(.+)$/);
+    if (matches) {
+      try {
+        const buf = Buffer.from(matches[2], 'base64');
+        avatar_data_test = `OK — ${buf.length} bytes decoded, type=${matches[1]}`;
+      } catch (e) {
+        avatar_data_test = `DECODE_FAILED — ${e.message}`;
+      }
+    } else {
+      avatar_data_test = `INVALID_FORMAT — starts with: ${user.avatar_data.substring(0, 50)}`;
+    }
+  }
+
+  res.json({
+    user_id: user.id,
+    avatar_url: user.avatar_url || null,
+    avatar_r2_key: user.avatar_r2_key || null,
+    has_avatar_data: !!user.avatar_data,
+    avatar_data_length: user.avatar_data ? user.avatar_data.length : 0,
+    avatar_data_preview: user.avatar_data ? user.avatar_data.substring(0, 60) + '...' : null,
+    updated_at: user.updated_at,
+    r2_configured: hasR2,
+    r2_bucket: R2_BUCKET,
+    r2_test,
+    avatar_data_test,
+    diagnosis: !user.avatar_url ? 'NO_AVATAR_URL' :
+               !user.avatar_r2_key && !user.avatar_data ? 'NO_STORAGE' :
+               hasR2 && user.avatar_r2_key ? 'SHOULD_WORK_VIA_R2' :
+               user.avatar_data ? 'SHOULD_WORK_VIA_DB' :
+               'MISSING_BOTH_R2_AND_DB_DATA'
+  });
 });
 
 // ============ FEEDBACK ============
@@ -6609,6 +6743,23 @@ async function start() {
     // Check and report missing columns
     await ensureTaskColumns();
     await checkTaskColumns();
+
+    // Ensure avatar_data column exists on users table
+    const { error: avatarColCheck } = await supabase.from('users').select('avatar_data').limit(1);
+    if (avatarColCheck && avatarColCheck.message && avatarColCheck.message.includes('does not exist')) {
+      console.log('[Migration] avatar_data column missing from users table, attempting to add...');
+      const { error: rpcErr } = await supabase.rpc('run_migration', {
+        migration_sql: 'ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_data TEXT'
+      });
+      if (rpcErr) {
+        console.log('[Migration] Cannot auto-add avatar_data. Please run in Supabase SQL Editor:');
+        console.log('  ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_data TEXT;');
+      } else {
+        console.log('[Migration] Successfully added avatar_data column to users table.');
+      }
+    } else {
+      console.log('[Schema] users.avatar_data column exists');
+    }
 
     // DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
     // Start background services
