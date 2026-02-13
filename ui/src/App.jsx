@@ -3274,6 +3274,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           reader.onerror = () => reject(new Error('Failed to read file'))
                           reader.readAsDataURL(fileToUpload)
                         })
+                        console.log(`[Avatar] Original: ${file.size} bytes (${file.type}), Compressed: ${fileToUpload.size} bytes (${fileToUpload.type}), Base64 length: ${base64.length}`)
                         const controller = new AbortController()
                         const timeout = setTimeout(() => controller.abort(), 60000)
                         try {
@@ -3293,6 +3294,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             : uploadExt === 'gif' ? 'image/gif'
                             : 'image/jpeg'
                           const payload = JSON.stringify({ file: base64, filename: uploadFilename, mimeType: uploadMime })
+                          console.log(`[Avatar] Uploading: base64 length=${base64.length}, payload size=${payload.length}, compressed size=${fileToUpload.size}`)
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
@@ -3302,17 +3304,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           clearTimeout(timeout)
                           if (res.ok) {
                             const data = await res.json()
-                            // Use the server-returned proxy URL (with cache-buster) for display.
-                            // This is the same URL that /auth/verify returns, so it persists across reloads.
-                            // The proxy endpoint serves the image from R2 or DB base64 fallback.
-                            const avatarUrl = data.url || base64
-                            const updatedUser = { ...user, avatar_url: avatarUrl }
+                            console.log(`[Avatar] Upload response:`, data)
+                            // Use base64 for immediate display (guaranteed to show), but store
+                            // the server proxy URL in localStorage for persistence across reloads.
+                            const proxyUrl = data.url
+                            const updatedUser = { ...user, avatar_url: proxyUrl || base64 }
                             onUserUpdate(updatedUser)
                             // Store proxy URL in localStorage — matches what fetchUserProfile returns
                             const cacheUser = { ...updatedUser, token: undefined }
                             localStorage.setItem('user', JSON.stringify(cacheUser))
                             // Update the humans array so browse cards reflect the new avatar instantly
-                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: avatarUrl } : h))
+                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: proxyUrl || base64 } : h))
                             toast.success('Profile photo updated!')
                           } else {
                             const errText = await res.text().catch(() => '')
