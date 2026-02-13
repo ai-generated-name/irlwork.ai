@@ -31,6 +31,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   const isParticipant = user && task && (task.agent_id === user.id || task.human_id === user.id);
 
@@ -41,6 +42,10 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
+      setLoadingTimeout(false);
+
+      // Show timeout message after 15 seconds
+      const timeoutId = setTimeout(() => setLoadingTimeout(true), 15000);
 
       try {
         // Fetch task details (works with or without auth)
@@ -79,7 +84,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         console.error('Error fetching task data:', err);
         setError(err.message);
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
+        setLoadingTimeout(false);
       }
     };
 
@@ -305,6 +312,17 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         <div className="flex flex-col items-center">
           <div className="w-12 h-12 border-4 border-[#F5F2ED] border-t-[#0F4C5C] rounded-full animate-spin mb-4"></div>
           <div className="text-[#525252] text-lg">Loading task details...</div>
+          {loadingTimeout && (
+            <div className="mt-4 text-center">
+              <p className="text-[#8A8A8A] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-[#0F4C5C] underline text-sm hover:text-[#0A3540]"
+              >
+                Retry
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

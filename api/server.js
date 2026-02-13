@@ -256,6 +256,43 @@ function cleanTaskData(data) {
 const { PLATFORM_FEE_PERCENT } = require('./config/constants');
 const { isAdmin } = require('./middleware/adminAuth');
 
+// File upload validation
+const ALLOWED_UPLOAD_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'pdf'];
+const ALLOWED_UPLOAD_MIMES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'video/mp4', 'video/quicktime', 'application/pdf'
+];
+
+function validateUploadFile(filename, mimeType) {
+  const ext = (filename?.split('.').pop() || '').toLowerCase();
+  if (!ALLOWED_UPLOAD_EXTS.includes(ext)) {
+    return { valid: false, error: `File type .${ext} not allowed. Accepted: ${ALLOWED_UPLOAD_EXTS.join(', ')}` };
+  }
+  if (mimeType && !ALLOWED_UPLOAD_MIMES.includes(mimeType.toLowerCase())) {
+    return { valid: false, error: `MIME type ${mimeType} not allowed` };
+  }
+  return { valid: true, ext };
+}
+
+// Task status transition validation
+const VALID_STATUS_TRANSITIONS = {
+  open: ['assigned', 'in_progress', 'cancelled'],
+  assigned: ['in_progress', 'cancelled'],
+  in_progress: ['pending_review', 'disputed', 'cancelled'],
+  pending_review: ['completed', 'rejected', 'disputed'],
+  rejected: ['pending_review', 'disputed', 'cancelled'],
+  disputed: ['paid', 'refunded', 'cancelled'],
+  completed: ['paid'],
+};
+
+function validateStatusTransition(currentStatus, newStatus) {
+  const allowed = VALID_STATUS_TRANSITIONS[currentStatus];
+  if (!allowed || !allowed.includes(newStatus)) {
+    return { valid: false, error: `Cannot transition from '${currentStatus}' to '${newStatus}'` };
+  }
+  return { valid: true };
+}
+
 // Data categories
 const QUICK_CATEGORIES = [
   'delivery', 'pickup', 'errands', 'dog_walking', 'pet_sitting',
@@ -890,7 +927,7 @@ app.post('/api/auth/register/human', async (req, res) => {
       token: crypto.randomBytes(32).toString('hex')
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1118,7 +1155,7 @@ app.post('/api/auth/onboard', async (req, res) => {
 
   try {
     // Calculate profile completeness based on provided data
-    const skillsArray = skills || [];
+    const skillsArray = (Array.isArray(skills) ? skills : []).slice(0, 25);
     const profile_completeness = 0.2
       + (city ? 0.1 : 0)
       + (skillsArray.length > 0 ? 0.2 : 0)
@@ -1186,7 +1223,7 @@ app.post('/api/auth/onboard', async (req, res) => {
     res.json({ user: userData });
   } catch (e) {
     console.error('Onboarding exception:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1431,7 +1468,7 @@ app.post('/api/auth/register-agent', async (req, res) => {
     });
   } catch (e) {
     console.error('Agent registration error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1477,7 +1514,7 @@ app.post('/api/keys/generate', async (req, res) => {
     });
   } catch (e) {
     console.error('Key generation error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1503,7 +1540,7 @@ app.get('/api/keys', async (req, res) => {
     res.json(keys || []);
   } catch (e) {
     console.error('Key list error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1549,7 +1586,7 @@ app.delete('/api/keys/:id', async (req, res) => {
     res.json({ success: true, message: 'API key revoked' });
   } catch (e) {
     console.error('Key revoke error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1619,7 +1656,7 @@ app.post('/api/keys/:id/rotate', async (req, res) => {
     });
   } catch (e) {
     console.error('Key rotation error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1776,7 +1813,7 @@ app.get('/api/humans/:id', async (req, res, next) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, avatar_url, headline, languages, timezone, social_links, travel_radius')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, avatar_url, headline, languages, timezone, social_links, travel_radius')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
@@ -1842,11 +1879,11 @@ app.put('/api/humans/profile', async (req, res) => {
     // Accept both 'skills' and 'categories' for backwards compatibility
     // Store as JSON string to match registration format
     if (skills) {
-      const arr = Array.isArray(skills) ? skills : safeParseJsonArray(skills);
+      const arr = (Array.isArray(skills) ? skills : safeParseJsonArray(skills)).slice(0, 25);
       updates.skills = JSON.stringify(arr);
     }
     if (categories) {
-      const arr = Array.isArray(categories) ? categories : safeParseJsonArray(categories);
+      const arr = (Array.isArray(categories) ? categories : safeParseJsonArray(categories)).slice(0, 25);
       updates.skills = JSON.stringify(arr);
     }
     if (city) updates.city = city;
@@ -1899,7 +1936,7 @@ app.put('/api/humans/profile', async (req, res) => {
     res.json({ success: true, user: { ...data, skills: safeParseJsonArray(data.skills), languages: safeParseJsonArray(data.languages) } });
   } catch (e) {
     console.error('[Profile Update] Error:', e);
-    res.status(500).json({ error: e.message || 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -2004,7 +2041,7 @@ app.post('/api/tasks', async (req, res) => {
   const budgetAmount = parseFloat(budget) || 50;
   const taskType = task_type === 'bounty' ? 'bounty' : 'direct';
   const taskQuantity = taskType === 'bounty' ? Math.max(1, parseInt(quantity) || 1) : 1;
-  const skillsArray = Array.isArray(required_skills) ? required_skills : [];
+  const skillsArray = (Array.isArray(required_skills) ? required_skills : []).slice(0, 25);
 
   const insertData = buildTaskInsertData({
       id,
@@ -2060,26 +2097,22 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('*')
+    .select('*, agent:users!tasks_agent_id_fkey(id, name, type, city, state, total_tasks_posted, total_paid, rating, review_count, verified, created_at)')
     .eq('id', req.params.id)
     .single();
 
   if (error || !task) return res.status(404).json({ error: 'Not found' });
 
-  // Embed poster (agent) public profile
+  // Extract poster from joined agent data (single query instead of N+1)
   let poster = null;
   if (task.agent_id) {
     if (task.is_anonymous) {
       poster = { name: 'Anonymous', type: 'unknown' };
     } else {
-      const { data: agentData } = await supabase
-        .from('users')
-        .select('id, name, type, city, state, total_tasks_posted, total_paid, rating, review_count, verified, created_at')
-        .eq('id', task.agent_id)
-        .single();
-      poster = agentData || null;
+      poster = task.agent || null;
     }
   }
+  delete task.agent; // Remove joined field from task response
 
   // Only return sensitive financial/escrow fields to task participants
   const user = await getUserByToken(req.headers.authorization);
@@ -2239,7 +2272,6 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
       applicant:users!task_applications_human_id_fkey(
         id,
         name,
-        email,
         hourly_rate,
         rating,
         jobs_completed,
@@ -2325,7 +2357,8 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     try {
       agentPaymentMethods = await listPaymentMethods(user.stripe_customer_id);
     } catch (e) {
-      console.log('[Assign] Could not list agent payment methods:', e.message);
+      console.error('[Assign] Failed to list Stripe payment methods:', e.message);
+      return res.status(502).json({ error: 'Unable to verify payment method. Please try again or add a new card.' });
     }
   }
 
@@ -2596,11 +2629,12 @@ app.post('/api/upload/proof', async (req, res) => {
 
   // Demo mode if no R2 config
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
-    const { file, filename } = req.body;
+    const { file, filename, mimeType } = req.body;
+    const fileCheck = validateUploadFile(filename, mimeType);
+    if (!fileCheck.valid) return res.status(400).json({ error: fileCheck.error });
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = filename?.split('.').pop() || 'jpg';
-    const uniqueFilename = `proofs/${user.id}/${timestamp}-${randomStr}.${ext}`;
+    const uniqueFilename = `proofs/${user.id}/${timestamp}-${randomStr}.${fileCheck.ext}`;
     const mockUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-r2.dev/${R2_BUCKET}/${uniqueFilename}`;
     console.log(`[R2 DEMO] Would upload to: ${mockUrl}`);
     return res.json({ url: mockUrl, filename: uniqueFilename, success: true, demo: true });
@@ -2613,6 +2647,10 @@ app.post('/api/upload/proof', async (req, res) => {
       return res.status(400).json({ error: 'No file provided' });
     }
 
+    // Validate file type
+    const fileCheck = validateUploadFile(filename, mimeType);
+    if (!fileCheck.valid) return res.status(400).json({ error: fileCheck.error });
+
     // Server-side file size validation (10MB max for proof files)
     const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
     const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
@@ -2623,7 +2661,7 @@ app.post('/api/upload/proof', async (req, res) => {
     // Generate unique filename
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = filename?.split('.').pop() || 'jpg';
+    const ext = fileCheck.ext;
     const uniqueFilename = `proofs/${user.id}/${timestamp}-${randomStr}.${ext}`;
 
     // Decode base64 file data if needed
@@ -2655,6 +2693,7 @@ app.post('/api/upload/proof', async (req, res) => {
         Key: uniqueFilename,
         Body: fileData,
         ContentType: mimeType || 'image/jpeg',
+        ContentDisposition: 'attachment',
       }));
 
       uploadSuccess = true;
@@ -2673,7 +2712,7 @@ app.post('/api/upload/proof', async (req, res) => {
     });
   } catch (e) {
     console.error('Upload error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -2700,11 +2739,12 @@ app.post('/api/upload/avatar', async (req, res) => {
 
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
     // Demo mode — no R2 creds, use API proxy URL so avatar still works via /api/avatar/:id
-    const { file, filename } = req.body;
+    const { file, filename, mimeType } = req.body;
+    const fileCheck = validateUploadFile(filename, mimeType);
+    if (!fileCheck.valid) return res.status(400).json({ error: fileCheck.error });
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = filename?.split('.').pop() || 'jpg';
-    const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
+    const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${fileCheck.ext}`;
     console.log(`[R2 DEMO] Would upload avatar to R2 key: ${uniqueFilename}`);
 
     // Use API proxy URL as the avatar URL (always accessible)
@@ -2719,6 +2759,10 @@ app.post('/api/upload/avatar', async (req, res) => {
     console.log(`[Avatar Upload] User: ${user.id}, Filename: ${filename}, MimeType: ${mimeType}, HasFile: ${!!file}`);
     if (!file) return res.status(400).json({ error: 'No file provided' });
 
+    // Validate file type
+    const fileCheck = validateUploadFile(filename, mimeType);
+    if (!fileCheck.valid) return res.status(400).json({ error: fileCheck.error });
+
     // Server-side file size validation (5MB max after compression)
     const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
     const fileSizeBytes = Buffer.byteLength(base64Data, 'base64');
@@ -2729,7 +2773,7 @@ app.post('/api/upload/avatar', async (req, res) => {
 
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = filename?.split('.').pop() || 'jpg';
+    const ext = fileCheck.ext;
     const uniqueFilename = `avatars/${user.id}/${timestamp}-${randomStr}.${ext}`;
 
     let fileData = file;
@@ -2752,6 +2796,7 @@ app.post('/api/upload/avatar', async (req, res) => {
         Key: uniqueFilename,
         Body: fileData,
         ContentType: mimeType || 'image/jpeg',
+        ContentDisposition: 'attachment',
       }));
     } catch (s3Error) {
       console.error('R2 avatar upload error:', s3Error.message);
@@ -2778,7 +2823,7 @@ app.post('/api/upload/avatar', async (req, res) => {
     res.json({ url: avatarUrl, filename: uniqueFilename, success: true });
   } catch (e) {
     console.error('Avatar upload error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -2847,11 +2892,12 @@ app.post('/api/upload/feedback', async (req, res) => {
   const R2_PUBLIC_URL = getEnv('R2_PUBLIC_URL') || getEnv('CLOUD_PUBLIC_URL');
 
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
-    const { file, filename } = req.body;
+    const { file, filename, mimeType } = req.body;
+    const fileCheck = validateUploadFile(filename, mimeType);
+    if (!fileCheck.valid) return res.status(400).json({ error: fileCheck.error });
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = filename?.split('.').pop() || 'jpg';
-    const uniqueFilename = `feedback/${user.id}/${timestamp}-${randomStr}.${ext}`;
+    const uniqueFilename = `feedback/${user.id}/${timestamp}-${randomStr}.${fileCheck.ext}`;
     const mockUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-r2.dev/${R2_BUCKET}/${uniqueFilename}`;
     console.log(`[R2 DEMO] Would upload feedback image to: ${mockUrl}`);
     return res.json({ url: mockUrl, filename: uniqueFilename, success: true, demo: true });
@@ -2860,6 +2906,10 @@ app.post('/api/upload/feedback', async (req, res) => {
   try {
     const { file, filename, mimeType } = req.body;
     if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    // Validate file type
+    const fileCheck = validateUploadFile(filename, mimeType);
+    if (!fileCheck.valid) return res.status(400).json({ error: fileCheck.error });
 
     // Server-side file size validation (10MB max for feedback files)
     const base64Data = file.startsWith('data:') ? file.split(',')[1] : file;
@@ -2870,7 +2920,7 @@ app.post('/api/upload/feedback', async (req, res) => {
 
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = filename?.split('.').pop() || 'jpg';
+    const ext = fileCheck.ext;
     const uniqueFilename = `feedback/${user.id}/${timestamp}-${randomStr}.${ext}`;
 
     let fileData = file;
@@ -2894,6 +2944,7 @@ app.post('/api/upload/feedback', async (req, res) => {
         Key: uniqueFilename,
         Body: fileData,
         ContentType: mimeType || 'image/jpeg',
+        ContentDisposition: 'attachment',
       }));
       uploadSuccess = true;
     } catch (s3Error) {
@@ -2904,7 +2955,7 @@ app.post('/api/upload/feedback', async (req, res) => {
     res.json({ url: publicUrl, filename: uniqueFilename, success: uploadSuccess, demo: !uploadSuccess });
   } catch (e) {
     console.error('Feedback upload error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -2972,7 +3023,7 @@ app.post('/api/feedback', async (req, res) => {
     res.json({ success: true, feedback_id: feedbackId });
   } catch (e) {
     console.error('[Feedback] Error:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -3113,6 +3164,11 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   
   if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Not your task' });
+  }
+
+  // Only allow rejecting tasks in pending_review status
+  if (!['pending_review', 'in_progress'].includes(task.status)) {
+    return res.status(400).json({ error: `Cannot reject proof on task with status "${task.status}"` });
   }
 
   // Check proof rejection limit — auto-escalate to dispute after 3 rejections
@@ -4218,16 +4274,39 @@ function formatEventMessage(event, data) {
 }
 
 // ============ MCP SERVER ============
+// Dedicated MCP rate limit: 60 requests/min per API key
+const mcpRateLimitStore = new Map();
+function mcpRateLimit(req, res) {
+  const key = getRateLimitKey(req);
+  const mcpKey = `mcp:${key}`;
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const maxRequests = 60;
+  let record = mcpRateLimitStore.get(mcpKey);
+  if (record && now - record.windowStart > windowMs) record = null;
+  if (!record) { record = { count: 0, windowStart: now }; mcpRateLimitStore.set(mcpKey, record); }
+  record.count++;
+  if (record.count > maxRequests) {
+    const resetAt = new Date(record.windowStart + windowMs);
+    res.status(429).json({ error: 'MCP rate limit exceeded', limit: maxRequests, retry_after_seconds: Math.ceil((resetAt.getTime() - now) / 1000) });
+    return false;
+  }
+  return true;
+}
+
 app.post('/api/mcp', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const apiKey = req.headers.authorization || req.headers['x-api-key'];
   const user = await getUserByToken(apiKey);
-  
+
   if (!user || user.type !== 'agent') {
     return res.status(401).json({ error: 'Invalid API key' });
   }
-  
+
+  // Apply MCP-specific rate limit (60/min per key)
+  if (!mcpRateLimit(req, res)) return;
+
   try {
     const { method, params = {} } = req.body;
     
@@ -4260,7 +4339,7 @@ app.post('/api/mcp', async (req, res) => {
       case 'get_human': {
         const { data: human, error } = await supabase
           .from('users')
-          .select('id, name, email, bio, hourly_rate, skills, rating, jobs_completed, city, state, country, availability, travel_radius, languages, headline, timezone, avatar_url, type')
+          .select('id, name, bio, hourly_rate, skills, rating, jobs_completed, city, state, country, availability, travel_radius, languages, headline, timezone, avatar_url, type')
           .eq('id', params.human_id)
           .single();
 
@@ -4930,7 +5009,7 @@ app.post('/api/mcp', async (req, res) => {
 
         const { data: applications, error } = await supabase
           .from('task_applications')
-          .select('*, applicant:users!task_applications_human_id_fkey(id, name, email, hourly_rate, rating, jobs_completed, bio, city)')
+          .select('*, applicant:users!task_applications_human_id_fkey(id, name, hourly_rate, rating, jobs_completed, bio, city)')
           .eq('task_id', task_id)
           .order('created_at', { ascending: false });
 
@@ -4957,7 +5036,7 @@ app.post('/api/mcp', async (req, res) => {
 
         const { data: proofs, error } = await supabase
           .from('task_proofs')
-          .select('*, submitter:users!task_proofs_human_id_fkey(id, name, email)')
+          .select('*, submitter:users!task_proofs_human_id_fkey(id, name)')
           .eq('task_id', task_id)
           .order('submitted_at', { ascending: false });
 
@@ -5211,8 +5290,7 @@ app.post('/api/mcp', async (req, res) => {
 
         // Calculate payment
         const escrowAmount = task.escrow_amount || task.budget || 50;
-        const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '10');
-        const platformFee = Math.round(escrowAmount * platformFeePercent) / 100;
+        const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
         const netAmount = escrowAmount - platformFee;
 
         // Update task status (atomic check)
@@ -5295,7 +5373,7 @@ app.post('/api/mcp', async (req, res) => {
         res.status(400).json({ error: `Unknown method: ${method}` });
     }
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -6165,8 +6243,11 @@ app.get('/api/humans/:id/profile', async (req, res) => {
     ? ((((user.total_tasks_completed || 0) - (user.total_disputes_filed || 0)) / user.total_tasks_completed) * 100).toFixed(1)
     : null;
 
+  // Strip sensitive fields from public profile
+  const { email, password_hash, stripe_customer_id, stripe_account_id, webhook_secret, ...publicUser } = user;
+
   res.json({
-    ...user,
+    ...publicUser,
     skills: safeParseJsonArray(user.skills),
     languages: safeParseJsonArray(user.languages),
     reviews: reviews || [],
