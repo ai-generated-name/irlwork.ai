@@ -2387,7 +2387,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               >
                 <div className="dashboard-v4-user-avatar">
                   {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                    <img key={user.avatar_url} src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                   ) : null}
                   <span style={{ display: user?.avatar_url ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                     {user?.name?.charAt(0) || '?'}
@@ -2403,7 +2403,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   <div className="dashboard-v4-user-dropdown-header">
                     <div className="dashboard-v4-user-dropdown-avatar">
                       {user?.avatar_url ? (
-                        <img src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                        <img key={user.avatar_url} src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                       ) : null}
                       <span style={{ display: user?.avatar_url ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                         {user?.name?.charAt(0) || '?'}
@@ -3113,7 +3113,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   onClick={() => avatarInputRef.current?.click()}
                 >
                   {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt={user?.name || ''} style={{
+                    <img key={user.avatar_url} src={user.avatar_url} alt={user?.name || ''} style={{
                       width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
                       boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
                     }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
@@ -3227,16 +3227,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           clearTimeout(timeout)
                           if (res.ok) {
                             const data = await res.json()
-                            // Use the URL returned by the server (includes cache-buster),
-                            // with an extra client timestamp to bust any in-flight browser cache
-                            const avatarUrl = data.url
-                              ? `${data.url}${data.url.includes('?') ? '&' : '?'}t=${Date.now()}`
-                              : `${API_URL.replace(/\/api$/, '')}/api/avatar/${user.id}?t=${Date.now()}`
-                            const updatedUser = { ...user, avatar_url: avatarUrl }
+                            // Use the base64 data URL for instant display — no network round-trip,
+                            // no proxy dependency, guaranteed to show immediately.
+                            // Subsequent page loads will use the proxy URL from the DB.
+                            const updatedUser = { ...user, avatar_url: base64 }
                             onUserUpdate(updatedUser)
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                             // Update the humans array so browse cards reflect the new avatar instantly
-                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: avatarUrl } : h))
+                            setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: base64 } : h))
                             toast.success('Profile photo updated!')
                           } else {
                             const errText = await res.text().catch(() => '')
