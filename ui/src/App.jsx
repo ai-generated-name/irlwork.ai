@@ -4681,6 +4681,14 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
                 <a href="/dashboard/hiring" className="footer-v4-link">Dashboard</a>
               </div>
             </div>
+            <div>
+              <h4 className="footer-v4-column-title">Contact</h4>
+              <div className="footer-v4-links">
+                <a href="/contact" className="footer-v4-link">Contact Us</a>
+                <a href="mailto:support@irlwork.ai" className="footer-v4-link">support@irlwork.ai</a>
+                <a href="mailto:press@irlwork.ai" className="footer-v4-link">press@irlwork.ai</a>
+              </div>
+            </div>
           </div>
           <div className="footer-v4-bottom">
             <p>© 2025 irlwork.ai — Built for the agent economy</p>
