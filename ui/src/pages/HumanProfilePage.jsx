@@ -24,7 +24,9 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
         return r.json()
       })
       .then(data => {
-        setProfile(fixAvatarUrl(data))
+        const fixed = fixAvatarUrl(data)
+        console.log('[HumanProfile] avatar_url:', fixed.avatar_url || 'none')
+        setProfile(fixed)
         setLoading(false)
       })
       .catch(err => {
