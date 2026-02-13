@@ -1003,6 +1003,7 @@ code, pre {
   justify-content: center;
   z-index: 1000;
   padding: var(--space-4);
+  overflow: hidden;
 }
 
 .quick-apply-modal {
@@ -1010,6 +1011,9 @@ code, pre {
   border-radius: var(--radius-xl);
   width: 100%;
   max-width: 480px;
+  max-height: calc(100vh - var(--space-8));
+  max-height: calc(100dvh - var(--space-8));
+  overflow-y: auto;
   padding: var(--space-6);
   position: relative;
   box-shadow: var(--shadow-xl);
@@ -1377,6 +1381,27 @@ code, pre {
 
 .quick-apply-modal-success p {
   color: var(--text-secondary);
+}
+
+/* Quick Apply Modal — mobile adjustments */
+@media (max-width: 767px) {
+  .quick-apply-modal {
+    max-height: calc(100dvh - var(--space-6));
+    padding: var(--space-4);
+  }
+
+  .quick-apply-modal-field textarea {
+    min-height: 72px;
+  }
+
+  .quick-apply-modal-actions {
+    flex-direction: column;
+  }
+
+  .quick-apply-modal-btn {
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 /* Mobile Map FAB */
