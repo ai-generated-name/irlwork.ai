@@ -2103,13 +2103,18 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
+  // Use SELECT * for the agent join to avoid 404s when columns from migrations
+  // haven't been applied yet (same fix as /api/humans/:id/profile in 9df2499)
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('*, agent:users!tasks_agent_id_fkey(id, name, type, city, state, total_tasks_posted, total_paid, rating, review_count, verified, created_at)')
+    .select('*, agent:users!tasks_agent_id_fkey(*)')
     .eq('id', req.params.id)
     .single();
 
-  if (error || !task) return res.status(404).json({ error: 'Not found' });
+  if (error || !task) {
+    console.error('Task detail fetch error:', error?.message || 'Task not found', 'id:', req.params.id);
+    return res.status(404).json({ error: 'Not found' });
+  }
 
   // Extract poster from joined agent data (single query instead of N+1)
   let poster = null;
