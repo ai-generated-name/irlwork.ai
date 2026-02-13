@@ -3043,77 +3043,127 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
         {/* Hiring Mode: Payments Tab */}
         {hiringMode && activeTab === 'payments' && (
-          <div>
+          <div className="space-y-4 md:space-y-6">
             <h1 className="dashboard-v4-page-title">Payments</h1>
 
-            {/* Payment History */}
+            {/* Payment Overview */}
             {(() => {
               const paidTasks = postedTasks.filter(t => t.escrow_amount && t.escrow_status)
               const totalSpent = paidTasks.reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
+              const inEscrow = paidTasks.filter(t => t.status === 'in_progress').reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
+              const released = paidTasks.filter(t => t.status === 'paid' || t.status === 'completed').reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
               return (
                 <>
-                  <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-                    <div style={{ flex: 1, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>Total Spent</p>
-                      <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>${(totalSpent / 100).toFixed(2)}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4">
+                      <p className="text-xs text-[#8A8A8A] font-medium uppercase tracking-wider">Total Spent</p>
+                      <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(totalSpent / 100).toFixed(2)}</p>
                     </div>
-                    <div style={{ flex: 1, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>Tasks Funded</p>
-                      <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>{paidTasks.length}</p>
+                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4">
+                      <p className="text-xs text-[#8A8A8A] font-medium uppercase tracking-wider">In Escrow</p>
+                      <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(inEscrow / 100).toFixed(2)}</p>
+                    </div>
+                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 col-span-2 md:col-span-1">
+                      <p className="text-xs text-[#8A8A8A] font-medium uppercase tracking-wider">Released</p>
+                      <p className="text-2xl md:text-3xl font-bold text-teal tracking-tight mt-1">${(released / 100).toFixed(2)}</p>
                     </div>
                   </div>
 
-                  {paidTasks.length > 0 && (
-                    <div style={{ marginBottom: 32 }}>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Payment History</h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {paidTasks.map(task => (
-                          <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
-                              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                                {task.escrow_deposited_at ? new Date(task.escrow_deposited_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending'}
-                                {task.assignee && <> &middot; {task.assignee.name}</>}
-                              </p>
+                  {/* Transaction History */}
+                  <div>
+                    <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Transaction History</h3>
+
+                    {paidTasks.length > 0 ? (
+                      <div className="space-y-2 md:space-y-3">
+                        {paidTasks.map(task => {
+                          const isReleased = task.status === 'paid'
+                          const isCompleted = task.status === 'completed'
+                          const isInProgress = task.status === 'in_progress'
+
+                          return (
+                            <div
+                              key={task.id}
+                              className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
+                            >
+                              <div className="flex justify-between items-start gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-[#1A1A1A] font-medium text-sm md:text-base truncate">
+                                      {task.title}
+                                    </p>
+                                    <span className={`
+                                      px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide flex-shrink-0
+                                      ${isReleased ? 'bg-teal/8 text-teal' : ''}
+                                      ${isCompleted ? 'bg-teal/8 text-teal' : ''}
+                                      ${isInProgress ? 'bg-[#F5F2ED] text-[#8A8A8A]' : ''}
+                                      ${!isReleased && !isCompleted && !isInProgress ? 'bg-[#F5F2ED] text-[#525252]' : ''}
+                                    `}>
+                                      {isReleased ? 'Released' : isCompleted ? 'Completed' : isInProgress ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
+                                    </span>
+                                  </div>
+
+                                  <p className="text-xs text-[#8A8A8A] mt-1">
+                                    {task.escrow_deposited_at
+                                      ? new Date(task.escrow_deposited_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                      : 'Pending deposit'}
+                                    {task.assignee && <> &middot; {task.assignee.name}</>}
+                                  </p>
+                                </div>
+
+                                <div className="text-right flex-shrink-0">
+                                  <p className={`
+                                    text-lg md:text-xl font-bold
+                                    ${isReleased || isCompleted ? 'text-[#1A1A1A]' : ''}
+                                    ${isInProgress ? 'text-[#1A1A1A]' : ''}
+                                    ${!isReleased && !isCompleted && !isInProgress ? 'text-[#8A8A8A]' : ''}
+                                  `}>
+                                    ${(task.escrow_amount / 100).toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                            <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
-                              <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>${(task.escrow_amount / 100).toFixed(2)}</p>
-                              <span style={{
-                                fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 'var(--radius-full)',
-                                background: task.status === 'paid' ? 'rgba(16, 185, 129, 0.1)' : task.status === 'in_progress' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                                color: task.status === 'paid' ? '#10B981' : task.status === 'in_progress' ? '#F59E0B' : '#6B7280'
-                              }}>
-                                {task.status === 'paid' ? 'Released' : task.status === 'completed' ? 'Completed' : task.status === 'in_progress' ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
+                        <div className="w-12 h-12 bg-[#F5F2ED] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
+                          <svg className="w-6 h-6 text-[#8A8A8A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                          </svg>
+                        </div>
+                        <p className="text-[#525252] font-medium text-sm md:text-base">No transactions yet</p>
+                        <p className="text-xs md:text-sm text-[#A3A3A3] mt-1.5">
+                          Fund a task to see your payment history
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </>
               )
             })()}
 
             {/* Payment Methods */}
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Payment Methods</h3>
-            <Suspense fallback={<Loading />}>
-              <StripeProvider>
-                <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <div>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Saved Cards</h4>
-                    <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
+            <div>
+              <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Payment Methods</h3>
+              <Suspense fallback={<Loading />}>
+                <StripeProvider>
+                  <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div>
+                      <h4 className="text-sm font-medium text-[#525252] mb-3">Saved Cards</h4>
+                      <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-[#525252] mb-3">Add New Card</h4>
+                      <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
+                    </div>
+                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 text-xs text-[#8A8A8A]">
+                      When you assign a worker to a task, your default card will be charged automatically. Please ensure you have a card saved before assigning workers.
+                    </div>
                   </div>
-                  <div>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Add New Card</h4>
-                    <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
-                  </div>
-                  <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                    When you assign a worker to a task, your default card will be charged automatically. Please ensure you have a card saved before assigning workers.
-                  </div>
-                </div>
-              </StripeProvider>
-            </Suspense>
+                </StripeProvider>
+              </Suspense>
+            </div>
           </div>
         )}
 
