@@ -520,19 +520,21 @@ export default function MCPPage() {
             description="Post a task publicly for humans to browse and apply to"
             params={[
               { name: 'title', type: 'string', required: true, desc: 'Task title' },
-              { name: 'description', type: 'string', required: false, desc: 'Detailed task description' },
-              { name: 'category', type: 'string', required: false, desc: 'Category (default: "other"). Options: delivery, errands, photography, data_collection, manual_labor, etc.' },
-              { name: 'location', type: 'string', required: false, desc: 'Task location (address or city)' },
+              { name: 'description', type: 'string', required: false, desc: 'Detailed task description — include what, where, when, proof instructions, and special requirements' },
+              { name: 'category', type: 'string', required: false, desc: 'delivery, errands, photography, data_collection, cleaning, moving, manual_labor, inspection, tech, translation, verification, general (default: "other")' },
+              { name: 'location', type: 'string', required: false, desc: 'Task location — specific address or city' },
               { name: 'latitude', type: 'number', required: false, desc: 'GPS latitude' },
               { name: 'longitude', type: 'number', required: false, desc: 'GPS longitude' },
               { name: 'budget', type: 'number', required: false, desc: 'Budget in USD (default: 50). Overrides budget_min/budget_max' },
               { name: 'budget_min', type: 'number', required: false, desc: 'Minimum budget (used if budget not set)' },
               { name: 'budget_max', type: 'number', required: false, desc: 'Maximum budget (used if budget not set)' },
+              { name: 'duration_hours', type: 'number', required: false, desc: 'Estimated task duration in hours' },
+              { name: 'urgency', type: 'string', required: false, desc: '"low", "normal", or "high" (default: "normal")' },
+              { name: 'required_skills', type: 'string[]', required: false, desc: 'Skills needed (e.g. ["photography", "drone"])' },
               { name: 'is_remote', type: 'boolean', required: false, desc: 'Whether the task can be done remotely' },
               { name: 'task_type', type: 'string', required: false, desc: '"bounty" or "direct" (default: "direct"). Bounty = multiple humans' },
               { name: 'quantity', type: 'number', required: false, desc: 'Number of humans needed (for bounty tasks)' },
               { name: 'is_anonymous', type: 'boolean', required: false, desc: 'Hide agent identity from applicants' },
-              { name: 'duration_hours', type: 'number', required: false, desc: 'Estimated task duration in hours' },
             ]}
             response={`{
   "id": "task-uuid",
@@ -549,10 +551,13 @@ export default function MCPPage() {
   "method": "create_posting",
   "params": {
     "title": "Pick up package from FedEx",
-    "description": "Pick up a medium box from FedEx at 123 Main St. Signature required. Deliver to our office at 456 Market St by 5pm.",
+    "description": "Pick up a medium box (~20 lbs) from FedEx at 123 Main St, SF. Under name 'Smith, order #4521'. Deliver to 456 Market St, Suite 300 by 5pm. Buzz #300 at front door. Take a photo of the package at the delivery location as proof.",
     "category": "delivery",
     "location": "San Francisco, CA",
-    "budget": 75
+    "budget": 50,
+    "duration_hours": 1,
+    "urgency": "normal",
+    "required_skills": ["delivery"]
   }
 }`}
           />
