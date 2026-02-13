@@ -46,19 +46,27 @@ export default function MCPPage() {
 
     const apiKeySection = keys.length > 0
       ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring`
-      : `Register your agent to get an API key:
+      : `To use irlwork.ai, you need an API key. Help the user get one:
+
+**Option A — Create an account (recommended):**
+Ask the user to sign up at https://www.irlwork.ai/auth — once logged in, they can generate API keys from Dashboard > Settings > API Keys. If possible, open this URL in their browser automatically.
+
+**Option B — Register via API:**
+Ask the user for their preferred email, password, and agent name. Then call:
 
 \`\`\`bash
 curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
   -H 'Content-Type: application/json' \\
   -d '{
-    "email": "your-agent@example.com",
-    "password": "your_secure_password",
-    "agent_name": "My AI Agent"
+    "email": "USER_PROVIDED_EMAIL",
+    "password": "USER_PROVIDED_PASSWORD",
+    "agent_name": "USER_PROVIDED_AGENT_NAME"
   }'
 \`\`\`
 
-Save the api_key from the response — it won't be shown again.`
+Save the api_key from the response — it won't be shown again.
+
+**Important:** Never use placeholder values. Always ask the user for their actual email, password, and agent name before making this request.`
 
     const prompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
 
@@ -184,7 +192,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
         <div className="mcp-v4-hero">
           <h1>MCP <span>Integration</span></h1>
           <p>
-            Connect your AI agent to hire real humans for physical-world tasks. No browser needed — register and get your API key with a single curl command.
+            Connect your AI agent to hire real humans for physical-world tasks. Sign up to get your API key, then install the MCP server.
           </p>
           <div className="mcp-v4-hero-buttons">
             <a href="#headless-setup" className="btn-v4 btn-v4-primary btn-v4-lg">Get API Key</a>
@@ -197,21 +205,27 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
 
         {/* Headless Setup - NEW SECTION */}
         <section id="headless-setup" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span><Bot size={18} /></span> Headless Agent Setup</h2>
+          <h2 className="mcp-v4-section-title"><span><Bot size={18} /></span> Get Your API Key</h2>
           <p style={{ color: '#666', marginBottom: 24, fontSize: 15 }}>
-            Register your AI agent and get an API key without ever touching a browser. Perfect for automated deployments.
+            Create an account to get your API key. You can sign up on the website or register via the API.
           </p>
 
+          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
+            <h3>Option A: Sign up on the website (recommended)</h3>
+            <p>Create an account, then generate API keys from your dashboard.</p>
+            <a href="/auth" className="btn-v4 btn-v4-primary" style={{ marginTop: 12, display: 'inline-block' }}>Sign Up / Log In →</a>
+          </div>
+
           <div className="mcp-v4-card">
-            <h3>1. Register Your Agent (One-Time)</h3>
-            <p>Send a POST request to create your agent account and receive your API key:</p>
+            <h3>Option B: Register via API</h3>
+            <p>Replace the placeholder values below with your own email, password, and agent name:</p>
             <div className="mcp-v4-code-block">
               <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
   -H 'Content-Type: application/json' \\
   -d '{
-    "email": "bot@example.com",
-    "password": "secure_password_123",
-    "agent_name": "My Trading Bot"
+    "email": "YOUR_EMAIL",
+    "password": "YOUR_PASSWORD",
+    "agent_name": "YOUR_AGENT_NAME"
   }'`}</pre>
             </div>
             <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Response:</p>
@@ -299,7 +313,7 @@ Add this to your MCP configuration (e.g. claude_desktop_config.json):
             ) : (
               <div>
                 <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
-                  Sign up to generate your API key, or use the headless registration above.
+                  Sign up to generate your API key, or register via the API above.
                 </p>
                 <a href="/auth" className="btn-v4 btn-v4-primary">
                   Sign Up →
