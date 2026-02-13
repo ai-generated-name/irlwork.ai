@@ -6,7 +6,7 @@ import {
   Star, CalendarDays, Search, ChevronDown, Upload, Bell,
   FileText, CheckCircle, XCircle, Landmark, Scale, Ban, ArrowDownLeft,
   Shield, Hourglass, Bot, FolderOpen, RefreshCw,
-  Monitor, Sparkles, AlertTriangle
+  Monitor, Sparkles, AlertTriangle, KeyRound
 } from 'lucide-react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
@@ -142,6 +142,7 @@ const Icons = {
   upload: <Upload size={ICON_SIZE} />,
   bell: <Bell size={ICON_SIZE} />,
   admin: <Shield size={ICON_SIZE} />,
+  key: <KeyRound size={ICON_SIZE} />,
 }
 
 // === Components ===
@@ -694,7 +695,9 @@ function AuthPage({ onLogin, onNavigate }) {
       // Don't navigate here — the parent App's onAuthStateChange will detect
       // the new session and redirect from /auth to /dashboard automatically.
       // This avoids a full page reload on mobile.
-      if (onNavigate) onNavigate('/dashboard')
+      const params = new URLSearchParams(window.location.search)
+      const returnTo = params.get('returnTo')
+      if (onNavigate) onNavigate(returnTo && decodeURIComponent(returnTo).startsWith('/dashboard') ? decodeURIComponent(returnTo) : '/dashboard')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -712,10 +715,15 @@ function AuthPage({ onLogin, onNavigate }) {
     }
     try {
       debug('[Auth] Starting Google OAuth...')
+      const oauthParams = new URLSearchParams(window.location.search)
+      const oauthReturnTo = oauthParams.get('returnTo')
+      const oauthRedirect = oauthReturnTo && decodeURIComponent(oauthReturnTo).startsWith('/dashboard')
+        ? decodeURIComponent(oauthReturnTo)
+        : '/dashboard'
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/dashboard',
+          redirectTo: window.location.origin + oauthRedirect,
           scopes: 'email profile'
         }
       })
@@ -1215,7 +1223,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
     // Valid tabs for each mode
     const humanTabs = ['dashboard', 'tasks', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
-    const hiringTabs = ['dashboard', 'posted', 'browse', 'messages', 'payments', 'profile', 'settings', 'notifications']
+    const hiringTabs = ['dashboard', 'posted', 'browse', 'messages', 'payments', 'api-keys', 'profile', 'settings', 'notifications']
 
     if (tabParam) {
       // Map URL-friendly names to internal tab IDs
@@ -1226,7 +1234,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         'browse': 'browse',
         'messages': 'messages',
         'payments': 'payments',
-        'api-keys': 'settings',
+        'api-keys': 'api-keys',
         'hired': 'browse',
         'profile': 'profile',
         'settings': 'settings',
@@ -1403,13 +1411,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
   ]
 
-  // Hiring mode: Dashboard, My Tasks, Humans, Messages, Payments
+  // Hiring mode: Dashboard, My Tasks, Humans, Messages, Payments, API Keys
   const hiringNav = [
     { id: 'dashboard', label: 'Dashboard', icon: Icons.dashboard },
     { id: 'posted', label: 'My Tasks', icon: Icons.task },
     { id: 'browse', label: 'Humans', icon: Icons.humans },
     { id: 'messages', label: 'Messages', icon: Icons.messages, badge: unreadMessages },
     { id: 'payments', label: 'Payments', icon: Icons.wallet },
+    { id: 'api-keys', label: 'API Keys', icon: Icons.key },
   ]
 
   // Add admin tab if user is admin
@@ -1467,7 +1476,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           'browse': 'browse',
           'messages': 'messages',
           'payments': 'payments',
-          'api-keys': 'settings',
+          'api-keys': 'api-keys',
           'hired': 'browse',
           'profile': 'profile',
           'settings': 'settings',
@@ -3965,14 +3974,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
-            {/* API Keys - only show in hiring mode */}
-            {hiringMode && (
-              <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>API Keys</h2>
-                <ApiKeysTab user={user} />
-              </div>
-            )}
-
             {/* Account */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
@@ -3983,6 +3984,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               >
                 Sign Out
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* API Keys Tab - Hiring mode only */}
+        {activeTab === 'api-keys' && (
+          <div>
+            <h1 className="dashboard-v4-page-title">API Keys</h1>
+            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
+              <ApiKeysTab user={user} />
             </div>
           </div>
         )}
@@ -4285,7 +4296,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 function ConnectAgentPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedConfig, setCopiedConfig] = useState(false)
-  const [copiedCurl, setCopiedCurl] = useState(false)
   const [user, setUser] = useState(null)
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
@@ -4335,27 +4345,17 @@ function ConnectAgentPage() {
     : 'YOUR_API_KEY_HERE'
 
   const apiKeySection = keys.length > 0
-    ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring`
-    : `To use irlwork.ai, you need an API key. Help the user get one:
+    ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring/api-keys`
+    : `To use irlwork.ai, you need an API key.
 
-**Option A — Create an account (recommended):**
-Ask the user to sign up at https://www.irlwork.ai/auth — once logged in, they can generate API keys from Dashboard > Settings > API Keys. If possible, open this URL in their browser automatically.
+**Direct the user to this URL to get their API key:**
+https://www.irlwork.ai/dashboard/hiring/api-keys
 
-**Option B — Register via API (do this yourself):**
-Ask the user for their preferred email, password, and agent name. Then **make this HTTP request yourself** using your built-in tools (fetch, curl, HTTP request tool, etc.) — do NOT ask the user to run it in a terminal:
+If the user doesn't have an account yet, they'll be prompted to sign up first, then redirected to the API keys page automatically.
 
-POST https://api.irlwork.ai/api/auth/register-agent
-Content-Type: application/json
+Once they're on the page, they can click "Generate New Key", copy it, and paste it back here. Ask the user to paste their API key so you can proceed.
 
-{
-  "email": "USER_PROVIDED_EMAIL",
-  "password": "USER_PROVIDED_PASSWORD",
-  "agent_name": "USER_PROVIDED_AGENT_NAME"
-}
-
-The response will contain an api_key field — save it and use it for all subsequent API calls. The key won't be shown again.
-
-**Important:** Never use placeholder values. Always ask the user for their actual email, password, and agent name before making this request. Never ask the user to copy-paste commands into a terminal — you should handle the registration directly.`
+**Important:** Wait for the user to provide their actual API key before making any API calls. Do not proceed without one.`
 
   // Build the full prompt from the API template (single source of truth)
   // Falls back to a minimal prompt if the API fetch hasn't completed yet
@@ -4381,18 +4381,6 @@ The response will contain an api_key field — save it and use it for all subseq
   }'`)
     setCopiedConfig(true)
     setTimeout(() => setCopiedConfig(false), 2500)
-  }
-
-  const handleCopyCurl = () => {
-    navigator.clipboard.writeText(`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "email": "YOUR_EMAIL",
-    "password": "YOUR_PASSWORD",
-    "agent_name": "YOUR_AGENT_NAME"
-  }'`)
-    setCopiedCurl(true)
-    setTimeout(() => setCopiedCurl(false), 2500)
   }
 
   return (
@@ -4497,41 +4485,15 @@ The response will contain an api_key field — save it and use it for all subseq
           {/* Step 1: API Key */}
           <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
             <h3>Step 1: Get Your API Key</h3>
-            <p>Create an account or register via the API to get your key:</p>
+            <p>Sign up (or log in) and generate an API key from your dashboard. If you don't have an account yet, you'll be prompted to create one first.</p>
 
-            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16, marginBottom: 16 }}>
-              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Option A: Sign up on the website (recommended)</h4>
-              <p style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>Create an account, then generate API keys from your dashboard.</p>
-              <a href="/auth" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px' }}>Sign Up / Log In →</a>
-            </div>
-
-            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16 }}>
-              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Option B: Register via API</h4>
-              <p style={{ color: '#666', fontSize: 13, marginBottom: 8 }}>Replace the placeholder values with your own email, password, and agent name:</p>
-              <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
-                <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "email": "YOUR_EMAIL",
-    "password": "YOUR_PASSWORD",
-    "agent_name": "YOUR_AGENT_NAME"
-  }'`}</pre>
-                <button
-                  onClick={handleCopyCurl}
-                  style={{
-                    position: 'absolute', top: 8, right: 8,
-                    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
-                  }}
-                >
-                  {copiedCurl ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
-                </button>
+            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>API Keys Dashboard</h4>
+                <p style={{ color: '#666', fontSize: 13, margin: 0 }}>Generate, rotate, and manage your API keys.</p>
               </div>
-              <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
+              <a href="/dashboard/hiring/api-keys" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px', whiteSpace: 'nowrap' }}>Get API Key →</a>
             </div>
-
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring/settings" style={{ color: 'var(--orange-600)' }}>Dashboard → Settings → API Keys</a> tab.</p>
           </div>
 
           {/* Dynamic API Key Display */}
@@ -4565,7 +4527,7 @@ The response will contain an api_key field — save it and use it for all subseq
                   <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
                 )}
                 <a
-                  href="/dashboard/hiring?tab=settings"
+                  href="/dashboard/hiring/api-keys"
                   className="btn-v4 btn-v4-primary"
                 >
                   Manage API Keys
@@ -5083,8 +5045,14 @@ function App() {
     if (loading) return
     if (path === '/auth' && user) {
       debug('[Auth] Already logged in, redirecting to dashboard')
-      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
-      navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+      const params = new URLSearchParams(window.location.search)
+      const returnTo = params.get('returnTo')
+      if (returnTo && decodeURIComponent(returnTo).startsWith('/dashboard')) {
+        navigate(decodeURIComponent(returnTo))
+      } else {
+        const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+        navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+      }
     } else if (path === '/onboard' && !user) {
       debug('[Auth] No user for onboard, redirecting to auth')
       navigate('/auth')
@@ -5103,7 +5071,8 @@ function App() {
       navigate(mode === 'humans' ? '/browse/humans' : '/browse/tasks')
     } else if (path.startsWith('/dashboard') && !user) {
       debug('[Auth] No user, redirecting to auth')
-      navigate('/auth')
+      const returnTo = encodeURIComponent(window.location.pathname + window.location.search)
+      navigate(`/auth?returnTo=${returnTo}`)
     } else if (path.startsWith('/dashboard') && user && user.needs_onboarding) {
       debug('[Auth] User needs onboarding, redirecting to /onboard')
       navigate('/onboard')

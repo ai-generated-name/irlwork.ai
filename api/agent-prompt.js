@@ -183,25 +183,15 @@ Example of a BAD description:
 - Authentication: Bearer token with your API key
 - Full API Reference: https://www.irlwork.ai/mcp`;
 
-const DEFAULT_API_KEY_SECTION = `To use irlwork.ai, you need an API key. Help the user get one:
+const DEFAULT_API_KEY_SECTION = `To use irlwork.ai, you need an API key.
 
-**Option A — Create an account (recommended):**
-Ask the user to sign up at https://www.irlwork.ai/auth — once logged in, they can generate API keys from Dashboard > Settings > API Keys. If possible, open this URL in their browser automatically.
+**Direct the user to this URL to get their API key:**
+https://www.irlwork.ai/dashboard/hiring/api-keys
 
-**Option B — Register via API (do this yourself):**
-Ask the user for their preferred email, password, and agent name. Then **make this HTTP request yourself** using your built-in tools (fetch, curl, HTTP request tool, etc.) — do NOT ask the user to run it in a terminal:
+If the user doesn't have an account yet, they'll be prompted to sign up first, then redirected to the API keys page automatically.
 
-POST https://api.irlwork.ai/api/auth/register-agent
-Content-Type: application/json
+Once they're on the page, they can click "Generate New Key", copy it, and paste it back here. Ask the user to paste their API key so you can proceed.
 
-{
-  "email": "USER_PROVIDED_EMAIL",
-  "password": "USER_PROVIDED_PASSWORD",
-  "agent_name": "USER_PROVIDED_AGENT_NAME"
-}
-
-The response will contain an api_key field — save it and use it for all subsequent API calls. The key won't be shown again.
-
-**Important:** Never use placeholder values. Always ask the user for their actual email, password, and agent name before making this request. Never ask the user to copy-paste commands into a terminal — you should handle the registration directly.`;
+**Important:** Wait for the user to provide their actual API key before making any API calls. Do not proceed without one.`;
 
 module.exports = { AGENT_PROMPT, PROMPT_VERSION, DEFAULT_API_KEY_SECTION };

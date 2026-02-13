@@ -1377,7 +1377,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>copy this and paste it into your AI agent's chat:</span>
                     <button
                       onClick={() => {
-                        const snippet = `I want to hire a human from irlwork.ai for a task.\n\nName: ${showHireModal.name}\nProfile: https://www.irlwork.ai/humans/${showHireModal.id}\nSkills: ${(showHireModal.skills || []).join(', ') || 'General'}\nRate: $${showHireModal.hourly_rate || 25}/hr\n\nTo contact this human, use the irlwork.ai API.\n\nIf you don't have an API key yet, help me set one up:\n- Open https://www.irlwork.ai/auth in my browser so I can create an account\n- Once I'm logged in, I can generate an API key from Dashboard > Settings > API Keys\n\nOnce you have the API key, call the API like this:\n\ncurl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"method": "start_conversation", "params": {"human_id": "${showHireModal.id}"}}'\n\nUse the start_conversation method with human_id "${showHireModal.id}" to message them.`
+                        const snippet = `I want to hire a human from irlwork.ai for a task.\n\nName: ${showHireModal.name}\nProfile: https://www.irlwork.ai/humans/${showHireModal.id}\nSkills: ${(showHireModal.skills || []).join(', ') || 'General'}\nRate: $${showHireModal.hourly_rate || 25}/hr\n\nTo contact this human, use the irlwork.ai API.\n\nIf you don't have an API key yet, help me set one up:\n- Open https://www.irlwork.ai/dashboard/hiring/api-keys in my browser\n- If I'm not logged in, I'll be prompted to sign up first\n- I can generate an API key from that page and paste it back here\n\nOnce you have the API key, call the API like this:\n\ncurl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"method": "start_conversation", "params": {"human_id": "${showHireModal.id}"}}'\n\nUse the start_conversation method with human_id "${showHireModal.id}" to message them.`
                         navigator.clipboard.writeText(snippet)
                         toast.success('Copied to clipboard!')
                       }}
@@ -1397,8 +1397,9 @@ Rate: $${showHireModal.hourly_rate || 25}/hr
 To contact this human, use the irlwork.ai API.
 
 If you don't have an API key yet, help me set one up:
-- Open https://www.irlwork.ai/auth in my browser so I can create an account
-- Once I'm logged in, I can generate an API key from Dashboard > Settings > API Keys
+- Open https://www.irlwork.ai/dashboard/hiring/api-keys in my browser
+- If I'm not logged in, I'll be prompted to sign up first
+- I can generate an API key from that page and paste it back here
 
 Once you have the API key, call the API:
 
