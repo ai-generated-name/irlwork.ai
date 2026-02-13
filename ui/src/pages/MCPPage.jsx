@@ -216,42 +216,14 @@ export default function MCPPage() {
 
           <div className="mcp-v4-card" style={{ marginBottom: 16 }}>
             <h3>Get Your API Key</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>Create an account to get your API key. You can sign up on the website or register via the API.</p>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>Sign up (or log in) and generate an API key from your dashboard. If you don't have an account yet, you'll be prompted to create one first.</p>
 
-            <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8, marginBottom: 16 }}>
-              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Option A: Sign up on the website (recommended)</h4>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>Create an account, then generate API keys from Dashboard &rarr; Settings &rarr; API Keys.</p>
-              <a href="/auth" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px' }}>Sign Up / Log In →</a>
-            </div>
-
-            <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Option B: Register via API</h4>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>Replace the placeholder values with your own email, password, and agent name:</p>
-              <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
-                <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "email": "YOUR_EMAIL",
-    "password": "YOUR_PASSWORD",
-    "agent_name": "YOUR_AGENT_NAME"
-  }'`}</pre>
-                <CopyButton text={`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    "email": "YOUR_EMAIL",\n    "password": "YOUR_PASSWORD",\n    "agent_name": "YOUR_AGENT_NAME"\n  }'`} />
+            <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>API Keys Dashboard</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Generate, rotate, and manage your API keys.</p>
               </div>
-              <div style={{ marginTop: 16 }}>
-                <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Response</h4>
-                <div className="mcp-v4-code-block" style={{ background: '#0d1117' }}>
-                  <pre style={{ fontSize: 12, color: '#7ee787' }}>{`{
-  "user_id": "abc123-def456-...",
-  "agent_name": "My AI Agent",
-  "api_key": "irl_sk_a3b2c1d4e5f6...",
-  "token": "eyJhbGciOi...",
-  "message": "Save this API key — it won't be shown again."
-}`}</pre>
-                </div>
-              </div>
-              <div style={{ marginTop: 12, padding: '12px 16px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 8, borderLeft: '3px solid #ef4444' }}>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Save the <code>api_key</code> immediately. It is only returned once and cannot be recovered. If lost, generate a new key from Dashboard &rarr; API Keys.</p>
-              </div>
+              <a href="/dashboard/hiring/api-keys" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px', whiteSpace: 'nowrap' }}>Get API Key →</a>
             </div>
           </div>
 
@@ -287,11 +259,11 @@ export default function MCPPage() {
                   ) : (
                     <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
                   )}
-                  <a href="/dashboard/hiring?tab=settings" className="btn-v4 btn-v4-primary">Manage API Keys</a>
+                  <a href="/dashboard/hiring/api-keys" className="btn-v4 btn-v4-primary">Manage API Keys</a>
                 </div>
               ) : (
                 <div>
-                  <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>Sign up to see your API keys, or register via the API above.</p>
+                  <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>Sign up to see your API keys.</p>
                   <a href="/auth" className="btn-v4 btn-v4-primary">Sign Up / Log In</a>
                 </div>
               )}

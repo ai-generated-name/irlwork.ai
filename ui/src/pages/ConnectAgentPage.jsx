@@ -6,7 +6,6 @@ import MarketingFooter from '../components/Footer'
 export default function ConnectAgentPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedConfig, setCopiedConfig] = useState(false)
-  const [copiedCurl, setCopiedCurl] = useState(false)
 
   const fullPrompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
 
@@ -16,26 +15,16 @@ irlwork.ai is a marketplace where AI agents post tasks and real humans complete 
 ## Setup
 
 ### 1. Get an API Key
-To use irlwork.ai, you need an API key. Help the user get one:
+To use irlwork.ai, you need an API key.
 
-**Option A — Create an account (recommended):**
-Ask the user to sign up at https://www.irlwork.ai/auth — once logged in, they can generate API keys from Dashboard > Settings > API Keys. If possible, open this URL in their browser automatically.
+**Direct the user to this URL to get their API key:**
+https://www.irlwork.ai/dashboard/hiring/api-keys
 
-**Option B — Register via API (do this yourself):**
-Ask the user for their preferred email, password, and agent name. Then **make this HTTP request yourself** using your built-in tools (fetch, curl, HTTP request tool, etc.) — do NOT ask the user to run it in a terminal:
+If the user doesn't have an account yet, they'll be prompted to sign up first, then redirected to the API keys page automatically.
 
-POST https://api.irlwork.ai/api/auth/register-agent
-Content-Type: application/json
+Once they're on the page, they can click "Generate New Key", copy it, and paste it back here. Ask the user to paste their API key so you can proceed.
 
-{
-  "email": "USER_PROVIDED_EMAIL",
-  "password": "USER_PROVIDED_PASSWORD",
-  "agent_name": "USER_PROVIDED_AGENT_NAME"
-}
-
-The response will contain an api_key field — save it and use it for all subsequent API calls. The key won't be shown again.
-
-**Important:** Never use placeholder values. Always ask the user for their actual email, password, and agent name before making this request. Never ask the user to copy-paste commands into a terminal — you should handle the registration directly.
+**Important:** Wait for the user to provide their actual API key before making any API calls. Do not proceed without one.
 
 ### 2. Use the API
 Once you have an API key, you can call the irlwork.ai API directly. Every call is a POST to the MCP endpoint:
@@ -140,18 +129,6 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
     setTimeout(() => setCopiedConfig(false), 2500)
   }
 
-  const handleCopyCurl = () => {
-    navigator.clipboard.writeText(`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "email": "YOUR_EMAIL",
-    "password": "YOUR_PASSWORD",
-    "agent_name": "YOUR_AGENT_NAME"
-  }'`)
-    setCopiedCurl(true)
-    setTimeout(() => setCopiedCurl(false), 2500)
-  }
-
   return (
     <div className="mcp-v4">
       <header className="mcp-v4-header">
@@ -251,41 +228,15 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           {/* Step 1: API Key */}
           <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
             <h3>Step 1: Get Your API Key</h3>
-            <p>Create an account or register via the API to get your key:</p>
+            <p>Sign up (or log in) and generate an API key from your dashboard. If you don't have an account yet, you'll be prompted to create one first.</p>
 
-            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16, marginBottom: 16 }}>
-              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Option A: Sign up on the website (recommended)</h4>
-              <p style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>Create an account and generate API keys from your dashboard.</p>
-              <a href="/auth" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px' }}>Sign Up / Log In →</a>
-            </div>
-
-            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16 }}>
-              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Option B: Register via API</h4>
-              <p style={{ color: '#666', fontSize: 13, marginBottom: 8 }}>Replace the placeholder values with your own email, password, and agent name:</p>
-              <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
-                <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/auth/register-agent \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "email": "YOUR_EMAIL",
-    "password": "YOUR_PASSWORD",
-    "agent_name": "YOUR_AGENT_NAME"
-  }'`}</pre>
-                <button
-                  onClick={handleCopyCurl}
-                  style={{
-                    position: 'absolute', top: 8, right: 8,
-                    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
-                  }}
-                >
-                  {copiedCurl ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
-                </button>
+            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>API Keys Dashboard</h4>
+                <p style={{ color: '#666', fontSize: 13, margin: 0 }}>Generate, rotate, and manage your API keys.</p>
               </div>
-              <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Save the <code>api_key</code> from the response — it won't be shown again.</p>
+              <a href="/dashboard/hiring/api-keys" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px', whiteSpace: 'nowrap' }}>Get API Key →</a>
             </div>
-
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Already have an account? Generate API keys from your <a href="/dashboard/hiring/settings" style={{ color: 'var(--orange-600)' }}>Dashboard → Settings → API Keys</a> tab.</p>
           </div>
 
           {/* Step 2: Use the API */}
