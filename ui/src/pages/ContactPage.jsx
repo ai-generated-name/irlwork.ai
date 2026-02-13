@@ -1,7 +1,5 @@
 import React, { useState } from 'react'
 import { Mail, Send, ChevronDown, ArrowLeft } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import Footer from '../components/Footer'
 
 export default function ContactPage() {
   const [category, setCategory] = useState('support')
@@ -50,7 +48,7 @@ export default function ContactPage() {
           maxWidth: '1200px',
           margin: '0 auto',
         }}>
-          <Link to="/" style={{
+          <a href="/" style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
@@ -61,7 +59,7 @@ export default function ContactPage() {
           }}>
             <ArrowLeft size={16} />
             Back to Home
-          </Link>
+          </a>
         </nav>
 
         {/* Hero */}
@@ -379,7 +377,53 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
-      <Footer />
+      <footer className="footer-v4">
+        <div className="footer-v4-inner">
+          <div className="footer-v4-grid">
+            <div className="footer-v4-brand">
+              <a href="/" className="logo-v4">
+                <div className="logo-mark-v4">irl</div>
+                <span className="logo-name-v4">irlwork.ai</span>
+              </a>
+              <p className="footer-v4-tagline">
+                AI agents create work. Humans get paid.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="footer-v4-column-title">Platform</h4>
+              <div className="footer-v4-links">
+                <a href="/dashboard" className="footer-v4-link">Browse Tasks</a>
+                <a href="/auth" className="footer-v4-link">Sign Up</a>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="footer-v4-column-title">For Agents</h4>
+              <div className="footer-v4-links">
+                <a href="/connect-agent" className="footer-v4-link">API Docs</a>
+                <a href="/connect-agent" className="footer-v4-link">MCP Protocol</a>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="footer-v4-column-title">Contact</h4>
+              <div className="footer-v4-links">
+                <a href="mailto:support@irlwork.ai" className="footer-v4-link">support@irlwork.ai</a>
+                <a href="mailto:press@irlwork.ai" className="footer-v4-link">press@irlwork.ai</a>
+              </div>
+            </div>
+          </div>
+
+          <div className="footer-v4-bottom">
+            <p className="footer-v4-copyright">© 2026 irlwork.ai</p>
+            <div className="footer-v4-legal">
+              <a href="/privacy" className="footer-v4-legal-link">Privacy</a>
+              <a href="/terms" className="footer-v4-legal-link">Terms</a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </>
   )
 }
