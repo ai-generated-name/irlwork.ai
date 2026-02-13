@@ -1,16 +1,38 @@
 #!/usr/bin/env node
 // ============================================
-// HUMANWORK.AI - MCP Server for AI Agents
+// irlwork.ai - MCP Server for AI Agents
 // Model Context Protocol Integration
 // ============================================
 
 const http = require('http')
 
 const API_URL = process.env.API_URL || 'http://localhost:3002/api'
-const API_KEY = process.env.HUMANWORK_API_KEY
+const API_KEY = process.env.IRLWORK_API_KEY || process.env.HUMANWORK_API_KEY
+
+// Cached agent prompt (fetched from API on startup)
+let agentPrompt = null
+let promptVersion = null
+
+async function fetchAgentPrompt() {
+  try {
+    const res = await fetch(`${API_URL}/agent/prompt`)
+    if (res.ok) {
+      const data = await res.json()
+      agentPrompt = data.prompt
+      promptVersion = data.version
+      console.log(`  Agent prompt v${data.version} loaded`)
+    } else {
+      console.warn(`  Warning: Could not fetch agent prompt (HTTP ${res.status}). Agents can still call tools.`)
+    }
+  } catch (e) {
+    console.warn(`  Warning: Could not fetch agent prompt (${e.message}). Agents can still call tools.`)
+  }
+}
 
 // MCP Protocol Handlers
 const handlers = {
+  // ===== Search & Discovery =====
+
   // List available humans
   async list_humans(params = {}) {
     const query = new URLSearchParams()
@@ -23,7 +45,7 @@ const handlers = {
     if (params.sort) query.append('sort', params.sort)
     if (params.limit) query.append('limit', params.limit)
     if (params.offset) query.append('offset', params.offset)
-    
+
     const res = await fetch(`${API_URL}/humans?${query}`)
     return await res.json()
   },
@@ -34,15 +56,25 @@ const handlers = {
     return await res.json()
   },
 
+  // Get task templates
+  async task_templates(params = {}) {
+    const query = new URLSearchParams()
+    if (params.category) query.append('category', params.category)
+    const res = await fetch(`${API_URL}/task-templates?${query}`)
+    return await res.json()
+  },
+
+  // ===== Conversations & Messaging =====
+
   // Start conversation with human
   async start_conversation(params) {
     const res = await fetch(`${API_URL}/conversations`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': API_KEY 
+        'Authorization': API_KEY
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         human_id: params.human_id,
         message: params.message || "Hi! I'd like to discuss a potential task."
       })
@@ -54,11 +86,11 @@ const handlers = {
   async send_message(params) {
     const res = await fetch(`${API_URL}/messages`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': API_KEY 
+        'Authorization': API_KEY
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         conversation_id: params.conversation_id,
         content: params.content,
         type: params.type || 'text'
@@ -97,61 +129,6 @@ const handlers = {
     return messages;
   },
 
-  // Create booking request
-  async create_booking(params) {
-    const res = await fetch(`${API_URL}/bookings`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': API_KEY 
-      },
-      body: JSON.stringify({
-        conversation_id: params.conversation_id,
-        title: params.title,
-        description: params.description,
-        location: params.location,
-        scheduled_at: params.scheduled_at,
-        duration_hours: params.duration_hours,
-        hourly_rate: params.hourly_rate
-      })
-    })
-    return await res.json()
-  },
-
-  // Complete booking
-  async complete_booking(params) {
-    const res = await fetch(`${API_URL}/bookings/${params.booking_id}/complete`, {
-      method: 'POST',
-      headers: { 'Authorization': API_KEY }
-    })
-    return await res.json()
-  },
-
-  // Release escrow payment
-  async release_escrow(params) {
-    const res = await fetch(`${API_URL}/bookings/${params.booking_id}/release-escrow`, {
-      method: 'POST',
-      headers: { 'Authorization': API_KEY }
-    })
-    return await res.json()
-  },
-
-  // Get my bookings
-  async my_bookings() {
-    const res = await fetch(`${API_URL}/bookings`, {
-      headers: { 'Authorization': API_KEY }
-    })
-    return await res.json()
-  },
-
-  // Get notifications
-  async notifications() {
-    const res = await fetch(`${API_URL}/notifications`, {
-      headers: { 'Authorization': API_KEY }
-    })
-    return await res.json()
-  },
-
   // Get unread message summary across all conversations
   async get_unread_summary() {
     const res = await fetch(`${API_URL}/conversations/unread`, {
@@ -160,39 +137,10 @@ const handlers = {
     return await res.json()
   },
 
-  // Register/update webhook URL for push notifications
-  async set_webhook(params) {
-    const { url, secret } = params;
-    const res = await fetch(`${API_URL}/webhooks/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': API_KEY
-      },
-      body: JSON.stringify({ webhook_url: url, webhook_secret: secret })
-    })
-    return await res.json()
-  },
+  // ===== Tasks =====
 
-  // Mark notification read
-  async mark_notification_read(params) {
-    const res = await fetch(`${API_URL}/notifications/${params.notification_id}/read`, {
-      method: 'PATCH',
-      headers: { 'Authorization': API_KEY }
-    })
-    return await res.json()
-  },
-
-  // Get task templates
-  async task_templates(params = {}) {
-    const query = new URLSearchParams()
-    if (params.category) query.append('category', params.category)
-    const res = await fetch(`${API_URL}/task-templates?${query}`)
-    return await res.json()
-  },
-
-  // Ad hoc tasks
-  async create_adhoc_task(params) {
+  // Create a public posting for humans to apply to
+  async create_posting(params) {
     const res = await fetch(`${API_URL}/ad-hoc`, {
       method: 'POST',
       headers: {
@@ -207,38 +155,45 @@ const handlers = {
         urgency: params.urgency || 'normal',
         budget_min: params.budget_min,
         budget_max: params.budget_max,
-        required_skills: params.required_skills || []
+        budget: params.budget,
+        required_skills: params.required_skills || [],
+        task_type: params.task_type,
+        quantity: params.quantity,
+        is_anonymous: params.is_anonymous,
+        duration_hours: params.duration_hours,
+        is_remote: params.is_remote
       })
     })
     return await res.json()
   },
 
-  // Create a task (direct posting via /api/tasks)
-  async create_task(params) {
-    const res = await fetch(`${API_URL}/tasks`, {
+  // Hire a specific human directly (from conversation or by human_id)
+  async direct_hire(params) {
+    const res = await fetch(`${API_URL}/bookings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': API_KEY
       },
       body: JSON.stringify({
+        conversation_id: params.conversation_id,
+        human_id: params.human_id,
         title: params.title,
         description: params.description,
-        category: params.category,
-        budget: params.budget || 50,
         location: params.location,
-        is_remote: params.is_remote || false,
+        scheduled_at: params.scheduled_at,
         duration_hours: params.duration_hours,
-        deadline: params.deadline,
-        requirements: params.requirements,
-        required_skills: params.required_skills || []
+        hourly_rate: params.hourly_rate,
+        budget: params.budget,
+        category: params.category
       })
     })
     return await res.json()
   },
 
-  async my_adhoc_tasks() {
-    const res = await fetch(`${API_URL}/ad-hoc?my_tasks=true`, {
+  // List all your tasks (direct hires + postings)
+  async my_tasks() {
+    const res = await fetch(`${API_URL}/bookings`, {
       headers: { 'Authorization': API_KEY }
     })
     return await res.json()
@@ -267,9 +222,45 @@ const handlers = {
     return await res.json()
   },
 
+  // Hire a human for a task (with Stripe charge)
+  async hire_human(params) {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}/hire`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({
+        human_id: params.human_id,
+        deadline_hours: params.deadline_hours,
+        instructions: params.instructions
+      })
+    })
+    return await res.json()
+  },
+
+  // Get detailed task status
+  async get_task_status(params) {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}/status`, {
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // ===== Proofs & Completion =====
+
   // View proof submissions for a task
   async view_proof(params) {
     const res = await fetch(`${API_URL}/tasks/${params.task_id}/proofs`, {
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // Approve task and release payment
+  async approve_task(params) {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}/approve`, {
+      method: 'POST',
       headers: { 'Authorization': API_KEY }
     })
     return await res.json()
@@ -293,13 +284,40 @@ const handlers = {
     return await res.json()
   },
 
-  // Get detailed task status
-  async get_task_status(params) {
-    const res = await fetch(`${API_URL}/tasks/${params.task_id}/status`, {
+  // ===== Notifications & Webhooks =====
+
+  // Get notifications
+  async notifications() {
+    const res = await fetch(`${API_URL}/notifications`, {
       headers: { 'Authorization': API_KEY }
     })
     return await res.json()
   },
+
+  // Mark notification read
+  async mark_notification_read(params) {
+    const res = await fetch(`${API_URL}/notifications/${params.notification_id}/read`, {
+      method: 'PATCH',
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // Register/update webhook URL for push notifications
+  async set_webhook(params) {
+    const { url, webhook_url, secret } = params;
+    const res = await fetch(`${API_URL}/webhooks/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({ webhook_url: url || webhook_url, webhook_secret: secret })
+    })
+    return await res.json()
+  },
+
+  // ===== Feedback =====
 
   // Submit feedback or bug report
   async submit_feedback(params) {
@@ -322,8 +340,42 @@ const handlers = {
       })
     })
     return await res.json()
+  },
+
+  // Get the latest agent instructions/system prompt
+  async get_instructions() {
+    if (agentPrompt) {
+      return { version: promptVersion, prompt: agentPrompt }
+    }
+    // If we don't have a cached prompt, try fetching it now
+    await fetchAgentPrompt()
+    if (agentPrompt) {
+      return { version: promptVersion, prompt: agentPrompt }
+    }
+    return { error: 'Agent prompt not available. Check API connection.' }
   }
 }
+
+// Backward-compatible aliases (old names → canonical handlers)
+handlers.post_task = handlers.create_posting
+handlers.create_adhoc_task = handlers.create_posting
+handlers.create_task = handlers.create_posting
+handlers.create_booking = handlers.direct_hire
+handlers.get_tasks = handlers.my_tasks
+handlers.my_postings = handlers.my_tasks
+handlers.my_adhoc_tasks = handlers.my_tasks
+handlers.my_bookings = handlers.my_tasks
+handlers.release_escrow = handlers.approve_task
+handlers.release_payment = handlers.approve_task
+handlers.complete_booking = async (params) => {
+  const taskId = params.booking_id || params.task_id;
+  const res = await fetch(`${API_URL}/bookings/${taskId}/complete`, {
+    method: 'POST',
+    headers: { 'Authorization': API_KEY }
+  })
+  return await res.json()
+}
+handlers.complete_task = handlers.complete_booking
 
 // MCP Protocol Server
 const server = http.createServer((req, res) => {
@@ -331,7 +383,7 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  
+
   if (req.method === 'OPTIONS') {
     res.writeHead(200)
     res.end()
@@ -344,20 +396,20 @@ const server = http.createServer((req, res) => {
     req.on('end', async () => {
       try {
         const { method, params = {} } = JSON.parse(body)
-        
+
         if (!API_KEY) {
           res.writeHead(401, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: 'HUMANWORK_API_KEY required' }))
+          res.end(JSON.stringify({ error: 'IRLWORK_API_KEY required' }))
           return
         }
-        
+
         const handler = handlers[method]
         if (!handler) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: `Unknown method: ${method}` }))
           return
         }
-        
+
         const result = await handler(params)
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify(result))
@@ -382,42 +434,35 @@ const server = http.createServer((req, res) => {
 
 const PORT = process.env.MCP_PORT || 3004
 server.listen(PORT, () => {
-  console.log(`🤖 Humanwork.ai MCP Server running on port ${PORT}`)
+  console.log(`irlwork.ai MCP Server running on port ${PORT}`)
   console.log(`   API: ${API_URL}`)
-  console.log(`   Available Methods (23):`)
   console.log(``)
-  console.log(`   Core:`)
-  console.log(`   - list_humans(params)`)
-  console.log(`   - get_human(human_id)`)
-  console.log(`   - start_conversation(human_id, message)`)
-  console.log(`   - send_message(conversation_id, content)`)
-  console.log(`   - get_messages(conversation_id, since?) [UPDATED]`)
-  console.log(`   - get_unread_summary() [NEW]`)
+  console.log(`   Search & Discovery:`)
+  console.log(`     list_humans, get_human, task_templates`)
   console.log(``)
-  console.log(`   Bookings & Payments:`)
-  console.log(`   - create_booking(...)`)
-  console.log(`   - complete_booking(booking_id)`)
-  console.log(`   - release_escrow(booking_id)`)
-  console.log(`   - my_bookings()`)
+  console.log(`   Tasks:`)
+  console.log(`     create_posting, direct_hire, my_tasks`)
+  console.log(`     get_applicants, assign_human, hire_human, get_task_status`)
   console.log(``)
-  console.log(`   Tasks & Applications:`)
-  console.log(`   - create_task(title, description, category, budget, location, required_skills, ...) [NEW]`)
-  console.log(`   - create_adhoc_task(...)`)
-  console.log(`   - my_adhoc_tasks()`)
-  console.log(`   - task_templates(params)`)
-  console.log(`   - get_applicants(task_id) [NEW]`)
-  console.log(`   - assign_human(task_id, human_id) [NEW]`)
+  console.log(`   Conversations:`)
+  console.log(`     start_conversation, send_message, get_messages, get_unread_summary`)
   console.log(``)
-  console.log(`   Proofs & Disputes:`)
-  console.log(`   - view_proof(task_id) [NEW]`)
-  console.log(`   - dispute_task(task_id, reason) [NEW]`)
-  console.log(`   - get_task_status(task_id) [NEW]`)
+  console.log(`   Proofs & Completion:`)
+  console.log(`     view_proof, approve_task, dispute_task`)
   console.log(``)
-  console.log(`   Notifications & Webhooks:`)
-  console.log(`   - notifications()`)
-  console.log(`   - mark_notification_read(notification_id)`)
-  console.log(`   - set_webhook(url, secret?) [NEW]`)
+  console.log(`   Notifications:`)
+  console.log(`     notifications, mark_notification_read, set_webhook`)
   console.log(``)
   console.log(`   Feedback:`)
-  console.log(`   - submit_feedback(message, type?, urgency?, subject?) [NEW]`)
+  console.log(`     submit_feedback`)
+  console.log(``)
+  console.log(`   Aliases (backward compat):`)
+  console.log(`     post_task, create_adhoc_task, create_task → create_posting`)
+  console.log(`     create_booking → direct_hire`)
+  console.log(`     get_tasks, my_postings, my_adhoc_tasks, my_bookings → my_tasks`)
+  console.log(`     release_escrow, release_payment → approve_task`)
+  console.log(`     complete_booking → complete_task`)
+  console.log(``)
+  // Fetch latest agent prompt from API
+  fetchAgentPrompt()
 })
