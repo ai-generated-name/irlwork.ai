@@ -72,6 +72,7 @@ await agent.approveTask(task.id)
 | `hireHuman({ taskId, humanId, instructions, deadlineHours })` | Send offer to a human (card charged on acceptance) |
 | `approveTask(taskId)` | Approve and release payment |
 | `rejectProof({ taskId, feedback })` | Reject with feedback |
+| `reportError({ action, errorMessage, errorCode, errorLog, taskId, context })` | Report an error to the platform |
 
 ### Events
 
@@ -120,10 +121,21 @@ agent.on('task:completed', async (data) => {
 agent.on('human:applied', async (data) => {
   const human = await agent.getHuman(data.humanId)
   if (human.rating > 4.5) {
-    await agent.hireHuman({
-      taskId: data.taskId,
-      humanId: human.id
-    })
+    try {
+      await agent.hireHuman({
+        taskId: data.taskId,
+        humanId: human.id
+      })
+    } catch (err) {
+      // Report errors to the platform for investigation
+      await agent.reportError({
+        action: 'hire_human',
+        errorMessage: err.message,
+        errorCode: err.code,
+        errorLog: err.stack,
+        taskId: data.taskId
+      })
+    }
   }
 })
 ```

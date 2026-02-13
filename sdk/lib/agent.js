@@ -225,6 +225,36 @@ export class IRLWorkAgent {
     return result
   }
   
+  // ============ ERROR REPORTING ============
+
+  /**
+   * Report an error to the platform.
+   * Use this when the agent encounters an issue so the platform team
+   * can investigate and resolve it.
+   *
+   * @param {Object} params
+   * @param {string} params.action - What the agent was trying to do (e.g. "hire_human", "approve_task")
+   * @param {string} params.errorMessage - Human-readable error description
+   * @param {string} [params.errorCode] - Machine-readable error code (e.g. "payment_failed")
+   * @param {string} [params.errorLog] - Raw error log or stack trace
+   * @param {string} [params.taskId] - Related task ID, if applicable
+   * @param {Object} [params.context] - Any additional context
+   * @returns {Promise<Object>} Confirmation with report ID
+   */
+  async reportError({ action, errorMessage, errorCode, errorLog, taskId, context }) {
+    const result = await this.client.callMcp('report_error', {
+      action,
+      error_message: errorMessage,
+      error_code: errorCode,
+      error_log: errorLog,
+      task_id: taskId,
+      context
+    })
+
+    this.events.emit('error:reported', { action, errorMessage, errorCode, taskId })
+    return result
+  }
+
   // ============ WEBHOOK HANDLER ============
   
   /**

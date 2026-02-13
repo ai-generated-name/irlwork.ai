@@ -5127,6 +5127,62 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
+      case 'report_error': {
+        const { action: errorAction, error_message, error_code, error_log, task_id: errorTaskId, context: errorContext } = params;
+        if (!errorAction || !error_message) {
+          return res.status(400).json({ error: 'action and error_message are required' });
+        }
+
+        const errorId = uuidv4();
+        const metadata = {
+          action: errorAction,
+          error_code: error_code || null,
+          error_log: typeof error_log === 'string' ? error_log.slice(0, 10000) : null,
+          task_id: errorTaskId || null,
+          context: errorContext || null,
+          reported_at: new Date().toISOString()
+        };
+
+        const { data: errorReport, error: insertError } = await supabase
+          .from('feedback')
+          .insert({
+            id: errorId,
+            user_id: user.id,
+            user_email: user.email,
+            user_name: user.name,
+            user_type: user.type || 'agent',
+            type: 'agent_error',
+            urgency: 'high',
+            subject: `[${errorAction}] ${error_code || 'error'}`,
+            message: error_message,
+            metadata,
+            page_url: errorTaskId ? `/tasks/${errorTaskId}` : 'mcp-client',
+            status: 'new',
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        // Notify admins of agent errors
+        const { getAdminUserIds } = require('./middleware/adminAuth');
+        const adminIds = getAdminUserIds();
+        for (const adminId of adminIds) {
+          await createNotification(
+            adminId,
+            'agent_error',
+            'Agent Error Report',
+            `Agent "${user.name || user.email}" reported an error during "${errorAction}": ${error_message.slice(0, 200)}`,
+            `/admin/feedback`
+          );
+        }
+
+        console.log(`[AgentError] ${user.id} reported error during "${errorAction}": ${error_message.slice(0, 200)}`);
+        res.json({ success: true, id: errorReport.id, message: 'Error report submitted. The platform team has been notified.' });
+        break;
+      }
+
       // ===== Notifications =====
       case 'notifications': {
         const { data: notifications, error } = await supabase
