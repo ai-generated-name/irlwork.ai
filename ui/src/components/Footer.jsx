@@ -44,6 +44,9 @@ export default function Footer() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
                 <Link to="/" style={{ fontSize: '14px', color: 'var(--text-40)', textDecoration: 'none' }}>About</Link>
                 <Link to="/" style={{ fontSize: '14px', color: 'var(--text-40)', textDecoration: 'none' }}>Blog</Link>
+                <Link to="/contact" style={{ fontSize: '14px', color: 'var(--text-40)', textDecoration: 'none' }}>Contact Us</Link>
+                <a href="mailto:support@irlwork.ai" style={{ fontSize: '14px', color: 'var(--text-40)', textDecoration: 'none' }}>support@irlwork.ai</a>
+                <a href="mailto:press@irlwork.ai" style={{ fontSize: '14px', color: 'var(--text-40)', textDecoration: 'none' }}>press@irlwork.ai</a>
               </div>
             </div>
           </div>
@@ -94,6 +97,9 @@ export default function Footer() {
               <h4 className="footer-v4-heading">Company</h4>
               <Link to="/" className="footer-v4-link">About</Link>
               <Link to="/" className="footer-v4-link">Blog</Link>
+              <Link to="/contact" className="footer-v4-link">Contact Us</Link>
+              <a href="mailto:support@irlwork.ai" className="footer-v4-link">support@irlwork.ai</a>
+              <a href="mailto:press@irlwork.ai" className="footer-v4-link">press@irlwork.ai</a>
             </div>
           </div>
 

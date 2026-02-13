@@ -26,6 +26,7 @@ const WorkingDashboard = lazy(() => import('./pages/WorkingDashboard'))
 const HiringDashboard = lazy(() => import('./pages/HiringDashboard'))
 import LandingPageV4 from './pages/LandingPageV4'
 import NotFoundPage from './pages/NotFoundPage'
+import ContactPage from './pages/ContactPage'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
@@ -5023,6 +5024,7 @@ function App() {
     }
     if (path === '/mcp') { navigate('/connect-agent'); return <Loading /> }
     if (path === '/connect-agent') return <ConnectAgentPage />
+    if (path === '/contact') return <ContactPage />
     if (path === '/browse') return <Suspense fallback={<Loading />}><BrowsePage user={user} /></Suspense>
 
     // Homepage
