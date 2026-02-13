@@ -2358,7 +2358,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   // Get human details for response
   const { data: humanUser } = await supabase
     .from('users')
-    .select('id, name, email')
+    .select('id, name')
     .eq('id', human_id)
     .single();
 
@@ -2552,7 +2552,7 @@ app.get('/api/agent/tasks', async (req, res) => {
     .from('tasks')
     .select(`
       *,
-      assignee:users!human_id(id, name, email, hourly_rate, rating)
+      assignee:users!human_id(id, name, hourly_rate, rating)
     `)
     .eq('agent_id', user.id)
     .order('created_at', { ascending: false })
@@ -2580,7 +2580,7 @@ app.post('/api/tasks/:id/release', async (req, res) => {
   // Get task details
   const { data: task, error: taskError } = await supabase
     .from('tasks')
-    .select('*, assignee:users!human_id(*)')
+    .select('*, assignee:users!human_id(id, name, hourly_rate, rating, stripe_account_id)')
     .eq('id', id)
     .single();
 
@@ -3255,7 +3255,7 @@ app.get('/api/tasks/:id/proofs', async (req, res) => {
     .from('task_proofs')
     .select(`
       *,
-      submitter:users!task_proofs_human_id_fkey(id, name, email)
+      submitter:users!task_proofs_human_id_fkey(id, name)
     `)
     .eq('task_id', taskId)
     .order('created_at', { ascending: false });
@@ -3358,14 +3358,14 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   // Get task with current deadline
   const { data: task, error: taskError } = await supabase
     .from('tasks')
-    .select('*, human:users!tasks_human_id_fkey(*)')
+    .select('*, human:users!tasks_human_id_fkey(id, name)')
     .eq('id', taskId)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Not your task' });
   }
@@ -4809,8 +4809,8 @@ app.post('/api/mcp', async (req, res) => {
           .from('tasks')
           .select(`
             *,
-            human:users!tasks_human_id_fkey(id, name, email, rating),
-            agent:users!tasks_agent_id_fkey(id, name, email)
+            human:users!tasks_human_id_fkey(id, name, rating),
+            agent:users!tasks_agent_id_fkey(id, name)
           `)
           .eq('id', params.task_id)
           .single();
@@ -4849,7 +4849,7 @@ app.post('/api/mcp', async (req, res) => {
         // Check if human exists
         const { data: human, error: humanError } = await supabase
           .from('users')
-          .select('id, name, email')
+          .select('id, name')
           .eq('id', targetHumanId)
           .eq('type', 'human')
           .single();
@@ -6916,8 +6916,8 @@ app.get('/api/my-tasks', async (req, res) => {
     .from('tasks')
     .select(`
       *,
-      creator:users!agent_id(id, name, email),
-      assignee:users!human_id(id, name, email)
+      creator:users!agent_id(id, name),
+      assignee:users!human_id(id, name)
     `)
     .order('created_at', { ascending: false });
 
@@ -7458,8 +7458,8 @@ app.get('/api/disputes', async (req, res) => {
     .select(`
       *,
       task:tasks(*),
-      filed_by_user:users!disputes_filed_by_fkey(id, name, email),
-      filed_against_user:users!disputes_filed_against_fkey(id, name, email)
+      filed_by_user:users!disputes_filed_by_fkey(id, name),
+      filed_against_user:users!disputes_filed_against_fkey(id, name)
     `)
     .or(`filed_by.eq.${user.id},filed_against.eq.${user.id}`);
 
@@ -7491,9 +7491,9 @@ app.get('/api/disputes/:id', async (req, res) => {
       *,
       task:tasks(*),
       payout:payouts(*),
-      filed_by_user:users!disputes_filed_by_fkey(id, name, email),
-      filed_against_user:users!disputes_filed_against_fkey(id, name, email),
-      resolved_by_user:users!disputes_resolved_by_fkey(id, name, email)
+      filed_by_user:users!disputes_filed_by_fkey(id, name),
+      filed_against_user:users!disputes_filed_against_fkey(id, name),
+      resolved_by_user:users!disputes_resolved_by_fkey(id, name)
     `)
     .eq('id', id)
     .single();
