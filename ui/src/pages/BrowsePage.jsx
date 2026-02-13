@@ -4,6 +4,7 @@ import { supabase } from '../App'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
 import CityAutocomplete from '../components/CityAutocomplete'
+import SkillAutocomplete from '../components/SkillAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 import MarketingFooter from '../components/Footer'
@@ -604,11 +605,11 @@ export default function BrowsePage({ user }) {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Skill
                   </label>
-                  <CustomDropdown
+                  <SkillAutocomplete
                     value={skillFilter}
                     onChange={setSkillFilter}
-                    options={categories}
-                    placeholder="All Skills"
+                    placeholder="Search skills..."
+                    allLabel="All Skills"
                   />
                 </div>
 
@@ -903,11 +904,11 @@ export default function BrowsePage({ user }) {
                 />
               </div>
               <div style={{ minWidth: 160 }}>
-                <CustomDropdown
+                <SkillAutocomplete
                   value={taskCategoryFilter}
                   onChange={setTaskCategoryFilter}
-                  options={categories}
-                  placeholder="All Categories"
+                  placeholder="Search categories..."
+                  allLabel="All Categories"
                 />
               </div>
               <input
