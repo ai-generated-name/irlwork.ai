@@ -7,6 +7,7 @@ import QuickApplyModal from '../components/QuickApplyModal';
 import ReportTaskModal from '../components/ReportTaskModal';
 import CityAutocomplete from '../components/CityAutocomplete';
 import CustomDropdown from '../components/CustomDropdown';
+import SkillAutocomplete from '../components/SkillAutocomplete';
 
 import API_URL from '../config/api';
 
@@ -252,10 +253,11 @@ export default function BrowseTasksV2({
           </div>
 
           <div className="browse-tasks-v2-filters">
-            <CustomDropdown
+            <SkillAutocomplete
               value={category}
               onChange={setCategory}
-              options={CATEGORY_OPTIONS}
+              placeholder="Search categories..."
+              allLabel="All Categories"
               className="browse-tasks-v2-category-dropdown"
             />
             <CustomDropdown

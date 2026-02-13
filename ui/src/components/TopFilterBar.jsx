@@ -1,5 +1,6 @@
 import CustomDropdown from './CustomDropdown';
 import CityAutocomplete from './CityAutocomplete';
+import SkillAutocomplete from './SkillAutocomplete';
 
 // Radius filter options
 const radiusOptions = [
@@ -143,11 +144,11 @@ export default function TopFilterBar({
           )}
 
           {/* Category Filter */}
-          <CustomDropdown
+          <SkillAutocomplete
             value={categoryFilter}
             onChange={onCategoryChange}
-            options={categoryOptions}
-            placeholder="All Categories"
+            placeholder="Search categories..."
+            allLabel="All Categories"
             className="flex-1 md:flex-none md:w-44"
           />
         </div>
