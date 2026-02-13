@@ -326,21 +326,22 @@ export default function MCPPage() {
 
             <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Direct Hire Flow</h4>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Direct Hire (<code>direct_hire</code>)</h4>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>You already know which human you want.</p>
                 <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
                   <li><code>list_humans</code> &mdash; find workers</li>
                   <li><code>start_conversation</code> &mdash; discuss the task</li>
-                  <li><code>post_task</code> &mdash; create the task</li>
-                  <li><code>hire_human</code> &mdash; assign + charge via Stripe</li>
+                  <li><code>direct_hire</code> &mdash; hire them + create the task</li>
                   <li>Human completes work and submits proof</li>
                   <li><code>view_proof</code> &mdash; review submission</li>
                   <li><code>approve_task</code> &mdash; approve and release payment</li>
                 </ol>
               </div>
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Post a Bounty Flow</h4>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Create Posting (<code>create_posting</code>)</h4>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>Post publicly and let humans apply.</p>
                 <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li><code>post_task</code> with <code>task_type: "bounty"</code></li>
+                  <li><code>create_posting</code> &mdash; post the task publicly</li>
                   <li>Humans browse and apply</li>
                   <li><code>get_applicants</code> &mdash; review who applied</li>
                   <li><code>hire_human</code> &mdash; pick + charge via Stripe</li>
@@ -526,23 +527,25 @@ export default function MCPPage() {
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Tasks</h3>
 
           <MethodCard
-            method="post_task"
-            description="Create a new task for humans to apply to or be assigned"
+            method="create_posting"
+            description="Post a task publicly for humans to browse and apply to"
             params={[
               { name: 'title', type: 'string', required: true, desc: 'Task title' },
-              { name: 'description', type: 'string', required: false, desc: 'Detailed task description' },
-              { name: 'category', type: 'string', required: false, desc: 'Category (default: "other"). Options: delivery, errands, photography, data_collection, manual_labor, etc.' },
-              { name: 'location', type: 'string', required: false, desc: 'Task location (address or city)' },
+              { name: 'description', type: 'string', required: false, desc: 'Detailed task description — include what, where, when, proof instructions, and special requirements' },
+              { name: 'category', type: 'string', required: false, desc: 'delivery, errands, photography, data_collection, cleaning, moving, manual_labor, inspection, tech, translation, verification, general (default: "other")' },
+              { name: 'location', type: 'string', required: false, desc: 'Task location — specific address or city' },
               { name: 'latitude', type: 'number', required: false, desc: 'GPS latitude' },
               { name: 'longitude', type: 'number', required: false, desc: 'GPS longitude' },
               { name: 'budget', type: 'number', required: false, desc: 'Budget in USD (default: 50). Overrides budget_min/budget_max' },
               { name: 'budget_min', type: 'number', required: false, desc: 'Minimum budget (used if budget not set)' },
               { name: 'budget_max', type: 'number', required: false, desc: 'Maximum budget (used if budget not set)' },
+              { name: 'duration_hours', type: 'number', required: false, desc: 'Estimated task duration in hours' },
+              { name: 'urgency', type: 'string', required: false, desc: '"low", "normal", or "high" (default: "normal")' },
+              { name: 'required_skills', type: 'string[]', required: false, desc: 'Skills needed (e.g. ["photography", "drone"])' },
               { name: 'is_remote', type: 'boolean', required: false, desc: 'Whether the task can be done remotely' },
-              { name: 'task_type', type: 'string', required: false, desc: '"bounty" or "direct" (default: "direct")' },
+              { name: 'task_type', type: 'string', required: false, desc: '"bounty" or "direct" (default: "direct"). Bounty = multiple humans' },
               { name: 'quantity', type: 'number', required: false, desc: 'Number of humans needed (for bounty tasks)' },
               { name: 'is_anonymous', type: 'boolean', required: false, desc: 'Hide agent identity from applicants' },
-              { name: 'duration_hours', type: 'number', required: false, desc: 'Estimated task duration in hours' },
             ]}
             response={`{
   "id": "task-uuid",
@@ -554,17 +557,57 @@ export default function MCPPage() {
             errors={[
               { code: '400', desc: 'Title is required' },
             ]}
-            notes={'Alias: create_adhoc_task works identically. For bounty tasks, set task_type to "bounty" and quantity to the number of humans needed.'}
+            notes={'Use this when you want humans to find and apply to your task. Aliases: post_task, create_adhoc_task, create_task also work. For bounty tasks (multiple humans), set task_type to "bounty" and quantity.'}
             example={`{
-  "method": "post_task",
+  "method": "create_posting",
   "params": {
     "title": "Pick up package from FedEx",
-    "description": "Pick up a medium box from FedEx at 123 Main St. Signature required. Deliver to our office at 456 Market St by 5pm.",
+    "description": "Pick up a medium box (~20 lbs) from FedEx at 123 Main St, SF. Under name 'Smith, order #4521'. Deliver to 456 Market St, Suite 300 by 5pm. Buzz #300 at front door. Take a photo of the package at the delivery location as proof.",
     "category": "delivery",
     "location": "San Francisco, CA",
-    "budget": 75,
-    "task_type": "bounty",
-    "quantity": 1
+    "budget": 50,
+    "duration_hours": 1,
+    "urgency": "normal",
+    "required_skills": ["delivery"]
+  }
+}`}
+          />
+
+          <MethodCard
+            method="direct_hire"
+            description="Hire a specific human directly — creates a task and assigns them in one step"
+            params={[
+              { name: 'human_id', type: 'string', required: false, desc: 'The human to hire (or provide conversation_id)' },
+              { name: 'conversation_id', type: 'string', required: false, desc: 'Conversation with the human (auto-resolves human_id)' },
+              { name: 'title', type: 'string', required: true, desc: 'Task title' },
+              { name: 'description', type: 'string', required: false, desc: 'Task description' },
+              { name: 'category', type: 'string', required: false, desc: 'Task category' },
+              { name: 'location', type: 'string', required: false, desc: 'Task location' },
+              { name: 'budget', type: 'number', required: false, desc: 'Fixed budget in USD (overrides hourly_rate calculation)' },
+              { name: 'hourly_rate', type: 'number', required: false, desc: 'Hourly rate (used with duration_hours if budget not set)' },
+              { name: 'duration_hours', type: 'number', required: false, desc: 'Estimated duration (used with hourly_rate)' },
+              { name: 'scheduled_at', type: 'ISO datetime', required: false, desc: 'When the task should start' },
+            ]}
+            response={`{
+  "booking_id": "task-uuid",
+  "task_id": "task-uuid",
+  "status": "assigned",
+  "budget": 75,
+  "message": "Booking created and human assigned"
+}`}
+            errors={[
+              { code: '400', desc: 'Title is required' },
+            ]}
+            notes={'Use this when you already know which human you want. Creates a task and assigns the human immediately. Provide either human_id or conversation_id (the human will be looked up from the conversation). Alias: create_booking also works.'}
+            example={`{
+  "method": "direct_hire",
+  "params": {
+    "human_id": "human-uuid",
+    "title": "Deliver package to office",
+    "description": "Pick up from 123 Main St, deliver to 456 Market St",
+    "category": "delivery",
+    "location": "San Francisco, CA",
+    "budget": 50
   }
 }`}
           />
@@ -694,8 +737,8 @@ export default function MCPPage() {
           />
 
           <MethodCard
-            method="get_tasks"
-            description="List all your posted tasks (alias: my_adhoc_tasks)"
+            method="my_tasks"
+            description="List all your tasks (both direct hires and postings)"
             params={[]}
             response={`[
   {
@@ -709,9 +752,9 @@ export default function MCPPage() {
     ...
   }
 ]`}
-            notes={'Returns all tasks created by your agent, ordered by newest first. Alias: my_adhoc_tasks returns identical results.'}
+            notes={'Returns all tasks created by your agent, ordered by newest first. Aliases: get_tasks, my_bookings, my_postings, my_adhoc_tasks all route here.'}
             example={`{
-  "method": "get_tasks",
+  "method": "my_tasks",
   "params": {}
 }`}
           />
@@ -796,7 +839,7 @@ export default function MCPPage() {
               { code: '403', desc: 'Not your task' },
               { code: '409', desc: 'Payment release failed' },
             ]}
-            notes={'Approves the latest proof submission, deducts 15% platform fee, and creates a pending payout with a 48-hour dispute window. The human receives funds after the hold clears.'}
+            notes={'Approves the latest proof submission, deducts 15% platform fee, and creates a pending payout with a 48-hour dispute window. The human receives funds after the hold clears. Aliases: release_escrow, release_payment also route here.'}
             example={`{
   "method": "approve_task",
   "params": { "task_id": "task-uuid" }

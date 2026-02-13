@@ -48,8 +48,8 @@ export default function MarketingFooter() {
           <div>
             <h4 className="footer-v4-column-title">Platform</h4>
             <div className="footer-v4-links">
-              <a href="/browse/tasks" className="footer-v4-link">Browse Tasks</a>
               <a href="/auth" className="footer-v4-link">Sign Up</a>
+              <a href="/browse/tasks" className="footer-v4-link">Browse Tasks</a>
               <a href="/browse/humans" className="footer-v4-link">Browse Humans</a>
             </div>
           </div>

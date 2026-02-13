@@ -4,9 +4,11 @@ import { supabase } from '../App'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
 import CityAutocomplete from '../components/CityAutocomplete'
+import SkillAutocomplete from '../components/SkillAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 import MarketingFooter from '../components/Footer'
+import { fixAvatarUrl } from '../utils/avatarUrl'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -282,10 +284,10 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
         const data = await res.json()
         // Handle both old array format and new object format
         if (Array.isArray(data)) {
-          setHumans(data)
+          setHumans(fixAvatarUrl(data))
           setHumansTotal(data.length)
         } else {
-          setHumans(data.humans || [])
+          setHumans(fixAvatarUrl(data.humans || []))
           setHumansTotal(data.total || 0)
         }
       }
@@ -612,11 +614,11 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Skill
                   </label>
-                  <CustomDropdown
+                  <SkillAutocomplete
                     value={skillFilter}
                     onChange={setSkillFilter}
-                    options={categories}
-                    placeholder="All Skills"
+                    placeholder="Search skills..."
+                    allLabel="All Skills"
                   />
                 </div>
 
@@ -911,11 +913,11 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 />
               </div>
               <div style={{ minWidth: 160 }}>
-                <CustomDropdown
+                <SkillAutocomplete
                   value={taskCategoryFilter}
                   onChange={setTaskCategoryFilter}
-                  options={categories}
-                  placeholder="All Categories"
+                  placeholder="Search categories..."
+                  allLabel="All Categories"
                 />
               </div>
               <input
