@@ -42,6 +42,7 @@ const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
 import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
+import SkillAutocomplete from './components/SkillAutocomplete'
 import TimezoneDropdown from './components/TimezoneDropdown'
 import { TASK_CATEGORIES } from './components/CategoryPills'
 import { Copy } from 'lucide-react'
@@ -1296,6 +1297,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [sendingMessage, setSendingMessage] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [browseCityFilter, setBrowseCityFilter] = useState('')
+  const [browseCountryFilter, setBrowseCountryFilter] = useState('')
+  const [browseMaxRate, setBrowseMaxRate] = useState('')
+  const [browseSort, setBrowseSort] = useState('rating')
   const [locationFilter, setLocationFilter] = useState('')
   const [filterCoords, setFilterCoords] = useState({ lat: null, lng: null })
   const [radiusFilter, setRadiusFilter] = useState('50')
@@ -2986,47 +2991,95 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {humansSubTab === 'browse' && (
               <>
-                {/* Search & Filter */}
-                <div className="browse-humans-filters">
-                  <div style={{ flex: 1, position: 'relative' }}>
+                {/* Search & Filters */}
+                <div className="browse-humans-filters" style={{ flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 200px', position: 'relative' }}>
                     <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>{Icons.search}</span>
                     <input
                       type="text"
-                      placeholder="Search by name or skill..."
+                      placeholder="Search by name..."
                       className="dashboard-v4-form-input"
                       style={{ paddingLeft: 44 }}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <div>
-                    <CustomDropdown
+                  <div style={{ flex: '0 1 180px' }}>
+                    <SkillAutocomplete
                       value={filterCategory}
                       onChange={setFilterCategory}
+                      placeholder="Search skills..."
+                      allLabel="All Skills"
+                    />
+                  </div>
+                  <div style={{ flex: '0 1 180px' }}>
+                    <CityAutocomplete
+                      value={browseCityFilter}
+                      onChange={(cityData) => setBrowseCityFilter(cityData.city || '')}
+                      placeholder="Search city..."
+                    />
+                  </div>
+                  <div style={{ flex: '0 1 150px' }}>
+                    <input
+                      type="text"
+                      placeholder="Any country..."
+                      className="dashboard-v4-form-input"
+                      value={browseCountryFilter}
+                      onChange={(e) => setBrowseCountryFilter(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ flex: '0 1 120px' }}>
+                    <input
+                      type="number"
+                      placeholder="Max $/hr"
+                      min="1"
+                      className="dashboard-v4-form-input"
+                      value={browseMaxRate}
+                      onChange={(e) => setBrowseMaxRate(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ flex: '0 1 160px' }}>
+                    <CustomDropdown
+                      value={browseSort}
+                      onChange={setBrowseSort}
                       options={[
-                        { value: '', label: 'All Skills' },
-                        ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
-                          value: c,
-                          label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                        }))
+                        { value: 'rating', label: 'Top Rated' },
+                        { value: 'most_reviewed', label: 'Most Reviewed' },
+                        { value: 'price_low', label: 'Price: Low to High' },
+                        { value: 'price_high', label: 'Price: High to Low' },
+                        { value: 'newest', label: 'Newest' },
                       ]}
-                      placeholder="All Skills"
+                      placeholder="Top Rated"
                     />
                   </div>
                 </div>
 
-                {humans.length === 0 ? (
-                  <div className="dashboard-v4-empty">
-                    <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-                    <p className="dashboard-v4-empty-title">No humans found</p>
-                    <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
-                  </div>
-                ) : (
-                  <div className="browse-humans-grid">
-                    {humans
-                      .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
-                      .filter(h => !filterCategory || h.skills?.includes(filterCategory))
-                      .map(human => (
+                {(() => {
+                  const filtered = humans
+                    .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
+                    .filter(h => !filterCategory || h.skills?.includes(filterCategory))
+                    .filter(h => !browseCityFilter || h.city?.toLowerCase().includes(browseCityFilter.toLowerCase()))
+                    .filter(h => !browseCountryFilter || h.country?.toLowerCase().includes(browseCountryFilter.trim().toLowerCase()))
+                    .filter(h => !browseMaxRate || (h.hourly_rate || 25) <= Number(browseMaxRate))
+                    .sort((a, b) => {
+                      switch (browseSort) {
+                        case 'rating': return (b.rating || 0) - (a.rating || 0)
+                        case 'most_reviewed': return (b.total_ratings_count || 0) - (a.total_ratings_count || 0)
+                        case 'price_low': return (a.hourly_rate || 25) - (b.hourly_rate || 25)
+                        case 'price_high': return (b.hourly_rate || 25) - (a.hourly_rate || 25)
+                        case 'newest': return new Date(b.created_at || 0) - new Date(a.created_at || 0)
+                        default: return 0
+                      }
+                    })
+                  return filtered.length === 0 ? (
+                    <div className="dashboard-v4-empty">
+                      <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
+                      <p className="dashboard-v4-empty-title">No humans found</p>
+                      <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
+                    </div>
+                  ) : (
+                    <div className="browse-humans-grid">
+                      {filtered.map(human => (
                         <HumanProfileCard
                           key={human.id}
                           human={human}
@@ -3035,8 +3088,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           onHire={() => { setShowCreateForm(true); setActiveTab('posted') }}
                         />
                       ))}
-                  </div>
-                )}
+                    </div>
+                  )
+                })()}
               </>
             )}
 
