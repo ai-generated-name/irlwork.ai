@@ -9,6 +9,26 @@ const http = require('http')
 const API_URL = process.env.API_URL || 'http://localhost:3002/api'
 const API_KEY = process.env.IRLWORK_API_KEY || process.env.HUMANWORK_API_KEY
 
+// Cached agent prompt (fetched from API on startup)
+let agentPrompt = null
+let promptVersion = null
+
+async function fetchAgentPrompt() {
+  try {
+    const res = await fetch(`${API_URL}/agent/prompt`)
+    if (res.ok) {
+      const data = await res.json()
+      agentPrompt = data.prompt
+      promptVersion = data.version
+      console.log(`  Agent prompt v${data.version} loaded`)
+    } else {
+      console.warn(`  Warning: Could not fetch agent prompt (HTTP ${res.status}). Agents can still call tools.`)
+    }
+  } catch (e) {
+    console.warn(`  Warning: Could not fetch agent prompt (${e.message}). Agents can still call tools.`)
+  }
+}
+
 // MCP Protocol Handlers
 const handlers = {
   // ===== Search & Discovery =====
@@ -320,6 +340,19 @@ const handlers = {
       })
     })
     return await res.json()
+  },
+
+  // Get the latest agent instructions/system prompt
+  async get_instructions() {
+    if (agentPrompt) {
+      return { version: promptVersion, prompt: agentPrompt }
+    }
+    // If we don't have a cached prompt, try fetching it now
+    await fetchAgentPrompt()
+    if (agentPrompt) {
+      return { version: promptVersion, prompt: agentPrompt }
+    }
+    return { error: 'Agent prompt not available. Check API connection.' }
   }
 }
 
@@ -429,4 +462,7 @@ server.listen(PORT, () => {
   console.log(`     get_tasks, my_postings, my_adhoc_tasks, my_bookings → my_tasks`)
   console.log(`     release_escrow, release_payment → approve_task`)
   console.log(`     complete_booking → complete_task`)
+  console.log(``)
+  // Fetch latest agent prompt from API
+  fetchAgentPrompt()
 })

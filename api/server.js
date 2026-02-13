@@ -2516,6 +2516,16 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   });
 });
 
+// ============ AGENT PROMPT (dynamic, single source of truth) ============
+app.get('/api/agent/prompt', (req, res) => {
+  const { AGENT_PROMPT, PROMPT_VERSION } = require('./agent-prompt');
+  res.json({
+    version: PROMPT_VERSION,
+    prompt: AGENT_PROMPT,
+    updated_at: new Date().toISOString()
+  });
+});
+
 // ============ AGENT TASKS ============
 app.get('/api/agent/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
