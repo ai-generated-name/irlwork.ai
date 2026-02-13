@@ -33,7 +33,7 @@ export default function TaskHeader({ task }) {
   return (
     <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
       {/* Status Badge */}
-      <div className="mb-3 sm:mb-4">
+      <div className="flex items-center gap-3 mb-3 sm:mb-4">
         <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
         </span>
