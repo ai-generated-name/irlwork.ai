@@ -4299,8 +4299,6 @@ function ConnectAgentPage() {
   const [user, setUser] = useState(null)
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
-  const [promptTemplate, setPromptTemplate] = useState(null)
-  const [promptVersion, setPromptVersion] = useState(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -4328,42 +4326,34 @@ function ConnectAgentPage() {
     }
     checkAuth()
 
-    // Fetch the latest agent prompt from API (single source of truth)
-    fetch(`${API_URL}/agent/prompt`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data) {
-          setPromptTemplate(data.prompt)
-          setPromptVersion(data.version)
-        }
-      })
-      .catch(() => {}) // Silently fail — will use fallback
   }, [])
 
   const apiKeyPlaceholder = keys.length > 0
     ? keys[0].key_prefix + '...'
     : 'YOUR_API_KEY_HERE'
 
-  const apiKeySection = keys.length > 0
-    ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring/api-keys`
-    : `To use irlwork.ai, you need an API key.
+  const apiKeyInfo = keys.length > 0
+    ? `You already have an API key (starts with ${keys[0].key_prefix}). Use it as your Bearer token.`
+    : `Help the user get an API key by opening this URL in their browser:\nhttps://www.irlwork.ai/dashboard/hiring/api-keys\n\nIf they don't have an account, they'll be prompted to sign up first. Once on the page, they click "Generate New Key", copy it, and paste it back here.\n\nWait for the user to provide their API key before proceeding.`
 
-**Direct the user to this URL to get their API key:**
-https://www.irlwork.ai/dashboard/hiring/api-keys
+  // Short bootstrap prompt — tells the agent to fetch full instructions from the API
+  const fullPrompt = `You can hire real humans for physical-world tasks using irlwork.ai (deliveries, errands, photography, cleaning, and more).
 
-If the user doesn't have an account yet, they'll be prompted to sign up first, then redirected to the API keys page automatically.
+## Step 1: Get an API Key
+${apiKeyInfo}
 
-Once they're on the page, they can click "Generate New Key", copy it, and paste it back here. Ask the user to paste their API key so you can proceed.
+## Step 2: Load Full Instructions
+Once you have the API key, fetch your complete instructions (available tools, workflows, best practices) from:
+GET https://api.irlwork.ai/api/agent/prompt
 
-**Important:** Wait for the user to provide their actual API key before making any API calls. Do not proceed without one.`
+The response JSON has a "prompt" field with everything you need.
 
-  // Build the full prompt from the API template (single source of truth)
-  // Falls back to a minimal prompt if the API fetch hasn't completed yet
-  const fullPrompt = promptTemplate
-    ? promptTemplate
-        .replace('{{API_KEY_SECTION}}', apiKeySection)
-        .replace('{{API_KEY_PLACEHOLDER}}', apiKeyPlaceholder)
-    : `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.\n\n## Setup\n\n### 1. Get an API Key\n${apiKeySection}\n\n### 2. Use the API\nCall the irlwork.ai REST API directly — no SDK or MCP server needed:\n\ncurl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"method": "METHOD_NAME", "params": { ... }}'\n\nFull documentation: https://www.irlwork.ai/mcp`
+## Quick Reference
+- Every API call is a POST to: https://api.irlwork.ai/api/mcp
+- Header: Authorization: Bearer ${apiKeyPlaceholder}
+- Body: {"method": "METHOD_NAME", "params": { ... }}
+- Key methods: list_humans, start_conversation, create_posting, direct_hire
+- Full docs: https://www.irlwork.ai/mcp`
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(fullPrompt)
