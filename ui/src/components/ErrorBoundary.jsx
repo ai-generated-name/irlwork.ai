@@ -16,8 +16,8 @@ export default class ErrorBoundary extends React.Component {
     this.setState({ errorInfo });
   }
 
-  handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+  handleGoHome = () => {
+    window.location.href = '/';
   };
 
   handleReload = () => {
@@ -75,7 +75,7 @@ export default class ErrorBoundary extends React.Component {
               lineHeight: 1.6,
               marginBottom: 16,
             }}>
-              An unexpected error occurred. Please try again or refresh the page.
+              An unexpected error occurred. Please go back to the homepage or refresh the page.
             </p>
 
             {/* Show error details for debugging */}
@@ -107,7 +107,7 @@ export default class ErrorBoundary extends React.Component {
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <button
-                onClick={this.handleReset}
+                onClick={this.handleGoHome}
                 style={{
                   padding: '14px 32px',
                   background: '#E07A5F',
@@ -122,7 +122,7 @@ export default class ErrorBoundary extends React.Component {
                 onMouseOver={(e) => e.currentTarget.style.background = '#c45f4a'}
                 onMouseOut={(e) => e.currentTarget.style.background = '#E07A5F'}
               >
-                Try Again
+                Go to Homepage
               </button>
               <button
                 onClick={this.handleReload}
