@@ -1911,7 +1911,7 @@ app.get('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  let safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, human_ids, created_at, updated_at, country, country_code, human_id, agent_id, requirements, required_skills, moderation_status, is_remote';
+  let safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, human_ids, created_at, updated_at, country, country_code, human_id, agent_id, requirements, required_skills, moderation_status, is_remote, max_humans';
   if (taskColumnFlags.spots_filled) safeTaskColumns += ', spots_filled';
   if (taskColumnFlags.is_anonymous) safeTaskColumns += ', is_anonymous';
   if (taskColumnFlags.duration_hours) safeTaskColumns += ', duration_hours';
@@ -1975,7 +1975,7 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Authentication required' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, country, country_code } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code } = req.body;
 
   // Validate required fields
   if (!title || !title.trim()) {
@@ -2028,6 +2028,7 @@ app.post('/api/tasks', async (req, res) => {
       duration_hours: duration_hours || null,
       requirements: requirements || null,
       required_skills: skillsArray,
+      max_humans: max_humans ? parseInt(max_humans) : 1,
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,

@@ -852,10 +852,6 @@ code, pre {
   color: var(--success);
 }
 
-.task-card-v2-escrow.unfunded {
-  background: var(--bg-tertiary);
-  color: var(--text-tertiary);
-}
 
 .task-card-v2-footer {
   display: flex;
