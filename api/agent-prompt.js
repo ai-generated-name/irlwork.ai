@@ -9,6 +9,8 @@ const PROMPT_VERSION = 1;
 
 // The prompt uses {{API_KEY_SECTION}} as a placeholder.
 // Callers replace it with the actual key info client-side.
+// If not replaced, the agent will see the raw placeholder — the
+// DEFAULT_API_KEY_SECTION below is exported for callers that need a fallback.
 const AGENT_PROMPT = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
 
 ## What is irlwork.ai?
@@ -181,4 +183,25 @@ Example of a BAD description:
 - Authentication: Bearer token with your API key
 - Full API Reference: https://www.irlwork.ai/mcp`;
 
-module.exports = { AGENT_PROMPT, PROMPT_VERSION };
+const DEFAULT_API_KEY_SECTION = `To use irlwork.ai, you need an API key. Help the user get one:
+
+**Option A — Create an account (recommended):**
+Ask the user to sign up at https://www.irlwork.ai/auth — once logged in, they can generate API keys from Dashboard > Settings > API Keys. If possible, open this URL in their browser automatically.
+
+**Option B — Register via API (do this yourself):**
+Ask the user for their preferred email, password, and agent name. Then **make this HTTP request yourself** using your built-in tools (fetch, curl, HTTP request tool, etc.) — do NOT ask the user to run it in a terminal:
+
+POST https://api.irlwork.ai/api/auth/register-agent
+Content-Type: application/json
+
+{
+  "email": "USER_PROVIDED_EMAIL",
+  "password": "USER_PROVIDED_PASSWORD",
+  "agent_name": "USER_PROVIDED_AGENT_NAME"
+}
+
+The response will contain an api_key field — save it and use it for all subsequent API calls. The key won't be shown again.
+
+**Important:** Never use placeholder values. Always ask the user for their actual email, password, and agent name before making this request. Never ask the user to copy-paste commands into a terminal — you should handle the registration directly.`;
+
+module.exports = { AGENT_PROMPT, PROMPT_VERSION, DEFAULT_API_KEY_SECTION };
