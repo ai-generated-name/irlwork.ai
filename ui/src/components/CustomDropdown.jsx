@@ -10,6 +10,7 @@ const CustomDropdown = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [menuTop, setMenuTop] = useState(null);
   const dropdownRef = useRef(null);
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
@@ -94,13 +95,17 @@ const CustomDropdown = ({
     }
   }, [selectedIndex, isOpen]);
 
-  // Reset selected index when opening
+  // Reset selected index and calculate position when opening
   useEffect(() => {
     if (isOpen) {
       const currentIdx = options.findIndex(opt =>
         (typeof opt === 'object' ? opt.value : opt) === value
       );
       setSelectedIndex(currentIdx >= 0 ? currentIdx : 0);
+      if (triggerRef.current && window.innerWidth <= 767) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setMenuTop(rect.bottom + 4);
+      }
     }
   }, [isOpen, options, value]);
 
@@ -149,6 +154,7 @@ const CustomDropdown = ({
           ref={menuRef}
           className="custom-dropdown-menu"
           role="listbox"
+          style={menuTop != null && window.innerWidth <= 767 ? { position: 'fixed', top: menuTop, left: 16, right: 16, maxHeight: 240 } : undefined}
         >
           {options.map((opt, index) => {
             const optValue = typeof opt === 'object' ? opt.value : opt;

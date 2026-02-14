@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
 import CityAutocomplete from '../components/CityAutocomplete'
 import SkillAutocomplete from '../components/SkillAutocomplete'
+import CountryAutocomplete from '../components/CountryAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 import MarketingFooter from '../components/Footer'
@@ -641,14 +642,10 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Country
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Any country..."
+                  <CountryAutocomplete
                     value={countryInput}
-                    onChange={(e) => setCountryInput(e.target.value)}
-                    style={inputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(15,76,92,0.08)' }}
-                    onBlur={(e) => { e.target.style.borderColor = 'rgba(26,26,26,0.1)'; e.target.style.boxShadow = 'none' }}
+                    onChange={setCountryInput}
+                    placeholder="Any country..."
                   />
                 </div>
 

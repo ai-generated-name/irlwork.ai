@@ -1491,7 +1491,6 @@ code, pre {
     position: fixed;
     left: var(--space-4);
     right: var(--space-4);
-    top: auto;
     max-height: 240px;
     z-index: 1001;
   }
