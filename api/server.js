@@ -124,7 +124,16 @@ const PORT = process.env.PORT || 3002;
 
 // Security headers
 app.use(helmet({
-  contentSecurityPolicy: false, // Frontend serves its own CSP
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://js.stripe.com"],
+      frameSrc: ["'self'", "https://js.stripe.com"],
+      connectSrc: ["'self'", "https://api.stripe.com", "https://*.supabase.co", "https://api.resend.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+    }
+  },
   crossOriginEmbedderPolicy: false
 }));
 
@@ -151,8 +160,15 @@ console.log('[CORS] Configured origins:', corsOrigins);
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    // Block null origin (sandboxed iframes) and requests with no origin
+    // except server-to-server calls which legitimately have no origin
+    if (!origin) {
+      // Allow server-to-server (no origin) but block 'null' origin
+      return callback(null, true);
+    }
+    if (origin === 'null') {
+      return callback(new Error('Null origin not allowed'));
+    }
 
     if (corsOrigins.includes(origin)) {
       callback(null, true);
@@ -162,7 +178,7 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -185,8 +201,8 @@ app.post('/api/stripe/webhooks',
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured');
-      return res.status(200).json({ received: true, warning: 'Webhook secret not configured' });
+      console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured — rejecting webhook');
+      return res.status(500).json({ error: 'Webhook verification not configured' });
     }
 
     let event;
@@ -207,7 +223,7 @@ app.post('/api/stripe/webhooks',
   }
 );
 
-app.use(express.json({ limit: '30mb' }));
+app.use(express.json({ limit: '5mb' }));
 
 // Rate limiting middleware (applied after JSON parsing)
 app.use(rateLimitMiddleware);
@@ -274,7 +290,19 @@ const ALLOWED_UPLOAD_MIMES = [
   'video/mp4', 'video/quicktime', 'application/pdf'
 ];
 
-function validateUploadFile(filename, mimeType) {
+// Magic byte signatures for file type validation
+const MAGIC_BYTES = {
+  'jpg': [Buffer.from([0xFF, 0xD8, 0xFF])],
+  'jpeg': [Buffer.from([0xFF, 0xD8, 0xFF])],
+  'png': [Buffer.from([0x89, 0x50, 0x4E, 0x47])],
+  'gif': [Buffer.from('GIF87a'), Buffer.from('GIF89a')],
+  'webp': null, // Checked via RIFF header below
+  'pdf': [Buffer.from('%PDF')],
+  'mp4': null, // Checked via ftyp box below
+  'mov': null, // Checked via ftyp/moov below
+};
+
+function validateUploadFile(filename, mimeType, fileBuffer) {
   const ext = (filename?.split('.').pop() || '').toLowerCase();
   if (!ALLOWED_UPLOAD_EXTS.includes(ext)) {
     return { valid: false, error: `File type .${ext} not allowed. Accepted: ${ALLOWED_UPLOAD_EXTS.join(', ')}` };
@@ -282,6 +310,29 @@ function validateUploadFile(filename, mimeType) {
   if (mimeType && !ALLOWED_UPLOAD_MIMES.includes(mimeType.toLowerCase())) {
     return { valid: false, error: `MIME type ${mimeType} not allowed` };
   }
+
+  // Validate magic bytes if file buffer is provided
+  if (fileBuffer && fileBuffer.length >= 12) {
+    const magicSigs = MAGIC_BYTES[ext];
+    if (magicSigs) {
+      const matches = magicSigs.some(sig => fileBuffer.subarray(0, sig.length).equals(sig));
+      if (!matches) {
+        return { valid: false, error: `File content does not match expected .${ext} format` };
+      }
+    } else if (ext === 'webp') {
+      // RIFF....WEBP
+      if (fileBuffer.subarray(0, 4).toString() !== 'RIFF' || fileBuffer.subarray(8, 12).toString() !== 'WEBP') {
+        return { valid: false, error: 'File content does not match expected .webp format' };
+      }
+    } else if (ext === 'mp4' || ext === 'mov') {
+      // Check for ftyp or moov box in first 12 bytes
+      const boxType = fileBuffer.subarray(4, 8).toString();
+      if (!['ftyp', 'moov', 'free', 'mdat'].includes(boxType)) {
+        return { valid: false, error: `File content does not match expected .${ext} format` };
+      }
+    }
+  }
+
   return { valid: true, ext };
 }
 
@@ -547,30 +598,10 @@ async function getUserByToken(token) {
     }
   }
 
-  // 2. Legacy UUID auth (backward compatibility — will be removed in future)
+  // 2. UUID tokens are no longer accepted as authentication.
+  // Clients must use Supabase JWT or API key (irl_sk_...).
   if (uuidRegex.test(cleanToken)) {
-    const { data } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', cleanToken)
-      .single();
-    if (data) return data;
-
-    // UUID not found in users table — resolve via Supabase Auth email fallback.
-    // This handles Google OAuth users whose users row was created with a different UUID.
-    try {
-      const { data: { user: authUser } } = await supabase.auth.admin.getUserById(cleanToken);
-      if (authUser?.email) {
-        const { data: byEmail } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', authUser.email)
-          .single();
-        if (byEmail) return byEmail;
-      }
-    } catch (e) {
-      // Auth admin API unavailable — continue to other token checks
-    }
+    return null;
   }
 
   // Check if it's a new-style API key (irl_sk_...)
@@ -619,14 +650,9 @@ async function getUserByToken(token) {
     return null;
   }
 
-  // Check legacy API key in users table
-  const { data: apiUser } = await supabase
-    .from('users')
-    .select('*')
-    .eq('api_key', cleanToken)
-    .single();
-
-  return apiUser;
+  // Legacy plaintext API key lookup removed for security.
+  // All API keys must use the irl_sk_ format with HMAC hashing.
+  return null;
 }
 
 async function createNotification(userId, type, title, message, link = null) {
@@ -976,6 +1002,14 @@ app.post('/api/auth/login', async (req, res) => {
 
   const { email, password } = req.body;
 
+  // Brute force protection: 10 attempts per 15 minutes per IP
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const ipHash = crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);
+  const rateCheck = await checkRateLimit(ipHash, 'login', 10, 15);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ error: 'Too many login attempts. Please try again later.', retry_after: rateCheck.resetAt });
+  }
+
   // Fetch user by email (bcrypt hashes are non-deterministic, can't use .eq() for comparison)
   const { data: user, error } = await supabase
     .from('users')
@@ -1018,9 +1052,9 @@ app.post('/api/auth/login', async (req, res) => {
 // Redirect to Supabase Google OAuth
 app.get('/api/auth/google', (req, res) => {
   if (!supabaseUrl) return res.status(500).json({ error: 'Supabase not configured' });
-  
-  // Use environment variable or query param for redirect, with fallback
-  const frontendUrl = process.env.FRONTEND_URL || req.query.redirect || 'http://localhost:5173';
+
+  // Only use environment variable for redirect — never accept from query params (open redirect risk)
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const callbackUrl = `${frontendUrl}/api/auth/google/callback`;
   const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(callbackUrl)}`;
   res.redirect(authUrl);
@@ -1030,8 +1064,8 @@ app.get('/api/auth/google', (req, res) => {
 app.get('/api/auth/google/callback', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
   
-  // Use environment variable or query param for redirect
-  const frontendUrl = process.env.FRONTEND_URL || req.query.redirect_to || 'http://localhost:5173';
+  // Only use environment variable for redirect — never accept from query params
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   
   try {
     const { access_token, error } = req.query;
@@ -1108,12 +1142,6 @@ app.get('/api/auth/verify', async (req, res) => {
   
   const user = await getUserByToken(req.headers.authorization);
   if (!user) {
-    // Distinguish between invalid token and user not yet in DB
-    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRegex.test(token)) {
-      return res.status(404).json({ error: 'User not found' });
-    }
     return res.status(401).json({ error: 'Invalid token' });
   }
   
@@ -1169,21 +1197,12 @@ app.get('/api/auth/verify', async (req, res) => {
 app.post('/api/auth/onboard', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  // Validate the user via token authentication.
-  // For new users (first onboarding), they won't have a DB row yet, so getUserByToken returns null.
-  // In that case, accept a valid UUID directly — the upsert will create their row.
+  // Validate the user via token authentication (JWT or API key only).
   const authenticatedUser = await getUserByToken(req.headers.authorization);
-  let userId;
-  if (authenticatedUser) {
-    userId = authenticatedUser.id;
-  } else {
-    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(token)) {
-      return res.status(401).json({ error: 'Invalid or missing authentication' });
-    }
-    userId = token;
+  if (!authenticatedUser) {
+    return res.status(401).json({ error: 'Invalid or missing authentication' });
   }
+  const userId = authenticatedUser.id;
 
   const { email, name, city, latitude, longitude, country, country_code,
           hourly_rate, skills, travel_radius, role, bio, avatar_url } = req.body;
@@ -1868,45 +1887,9 @@ app.put('/api/humans/profile', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
-    let user = await getUserByToken(req.headers.authorization);
-
-    // If user doesn't exist in our DB but has a valid UUID token (from Supabase Auth), auto-create them
+    const user = await getUserByToken(req.headers.authorization);
     if (!user) {
-      const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-      if (uuidRegex.test(token)) {
-        // Create the user record
-        const { name, city, hourly_rate, skills } = req.body;
-        const { data: newUser, error: createError } = await supabase
-          .from('users')
-          .insert({
-            id: token,
-            email: req.body.email || `${token}@oauth.user`,
-            name: name || 'New User',
-            type: 'human',
-            account_type: 'human',
-            city: city || '',
-            hourly_rate: hourly_rate || 25,
-            skills: JSON.stringify(Array.isArray(skills) ? skills : []),
-            verified: true,
-            needs_onboarding: false,
-            availability: 'available',
-            rating: 0,
-            jobs_completed: 0,
-            created_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Failed to auto-create user:', createError);
-          return res.status(401).json({ error: 'Unauthorized - could not create user' });
-        }
-        user = newUser;
-      } else {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const { name, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
@@ -3060,9 +3043,16 @@ app.get('/api/avatar/:userId', async (req, res) => {
       }
     }
 
-    // Fallback: if avatar_url is an external URL (e.g., Google profile pic), redirect to it
+    // Fallback: if avatar_url is an external URL (e.g., Google profile pic), only redirect to trusted domains
     if (user.avatar_url && user.avatar_url.startsWith('http') && !user.avatar_url.includes('/api/avatar/')) {
-      return res.redirect(user.avatar_url);
+      try {
+        const avatarUrlParsed = new URL(user.avatar_url);
+        const trustedHosts = ['lh3.googleusercontent.com', 'avatars.githubusercontent.com', 'cdn.irlwork.ai'];
+        if (trustedHosts.some(h => avatarUrlParsed.hostname === h || avatarUrlParsed.hostname.endsWith('.' + h))) {
+          return res.redirect(user.avatar_url);
+        }
+      } catch {}
+      return res.status(404).send('No avatar');
     }
 
     return res.status(404).send('No avatar');
@@ -3074,6 +3064,11 @@ app.get('/api/avatar/:userId', async (req, res) => {
 
 // Debug endpoint — check avatar storage status and test R2 fetch
 app.get('/api/avatar/:userId/debug', async (req, res) => {
+  // Require admin authentication for debug endpoints
+  const debugUser = await getUserByToken(req.headers.authorization);
+  if (!debugUser || !isAdmin(debugUser.id)) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   if (!supabase) return res.json({ error: 'No DB' });
   const { data: user, error: dbErr } = await supabase.from('users').select('id, avatar_url, avatar_r2_key, avatar_data, updated_at').eq('id', req.params.userId).single();
   if (!user) return res.json({ error: 'User not found', dbErr: dbErr?.message });
@@ -4458,25 +4453,24 @@ app.get('/api/payouts', async (req, res) => {
 });
 
 // ============ WEBHOOKS ============
-app.post('/webhooks/:apiKey', async (req, res) => {
+app.post('/webhooks/receive', async (req, res) => {
   // Agent webhook endpoint - receives notifications
+  // API key must be in Authorization header, not URL path (prevents key leaking in logs/referers)
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const { apiKey } = req.params;
+
+  const apiKey = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const { event, data } = req.body;
-  
-  // Verify agent exists
-  const { data: agent, error } = await supabase
-    .from('users')
-    .select('id, name')
-    .eq('api_key', apiKey)
-    .eq('type', 'agent')
-    .single();
-  
-  if (error || !agent) {
+
+  if (!apiKey) {
+    return res.status(401).json({ error: 'API key required in Authorization header' });
+  }
+
+  // Verify agent exists via hashed API key lookup
+  const agent = await getUserByToken(apiKey);
+  if (!agent || agent.type !== 'agent') {
     return res.status(401).json({ error: 'Invalid API key' });
   }
-  
+
   console.log(`[Webhook] ${agent.name}: ${event}`, data);
   
   // Store notification
@@ -4491,24 +4485,19 @@ app.post('/webhooks/:apiKey', async (req, res) => {
   res.json({ received: true, event });
 });
 
-app.get('/webhooks/:apiKey/test', async (req, res) => {
-  const { apiKey } = req.params;
-  
-  const { data: agent } = await supabase
-    .from('users')
-    .select('id, name')
-    .eq('api_key', apiKey)
-    .eq('type', 'agent')
-    .single();
-  
-  if (!agent) {
+app.get('/webhooks/test', async (req, res) => {
+  const apiKey = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!apiKey) return res.status(401).json({ error: 'API key required in Authorization header' });
+
+  const agent = await getUserByToken(apiKey);
+  if (!agent || agent.type !== 'agent') {
     return res.status(401).json({ error: 'Invalid API key' });
   }
-  
-  res.json({ 
-    status: 'ok', 
+
+  res.json({
+    status: 'ok',
     agent: agent.name,
-    webhook_url: `/webhooks/${apiKey}`
+    webhook_url: '/webhooks/receive'
   });
 });
 
@@ -4801,21 +4790,26 @@ app.post('/api/mcp', async (req, res) => {
       case 'release_escrow':
       case 'approve_task': {
         const task_id = params.task_id || params.booking_id;
-        
+
         const { data: task, error: taskError } = await supabase
           .from('tasks')
           .select('*')
           .eq('id', task_id)
           .single();
-        
+
         if (taskError || !task) {
           return res.status(404).json({ error: 'Task not found' });
         }
-        
+
         if (task.agent_id !== user.id) {
           return res.status(403).json({ error: 'Not your task' });
         }
-        
+
+        // Only allow approving tasks in valid statuses
+        if (!['pending_review', 'completed'].includes(task.status)) {
+          return res.status(400).json({ error: `Cannot approve task with status "${task.status}"` });
+        }
+
         // Get latest proof
         const { data: latestProof } = await supabase
           .from('task_proofs')
@@ -4824,7 +4818,7 @@ app.post('/api/mcp', async (req, res) => {
           .order('submitted_at', { ascending: false })
           .limit(1)
           .single();
-        
+
         // Update proof status
         if (latestProof) {
           await supabase
@@ -4832,12 +4826,19 @@ app.post('/api/mcp', async (req, res) => {
             .update({ status: 'approved', updated_at: new Date().toISOString() })
             .eq('id', latestProof.id);
         }
-        
-        // Update task status to approved first
-        await supabase
+
+        // Atomic status transition — prevents double-approve
+        const { data: approvedTask, error: approveErr } = await supabase
           .from('tasks')
           .update({ status: 'approved', updated_at: new Date().toISOString() })
-          .eq('id', task_id);
+          .eq('id', task_id)
+          .in('status', ['pending_review', 'completed'])
+          .select('id')
+          .single();
+
+        if (approveErr || !approvedTask) {
+          return res.status(409).json({ error: 'Task status changed — refresh and try again' });
+        }
 
         // Release payment via Stripe (same flow as non-MCP approve)
         try {
@@ -5249,6 +5250,14 @@ app.post('/api/mcp', async (req, res) => {
 
         if (taskErr || !task) return res.status(404).json({ error: 'Task not found' });
         if (task.agent_id !== user.id) return res.status(403).json({ error: 'Not your task' });
+
+        // Enforce same status restrictions as REST endpoint
+        const disputeableStatuses = ['in_progress', 'pending_review', 'approved'];
+        if (!disputeableStatuses.includes(task.status)) {
+          return res.status(400).json({
+            error: `Cannot dispute a task with status "${task.status}". Only active tasks can be disputed.`
+          });
+        }
 
         // Check for existing open dispute
         const { data: existingDisputes } = await supabase
@@ -5819,6 +5828,14 @@ app.post('/api/messages', async (req, res) => {
 
   const { conversation_id, content } = req.body;
 
+  // Validate message content
+  if (!content || typeof content !== 'string' || !content.trim()) {
+    return res.status(400).json({ error: 'Message content is required' });
+  }
+  if (content.length > 10000) {
+    return res.status(400).json({ error: 'Message content is too long (max 10,000 characters)' });
+  }
+
   // Verify user has access to conversation (include task_id and task title for notifications)
   const { data: conversation, error: convError } = await supabase
     .from('conversations')
@@ -5898,12 +5915,31 @@ app.put('/api/messages/:id/read', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
+  // Verify user is a participant in the message's conversation before marking read
+  const { data: msg } = await supabase
+    .from('messages')
+    .select('id, conversation_id, sender_id')
+    .eq('id', req.params.id)
+    .single();
+
+  if (!msg) return res.status(404).json({ error: 'Message not found' });
+
+  const { data: conv } = await supabase
+    .from('conversations')
+    .select('human_id, agent_id')
+    .eq('id', msg.conversation_id)
+    .single();
+
+  if (!conv || (conv.human_id !== user.id && conv.agent_id !== user.id)) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
   // Mark message as read - only messages from OTHER senders can be marked read
   const { error } = await supabase
     .from('messages')
     .update({ read_at: new Date().toISOString() })
     .eq('id', req.params.id)
-    .neq('sender_id', user.id); // Only mark OTHER party's messages as read
+    .neq('sender_id', user.id);
 
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
@@ -6106,7 +6142,12 @@ app.get('/api/tasks/available', async (req, res) => {
       .eq('status', 'open')
       .eq('is_remote', true);
     if (category) remoteQuery = remoteQuery.eq('category', category);
-    if (search) remoteQuery = remoteQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    if (search) {
+      const sanitizedSearch = search.replace(/[,.()"'\\%_]/g, '');
+      if (sanitizedSearch.trim()) {
+        remoteQuery = remoteQuery.or(`title.ilike.%${sanitizedSearch}%,description.ilike.%${sanitizedSearch}%`);
+      }
+    }
     if (sort === 'pay_high') {
       remoteQuery = remoteQuery.order('budget', { ascending: false, nullsFirst: false });
     } else if (sort === 'pay_low') {
@@ -6297,11 +6338,13 @@ app.get('/api/humans/directory', async (req, res) => {
     .eq('verified', true)
     .eq('availability', 'available');
 
-  if (category) countQuery = countQuery.like('skills', `%${category}%`);
-  if (skill) countQuery = countQuery.like('skills', `%${skill}%`);
-  if (city) countQuery = countQuery.ilike('city', `%${city}%`);
-  if (country) countQuery = countQuery.ilike('country', `%${country}%`);
-  if (name) countQuery = countQuery.ilike('name', `%${name}%`);
+  // Sanitize search params: escape LIKE wildcards (% and _) to prevent injection
+  const escapeLike = (s) => s.replace(/[%_\\]/g, '\\$&');
+  if (category) countQuery = countQuery.like('skills', `%${escapeLike(category)}%`);
+  if (skill) countQuery = countQuery.like('skills', `%${escapeLike(skill)}%`);
+  if (city) countQuery = countQuery.ilike('city', `%${escapeLike(city)}%`);
+  if (country) countQuery = countQuery.ilike('country', `%${escapeLike(country)}%`);
+  if (name) countQuery = countQuery.ilike('name', `%${escapeLike(name)}%`);
   if (min_rate) countQuery = countQuery.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) countQuery = countQuery.lte('hourly_rate', parseFloat(max_rate));
 
@@ -6341,11 +6384,11 @@ app.get('/api/humans/directory', async (req, res) => {
   // Pagination
   query = query.range(parsedOffset, parsedOffset + parsedLimit - 1);
 
-  if (category) query = query.like('skills', `%${category}%`);
-  if (skill) query = query.like('skills', `%${skill}%`);
-  if (city) query = query.ilike('city', `%${city}%`);
-  if (country) query = query.ilike('country', `%${country}%`);
-  if (name) query = query.ilike('name', `%${name}%`);
+  if (category) query = query.like('skills', `%${escapeLike(category)}%`);
+  if (skill) query = query.like('skills', `%${escapeLike(skill)}%`);
+  if (city) query = query.ilike('city', `%${escapeLike(city)}%`);
+  if (country) query = query.ilike('country', `%${escapeLike(country)}%`);
+  if (name) query = query.ilike('name', `%${escapeLike(name)}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
 
@@ -6561,8 +6604,20 @@ app.put('/api/profile', async (req, res) => {
     updates.travel_radius = travel_radius;
     updates.service_radius = travel_radius;
   }
-  if (social_links !== undefined) updates.social_links = social_links;
-  
+  if (social_links !== undefined) {
+    // Sanitize social_links — only allow known platforms with string values
+    const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
+    const cleaned = {};
+    if (typeof social_links === 'object' && social_links !== null) {
+      for (const [key, value] of Object.entries(social_links)) {
+        if (allowedPlatforms.includes(key) && typeof value === 'string' && value.trim()) {
+          cleaned[key] = value.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+        }
+      }
+    }
+    updates.social_links = cleaned;
+  }
+
   const { data: profile, error } = await supabase
     .from('users')
     .update(updates)
@@ -6994,17 +7049,39 @@ app.patch('/api/tasks/:id', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   const { id } = req.params;
-  const updates = req.body;
+
+  // Whitelist of fields that agents are allowed to update
+  const ALLOWED_TASK_UPDATE_FIELDS = [
+    'title', 'description', 'category', 'budget', 'location', 'latitude', 'longitude',
+    'urgency', 'required_skills', 'is_remote', 'duration_hours', 'spots_total',
+    'deadline', 'instructions', 'payment_type'
+  ];
+
+  const updates = {};
+  for (const field of ALLOWED_TASK_UPDATE_FIELDS) {
+    if (req.body[field] !== undefined) {
+      updates[field] = req.body[field];
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'No valid fields to update' });
+  }
 
   // Verify ownership (agent_id is the actual column in the tasks table)
   const { data: task } = await supabase
     .from('tasks')
-    .select('agent_id')
+    .select('agent_id, status')
     .eq('id', id)
     .single();
 
   if (!task || task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
+  }
+
+  // Only allow editing open tasks
+  if (task.status !== 'open') {
+    return res.status(400).json({ error: 'Can only edit tasks with status "open"' });
   }
 
   const { error } = await supabase

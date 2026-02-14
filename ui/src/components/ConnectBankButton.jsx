@@ -14,7 +14,7 @@ export default function ConnectBankButton({ user, compact = false }) {
   const fetchStatus = async () => {
     try {
       const res = await fetch(`${API_URL}/stripe/connect/status`, {
-        headers: { Authorization: user.token || user.id },
+        headers: { Authorization: user.token || '' },
       });
       if (res.ok) {
         setStatus(await res.json());
@@ -34,7 +34,7 @@ export default function ConnectBankButton({ user, compact = false }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id,
+          Authorization: user.token || '',
         },
       });
 
@@ -65,7 +65,7 @@ export default function ConnectBankButton({ user, compact = false }) {
     setError(null);
     try {
       const res = await fetch(`${API_URL}/stripe/connect/dashboard`, {
-        headers: { Authorization: user.id },
+        headers: { Authorization: user.token || '' },
       });
 
       if (!res.ok) {
@@ -91,7 +91,7 @@ export default function ConnectBankButton({ user, compact = false }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id,
+          Authorization: user.token || '',
         },
       });
 

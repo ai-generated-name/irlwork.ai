@@ -121,7 +121,7 @@ export default function MCPPage() {
         if (session?.user) {
           setUser(session.user)
           const response = await fetch(`${API_URL}/keys`, {
-            headers: { 'Authorization': session.user.id }
+            headers: { 'Authorization': session.access_token || '' }
           })
           if (response.ok) {
             const data = await response.json()
