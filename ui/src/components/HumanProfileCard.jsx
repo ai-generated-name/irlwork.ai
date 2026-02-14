@@ -131,6 +131,17 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
           }}>
             {human.name?.[0]?.toUpperCase() || '?'}
           </div>
+          {/* Availability dot */}
+          <div style={{
+            position: 'absolute',
+            bottom: 1,
+            right: 1,
+            width: 14,
+            height: 14,
+            borderRadius: '50%',
+            background: human.availability === 'available' ? '#10B981' : '#9CA3AF',
+            border: '2px solid white'
+          }} />
         </div>
 
         {/* Name + Headline + Location */}
@@ -297,35 +308,49 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
             </span>
           )}
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onHire?.(human)
-          }}
-          style={{
-            padding: '10px 24px',
-            background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
-            color: 'white',
+        {human.availability !== 'available' && variant !== 'dashboard' ? (
+          <span style={{
+            padding: '10px 20px',
+            background: '#E5E7EB',
+            color: '#9CA3AF',
             fontWeight: 600,
-            fontSize: 14,
+            fontSize: 13,
             borderRadius: 'var(--radius-md, 10px)',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(244,132,95,0.25)',
             letterSpacing: '0.02em'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(244,132,95,0.35)'
-            e.currentTarget.style.transform = 'translateY(-1px)'
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(244,132,95,0.25)'
-            e.currentTarget.style.transform = 'translateY(0)'
-          }}
-        >
-          {variant === 'dashboard' ? 'Create Task' : 'Hire'}
-        </button>
+          }}>
+            Unavailable
+          </span>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onHire?.(human)
+            }}
+            style={{
+              padding: '10px 24px',
+              background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+              color: 'white',
+              fontWeight: 600,
+              fontSize: 14,
+              borderRadius: 'var(--radius-md, 10px)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 8px rgba(244,132,95,0.25)',
+              letterSpacing: '0.02em'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(244,132,95,0.35)'
+              e.currentTarget.style.transform = 'translateY(-1px)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(244,132,95,0.25)'
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
+          >
+            {variant === 'dashboard' ? 'Create Task' : 'Hire'}
+          </button>
+        )}
       </div>
     </div>
   )

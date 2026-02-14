@@ -3828,35 +3828,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
-            {/* Availability — Working mode only */}
+            {/* Available for Work — Working mode only */}
             {!hiringMode && (
               <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Availability</h2>
-
-                {/* Status */}
-                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <div>
-                      <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Status</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Controls whether agents can find and hire you</p>
+                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Available for work</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                        {user?.availability === 'available'
+                          ? 'You\'re visible in search and can be directly hired.'
+                          : 'You\'re hidden from search. No one can hire you directly.'}
+                      </p>
                     </div>
-                    <span className={`v4-badge ${user?.availability === 'available' ? 'v4-badge-success' : user?.availability === 'busy' ? 'v4-badge-orange' : 'v4-badge'}`}>
-                      {user?.availability === 'available' ? 'Available' : user?.availability === 'busy' ? 'Busy' : 'Unavailable'}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {['available', 'busy', 'unavailable'].map(status => (
                     <button
-                      key={status}
-                      className={`v4-btn ${user?.availability === status ? 'v4-btn-primary' : 'v4-btn-secondary'}`}
-                      style={{ flex: 1, textTransform: 'capitalize', fontSize: 13 }}
                       onClick={async () => {
+                        const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
                         try {
                           const res = await fetch(`${API_URL}/humans/profile`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
-                            body: JSON.stringify({ availability: status })
+                            body: JSON.stringify({ availability: newStatus })
                           })
                           if (res.ok) {
                             const data = await res.json()
@@ -3865,78 +3858,38 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                               setUser(updatedUser)
                               localStorage.setItem('user', JSON.stringify(updatedUser))
                             }
-                            toast.success(`Status set to ${status}`)
+                            toast.success(newStatus === 'available' ? 'You\'re now available for work' : 'You\'re now unavailable')
                           }
-                        } catch { toast.error('Failed to update status') }
+                        } catch { toast.error('Failed to update availability') }
+                      }}
+                      style={{
+                        width: 48,
+                        height: 28,
+                        borderRadius: 14,
+                        border: 'none',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'background 0.2s',
+                        background: user?.availability === 'available' ? '#10B981' : '#D1D5DB',
+                        flexShrink: 0
                       }}
                     >
-                      {status}
+                      <div style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        background: 'white',
+                        position: 'absolute',
+                        top: 3,
+                        left: user?.availability === 'available' ? 23 : 3,
+                        transition: 'left 0.2s',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                      }} />
                     </button>
-                  ))}
+                  </div>
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
-                  {user?.availability === 'busy' ? 'You\'ll appear in search but marked as busy — agents can still message you.' : user?.availability === 'unavailable' ? 'You\'re hidden from search. No new task invitations will be sent.' : 'You\'re visible and open to new tasks.'}
-                </p>
               </div>
             )}
-
-            {/* Privacy & Visibility */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Privacy & Visibility</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Show profile in search results</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Allow agents to discover you when browsing workers</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={localStorage.getItem('irlwork_profile_searchable') !== 'false'}
-                      onChange={(e) => {
-                        localStorage.setItem('irlwork_profile_searchable', e.target.checked)
-                        toast.success(e.target.checked ? 'Profile visible in search' : 'Profile hidden from search')
-                      }}
-                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
-                    />
-                  </div>
-                </div>
-                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Show online status</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Let others see when you're currently active</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={localStorage.getItem('irlwork_show_online') !== 'false'}
-                      onChange={(e) => {
-                        localStorage.setItem('irlwork_show_online', e.target.checked)
-                        toast.success(e.target.checked ? 'Online status visible' : 'Online status hidden')
-                      }}
-                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
-                    />
-                  </div>
-                </div>
-                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Show earnings on profile</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Display your total earned amount publicly</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={localStorage.getItem('irlwork_show_earnings') === 'true'}
-                      onChange={(e) => {
-                        localStorage.setItem('irlwork_show_earnings', e.target.checked)
-                        toast.success(e.target.checked ? 'Earnings visible on profile' : 'Earnings hidden from profile')
-                      }}
-                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Notification Preferences */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>

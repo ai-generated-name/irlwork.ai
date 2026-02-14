@@ -345,8 +345,9 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                 />
                 <StatBox
                   icon={<Shield size={18} />}
-                  value={profile.availability?.replace(/_/g, ' ') || 'Available'}
+                  value={profile.availability === 'available' ? 'Available' : 'Unavailable'}
                   label="Status"
+                  highlight={profile.availability === 'available' ? 'green' : 'gray'}
                 />
               </div>
 
@@ -420,39 +421,56 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
               <ForAgentsBox human={profile} />
 
               {/* Hire Button */}
-              <button
-                onClick={() => {
-                  if (user) {
-                    window.location.href = `/browse/humans?hire=${profile.id}`
-                  } else {
-                    window.location.href = '/auth'
-                  }
-                }}
-                style={{
+              {profile.availability !== 'available' ? (
+                <div style={{
                   width: '100%',
                   padding: '16px 24px',
-                  background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
-                  color: 'white',
+                  background: '#E5E7EB',
+                  color: '#9CA3AF',
                   fontWeight: 600,
                   fontSize: 17,
                   borderRadius: 14,
                   border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 4px 20px rgba(244,132,95,0.3)',
+                  textAlign: 'center',
                   marginTop: 16
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.boxShadow = '0 6px 28px rgba(244,132,95,0.4)'
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(244,132,95,0.3)'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }}
-              >
-                Hire {profile.name?.split(' ')[0] || 'This Human'}
-              </button>
+                }}>
+                  Currently unavailable for hire
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (user) {
+                      window.location.href = `/browse/humans?hire=${profile.id}`
+                    } else {
+                      window.location.href = '/auth'
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '16px 24px',
+                    background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: 17,
+                    borderRadius: 14,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 20px rgba(244,132,95,0.3)',
+                    marginTop: 16
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.boxShadow = '0 6px 28px rgba(244,132,95,0.4)'
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(244,132,95,0.3)'
+                    e.currentTarget.style.transform = 'translateY(0)'
+                  }}
+                >
+                  Hire {profile.name?.split(' ')[0] || 'This Human'}
+                </button>
+              )}
             </div>
           </div>
         ) : null}
@@ -476,7 +494,8 @@ function SectionLabel({ children }) {
   )
 }
 
-function StatBox({ icon, value, label }) {
+function StatBox({ icon, value, label, highlight }) {
+  const valueColor = highlight === 'green' ? '#10B981' : highlight === 'gray' ? '#9CA3AF' : 'var(--text-primary, #1A1A1A)'
   return (
     <div style={{
       padding: 18,
@@ -488,7 +507,7 @@ function StatBox({ icon, value, label }) {
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, color: '#F4845F' }}>
         {icon}
       </div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary, #1A1A1A)', marginBottom: 2 }}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, marginBottom: 2 }}>
         {value}
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-tertiary, #8A8A8A)', fontWeight: 500 }}>
