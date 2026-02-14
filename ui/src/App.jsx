@@ -68,7 +68,7 @@ class TabErrorBoundary extends React.Component {
           <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>This section encountered an error</h3>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>Try switching to another tab or refreshing the page.</p>
           <button
-            onClick={() => this.setState({ hasError: false, error: null })}
+            onClick={() => window.location.reload()}
             className="v4-btn v4-btn-secondary"
           >
             Try Again
@@ -834,7 +834,7 @@ function AuthPage({ onLogin, onNavigate }) {
               <div className="auth-v4-error-details">{errorModal.details}</div>
             )}
             <div className="auth-v4-error-buttons">
-              <button className="auth-v4-error-btn-secondary" onClick={() => { setErrorModal(null); window.history.replaceState({}, document.title, window.location.pathname) }}>
+              <button className="auth-v4-error-btn-secondary" onClick={() => window.location.reload()}>
                 Try Again
               </button>
               <button className="auth-v4-submit" onClick={() => window.location.href = '/'}>
@@ -1207,8 +1207,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   })
   const [humansSubTab, setHumansSubTab] = useState('browse')
   const [tasksSubTab, setTasksSubTab] = useState(() => {
+    const pathParts = window.location.pathname.split('/')
+    const tabSegment = pathParts[3] || null
     const params = new URLSearchParams(window.location.search)
-    return params.get('tab') === 'create-task' ? 'create' : 'tasks'
+    if (tabSegment === 'create' || params.get('tab') === 'create-task') return 'create'
+    return 'tasks'
   })
 
   // Read initial tab from URL path: /dashboard/working/browse → 'browse'
@@ -1230,6 +1233,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       // Map URL-friendly names to internal tab IDs
       const tabMap = {
         'dashboard': 'dashboard',
+        'create': isHiringFromUrl ? 'posted' : null,
         'create-task': 'posted',
         'my-tasks': isHiringFromUrl ? 'posted' : 'tasks',
         'browse': 'browse',
@@ -1275,6 +1279,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   // Wrapper for setActiveTab that also updates URL
   const setActiveTab = (tabId) => {
+    // 'create' is a virtual tab — route to posted tab with create sub-tab
+    if (tabId === 'create') {
+      setActiveTabState('posted')
+      setTasksSubTab('create')
+      const modeSegment = hiringMode ? 'hiring' : 'working'
+      window.history.pushState({}, '', `/dashboard/${modeSegment}/create`)
+      return
+    }
     setActiveTabState(tabId)
     updateTabUrl(tabId)
   }
@@ -1474,6 +1486,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       const tabParam = tabSegment || new URLSearchParams(window.location.search).get('tab')
       if (tabParam) {
         const isHiring = mode === 'hiring'
+        // Handle /create URL → posted tab + create sub-tab
+        if (tabParam === 'create' && isHiring) {
+          setActiveTabState('posted')
+          setTasksSubTab('create')
+          return
+        }
         const tabMap = {
           'dashboard': 'dashboard',
           'create-task': 'posted',
@@ -1915,8 +1933,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'direct', quantity: 1, is_anonymous: false })
-        // Close create form and stay on posted tab
+        // Close create form and show posted tasks list
         setShowCreateForm(false)
+        setTasksSubTab('tasks')
         setActiveTab('posted')
       } else {
         const err = await res.json()
@@ -2507,19 +2526,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             <div className="dashboard-v4-sub-tabs">
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); }}
+                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); }}
               >
                 + Create Task
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); }}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); }}
               >
                 Posted Tasks
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); }}
+                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); }}
               >
                 Disputes
               </button>
@@ -2527,151 +2546,193 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {tasksSubTab === 'create' && (
               <div style={{ marginTop: 16 }}>
-                <div className="dashboard-v4-form">
+                <div className="dashboard-v4-form create-task-form-wide">
                   <h2 className="dashboard-v4-form-title">Create a New Task</h2>
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
+                    <div className="create-task-grid">
+                      {/* Left column */}
+                      <div className="create-task-col">
+                        <div className="dashboard-v4-form-group">
+                          <label className="dashboard-v4-form-label">
+                            Task Title <span className="dashboard-v4-form-required">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="What do you need done?"
+                            className="dashboard-v4-form-input"
+                            value={taskForm.title}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                          />
+                        </div>
 
-                    {/* Basic Info */}
-                    <div className="dashboard-v4-form-section">
-                      <span className="dashboard-v4-form-section-title">Basic Info</span>
-                    </div>
+                        <div className="dashboard-v4-form-group">
+                          <label className="dashboard-v4-form-label">
+                            Description <span className="dashboard-v4-form-optional">(optional)</span>
+                          </label>
+                          <textarea
+                            placeholder="Provide details about the task..."
+                            className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                            style={{ minHeight: 80 }}
+                            value={taskForm.description}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                          />
+                        </div>
 
-                    <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">
-                        Task Title <span className="dashboard-v4-form-required">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="What do you need done?"
-                        className="dashboard-v4-form-input"
-                        value={taskForm.title}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
-                      />
-                    </div>
+                        <div className="dashboard-form-grid-2col">
+                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                            <label className="dashboard-v4-form-label">
+                              Category <span className="dashboard-v4-form-required">*</span>
+                            </label>
+                            <CustomDropdown
+                              value={taskForm.category}
+                              onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
+                              options={[
+                                { value: '', label: 'Select category' },
+                                ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
+                                  value: c,
+                                  label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                                }))
+                              ]}
+                              placeholder="Select category"
+                            />
+                          </div>
+                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                            <label className="dashboard-v4-form-label">
+                              Budget (USD) <span className="dashboard-v4-form-required">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="$"
+                              className="dashboard-v4-form-input"
+                              value={taskForm.budget}
+                              onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
+                              min="5"
+                            />
+                          </div>
+                        </div>
 
-                    <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">
-                        Description <span className="dashboard-v4-form-optional">(optional)</span>
-                      </label>
-                      <textarea
-                        placeholder="Provide details about the task..."
-                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                        value={taskForm.description}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
-                      />
-                    </div>
-
-                    <div className="dashboard-form-grid-2col">
-                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">
-                          Category <span className="dashboard-v4-form-required">*</span>
-                        </label>
-                        <CustomDropdown
-                          value={taskForm.category}
-                          onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
-                          options={[
-                            { value: '', label: 'Select category' },
-                            ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
-                              value: c,
-                              label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                            }))
-                          ]}
-                          placeholder="Select category"
-                        />
+                        <div className="dashboard-v4-form-group">
+                          <label className="dashboard-v4-form-label">
+                            Requirements <span className="dashboard-v4-form-optional">(optional)</span>
+                          </label>
+                          <textarea
+                            placeholder="Any specific requirements or qualifications needed..."
+                            className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                            style={{ minHeight: 60 }}
+                            value={taskForm.requirements}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                            rows={2}
+                          />
+                        </div>
                       </div>
-                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">
-                          Budget (USD) <span className="dashboard-v4-form-required">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="$"
-                          className="dashboard-v4-form-input"
-                          value={taskForm.budget}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
-                          min="5"
-                        />
-                      </div>
-                    </div>
 
-                    {/* Schedule & Duration */}
-                    <div className="dashboard-v4-form-section">
-                      <span className="dashboard-v4-form-section-title">Schedule & Duration</span>
-                    </div>
+                      {/* Right column */}
+                      <div className="create-task-col">
+                        <div className="dashboard-form-grid-2col">
+                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                            <label className="dashboard-v4-form-label">
+                              Duration (hours) <span className="dashboard-v4-form-optional">(opt)</span>
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 2"
+                              className="dashboard-v4-form-input"
+                              value={taskForm.duration_hours}
+                              onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                              min="0.5"
+                              step="0.5"
+                            />
+                          </div>
+                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                            <label className="dashboard-v4-form-label">
+                              Deadline <span className="dashboard-v4-form-optional">(opt)</span>
+                            </label>
+                            <input
+                              type="datetime-local"
+                              className="dashboard-v4-form-input"
+                              value={taskForm.deadline}
+                              onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
+                            />
+                          </div>
+                        </div>
 
-                    <div className="dashboard-form-grid-2col">
-                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">
-                          Duration (hours) <span className="dashboard-v4-form-optional">(optional)</span>
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="e.g. 2"
-                          className="dashboard-v4-form-input"
-                          value={taskForm.duration_hours}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
-                          min="0.5"
-                          step="0.5"
-                        />
-                      </div>
-                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label className="dashboard-v4-form-label">
-                          Deadline <span className="dashboard-v4-form-optional">(optional)</span>
-                        </label>
-                        <input
-                          type="datetime-local"
-                          className="dashboard-v4-form-input"
-                          value={taskForm.deadline}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
-                        />
-                      </div>
-                    </div>
+                        <div className="dashboard-v4-form-group">
+                          <label className="dashboard-v4-form-label">Task Type</label>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'direct', quantity: 1 }))}
+                              style={{
+                                flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '2px solid',
+                                borderColor: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'rgba(26,26,26,0.1)',
+                                background: taskForm.task_type === 'direct' ? 'rgba(234, 88, 12, 0.05)' : 'transparent',
+                                color: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'var(--text-secondary)',
+                                fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
+                              }}
+                            >
+                              Direct Hire
+                              <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>1 person</div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'bounty' }))}
+                              style={{
+                                flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '2px solid',
+                                borderColor: taskForm.task_type === 'bounty' ? '#7C3AED' : 'rgba(26,26,26,0.1)',
+                                background: taskForm.task_type === 'bounty' ? 'rgba(139, 92, 246, 0.05)' : 'transparent',
+                                color: taskForm.task_type === 'bounty' ? '#7C3AED' : 'var(--text-secondary)',
+                                fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
+                              }}
+                            >
+                              Open Bounty
+                              <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Multiple people</div>
+                            </button>
+                          </div>
+                        </div>
 
-                    {/* Location */}
-                    <div className="dashboard-v4-form-section">
-                      <span className="dashboard-v4-form-section-title">Location</span>
-                    </div>
+                        {taskForm.task_type === 'bounty' && (
+                          <div className="dashboard-v4-form-group">
+                            <label className="dashboard-v4-form-label">How many people needed?</label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 5"
+                              className="dashboard-v4-form-input"
+                              value={taskForm.quantity}
+                              onChange={(e) => setTaskForm(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                              min="1"
+                              max="100"
+                              style={{ maxWidth: 120 }}
+                            />
+                          </div>
+                        )}
 
-                    <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Required Skills (optional)</label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
-                        {taskForm.required_skills.map((skill, i) => (
-                          <span key={i} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            background: '#EEF2FF', color: '#4338CA', borderRadius: 16,
-                            padding: '4px 10px', fontSize: 13, fontWeight: 500
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+                          <label style={{
+                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                            fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
                           }}>
-                            {skill}
-                            <button type="button" onClick={() => setTaskForm(prev => ({
-                              ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
-                            }))} style={{
-                              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                              color: '#4338CA', fontSize: 16, lineHeight: 1, marginLeft: 2
-                            }}>×</button>
-                          </span>
-                        ))}
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Type a skill and press Enter (e.g. photography, driving, coding)"
-                        className="dashboard-v4-form-input"
-                        value={taskForm.skillInput}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ',') {
-                            e.preventDefault()
-                            const skill = taskForm.skillInput.trim().toLowerCase()
-                            if (skill && !taskForm.required_skills.includes(skill)) {
-                              setTaskForm(prev => ({
-                                ...prev,
-                                required_skills: [...prev.required_skills, skill],
-                                skillInput: ''
-                              }))
-                            }
-                          }
-                        }}
-                      />
-                    </div>
+                            <input
+                              type="checkbox"
+                              checked={taskForm.is_remote}
+                              onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                              style={{ width: 18, height: 18, cursor: 'pointer' }}
+                            />
+                            Remote task
+                          </label>
+                          <label style={{
+                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                            fontSize: 14, color: taskForm.is_anonymous ? '#7C3AED' : 'inherit'
+                          }}>
+                            <input
+                              type="checkbox"
+                              checked={taskForm.is_anonymous}
+                              onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
+                              style={{ width: 18, height: 18, cursor: 'pointer' }}
+                            />
+                            Post anonymously
+                          </label>
+                        </div>
+
                     {/* Task Type: Direct Hire vs Open */}
                     <div className="dashboard-v4-form-group">
                       <label className="dashboard-v4-form-label">Task Type</label>
@@ -2722,74 +2783,69 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label style={{
-                          display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                          fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                        }}>
+
+                        {!taskForm.is_remote && (
+                          <div className="dashboard-v4-form-group">
+                            <label className="dashboard-v4-form-label">
+                              City <span className="dashboard-v4-form-required">*</span>
+                            </label>
+                            <CityAutocomplete
+                              value={taskForm.city}
+                              onChange={(locationData) => setTaskForm(prev => ({
+                                ...prev,
+                                city: locationData.city,
+                                latitude: locationData.latitude,
+                                longitude: locationData.longitude,
+                                country: locationData.country,
+                                country_code: locationData.country_code
+                              }))}
+                              placeholder="Where should this be done?"
+                              className="dashboard-v4-city-input"
+                            />
+                          </div>
+                        )}
+
+                        <div className="dashboard-v4-form-group">
+                          <label className="dashboard-v4-form-label">Required Skills <span className="dashboard-v4-form-optional">(optional)</span></label>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
+                            {taskForm.required_skills.map((skill, i) => (
+                              <span key={i} style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                background: '#EEF2FF', color: '#4338CA', borderRadius: 16,
+                                padding: '4px 10px', fontSize: 13, fontWeight: 500
+                              }}>
+                                {skill}
+                                <button type="button" onClick={() => setTaskForm(prev => ({
+                                  ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
+                                }))} style={{
+                                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                                  color: '#4338CA', fontSize: 16, lineHeight: 1, marginLeft: 2
+                                }}>×</button>
+                              </span>
+                            ))}
+                          </div>
                           <input
-                            type="checkbox"
-                            checked={taskForm.is_remote}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                            style={{ width: 18, height: 18, cursor: 'pointer' }}
+                            type="text"
+                            placeholder="Type a skill and press Enter"
+                            className="dashboard-v4-form-input"
+                            value={taskForm.skillInput}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ',') {
+                                e.preventDefault()
+                                const skill = taskForm.skillInput.trim().toLowerCase()
+                                if (skill && !taskForm.required_skills.includes(skill)) {
+                                  setTaskForm(prev => ({
+                                    ...prev,
+                                    required_skills: [...prev.required_skills, skill],
+                                    skillInput: ''
+                                  }))
+                                }
+                              }
+                            }}
                           />
-                          Remote task
-                        </label>
+                        </div>
                       </div>
-                      <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                        <label style={{
-                          display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                          fontSize: 14, color: taskForm.is_anonymous ? '#7C3AED' : 'inherit'
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={taskForm.is_anonymous}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
-                            style={{ width: 18, height: 18, cursor: 'pointer' }}
-                          />
-                          Post anonymously
-                        </label>
-                      </div>
-                    </div>
-
-                    {!taskForm.is_remote && (
-                      <div className="dashboard-v4-form-group">
-                        <label className="dashboard-v4-form-label">
-                          City <span className="dashboard-v4-form-required">*</span>
-                        </label>
-                        <CityAutocomplete
-                          value={taskForm.city}
-                          onChange={(locationData) => setTaskForm(prev => ({
-                            ...prev,
-                            city: locationData.city,
-                            latitude: locationData.latitude,
-                            longitude: locationData.longitude,
-                            country: locationData.country,
-                            country_code: locationData.country_code
-                          }))}
-                          placeholder="Where should this be done?"
-                          className="dashboard-v4-city-input"
-                        />
-                      </div>
-                    )}
-
-                    {/* Additional Info */}
-                    <div className="dashboard-v4-form-section">
-                      <span className="dashboard-v4-form-section-title">Additional Info</span>
-                    </div>
-
-                    <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">
-                        Requirements <span className="dashboard-v4-form-optional">(optional)</span>
-                      </label>
-                      <textarea
-                        placeholder="Any specific requirements or qualifications needed..."
-                        className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                        value={taskForm.requirements}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                        rows={2}
-                      />
                     </div>
 
                     {createTaskError && (
@@ -2823,6 +2879,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       const isOpen = task.status === 'open'
                       const isExpanded = expandedTask === task.id
                       const applications = taskApplications[task.id] || []
+                      const pendingCount = isExpanded
+                        ? applications.filter(a => a.status === 'pending').length
+                        : (task.pending_applicant_count || 0)
 
                       return (
                         <div key={task.id} className="dashboard-v4-task-card">
@@ -2858,7 +2917,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                 }}
                                 style={{ color: 'var(--orange-600)', fontWeight: 500, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}
                               >
-                                {isExpanded ? '▼ Hide Applicants' : '▶ View Applicants'}
+                                {isExpanded ? '▼ Hide Applicants' : `▶ View Applicants${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
                               </button>
 
                               {/* Applicants List */}
@@ -3823,35 +3882,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
-            {/* Availability — Working mode only */}
+            {/* Available for Work — Working mode only */}
             {!hiringMode && (
               <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Availability</h2>
-
-                {/* Status */}
-                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <div>
-                      <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Status</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Controls whether agents can find and hire you</p>
+                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Available for work</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                        {user?.availability === 'available'
+                          ? 'You\'re visible in search and can be directly hired.'
+                          : 'You\'re hidden from search. No one can hire you directly.'}
+                      </p>
                     </div>
-                    <span className={`v4-badge ${user?.availability === 'available' ? 'v4-badge-success' : user?.availability === 'busy' ? 'v4-badge-orange' : 'v4-badge'}`}>
-                      {user?.availability === 'available' ? 'Available' : user?.availability === 'busy' ? 'Busy' : 'Unavailable'}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {['available', 'busy', 'unavailable'].map(status => (
                     <button
-                      key={status}
-                      className={`v4-btn ${user?.availability === status ? 'v4-btn-primary' : 'v4-btn-secondary'}`}
-                      style={{ flex: 1, textTransform: 'capitalize', fontSize: 13 }}
                       onClick={async () => {
+                        const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
                         try {
                           const res = await fetch(`${API_URL}/humans/profile`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
-                            body: JSON.stringify({ availability: status })
+                            body: JSON.stringify({ availability: newStatus })
                           })
                           if (res.ok) {
                             const data = await res.json()
@@ -3860,78 +3912,38 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                               setUser(updatedUser)
                               localStorage.setItem('user', JSON.stringify(updatedUser))
                             }
-                            toast.success(`Status set to ${status}`)
+                            toast.success(newStatus === 'available' ? 'You\'re now available for work' : 'You\'re now unavailable')
                           }
-                        } catch { toast.error('Failed to update status') }
+                        } catch { toast.error('Failed to update availability') }
+                      }}
+                      style={{
+                        width: 48,
+                        height: 28,
+                        borderRadius: 14,
+                        border: 'none',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'background 0.2s',
+                        background: user?.availability === 'available' ? '#10B981' : '#D1D5DB',
+                        flexShrink: 0
                       }}
                     >
-                      {status}
+                      <div style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        background: 'white',
+                        position: 'absolute',
+                        top: 3,
+                        left: user?.availability === 'available' ? 23 : 3,
+                        transition: 'left 0.2s',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                      }} />
                     </button>
-                  ))}
+                  </div>
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
-                  {user?.availability === 'busy' ? 'You\'ll appear in search but marked as busy — agents can still message you.' : user?.availability === 'unavailable' ? 'You\'re hidden from search. No new task invitations will be sent.' : 'You\'re visible and open to new tasks.'}
-                </p>
               </div>
             )}
-
-            {/* Privacy & Visibility */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Privacy & Visibility</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Show profile in search results</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Allow agents to discover you when browsing workers</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={localStorage.getItem('irlwork_profile_searchable') !== 'false'}
-                      onChange={(e) => {
-                        localStorage.setItem('irlwork_profile_searchable', e.target.checked)
-                        toast.success(e.target.checked ? 'Profile visible in search' : 'Profile hidden from search')
-                      }}
-                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
-                    />
-                  </div>
-                </div>
-                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Show online status</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Let others see when you're currently active</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={localStorage.getItem('irlwork_show_online') !== 'false'}
-                      onChange={(e) => {
-                        localStorage.setItem('irlwork_show_online', e.target.checked)
-                        toast.success(e.target.checked ? 'Online status visible' : 'Online status hidden')
-                      }}
-                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
-                    />
-                  </div>
-                </div>
-                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Show earnings on profile</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Display your total earned amount publicly</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={localStorage.getItem('irlwork_show_earnings') === 'true'}
-                      onChange={(e) => {
-                        localStorage.setItem('irlwork_show_earnings', e.target.checked)
-                        toast.success(e.target.checked ? 'Earnings visible on profile' : 'Earnings hidden from profile')
-                      }}
-                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Notification Preferences */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
