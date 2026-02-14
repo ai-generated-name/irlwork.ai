@@ -409,17 +409,19 @@ function isValidWebhookUrl(urlStr) {
     const url = new URL(urlStr);
     if (url.protocol !== 'https:') return false;
     const hostname = url.hostname.toLowerCase();
-    // Block private/internal/metadata IPs and hostnames
+    // Block known private/internal/metadata hostnames
     const blocked = [
-      'localhost', '127.0.0.1', '0.0.0.0', '::1',
-      '169.254.169.254', 'metadata.google.internal',
+      'localhost', '::1',
+      'metadata.google.internal',
       '100.100.100.200'
     ];
     if (blocked.includes(hostname)) return false;
-    // Block private IP ranges
-    if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostname)) return false;
-    // Block 169.254.x.x link-local
-    if (hostname.startsWith('169.254.')) return false;
+    // Block any IP address — webhooks should use domain names only.
+    // This prevents all SSRF bypasses (octal 0177.0.0.1, hex 0x7f.0.0.1,
+    // decimal 2130706433, IPv6 ::ffff:127.0.0.1, etc.)
+    if (/^[\d.:[\]]+$/.test(hostname)) return false;
+    // Block .local, .internal, .localhost TLDs
+    if (/\.(local|internal|localhost|test|invalid|example)$/i.test(hostname)) return false;
     return true;
   } catch {
     return false;
@@ -572,6 +574,9 @@ function getAvatarUrl(user, req) {
  * 3. API key (irl_sk_... format for programmatic access)
  * 4. Legacy API key in users table
  */
+// Safe user fields — never select password_hash or other auth secrets for general use
+const USER_SAFE_SELECT = 'id, email, name, type, account_type, avatar_url, avatar_r2_key, avatar_data, city, hourly_rate, bio, skills, stripe_account_id, stripe_customer_id, wallet_address, webhook_url, organization, phone, social_links, is_verified, email_verified_at, created_at, updated_at, availability, portfolio_urls, languages, response_time';
+
 async function getUserByToken(token) {
   if (!token || !supabase) return null;
 
@@ -588,7 +593,7 @@ async function getUserByToken(token) {
         // JWT verified — look up user in our DB by Supabase auth user ID
         const { data: dbUser } = await supabase
           .from('users')
-          .select('*')
+          .select(USER_SAFE_SELECT)
           .eq('id', authUser.id)
           .single();
         if (dbUser) return dbUser;
@@ -597,7 +602,7 @@ async function getUserByToken(token) {
         if (authUser.email) {
           const { data: byEmail } = await supabase
             .from('users')
-            .select('*')
+            .select(USER_SAFE_SELECT)
             .eq('email', authUser.email)
             .single();
           if (byEmail) return byEmail;
@@ -652,7 +657,7 @@ async function getUserByToken(token) {
       // Get the user
       const { data: user } = await supabase
         .from('users')
-        .select('*')
+        .select(USER_SAFE_SELECT)
         .eq('id', apiKeyRecord.user_id)
         .single();
       return user;
@@ -1020,10 +1025,10 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(429).json({ error: 'Too many login attempts. Please try again later.', retry_after: rateCheck.resetAt });
   }
 
-  // Fetch user by email (bcrypt hashes are non-deterministic, can't use .eq() for comparison)
+  // Fetch user by email — only select fields needed for login verification
   const { data: user, error } = await supabase
     .from('users')
-    .select('*')
+    .select('id, email, name, type, password_hash, email_verified_at')
     .eq('email', email)
     .single();
 
@@ -1053,8 +1058,7 @@ app.post('/api/auth/login', async (req, res) => {
   const email_verified = !!user.email_verified_at;
 
   res.json({
-    user: { id: user.id, email: user.email, name: user.name, type: user.type, email_verified },
-    token: crypto.randomBytes(32).toString('hex')
+    user: { id: user.id, email: user.email, name: user.name, type: user.type, email_verified }
   });
 });
 
