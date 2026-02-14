@@ -435,7 +435,7 @@ export default function BrowseTasksV2({
                 </svg>
                 <h3>Failed to load tasks</h3>
                 <p>{error}</p>
-                <button onClick={fetchTasks}>Try Again</button>
+                <button onClick={() => window.location.reload()}>Try Again</button>
               </div>
             ) : tasks.length === 0 ? (
               <div className="browse-tasks-v2-empty">
