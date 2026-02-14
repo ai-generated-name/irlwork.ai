@@ -12,7 +12,7 @@ import { fixAvatarUrl } from '../utils/avatarUrl'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
-const ITEMS_PER_PAGE = 32
+const ITEMS_PER_PAGE = 16
 
 const categories = [
   { value: '', label: 'All Skills' },
@@ -128,6 +128,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
 
   // Tasks state
   const [tasks, setTasks] = useState([])
+  const [tasksTotal, setTasksTotal] = useState(0)
+  const [taskCurrentPage, setTaskCurrentPage] = useState(1)
   const [tasksLoading, setTasksLoading] = useState(false)
   const [taskCategoryFilter, setTaskCategoryFilter] = useState('')
   const [taskCityFilter, setTaskCityFilter] = useState('')
@@ -212,11 +214,16 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     )
   }
 
+  // Reset task page when task filters change
+  useEffect(() => {
+    setTaskCurrentPage(1)
+  }, [taskCategoryFilter, taskCityFilter, debouncedTaskSearch, taskSortBy, nearMeActive, nearMeRadius])
+
   // Fetch tasks
   useEffect(() => {
     if (viewMode !== 'tasks') return
     fetchTasks()
-  }, [viewMode, taskCategoryFilter, taskCityFilter, debouncedTaskSearch, taskSortBy, nearMeActive, nearMeRadius])
+  }, [viewMode, taskCategoryFilter, taskCityFilter, debouncedTaskSearch, taskSortBy, nearMeActive, nearMeRadius, taskCurrentPage])
 
   // Real-time subscriptions
   useEffect(() => {
@@ -302,26 +309,26 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     setTasksLoading(true)
     try {
       const params = new URLSearchParams()
+      params.set('limit', String(ITEMS_PER_PAGE))
+      params.set('offset', String((taskCurrentPage - 1) * ITEMS_PER_PAGE))
       if (taskCategoryFilter) params.append('category', taskCategoryFilter)
       if (taskCityFilter) params.append('city', taskCityFilter)
       if (debouncedTaskSearch) params.append('search', debouncedTaskSearch)
+      if (taskSortBy === 'newest') params.append('sort', 'newest')
+      else if (taskSortBy === 'highest') params.append('sort', 'pay_high')
       if (nearMeActive && userLocation) {
         params.append('user_lat', userLocation.lat)
         params.append('user_lng', userLocation.lng)
         params.append('radius_km', nearMeRadius)
-        params.append('sort', 'distance')
+        params.set('sort', 'distance')
       }
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`)
       if (res.ok) {
         const data = await res.json()
-        let taskList = Array.isArray(data) ? data : (data.tasks || [])
-        if (taskSortBy === 'newest') {
-          taskList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        } else if (taskSortBy === 'highest') {
-          taskList.sort((a, b) => (b.budget || b.budget_cents / 100) - (a.budget || a.budget_cents / 100))
-        }
+        const taskList = Array.isArray(data) ? data : (data.tasks || [])
         setTasks(taskList)
+        setTasksTotal(data.total || taskList.length)
       }
     } catch (e) {
       console.error('Error fetching tasks:', e)
@@ -459,6 +466,34 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       for (let i = start; i <= end; i++) pages.push(i)
       if (currentPage < totalPages - 2) pages.push('...')
       pages.push(totalPages)
+    }
+    return pages
+  }
+
+  // Task pagination
+  const taskTotalPages = Math.max(1, Math.ceil(tasksTotal / ITEMS_PER_PAGE))
+  const taskStartItem = tasksTotal === 0 ? 0 : (taskCurrentPage - 1) * ITEMS_PER_PAGE + 1
+  const taskEndItem = Math.min(taskCurrentPage * ITEMS_PER_PAGE, tasksTotal)
+
+  function goToTaskPage(page) {
+    if (page < 1 || page > taskTotalPages) return
+    setTaskCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function getTaskPageNumbers() {
+    const pages = []
+    const maxVisible = 7
+    if (taskTotalPages <= maxVisible) {
+      for (let i = 1; i <= taskTotalPages; i++) pages.push(i)
+    } else {
+      pages.push(1)
+      if (taskCurrentPage > 3) pages.push('...')
+      const start = Math.max(2, taskCurrentPage - 1)
+      const end = Math.min(taskTotalPages - 1, taskCurrentPage + 1)
+      for (let i = start; i <= end; i++) pages.push(i)
+      if (taskCurrentPage < taskTotalPages - 2) pages.push('...')
+      pages.push(taskTotalPages)
     }
     return pages
   }
@@ -974,6 +1009,13 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
               </div>
             )}
 
+            {/* Tasks Result Count */}
+            {!tasksLoading && tasks.length > 0 && (
+              <div style={{ marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500, textAlign: 'right' }}>
+                {tasksTotal === 0 ? 'No results' : `Showing ${taskStartItem}\u2013${taskEndItem} of ${tasksTotal} tasks`}
+              </div>
+            )}
+
             {/* Tasks Grid */}
             {!tasksLoading && (
               <div style={{
@@ -1104,6 +1146,75 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     </div>
                   ))
                 )}
+              </div>
+            )}
+
+            {/* Task Pagination */}
+            {!tasksLoading && tasksTotal > ITEMS_PER_PAGE && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 6,
+                marginTop: 40,
+                marginBottom: 8,
+              }}>
+                <button
+                  onClick={() => goToTaskPage(taskCurrentPage - 1)}
+                  disabled={taskCurrentPage === 1}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 38, height: 38, borderRadius: 10,
+                    border: '1px solid rgba(26,26,26,0.1)', background: 'white',
+                    cursor: taskCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                    opacity: taskCurrentPage === 1 ? 0.4 : 1,
+                    transition: 'all 0.15s', color: 'var(--text-primary)',
+                  }}
+                  onMouseOver={(e) => { if (taskCurrentPage !== 1) e.currentTarget.style.background = 'var(--bg-tertiary)' }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'white' }}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                {getTaskPageNumbers().map((page, idx) =>
+                  page === '...' ? (
+                    <span key={`dots-${idx}`} style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={page}
+                      onClick={() => goToTaskPage(page)}
+                      style={{
+                        width: 38, height: 38, borderRadius: 10,
+                        border: page === taskCurrentPage ? '1px solid var(--coral-500)' : '1px solid rgba(26,26,26,0.08)',
+                        background: page === taskCurrentPage ? 'var(--coral-500)' : 'white',
+                        color: page === taskCurrentPage ? 'white' : 'var(--text-primary)',
+                        fontWeight: page === taskCurrentPage ? 700 : 500,
+                        fontSize: 14, cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                      onMouseOver={(e) => { if (page !== taskCurrentPage) e.currentTarget.style.background = 'var(--bg-tertiary)' }}
+                      onMouseOut={(e) => { if (page !== taskCurrentPage) e.currentTarget.style.background = 'white' }}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+                <button
+                  onClick={() => goToTaskPage(taskCurrentPage + 1)}
+                  disabled={taskCurrentPage === taskTotalPages}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 38, height: 38, borderRadius: 10,
+                    border: '1px solid rgba(26,26,26,0.1)', background: 'white',
+                    cursor: taskCurrentPage === taskTotalPages ? 'not-allowed' : 'pointer',
+                    opacity: taskCurrentPage === taskTotalPages ? 0.4 : 1,
+                    transition: 'all 0.15s', color: 'var(--text-primary)',
+                  }}
+                  onMouseOver={(e) => { if (taskCurrentPage !== taskTotalPages) e.currentTarget.style.background = 'var(--bg-tertiary)' }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'white' }}
+                >
+                  <ChevronRight size={18} />
+                </button>
               </div>
             )}
           </>

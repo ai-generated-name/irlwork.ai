@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import { MapPin, Search, Globe } from 'lucide-react';
+import { MapPin, Search, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 const TaskMap = lazy(() => import('../components/TaskMap'));
 import { TASK_CATEGORIES } from '../components/CategoryPills';
 import TaskCardV2 from '../components/TaskCardV2';
@@ -31,6 +31,8 @@ const CATEGORY_OPTIONS = TASK_CATEGORIES.map(cat => ({
   value: cat.value,
   label: cat.label,
 }));
+
+const ITEMS_PER_PAGE = 16;
 
 // Loading skeleton component
 function TaskCardSkeleton() {
@@ -66,6 +68,8 @@ export default function BrowseTasksV2({
 }) {
   // Tasks state
   const [tasks, setTasks] = useState([]);
+  const [tasksTotal, setTasksTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -112,6 +116,11 @@ export default function BrowseTasksV2({
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [location, radius, category, debouncedSearch, sort, includeRemote, filterByMySkills]);
+
   // Fetch tasks
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -146,7 +155,8 @@ export default function BrowseTasksV2({
         }
       }
 
-      params.set('limit', '50');
+      params.set('limit', String(ITEMS_PER_PAGE));
+      params.set('offset', String((currentPage - 1) * ITEMS_PER_PAGE));
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`, {
         headers: user?.id ? { Authorization: user.token || user.id } : {}
@@ -160,13 +170,14 @@ export default function BrowseTasksV2({
       // Handle both old format (array) and new format ({ tasks: [] })
       const tasksList = Array.isArray(data) ? data : (data.tasks || []);
       setTasks(tasksList);
+      setTasksTotal(data.total || tasksList.length);
     } catch (err) {
       console.error('Error fetching tasks:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [location, radius, category, debouncedSearch, sort, includeRemote, filterByMySkills, user]);
+  }, [location, radius, category, debouncedSearch, sort, includeRemote, filterByMySkills, user, currentPage]);
 
   // Fetch on mount and when filters change
   useEffect(() => {
@@ -207,6 +218,36 @@ export default function BrowseTasksV2({
   const mapCenter = location.lat && location.lng
     ? [location.lat, location.lng]
     : [10.8231, 106.6297]; // Default HCMC
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(tasksTotal / ITEMS_PER_PAGE));
+  const startItem = tasksTotal === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endItem = Math.min(currentPage * ITEMS_PER_PAGE, tasksTotal);
+
+  function goToPage(page) {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+    if (taskListRef.current) {
+      taskListRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function getPageNumbers() {
+    const pages = [];
+    const maxVisible = 7;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  }
 
   // Responsive view mode
   const [isMobile, setIsMobile] = useState(
@@ -421,21 +462,88 @@ export default function BrowseTasksV2({
                 </div>
               </div>
             ) : (
-              tasks.map(task => (
-                <div key={task.id} data-task-id={task.id}>
-                  <TaskCardV2
-                    task={task}
-                    isSelected={task.id === selectedTaskId}
-                    isHovered={task.id === hoveredTaskId}
-                    onSelect={handleTaskSelect}
-                    onHover={setHoveredTaskId}
-                    onApply={setApplyModalTask}
-                    hasApplied={appliedTaskIds.has(task.id)}
-                    onReport={setReportModalTask}
-                    showReport={!!user}
-                  />
+              <>
+                {/* Result count */}
+                <div style={{ padding: '0 4px 12px', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500 }}>
+                  {tasksTotal === 0 ? 'No results' : `Showing ${startItem}\u2013${endItem} of ${tasksTotal} tasks`}
                 </div>
-              ))
+                {tasks.map(task => (
+                  <div key={task.id} data-task-id={task.id}>
+                    <TaskCardV2
+                      task={task}
+                      isSelected={task.id === selectedTaskId}
+                      isHovered={task.id === hoveredTaskId}
+                      onSelect={handleTaskSelect}
+                      onHover={setHoveredTaskId}
+                      onApply={setApplyModalTask}
+                      hasApplied={appliedTaskIds.has(task.id)}
+                      onReport={setReportModalTask}
+                      showReport={!!user}
+                    />
+                  </div>
+                ))}
+                {/* Pagination */}
+                {tasksTotal > ITEMS_PER_PAGE && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '24px 0 8px',
+                  }}>
+                    <button
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 36, height: 36, borderRadius: 8,
+                        border: '1px solid rgba(26,26,26,0.1)', background: 'white',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        opacity: currentPage === 1 ? 0.4 : 1,
+                        transition: 'all 0.15s', color: 'var(--text-primary)',
+                      }}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    {getPageNumbers().map((page, idx) =>
+                      page === '...' ? (
+                        <span key={`dots-${idx}`} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={page}
+                          onClick={() => goToPage(page)}
+                          style={{
+                            width: 36, height: 36, borderRadius: 8,
+                            border: page === currentPage ? '1px solid var(--coral-500)' : '1px solid rgba(26,26,26,0.08)',
+                            background: page === currentPage ? 'var(--coral-500)' : 'white',
+                            color: page === currentPage ? 'white' : 'var(--text-primary)',
+                            fontWeight: page === currentPage ? 700 : 500,
+                            fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
+                          }}
+                        >
+                          {page}
+                        </button>
+                      )
+                    )}
+                    <button
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 36, height: 36, borderRadius: 8,
+                        border: '1px solid rgba(26,26,26,0.1)', background: 'white',
+                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                        opacity: currentPage === totalPages ? 0.4 : 1,
+                        transition: 'all 0.15s', color: 'var(--text-primary)',
+                      }}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
