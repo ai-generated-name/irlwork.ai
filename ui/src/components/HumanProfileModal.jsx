@@ -303,28 +303,6 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               </div>
             )}
 
-            {/* Languages */}
-            {profile.languages && profile.languages.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px 0' }}>Languages</h4>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {profile.languages.map((lang, idx) => (
-                    <span key={idx} style={{
-                      padding: '6px 14px',
-                      background: 'rgba(59,130,246,0.08)',
-                      borderRadius: 999,
-                      fontSize: 13,
-                      color: '#3B82F6',
-                      fontWeight: 500,
-                      border: '1px solid rgba(59,130,246,0.12)'
-                    }}>
-                      {lang}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Stats Grid */}
             <div style={{
               display: 'grid',
@@ -344,8 +322,9 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               />
               <StatBox
                 icon={<Shield size={16} />}
-                value={profile.availability?.replace('_', ' ') || 'Available'}
+                value={profile.availability === 'available' ? 'Available' : 'Unavailable'}
                 label="Status"
+                highlight={profile.availability === 'available' ? 'green' : 'gray'}
               />
             </div>
 
@@ -410,33 +389,50 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
 
             {/* Hire Button */}
             {onHire && (
-              <button
-                onClick={() => onHire(profile)}
-                style={{
+              profile.availability !== 'available' ? (
+                <div style={{
                   width: '100%',
                   padding: '14px 24px',
-                  background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
-                  color: 'white',
+                  background: '#E5E7EB',
+                  color: '#9CA3AF',
                   fontWeight: 600,
                   fontSize: 16,
                   borderRadius: 12,
                   border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 4px 16px rgba(244,132,95,0.3)',
+                  textAlign: 'center',
                   marginTop: 16
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.boxShadow = '0 6px 24px rgba(244,132,95,0.4)'
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(244,132,95,0.3)'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }}
-              >
-                Hire {profile.name?.split(' ')[0] || 'This Human'}
-              </button>
+                }}>
+                  Currently unavailable for hire
+                </div>
+              ) : (
+                <button
+                  onClick={() => onHire(profile)}
+                  style={{
+                    width: '100%',
+                    padding: '14px 24px',
+                    background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: 16,
+                    borderRadius: 12,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 16px rgba(244,132,95,0.3)',
+                    marginTop: 16
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(244,132,95,0.4)'
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(244,132,95,0.3)'
+                    e.currentTarget.style.transform = 'translateY(0)'
+                  }}
+                >
+                  Hire {profile.name?.split(' ')[0] || 'This Human'}
+                </button>
+              )
             )}
           </div>
         ) : null}
@@ -445,7 +441,8 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
   )
 }
 
-function StatBox({ icon, value, label }) {
+function StatBox({ icon, value, label, highlight }) {
+  const valueColor = highlight === 'green' ? '#10B981' : highlight === 'gray' ? '#9CA3AF' : 'var(--text-primary)'
   return (
     <div style={{
       padding: 14,
@@ -457,7 +454,7 @@ function StatBox({ icon, value, label }) {
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: '#F4845F' }}>
         {icon}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: valueColor, marginBottom: 2 }}>
         {value}
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>

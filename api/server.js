@@ -1764,7 +1764,8 @@ app.get('/api/humans', async (req, res) => {
   let query = supabase
     .from('users')
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url')
-    .eq('type', 'human');
+    .eq('type', 'human')
+    .eq('availability', 'available');
 
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
@@ -4522,11 +4523,13 @@ app.post('/api/mcp', async (req, res) => {
           .eq('type', 'human')
           .eq('verified', true);
 
+        // Default to only showing available workers unless explicitly requesting all
+        query = query.eq('availability', params.availability || 'available');
+
         if (params.category) query = query.like('skills', `%${params.category}%`);
         if (params.city) query = query.like('city', `%${params.city}%`);
         if (params.state) query = query.ilike('state', `%${params.state}%`);
         if (params.min_rating) query = query.gte('rating', parseFloat(params.min_rating));
-        if (params.availability) query = query.eq('availability', params.availability);
         if (params.language) query = query.contains('languages', JSON.stringify([params.language]));
 
         const { data: humans, error } = await query.limit(params.limit || 100);
@@ -6254,7 +6257,8 @@ app.get('/api/humans/directory', async (req, res) => {
     .from('users')
     .select('id', { count: 'exact', head: true })
     .eq('type', 'human')
-    .eq('verified', true);
+    .eq('verified', true)
+    .eq('availability', 'available');
 
   if (category) countQuery = countQuery.like('skills', `%${category}%`);
   if (skill) countQuery = countQuery.like('skills', `%${skill}%`);
@@ -6270,7 +6274,8 @@ app.get('/api/humans/directory', async (req, res) => {
     .from('users')
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
     .eq('type', 'human')
-    .eq('verified', true);
+    .eq('verified', true)
+    .eq('availability', 'available');
 
   // Sorting
   switch (sort) {
