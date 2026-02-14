@@ -490,7 +490,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             <StatsSection taskId={taskId} />
 
             {/* Agent Profile Card */}
-            <AgentProfileCard agent={agentProfile} />
+            <AgentProfileCard agent={agentProfile} isAnonymous={task?.is_anonymous} />
           </div>
         </div>
       </main>
