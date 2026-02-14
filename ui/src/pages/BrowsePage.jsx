@@ -196,6 +196,31 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     fetchHumans()
   }, [viewMode, currentPage, skillFilter, cityFilter, countryFilter, debouncedName, debouncedMaxRate, humanSort])
 
+  // Handle ?hire= URL param — open hire modal for a specific human
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const hireId = urlParams.get('hire')
+    if (!hireId || viewMode !== 'humans') return
+    // Try to find the human in already-loaded list
+    const found = humans.find(h => h.id === hireId)
+    if (found) {
+      setShowHireModal(found)
+      // Clean up the URL param
+      window.history.replaceState({}, '', '/browse/humans')
+    } else if (!humansLoading && humans.length > 0) {
+      // Humans loaded but target not in current page — fetch their profile directly
+      fetch(`${API_URL}/humans/${hireId}/profile`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data) {
+            setShowHireModal(fixAvatarUrl(data))
+            window.history.replaceState({}, '', '/browse/humans')
+          }
+        })
+        .catch(() => {})
+    }
+  }, [humans, humansLoading, viewMode])
+
   // Handle "Near Me" toggle
   const handleNearMe = () => {
     if (nearMeActive) {

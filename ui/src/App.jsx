@@ -1935,7 +1935,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         // Reset form
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'direct', quantity: 1, is_anonymous: false })
         // Close create form and show posted tasks list
-        setShowCreateForm(false)
         setTasksSubTab('tasks')
         setActiveTab('posted')
       } else {
@@ -3143,7 +3142,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           human={human}
                           variant="dashboard"
                           onExpand={(h) => window.location.href = `/humans/${h.id}`}
-                          onHire={() => { setShowCreateForm(true); setActiveTab('posted') }}
+                          onHire={() => { setTasksSubTab('create'); setActiveTab('posted') }}
                         />
                       ))}
                     </div>
@@ -4357,7 +4356,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             onClose={() => setExpandedHumanId(null)}
             onHire={(human) => {
               setExpandedHumanId(null)
-              setShowCreateForm(true)
+              setTasksSubTab('create')
               setActiveTab('posted')
             }}
             user={user}
