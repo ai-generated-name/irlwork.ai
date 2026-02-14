@@ -6081,27 +6081,7 @@ app.get('/api/tasks/available', async (req, res) => {
         console.error('RPC error:', error);
         // Fall through to legacy filtering if RPC fails
       } else {
-        // Merge in tasks without coordinates that match city string
         let results = data || [];
-        if (city) {
-          const { data: cityTasks } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('status', 'open')
-            .is('latitude', null)
-            .eq('is_remote', false)
-            .ilike('location', `%${city}%`)
-            .limit(20);
-
-          if (cityTasks) {
-            const existingIds = new Set(results.map(r => r.id));
-            cityTasks.forEach(t => {
-              if (!existingIds.has(t.id)) {
-                results.push({ ...t, distance_km: null });
-              }
-            });
-          }
-        }
 
         // Merge in remote tasks (visible to all users regardless of location)
         const existingIds = new Set(results.map(r => r.id));
@@ -6188,17 +6168,6 @@ app.get('/api/tasks/available', async (req, res) => {
         results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
       }
 
-      // Fallback: include tasks without coords that match city string
-      if (city) {
-        const tasksWithoutCoords = (tasks || []).filter(t =>
-          !t.latitude && !t.longitude && !t.is_remote &&
-          t.location?.toLowerCase().includes(city.toLowerCase())
-        );
-        const resultIds = new Set(results.map(r => r.id));
-        tasksWithoutCoords.forEach(t => {
-          if (!resultIds.has(t.id)) results.push(t);
-        });
-      }
     } else if (city) {
       // When filtering by city only, keep remote tasks + city-matching tasks
       const remoteTasks = includeRemote ? results.filter(t => t.is_remote) : [];
@@ -6391,6 +6360,12 @@ app.post('/api/tasks/create', async (req, res) => {
   const taskQuantity = taskType === 'bounty' ? Math.max(1, parseInt(quantity) || 1) : 1;
   const skillsArray = Array.isArray(required_skills) ? required_skills : [];
 
+  // Non-remote tasks must have coordinates for location-based filtering
+  const isRemote = !!req.body.is_remote;
+  if (!isRemote && (latitude == null || longitude == null)) {
+    return res.status(400).json({ error: 'Non-remote tasks must include latitude and longitude' });
+  }
+
   const { data: task, error } = await supabase
     .from('tasks')
     .insert(buildTaskInsertData({
@@ -6410,7 +6385,7 @@ app.post('/api/tasks/create', async (req, res) => {
       quantity: taskQuantity,
       human_ids: [],
       escrow_amount: budgetAmount,
-      is_remote: !!req.body.is_remote,
+      is_remote: isRemote,
       deadline: deadline || null,
       requirements: requirements || null,
       required_skills: skillsArray,

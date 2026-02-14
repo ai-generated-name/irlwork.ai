@@ -96,8 +96,8 @@ function filterByDistance(items, refLat, refLon, maxRadius, options = {}) {
       return addDistance ? { ...item, distance } : item;
     })
     .filter(item => {
-      // Include items without coordinates (backward compatibility)
-      if (item.distance === null) return true;
+      // Exclude items without coordinates — they can't be distance-filtered
+      if (item.distance === null) return false;
       // Filter by radius
       return item.distance <= maxRadius;
     })
@@ -159,7 +159,8 @@ function filterByDistanceKm(items, refLat, refLon, maxRadiusKm, options = {}) {
       return addDistance ? { ...item, distance: distanceKm, distanceKm } : item;
     })
     .filter(item => {
-      if (item.distanceKm === null) return true;
+      // Exclude items without coordinates — they can't be distance-filtered
+      if (item.distanceKm === null) return false;
       return item.distanceKm <= maxRadiusKm;
     })
     .sort((a, b) => {
