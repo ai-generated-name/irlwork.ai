@@ -180,7 +180,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           subject: subject || undefined,
           message,
           image_urls: urls,
-          page_url: window.location.href,
+          page_url: window.location.origin + window.location.pathname,
         }),
       })
 

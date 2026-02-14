@@ -24,6 +24,16 @@ const BCRYPT_ROUNDS = 12;
 // Wallet address validation (Ethereum/Base network - 0x + 40 hex chars)
 const isValidWalletAddress = (addr) => /^0x[a-fA-F0-9]{40}$/.test(addr);
 
+// Sanitize error messages for client responses — never leak database internals
+function safeErrorMessage(error) {
+  const msg = error?.message || 'Unknown error';
+  // Block database/SQL error patterns from reaching clients
+  if (/duplicate key|violates.*constraint|relation.*does not exist|column.*does not exist|syntax error|PGRES|permission denied|supabase/i.test(msg)) {
+    return 'An internal error occurred';
+  }
+  return msg;
+}
+
 const { createClient } = require('@supabase/supabase-js');
 
 // Background services
@@ -1268,7 +1278,7 @@ app.post('/api/auth/onboard', async (req, res) => {
 
     if (error) {
       console.error('Onboarding error:', error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: safeErrorMessage(error) });
     }
 
     // Parse skills and languages back to arrays for response
@@ -1825,7 +1835,7 @@ app.get('/api/humans', async (req, res) => {
 
   const { data: humans, error } = await query.order('rating', { ascending: false }).limit(100);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   // Parse skills and languages for all humans
   let results = humans?.map(h => ({ ...h, skills: safeParseJsonArray(h.skills), languages: safeParseJsonArray(h.languages) })) || [];
@@ -1954,7 +1964,7 @@ app.put('/api/humans/profile', async (req, res) => {
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
     // Parse JSONB fields before sending to match auth/verify response format
     res.json({ success: true, user: { ...data, skills: safeParseJsonArray(data.skills), languages: safeParseJsonArray(data.languages) } });
@@ -1991,7 +2001,7 @@ app.get('/api/tasks', async (req, res) => {
 
   const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(100);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   let results = tasks || [];
 
@@ -2102,7 +2112,7 @@ app.post('/api/tasks', async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   res.json({
     ...task,
@@ -2276,7 +2286,7 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
     .select()
     .single();
   
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json({ id: application.id, status: 'pending' });
 });
 
@@ -2318,7 +2328,7 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
     .eq('task_id', taskId)
     .order('created_at', { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(applications || []);
 });
 
@@ -2516,7 +2526,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     }))
     .eq('id', taskId);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   await finalizeAssignment(
     `You've been selected for "${task.title}". Funding is in progress — you'll be notified when work can begin.`
@@ -2587,7 +2597,7 @@ app.get('/api/agent/tasks', async (req, res) => {
 
   const { data: tasks, error } = await query;
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   // Enrich with pending application counts
   if (tasks && tasks.length > 0) {
@@ -3260,7 +3270,7 @@ app.post('/api/feedback', async (req, res) => {
 
     if (error) {
       console.error('[Feedback] Insert error:', error.message);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: safeErrorMessage(error) });
     }
 
     // Notify admins for critical feedback
@@ -3314,7 +3324,7 @@ app.get('/api/tasks/:id/proofs', async (req, res) => {
     .eq('task_id', taskId)
     .order('created_at', { ascending: false });
   
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(proofs || []);
 });
 
@@ -3365,7 +3375,7 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
     .select()
     .single();
   
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   
   // Update task status to pending_review
   await supabase
@@ -4372,7 +4382,7 @@ app.post('/api/webhooks/register', async (req, res) => {
     .update(updateData)
     .eq('id', user.id);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   res.json({ success: true, webhook_url });
 });
@@ -4432,7 +4442,7 @@ app.get('/api/deposits', async (req, res) => {
     .or(`agent_id.eq.${user.id},worker_id.eq.${user.id}`)
     .order('created_at', { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(deposits || []);
 });
 
@@ -4448,7 +4458,7 @@ app.get('/api/payouts', async (req, res) => {
     .eq('human_id', user.id)
     .order('created_at', { ascending: false });
   
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(payouts || []);
 });
 
@@ -4709,7 +4719,7 @@ app.post('/api/mcp', async (req, res) => {
       
       case 'get_task_status': {
         if (!params.task_id) return res.status(400).json({ error: 'task_id is required' });
-        let statusSelect = 'id, status, escrow_status, escrow_amount, escrow_deposited_at, task_type, quantity, human_ids';
+        let statusSelect = 'id, status, escrow_status, escrow_amount, escrow_deposited_at, task_type, quantity, human_ids, creator_id';
         if (taskColumnFlags.spots_filled) statusSelect += ', spots_filled';
         const { data: task, error } = await supabase
           .from('tasks')
@@ -4718,10 +4728,15 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (error) throw error;
-        // Add computed fields
+        // Ownership check: only task creator or assigned humans can see status
+        if (task.creator_id !== user.id && !(Array.isArray(task.human_ids) && task.human_ids.includes(user.id))) {
+          return res.status(403).json({ error: 'Not authorized to view this task' });
+        }
+        // Add computed fields, strip internal fields
         const spots = task.spots_filled || (Array.isArray(task.human_ids) ? task.human_ids.length : 0);
+        const { creator_id: _c, human_ids: _h, ...safeTask } = task;
         res.json({
-          ...task,
+          ...safeTask,
           spots_filled: spots,
           spots_remaining: Math.max(0, (task.quantity || 1) - spots)
         });
@@ -5576,7 +5591,7 @@ app.get('/api/notifications', async (req, res) => {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(notifications || []);
 });
 
@@ -5592,7 +5607,7 @@ app.post('/api/notifications/:id/read', async (req, res) => {
     .eq('id', req.params.id)
     .eq('user_id', user.id);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json({ success: true });
 });
 
@@ -5609,7 +5624,7 @@ app.get('/api/activity/feed', async (req, res) => {
       .order('updated_at', { ascending: false })
       .limit(10);
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
     // Format as activity items
     const activities = (recentTasks || []).map(task => {
@@ -5652,7 +5667,7 @@ app.get('/api/conversations', async (req, res) => {
     .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
     .order('updated_at', { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   if (!conversations || conversations.length === 0) {
     return res.json([]);
@@ -5705,7 +5720,7 @@ app.post('/api/conversations', async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   res.json(conversation);
 });
@@ -5784,7 +5799,7 @@ app.get('/api/messages/:conversation_id', async (req, res) => {
         .order('created_at', { ascending: false })  // Descending to get nearest
         .limit(parsedLimit);
 
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) return res.status(500).json({ error: safeErrorMessage(error) });
       return res.json(data?.reverse() || []);  // Reverse to chronological order
     }
   }
@@ -5815,7 +5830,7 @@ app.get('/api/messages/:conversation_id', async (req, res) => {
   }
 
   const { data: messages, error } = await query;
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   res.json(messages || []);
 });
@@ -5864,7 +5879,7 @@ app.post('/api/messages', async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   // Update conversation's updated_at and last_message preview
   const preview = (content || '').length > 100 ? content.substring(0, 100) + '...' : (content || '');
@@ -5941,7 +5956,7 @@ app.put('/api/messages/:id/read', async (req, res) => {
     .eq('id', req.params.id)
     .neq('sender_id', user.id);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json({ success: true });
 });
 
@@ -5978,7 +5993,7 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
     .is('read_at', null)
     .select('id');
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   // Also clear new_message notifications for this conversation's task
   if (conversation.task_id) {
@@ -6005,7 +6020,7 @@ app.get('/api/conversations/unread', async (req, res) => {
     p_user_id: user.id
   });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(data);
 });
 
@@ -6035,7 +6050,7 @@ app.get('/api/messages/unread/count', async (req, res) => {
     .neq('sender_id', user.id)
     .is('read_at', null);
   
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   
   res.json({ count: unreadMessages?.length || 0 });
 });
@@ -6062,7 +6077,7 @@ app.get('/api/tasks/my-tasks', async (req, res) => {
   
   const { data: tasks, error } = await query.limit(100);
   
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(tasks || []);
 });
 
@@ -6247,7 +6262,7 @@ app.get('/api/tasks/available', async (req, res) => {
 
     const { data: tasks, error } = await query;
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
     let results = tasks || [];
 
@@ -6394,7 +6409,7 @@ app.get('/api/humans/directory', async (req, res) => {
 
   const { data: humans, error } = await query;
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   const parsed = humans?.map(h => ({
     ...h,
@@ -6515,7 +6530,7 @@ app.post('/api/tasks/create', async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   res.json({
     ...task,
@@ -6625,7 +6640,7 @@ app.put('/api/profile', async (req, res) => {
     .select()
     .single();
   
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   
   res.json({ success: true, profile });
 });
@@ -6688,7 +6703,7 @@ app.get('/api/wallet/withdrawals', async (req, res) => {
     res.json(history);
   } catch (error) {
     console.error('[Withdrawals] Error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: safeErrorMessage(error) });
   }
 });
 
@@ -7036,7 +7051,7 @@ app.get('/api/my-tasks', async (req, res) => {
   
   const { data: tasks, error } = await query;
   
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(tasks || []);
 });
 
@@ -7089,7 +7104,7 @@ app.patch('/api/tasks/:id', async (req, res) => {
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json({ success: true });
 });
 
@@ -7307,7 +7322,7 @@ app.post('/api/tasks/:id/decline', async (req, res) => {
     .eq('status', 'pending_acceptance');
 
   if (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: safeErrorMessage(error) });
   }
 
   // Notify the agent
@@ -7597,7 +7612,7 @@ app.get('/api/disputes', async (req, res) => {
   const { data: disputes, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: safeErrorMessage(error) });
   }
 
   res.json({ disputes });

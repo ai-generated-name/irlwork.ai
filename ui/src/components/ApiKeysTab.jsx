@@ -19,7 +19,7 @@ export default function ApiKeysTab({ user }) {
   const fetchKeys = async () => {
     try {
       const response = await fetch(`${API_URL}/keys`, {
-        headers: { 'Authorization': user?.id }
+        headers: { 'Authorization': user?.token || '' }
       })
       if (response.ok) {
         const data = await response.json()
@@ -44,7 +44,7 @@ export default function ApiKeysTab({ user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': user?.id
+          'Authorization': user?.token || ''
         },
         body: JSON.stringify({ name: newKeyName || 'API Key' })
       })
@@ -69,7 +69,7 @@ export default function ApiKeysTab({ user }) {
     try {
       const response = await fetch(`${API_URL}/keys/${keyId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': user?.id }
+        headers: { 'Authorization': user?.token || '' }
       })
       if (response.ok) {
         setConfirmRevoke(null)
@@ -84,7 +84,7 @@ export default function ApiKeysTab({ user }) {
     try {
       const response = await fetch(`${API_URL}/keys/${keyId}/rotate`, {
         method: 'POST',
-        headers: { 'Authorization': user?.id }
+        headers: { 'Authorization': user?.token || '' }
       })
       if (response.ok) {
         const data = await response.json()
