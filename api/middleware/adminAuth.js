@@ -59,7 +59,8 @@ const setUser = (supabase, getUserByToken) => async (req, res, next) => {
     next();
   } catch (error) {
     console.error('[AdminAuth] Error setting user:', error.message);
-    next();
+    // Don't call next() with a null user on admin routes — fail closed
+    return res.status(401).json({ error: 'Authentication failed' });
   }
 };
 

@@ -49,7 +49,25 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   // Calculate clears_at timestamp (48 hours from now)
   const clearsAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
-  // Insert into pending_transactions (funds held for 48-hour dispute window)
+  // ATOMIC GUARD FIRST: Update task escrow status — prevents double-release.
+  // This MUST happen before inserting the pending_transaction to prevent race conditions.
+  const { data: releasedTask, error: releaseError } = await supabase
+    .from('tasks')
+    .update({
+      escrow_status: 'released',
+      escrow_released_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId)
+    .in('escrow_status', ['deposited', 'held'])
+    .select('id')
+    .single();
+
+  if (releaseError || !releasedTask) {
+    throw new Error('Payment has already been released or is in a disputed state');
+  }
+
+  // Only insert pending_transaction AFTER the atomic guard succeeds
   const { data: pendingTx, error: pendingError } = await supabase
     .from('pending_transactions')
     .insert({
@@ -67,24 +85,13 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
 
   if (pendingError) {
     console.error('Error creating pending transaction:', pendingError);
+    // Revert the escrow status since transaction creation failed
+    await supabase
+      .from('tasks')
+      .update({ escrow_status: 'deposited', updated_at: new Date().toISOString() })
+      .eq('id', taskId)
+      .eq('escrow_status', 'released');
     throw new Error('Failed to create pending transaction');
-  }
-
-  // Update task escrow status — atomic guard prevents double-release
-  const { data: releasedTask, error: releaseError } = await supabase
-    .from('tasks')
-    .update({
-      escrow_status: 'released',
-      escrow_released_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', taskId)
-    .in('escrow_status', ['deposited', 'held'])
-    .select('id')
-    .single();
-
-  if (releaseError || !releasedTask) {
-    throw new Error('Payment has already been released or is in a disputed state');
   }
 
   // Record payout (Stripe transfer will happen after 48-hour hold)

@@ -7017,9 +7017,11 @@ select.select-v4-dark option:checked,
   }
   .browse-humans-filters {
     flex-direction: column;
+    gap: var(--space-3);
   }
   .browse-humans-filters > div {
     width: 100% !important;
+    flex: none !important;
   }
 }
 

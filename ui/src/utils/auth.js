@@ -16,8 +16,8 @@ export async function getAuthToken() {
 
 /**
  * Get auth header value synchronously from user object.
- * Uses stored token (JWT) if available, falls back to user.id (UUID legacy).
+ * Only uses JWT tokens — UUID-based auth is no longer supported.
  */
 export function authHeader(user) {
-  return user?.token || user?.id || ''
+  return user?.token || ''
 }
