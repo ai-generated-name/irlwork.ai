@@ -10,7 +10,7 @@ import MarketingFooter from '../components/Footer'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
-const ITEMS_PER_PAGE = 32
+const ITEMS_PER_PAGE = 16
 
 const categories = [
   { value: '', label: 'All Skills' },
