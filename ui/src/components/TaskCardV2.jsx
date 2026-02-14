@@ -68,7 +68,7 @@ export default function TaskCardV2({
 }) {
   const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
   const categoryLabel = formatCategory(task.category);
-  const isBounty = task.task_type === 'bounty';
+  const isOpen = task.task_type === 'open';
   const quantity = task.quantity || 1;
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
   const spotsRemaining = Math.max(0, quantity - spotsFilled);
@@ -89,9 +89,9 @@ export default function TaskCardV2({
           <span className="task-card-v2-category-label">{categoryLabel}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {isBounty && (
+          {isOpen && (
             <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED', letterSpacing: '0.02em' }}>
-              Bounty
+              Open
             </span>
           )}
           {quantity > 1 && (

@@ -2080,8 +2080,8 @@ app.post('/api/tasks', async (req, res) => {
 
   const id = uuidv4();
   const budgetAmount = parseFloat(budget) || 50;
-  const taskType = task_type === 'bounty' ? 'bounty' : 'direct';
-  const taskQuantity = taskType === 'bounty' ? Math.max(1, parseInt(quantity) || 1) : 1;
+  const taskType = task_type === 'open' ? 'open' : 'direct';
+  const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(quantity) || 1) : 1;
   const skillsArray = (Array.isArray(required_skills) ? required_skills : []).slice(0, 25);
 
   const insertData = buildTaskInsertData({
@@ -2365,20 +2365,20 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     return res.status(403).json({ error: 'Only the task creator can assign humans' });
   }
 
-  const isBounty = task.task_type === 'bounty';
+  const isOpen = task.task_type === 'open';
   const maxQuantity = task.quantity || 1;
   const currentHumanIds = Array.isArray(task.human_ids) ? task.human_ids : [];
   const spotsFilled = currentHumanIds.length;
 
-  // For direct hire: must be open. For bounty: must be open and have spots remaining
+  // For direct hire: must be open status. For open type: must be open and have spots remaining
   if (task.status !== 'open') {
     return res.status(400).json({ error: 'Can only assign humans to open tasks' });
   }
-  if (isBounty && spotsFilled >= maxQuantity) {
+  if (isOpen && spotsFilled >= maxQuantity) {
     return res.status(400).json({ error: `All ${maxQuantity} spots are already filled` });
   }
 
-  // Check if this human is already assigned to this task (for bounty)
+  // Check if this human is already assigned to this task (for open tasks)
   if (currentHumanIds.includes(human_id)) {
     return res.status(400).json({ error: 'This human is already assigned to this task' });
   }
@@ -2427,9 +2427,9 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   const newSpotsFilled = updatedHumanIds.length;
   const allSpotsFilled = newSpotsFilled >= maxQuantity;
 
-  // For bounty: task stays open until all spots filled
+  // For open: task stays open until all spots filled
   // For direct: task moves to in_progress/assigned immediately
-  const nextStatus = isBounty && !allSpotsFilled ? 'open' : undefined; // undefined = use path-specific default
+  const nextStatus = isOpen && !allSpotsFilled ? 'open' : undefined; // undefined = use path-specific default
 
   // Helper: accept application, conditionally reject others, notify human
   const finalizeAssignment = async (notificationMessage) => {
@@ -2438,8 +2438,8 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       .update({ status: 'accepted' })
       .eq('id', application.id);
 
-    // For direct hire or when all bounty spots are filled, reject remaining applicants
-    if (!isBounty || allSpotsFilled) {
+    // For direct hire or when all open task spots are filled, reject remaining applicants
+    if (!isOpen || allSpotsFilled) {
       await supabase
         .from('task_applications')
         .update({ status: 'rejected' })
@@ -2465,7 +2465,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     const { data: updatedTask, error } = await supabase
       .from('tasks')
       .update(cleanTaskData({
-        human_id: isBounty ? (updatedHumanIds[0] || human_id) : human_id,
+        human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
         human_ids: updatedHumanIds,
         spots_filled: newSpotsFilled,
         status: 'pending_acceptance',
@@ -2516,12 +2516,12 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   const randomCents = (Math.random() * 99 + 1) / 100;
   const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
 
-  // For bounty tasks with remaining spots, keep status 'open'
+  // For open tasks with remaining spots, keep status 'open'
   const usdcStatus = nextStatus || 'assigned';
   const { error } = await supabase
     .from('tasks')
     .update(cleanTaskData({
-      human_id: isBounty ? (updatedHumanIds[0] || human_id) : human_id,
+      human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
       human_ids: updatedHumanIds,
       spots_filled: newSpotsFilled,
       status: usdcStatus,
@@ -2554,7 +2554,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       network: 'Base',
       note: 'Send exactly this amount. Your human will be notified once deposit is confirmed by the platform.'
     },
-    message: isBounty && !allSpotsFilled
+    message: isOpen && !allSpotsFilled
       ? `Human selected (${newSpotsFilled}/${maxQuantity} spots filled). Please send the exact USDC amount. Task remains open for more applicants.`
       : 'Human selected. Please send the exact USDC amount to complete the assignment.'
   });
@@ -4651,14 +4651,14 @@ app.post('/api/mcp', async (req, res) => {
         }
 
         // Multi-hire support
-        const isBounty = taskData.task_type === 'bounty';
+        const isOpen = taskData.task_type === 'open';
         const maxQuantity = taskData.quantity || 1;
         const currentHumanIds = Array.isArray(taskData.human_ids) ? taskData.human_ids : [];
 
         if (currentHumanIds.includes(human_id)) {
           throw new Error('This human is already assigned to this task');
         }
-        if (isBounty && currentHumanIds.length >= maxQuantity) {
+        if (isOpen && currentHumanIds.length >= maxQuantity) {
           throw new Error(`All ${maxQuantity} spots are already filled`);
         }
 
@@ -4675,7 +4675,7 @@ app.post('/api/mcp', async (req, res) => {
         const { data: updatedMcpTask, error: taskError } = await supabase
           .from('tasks')
           .update(cleanTaskData({
-            human_id: isBounty ? (updatedHumanIds[0] || human_id) : human_id,
+            human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
             human_ids: updatedHumanIds,
             spots_filled: newSpotsFilled,
             status: 'pending_acceptance',
@@ -4975,8 +4975,8 @@ app.post('/api/mcp', async (req, res) => {
         if (!params.title) return res.status(400).json({ error: 'title is required' });
         const id = uuidv4();
         const budgetAmount = params.budget || params.budget_max || params.budget_min || 50;
-        const taskType = params.task_type === 'bounty' ? 'bounty' : 'direct';
-        const taskQuantity = taskType === 'bounty' ? Math.max(1, parseInt(params.quantity) || 1) : 1;
+        const taskType = params.task_type === 'open' ? 'open' : 'direct';
+        const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(params.quantity) || 1) : 1;
 
         const { data: task, error } = await supabase
           .from('tasks')
@@ -5024,14 +5024,14 @@ app.post('/api/mcp', async (req, res) => {
         }
 
         // Multi-hire support
-        const isBounty = taskData.task_type === 'bounty';
+        const isOpen = taskData.task_type === 'open';
         const maxQuantity = taskData.quantity || 1;
         const currentHumanIds = Array.isArray(taskData.human_ids) ? taskData.human_ids : [];
 
         if (currentHumanIds.includes(human_id)) {
           throw new Error('This human is already assigned to this task');
         }
-        if (isBounty && currentHumanIds.length >= maxQuantity) {
+        if (isOpen && currentHumanIds.length >= maxQuantity) {
           throw new Error(`All ${maxQuantity} spots are already filled`);
         }
 
@@ -5044,13 +5044,13 @@ app.post('/api/mcp', async (req, res) => {
         const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
         const deadline = new Date(Date.now() + deadline_hours * 60 * 60 * 1000).toISOString();
 
-        // For bounty with spots remaining, keep task open
-        const nextStatus = isBounty && !allSpotsFilled ? 'open' : 'assigned';
+        // For open tasks with spots remaining, keep task open
+        const nextStatus = isOpen && !allSpotsFilled ? 'open' : 'assigned';
 
         const { error: taskError } = await supabase
           .from('tasks')
           .update(cleanTaskData({
-            human_id: isBounty ? (updatedHumanIds[0] || human_id) : human_id,
+            human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
             human_ids: updatedHumanIds,
             spots_filled: newSpotsFilled,
             status: nextStatus,
@@ -5087,7 +5087,7 @@ app.post('/api/mcp', async (req, res) => {
             network: 'Base',
             note: 'Send exactly this amount. Your human will be notified once deposit is confirmed.'
           },
-          message: isBounty && !allSpotsFilled
+          message: isOpen && !allSpotsFilled
             ? `Human assigned (${newSpotsFilled}/${maxQuantity} spots filled). Task remains open.`
             : 'Human selected. Please send the exact USDC amount to complete the assignment.'
         });
@@ -6431,8 +6431,8 @@ app.post('/api/tasks/create', async (req, res) => {
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
-  const taskType = task_type === 'bounty' ? 'bounty' : 'direct';
-  const taskQuantity = taskType === 'bounty' ? Math.max(1, parseInt(quantity) || 1) : 1;
+  const taskType = task_type === 'open' ? 'open' : 'direct';
+  const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(quantity) || 1) : 1;
   const skillsArray = Array.isArray(required_skills) ? required_skills : [];
 
   // Non-remote tasks must have coordinates for location-based filtering

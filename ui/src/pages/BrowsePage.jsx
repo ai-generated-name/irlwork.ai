@@ -1084,8 +1084,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                           {task.category || 'General'}
                         </span>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          {task.task_type === 'bounty' && (
-                            <span style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500, background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>Bounty</span>
+                          {task.task_type === 'open' && (
+                            <span style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500, background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>Open</span>
                           )}
                           {task.quantity > 1 && (
                             <span style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 500, background: 'rgba(59, 130, 246, 0.1)', color: '#2563EB' }}>
