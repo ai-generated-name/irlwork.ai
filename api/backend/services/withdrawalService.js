@@ -85,8 +85,19 @@ async function processStripeWithdrawal(supabase, userId, amountCents = null, cre
     const totalAvailableCents = availableTxs.reduce((sum, tx) => sum + tx.amount_cents, 0);
     const withdrawAmountCents = amountCents || totalAvailableCents;
 
+    // Validate withdrawal amount
+    if (amountCents !== null) {
+      if (!Number.isInteger(amountCents) || amountCents <= 0) {
+        throw new Error('Withdrawal amount must be a positive integer (in cents)');
+      }
+    }
+
     if (withdrawAmountCents > totalAvailableCents) {
       throw new Error(`Insufficient available balance. Available: $${(totalAvailableCents / 100).toFixed(2)}`);
+    }
+
+    if (withdrawAmountCents <= 0) {
+      throw new Error('No available balance to withdraw');
     }
 
     // Select transactions to withdraw (FIFO, full amounts only — skip any too large, continue to smaller ones)

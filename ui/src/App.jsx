@@ -81,9 +81,9 @@ class TabErrorBoundary extends React.Component {
   }
 }
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+export const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null
 
 // Safe no-op channel for when supabase is null
 const noopChannel = { on: () => noopChannel, subscribe: () => noopChannel }
@@ -249,7 +249,7 @@ function Onboarding({ onComplete, user }) {
     try {
       const res = await fetch(`${API_URL}/auth/send-verification`, {
         method: 'POST',
-        headers: { Authorization: user?.token || user?.id || '' }
+        headers: { Authorization: user?.token || '' }
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
@@ -277,7 +277,7 @@ function Onboarding({ onComplete, user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user?.token || user?.id || ''
+          Authorization: user?.token || ''
         },
         body: JSON.stringify({ code: verificationCode.trim() })
       })
@@ -1145,7 +1145,9 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
             <div>
               <h4 style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Proof Images:</h4>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {task.proof_urls.map((url, i) => (
+                {task.proof_urls.filter(url => {
+                  try { const u = new URL(url); return ['https:', 'data:'].includes(u.protocol); } catch { return false; }
+                }).map((url, i) => (
                   <img key={i} src={url} alt={`Proof ${i + 1}`} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
                 ))}
               </div>
@@ -1455,7 +1457,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setNotifications(prev => prev.filter(n => n.is_read))
       // Mark each as read in backend (fire and forget)
       for (const id of unreadIds) {
-        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } }).catch(() => {})
+        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || '' } }).catch(() => {})
       }
     } catch (e) {
       console.error('Error marking all notifications read:', e)
@@ -1628,7 +1630,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setTasks(data || [])
@@ -1667,7 +1669,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchHumans = async () => {
     try {
-      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setHumans(fixAvatarUrl(data || []))
@@ -1679,7 +1681,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchPostedTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setPostedTasks(data || [])
@@ -1694,7 +1696,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchApplicationsForTask = async (taskId) => {
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/applications`, {
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       if (res.ok) {
         const data = await res.json()
@@ -1712,7 +1714,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({ human_id: humanId })
       })
@@ -1745,7 +1747,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchWallet = async () => {
     try {
-      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setWallet(data || { balance: 0, transactions: [] })
@@ -1757,7 +1759,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         // Only show unread notifications — clicked/read ones are removed from the list
@@ -1770,7 +1772,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const markNotificationRead = async (id) => {
     try {
-      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } })
+      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || '' } })
       fetchNotifications()
     } catch (e) {}
   }
@@ -1801,15 +1803,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     // Remove the clicked notification from state immediately so it disappears from UI
     setNotifications(prev => prev.filter(n => n.id !== notification.id))
     // Mark as read in backend (fire and forget — no refetch needed since we already removed it)
-    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } }).catch(() => {})
+    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.token || '' } }).catch(() => {})
     setNotificationDropdownOpen(false)
 
     const link = notification.link
     if (!link) return
 
-    // External links (basescan, etc.)
+    // External links — only allow trusted domains
     if (link.startsWith('http')) {
-      window.open(link, '_blank')
+      try {
+        const url = new URL(link)
+        const trustedDomains = ['irlwork.ai', 'www.irlwork.ai', 'basescan.org', 'etherscan.io']
+        if (trustedDomains.some(d => url.hostname === d || url.hostname.endsWith('.' + d))) {
+          window.open(link, '_blank', 'noopener,noreferrer')
+        }
+      } catch {}
       return
     }
 
@@ -1856,7 +1864,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchConversations = async () => {
     setConversationsLoading(prev => prev || conversations.length === 0) // Only show loading on first load
     try {
-      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setConversations(data || [])
@@ -1873,7 +1881,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchUnreadMessages = async () => {
     try {
-      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setUnreadMessages(data.count || 0)
@@ -1911,7 +1919,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({
           title: taskForm.title,
@@ -1958,7 +1966,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchMessages = async (conversationId, skipMarkRead = false) => {
     if (!skipMarkRead) setMessagesLoading(true)
     try {
-      const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         // Sort by created_at to guarantee chronological order (#3)
@@ -1969,7 +1977,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         if (!skipMarkRead) {
           fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
             method: 'PUT',
-            headers: { Authorization: user.token || user.id }
+            headers: { Authorization: user.token || '' }
           }).then(() => {
             fetchUnreadMessages()
             fetchConversations()
@@ -1994,7 +2002,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
         body: JSON.stringify({ conversation_id: selectedConversation, content: msgContent })
       })
       if (!res.ok) {
@@ -2014,7 +2022,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -2034,7 +2042,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       await fetch(`${API_URL}/tasks/${taskId}/decline`, {
         method: 'POST',
         headers: {
-          Authorization: user.token || user.id,
+          Authorization: user.token || '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ reason })
@@ -2049,7 +2057,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       await fetch(`${API_URL}/tasks/${taskId}/start`, {
         method: 'POST',
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       fetchTasks()
     } catch (e) {
@@ -2061,7 +2069,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       await fetch(`${API_URL}/tasks/${taskId}/approve`, { 
         method: 'POST',
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       fetchPostedTasks()
     } catch (e) {
@@ -2073,7 +2081,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/release`, { 
         method: 'POST',
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       if (res.ok) {
         toast.success('Payment released successfully!')
@@ -2093,7 +2101,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({ proof_text: proofText, proof_urls: proofUrls })
       })
@@ -2110,7 +2118,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({ feedback, extend_deadline_hours: extendHours })
       })
@@ -3447,7 +3455,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           console.log(`[Avatar] Uploading: base64 length=${base64.length}, payload size=${payload.length}, compressed size=${fileToUpload.size}`)
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                            headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                             body: payload,
                             signal: controller.signal,
                           })
@@ -3537,7 +3545,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     if (profileTimezone) payload.timezone = profileTimezone
                     const res = await fetch(`${API_URL}/humans/profile`, {
                       method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                      headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                       body: JSON.stringify(payload)
                     })
                     if (res.ok) {
@@ -3680,7 +3688,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
                           method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                          headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                           body: JSON.stringify({ skills: skillsList })
                         })
                         if (res.ok) {
@@ -3776,7 +3784,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
                           method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                          headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                           body: JSON.stringify({ languages: languagesList })
                         })
                         if (res.ok) {
@@ -3813,7 +3821,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   try {
                     const res = await fetch(`${API_URL}/humans/profile`, {
                       method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                      headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                       body: JSON.stringify({ social_links })
                     })
                     if (res.ok) {
@@ -3907,7 +3915,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         try {
                           const res = await fetch(`${API_URL}/humans/profile`, {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                            headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                             body: JSON.stringify({ availability: newStatus })
                           })
                           if (res.ok) {
@@ -4394,7 +4402,7 @@ function ConnectAgentPage() {
         if (session?.user) {
           setUser(session.user)
           const response = await fetch(`${API_URL}/keys`, {
-            headers: { 'Authorization': session.user.id }
+            headers: { 'Authorization': session.access_token || '' }
           })
           if (response.ok) {
             const data = await response.json()
@@ -5090,7 +5098,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({
           email: user.email,

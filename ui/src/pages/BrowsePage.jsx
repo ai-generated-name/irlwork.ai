@@ -313,7 +313,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       if (debouncedMaxRate) params.set('max_rate', debouncedMaxRate)
 
       const headers = {}
-      if (user?.id) headers['Authorization'] = user.id
+      if (user?.token) headers['Authorization'] = user.token
 
       const res = await fetch(`${API_URL}/humans/directory?${params}`, { headers })
       if (res.ok) {
@@ -377,7 +377,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({
           cover_letter: applyWhyFit.trim(),
@@ -428,7 +428,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     try {
       const createRes = await fetch(`${API_URL}/tasks/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
         body: JSON.stringify({ title: hireTitle.trim(), description: hireDescription.trim(), budget: Number(hireBudget), category: hireCategory || 'general' })
       })
       if (!createRes.ok) { const err = await createRes.json(); throw new Error(err.error || 'Failed to create task') }
@@ -436,7 +436,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       const taskId = taskData.id || taskData.task?.id
       const assignRes = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
         body: JSON.stringify({ worker_id: showHireModal.id })
       })
       if (!assignRes.ok) { const err = await assignRes.json(); throw new Error(err.error || 'Task created but failed to assign human') }

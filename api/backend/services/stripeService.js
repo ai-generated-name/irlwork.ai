@@ -339,6 +339,23 @@ async function refundPayment(supabase, taskId, reason = 'requested_by_customer')
     throw new Error('Payment has already been refunded');
   }
 
+  // Atomic guard: mark as refunded BEFORE calling Stripe to prevent double-refund
+  const { data: updated, error: updateErr } = await supabase
+    .from('tasks')
+    .update({
+      escrow_status: 'refunded',
+      escrow_refunded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId)
+    .neq('escrow_status', 'refunded')
+    .select('id')
+    .single();
+
+  if (updateErr || !updated) {
+    throw new Error('Payment has already been refunded');
+  }
+
   const refund = await stripe.refunds.create({
     payment_intent: task.stripe_payment_intent_id,
     reason,
@@ -347,16 +364,6 @@ async function refundPayment(supabase, taskId, reason = 'requested_by_customer')
       platform: 'irlwork'
     }
   });
-
-  // Update task escrow status
-  await supabase
-    .from('tasks')
-    .update({
-      escrow_status: 'refunded',
-      escrow_refunded_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', taskId);
 
   return {
     refund_id: refund.id,
@@ -374,19 +381,27 @@ async function refundPayment(supabase, taskId, reason = 'requested_by_customer')
  * Events are recorded AFTER processing to ensure retry on failure.
  */
 async function handleWebhookEvent(event, supabase, createNotification) {
-  // Idempotency check — skip if already processed
-  const { data: existing } = await supabase
+  // Atomic idempotency: INSERT first, rely on unique constraint to prevent duplicates.
+  // This avoids the TOCTOU race of SELECT-then-INSERT.
+  const { error: insertError } = await supabase
     .from('stripe_events')
-    .select('id')
-    .eq('id', event.id)
-    .single();
+    .insert({
+      id: event.id,
+      type: event.type,
+      processed_at: null // Mark as in-progress
+    });
 
-  if (existing) {
-    console.log(`[Stripe Webhook] Event ${event.id} already processed, skipping`);
-    return;
+  if (insertError) {
+    // Unique constraint violation means event was already claimed
+    if (insertError.code === '23505') {
+      console.log(`[Stripe Webhook] Event ${event.id} already processed, skipping`);
+      return;
+    }
+    console.error(`[Stripe Webhook] Failed to claim event ${event.id}:`, insertError.message);
+    throw insertError;
   }
 
-  // Process the event FIRST, then record it (so failed processing gets retried)
+  // Process the event, then mark as processed
   switch (event.type) {
     case 'payment_intent.succeeded':
       await handlePaymentIntentSucceeded(event.data.object, supabase, createNotification);
@@ -432,12 +447,10 @@ async function handleWebhookEvent(event, supabase, createNotification) {
       console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
   }
 
-  // Record AFTER successful processing — if we crash before here, Stripe will retry
-  await supabase.from('stripe_events').insert({
-    id: event.id,
-    type: event.type,
-    processed_at: new Date().toISOString()
-  });
+  // Mark as processed after successful handling
+  await supabase.from('stripe_events')
+    .update({ processed_at: new Date().toISOString() })
+    .eq('id', event.id);
 }
 
 async function handlePaymentIntentSucceeded(paymentIntent, supabase, createNotification) {

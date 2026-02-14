@@ -34,7 +34,7 @@ export default function PaymentMethodForm({ user, onSaved }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id,
+          Authorization: user.token || '',
         },
       });
 

@@ -11,3 +11,6 @@ ui/irlwork.ai/
 
 # MCP config (contains tokens)
 .mcp.json
+
+# Test scripts (may contain credentials)
+test_api_keys.js

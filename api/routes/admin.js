@@ -639,17 +639,22 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         return res.status(409).json({ error: 'Payment has already been released or is being processed' });
       }
 
-      // Update task
-      const { error: updateTaskError } = await supabase
+      // Atomic task update — include escrow_status precondition to prevent double-release
+      const { data: updatedTask, error: updateTaskError } = await supabase
         .from('tasks')
         .update({
           escrow_status: 'released',
           escrow_released_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('escrow_status', 'deposited')
+        .select('id')
+        .single();
 
-      if (updateTaskError) throw updateTaskError;
+      if (updateTaskError || !updatedTask) {
+        return res.status(409).json({ error: 'Task escrow status has already changed' });
+      }
 
       // Notify human
       await createNotification(
