@@ -2127,6 +2127,13 @@ app.get('/api/tasks/:id', async (req, res, next) => {
   }
   delete task.agent; // Remove joined field from task response
 
+  // Get applicant count
+  const { count: applicantCount } = await supabase
+    .from('task_applications')
+    .select('id', { count: 'exact', head: true })
+    .eq('task_id', req.params.id);
+  task.applicant_count = applicantCount || 0;
+
   // Only return sensitive financial/escrow fields to task participants
   const user = await getUserByToken(req.headers.authorization);
   const isParticipant = user && (task.agent_id === user.id || task.human_id === user.id);

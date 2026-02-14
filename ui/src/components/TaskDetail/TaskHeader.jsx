@@ -2,7 +2,7 @@
 // Displays task title, description, requirements, skills, and metadata
 
 import React from 'react';
-import { CalendarDays, Timer, MapPin } from 'lucide-react';
+import { CalendarDays, Timer, MapPin, Users } from 'lucide-react';
 
 const CATEGORY_ICONS = {
   delivery: '📦',
@@ -30,14 +30,33 @@ export default function TaskHeader({ task }) {
   if (!task) return null;
 
   const statusConfig = STATUS_CONFIG[task.status] || STATUS_CONFIG.open;
+  const isBounty = task.task_type === 'bounty';
+  const quantity = task.quantity || 1;
+  const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
 
   return (
     <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
-      {/* Status Badge */}
-      <div className="flex items-center gap-3 mb-3 sm:mb-4">
+      {/* Status Badge + Type Badges */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
         <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
         </span>
+        {isBounty && (
+          <span className="inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-semibold" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>
+            Bounty
+          </span>
+        )}
+        {quantity > 1 && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm font-semibold" style={{ background: spotsFilled >= quantity ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: spotsFilled >= quantity ? '#059669' : '#2563EB' }}>
+            <Users size={14} />
+            {spotsFilled}/{quantity} filled
+          </span>
+        )}
+        {task.applicant_count > 0 && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm font-medium" style={{ background: 'rgba(15, 76, 92, 0.08)', color: '#0F4C5C' }}>
+            {task.applicant_count} applicant{task.applicant_count !== 1 ? 's' : ''}
+          </span>
+        )}
         {/* Compact budget shown inline on mobile only */}
         <span className="lg:hidden text-lg font-bold text-[#059669] font-mono">
           ${task.budget} <span className="text-xs font-normal text-[#8A8A8A]">USD</span>
