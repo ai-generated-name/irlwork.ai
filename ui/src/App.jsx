@@ -68,7 +68,7 @@ class TabErrorBoundary extends React.Component {
           <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>This section encountered an error</h3>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>Try switching to another tab or refreshing the page.</p>
           <button
-            onClick={() => this.setState({ hasError: false, error: null })}
+            onClick={() => window.location.reload()}
             className="v4-btn v4-btn-secondary"
           >
             Try Again
@@ -834,7 +834,7 @@ function AuthPage({ onLogin, onNavigate }) {
               <div className="auth-v4-error-details">{errorModal.details}</div>
             )}
             <div className="auth-v4-error-buttons">
-              <button className="auth-v4-error-btn-secondary" onClick={() => { setErrorModal(null); window.history.replaceState({}, document.title, window.location.pathname) }}>
+              <button className="auth-v4-error-btn-secondary" onClick={() => window.location.reload()}>
                 Try Again
               </button>
               <button className="auth-v4-submit" onClick={() => window.location.href = '/'}>
