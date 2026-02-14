@@ -4,6 +4,7 @@ import { supabase } from '../App'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
 import CityAutocomplete from '../components/CityAutocomplete'
+import CountryAutocomplete from '../components/CountryAutocomplete'
 import SkillAutocomplete from '../components/SkillAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
@@ -118,12 +119,13 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
   // Humans filters
   const [skillFilter, setSkillFilter] = useState('')
   const [cityFilter, setCityFilter] = useState('')
-  const [countryInput, setCountryInput] = useState('')
+  const [countryFilter, setCountryFilter] = useState('')
+  const [nameSearch, setNameSearch] = useState('')
   const [maxRate, setMaxRate] = useState('')
   const [humanSort, setHumanSort] = useState('rating')
 
   // Debounced values
-  const [debouncedCountry, setDebouncedCountry] = useState('')
+  const [debouncedName, setDebouncedName] = useState('')
   const [debouncedMaxRate, setDebouncedMaxRate] = useState('')
 
   // Tasks state
@@ -163,11 +165,11 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
   // Expanded profile modal
   const [expandedHumanId, setExpandedHumanId] = useState(null)
 
-  // Debounce country input
+  // Debounce name search input
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedCountry(countryInput.trim()), 400)
+    const t = setTimeout(() => setDebouncedName(nameSearch.trim()), 400)
     return () => clearTimeout(t)
-  }, [countryInput])
+  }, [nameSearch])
 
   // Debounce max rate input
   useEffect(() => {
@@ -184,13 +186,13 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [skillFilter, cityFilter, debouncedCountry, debouncedMaxRate, humanSort])
+  }, [skillFilter, cityFilter, countryFilter, debouncedName, debouncedMaxRate, humanSort])
 
   // Fetch humans
   useEffect(() => {
     if (viewMode !== 'humans') return
     fetchHumans()
-  }, [viewMode, currentPage, skillFilter, cityFilter, debouncedCountry, debouncedMaxRate, humanSort])
+  }, [viewMode, currentPage, skillFilter, cityFilter, countryFilter, debouncedName, debouncedMaxRate, humanSort])
 
   // Handle "Near Me" toggle
   const handleNearMe = () => {
@@ -273,7 +275,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       params.set('sort', humanSort)
       if (skillFilter) params.set('skill', skillFilter)
       if (cityFilter) params.set('city', cityFilter)
-      if (debouncedCountry) params.set('country', debouncedCountry)
+      if (countryFilter) params.set('country', countryFilter)
+      if (debouncedName) params.set('name', debouncedName)
       if (debouncedMaxRate) params.set('max_rate', debouncedMaxRate)
 
       const headers = {}
@@ -465,12 +468,13 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
 
   // Active filter pills
   const activeFilters = []
+  if (debouncedName) activeFilters.push({ key: 'name', label: `Name: ${debouncedName}`, clear: () => { setNameSearch(''); setDebouncedName('') } })
   if (skillFilter) {
-    const label = categories.find(c => c.value === skillFilter)?.label || skillFilter
+    const label = categories.find(c => c.value === skillFilter)?.label || skillFilter.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
     activeFilters.push({ key: 'skill', label: `Skill: ${label}`, clear: () => setSkillFilter('') })
   }
   if (cityFilter) activeFilters.push({ key: 'city', label: `City: ${cityFilter}`, clear: () => setCityFilter('') })
-  if (debouncedCountry) activeFilters.push({ key: 'country', label: `Country: ${debouncedCountry}`, clear: () => { setCountryInput(''); setDebouncedCountry('') } })
+  if (countryFilter) activeFilters.push({ key: 'country', label: `Country: ${countryFilter}`, clear: () => setCountryFilter('') })
   if (debouncedMaxRate) activeFilters.push({ key: 'rate', label: `Max $${debouncedMaxRate}/hr`, clear: () => { setMaxRate(''); setDebouncedMaxRate('') } })
 
   const inputStyle = {
@@ -603,12 +607,28 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
             }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
+                gridTemplateColumns: 'repeat(6, 1fr)',
                 gap: 12,
                 alignItems: 'end',
               }}
                 className="browse-filter-grid"
               >
+                {/* Name Search */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Search by name..."
+                    value={nameSearch}
+                    onChange={(e) => setNameSearch(e.target.value)}
+                    style={inputStyle}
+                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(15,76,92,0.08)' }}
+                    onBlur={(e) => { e.target.style.borderColor = 'rgba(26,26,26,0.1)'; e.target.style.boxShadow = 'none' }}
+                  />
+                </div>
+
                 {/* Skill / Category */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -641,14 +661,10 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Country
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Any country..."
-                    value={countryInput}
-                    onChange={(e) => setCountryInput(e.target.value)}
-                    style={inputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(15,76,92,0.08)' }}
-                    onBlur={(e) => { e.target.style.borderColor = 'rgba(26,26,26,0.1)'; e.target.style.boxShadow = 'none' }}
+                  <CountryAutocomplete
+                    value={countryFilter}
+                    onChange={setCountryFilter}
+                    placeholder="Search country..."
                   />
                 </div>
 
@@ -723,9 +739,10 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 {activeFilters.length > 1 && (
                   <button
                     onClick={() => {
+                      setNameSearch(''); setDebouncedName('')
                       setSkillFilter('')
                       setCityFilter('')
-                      setCountryInput(''); setDebouncedCountry('')
+                      setCountryFilter('')
                       setMaxRate(''); setDebouncedMaxRate('')
                     }}
                     style={{
@@ -1519,10 +1536,13 @@ Use the start_conversation method with human_id "${showHireModal.id}" to message
           grid-template-columns: repeat(4, 1fr) !important;
         }
         .browse-filter-grid {
-          grid-template-columns: repeat(5, 1fr) !important;
+          grid-template-columns: repeat(6, 1fr) !important;
         }
         @media (max-width: 1200px) {
           .browse-humans-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+          }
+          .browse-filter-grid {
             grid-template-columns: repeat(3, 1fr) !important;
           }
         }

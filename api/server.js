@@ -102,6 +102,16 @@ const citiesIndex = citiesRaw.map(city => {
 });
 console.log(`[Startup] Cities index built: ${citiesIndex.length} cities`);
 
+// Build unique countries list for country search endpoint
+const countriesMap = new Map();
+citiesIndex.forEach(city => {
+  if (!countriesMap.has(city.countryCode)) {
+    countriesMap.set(city.countryCode, { name: city.country, code: city.countryCode });
+  }
+});
+const countriesList = Array.from(countriesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+console.log(`[Startup] Countries list built: ${countriesList.length} countries`);
+
 // Phase 1 Admin Routes
 console.log('[Startup] Loading admin routes...');
 const initAdminRoutes = require('./routes/admin');
@@ -780,6 +790,28 @@ app.get('/api/cities/search', (req, res) => {
         lng: city.lng,
         displayName: city.displayName
       });
+    }
+  }
+
+  res.json(matches);
+});
+
+// ============ COUNTRY SEARCH ============
+// Public endpoint — no auth required, no Supabase needed
+app.get('/api/countries/search', (req, res) => {
+  const { q, limit: limitStr } = req.query;
+  const limit = Math.min(Math.max(parseInt(limitStr) || 20, 1), 50);
+
+  if (!q || q.length < 1) {
+    return res.json(countriesList.slice(0, limit));
+  }
+
+  const lowerQuery = q.toLowerCase();
+  const matches = [];
+  for (let i = 0; i < countriesList.length && matches.length < limit; i++) {
+    const country = countriesList[i];
+    if (country.name.toLowerCase().includes(lowerQuery) || country.code.toLowerCase().includes(lowerQuery)) {
+      matches.push(country);
     }
   }
 
@@ -6234,7 +6266,7 @@ app.get('/api/tasks/available', async (req, res) => {
 app.get('/api/humans/directory', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const { category, city, country, skill, min_rate, max_rate, limit = 32, offset = 0, sort = 'rating' } = req.query;
+  const { category, city, country, skill, name, min_rate, max_rate, limit = 32, offset = 0, sort = 'rating' } = req.query;
 
   // Check if user is authenticated
   const authUser = await getUserByToken(req.headers.authorization);
@@ -6260,6 +6292,7 @@ app.get('/api/humans/directory', async (req, res) => {
   if (skill) countQuery = countQuery.like('skills', `%${skill}%`);
   if (city) countQuery = countQuery.ilike('city', `%${city}%`);
   if (country) countQuery = countQuery.ilike('country', `%${country}%`);
+  if (name) countQuery = countQuery.ilike('name', `%${name}%`);
   if (min_rate) countQuery = countQuery.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) countQuery = countQuery.lte('hourly_rate', parseFloat(max_rate));
 
@@ -6302,6 +6335,7 @@ app.get('/api/humans/directory', async (req, res) => {
   if (skill) query = query.like('skills', `%${skill}%`);
   if (city) query = query.ilike('city', `%${city}%`);
   if (country) query = query.ilike('country', `%${country}%`);
+  if (name) query = query.ilike('name', `%${name}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
 
