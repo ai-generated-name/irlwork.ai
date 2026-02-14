@@ -2569,10 +2569,29 @@ app.get('/api/agent/tasks', async (req, res) => {
   if (status) {
     query = query.eq('status', status);
   }
-  
+
   const { data: tasks, error } = await query;
-  
+
   if (error) return res.status(500).json({ error: error.message });
+
+  // Enrich with pending application counts
+  if (tasks && tasks.length > 0) {
+    const taskIds = tasks.map(t => t.id);
+    const { data: appCounts } = await supabase
+      .from('task_applications')
+      .select('task_id, status')
+      .in('task_id', taskIds)
+      .eq('status', 'pending');
+
+    const countMap = {};
+    if (appCounts) {
+      appCounts.forEach(a => {
+        countMap[a.task_id] = (countMap[a.task_id] || 0) + 1;
+      });
+    }
+    tasks.forEach(t => { t.pending_applicant_count = countMap[t.id] || 0; });
+  }
+
   res.json(tasks || []);
 });
 
