@@ -1,56 +1,72 @@
-import React, { useState, useRef, useEffect } from 'react';
-
-const COUNTRIES = [
-  'Argentina', 'Australia', 'Austria', 'Bangladesh', 'Belgium', 'Brazil',
-  'Canada', 'Chile', 'China', 'Colombia', 'Czech Republic', 'Denmark',
-  'Egypt', 'Finland', 'France', 'Germany', 'Greece', 'India', 'Indonesia',
-  'Ireland', 'Israel', 'Italy', 'Japan', 'Kenya', 'Malaysia', 'Mexico',
-  'Netherlands', 'New Zealand', 'Nigeria', 'Norway', 'Pakistan', 'Peru',
-  'Philippines', 'Poland', 'Portugal', 'Russia', 'Saudi Arabia', 'Singapore',
-  'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland', 'Thailand',
-  'Turkey', 'UAE', 'UK', 'Ukraine', 'USA', 'Venezuela', 'Vietnam',
-];
+import React, { useState, useEffect, useRef } from 'react';
+import API_URL from '../config/api';
 
 const CountryAutocomplete = ({
   value,
   onChange,
-  placeholder = "Any country...",
-  className = "",
+  placeholder = "Search country...",
+  className = ""
 }) => {
-  const [query, setQuery] = useState(value || '');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [dropdownTop, setDropdownTop] = useState(null);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const lastValidCountry = useRef(value || null);
+  const queryRef = useRef(query);
   const isSelectingRef = useRef(false);
+  const abortRef = useRef(null);
 
-  const filtered = query.length === 0
-    ? COUNTRIES
-    : COUNTRIES.filter(c => c.toLowerCase().includes(query.toLowerCase()));
-
+  // Search countries via API when query changes (debounced)
   useEffect(() => {
-    setQuery(value || '');
-  }, [value]);
+    const timeoutId = setTimeout(() => {
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setIsLoading(true);
+      const url = query.length >= 1
+        ? `${API_URL}/countries/search?q=${encodeURIComponent(query)}&limit=20`
+        : `${API_URL}/countries/search?limit=20`;
+
+      fetch(url, { signal: controller.signal })
+        .then(res => res.json())
+        .then(countries => {
+          setResults(countries);
+          setShowDropdown(true);
+          setSelectedIndex(0);
+        })
+        .catch(err => {
+          if (err.name !== 'AbortError') {
+            console.error('Country search failed:', err);
+          }
+        })
+        .finally(() => setIsLoading(false));
+    }, 200);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [query]);
 
   const handleSelect = (country) => {
     isSelectingRef.current = false;
     if (country) {
-      setQuery(country);
-      onChange(country);
+      setQuery(country.name);
+      lastValidCountry.current = country.name;
+      setShowDropdown(false);
+      onChange(country.name);
     } else {
+      // "All" option
       setQuery('');
+      lastValidCountry.current = null;
+      setShowDropdown(false);
       onChange('');
     }
-    setShowDropdown(false);
-  };
-
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setQuery(val);
-    setShowDropdown(true);
-    setSelectedIndex(0);
-    onChange(val);
   };
 
   const handleKeyDown = (e) => {
@@ -63,7 +79,8 @@ const CountryAutocomplete = ({
       return;
     }
 
-    const totalItems = 1 + filtered.length;
+    // +1 for the "All Countries" option at index 0
+    const totalItems = 1 + results.length;
 
     switch (e.key) {
       case 'ArrowDown':
@@ -77,9 +94,9 @@ const CountryAutocomplete = ({
       case 'Enter':
         e.preventDefault();
         if (selectedIndex === 0) {
-          handleSelect(null);
-        } else if (filtered[selectedIndex - 1]) {
-          handleSelect(filtered[selectedIndex - 1]);
+          handleSelect(null); // "All"
+        } else if (results[selectedIndex - 1]) {
+          handleSelect(results[selectedIndex - 1]);
         }
         break;
       case 'Escape':
@@ -102,17 +119,6 @@ const CountryAutocomplete = ({
     }
   };
 
-  const handleBlur = () => {
-    setTimeout(() => {
-      if (isSelectingRef.current) {
-        isSelectingRef.current = false;
-        return;
-      }
-      if (document.activeElement === inputRef.current) return;
-      setShowDropdown(false);
-    }, 200);
-  };
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -129,6 +135,39 @@ const CountryAutocomplete = ({
   }, []);
 
   useEffect(() => {
+    if (value && value !== query) {
+      setQuery(value);
+      lastValidCountry.current = value;
+    } else if (!value && query) {
+      setQuery('');
+      lastValidCountry.current = null;
+    }
+  }, [value]);
+
+  useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
+
+  const handleBlur = () => {
+    setTimeout(() => {
+      if (isSelectingRef.current) {
+        isSelectingRef.current = false;
+        return;
+      }
+      if (document.activeElement === inputRef.current) return;
+      setShowDropdown(false);
+      const currentQuery = queryRef.current;
+      if (currentQuery !== lastValidCountry.current) {
+        setQuery(lastValidCountry.current || '');
+        if (!lastValidCountry.current) {
+          onChange('');
+        }
+      }
+    }, 200);
+  };
+
+  // Scroll selected item into view
+  useEffect(() => {
     if (showDropdown && dropdownRef.current && selectedIndex >= 0) {
       const items = dropdownRef.current.querySelectorAll('.city-autocomplete-v4-item');
       if (items[selectedIndex]) {
@@ -143,7 +182,7 @@ const CountryAutocomplete = ({
         ref={inputRef}
         type="text"
         value={query}
-        onChange={handleInputChange}
+        onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         onBlur={handleBlur}
@@ -160,35 +199,51 @@ const CountryAutocomplete = ({
           onMouseDown={(e) => e.preventDefault()}
           onTouchStart={() => { isSelectingRef.current = true; }}
         >
-          {/* "Any Country" option */}
+          {/* "All Countries" option */}
           <button
             onMouseDown={(e) => { e.preventDefault(); handleSelect(null); }}
             onMouseEnter={() => setSelectedIndex(0)}
             className={`city-autocomplete-v4-item ${selectedIndex === 0 ? 'selected' : ''} ${!value ? 'skill-active' : ''}`}
           >
             <div>
-              <div className="city-autocomplete-v4-item-name">Any Country</div>
+              <div className="city-autocomplete-v4-item-name">All Countries</div>
             </div>
+            {!value && (
+              <svg className="skill-autocomplete-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
           </button>
 
-          {filtered.length > 0 ? (
-            filtered.map((country, index) => {
-              const itemIndex = index + 1;
-              const isActive = value === country;
-              return (
-                <button
-                  key={country}
-                  onMouseDown={(e) => { e.preventDefault(); handleSelect(country); }}
-                  onMouseEnter={() => setSelectedIndex(itemIndex)}
-                  className={`city-autocomplete-v4-item ${selectedIndex === itemIndex ? 'selected' : ''} ${isActive ? 'skill-active' : ''}`}
-                >
-                  <div>
-                    <div className="city-autocomplete-v4-item-name">{country}</div>
-                  </div>
-                </button>
-              );
-            })
-          ) : (
+          {results.length > 0 && results.map((country, index) => {
+            const itemIndex = index + 1;
+            const isActive = value === country.name;
+            return (
+              <button
+                key={country.code}
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(country); }}
+                onMouseEnter={() => setSelectedIndex(itemIndex)}
+                className={`city-autocomplete-v4-item ${selectedIndex === itemIndex ? 'selected' : ''} ${isActive ? 'skill-active' : ''}`}
+              >
+                <div>
+                  <div className="city-autocomplete-v4-item-name">{country.name}</div>
+                </div>
+                {isActive && (
+                  <svg className="skill-autocomplete-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+
+          {isLoading && (
+            <div className="city-autocomplete-v4-loading" style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-tertiary)' }}>
+              Loading...
+            </div>
+          )}
+
+          {!isLoading && results.length === 0 && query.length >= 1 && (
             <div className="city-autocomplete-v4-empty">
               No countries match "{query}"
             </div>

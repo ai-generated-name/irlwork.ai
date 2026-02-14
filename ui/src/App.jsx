@@ -42,6 +42,7 @@ const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
 import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
+import CountryAutocomplete from './components/CountryAutocomplete'
 import SkillAutocomplete from './components/SkillAutocomplete'
 import TimezoneDropdown from './components/TimezoneDropdown'
 import { TASK_CATEGORIES } from './components/CategoryPills'
@@ -3027,13 +3028,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       placeholder="Search city..."
                     />
                   </div>
-                  <div style={{ flex: '0 1 150px' }}>
-                    <input
-                      type="text"
-                      placeholder="Any country..."
-                      className="dashboard-v4-form-input"
+                  <div style={{ flex: '0 1 180px' }}>
+                    <CountryAutocomplete
                       value={browseCountryFilter}
-                      onChange={(e) => setBrowseCountryFilter(e.target.value)}
+                      onChange={setBrowseCountryFilter}
+                      placeholder="Search country..."
                     />
                   </div>
                   <div style={{ flex: '0 1 120px' }}>

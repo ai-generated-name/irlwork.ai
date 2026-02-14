@@ -26,12 +26,23 @@ const SkillAutocomplete = ({
         s.label.toLowerCase().includes(query.toLowerCase())
       );
 
+  // Check if typed query matches any preset exactly (case-insensitive)
+  const queryTrimmed = query.trim();
+  const exactMatch = queryTrimmed
+    ? ALL_SKILLS.find(s => s.label.toLowerCase() === queryTrimmed.toLowerCase())
+    : null;
+  // Show "Search for custom skill" option when user typed something that isn't an exact preset match
+  const showCustomOption = queryTrimmed.length > 0 && !exactMatch;
+
   // Sync display text with value prop
   useEffect(() => {
     if (value) {
       const match = ALL_SKILLS.find(s => s.value === value);
       if (match) {
         setQuery(match.label);
+      } else {
+        // Custom skill value — display it nicely
+        setQuery(value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
       }
     } else {
       setQuery('');
@@ -51,6 +62,13 @@ const SkillAutocomplete = ({
     setShowDropdown(false);
   };
 
+  const handleSelectCustom = () => {
+    isSelectingRef.current = false;
+    const customValue = queryTrimmed.toLowerCase().replace(/\s+/g, '_');
+    onChange(customValue);
+    setShowDropdown(false);
+  };
+
   const handleInputChange = (e) => {
     const val = e.target.value;
     setQuery(val);
@@ -62,6 +80,9 @@ const SkillAutocomplete = ({
     }
   };
 
+  // Total items in dropdown: "All" + filtered presets + optional custom
+  const getTotalItems = () => 1 + filtered.length + (showCustomOption ? 1 : 0);
+
   const handleKeyDown = (e) => {
     if (!showDropdown) {
       if (e.key === 'ArrowDown' || e.key === 'Enter') {
@@ -72,8 +93,7 @@ const SkillAutocomplete = ({
       return;
     }
 
-    // Build the list: "All" option + filtered results
-    const totalItems = 1 + filtered.length; // 1 for "All Skills"
+    const totalItems = getTotalItems();
 
     switch (e.key) {
       case 'ArrowDown':
@@ -88,8 +108,10 @@ const SkillAutocomplete = ({
         e.preventDefault();
         if (selectedIndex === 0) {
           handleSelect(null); // "All"
-        } else if (filtered[selectedIndex - 1]) {
+        } else if (selectedIndex <= filtered.length) {
           handleSelect(filtered[selectedIndex - 1]);
+        } else if (showCustomOption && selectedIndex === 1 + filtered.length) {
+          handleSelectCustom();
         }
         break;
       case 'Escape':
@@ -123,7 +145,12 @@ const SkillAutocomplete = ({
       // Revert to the current value label if user typed something invalid
       if (value) {
         const match = ALL_SKILLS.find(s => s.value === value);
-        if (match) setQuery(match.label);
+        if (match) {
+          setQuery(match.label);
+        } else {
+          // Custom skill — keep the display
+          setQuery(value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+        }
       } else {
         setQuery('');
       }
@@ -155,6 +182,8 @@ const SkillAutocomplete = ({
       }
     }
   }, [selectedIndex, showDropdown]);
+
+  const customItemIndex = 1 + filtered.length;
 
   return (
     <div className={`city-autocomplete-v4 ${className}`}>
@@ -195,7 +224,7 @@ const SkillAutocomplete = ({
             )}
           </button>
 
-          {filtered.length > 0 ? (
+          {filtered.length > 0 && (
             filtered.map((skill, index) => {
               const itemIndex = index + 1; // offset by 1 for the "All" option
               const isActive = value === skill.value;
@@ -218,7 +247,26 @@ const SkillAutocomplete = ({
                 </button>
               );
             })
-          ) : (
+          )}
+
+          {/* Custom skill option — search for whatever the user typed */}
+          {showCustomOption && (
+            <button
+              onMouseDown={(e) => { e.preventDefault(); handleSelectCustom(); }}
+              onMouseEnter={() => setSelectedIndex(customItemIndex)}
+              className={`skill-autocomplete-item city-autocomplete-v4-item ${selectedIndex === customItemIndex ? 'selected' : ''}`}
+              style={{ borderTop: filtered.length > 0 ? '1px solid rgba(26,26,26,0.06)' : 'none' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16, lineHeight: 1 }}>🔎</span>
+                <div className="city-autocomplete-v4-item-name">
+                  Search for "<strong>{queryTrimmed}</strong>"
+                </div>
+              </div>
+            </button>
+          )}
+
+          {filtered.length === 0 && !showCustomOption && (
             <div className="city-autocomplete-v4-empty">
               No skills match "{query}"
             </div>
