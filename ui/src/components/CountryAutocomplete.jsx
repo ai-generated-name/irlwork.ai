@@ -1,17 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TASK_CATEGORIES } from './CategoryPills';
 
-// All skill options (excluding the "All" entry which has empty value)
-const ALL_SKILLS = TASK_CATEGORIES.filter(c => c.value !== '');
+const COUNTRIES = [
+  'Argentina', 'Australia', 'Austria', 'Bangladesh', 'Belgium', 'Brazil',
+  'Canada', 'Chile', 'China', 'Colombia', 'Czech Republic', 'Denmark',
+  'Egypt', 'Finland', 'France', 'Germany', 'Greece', 'India', 'Indonesia',
+  'Ireland', 'Israel', 'Italy', 'Japan', 'Kenya', 'Malaysia', 'Mexico',
+  'Netherlands', 'New Zealand', 'Nigeria', 'Norway', 'Pakistan', 'Peru',
+  'Philippines', 'Poland', 'Portugal', 'Russia', 'Saudi Arabia', 'Singapore',
+  'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland', 'Thailand',
+  'Turkey', 'UAE', 'UK', 'Ukraine', 'USA', 'Venezuela', 'Vietnam',
+];
 
-const SkillAutocomplete = ({
+const CountryAutocomplete = ({
   value,
   onChange,
-  placeholder = "Search skills...",
+  placeholder = "Any country...",
   className = "",
-  allLabel = "All Skills",
 }) => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(value || '');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [dropdownTop, setDropdownTop] = useState(null);
@@ -19,32 +25,20 @@ const SkillAutocomplete = ({
   const dropdownRef = useRef(null);
   const isSelectingRef = useRef(false);
 
-  // Filter skills based on query
   const filtered = query.length === 0
-    ? ALL_SKILLS
-    : ALL_SKILLS.filter(s =>
-        s.label.toLowerCase().includes(query.toLowerCase())
-      );
+    ? COUNTRIES
+    : COUNTRIES.filter(c => c.toLowerCase().includes(query.toLowerCase()));
 
-  // Sync display text with value prop
   useEffect(() => {
-    if (value) {
-      const match = ALL_SKILLS.find(s => s.value === value);
-      if (match) {
-        setQuery(match.label);
-      }
-    } else {
-      setQuery('');
-    }
+    setQuery(value || '');
   }, [value]);
 
-  const handleSelect = (skill) => {
+  const handleSelect = (country) => {
     isSelectingRef.current = false;
-    if (skill) {
-      setQuery(skill.label);
-      onChange(skill.value);
+    if (country) {
+      setQuery(country);
+      onChange(country);
     } else {
-      // "All" option
       setQuery('');
       onChange('');
     }
@@ -56,10 +50,7 @@ const SkillAutocomplete = ({
     setQuery(val);
     setShowDropdown(true);
     setSelectedIndex(0);
-    // If user clears the input, reset the filter
-    if (!val.trim()) {
-      onChange('');
-    }
+    onChange(val);
   };
 
   const handleKeyDown = (e) => {
@@ -72,8 +63,7 @@ const SkillAutocomplete = ({
       return;
     }
 
-    // Build the list: "All" option + filtered results
-    const totalItems = 1 + filtered.length; // 1 for "All Skills"
+    const totalItems = 1 + filtered.length;
 
     switch (e.key) {
       case 'ArrowDown':
@@ -87,7 +77,7 @@ const SkillAutocomplete = ({
       case 'Enter':
         e.preventDefault();
         if (selectedIndex === 0) {
-          handleSelect(null); // "All"
+          handleSelect(null);
         } else if (filtered[selectedIndex - 1]) {
           handleSelect(filtered[selectedIndex - 1]);
         }
@@ -120,17 +110,9 @@ const SkillAutocomplete = ({
       }
       if (document.activeElement === inputRef.current) return;
       setShowDropdown(false);
-      // Revert to the current value label if user typed something invalid
-      if (value) {
-        const match = ALL_SKILLS.find(s => s.value === value);
-        if (match) setQuery(match.label);
-      } else {
-        setQuery('');
-      }
     }, 200);
   };
 
-  // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -146,10 +128,9 @@ const SkillAutocomplete = ({
     return () => document.removeEventListener('pointerdown', handleClickOutside);
   }, []);
 
-  // Scroll selected item into view
   useEffect(() => {
     if (showDropdown && dropdownRef.current && selectedIndex >= 0) {
-      const items = dropdownRef.current.querySelectorAll('.skill-autocomplete-item');
+      const items = dropdownRef.current.querySelectorAll('.city-autocomplete-v4-item');
       if (items[selectedIndex]) {
         items[selectedIndex].scrollIntoView({ block: 'nearest' });
       }
@@ -179,48 +160,37 @@ const SkillAutocomplete = ({
           onMouseDown={(e) => e.preventDefault()}
           onTouchStart={() => { isSelectingRef.current = true; }}
         >
-          {/* "All Skills" option */}
+          {/* "Any Country" option */}
           <button
             onMouseDown={(e) => { e.preventDefault(); handleSelect(null); }}
             onMouseEnter={() => setSelectedIndex(0)}
-            className={`skill-autocomplete-item city-autocomplete-v4-item ${selectedIndex === 0 ? 'selected' : ''} ${!value ? 'skill-active' : ''}`}
+            className={`city-autocomplete-v4-item ${selectedIndex === 0 ? 'selected' : ''} ${!value ? 'skill-active' : ''}`}
           >
             <div>
-              <div className="city-autocomplete-v4-item-name">{allLabel}</div>
+              <div className="city-autocomplete-v4-item-name">Any Country</div>
             </div>
-            {!value && (
-              <svg className="skill-autocomplete-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
           </button>
 
           {filtered.length > 0 ? (
-            filtered.map((skill, index) => {
-              const itemIndex = index + 1; // offset by 1 for the "All" option
-              const isActive = value === skill.value;
+            filtered.map((country, index) => {
+              const itemIndex = index + 1;
+              const isActive = value === country;
               return (
                 <button
-                  key={skill.value}
-                  onMouseDown={(e) => { e.preventDefault(); handleSelect(skill); }}
+                  key={country}
+                  onMouseDown={(e) => { e.preventDefault(); handleSelect(country); }}
                   onMouseEnter={() => setSelectedIndex(itemIndex)}
-                  className={`skill-autocomplete-item city-autocomplete-v4-item ${selectedIndex === itemIndex ? 'selected' : ''} ${isActive ? 'skill-active' : ''}`}
+                  className={`city-autocomplete-v4-item ${selectedIndex === itemIndex ? 'selected' : ''} ${isActive ? 'skill-active' : ''}`}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16, lineHeight: 1 }}>{skill.icon}</span>
-                    <div className="city-autocomplete-v4-item-name">{skill.label}</div>
+                  <div>
+                    <div className="city-autocomplete-v4-item-name">{country}</div>
                   </div>
-                  {isActive && (
-                    <svg className="skill-autocomplete-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
                 </button>
               );
             })
           ) : (
             <div className="city-autocomplete-v4-empty">
-              No skills match "{query}"
+              No countries match "{query}"
             </div>
           )}
         </div>
@@ -229,4 +199,4 @@ const SkillAutocomplete = ({
   );
 };
 
-export default SkillAutocomplete;
+export default CountryAutocomplete;
