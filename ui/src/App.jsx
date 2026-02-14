@@ -95,6 +95,7 @@ const safeSupabase = {
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
 import { fixAvatarUrl } from './utils/avatarUrl'
+import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import ApiKeysTab from './components/ApiKeysTab'
 // ConnectAgentPage defined inline below
 const MCPPage = lazy(() => import('./pages/MCPPage'))
@@ -694,6 +695,7 @@ function AuthPage({ onLogin, onNavigate }) {
           })
 
       if (error) throw error
+      trackEvent(isLogin ? 'login' : 'sign_up', { method: 'email' })
       // Don't navigate here — the parent App's onAuthStateChange will detect
       // the new session and redirect from /auth to /dashboard automatically.
       // This avoids a full page reload on mobile.
@@ -722,6 +724,7 @@ function AuthPage({ onLogin, onNavigate }) {
       const oauthRedirect = oauthReturnTo && decodeURIComponent(oauthReturnTo).startsWith('/dashboard')
         ? decodeURIComponent(oauthReturnTo)
         : '/dashboard'
+      trackEvent('login', { method: 'google' })
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -729,7 +732,7 @@ function AuthPage({ onLogin, onNavigate }) {
           scopes: 'email profile'
         }
       })
-      
+
       if (error) {
         console.error('[Auth] OAuth error:', error)
         
@@ -1276,6 +1279,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     const modeSegment = (mode !== undefined ? mode : hiringMode) ? 'hiring' : 'working'
     const newUrl = `/dashboard/${modeSegment}/${urlTab}`
     window.history.pushState({}, '', newUrl)
+    trackPageView(newUrl)
   }
 
   // Wrapper for setActiveTab that also updates URL
@@ -1461,6 +1465,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const toggleHiringMode = () => {
     const newHiringMode = !hiringMode
     setHiringMode(newHiringMode)
+    setUserProperties({ user_mode: newHiringMode ? 'hiring' : 'working' })
+    trackEvent('mode_switch', { mode: newHiringMode ? 'hiring' : 'working' })
     const newTab = 'dashboard'
     setActiveTabState(newTab)
     updateTabUrl(newTab, newHiringMode)
@@ -1930,6 +1936,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
       if (res.ok) {
         const newTask = await res.json()
+        trackEvent('task_created', { category: taskForm.category, budget: parseFloat(taskForm.budget), is_remote: taskForm.is_remote, task_type: taskForm.task_type })
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
@@ -2526,19 +2533,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             <div className="dashboard-v4-sub-tabs">
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); }}
+                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}
               >
                 + Create Task
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); }}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
               >
                 Posted Tasks
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); }}
+                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
               >
                 Disputes
               </button>
@@ -4889,11 +4896,20 @@ function App() {
     // Only track pathname portion — query params are read from window.location.search
     const pathname = url.split('?')[0].split('#')[0]
     setCurrentPath(pathname)
+    trackPageView(pathname)
+  }, [])
+
+  // Send initial pageview (index.html disables automatic send_page_view for SPA)
+  useEffect(() => {
+    trackPageView(window.location.pathname)
   }, [])
 
   // Listen for browser back/forward
   useEffect(() => {
-    const onPopState = () => setCurrentPath(window.location.pathname)
+    const onPopState = () => {
+      setCurrentPath(window.location.pathname)
+      trackPageView(window.location.pathname)
+    }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
@@ -5097,6 +5113,8 @@ function App() {
         const data = await res.json()
         const finalUser = fixAvatarUrl({ ...data.user, supabase_user: true })
         debug('[Onboarding] Success, user:', finalUser)
+        trackEvent('onboarding_complete')
+        setUserProperties({ user_mode: 'working' })
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
         navigate('/dashboard/working/browse')

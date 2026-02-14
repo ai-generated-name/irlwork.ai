@@ -10,6 +10,7 @@ import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 import MarketingFooter from '../components/Footer'
 import { fixAvatarUrl } from '../utils/avatarUrl'
+import { trackEvent } from '../utils/analytics'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -386,6 +387,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
         })
       })
       if (res.ok) {
+        trackEvent('task_applied', { task_id: showApplyModal.id, source: 'browse_page' })
         setApplySuccess(true)
         setTimeout(() => {
           setShowApplyModal(null)
