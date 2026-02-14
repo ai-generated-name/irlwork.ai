@@ -1,4 +1,5 @@
 import React from 'react';
+import { Users } from 'lucide-react';
 import EscrowBadge from '../EscrowBadge';
 
 export default function PaymentCard({ task, user, isParticipant, onApply }) {
@@ -9,6 +10,8 @@ export default function PaymentCard({ task, user, isParticipant, onApply }) {
   const durationHours = Number(task.duration_hours) || 0;
   const estimatedTotal = isHourly && durationHours > 0 ? budget * durationHours : null;
   const currencyLabel = task.payment_method === 'stripe' ? 'USD' : 'USDC';
+  const quantity = task.quantity || 1;
+  const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
 
   const isOwner = user && task.agent_id === user.id;
   const canApply = task.status === 'open' && user && !isOwner && !isParticipant;
@@ -49,6 +52,27 @@ export default function PaymentCard({ task, user, isParticipant, onApply }) {
         </div>
         <div className="text-xs sm:text-sm text-[#8A8A8A] mt-1">{currencyLabel}</div>
       </div>
+
+      {/* Slots info for multi-person tasks */}
+      {quantity > 1 && (
+        <div className="border-t border-[rgba(26,26,26,0.08)] pt-2 sm:pt-3 mt-2 sm:mt-3">
+          <div className="flex items-center justify-between text-xs sm:text-sm">
+            <span className="text-[#525252] flex items-center gap-1.5">
+              <Users size={14} />
+              Spots
+            </span>
+            <span className="font-semibold" style={{ color: spotsFilled >= quantity ? '#059669' : '#2563EB' }}>
+              {spotsFilled}/{quantity} filled
+            </span>
+          </div>
+          {budget > 0 && (
+            <div className="flex items-center justify-between text-xs sm:text-sm mt-1.5">
+              <span className="text-[#525252]">Per person</span>
+              <span className="text-[#1A1A1A] font-medium">${budget} {currencyLabel}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Estimated hours and total for hourly tasks */}
       {isHourly && durationHours > 0 && (

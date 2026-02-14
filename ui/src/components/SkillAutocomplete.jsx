@@ -14,6 +14,7 @@ const SkillAutocomplete = ({
   const [query, setQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [dropdownTop, setDropdownTop] = useState(null);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const isSelectingRef = useRef(false);
@@ -127,6 +128,10 @@ const SkillAutocomplete = ({
   const handleFocus = () => {
     setShowDropdown(true);
     setSelectedIndex(0);
+    if (inputRef.current && window.innerWidth <= 767) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownTop(rect.bottom + 4);
+    }
   };
 
   const handleBlur = () => {
@@ -199,6 +204,7 @@ const SkillAutocomplete = ({
         <div
           ref={dropdownRef}
           className="city-autocomplete-v4-dropdown"
+          style={dropdownTop != null && window.innerWidth <= 767 ? { top: dropdownTop } : undefined}
           onMouseDown={(e) => e.preventDefault()}
           onTouchStart={() => { isSelectingRef.current = true; }}
         >

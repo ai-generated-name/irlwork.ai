@@ -12,6 +12,7 @@ const CountryAutocomplete = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [dropdownTop, setDropdownTop] = useState(null);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const lastValidCountry = useRef(value || null);
@@ -69,7 +70,14 @@ const CountryAutocomplete = ({
   };
 
   const handleKeyDown = (e) => {
-    if (!showDropdown) return;
+    if (!showDropdown) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        e.preventDefault();
+        setShowDropdown(true);
+        setSelectedIndex(0);
+      }
+      return;
+    }
 
     // +1 for the "All Countries" option at index 0
     const totalItems = 1 + results.length;
@@ -94,8 +102,20 @@ const CountryAutocomplete = ({
       case 'Escape':
         setShowDropdown(false);
         break;
+      case 'Tab':
+        setShowDropdown(false);
+        break;
       default:
         break;
+    }
+  };
+
+  const handleFocus = () => {
+    setShowDropdown(true);
+    setSelectedIndex(0);
+    if (inputRef.current && window.innerWidth <= 767) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownTop(rect.bottom + 4);
     }
   };
 
@@ -164,7 +184,7 @@ const CountryAutocomplete = ({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        onFocus={() => setShowDropdown(true)}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
         className="city-autocomplete-v4-input"
@@ -175,6 +195,7 @@ const CountryAutocomplete = ({
         <div
           ref={dropdownRef}
           className="city-autocomplete-v4-dropdown"
+          style={dropdownTop != null && window.innerWidth <= 767 ? { top: dropdownTop } : undefined}
           onMouseDown={(e) => e.preventDefault()}
           onTouchStart={() => { isSelectingRef.current = true; }}
         >

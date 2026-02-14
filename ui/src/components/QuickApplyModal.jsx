@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
 
 import API_URL from '../config/api';
@@ -98,7 +99,7 @@ export default function QuickApplyModal({
 
   const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={16} />;
 
-  return (
+  return createPortal(
     <div className="quick-apply-modal-overlay" onClick={handleClose}>
       <div className="quick-apply-modal" onClick={(e) => e.stopPropagation()}>
         {/* Close button */}
@@ -261,6 +262,7 @@ export default function QuickApplyModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

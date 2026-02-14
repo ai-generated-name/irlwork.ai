@@ -12,6 +12,7 @@ const CityAutocomplete = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [dropdownTop, setDropdownTop] = useState(null);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const lastValidCity = useRef(value || null);
@@ -125,6 +126,14 @@ const CityAutocomplete = ({
     };
   }, []);
 
+  // Calculate fixed dropdown position on mobile
+  useEffect(() => {
+    if (showDropdown && inputRef.current && window.innerWidth <= 767) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownTop(rect.bottom + 4);
+    }
+  }, [showDropdown]);
+
   // Sync query with value prop
   useEffect(() => {
     if (value && value !== query) {
@@ -193,6 +202,7 @@ const CityAutocomplete = ({
         <div
           ref={dropdownRef}
           className="city-autocomplete-v4-dropdown"
+          style={dropdownTop != null && window.innerWidth <= 767 ? { top: dropdownTop } : undefined}
           onMouseDown={(e) => e.preventDefault()}
           onTouchStart={() => { isSelectingRef.current = true; }}
         >
@@ -215,7 +225,10 @@ const CityAutocomplete = ({
       )}
 
       {isLoading && query.length >= 2 && (
-        <div className="city-autocomplete-v4-dropdown">
+        <div
+          className="city-autocomplete-v4-dropdown"
+          style={dropdownTop != null && window.innerWidth <= 767 ? { top: dropdownTop } : undefined}
+        >
           <div className="city-autocomplete-v4-loading">
             <div className="w-4 h-4 border-2 border-[var(--orange-500)] border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
             Loading cities...
@@ -227,6 +240,7 @@ const CityAutocomplete = ({
         <div
           ref={dropdownRef}
           className="city-autocomplete-v4-dropdown"
+          style={dropdownTop != null && window.innerWidth <= 767 ? { top: dropdownTop } : undefined}
           onMouseDown={(e) => e.preventDefault()}
           onTouchStart={() => { isSelectingRef.current = true; }}
         >

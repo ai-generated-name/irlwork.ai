@@ -6963,6 +6963,32 @@ select.select-v4-dark option:checked,
 }
 
 /* ─── DASHBOARD RESPONSIVE UTILITY CLASSES ─── */
+/* ─── Create Task Form - Wide 2-column layout ─── */
+.create-task-form-wide {
+  max-width: 900px !important;
+}
+
+.create-task-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+.create-task-col {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .create-task-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+  .create-task-form-wide {
+    max-width: 600px !important;
+  }
+}
+
 .dashboard-form-grid-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;

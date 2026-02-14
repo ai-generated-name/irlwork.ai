@@ -1796,7 +1796,8 @@ app.get('/api/humans', async (req, res) => {
   let query = supabase
     .from('users')
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url')
-    .eq('type', 'human');
+    .eq('type', 'human')
+    .eq('availability', 'available');
 
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
@@ -2158,6 +2159,13 @@ app.get('/api/tasks/:id', async (req, res, next) => {
     }
   }
   delete task.agent; // Remove joined field from task response
+
+  // Get applicant count
+  const { count: applicantCount } = await supabase
+    .from('task_applications')
+    .select('id', { count: 'exact', head: true })
+    .eq('task_id', req.params.id);
+  task.applicant_count = applicantCount || 0;
 
   // Only return sensitive financial/escrow fields to task participants
   const user = await getUserByToken(req.headers.authorization);
@@ -2593,10 +2601,29 @@ app.get('/api/agent/tasks', async (req, res) => {
   if (status) {
     query = query.eq('status', status);
   }
-  
+
   const { data: tasks, error } = await query;
-  
+
   if (error) return res.status(500).json({ error: error.message });
+
+  // Enrich with pending application counts
+  if (tasks && tasks.length > 0) {
+    const taskIds = tasks.map(t => t.id);
+    const { data: appCounts } = await supabase
+      .from('task_applications')
+      .select('task_id, status')
+      .in('task_id', taskIds)
+      .eq('status', 'pending');
+
+    const countMap = {};
+    if (appCounts) {
+      appCounts.forEach(a => {
+        countMap[a.task_id] = (countMap[a.task_id] || 0) + 1;
+      });
+    }
+    tasks.forEach(t => { t.pending_applicant_count = countMap[t.id] || 0; });
+  }
+
   res.json(tasks || []);
 });
 
@@ -4554,11 +4581,13 @@ app.post('/api/mcp', async (req, res) => {
           .eq('type', 'human')
           .eq('verified', true);
 
+        // Default to only showing available workers unless explicitly requesting all
+        query = query.eq('availability', params.availability || 'available');
+
         if (params.category) query = query.like('skills', `%${params.category}%`);
         if (params.city) query = query.like('city', `%${params.city}%`);
         if (params.state) query = query.ilike('state', `%${params.state}%`);
         if (params.min_rating) query = query.gte('rating', parseFloat(params.min_rating));
-        if (params.availability) query = query.eq('availability', params.availability);
         if (params.language) query = query.contains('languages', JSON.stringify([params.language]));
 
         const { data: humans, error } = await query.limit(params.limit || 100);
@@ -6044,7 +6073,7 @@ app.get('/api/tasks/available', async (req, res) => {
     category,
     city,
     urgency,
-    limit = 50,
+    limit = 16,
     offset = 0,
     user_lat,
     user_lng,
@@ -6105,8 +6134,8 @@ app.get('/api/tasks/available', async (req, res) => {
         category_filter: category || null,
         search_text: search || null,
         sort_by: sort || 'distance',
-        result_limit: parseInt(limit) || 50,
-        result_offset: parseInt(offset) || 0
+        result_limit: 500,
+        result_offset: 0
       });
 
       if (error) {
@@ -6141,13 +6170,18 @@ app.get('/api/tasks/available', async (req, res) => {
         results = results.concat(remoteTasks);
         results = filterBySkills(results);
 
+        const total = results.length;
+        const parsedLimit = parseInt(limit) || 16;
+        const parsedOffset = parseInt(offset) || 0;
+        const paginatedResults = results.slice(parsedOffset, parsedOffset + parsedLimit);
+
         // Enrich with applicant counts and agent names
-        results = await enrichTasksForListing(results);
+        const enriched = await enrichTasksForListing(paginatedResults);
 
         return res.json({
-          tasks: results,
-          total: results.length,
-          hasMore: results.length === parseInt(limit)
+          tasks: enriched,
+          total,
+          hasMore: parsedOffset + parsedLimit < total
         });
       }
     }
@@ -6188,7 +6222,7 @@ app.get('/api/tasks/available', async (req, res) => {
       query = query.order('created_at', { ascending: false });
     }
 
-    query = query.limit(parseInt(limit));
+    query = query.limit(500);
 
     const { data: tasks, error } = await query;
 
@@ -6252,10 +6286,15 @@ app.get('/api/tasks/available', async (req, res) => {
     }
     results = filterBySkills(results);
 
-    // Enrich with applicant counts and agent names
-    results = await enrichTasksForListing(results);
+    const total = results.length;
+    const parsedLimit = parseInt(limit) || 16;
+    const parsedOffset = parseInt(offset) || 0;
+    const paginatedResults = results.slice(parsedOffset, parsedOffset + parsedLimit);
 
-    res.json({ tasks: results, total: results.length, hasMore: false });
+    // Enrich with applicant counts and agent names
+    const enriched = await enrichTasksForListing(paginatedResults);
+
+    res.json({ tasks: enriched, total, hasMore: parsedOffset + parsedLimit < total });
   } catch (err) {
     console.error('Error fetching available tasks:', err);
     res.status(500).json({ error: 'Failed to fetch tasks' });
@@ -6266,7 +6305,7 @@ app.get('/api/tasks/available', async (req, res) => {
 app.get('/api/humans/directory', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const { category, city, country, skill, name, min_rate, max_rate, limit = 32, offset = 0, sort = 'rating' } = req.query;
+  const { category, city, country, skill, name, min_rate, max_rate, limit = 16, offset = 0, sort = 'rating' } = req.query;
 
   // Check if user is authenticated
   const authUser = await getUserByToken(req.headers.authorization);
@@ -6275,9 +6314,9 @@ app.get('/api/humans/directory', async (req, res) => {
   const PUBLIC_LIMIT = 500;
   let parsedLimit;
   if (authUser) {
-    parsedLimit = Math.min(parseInt(limit) || 32, 1000);
+    parsedLimit = Math.min(parseInt(limit) || 16, 1000);
   } else {
-    parsedLimit = Math.min(parseInt(limit) || 32, PUBLIC_LIMIT);
+    parsedLimit = Math.min(parseInt(limit) || 16, PUBLIC_LIMIT);
   }
   const parsedOffset = parseInt(offset) || 0;
 
@@ -6286,7 +6325,8 @@ app.get('/api/humans/directory', async (req, res) => {
     .from('users')
     .select('id', { count: 'exact', head: true })
     .eq('type', 'human')
-    .eq('verified', true);
+    .eq('verified', true)
+    .eq('availability', 'available');
 
   if (category) countQuery = countQuery.like('skills', `%${category}%`);
   if (skill) countQuery = countQuery.like('skills', `%${skill}%`);
@@ -6303,7 +6343,8 @@ app.get('/api/humans/directory', async (req, res) => {
     .from('users')
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
     .eq('type', 'human')
-    .eq('verified', true);
+    .eq('verified', true)
+    .eq('availability', 'available');
 
   // Sorting
   switch (sort) {
