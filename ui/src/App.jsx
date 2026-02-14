@@ -2823,6 +2823,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       const isOpen = task.status === 'open'
                       const isExpanded = expandedTask === task.id
                       const applications = taskApplications[task.id] || []
+                      const pendingCount = isExpanded
+                        ? applications.filter(a => a.status === 'pending').length
+                        : (task.pending_applicant_count || 0)
 
                       return (
                         <div key={task.id} className="dashboard-v4-task-card">
@@ -2858,7 +2861,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                 }}
                                 style={{ color: 'var(--orange-600)', fontWeight: 500, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}
                               >
-                                {isExpanded ? '▼ Hide Applicants' : '▶ View Applicants'}
+                                {isExpanded ? '▼ Hide Applicants' : `▶ View Applicants${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
                               </button>
 
                               {/* Applicants List */}
