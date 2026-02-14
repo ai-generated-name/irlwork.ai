@@ -1942,9 +1942,32 @@ app.put('/api/humans/profile', async (req, res) => {
       const cleaned = {};
       if (typeof social_links === 'object' && social_links !== null) {
         for (const [key, value] of Object.entries(social_links)) {
-          if (allowedPlatforms.includes(key) && typeof value === 'string' && value.trim()) {
-            cleaned[key] = value.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+          if (!allowedPlatforms.includes(key) || typeof value !== 'string' || !value.trim()) continue;
+          let v = value.trim();
+          // Normalize URLs without protocol (e.g. "x.com/user")
+          if (/^(www\.)?(x|twitter|instagram|linkedin|github|tiktok|youtube|youtu)\.(com|be)\//i.test(v)) {
+            v = 'https://' + v;
           }
+          // If it looks like a URL, parse it properly
+          if (/^https?:\/\//i.test(v)) {
+            try {
+              const url = new URL(v);
+              const parts = url.pathname.split('/').filter(Boolean);
+              if (key === 'linkedin' && parts[0] === 'in' && parts[1]) {
+                v = parts[1].replace(/^@/, '');
+              } else if (key === 'youtube' && (parts[0] === 'c' || parts[0] === 'channel') && parts[1]) {
+                v = parts[1];
+              } else if (parts.length > 0) {
+                v = parts[0].replace(/^@/, '');
+              }
+            } catch {
+              // Not a valid URL, strip common prefixes as fallback
+              v = v.replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+            }
+          }
+          // Strip leading @ for non-URL input
+          v = v.replace(/^@/, '');
+          if (v) cleaned[key] = v;
         }
       }
       updates.social_links = cleaned;
@@ -6561,7 +6584,38 @@ app.put('/api/profile', async (req, res) => {
     updates.travel_radius = travel_radius;
     updates.service_radius = travel_radius;
   }
-  if (social_links !== undefined) updates.social_links = social_links;
+  if (social_links !== undefined) {
+    const allowedPlatforms = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube'];
+    const cleaned = {};
+    if (typeof social_links === 'object' && social_links !== null) {
+      for (const [key, value] of Object.entries(social_links)) {
+        if (!allowedPlatforms.includes(key) || typeof value !== 'string' || !value.trim()) continue;
+        let v = value.trim();
+        // Normalize URLs without protocol
+        if (/^(www\.)?(x|twitter|instagram|linkedin|github|tiktok|youtube|youtu)\.(com|be)\//i.test(v)) {
+          v = 'https://' + v;
+        }
+        if (/^https?:\/\//i.test(v)) {
+          try {
+            const url = new URL(v);
+            const parts = url.pathname.split('/').filter(Boolean);
+            if (key === 'linkedin' && parts[0] === 'in' && parts[1]) {
+              v = parts[1].replace(/^@/, '');
+            } else if (key === 'youtube' && (parts[0] === 'c' || parts[0] === 'channel') && parts[1]) {
+              v = parts[1];
+            } else if (parts.length > 0) {
+              v = parts[0].replace(/^@/, '');
+            }
+          } catch {
+            v = v.replace(/^https?:\/\/(www\.)?(twitter|x|instagram|linkedin|github|tiktok|youtube)\.com\/(in\/)?(@)?/i, '');
+          }
+        }
+        v = v.replace(/^@/, '');
+        if (v) cleaned[key] = v;
+      }
+    }
+    updates.social_links = cleaned;
+  }
   
   const { data: profile, error } = await supabase
     .from('users')

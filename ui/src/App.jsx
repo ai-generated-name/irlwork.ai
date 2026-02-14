@@ -39,7 +39,7 @@ import DashboardTour from './components/DashboardTour'
 const StripeProvider = lazy(() => import('./components/StripeProvider'))
 const PaymentMethodForm = lazy(() => import('./components/PaymentMethodForm'))
 const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
-import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
+import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER, extractHandle } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
 import CountryAutocomplete from './components/CountryAutocomplete'
@@ -3801,7 +3801,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   const social_links = {}
                   PLATFORM_ORDER.forEach(p => {
                     const val = formData.get(p)?.trim()
-                    if (val) social_links[p] = val
+                    if (val) social_links[p] = extractHandle(p, val)
                   })
                   try {
                     const res = await fetch(`${API_URL}/humans/profile`, {
@@ -3839,15 +3839,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             name={platform}
                             defaultValue={user?.social_links?.[platform] || ''}
                             placeholder={config.placeholder}
-                            maxLength={100}
+                            maxLength={200}
                             className="dashboard-v4-form-input"
                             style={{ marginBottom: 0 }}
+                            onBlur={(e) => {
+                              const cleaned = extractHandle(platform, e.target.value)
+                              if (cleaned !== e.target.value) e.target.value = cleaned
+                            }}
                           />
                         </div>
                       )
                     })}
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or handle, not the full URL</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or paste a profile URL — it will be auto-formatted</p>
                   <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
                 </form>
               )}

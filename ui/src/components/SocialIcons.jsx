@@ -73,6 +73,62 @@ const PLATFORMS = {
 
 const PLATFORM_ORDER = ['twitter', 'instagram', 'linkedin', 'github', 'tiktok', 'youtube']
 
+// Extract a clean handle/username from either a raw handle or a full URL
+function extractHandle(platform, value) {
+  if (!value || typeof value !== 'string') return ''
+  let v = value.trim()
+  if (!v) return ''
+
+  // Normalize URLs without protocol (e.g. "x.com/user" → "https://x.com/user")
+  if (/^(www\.)?(x|twitter|instagram|linkedin|github|tiktok|youtube|youtu)\.(com|be)\//i.test(v)) {
+    v = 'https://' + v
+  }
+
+  // If it looks like a URL, try to extract the path segment
+  if (/^https?:\/\//i.test(v)) {
+    try {
+      const url = new URL(v)
+      const host = url.hostname.replace(/^www\./, '').toLowerCase()
+      const pathParts = url.pathname.split('/').filter(Boolean)
+
+      // Platform-specific host matching
+      const hostMap = {
+        twitter: ['x.com', 'twitter.com'],
+        instagram: ['instagram.com'],
+        linkedin: ['linkedin.com'],
+        github: ['github.com'],
+        tiktok: ['tiktok.com'],
+        youtube: ['youtube.com', 'youtu.be']
+      }
+
+      const validHosts = hostMap[platform] || []
+      if (validHosts.includes(host) && pathParts.length > 0) {
+        // LinkedIn URLs use /in/username format
+        if (platform === 'linkedin' && pathParts[0] === 'in' && pathParts[1]) {
+          return pathParts[1].replace(/^@/, '')
+        }
+        // YouTube can be /c/channel, /channel/id, or /@handle
+        if (platform === 'youtube') {
+          if (pathParts[0] === 'c' && pathParts[1]) return pathParts[1]
+          if (pathParts[0] === 'channel' && pathParts[1]) return pathParts[1]
+        }
+        return pathParts[0].replace(/^@/, '')
+      }
+      // If the host doesn't match but it's a URL, take the last meaningful path part
+      if (pathParts.length > 0) {
+        return pathParts[pathParts.length - 1].replace(/^@/, '')
+      }
+    } catch {
+      // Not a valid URL, fall through
+    }
+  }
+
+  // Strip leading @ symbol
+  return v.replace(/^@/, '')
+}
+
+export { extractHandle }
+
 export function SocialIconsRow({ socialLinks, size = 18, gap = 8, alwaysShow = false }) {
   const [hoveredPlatform, setHoveredPlatform] = useState(null)
 
