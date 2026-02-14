@@ -2,23 +2,17 @@ import React, { useState } from 'react'
 import { Bot, Copy, Check, ExternalLink } from 'lucide-react'
 
 export default function ForAgentsBox({ human }) {
-  const [copiedHire, setCopiedHire] = useState(false)
-  const [copiedApi, setCopiedApi] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const hireSnippet = `curl -X POST https://api.irlwork.ai/api/mcp \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"method": "start_conversation", "params": {"human_id": "${human?.id}"}}'`
 
-  const apiSnippet = `curl -X POST https://api.irlwork.ai/api/mcp \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{"method": "list_humans", "params": {}}'`
-
-  const copyToClipboard = (text, setter) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setter(true)
-      setTimeout(() => setter(false), 2000)
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(hireSnippet).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     })
   }
 
@@ -51,14 +45,10 @@ export default function ForAgentsBox({ human }) {
         Book {human?.name?.split(' ')[0] || 'this human'} programmatically via the REST API.
       </p>
 
-      {/* Hire this human */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <h5 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-            Hire This Human
-          </h5>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <button
-            onClick={() => copyToClipboard(hireSnippet, setCopiedHire)}
+            onClick={copyToClipboard}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -69,12 +59,12 @@ export default function ForAgentsBox({ human }) {
               borderRadius: 6,
               cursor: 'pointer',
               fontSize: 12,
-              color: copiedHire ? '#059669' : 'var(--text-tertiary)',
+              color: copied ? '#059669' : 'var(--text-tertiary)',
               transition: 'all 0.2s'
             }}
           >
-            {copiedHire ? <Check size={12} /> : <Copy size={12} />}
-            {copiedHire ? 'Copied' : 'Copy'}
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
         <pre style={{
@@ -95,51 +85,6 @@ export default function ForAgentsBox({ human }) {
         </pre>
       </div>
 
-      {/* Browse Humans API */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <h5 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-            Browse Humans API
-          </h5>
-          <button
-            onClick={() => copyToClipboard(apiSnippet, setCopiedApi)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '4px 8px',
-              background: 'none',
-              border: '1px solid rgba(26,26,26,0.1)',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontSize: 12,
-              color: copiedApi ? '#059669' : 'var(--text-tertiary)',
-              transition: 'all 0.2s'
-            }}
-          >
-            {copiedApi ? <Check size={12} /> : <Copy size={12} />}
-            {copiedApi ? 'Copied' : 'Copy'}
-          </button>
-        </div>
-        <pre style={{
-          background: '#1a1a1a',
-          color: '#e0e0e0',
-          padding: 16,
-          borderRadius: 10,
-          fontSize: 12,
-          lineHeight: 1.6,
-          overflow: 'auto',
-          margin: 0,
-          fontFamily: "'JetBrains Mono', 'Space Mono', monospace'",
-          maxHeight: 200,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all'
-        }}>
-          {apiSnippet}
-        </pre>
-      </div>
-
-      {/* Links */}
       <div style={{ display: 'flex', gap: 12 }}>
         <a
           href="/connect-agent"
