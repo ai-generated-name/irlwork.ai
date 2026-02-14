@@ -1001,9 +1001,10 @@ code, pre {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
   padding: var(--space-4);
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .quick-apply-modal {
@@ -1018,6 +1019,8 @@ code, pre {
   position: relative;
   box-shadow: var(--shadow-xl);
   animation: modal-appear 0.2s ease-out;
+  margin: auto;
+  flex-shrink: 0;
 }
 
 @keyframes modal-appear {
@@ -1385,9 +1388,17 @@ code, pre {
 
 /* Quick Apply Modal — mobile adjustments */
 @media (max-width: 767px) {
+  .quick-apply-modal-overlay {
+    padding: var(--space-3);
+    align-items: flex-start;
+    padding-top: env(safe-area-inset-top, var(--space-4));
+    padding-bottom: env(safe-area-inset-bottom, var(--space-4));
+  }
+
   .quick-apply-modal {
-    max-height: calc(100dvh - var(--space-6));
+    max-height: none;
     padding: var(--space-4);
+    margin: auto;
   }
 
   .quick-apply-modal-field textarea {
@@ -1514,20 +1525,6 @@ code, pre {
 
   .browse-tasks-v2-content .browse-tasks-v2-map {
     display: none;
-  }
-
-  .quick-apply-modal {
-    max-height: 90vh;
-    overflow-y: auto;
-  }
-
-  .quick-apply-modal-actions {
-    flex-direction: column;
-  }
-
-  .quick-apply-modal-btn {
-    justify-content: center;
-    width: 100%;
   }
 }
 
