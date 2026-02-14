@@ -1904,7 +1904,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           requirements: taskForm.requirements.trim() || null,
           required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
           task_type: taskForm.task_type,
-          quantity: taskForm.task_type === 'bounty' ? parseInt(taskForm.quantity) || 1 : 1,
+          quantity: taskForm.task_type === 'open' ? parseInt(taskForm.quantity) || 1 : 1,
           is_anonymous: taskForm.is_anonymous
         })
       })
@@ -2672,7 +2672,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         }}
                       />
                     </div>
-                    {/* Task Type: Direct Hire vs Bounty */}
+                    {/* Task Type: Direct Hire vs Open */}
                     <div className="dashboard-v4-form-group">
                       <label className="dashboard-v4-form-label">Task Type</label>
                       <div style={{ display: 'flex', gap: 8 }}>
@@ -2692,22 +2692,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         </button>
                         <button
                           type="button"
-                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'bounty' }))}
+                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'open' }))}
                           style={{
                             flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '2px solid',
-                            borderColor: taskForm.task_type === 'bounty' ? '#7C3AED' : 'rgba(26,26,26,0.1)',
-                            background: taskForm.task_type === 'bounty' ? 'rgba(139, 92, 246, 0.05)' : 'transparent',
-                            color: taskForm.task_type === 'bounty' ? '#7C3AED' : 'var(--text-secondary)',
+                            borderColor: taskForm.task_type === 'open' ? '#7C3AED' : 'rgba(26,26,26,0.1)',
+                            background: taskForm.task_type === 'open' ? 'rgba(139, 92, 246, 0.05)' : 'transparent',
+                            color: taskForm.task_type === 'open' ? '#7C3AED' : 'var(--text-secondary)',
                             fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
                           }}
                         >
-                          Open Bounty
+                          Open Posting
                           <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Open to multiple people</div>
                         </button>
                       </div>
                     </div>
-                    {/* Quantity (only for bounty) */}
-                    {taskForm.task_type === 'bounty' && (
+                    {/* Quantity (only for open) */}
+                    {taskForm.task_type === 'open' && (
                       <div className="dashboard-v4-form-group">
                         <label className="dashboard-v4-form-label">How many people needed?</label>
                         <input
@@ -4498,7 +4498,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
               <div className="connect-agent-prompt-preview-label">Preview of what gets copied:</div>
               <div className="connect-agent-prompt-preview-content">
                 <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
-                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Bounty workflows &bull; Best practices &bull; Rate limits</p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Open workflows &bull; Best practices &bull; Rate limits</p>
                 {keys.length > 0 && (
                   <p style={{ color: '#10B981', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
                 )}

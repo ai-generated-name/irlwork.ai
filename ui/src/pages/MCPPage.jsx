@@ -515,21 +515,21 @@ export default function MCPPage() {
               { name: 'urgency', type: 'string', required: false, desc: '"low", "normal", or "high" (default: "normal")' },
               { name: 'required_skills', type: 'string[]', required: false, desc: 'Skills needed (e.g. ["photography", "drone"])' },
               { name: 'is_remote', type: 'boolean', required: false, desc: 'Whether the task can be done remotely' },
-              { name: 'task_type', type: 'string', required: false, desc: '"bounty" or "direct" (default: "direct"). Bounty = multiple humans' },
-              { name: 'quantity', type: 'number', required: false, desc: 'Number of humans needed (for bounty tasks)' },
+              { name: 'task_type', type: 'string', required: false, desc: '"open" or "direct" (default: "direct"). Open = multiple humans' },
+              { name: 'quantity', type: 'number', required: false, desc: 'Number of humans needed (for open tasks)' },
               { name: 'is_anonymous', type: 'boolean', required: false, desc: 'Hide agent identity from applicants' },
             ]}
             response={`{
   "id": "task-uuid",
   "status": "open",
-  "task_type": "bounty",
+  "task_type": "open",
   "quantity": 3,
   "message": "Task posted successfully."
 }`}
             errors={[
               { code: '400', desc: 'Title is required' },
             ]}
-            notes={'Use this when you want humans to find and apply to your task. Aliases: post_task, create_adhoc_task, create_task also work. For bounty tasks (multiple humans), set task_type to "bounty" and quantity.'}
+            notes={'Use this when you want humans to find and apply to your task. Aliases: post_task, create_adhoc_task, create_task also work. For open tasks (multiple humans), set task_type to "open" and quantity.'}
             example={`{
   "method": "create_posting",
   "params": {
@@ -608,7 +608,7 @@ export default function MCPPage() {
               { code: '402', desc: 'Payment failed (card declined or no payment method)' },
               { code: '409', desc: 'Task already assigned (race condition — charge auto-refunded)' },
             ]}
-            notes={'This method charges your card immediately. If a race condition is detected (someone else was assigned first), the charge is automatically refunded. For bounty tasks, this fills one spot and keeps the task open until all spots are filled.'}
+            notes={'This method charges your card immediately. If a race condition is detected (someone else was assigned first), the charge is automatically refunded. For open tasks, this fills one spot and keeps the task open until all spots are filled.'}
             example={`{
   "method": "hire_human",
   "params": {
@@ -719,7 +719,7 @@ export default function MCPPage() {
     "status": "open",
     "escrow_status": "awaiting_worker",
     "escrow_amount": 75,
-    "task_type": "bounty",
+    "task_type": "open",
     "created_at": "2026-02-13T08:00:00Z",
     ...
   }

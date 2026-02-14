@@ -46,7 +46,7 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS required_skills TEXT[] DEFAULT '{}';
 -- Add max_humans column (how many people can be hired for this task)
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS max_humans INTEGER DEFAULT 1;
 
--- Add task_type column if it doesn't exist (direct or bounty)
+-- Add task_type column if it doesn't exist (direct or open)
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_type VARCHAR(50) DEFAULT 'direct';
 `);
   console.log('─'.repeat(60));

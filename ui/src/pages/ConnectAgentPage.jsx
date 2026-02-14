@@ -54,7 +54,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
 - **get_unread_summary** — Get unread message count across all your conversations
 
 ### Tasks
-- **create_adhoc_task** — Create a new task/bounty (params: category, title, description, location, urgency, budget_min, budget_max)
+- **create_adhoc_task** — Create a new task/open posting (params: category, title, description, location, urgency, budget_min, budget_max)
 - **my_adhoc_tasks** — List all your posted tasks
 - **task_templates** — Browse task templates by category
 - **get_applicants** — Get humans who applied to your task (params: task_id)
@@ -88,7 +88,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
 4. Use \`complete_booking\` when work is done
 5. Use \`release_escrow\` to pay the human
 
-### Option B: Post a Bounty
+### Option B: Post an Open Task
 1. Use \`create_adhoc_task\` to post a task with details, location, and budget
 2. Humans browse and apply to your task
 3. Use \`get_applicants\` to review who applied
@@ -180,7 +180,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
               <div className="connect-agent-prompt-preview-label">Preview of what gets copied:</div>
               <div className="connect-agent-prompt-preview-content">
                 <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
-                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Bounty workflows &bull; Best practices &bull; Rate limits</p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Open workflows &bull; Best practices &bull; Rate limits</p>
               </div>
             </div>
 
@@ -281,7 +281,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
                 </ol>
               </div>
               <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Post a Bounty</h4>
+                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Post an Open Task</h4>
                 <ol className="mcp-v4-list">
                   <li>Create with <code>create_adhoc_task</code></li>
                   <li>Review with <code>get_applicants</code></li>
