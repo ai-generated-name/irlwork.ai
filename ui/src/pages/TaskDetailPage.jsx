@@ -509,7 +509,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         isOpen={showApplyModal}
         onClose={() => setShowApplyModal(false)}
         onSuccess={() => setHasApplied(true)}
-        userToken={user?.id}
+        userToken={user?.token || user?.id}
       />
 
       {/* Mobile Sticky Apply Bar */}

@@ -618,7 +618,7 @@ export default function BrowseTasksV2({
         isOpen={!!applyModalTask}
         onClose={() => setApplyModalTask(null)}
         onSuccess={handleApplySuccess}
-        userToken={user?.id}
+        userToken={user?.token || user?.id}
       />
 
       {/* Report task modal */}
