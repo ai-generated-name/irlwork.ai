@@ -1343,6 +1343,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [languagesList, setLanguagesList] = useState(user?.languages || [])
   const [newLanguageInput, setNewLanguageInput] = useState('')
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [profileLinkCopied, setProfileLinkCopied] = useState(false)
   const avatarInputRef = useRef(null)
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
   const [assigningHuman, setAssigningHuman] = useState(null) // loading state
@@ -3313,7 +3314,30 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Profile Tab - Edit Profile with Avatar Upload */}
         {activeTab === 'profile' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Profile</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
+              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>Profile</h1>
+              <button
+                onClick={() => {
+                  const profileUrl = `${window.location.origin}/humans/${user?.id}`
+                  navigator.clipboard.writeText(profileUrl).then(() => {
+                    setProfileLinkCopied(true)
+                    setTimeout(() => setProfileLinkCopied(false), 2000)
+                  })
+                }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 8,
+                  border: '1px solid var(--border-secondary)',
+                  background: profileLinkCopied ? 'var(--orange-50, #fff7ed)' : 'var(--bg-primary)',
+                  color: profileLinkCopied ? 'var(--orange-600)' : 'var(--text-secondary)',
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {profileLinkCopied ? <Check size={14} /> : <Copy size={14} />}
+                {profileLinkCopied ? 'Copied!' : 'Copy Profile Link'}
+              </button>
+            </div>
 
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
               {/* Avatar Upload */}
