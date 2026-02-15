@@ -1857,8 +1857,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       return
     }
 
-    // Fallback
-    window.location.href = link
+    // Fallback — only allow safe internal paths (reject javascript:, data:, //, etc.)
+    if (link.startsWith('/') && !link.startsWith('//')) {
+      window.location.href = link
+    }
   }
 
   const fetchConversations = async () => {
@@ -3432,7 +3434,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           reader.onerror = () => reject(new Error('Failed to read file'))
                           reader.readAsDataURL(fileToUpload)
                         })
-                        console.log(`[Avatar] Original: ${file.size} bytes (${file.type}), Compressed: ${fileToUpload.size} bytes (${fileToUpload.type}), Base64 length: ${base64.length}`)
+                        debug(`[Avatar] Original: ${file.size} bytes (${file.type}), Compressed: ${fileToUpload.size} bytes (${fileToUpload.type}), Base64 length: ${base64.length}`)
                         const controller = new AbortController()
                         const timeout = setTimeout(() => controller.abort(), 60000)
                         try {
@@ -3452,7 +3454,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             : uploadExt === 'gif' ? 'image/gif'
                             : 'image/jpeg'
                           const payload = JSON.stringify({ file: base64, filename: uploadFilename, mimeType: uploadMime })
-                          console.log(`[Avatar] Uploading: base64 length=${base64.length}, payload size=${payload.length}, compressed size=${fileToUpload.size}`)
+                          debug(`[Avatar] Uploading: base64 length=${base64.length}, payload size=${payload.length}, compressed size=${fileToUpload.size}`)
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
@@ -3462,7 +3464,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           clearTimeout(timeout)
                           if (res.ok) {
                             const data = await res.json()
-                            console.log(`[Avatar] Upload response:`, data)
+                            debug(`[Avatar] Upload response:`, data)
                             // Use base64 for immediate display (guaranteed to show), but store
                             // the server proxy URL in localStorage for persistence across reloads.
                             const proxyUrl = data.url

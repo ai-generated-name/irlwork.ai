@@ -78,32 +78,34 @@ export default class ErrorBoundary extends React.Component {
               An unexpected error occurred. Please go back to the homepage or refresh the page.
             </p>
 
-            {/* Show error details for debugging */}
-            <details style={{ textAlign: 'left', marginBottom: 24 }}>
-              <summary style={{
-                cursor: 'pointer',
-                fontSize: 13,
-                color: '#8A8A8A',
-                marginBottom: 8,
-              }}>
-                Error details
-              </summary>
-              <div style={{
-                background: '#F5F2ED',
-                borderRadius: 8,
-                padding: 12,
-                fontSize: 12,
-                fontFamily: 'monospace',
-                color: '#525252',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                maxHeight: 200,
-                overflow: 'auto',
-              }}>
-                {errorMessage}
-                {errorStack && '\n\n' + errorStack.split('\n').slice(0, 5).join('\n')}
-              </div>
-            </details>
+            {/* Only show error details in development — never expose stack traces in production */}
+            {import.meta.env.DEV && (
+              <details style={{ textAlign: 'left', marginBottom: 24 }}>
+                <summary style={{
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  color: '#8A8A8A',
+                  marginBottom: 8,
+                }}>
+                  Error details
+                </summary>
+                <div style={{
+                  background: '#F5F2ED',
+                  borderRadius: 8,
+                  padding: 12,
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  color: '#525252',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  maxHeight: 200,
+                  overflow: 'auto',
+                }}>
+                  {errorMessage}
+                  {errorStack && '\n\n' + errorStack.split('\n').slice(0, 5).join('\n')}
+                </div>
+              </details>
+            )}
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <button

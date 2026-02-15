@@ -25,7 +25,8 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
       })
       .then(data => {
         const fixed = fixAvatarUrl(data)
-        console.log('[HumanProfile] avatar_url:', fixed.avatar_url || 'none')
+        // avatar_url logged only in development
+        if (import.meta.env.DEV) console.log('[HumanProfile] avatar_url:', fixed.avatar_url || 'none')
         setProfile(fixed)
         setLoading(false)
       })

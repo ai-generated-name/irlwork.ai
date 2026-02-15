@@ -24,6 +24,12 @@ const BCRYPT_ROUNDS = 12;
 // Wallet address validation (Ethereum/Base network - 0x + 40 hex chars)
 const isValidWalletAddress = (addr) => /^0x[a-fA-F0-9]{40}$/.test(addr);
 
+// Escape HTML entities to prevent injection in email templates and other HTML contexts
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // Sanitize error messages for client responses — never leak database internals
 function safeErrorMessage(error) {
   const msg = error?.message || 'Unknown error';
@@ -719,14 +725,14 @@ async function sendMessageEmailNotification(recipientUserId, senderName, taskTit
       body: JSON.stringify({
         from: 'IRL Work <notifications@irlwork.ai>',
         to: recipient.email,
-        subject: `New message from ${senderName} about "${taskTitle}"`,
+        subject: `New message from ${escapeHtml(senderName)} about "${escapeHtml(taskTitle)}"`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
             <div style="background: #FAF8F5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-              <p style="color: #525252; font-size: 14px; margin: 0 0 8px 0;"><strong>${senderName}</strong> sent you a message:</p>
-              <p style="color: #1A1A1A; font-size: 15px; margin: 0; line-height: 1.5;">${messagePreview}</p>
+              <p style="color: #525252; font-size: 14px; margin: 0 0 8px 0;"><strong>${escapeHtml(senderName)}</strong> sent you a message:</p>
+              <p style="color: #1A1A1A; font-size: 15px; margin: 0; line-height: 1.5;">${escapeHtml(messagePreview)}</p>
             </div>
-            <p style="font-size: 13px; color: #8A8A8A; margin: 0 0 16px 0;">Task: ${taskTitle}</p>
+            <p style="font-size: 13px; color: #8A8A8A; margin: 0 0 16px 0;">Task: ${escapeHtml(taskTitle)}</p>
             <a href="${taskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">Reply on IRL Work</a>
             <p style="font-size: 11px; color: #B0B0B0; margin-top: 24px;">You received this because you have message notifications enabled on IRL Work.</p>
           </div>
@@ -890,6 +896,21 @@ app.post('/api/auth/register/human', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
+    // Rate limiting: 5 registrations per IP per hour
+    const ipHash = crypto
+      .createHash('sha256')
+      .update(req.ip || 'unknown')
+      .digest('hex')
+      .slice(0, 16);
+
+    const rateCheck = await checkRateLimit(ipHash, 'human_registration', 5, 60);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded. Maximum 5 registrations per hour.',
+        reset_at: rateCheck.resetAt
+      });
+    }
+
     const { id: providedId, email, password, name, city, state, hourly_rate, categories = [], skills = [], bio = '', phone = '', latitude, longitude, travel_radius, country, country_code } = req.body;
 
     if (!email || !name || !city) {
@@ -937,7 +958,12 @@ app.post('/api/auth/register/human', async (req, res) => {
     
     if (error) {
       if (error.message.includes('duplicate key') || error.code === '23505') {
-        // User already exists - update their profile instead
+        // User already exists — only allow updates if the provided ID matches the Supabase auth ID
+        // (i.e. the caller went through Supabase signup first). Reject arbitrary ID overwrite attempts.
+        if (!providedId) {
+          return res.status(409).json({ error: 'An account with this email already exists' });
+        }
+        // Only update fields for the exact user ID that was provided (from Supabase auth)
         const { data: existingUser, error: updateError } = await supabase
           .from('users')
           .update({
@@ -950,33 +976,13 @@ app.post('/api/auth/register/human', async (req, res) => {
             onboarding_completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .eq('id', id)
+          .eq('id', providedId)
+          .eq('email', email) // Must also match email to prevent ID spoofing
           .select()
           .single();
 
         if (updateError) {
-          // Try by email if id doesn't match
-          const { data: byEmail, error: emailError } = await supabase
-            .from('users')
-            .update({
-              name,
-              city,
-              state,
-              hourly_rate: hourly_rate || 25,
-              skills: JSON.stringify(userSkills),
-              needs_onboarding: false,
-              onboarding_completed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('email', email)
-            .select()
-            .single();
-
-          if (emailError) throw emailError;
-          return res.json({
-            user: { ...byEmail, skills: userSkills, needs_onboarding: false },
-            token: crypto.randomBytes(32).toString('hex')
-          });
+          return res.status(409).json({ error: 'An account with this email already exists' });
         }
 
         return res.json({
@@ -1132,11 +1138,11 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
       if (createError) throw createError;
       existingUser = newUser;
-    } else if (!existingUser.type || existingUser.type !== 'human') {
-      // Existing user but type not set — update to ensure they appear in browse
+    } else if (!existingUser.type) {
+      // Existing user with no type set — default to human (but don't override existing agents)
       await supabase
         .from('users')
-        .update({ type: 'human', account_type: 'human', verified: true })
+        .update({ type: 'human', account_type: 'human' })
         .eq('id', existingUser.id);
     }
 
@@ -1904,7 +1910,9 @@ app.put('/api/humans/profile', async (req, res) => {
 
     const { name, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
 
-    const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true, type: 'human', account_type: 'human' };
+    // Do NOT override verified status — only admins should set verified.
+    // Do NOT override type/account_type — prevents agents from accidentally losing their type.
+    const updates = { updated_at: new Date().toISOString(), needs_onboarding: false };
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
     if (name) updates.name = name;
@@ -2069,6 +2077,11 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Authentication required' });
 
+  // Only agents can create tasks
+  if (user.type !== 'agent') {
+    return res.status(403).json({ error: 'Only agent accounts can create tasks' });
+  }
+
   const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code } = req.body;
 
   // Validate required fields
@@ -2199,13 +2212,22 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 app.get('/api/tasks/:id/status', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
+  // Require authentication — financial data should not be publicly accessible
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at')
+    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at, agent_id, human_id')
     .eq('id', req.params.id)
     .single();
 
   if (error || !task) return res.status(404).json({ error: 'Not found' });
+
+  // Only task participants (agent or assigned human) can see financial details
+  if (task.agent_id !== user.id && task.human_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied — only task participants can view status details' });
+  }
 
   // Get proof submissions
   const { data: proofs } = await supabase
@@ -2280,6 +2302,17 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
   const { cover_letter, availability, questions, proposed_rate } = req.body;
+
+  // Prevent task creator from applying to their own task
+  const { data: taskCheck } = await supabase
+    .from('tasks')
+    .select('agent_id')
+    .eq('id', req.params.id)
+    .single();
+
+  if (taskCheck && taskCheck.agent_id === user.id) {
+    return res.status(400).json({ error: 'You cannot apply to your own task' });
+  }
 
   const { data: existing } = await supabase
     .from('task_applications')
@@ -4351,26 +4384,34 @@ async function deliverWebhook(agentId, payload) {
   }
 }
 
-// Get webhook URL for an agent
+// Get webhook URL for an agent (requires authentication — only the agent themselves)
 app.get('/api/agents/:id/webhook-url', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+
   const { id } = req.params;
-  
+
+  // Only the agent themselves can view their webhook URL
+  if (user.id !== id) {
+    return res.status(403).json({ error: 'Access denied — you can only view your own webhook URL' });
+  }
+
   const { data: agent, error } = await supabase
     .from('users')
     .select('id, mcp_webhook_url')
     .eq('id', id)
     .eq('type', 'agent')
     .single();
-  
+
   if (error || !agent) {
     return res.status(404).json({ error: 'Agent not found' });
   }
-  
+
   const baseUrl = process.env.API_URL || `http://localhost:${PORT}`;
   const webhookUrl = agent.mcp_webhook_url || `${baseUrl}/webhooks/${id}`;
-  
+
   res.json({ webhook_url: webhookUrl });
 });
 
@@ -4914,9 +4955,19 @@ app.post('/api/mcp', async (req, res) => {
           `)
           .eq('id', params.task_id)
           .single();
-        
+
         if (error) throw error;
-        res.json(task);
+
+        // Ownership check: only task participants can see full details including financial data
+        if (task.agent_id !== user.id && task.human_id !== user.id) {
+          // Return limited public info for non-participants
+          const { escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at,
+                  deposit_amount_cents, unique_deposit_amount, stripe_payment_intent_id,
+                  instructions, ...publicTask } = task;
+          res.json(publicTask);
+        } else {
+          res.json(task);
+        }
         break;
       }
       
@@ -4924,10 +4975,15 @@ app.post('/api/mcp', async (req, res) => {
         // Register webhook URL for task status updates
         const { webhook_url } = params;
 
+        // Validate webhook URL (SSRF prevention)
+        if (webhook_url && !isValidWebhookUrl(webhook_url)) {
+          return res.status(400).json({ error: 'Invalid webhook URL. Must be HTTPS and not target private/internal addresses.' });
+        }
+
         await supabase
           .from('users')
           .update({
-            mcp_webhook_url: webhook_url,
+            mcp_webhook_url: webhook_url || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id);
@@ -5058,6 +5114,12 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (fetchError || !taskData) throw new Error('Task not found');
+
+        // Ownership check: only the task creator can assign humans
+        if (taskData.agent_id !== user.id) {
+          throw new Error('Access denied — you can only assign humans to your own tasks');
+        }
+
         if (taskData.status !== 'open' && taskData.status !== 'assigned') {
           throw new Error('Task is not available for assignment');
         }
@@ -6627,7 +6689,8 @@ app.put('/api/profile', async (req, res) => {
   
   const { name, bio, city, state, hourly_rate, skills, availability, avatar_url, languages, travel_radius, social_links } = req.body;
 
-  const updates = { updated_at: new Date().toISOString(), verified: true };
+  // Do NOT override verified status on profile update — only admins should control verification
+  const updates = { updated_at: new Date().toISOString() };
 
   if (name) updates.name = name;
   if (bio !== undefined) updates.bio = bio;
