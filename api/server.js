@@ -4690,6 +4690,11 @@ app.post('/api/mcp', async (req, res) => {
 
         if (fetchError || !taskData) throw new Error('Task not found');
 
+        // Ownership check: only the task creator can hire humans
+        if (taskData.agent_id !== user.id) {
+          throw new Error('Access denied — you can only hire humans for your own tasks');
+        }
+
         // Agent must have a pre-linked card before hiring
         const { listPaymentMethods } = require('./backend/services/stripeService');
         if (!user.stripe_customer_id) {
