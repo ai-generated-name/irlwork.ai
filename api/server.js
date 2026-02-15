@@ -4788,7 +4788,7 @@ app.post('/api/mcp', async (req, res) => {
       
       case 'get_task_status': {
         if (!params.task_id) return res.status(400).json({ error: 'task_id is required' });
-        let statusSelect = 'id, status, escrow_status, escrow_amount, escrow_deposited_at, task_type, quantity, human_ids, creator_id';
+        let statusSelect = 'id, status, escrow_status, escrow_amount, escrow_deposited_at, task_type, quantity, human_ids, agent_id';
         if (taskColumnFlags.spots_filled) statusSelect += ', spots_filled';
         const { data: task, error } = await supabase
           .from('tasks')
@@ -4798,12 +4798,12 @@ app.post('/api/mcp', async (req, res) => {
 
         if (error) throw error;
         // Ownership check: only task creator or assigned humans can see status
-        if (task.creator_id !== user.id && !(Array.isArray(task.human_ids) && task.human_ids.includes(user.id))) {
+        if (task.agent_id !== user.id && !(Array.isArray(task.human_ids) && task.human_ids.includes(user.id))) {
           return res.status(403).json({ error: 'Not authorized to view this task' });
         }
         // Add computed fields, strip internal fields
         const spots = task.spots_filled || (Array.isArray(task.human_ids) ? task.human_ids.length : 0);
-        const { creator_id: _c, human_ids: _h, ...safeTask } = task;
+        const { agent_id: _a, human_ids: _h, ...safeTask } = task;
         res.json({
           ...safeTask,
           spots_filled: spots,
@@ -5073,8 +5073,12 @@ app.post('/api/mcp', async (req, res) => {
       case 'create_adhoc_task': {
         // Create a public posting for humans to apply to
         if (!params.title) return res.status(400).json({ error: 'title is required' });
+        if (params.title.length > 200) return res.status(400).json({ error: 'Title must be 200 characters or less' });
+        if (params.description && params.description.length > 5000) return res.status(400).json({ error: 'Description must be 5000 characters or less' });
         const id = uuidv4();
         const budgetAmount = params.budget || params.budget_max || params.budget_min || 50;
+        if (budgetAmount < 5) return res.status(400).json({ error: 'Budget must be at least $5' });
+        if (budgetAmount > 100000) return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
         const taskType = params.task_type === 'open' ? 'open' : 'direct';
         const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(params.quantity) || 1) : 1;
 
@@ -5560,6 +5564,35 @@ app.post('/api/mcp', async (req, res) => {
           ? Math.round(hourly_rate * duration_hours * 100) / 100
           : 50);
 
+        // Validate budget bounds (same rules as POST /api/tasks)
+        if (budgetAmount < 5) return res.status(400).json({ error: 'Budget must be at least $5' });
+        if (budgetAmount > 100000) return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
+
+        // If assigning a human directly, verify agent has payment method on file
+        if (humanId) {
+          if (!user.stripe_customer_id) {
+            return res.status(402).json({
+              error: 'No payment method on file',
+              code: 'card_required',
+              message: 'You must link a payment card before hiring. Add a card in your payment settings.'
+            });
+          }
+          let cards = [];
+          try {
+            const { listPaymentMethods } = require('./backend/services/stripeService');
+            cards = await listPaymentMethods(user.stripe_customer_id);
+          } catch (e) {
+            console.error('[MCP DirectHire] Failed to list payment methods:', e.message);
+          }
+          if (cards.length === 0) {
+            return res.status(402).json({
+              error: 'No payment method on file',
+              code: 'card_required',
+              message: 'You must link a payment card before hiring. Add a card in your payment settings.'
+            });
+          }
+        }
+
         const taskId = uuidv4();
         const { data: task, error } = await supabase
           .from('tasks')
@@ -5573,8 +5606,9 @@ app.post('/api/mcp', async (req, res) => {
             location: location || null,
             budget: budgetAmount,
             escrow_amount: budgetAmount,
-            status: humanId ? 'assigned' : 'open',
-            escrow_status: humanId ? 'pending_deposit' : 'awaiting_worker',
+            status: humanId ? 'pending_acceptance' : 'open',
+            escrow_status: humanId ? 'unfunded' : 'awaiting_worker',
+            payment_method: 'stripe',
             task_type: 'direct',
             human_ids: humanId ? [humanId] : [],
             created_at: new Date().toISOString()
@@ -5583,12 +5617,24 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (error) throw error;
+
+        // Notify the human about the offer
+        if (humanId) {
+          await createNotification(
+            humanId,
+            'task_offer',
+            'New Task Offer',
+            `You've received a task offer: "${title}". Review and accept to begin.`,
+            `/tasks/${taskId}`
+          );
+        }
+
         res.json({
           booking_id: task.id,
           task_id: task.id,
           status: task.status,
           budget: budgetAmount,
-          message: humanId ? 'Booking created and human assigned' : 'Booking created'
+          message: humanId ? 'Booking created — human must accept before payment is charged' : 'Booking created'
         });
         break;
       }
@@ -6577,8 +6623,15 @@ app.post('/api/tasks/create', async (req, res) => {
 
   const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity } = req.body;
 
+  // Input validation (match POST /api/tasks rules)
+  if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
+  if (title.trim().length > 200) return res.status(400).json({ error: 'Title must be 200 characters or less' });
+  if (description && description.length > 5000) return res.status(400).json({ error: 'Description must be 5000 characters or less' });
+  if (!budget || parseFloat(budget) < 5) return res.status(400).json({ error: 'Budget must be at least $5' });
+  if (parseFloat(budget) > 100000) return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
+
   const id = uuidv4();
-  const budgetAmount = budget || 50;
+  const budgetAmount = parseFloat(budget) || 50;
   const taskType = task_type === 'open' ? 'open' : 'direct';
   const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(quantity) || 1) : 1;
   const skillsArray = Array.isArray(required_skills) ? required_skills : [];
@@ -7330,7 +7383,20 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     return res.json({ success: true, status: 'in_progress', escrow_status: 'deposited' });
   }
 
-  // Accept from open status (original flow — human browsing open tasks)
+  // Accept from open status — human must have an accepted application before they can start work.
+  // Without this check, any human could self-assign to any open task without agent approval.
+  const { data: acceptedApp } = await supabase
+    .from('task_applications')
+    .select('id')
+    .eq('task_id', id)
+    .eq('human_id', user.id)
+    .eq('status', 'accepted')
+    .single();
+
+  if (!acceptedApp) {
+    return res.status(403).json({ error: 'You must have an accepted application before you can start this task' });
+  }
+
   const { data: updatedTask, error } = await supabase
     .from('tasks')
     .update({
@@ -7522,14 +7588,45 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     });
   }
 
+  // Refund Stripe charge if escrow was deposited
+  let refundResult = null;
+  if (task.escrow_status === 'deposited' || task.escrow_status === 'held') {
+    try {
+      const { data: fullTask } = await supabase
+        .from('tasks')
+        .select('stripe_payment_intent_id')
+        .eq('id', id)
+        .single();
+
+      if (fullTask?.stripe_payment_intent_id) {
+        const { refundPayment } = require('./backend/services/stripeService');
+        refundResult = await refundPayment(supabase, id, 'requested_by_customer');
+        console.log(`[Cancel] Refunded task ${id}: ${JSON.stringify(refundResult)}`);
+      }
+    } catch (refundErr) {
+      console.error(`[Cancel] Refund failed for task ${id}:`, refundErr.message);
+      // Still proceed with cancellation — admin can manually refund
+    }
+  }
+
   await supabase
     .from('tasks')
     .update({
       status: 'cancelled',
+      escrow_status: refundResult ? 'refunded' : task.escrow_status,
       updated_at: new Date().toISOString()
     })
     .eq('id', id)
     .in('status', cancellableStatuses);
+
+  // Cancel any pending transactions for the human
+  if (task.human_id) {
+    await supabase
+      .from('pending_transactions')
+      .update({ status: 'cancelled', notes: 'Task cancelled by agent' })
+      .eq('task_id', id)
+      .in('status', ['pending', 'available']);
+  }
 
   // Notify the assigned human if one exists
   if (task.human_id) {
@@ -7542,7 +7639,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     );
   }
 
-  res.json({ success: true });
+  res.json({ success: true, refunded: !!refundResult });
 });
 
 // ============================================

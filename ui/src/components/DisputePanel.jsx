@@ -267,7 +267,7 @@ export default function DisputePanel({ user }) {
                       <div>
                         <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Evidence</p>
                         <div className="space-y-1">
-                          {dispute.evidence_urls.map((url, i) => (
+                          {dispute.evidence_urls.filter(url => /^https?:\/\//i.test(url)).map((url, i) => (
                             <a
                               key={i}
                               href={url}

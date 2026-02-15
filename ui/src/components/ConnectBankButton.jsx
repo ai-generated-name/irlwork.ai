@@ -74,7 +74,7 @@ export default function ConnectBankButton({ user, compact = false }) {
       }
 
       const data = await res.json();
-      window.open(data.dashboard_url, '_blank');
+      window.open(data.dashboard_url, '_blank', 'noopener,noreferrer');
     } catch (e) {
       console.error('Dashboard link error:', e);
       setError(e.message);
