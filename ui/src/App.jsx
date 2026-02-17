@@ -1359,7 +1359,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     requirements: '',
     required_skills: [],
     skillInput: '',
-    task_type: 'direct',
+    task_type: 'open',
     quantity: 1,
     is_anonymous: false
   })
@@ -1922,8 +1922,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
           requirements: taskForm.requirements.trim() || null,
           required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
-          task_type: taskForm.task_type,
-          quantity: taskForm.task_type === 'open' ? parseInt(taskForm.quantity) || 1 : 1,
+          task_type: 'open',
+          quantity: 1,
           is_anonymous: taskForm.is_anonymous
         })
       })
@@ -1933,7 +1933,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'direct', quantity: 1, is_anonymous: false })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'open', quantity: 1, is_anonymous: false })
         // Close create form and show posted tasks list
         setTasksSubTab('tasks')
         setActiveTab('posted')
@@ -2656,56 +2656,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           </div>
                         </div>
 
-                        <div className="dashboard-v4-form-group">
-                          <label className="dashboard-v4-form-label">Task Type</label>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                              type="button"
-                              onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'direct', quantity: 1 }))}
-                              style={{
-                                flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '2px solid',
-                                borderColor: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'rgba(26,26,26,0.1)',
-                                background: taskForm.task_type === 'direct' ? 'rgba(234, 88, 12, 0.05)' : 'transparent',
-                                color: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'var(--text-secondary)',
-                                fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
-                              }}
-                            >
-                              Direct Hire
-                              <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>1 person</div>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'bounty' }))}
-                              style={{
-                                flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '2px solid',
-                                borderColor: taskForm.task_type === 'bounty' ? '#7C3AED' : 'rgba(26,26,26,0.1)',
-                                background: taskForm.task_type === 'bounty' ? 'rgba(139, 92, 246, 0.05)' : 'transparent',
-                                color: taskForm.task_type === 'bounty' ? '#7C3AED' : 'var(--text-secondary)',
-                                fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
-                              }}
-                            >
-                              Open Bounty
-                              <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Multiple people</div>
-                            </button>
-                          </div>
-                        </div>
-
-                        {taskForm.task_type === 'bounty' && (
-                          <div className="dashboard-v4-form-group">
-                            <label className="dashboard-v4-form-label">How many people needed?</label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 5"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.quantity}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
-                              min="1"
-                              max="100"
-                              style={{ maxWidth: 120 }}
-                            />
-                          </div>
-                        )}
-
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
                           <label style={{
                             display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
@@ -2732,57 +2682,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             Post anonymously
                           </label>
                         </div>
-
-                    {/* Task Type: Direct Hire vs Open */}
-                    <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Task Type</label>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          type="button"
-                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'direct', quantity: 1 }))}
-                          style={{
-                            flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '2px solid',
-                            borderColor: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'rgba(26,26,26,0.1)',
-                            background: taskForm.task_type === 'direct' ? 'rgba(234, 88, 12, 0.05)' : 'transparent',
-                            color: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'var(--text-secondary)',
-                            fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
-                          }}
-                        >
-                          Direct Hire
-                          <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Hire 1 person for this task</div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'open' }))}
-                          style={{
-                            flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '2px solid',
-                            borderColor: taskForm.task_type === 'open' ? '#7C3AED' : 'rgba(26,26,26,0.1)',
-                            background: taskForm.task_type === 'open' ? 'rgba(139, 92, 246, 0.05)' : 'transparent',
-                            color: taskForm.task_type === 'open' ? '#7C3AED' : 'var(--text-secondary)',
-                            fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
-                          }}
-                        >
-                          Open Posting
-                          <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Open to multiple people</div>
-                        </button>
-                      </div>
-                    </div>
-                    {/* Quantity (only for open) */}
-                    {taskForm.task_type === 'open' && (
-                      <div className="dashboard-v4-form-group">
-                        <label className="dashboard-v4-form-label">How many people needed?</label>
-                        <input
-                          type="number"
-                          placeholder="e.g. 5"
-                          className="dashboard-v4-form-input"
-                          value={taskForm.quantity}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
-                          min="1"
-                          max="100"
-                          style={{ maxWidth: 120 }}
-                        />
-                      </div>
-                    )}
 
                         {!taskForm.is_remote && (
                           <div className="dashboard-v4-form-group">
