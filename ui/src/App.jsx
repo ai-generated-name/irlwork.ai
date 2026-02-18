@@ -6,7 +6,7 @@ import {
   Star, CalendarDays, Search, ChevronDown, Upload, Bell,
   FileText, CheckCircle, XCircle, Landmark, Scale, Ban, ArrowDownLeft,
   Shield, Hourglass, Bot, FolderOpen, RefreshCw,
-  Monitor, Sparkles, AlertTriangle, KeyRound
+  Monitor, Sparkles, AlertTriangle, KeyRound, Mail
 } from 'lucide-react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
@@ -674,6 +674,7 @@ function AuthPage({ onLogin, onNavigate }) {
   const [errorModal, setErrorModal] = useState(null)
   const [form, setForm] = useState({ email: '', password: '', name: '' })
   const [showPassword, setShowPassword] = useState(false)
+  const [signupSuccess, setSignupSuccess] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -687,19 +688,30 @@ function AuthPage({ onLogin, onNavigate }) {
     }
 
     try {
-      const { error } = isLogin
+      const { data, error } = isLogin
         ? await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
         : await supabase.auth.signUp({
             email: form.email,
             password: form.password,
-            options: { data: { name: form.name } }
+            options: {
+              data: { name: form.name },
+              emailRedirectTo: window.location.origin + '/auth'
+            }
           })
 
       if (error) throw error
       trackEvent(isLogin ? 'login' : 'sign_up', { method: 'email' })
-      // Don't navigate here — the parent App's onAuthStateChange will detect
-      // the new session and redirect from /auth to /dashboard automatically.
-      // This avoids a full page reload on mobile.
+
+      // For signups: Supabase may not return a session if email confirmation is enabled.
+      // In that case, show a confirmation message instead of navigating to dashboard
+      // (which would just bounce back to /auth since there's no authenticated session).
+      if (!isLogin && !data.session) {
+        setSignupSuccess(true)
+        return
+      }
+
+      // Login or signup with immediate session — navigate to dashboard.
+      // The parent App's onAuthStateChange will detect the session and handle redirects.
       const params = new URLSearchParams(window.location.search)
       const returnTo = params.get('returnTo')
       if (onNavigate) onNavigate(returnTo && decodeURIComponent(returnTo).startsWith('/dashboard') ? decodeURIComponent(returnTo) : '/dashboard')
@@ -847,6 +859,38 @@ function AuthPage({ onLogin, onNavigate }) {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show email confirmation screen after successful signup (when email verification is required)
+  if (signupSuccess) {
+    return (
+      <div className="auth-v4">
+        <div className="auth-v4-container">
+          <a href="/" className="auth-v4-logo">
+            <div className="logo-mark-v4">irl</div>
+            <span className="logo-name-v4">irlwork.ai</span>
+          </a>
+          <div className="auth-v4-card" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>
+              <Mail size={48} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+            </div>
+            <h1 className="auth-v4-title">Check your email</h1>
+            <p className="auth-v4-subtitle" style={{ marginBottom: 24 }}>
+              We sent a confirmation link to <strong>{form.email}</strong>. Click the link to verify your email and get started.
+            </p>
+            <button
+              className="auth-v4-submit"
+              onClick={() => { setSignupSuccess(false); setIsLogin(true); setError('') }}
+            >
+              Back to Sign In
+            </button>
+          </div>
+          <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+            ← Back to home
+          </button>
         </div>
       </div>
     )
