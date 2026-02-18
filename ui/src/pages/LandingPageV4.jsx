@@ -496,12 +496,12 @@ export default function LandingPageV4() {
             </button>
             <button className="btn-v4 btn-v4-secondary btn-v4-lg hero-cta-secondary" onClick={() => navigate('/connect-agent')}>
               <Terminal size={18} />
-              API Docs
+              Connect your Agent
             </button>
           </div>
 
           <a href="/connect-agent" className="hero-api-link-mobile">
-            Building an AI agent? View API docs <ArrowRight size={14} />
+            Have an AI Agent? Connect here <ArrowRight size={14} />
           </a>
 
           <AgentCompatibilityBanner />
