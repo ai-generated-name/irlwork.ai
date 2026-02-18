@@ -2158,6 +2158,18 @@
   color: var(--text-secondary);
 }
 
+.faq-link {
+  color: var(--orange-600);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--duration-fast) var(--ease-smooth);
+}
+
+.faq-link:hover {
+  color: var(--orange-500);
+  text-decoration: underline;
+}
+
 /* ─── FOOTER ─── */
 .footer-v4 {
   background: var(--bg-dark);
