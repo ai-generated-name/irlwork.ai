@@ -176,34 +176,34 @@ function GlowLine() {
 /* ─── SVG icon graphics ─── */
 function BridgeGraphic() {
   return (
-    <svg viewBox="0 0 400 120" fill="none" style={{ width: '100%', maxWidth: '400px', margin: '0 auto', display: 'block' }}>
+    <svg viewBox="0 0 500 160" fill="none" style={{ width: '100%', maxWidth: '620px', margin: '0 auto', display: 'block' }}>
       {/* Left node — AI */}
-      <circle cx="60" cy="60" r="28" fill="rgba(244,132,95,0.1)" stroke="rgba(244,132,95,0.5)" strokeWidth="1.5">
-        <animate attributeName="r" values="28;31;28" dur="3s" repeatCount="indefinite" />
+      <circle cx="75" cy="80" r="38" fill="rgba(244,132,95,0.1)" stroke="rgba(244,132,95,0.5)" strokeWidth="2">
+        <animate attributeName="r" values="38;42;38" dur="3s" repeatCount="indefinite" />
       </circle>
-      <text x="60" y="56" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="10" fontFamily="JetBrains Mono, monospace" fontWeight="600">AI</text>
-      <text x="60" y="70" textAnchor="middle" fill="rgba(26,26,26,0.4)" fontSize="8" fontFamily="DM Sans, sans-serif">DIGITAL</text>
+      <text x="75" y="74" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="16" fontFamily="JetBrains Mono, monospace" fontWeight="700">AI</text>
+      <text x="75" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="DM Sans, sans-serif">DIGITAL</text>
       {/* Right node — Human */}
-      <circle cx="340" cy="60" r="28" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.5)" strokeWidth="1.5">
-        <animate attributeName="r" values="28;31;28" dur="3s" begin="1.5s" repeatCount="indefinite" />
+      <circle cx="425" cy="80" r="38" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.5)" strokeWidth="2">
+        <animate attributeName="r" values="38;42;38" dur="3s" begin="1.5s" repeatCount="indefinite" />
       </circle>
-      <text x="340" y="56" textAnchor="middle" fill="rgba(251,191,36,0.9)" fontSize="10" fontFamily="JetBrains Mono, monospace" fontWeight="600">IRL</text>
-      <text x="340" y="70" textAnchor="middle" fill="rgba(26,26,26,0.4)" fontSize="8" fontFamily="DM Sans, sans-serif">PHYSICAL</text>
+      <text x="425" y="74" textAnchor="middle" fill="rgba(251,191,36,0.9)" fontSize="16" fontFamily="JetBrains Mono, monospace" fontWeight="700">IRL</text>
+      <text x="425" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="DM Sans, sans-serif">PHYSICAL</text>
       {/* Bridge */}
-      <line x1="95" y1="60" x2="305" y2="60" stroke="url(#bridgeGrad)" strokeWidth="1" strokeDasharray="6 4">
-        <animate attributeName="stroke-dashoffset" values="0;-20" dur="2s" repeatCount="indefinite" />
+      <line x1="120" y1="80" x2="380" y2="80" stroke="url(#bridgeGrad)" strokeWidth="1.5" strokeDasharray="8 5">
+        <animate attributeName="stroke-dashoffset" values="0;-26" dur="2s" repeatCount="indefinite" />
       </line>
       {/* Moving dot */}
-      <circle r="3" fill="var(--orange-500)">
-        <animate attributeName="cx" values="100;300;100" dur="4s" repeatCount="indefinite" />
-        <animate attributeName="cy" values="60;60;60" dur="4s" repeatCount="indefinite" />
+      <circle r="4" fill="var(--orange-500)">
+        <animate attributeName="cx" values="126;374;126" dur="4s" repeatCount="indefinite" />
+        <animate attributeName="cy" values="80;80;80" dur="4s" repeatCount="indefinite" />
         <animate attributeName="opacity" values="1;0.4;1" dur="4s" repeatCount="indefinite" />
       </circle>
       {/* Center label */}
-      <rect x="160" y="42" width="80" height="24" rx="12" fill="rgba(244,132,95,0.15)" stroke="rgba(244,132,95,0.3)" strokeWidth="0.5" />
-      <text x="200" y="58" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="8" fontFamily="JetBrains Mono, monospace">irlwork.ai</text>
+      <rect x="205" y="62" width="90" height="28" rx="14" fill="rgba(244,132,95,0.15)" stroke="rgba(244,132,95,0.3)" strokeWidth="0.75" />
+      <text x="250" y="81" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="11" fontFamily="JetBrains Mono, monospace">irlwork.ai</text>
       <defs>
-        <linearGradient id="bridgeGrad" x1="95" y1="0" x2="305" y2="0" gradientUnits="userSpaceOnUse">
+        <linearGradient id="bridgeGrad" x1="120" y1="0" x2="380" y2="0" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="rgba(244,132,95,0.6)" />
           <stop offset="50%" stopColor="rgba(251,191,36,0.6)" />
           <stop offset="100%" stopColor="rgba(251,191,36,0.6)" />
@@ -215,29 +215,29 @@ function BridgeGraphic() {
 
 function ConvergenceGraphic() {
   return (
-    <svg viewBox="0 0 320 200" fill="none" style={{ width: '100%', maxWidth: '320px', margin: '0 auto 32px', display: 'block' }}>
+    <svg viewBox="0 0 460 260" fill="none" style={{ width: '100%', maxWidth: '560px', margin: '0 auto 40px', display: 'block' }}>
       {/* Three input streams */}
-      <path d="M40 30 Q160 30 160 100" stroke="rgba(244,132,95,0.4)" strokeWidth="1.5" fill="none">
-        <animate attributeName="stroke-dashoffset" values="200;0" dur="3s" repeatCount="indefinite" />
+      <path d="M60 40 Q220 40 220 130" stroke="rgba(244,132,95,0.45)" strokeWidth="2" fill="none">
+        <animate attributeName="stroke-dashoffset" values="250;0" dur="3s" repeatCount="indefinite" />
       </path>
-      <path d="M40 100 L160 100" stroke="rgba(251,191,36,0.4)" strokeWidth="1.5" fill="none">
-        <animate attributeName="stroke-dashoffset" values="200;0" dur="3s" begin="0.3s" repeatCount="indefinite" />
+      <path d="M60 130 L220 130" stroke="rgba(251,191,36,0.45)" strokeWidth="2" fill="none">
+        <animate attributeName="stroke-dashoffset" values="250;0" dur="3s" begin="0.3s" repeatCount="indefinite" />
       </path>
-      <path d="M40 170 Q160 170 160 100" stroke="rgba(16,185,129,0.4)" strokeWidth="1.5" fill="none">
-        <animate attributeName="stroke-dashoffset" values="200;0" dur="3s" begin="0.6s" repeatCount="indefinite" />
+      <path d="M60 220 Q220 220 220 130" stroke="rgba(16,185,129,0.45)" strokeWidth="2" fill="none">
+        <animate attributeName="stroke-dashoffset" values="250;0" dur="3s" begin="0.6s" repeatCount="indefinite" />
       </path>
       {/* Labels */}
-      <text x="20" y="34" fill="rgba(244,132,95,0.8)" fontSize="9" fontFamily="JetBrains Mono, monospace">AGENTS</text>
-      <text x="20" y="104" fill="rgba(251,191,36,0.8)" fontSize="9" fontFamily="JetBrains Mono, monospace">PAYMENTS</text>
-      <text x="20" y="174" fill="rgba(16,185,129,0.8)" fontSize="9" fontFamily="JetBrains Mono, monospace">GAP</text>
+      <text x="20" y="45" fill="rgba(244,132,95,0.85)" fontSize="13" fontFamily="JetBrains Mono, monospace" fontWeight="600">AGENTS</text>
+      <text x="20" y="135" fill="rgba(251,191,36,0.85)" fontSize="13" fontFamily="JetBrains Mono, monospace" fontWeight="600">PAYMENTS</text>
+      <text x="20" y="225" fill="rgba(16,185,129,0.85)" fontSize="13" fontFamily="JetBrains Mono, monospace" fontWeight="600">GAP</text>
       {/* Center convergence */}
-      <circle cx="160" cy="100" r="20" fill="rgba(244,132,95,0.1)" stroke="rgba(244,132,95,0.5)" strokeWidth="1">
-        <animate attributeName="r" values="20;24;20" dur="2s" repeatCount="indefinite" />
+      <circle cx="220" cy="130" r="28" fill="rgba(244,132,95,0.1)" stroke="rgba(244,132,95,0.5)" strokeWidth="1.5">
+        <animate attributeName="r" values="28;33;28" dur="2s" repeatCount="indefinite" />
       </circle>
       {/* Output */}
-      <path d="M180 100 L280 100" stroke="rgba(244,132,95,0.5)" strokeWidth="2" fill="none" />
-      <polygon points="285,100 275,94 275,106" fill="rgba(244,132,95,0.7)" />
-      <text x="240" y="90" fill="rgba(26,26,26,0.45)" fontSize="8" fontFamily="JetBrains Mono, monospace">OPPORTUNITY</text>
+      <path d="M250 130 L390 130" stroke="rgba(244,132,95,0.5)" strokeWidth="2.5" fill="none" />
+      <polygon points="398,130 385,122 385,138" fill="rgba(244,132,95,0.7)" />
+      <text x="320" y="118" fill="rgba(26,26,26,0.5)" fontSize="12" fontFamily="JetBrains Mono, monospace" fontWeight="600">OPPORTUNITY</text>
     </svg>
   )
 }
@@ -465,12 +465,7 @@ export default function ThesisPage() {
               fontWeight: 800,
               lineHeight: 1.05,
               marginBottom: '28px',
-              background: 'linear-gradient(135deg, var(--text-primary) 0%, var(--orange-600) 50%, var(--orange-400) 100%)',
-              backgroundSize: '200% auto',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              animation: 'shimmer 6s linear infinite',
+              color: 'var(--text-primary)',
             }}>
               The Physical Layer<br />of the AI Economy
             </h1>
