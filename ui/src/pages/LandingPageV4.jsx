@@ -45,6 +45,74 @@ function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
   return <span ref={countRef}>{count}{suffix}</span>
 }
 
+// Agent brand icons as clean inline SVGs
+function ClaudeCodeIcon({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16.98 5.52L14.02 13.02L11.52 7.02L5.52 9.52L8.48 17.02L11.52 19.02L18.48 16.02L16.98 5.52Z" fill="#D97757"/>
+      <path d="M11.52 7.02L5.52 9.52L8.48 17.02L11.52 19.02L14.02 13.02L11.52 7.02Z" fill="#E8956A"/>
+    </svg>
+  )
+}
+
+function CodexIcon({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="18" height="18" rx="4" fill="#0A0A0A"/>
+      <path d="M8 12h8M12 8v8" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
+function OpenClawIcon({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="9" fill="#6366F1"/>
+      <path d="M8.5 10.5C8.5 10.5 9.5 8 12 8C14.5 8 15.5 10.5 15.5 10.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M9 14.5C9 14.5 10 16 12 16C14 16 15 14.5 15 14.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="9.5" cy="12" r="1" fill="#fff"/>
+      <circle cx="14.5" cy="12" r="1" fill="#fff"/>
+    </svg>
+  )
+}
+
+function MCPGenericIcon({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="6" width="18" height="12" rx="3" stroke="#8A8A8A" strokeWidth="1.5"/>
+      <circle cx="8" cy="12" r="1.5" fill="#8A8A8A"/>
+      <circle cx="12" cy="12" r="1.5" fill="#8A8A8A"/>
+      <circle cx="16" cy="12" r="1.5" fill="#8A8A8A"/>
+    </svg>
+  )
+}
+
+function AgentCompatibilityBanner() {
+  const agents = [
+    { name: 'Claude Code', icon: ClaudeCodeIcon },
+    { name: 'Codex', icon: CodexIcon },
+    { name: 'OpenClaw', icon: OpenClawIcon },
+  ]
+
+  return (
+    <div className="agent-compat-banner">
+      <span className="agent-compat-label">Works with</span>
+      <div className="agent-compat-logos">
+        {agents.map(({ name, icon: Icon }) => (
+          <div key={name} className="agent-compat-item">
+            <Icon size={18} />
+            <span>{name}</span>
+          </div>
+        ))}
+        <div className="agent-compat-item agent-compat-more">
+          <MCPGenericIcon size={18} />
+          <span>Any MCP Agent</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Hero Stats Component with live data
 function HeroStats() {
   const [stats, setStats] = useState({ humans: null, tasks: null, cities: null })
@@ -435,6 +503,8 @@ export default function LandingPageV4() {
           <a href="/connect-agent" className="hero-api-link-mobile">
             Building an AI agent? View API docs <ArrowRight size={14} />
           </a>
+
+          <AgentCompatibilityBanner />
 
           <HeroStats />
         </div>

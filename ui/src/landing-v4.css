@@ -433,6 +433,63 @@
   opacity: 0.3;
 }
 
+/* ─── AGENT COMPATIBILITY BANNER ─── */
+.agent-compat-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-1);
+}
+
+.agent-compat-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.agent-compat-logos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.agent-compat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(26, 26, 26, 0.08);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.agent-compat-item:hover {
+  border-color: rgba(244, 132, 95, 0.3);
+  box-shadow: 0 1px 4px rgba(244, 132, 95, 0.08);
+}
+
+.agent-compat-item svg {
+  flex-shrink: 0;
+}
+
+.agent-compat-more {
+  border-style: dashed;
+  color: var(--text-tertiary);
+}
+
 /* ─── SOCIAL PROOF BANNER ─── */
 .social-proof-banner {
   background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(244, 132, 95, 0.05) 100%);
@@ -2492,6 +2549,29 @@
 
   .hero-api-link-mobile:hover svg {
     transform: translateX(3px);
+  }
+
+  /* Agent compatibility banner - compact on mobile */
+  .agent-compat-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding-bottom: var(--space-4);
+  }
+
+  .agent-compat-logos {
+    gap: 5px;
+  }
+
+  .agent-compat-item {
+    font-size: 11px;
+    padding: 3px 8px;
+    gap: 5px;
+  }
+
+  .agent-compat-item svg {
+    width: 16px;
+    height: 16px;
   }
 
   /* Hide stats inside hero content on mobile (shown in mobile section instead) */
