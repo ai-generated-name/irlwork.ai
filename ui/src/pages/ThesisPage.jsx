@@ -130,7 +130,7 @@ function ParticleField() {
         if (p.y > H()) p.y = 0
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(244, 132, 95, ${p.alpha})`
+        ctx.fillStyle = `rgba(244, 132, 95, ${p.alpha * 0.7})`
         ctx.fill()
       })
       // Draw connections
@@ -143,7 +143,7 @@ function ParticleField() {
             ctx.beginPath()
             ctx.moveTo(particles[i].x, particles[i].y)
             ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.strokeStyle = `rgba(244, 132, 95, ${0.06 * (1 - dist / 120)})`
+            ctx.strokeStyle = `rgba(244, 132, 95, ${0.08 * (1 - dist / 120)})`
             ctx.lineWidth = 0.5
             ctx.stroke()
           }
@@ -162,13 +162,13 @@ function ParticleField() {
 function GlowLine() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '64px 0' }}>
-      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(244,132,95,0.4), transparent)' }} />
+      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(244,132,95,0.3), transparent)' }} />
       <div style={{
         width: '6px', height: '6px', borderRadius: '50%',
         background: 'var(--orange-500)',
-        boxShadow: '0 0 12px rgba(244,132,95,0.6)',
+        boxShadow: '0 0 10px rgba(244,132,95,0.4)',
       }} />
-      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(244,132,95,0.4), transparent)' }} />
+      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(244,132,95,0.3), transparent)' }} />
     </div>
   )
 }
@@ -182,13 +182,13 @@ function BridgeGraphic() {
         <animate attributeName="r" values="28;31;28" dur="3s" repeatCount="indefinite" />
       </circle>
       <text x="60" y="56" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="10" fontFamily="JetBrains Mono, monospace" fontWeight="600">AI</text>
-      <text x="60" y="70" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8" fontFamily="DM Sans, sans-serif">DIGITAL</text>
+      <text x="60" y="70" textAnchor="middle" fill="rgba(26,26,26,0.4)" fontSize="8" fontFamily="DM Sans, sans-serif">DIGITAL</text>
       {/* Right node — Human */}
       <circle cx="340" cy="60" r="28" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.5)" strokeWidth="1.5">
         <animate attributeName="r" values="28;31;28" dur="3s" begin="1.5s" repeatCount="indefinite" />
       </circle>
       <text x="340" y="56" textAnchor="middle" fill="rgba(251,191,36,0.9)" fontSize="10" fontFamily="JetBrains Mono, monospace" fontWeight="600">IRL</text>
-      <text x="340" y="70" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8" fontFamily="DM Sans, sans-serif">PHYSICAL</text>
+      <text x="340" y="70" textAnchor="middle" fill="rgba(26,26,26,0.4)" fontSize="8" fontFamily="DM Sans, sans-serif">PHYSICAL</text>
       {/* Bridge */}
       <line x1="95" y1="60" x2="305" y2="60" stroke="url(#bridgeGrad)" strokeWidth="1" strokeDasharray="6 4">
         <animate attributeName="stroke-dashoffset" values="0;-20" dur="2s" repeatCount="indefinite" />
@@ -237,7 +237,7 @@ function ConvergenceGraphic() {
       {/* Output */}
       <path d="M180 100 L280 100" stroke="rgba(244,132,95,0.5)" strokeWidth="2" fill="none" />
       <polygon points="285,100 275,94 275,106" fill="rgba(244,132,95,0.7)" />
-      <text x="240" y="90" fill="rgba(255,255,255,0.5)" fontSize="8" fontFamily="JetBrains Mono, monospace">OPPORTUNITY</text>
+      <text x="240" y="90" fill="rgba(26,26,26,0.45)" fontSize="8" fontFamily="JetBrains Mono, monospace">OPPORTUNITY</text>
     </svg>
   )
 }
@@ -266,7 +266,7 @@ function TimelineItem({ label, color, children, isLast = false }) {
         }}>{label}</span>
         <p style={{
           fontSize: '16px',
-          color: 'rgba(255,255,255,0.7)',
+          color: 'var(--text-secondary)',
           lineHeight: 1.8,
           margin: 0,
         }}>{children}</p>
@@ -295,8 +295,8 @@ export default function ThesisPage() {
         100% { transform: translate(10px, -10px) scale(1.02); }
       }
       @keyframes pulseGlow {
-        0%, 100% { box-shadow: 0 0 20px rgba(244,132,95,0.2); }
-        50% { box-shadow: 0 0 40px rgba(244,132,95,0.4); }
+        0%, 100% { box-shadow: 0 0 20px rgba(244,132,95,0.08); }
+        50% { box-shadow: 0 0 40px rgba(244,132,95,0.18); }
       }
       @keyframes shimmer {
         0% { background-position: -200% center; }
@@ -311,8 +311,8 @@ export default function ThesisPage() {
       }
       .thesis-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 12px 40px rgba(244,132,95,0.15);
-        border-color: rgba(244,132,95,0.3) !important;
+        box-shadow: 0 12px 40px rgba(244,132,95,0.12);
+        border-color: rgba(244,132,95,0.35) !important;
       }
       .thesis-stat-card {
         transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -330,21 +330,21 @@ export default function ThesisPage() {
     fontFamily: 'var(--font-display)',
     fontSize: 'clamp(26px, 4.5vw, 36px)',
     fontWeight: 700,
-    color: '#fff',
+    color: 'var(--text-primary)',
     lineHeight: 1.2,
     marginBottom: '24px',
   }
 
   const bodyText = {
     fontSize: '17px',
-    color: 'rgba(255,255,255,0.65)',
+    color: 'var(--text-secondary)',
     lineHeight: 1.9,
     marginBottom: '24px',
   }
 
   const emphasisText = {
     fontSize: '21px',
-    color: '#fff',
+    color: 'var(--text-primary)',
     lineHeight: 1.6,
     fontWeight: 600,
     marginBottom: '24px',
@@ -355,9 +355,9 @@ export default function ThesisPage() {
     <>
       <div style={{
         minHeight: '100vh',
-        background: '#0A0A0B',
+        background: 'var(--bg-primary)',
         fontFamily: 'var(--font-body)',
-        color: '#fff',
+        color: 'var(--text-primary)',
         overflow: 'hidden',
         position: 'relative',
       }}>
@@ -366,7 +366,7 @@ export default function ThesisPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          backgroundImage: 'linear-gradient(rgba(244,132,95,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(244,132,95,0.04) 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(rgba(26,26,26,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(26,26,26,0.03) 1px, transparent 1px)',
           backgroundSize: '60px 60px',
           pointerEvents: 'none',
           zIndex: 0,
@@ -375,9 +375,9 @@ export default function ThesisPage() {
 
         {/* ─── Floating orbs ─── */}
         <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
-          <GradientOrb size={600} top="-200px" right="-150px" color1="rgba(244,132,95,0.3)" color2="rgba(244,132,95,0)" delay={0} duration={25} />
-          <GradientOrb size={500} top="40%" left="-200px" color1="rgba(251,191,36,0.2)" color2="rgba(251,191,36,0)" delay={3} duration={20} />
-          <GradientOrb size={400} bottom="-100px" right="20%" color1="rgba(16,185,129,0.15)" color2="rgba(16,185,129,0)" delay={6} duration={22} />
+          <GradientOrb size={600} top="-200px" right="-150px" color1="rgba(244,132,95,0.15)" color2="rgba(244,132,95,0)" delay={0} duration={25} />
+          <GradientOrb size={500} top="40%" left="-200px" color1="rgba(251,191,36,0.1)" color2="rgba(251,191,36,0)" delay={3} duration={20} />
+          <GradientOrb size={400} bottom="-100px" right="20%" color1="rgba(16,185,129,0.08)" color2="rgba(16,185,129,0)" delay={6} duration={22} />
         </div>
 
         {/* ─── Nav ─── */}
@@ -396,13 +396,13 @@ export default function ThesisPage() {
             alignItems: 'center',
             gap: '8px',
             textDecoration: 'none',
-            color: 'rgba(255,255,255,0.5)',
+            color: 'var(--text-secondary)',
             fontSize: '14px',
             fontWeight: 500,
             transition: 'color 0.2s',
           }}
-            onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.9)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
           >
             <ArrowLeft size={16} />
             Back to Home
@@ -410,7 +410,7 @@ export default function ThesisPage() {
           <div style={{
             fontFamily: 'var(--font-mono)',
             fontSize: '11px',
-            color: 'rgba(244,132,95,0.5)',
+            color: 'var(--text-tertiary)',
             letterSpacing: '0.05em',
           }}>
             FEB 2026
@@ -453,7 +453,7 @@ export default function ThesisPage() {
                 fontWeight: 600,
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
-                color: 'var(--orange-400)',
+                color: 'var(--orange-700)',
               }}>Our Thesis</span>
             </div>
           </Reveal>
@@ -465,7 +465,7 @@ export default function ThesisPage() {
               fontWeight: 800,
               lineHeight: 1.05,
               marginBottom: '28px',
-              background: 'linear-gradient(135deg, #fff 0%, rgba(244,132,95,1) 50%, rgba(251,191,36,1) 100%)',
+              background: 'linear-gradient(135deg, var(--text-primary) 0%, var(--orange-600) 50%, var(--orange-400) 100%)',
               backgroundSize: '200% auto',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -479,7 +479,7 @@ export default function ThesisPage() {
           <Reveal delay={0.2}>
             <p style={{
               fontSize: '18px',
-              color: 'rgba(255,255,255,0.5)',
+              color: 'var(--text-secondary)',
               lineHeight: 1.7,
               maxWidth: '540px',
               margin: '0 auto 48px',
@@ -518,7 +518,7 @@ export default function ThesisPage() {
             <p style={{
               ...emphasisText,
               fontSize: '28px',
-              background: 'linear-gradient(90deg, var(--orange-400), var(--amber-400))',
+              background: 'linear-gradient(90deg, var(--orange-700), var(--orange-500))',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -610,8 +610,8 @@ export default function ThesisPage() {
           ].map((item, i) => (
             <Reveal key={item.num} delay={i * 0.08}>
               <div className="thesis-card" style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'white',
+                border: '1px solid var(--border-primary)',
                 borderRadius: '16px',
                 padding: '32px',
                 marginBottom: '16px',
@@ -637,7 +637,7 @@ export default function ThesisPage() {
                     fontFamily: 'var(--font-display)',
                     fontSize: '18px',
                     fontWeight: 700,
-                    color: '#fff',
+                    color: 'var(--text-primary)',
                     margin: 0,
                   }}>{item.title}</h3>
                 </div>
@@ -651,7 +651,7 @@ export default function ThesisPage() {
               ...emphasisText,
               marginTop: '28px',
               fontSize: '24px',
-              background: 'linear-gradient(90deg, var(--orange-400), var(--amber-400))',
+              background: 'linear-gradient(90deg, var(--orange-700), var(--orange-500))',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -679,8 +679,8 @@ export default function ThesisPage() {
           }}>
             <Reveal delay={0}>
               <div className="thesis-card" style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(244,132,95,0.15)',
+                background: 'white',
+                border: '1px solid rgba(244,132,95,0.2)',
                 borderRadius: '16px',
                 padding: '28px',
                 height: '100%',
@@ -691,7 +691,7 @@ export default function ThesisPage() {
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.1em',
-                  color: 'var(--orange-400)',
+                  color: 'var(--orange-700)',
                   marginBottom: '16px',
                 }}>For AI Agents</div>
                 <p style={{ ...bodyText, fontSize: '15px', marginBottom: 0 }}>
@@ -701,8 +701,8 @@ export default function ThesisPage() {
             </Reveal>
             <Reveal delay={0.1}>
               <div className="thesis-card" style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(251,191,36,0.15)',
+                background: 'white',
+                border: '1px solid rgba(251,191,36,0.25)',
                 borderRadius: '16px',
                 padding: '28px',
                 height: '100%',
@@ -713,7 +713,7 @@ export default function ThesisPage() {
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.1em',
-                  color: 'var(--amber-400)',
+                  color: 'var(--amber-500)',
                   marginBottom: '16px',
                 }}>For Humans</div>
                 <p style={{ ...bodyText, fontSize: '15px', marginBottom: 0 }}>
@@ -748,7 +748,7 @@ export default function ThesisPage() {
           <Reveal>
             <p style={{
               ...emphasisText,
-              background: 'linear-gradient(90deg, var(--orange-400), var(--amber-400))',
+              background: 'linear-gradient(90deg, var(--orange-700), var(--orange-500))',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -815,7 +815,7 @@ export default function ThesisPage() {
                 fontWeight: 800,
                 lineHeight: 1.15,
                 marginBottom: '32px',
-                background: 'linear-gradient(135deg, #fff 0%, var(--orange-400) 60%, var(--amber-400) 100%)',
+                background: 'linear-gradient(135deg, var(--text-primary) 0%, var(--orange-600) 60%, var(--orange-400) 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -825,23 +825,23 @@ export default function ThesisPage() {
 
               <p style={{
                 fontSize: '16px',
-                color: 'rgba(255,255,255,0.5)',
+                color: 'var(--text-secondary)',
                 lineHeight: 1.7,
                 marginBottom: '40px',
               }}>
                 irlwork.ai is live at{' '}
                 <a href="/" style={{
-                  color: 'var(--orange-400)',
+                  color: 'var(--orange-600)',
                   textDecoration: 'underline',
                   textUnderlineOffset: '3px',
-                  textDecorationColor: 'rgba(244,132,95,0.3)',
+                  textDecorationColor: 'rgba(244,132,95,0.4)',
                 }}>irlwork.ai</a>.
                 {' '}For developers and AI agent builders, see our{' '}
                 <a href="/mcp" style={{
-                  color: 'var(--orange-400)',
+                  color: 'var(--orange-600)',
                   textDecoration: 'underline',
                   textUnderlineOffset: '3px',
-                  textDecorationColor: 'rgba(244,132,95,0.3)',
+                  textDecorationColor: 'rgba(244,132,95,0.4)',
                 }}>API documentation</a>.
               </p>
 
@@ -872,9 +872,9 @@ export default function ThesisPage() {
                     padding: '14px 32px',
                     fontSize: '15px',
                     textDecoration: 'none',
-                    background: 'rgba(255,255,255,0.05)',
-                    color: '#fff',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'white',
+                    color: 'var(--text-primary)',
+                    border: '2px solid var(--text-primary)',
                   }}
                 >
                   <Bot size={18} />
