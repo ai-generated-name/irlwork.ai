@@ -67,6 +67,7 @@ export default function MarketingFooter() {
             <h4 className="footer-v4-column-title">Company</h4>
             <div className="footer-v4-links">
               <a href="/about" className="footer-v4-link">About Us</a>
+              <a href="/thesis" className="footer-v4-link">Thesis</a>
               <a href="/contact" className="footer-v4-link">Contact Us</a>
             </div>
           </div>
