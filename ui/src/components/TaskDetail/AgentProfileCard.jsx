@@ -4,7 +4,7 @@
 import React from 'react';
 import { Star, CheckCircle } from 'lucide-react';
 
-export default function AgentProfileCard({ agent }) {
+export default function AgentProfileCard({ agent, isAnonymous }) {
   if (!agent) {
     return (
       <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
@@ -13,23 +13,25 @@ export default function AgentProfileCard({ agent }) {
     );
   }
 
+  const displayName = isAnonymous ? 'Anon AI Agent' : (agent.name || 'Agent');
+
   return (
     <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
       {/* Header with Avatar and Name */}
       <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-6">
-        {agent.avatar_url ? (
+        {!isAnonymous && agent.avatar_url ? (
           <img
             src={agent.avatar_url}
-            alt={agent.name || 'Agent'}
+            alt={displayName}
             className="w-10 h-10 sm:w-16 sm:h-16 rounded-full object-cover"
             onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
           />
         ) : null}
-        <div className="w-10 h-10 sm:w-16 sm:h-16 bg-[rgba(15,76,92,0.1)] rounded-full items-center justify-center text-lg sm:text-2xl font-bold text-[#0F4C5C]" style={{ display: agent.avatar_url ? 'none' : 'flex' }}>
-          {agent.name ? agent.name[0].toUpperCase() : 'A'}
+        <div className="w-10 h-10 sm:w-16 sm:h-16 bg-[rgba(15,76,92,0.1)] rounded-full items-center justify-center text-lg sm:text-2xl font-bold text-[#0F4C5C]" style={{ display: !isAnonymous && agent.avatar_url ? 'none' : 'flex' }}>
+          {isAnonymous ? '?' : (agent.name ? agent.name[0].toUpperCase() : 'A')}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-[#1A1A1A] text-base sm:text-lg truncate">{agent.name || 'Agent'}</h3>
+          <h3 className="font-bold text-[#1A1A1A] text-base sm:text-lg truncate">{displayName}</h3>
           <p className="text-[#525252] text-xs sm:text-sm truncate">AI Agent</p>
         </div>
       </div>

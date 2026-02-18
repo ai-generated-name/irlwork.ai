@@ -39,7 +39,7 @@ import DashboardTour from './components/DashboardTour'
 const StripeProvider = lazy(() => import('./components/StripeProvider'))
 const PaymentMethodForm = lazy(() => import('./components/PaymentMethodForm'))
 const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
-import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER } from './components/SocialIcons'
+import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER, extractHandle } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
 import CountryAutocomplete from './components/CountryAutocomplete'
@@ -83,7 +83,7 @@ class TabErrorBoundary extends React.Component {
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null
 
 // Safe no-op channel for when supabase is null
 const noopChannel = { on: () => noopChannel, subscribe: () => noopChannel }
@@ -95,6 +95,7 @@ const safeSupabase = {
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
 import { fixAvatarUrl } from './utils/avatarUrl'
+import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import ApiKeysTab from './components/ApiKeysTab'
 // ConnectAgentPage defined inline below
 const MCPPage = lazy(() => import('./pages/MCPPage'))
@@ -248,7 +249,7 @@ function Onboarding({ onComplete, user }) {
     try {
       const res = await fetch(`${API_URL}/auth/send-verification`, {
         method: 'POST',
-        headers: { Authorization: user?.token || user?.id || '' }
+        headers: { Authorization: user?.token || '' }
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
@@ -276,7 +277,7 @@ function Onboarding({ onComplete, user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user?.token || user?.id || ''
+          Authorization: user?.token || ''
         },
         body: JSON.stringify({ code: verificationCode.trim() })
       })
@@ -694,6 +695,7 @@ function AuthPage({ onLogin, onNavigate }) {
           })
 
       if (error) throw error
+      trackEvent(isLogin ? 'login' : 'sign_up', { method: 'email' })
       // Don't navigate here — the parent App's onAuthStateChange will detect
       // the new session and redirect from /auth to /dashboard automatically.
       // This avoids a full page reload on mobile.
@@ -722,6 +724,7 @@ function AuthPage({ onLogin, onNavigate }) {
       const oauthRedirect = oauthReturnTo && decodeURIComponent(oauthReturnTo).startsWith('/dashboard')
         ? decodeURIComponent(oauthReturnTo)
         : '/dashboard'
+      trackEvent('login', { method: 'google' })
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -729,7 +732,7 @@ function AuthPage({ onLogin, onNavigate }) {
           scopes: 'email profile'
         }
       })
-      
+
       if (error) {
         console.error('[Auth] OAuth error:', error)
         
@@ -1142,7 +1145,9 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
             <div>
               <h4 style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 8 }}>Proof Images:</h4>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {task.proof_urls.map((url, i) => (
+                {task.proof_urls.filter(url => {
+                  try { const u = new URL(url); return ['https:', 'data:'].includes(u.protocol); } catch { return false; }
+                }).map((url, i) => (
                   <img key={i} src={url} alt={`Proof ${i + 1}`} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
                 ))}
               </div>
@@ -1276,6 +1281,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     const modeSegment = (mode !== undefined ? mode : hiringMode) ? 'hiring' : 'working'
     const newUrl = `/dashboard/${modeSegment}/${urlTab}`
     window.history.pushState({}, '', newUrl)
+    trackPageView(newUrl)
   }
 
   // Wrapper for setActiveTab that also updates URL
@@ -1337,6 +1343,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [languagesList, setLanguagesList] = useState(user?.languages || [])
   const [newLanguageInput, setNewLanguageInput] = useState('')
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [profileLinkCopied, setProfileLinkCopied] = useState(false)
   const avatarInputRef = useRef(null)
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
   const [assigningHuman, setAssigningHuman] = useState(null) // loading state
@@ -1359,7 +1366,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     requirements: '',
     required_skills: [],
     skillInput: '',
-    task_type: 'direct',
+    task_type: 'open',
     quantity: 1,
     is_anonymous: false
   })
@@ -1451,7 +1458,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setNotifications(prev => prev.filter(n => n.is_read))
       // Mark each as read in backend (fire and forget)
       for (const id of unreadIds) {
-        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } }).catch(() => {})
+        fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || '' } }).catch(() => {})
       }
     } catch (e) {
       console.error('Error marking all notifications read:', e)
@@ -1461,6 +1468,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const toggleHiringMode = () => {
     const newHiringMode = !hiringMode
     setHiringMode(newHiringMode)
+    setUserProperties({ user_mode: newHiringMode ? 'hiring' : 'working' })
+    trackEvent('mode_switch', { mode: newHiringMode ? 'hiring' : 'working' })
     const newTab = 'dashboard'
     setActiveTabState(newTab)
     updateTabUrl(newTab, newHiringMode)
@@ -1622,7 +1631,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setTasks(data || [])
@@ -1661,7 +1670,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchHumans = async () => {
     try {
-      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setHumans(fixAvatarUrl(data || []))
@@ -1673,7 +1682,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchPostedTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setPostedTasks(data || [])
@@ -1688,7 +1697,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchApplicationsForTask = async (taskId) => {
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/applications`, {
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       if (res.ok) {
         const data = await res.json()
@@ -1706,7 +1715,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({ human_id: humanId })
       })
@@ -1739,7 +1748,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchWallet = async () => {
     try {
-      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setWallet(data || { balance: 0, transactions: [] })
@@ -1751,7 +1760,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         // Only show unread notifications — clicked/read ones are removed from the list
@@ -1764,7 +1773,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const markNotificationRead = async (id) => {
     try {
-      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } })
+      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'POST', headers: { Authorization: user.token || '' } })
       fetchNotifications()
     } catch (e) {}
   }
@@ -1795,15 +1804,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     // Remove the clicked notification from state immediately so it disappears from UI
     setNotifications(prev => prev.filter(n => n.id !== notification.id))
     // Mark as read in backend (fire and forget — no refetch needed since we already removed it)
-    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.token || user.id } }).catch(() => {})
+    fetch(`${API_URL}/notifications/${notification.id}/read`, { method: 'POST', headers: { Authorization: user.token || '' } }).catch(() => {})
     setNotificationDropdownOpen(false)
 
     const link = notification.link
     if (!link) return
 
-    // External links (basescan, etc.)
+    // External links — only allow trusted domains
     if (link.startsWith('http')) {
-      window.open(link, '_blank')
+      try {
+        const url = new URL(link)
+        const trustedDomains = ['irlwork.ai', 'www.irlwork.ai', 'basescan.org', 'etherscan.io']
+        if (trustedDomains.some(d => url.hostname === d || url.hostname.endsWith('.' + d))) {
+          window.open(link, '_blank', 'noopener,noreferrer')
+        }
+      } catch {}
       return
     }
 
@@ -1850,7 +1865,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchConversations = async () => {
     setConversationsLoading(prev => prev || conversations.length === 0) // Only show loading on first load
     try {
-      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setConversations(data || [])
@@ -1867,7 +1882,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchUnreadMessages = async () => {
     try {
-      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         setUnreadMessages(data.count || 0)
@@ -1905,7 +1920,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({
           title: taskForm.title,
@@ -1922,18 +1937,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
           requirements: taskForm.requirements.trim() || null,
           required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
-          task_type: taskForm.task_type,
-          quantity: taskForm.task_type === 'open' ? parseInt(taskForm.quantity) || 1 : 1,
+          task_type: 'open',
+          quantity: 1,
           is_anonymous: taskForm.is_anonymous
         })
       })
 
       if (res.ok) {
         const newTask = await res.json()
+        trackEvent('task_created', { category: taskForm.category, budget: parseFloat(taskForm.budget), is_remote: taskForm.is_remote, task_type: taskForm.task_type })
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
-        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'direct', quantity: 1, is_anonymous: false })
+        setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'open', quantity: 1, is_anonymous: false })
         // Close create form and show posted tasks list
         setTasksSubTab('tasks')
         setActiveTab('posted')
@@ -1951,7 +1967,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const fetchMessages = async (conversationId, skipMarkRead = false) => {
     if (!skipMarkRead) setMessagesLoading(true)
     try {
-      const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.token || user.id } })
+      const res = await fetch(`${API_URL}/messages/${conversationId}`, { headers: { Authorization: user.token || '' } })
       if (res.ok) {
         const data = await res.json()
         // Sort by created_at to guarantee chronological order (#3)
@@ -1962,7 +1978,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         if (!skipMarkRead) {
           fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
             method: 'PUT',
-            headers: { Authorization: user.token || user.id }
+            headers: { Authorization: user.token || '' }
           }).then(() => {
             fetchUnreadMessages()
             fetchConversations()
@@ -1987,7 +2003,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
         body: JSON.stringify({ conversation_id: selectedConversation, content: msgContent })
       })
       if (!res.ok) {
@@ -2007,7 +2023,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/accept`, {
         method: 'POST',
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -2027,7 +2043,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       await fetch(`${API_URL}/tasks/${taskId}/decline`, {
         method: 'POST',
         headers: {
-          Authorization: user.token || user.id,
+          Authorization: user.token || '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ reason })
@@ -2042,7 +2058,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       await fetch(`${API_URL}/tasks/${taskId}/start`, {
         method: 'POST',
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       fetchTasks()
     } catch (e) {
@@ -2054,7 +2070,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       await fetch(`${API_URL}/tasks/${taskId}/approve`, { 
         method: 'POST',
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       fetchPostedTasks()
     } catch (e) {
@@ -2066,7 +2082,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/release`, { 
         method: 'POST',
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
       if (res.ok) {
         toast.success('Payment released successfully!')
@@ -2086,7 +2102,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({ proof_text: proofText, proof_urls: proofUrls })
       })
@@ -2103,7 +2119,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({ feedback, extend_deadline_hours: extendHours })
       })
@@ -2526,19 +2542,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             <div className="dashboard-v4-sub-tabs">
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); }}
+                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}
               >
                 + Create Task
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); }}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
               >
                 Posted Tasks
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); }}
+                onClick={() => { setTasksSubTab('disputes'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
               >
                 Disputes
               </button>
@@ -2656,56 +2672,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           </div>
                         </div>
 
-                        <div className="dashboard-v4-form-group">
-                          <label className="dashboard-v4-form-label">Task Type</label>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                              type="button"
-                              onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'direct', quantity: 1 }))}
-                              style={{
-                                flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '2px solid',
-                                borderColor: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'rgba(26,26,26,0.1)',
-                                background: taskForm.task_type === 'direct' ? 'rgba(234, 88, 12, 0.05)' : 'transparent',
-                                color: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'var(--text-secondary)',
-                                fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
-                              }}
-                            >
-                              Direct Hire
-                              <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>1 person</div>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'bounty' }))}
-                              style={{
-                                flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '2px solid',
-                                borderColor: taskForm.task_type === 'bounty' ? '#7C3AED' : 'rgba(26,26,26,0.1)',
-                                background: taskForm.task_type === 'bounty' ? 'rgba(139, 92, 246, 0.05)' : 'transparent',
-                                color: taskForm.task_type === 'bounty' ? '#7C3AED' : 'var(--text-secondary)',
-                                fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
-                              }}
-                            >
-                              Open Bounty
-                              <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Multiple people</div>
-                            </button>
-                          </div>
-                        </div>
-
-                        {taskForm.task_type === 'bounty' && (
-                          <div className="dashboard-v4-form-group">
-                            <label className="dashboard-v4-form-label">How many people needed?</label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 5"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.quantity}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
-                              min="1"
-                              max="100"
-                              style={{ maxWidth: 120 }}
-                            />
-                          </div>
-                        )}
-
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
                           <label style={{
                             display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
@@ -2732,57 +2698,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             Post anonymously
                           </label>
                         </div>
-
-                    {/* Task Type: Direct Hire vs Open */}
-                    <div className="dashboard-v4-form-group">
-                      <label className="dashboard-v4-form-label">Task Type</label>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          type="button"
-                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'direct', quantity: 1 }))}
-                          style={{
-                            flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '2px solid',
-                            borderColor: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'rgba(26,26,26,0.1)',
-                            background: taskForm.task_type === 'direct' ? 'rgba(234, 88, 12, 0.05)' : 'transparent',
-                            color: taskForm.task_type === 'direct' ? 'var(--orange-600)' : 'var(--text-secondary)',
-                            fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
-                          }}
-                        >
-                          Direct Hire
-                          <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Hire 1 person for this task</div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setTaskForm(prev => ({ ...prev, task_type: 'open' }))}
-                          style={{
-                            flex: 1, padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '2px solid',
-                            borderColor: taskForm.task_type === 'open' ? '#7C3AED' : 'rgba(26,26,26,0.1)',
-                            background: taskForm.task_type === 'open' ? 'rgba(139, 92, 246, 0.05)' : 'transparent',
-                            color: taskForm.task_type === 'open' ? '#7C3AED' : 'var(--text-secondary)',
-                            fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s'
-                          }}
-                        >
-                          Open Posting
-                          <div style={{ fontWeight: 400, fontSize: 11, marginTop: 2, opacity: 0.8 }}>Open to multiple people</div>
-                        </button>
-                      </div>
-                    </div>
-                    {/* Quantity (only for open) */}
-                    {taskForm.task_type === 'open' && (
-                      <div className="dashboard-v4-form-group">
-                        <label className="dashboard-v4-form-label">How many people needed?</label>
-                        <input
-                          type="number"
-                          placeholder="e.g. 5"
-                          className="dashboard-v4-form-input"
-                          value={taskForm.quantity}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
-                          min="1"
-                          max="100"
-                          style={{ maxWidth: 120 }}
-                        />
-                      </div>
-                    )}
 
                         {!taskForm.is_remote && (
                           <div className="dashboard-v4-form-group">
@@ -3298,7 +3213,30 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Profile Tab - Edit Profile with Avatar Upload */}
         {activeTab === 'profile' && (
           <div>
-            <h1 className="dashboard-v4-page-title">Profile</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
+              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>Profile</h1>
+              <button
+                onClick={() => {
+                  const profileUrl = `${window.location.origin}/humans/${user?.id}`
+                  navigator.clipboard.writeText(profileUrl).then(() => {
+                    setProfileLinkCopied(true)
+                    setTimeout(() => setProfileLinkCopied(false), 2000)
+                  })
+                }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 8,
+                  border: '1px solid var(--border-secondary)',
+                  background: profileLinkCopied ? 'var(--orange-50, #fff7ed)' : 'var(--bg-primary)',
+                  color: profileLinkCopied ? 'var(--orange-600)' : 'var(--text-secondary)',
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {profileLinkCopied ? <Check size={14} /> : <Copy size={14} />}
+                {profileLinkCopied ? 'Copied!' : 'Copy Profile Link'}
+              </button>
+            </div>
 
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
               {/* Avatar Upload */}
@@ -3440,7 +3378,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           console.log(`[Avatar] Uploading: base64 length=${base64.length}, payload size=${payload.length}, compressed size=${fileToUpload.size}`)
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                            headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                             body: payload,
                             signal: controller.signal,
                           })
@@ -3530,7 +3468,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     if (profileTimezone) payload.timezone = profileTimezone
                     const res = await fetch(`${API_URL}/humans/profile`, {
                       method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                      headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                       body: JSON.stringify(payload)
                     })
                     if (res.ok) {
@@ -3673,7 +3611,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
                           method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                          headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                           body: JSON.stringify({ skills: skillsList })
                         })
                         if (res.ok) {
@@ -3769,7 +3707,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
                           method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                          headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                           body: JSON.stringify({ languages: languagesList })
                         })
                         if (res.ok) {
@@ -3801,12 +3739,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   const social_links = {}
                   PLATFORM_ORDER.forEach(p => {
                     const val = formData.get(p)?.trim()
-                    if (val) social_links[p] = val
+                    if (val) social_links[p] = extractHandle(p, val)
                   })
                   try {
                     const res = await fetch(`${API_URL}/humans/profile`, {
                       method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                      headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                       body: JSON.stringify({ social_links })
                     })
                     if (res.ok) {
@@ -3839,15 +3777,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             name={platform}
                             defaultValue={user?.social_links?.[platform] || ''}
                             placeholder={config.placeholder}
-                            maxLength={100}
+                            maxLength={200}
                             className="dashboard-v4-form-input"
                             style={{ marginBottom: 0 }}
+                            onBlur={(e) => {
+                              const cleaned = extractHandle(platform, e.target.value)
+                              if (cleaned !== e.target.value) e.target.value = cleaned
+                            }}
                           />
                         </div>
                       )
                     })}
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or handle, not the full URL</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or paste a profile URL — it will be auto-formatted</p>
                   <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
                 </form>
               )}
@@ -3900,7 +3842,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         try {
                           const res = await fetch(`${API_URL}/humans/profile`, {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json', Authorization: user.token || user.id },
+                            headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
                             body: JSON.stringify({ availability: newStatus })
                           })
                           if (res.ok) {
@@ -4387,7 +4329,7 @@ function ConnectAgentPage() {
         if (session?.user) {
           setUser(session.user)
           const response = await fetch(`${API_URL}/keys`, {
-            headers: { 'Authorization': session.user.id }
+            headers: { 'Authorization': session.access_token || '' }
           })
           if (response.ok) {
             const data = await response.json()
@@ -4889,11 +4831,20 @@ function App() {
     // Only track pathname portion — query params are read from window.location.search
     const pathname = url.split('?')[0].split('#')[0]
     setCurrentPath(pathname)
+    trackPageView(pathname)
+  }, [])
+
+  // Send initial pageview (index.html disables automatic send_page_view for SPA)
+  useEffect(() => {
+    trackPageView(window.location.pathname)
   }, [])
 
   // Listen for browser back/forward
   useEffect(() => {
-    const onPopState = () => setCurrentPath(window.location.pathname)
+    const onPopState = () => {
+      setCurrentPath(window.location.pathname)
+      trackPageView(window.location.pathname)
+    }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
@@ -5074,7 +5025,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({
           email: user.email,
@@ -5097,6 +5048,8 @@ function App() {
         const data = await res.json()
         const finalUser = fixAvatarUrl({ ...data.user, supabase_user: true })
         debug('[Onboarding] Success, user:', finalUser)
+        trackEvent('onboarding_complete')
+        setUserProperties({ user_mode: 'working' })
         localStorage.setItem('user', JSON.stringify(finalUser))
         setUser(finalUser)
         navigate('/dashboard/working/browse')

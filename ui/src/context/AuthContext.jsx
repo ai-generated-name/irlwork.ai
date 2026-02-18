@@ -8,7 +8,7 @@ const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null
 
 const AuthContext = createContext(null)
 
@@ -17,6 +17,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!supabase) {
+      console.error('[Auth] Supabase not configured — missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY')
+      setLoading(false)
+      return
+    }
+
     debug('[Auth] Initializing auth, API_URL:', API_URL)
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
@@ -54,8 +60,8 @@ export function AuthProvider({ children }) {
 
     try {
       debug('[Auth] Calling API:', API_URL + '/auth/verify')
-      // Prefer JWT access_token for auth, fall back to UUID
-      const authToken = accessToken || userId
+      // Use JWT access_token for auth — UUID auth is no longer supported
+      const authToken = accessToken
       const res = await fetch(API_URL + '/auth/verify', {
         headers: { Authorization: authToken }
       })
@@ -166,7 +172,7 @@ export function AuthProvider({ children }) {
       ...options,
       headers: {
         ...options.headers,
-        Authorization: user?.token || user?.id || ''
+        Authorization: user?.token || ''
       }
     })
 

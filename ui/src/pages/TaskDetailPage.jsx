@@ -49,7 +49,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       try {
         // Fetch task details (works with or without auth)
-        const headers = user?.id ? { Authorization: user.token || user.id } : {};
+        const headers = user?.id ? { Authorization: user.token || '' } : {};
         const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
         if (!taskRes.ok) {
           const errBody = await taskRes.json().catch(() => ({}));
@@ -62,7 +62,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
         // Fetch agent profile for all viewers
         if (taskData.agent_id) {
-          const agentHeaders = user?.id ? { Authorization: user.token || user.id } : {};
+          const agentHeaders = user?.id ? { Authorization: user.token || '' } : {};
           const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, { headers: agentHeaders });
           if (agentRes.ok) {
             const agentData = await agentRes.json();
@@ -73,7 +73,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         // Only fetch status, conversation for authenticated participants
         if (user && isTaskParticipant) {
           const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
-            headers: { Authorization: user.token || user.id }
+            headers: { Authorization: user.token || '' }
           });
           if (statusRes.ok) {
             const statusData = await statusRes.json();
@@ -118,7 +118,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           if (user) {
             try {
               const statusRes = await fetch(`${API_URL}/tasks/${taskId}/status`, {
-                headers: { Authorization: user.token || user.id }
+                headers: { Authorization: user.token || '' }
               });
               if (statusRes.ok) {
                 const statusData = await statusRes.json();
@@ -142,7 +142,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     if (!user) return;
     try {
       const convRes = await fetch(`${API_URL}/conversations`, {
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       });
 
       if (convRes.ok) {
@@ -170,7 +170,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       }
 
       const res = await fetch(url, {
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       });
 
       if (res.ok) {
@@ -192,7 +192,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
           fetch(`${API_URL}/conversations/${conversationId}/read-all`, {
             method: 'PUT',
-            headers: { Authorization: user.token || user.id }
+            headers: { Authorization: user.token || '' }
           }).catch(() => {});
         }
       }
@@ -213,7 +213,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: user.token || user.id
+            Authorization: user.token || ''
           },
           body: JSON.stringify({
             agent_id: task.agent_id,
@@ -235,7 +235,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({ conversation_id: convId, content })
       });
@@ -260,7 +260,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || user.id
+          Authorization: user.token || ''
         },
         body: JSON.stringify({
           proof_text: proofText,
@@ -490,7 +490,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             <StatsSection taskId={taskId} />
 
             {/* Agent Profile Card */}
-            <AgentProfileCard agent={agentProfile} />
+            <AgentProfileCard agent={agentProfile} isAnonymous={task?.is_anonymous} />
           </div>
         </div>
       </main>
@@ -509,7 +509,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         isOpen={showApplyModal}
         onClose={() => setShowApplyModal(false)}
         onSuccess={() => setHasApplied(true)}
-        userToken={user?.id}
+        userToken={user?.token || user?.id}
       />
 
       {/* Mobile Sticky Apply Bar */}

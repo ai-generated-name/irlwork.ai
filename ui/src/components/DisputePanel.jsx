@@ -24,7 +24,7 @@ export default function DisputePanel({ user }) {
       setLoading(true)
       const params = filter !== 'all' ? `?status=${filter}` : ''
       const res = await fetch(`${API_URL}/disputes${params}`, {
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
 
       if (!res.ok) {
@@ -50,7 +50,7 @@ export default function DisputePanel({ user }) {
       const res = await fetch(`${API_URL}/disputes/${disputeId}/resolve`, {
         method: 'POST',
         headers: {
-          Authorization: user.token || user.id,
+          Authorization: user.token || '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
 
 import API_URL from '../config/api';
+import { trackEvent } from '../utils/analytics';
 
 const CATEGORY_ICONS = {
   delivery: '📦',
@@ -75,6 +76,7 @@ export default function QuickApplyModal({
         throw new Error(data.error || 'Failed to apply');
       }
 
+      trackEvent('task_applied', { task_id: task.id, source: 'quick_apply' });
       setSuccess(true);
       setTimeout(() => {
         onSuccess?.(task.id);

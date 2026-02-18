@@ -30,7 +30,7 @@ function EarningsDashboard({ user }) {
     try {
       setLoading(true)
       const res = await fetch(`${API_URL}/wallet/balance`, {
-        headers: { Authorization: user.token || user.id }
+        headers: { Authorization: user.token || '' }
       })
 
       if (!res.ok) {
@@ -68,7 +68,7 @@ function EarningsDashboard({ user }) {
       const res = await fetch(`${API_URL}/wallet/withdraw`, {
         method: 'POST',
         headers: {
-          'Authorization': user.id,
+          'Authorization': user.token || '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

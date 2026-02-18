@@ -159,7 +159,7 @@ export default function BrowseTasksV2({
       params.set('offset', String((currentPage - 1) * ITEMS_PER_PAGE));
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`, {
-        headers: user?.id ? { Authorization: user.token || user.id } : {}
+        headers: user?.id ? { Authorization: user.token || '' } : {}
       });
       const data = await res.json();
 
@@ -618,7 +618,7 @@ export default function BrowseTasksV2({
         isOpen={!!applyModalTask}
         onClose={() => setApplyModalTask(null)}
         onSuccess={handleApplySuccess}
-        userToken={user?.id}
+        userToken={user?.token || user?.id}
       />
 
       {/* Report task modal */}
