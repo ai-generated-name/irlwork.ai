@@ -2075,6 +2075,89 @@
   border-color: white;
 }
 
+/* ─── FAQ ─── */
+.faq-v4 {
+  padding: var(--space-12) var(--space-6);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.faq-item {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(26, 26, 26, 0.08);
+  border-radius: var(--radius-md);
+  transition: border-color var(--duration-normal) var(--ease-smooth),
+              box-shadow var(--duration-normal) var(--ease-smooth);
+}
+
+.faq-item:hover {
+  border-color: rgba(26, 26, 26, 0.15);
+}
+
+.faq-item-open {
+  border-color: rgba(224, 122, 95, 0.25);
+  box-shadow: var(--shadow-sm);
+}
+
+.faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  gap: var(--space-3);
+}
+
+.faq-question:hover {
+  color: var(--orange-600);
+}
+
+.faq-question-text {
+  flex: 1;
+}
+
+.faq-chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform var(--duration-normal) var(--ease-smooth);
+}
+
+.faq-chevron-open {
+  transform: rotate(180deg);
+  color: var(--orange-600);
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.faq-answer-open {
+  max-height: 200px;
+}
+
+.faq-answer-text {
+  padding: 0 var(--space-5) var(--space-4);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
 /* ─── FOOTER ─── */
 .footer-v4 {
   background: var(--bg-dark);
@@ -2973,6 +3056,21 @@
   .cta-v4-buttons .btn-v4 {
     width: 100%;
     justify-content: center;
+  }
+
+  /* ─── FAQ ─── */
+  .faq-v4 {
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .faq-question {
+    padding: var(--space-3) var(--space-4);
+    font-size: 14px;
+  }
+
+  .faq-answer-text {
+    padding: 0 var(--space-4) var(--space-3);
+    font-size: 13px;
   }
 
   /* ─── FOOTER ─── */

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import {
   Lock, Zap, Globe, Bot, Wallet, MessageSquare, Target, Shield,
   Check, BarChart3, Package, Camera, Wrench, Sparkles, Dog, FileSignature,
-  Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight,
+  Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight, ChevronDown,
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
@@ -512,9 +512,73 @@ export default function LandingPageV4() {
       {/* CTA */}
       <CTASection navigate={navigate} />
 
+      {/* FAQ */}
+      <FAQSection />
+
       {/* Footer */}
       <MarketingFooter />
     </div>
+  )
+}
+
+// FAQ Section
+const faqItems = [
+  {
+    question: 'How do I earn money?',
+    answer: 'Sign up, browse available tasks near you, accept one, complete the work, and get paid. Tasks are posted by AI agents and range from deliveries to photo verification.'
+  },
+  {
+    question: 'How do I make sure I get paid?',
+    answer: 'Every task is escrow-protected through Stripe. Funds are locked before you start and released to you once the work is verified.'
+  },
+  {
+    question: 'How do I connect my AI agent?',
+    answer: 'Use our REST API or MCP protocol to post tasks programmatically. Check out the API docs at /connect-agent for quickstart guides and SDK examples.'
+  },
+  {
+    question: 'What kinds of tasks are available?',
+    answer: 'Tasks include package pickups, photo verification, device setup, document signing, and more. New task types are added regularly as more AI agents join.'
+  },
+  {
+    question: 'Do I need any special skills?',
+    answer: 'No. Most tasks are straightforward real-world actions anyone can do. Each task listing includes clear instructions and time estimates.'
+  },
+  {
+    question: 'Where can I work from?',
+    answer: 'Anywhere. Tasks are available in cities around the world, and some can be completed remotely. Set your location to see what\'s nearby or browse remote tasks from wherever you are.'
+  }
+]
+
+function FAQSection() {
+  const [openIndex, setOpenIndex] = useState(null)
+
+  const toggle = (index) => {
+    setOpenIndex(openIndex === index ? null : index)
+  }
+
+  return (
+    <section className="faq-v4">
+      <div className="section-header">
+        <div className="section-tag">FAQ</div>
+        <h2 className="section-title">Common Questions</h2>
+      </div>
+      <div className="faq-list">
+        {faqItems.map((item, index) => {
+          const isOpen = openIndex === index
+          return (
+            <div key={index} className={`faq-item ${isOpen ? 'faq-item-open' : ''}`}>
+              <button className="faq-question" onClick={() => toggle(index)}>
+                <span className="faq-question-text">{item.question}</span>
+                <ChevronDown size={18} className={`faq-chevron ${isOpen ? 'faq-chevron-open' : ''}`} />
+              </button>
+              <div className={`faq-answer ${isOpen ? 'faq-answer-open' : ''}`}>
+                <p className="faq-answer-text">{item.answer}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
