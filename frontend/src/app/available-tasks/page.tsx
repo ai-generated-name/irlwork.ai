@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, lazy, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Map, List, Filter, DollarSign, Clock, MapPin,
@@ -118,7 +118,16 @@ export default function AvailableTasksPage() {
 
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const searchParams = useSearchParams();
   const [radius, setRadius] = useState(10);
+
+  // Initialize search from URL query param
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
   const [sortBy, setSortBy] = useState<"newest" | "amount" | "distance">("newest");
 
   useEffect(() => {
