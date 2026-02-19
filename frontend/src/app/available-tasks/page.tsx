@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -8,9 +8,11 @@ import {
   Briefcase, Tag, X, ChevronDown, Search, SlidersHorizontal,
   ArrowLeft, Home, MessageSquare, Wallet
 } from "lucide-react";
-import { TaskMap } from "@/components/TaskMap";
 import { TaskDetailsModal } from "@/components/TaskDetailsModal";
 import Link from "next/link";
+
+// Lazy load TaskMap to avoid SSR issues (Leaflet requires window)
+const TaskMap = lazy(() => import("../../components/TaskMap/TaskMap"));
 
 interface TaskLocation {
   id: string;
@@ -510,18 +512,24 @@ export default function AvailableTasksPage() {
             ) : (
               /* Map View */
               <div style={{ height: 'calc(100vh - 56px - 80px)' }}>
-                <TaskMap
-                  tasks={taskLocations}
-                  userLocation={userLocation ? { lat: userLocation.latitude, lng: userLocation.longitude } : undefined}
-                  center={userLocation ? { lat: userLocation.latitude, lng: userLocation.longitude } : undefined}
-                  onTaskClick={(taskId) => {
-                    const task = tasks.find(t => t.id === taskId);
-                    if (task) {
-                      setSelectedTask(task);
-                      setModalOpen(true);
-                    }
-                  }}
-                />
+                <Suspense fallback={
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-surface)' }}>
+                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                }>
+                  <TaskMap
+                    tasks={taskLocations}
+                    userLocation={userLocation ? { lat: userLocation.latitude, lng: userLocation.longitude } : undefined}
+                    center={userLocation ? { lat: userLocation.latitude, lng: userLocation.longitude } : undefined}
+                    onTaskClick={(taskId) => {
+                      const task = tasks.find(t => t.id === taskId);
+                      if (task) {
+                        setSelectedTask(task);
+                        setModalOpen(true);
+                      }
+                    }}
+                  />
+                </Suspense>
               </div>
             )}
           </div>
