@@ -184,11 +184,14 @@ async function getWalletBalance(supabase, userId) {
     total: total_cents / 100,
     transactions: transactions.map(tx => ({
       id: tx.id,
+      amount_cents: tx.amount_cents,
       amount: tx.amount_cents / 100,
       status: tx.status,
       created_at: tx.created_at,
       clears_at: tx.clears_at,
-      task_id: tx.task_id
+      task_id: tx.task_id,
+      task_title: tx.task_title || null,
+      withdrawn_at: tx.withdrawn_at || null
     }))
   };
 }
