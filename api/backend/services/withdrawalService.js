@@ -68,12 +68,13 @@ async function processStripeWithdrawal(supabase, userId, amountCents = null, cre
       throw new Error('Stripe Connect onboarding is not complete. Please finish setting up your bank account.');
     }
 
-    // Get available transactions (all are Stripe now)
+    // Get available Stripe-funded transactions only
     const { data: availableTxs, error: txError } = await supabase
       .from('pending_transactions')
       .select('*')
       .eq('user_id', userId)
       .eq('status', 'available')
+      .eq('payout_method', 'stripe')
       .order('created_at', { ascending: true }); // FIFO
 
     if (txError) throw new Error('Failed to fetch available balance');

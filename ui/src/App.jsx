@@ -1708,16 +1708,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
   }
 
-  const handleAssignHuman = async (taskId, humanId) => {
+  const handleAssignHuman = async (taskId, humanId, preferredPaymentMethod) => {
     setAssigningHuman(humanId)
     try {
+      const body = { human_id: humanId }
+      if (preferredPaymentMethod) body.preferred_payment_method = preferredPaymentMethod
       const res = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: user.token || ''
         },
-        body: JSON.stringify({ human_id: humanId })
+        body: JSON.stringify(body)
       })
       if (res.ok) {
         const data = await res.json()
@@ -1726,7 +1728,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
 
         // Show appropriate toast based on payment method
-        if (data.amount_charged) {
+        if (data.payment_method === 'usdc') {
+          toast.success(`Worker assigned! Send ${data.deposit_instructions?.amount_usdc} USDC to complete escrow.`)
+        } else if (data.amount_charged) {
           toast.success(`Worker assigned! $${data.amount_charged?.toFixed(2)} charged to your card.`)
         } else {
           toast.success('Worker assigned! Payment charged to your card.')
@@ -2862,17 +2866,27 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
                                             )}
                                             {app.proposed_rate != null && (
-                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate} USDC</p>
+                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate}</p>
                                             )}
                                           </div>
                                         </div>
-                                        <button
-                                          onClick={() => handleAssignHuman(task.id, app.human_id)}
-                                          disabled={assigningHuman === app.human_id}
-                                          className="v4-btn v4-btn-primary"
-                                        >
-                                          {assigningHuman === app.human_id ? 'Assigning...' : 'Accept'}
-                                        </button>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                                          <button
+                                            onClick={() => handleAssignHuman(task.id, app.human_id)}
+                                            disabled={assigningHuman === app.human_id}
+                                            className="v4-btn v4-btn-primary"
+                                          >
+                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (Card)'}
+                                          </button>
+                                          <button
+                                            onClick={() => handleAssignHuman(task.id, app.human_id, 'usdc')}
+                                            disabled={assigningHuman === app.human_id}
+                                            className="v4-btn"
+                                            style={{ fontSize: 12, padding: '6px 12px', color: '#2563eb', border: '1px solid #2563eb', background: '#eff6ff' }}
+                                          >
+                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (USDC)'}
+                                          </button>
+                                        </div>
                                       </div>
                                     ))
                                   )}
@@ -3135,6 +3149,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                     `}>
                                       {isReleased ? 'Released' : isCompleted ? 'Completed' : isInProgress ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
                                     </span>
+                                    {task.payment_method === 'usdc' && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 flex-shrink-0">USDC</span>
+                                    )}
                                   </div>
 
                                   <p className="text-xs text-[#8A8A8A] mt-1">
@@ -3198,6 +3215,39 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </div>
                 </StripeProvider>
               </Suspense>
+            </div>
+
+            {/* USDC Payment Option */}
+            <div>
+              <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">USDC Payments</h3>
+              <div style={{ maxWidth: 520 }}>
+                <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#1A1A1A]">Pay with USDC on Base</p>
+                      <p className="text-xs text-[#525252] mt-1">
+                        When assigning a worker, choose USDC to send payment directly to our platform wallet. Workers will be paid in USDC.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-[#F5F2ED] rounded-lg p-3 mb-3">
+                    <p className="text-xs text-[#8A8A8A] mb-1">Platform Wallet (Base)</p>
+                    <p className="text-sm font-mono text-[#1A1A1A] break-all select-all">
+                      {import.meta.env.VITE_PLATFORM_WALLET_ADDRESS || 'Configure VITE_PLATFORM_WALLET_ADDRESS'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-[#8A8A8A]">
+                    <span>Network: Base</span>
+                    <span>Token: USDC</span>
+                    <span>Decimals: 6</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
