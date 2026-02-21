@@ -4826,7 +4826,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
                 <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
                   <li>Connect your bank account via Stripe Connect</li>
                   <li>Complete tasks and submit proof of work</li>
-                  <li>Receive 85% of the task budget (15% platform fee)</li>
+                  <li>Receive 90% of the task budget (10% platform fee)</li>
                   <li>48-hour hold after approval for dispute protection</li>
                   <li>Funds deposited directly to your bank account</li>
                 </ul>
