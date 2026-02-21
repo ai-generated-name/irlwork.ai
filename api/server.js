@@ -5776,6 +5776,40 @@ app.get('/api/conversations/:id', async (req, res) => {
 });
 
 // ============ MESSAGES ============
+
+// Get unread message count
+// NOTE: This route MUST be defined before /api/messages/:conversation_id
+// to avoid Express matching "unread" as a conversation_id parameter.
+app.get('/api/messages/unread/count', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  // Count unread messages where user is not the sender
+  const { data: conversations } = await supabase
+    .from('conversations')
+    .select('id')
+    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`);
+
+  if (!conversations || conversations.length === 0) {
+    return res.json({ count: 0 });
+  }
+
+  const conversationIds = conversations.map(c => c.id);
+
+  const { data: unreadMessages, error } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact' })
+    .in('conversation_id', conversationIds)
+    .neq('sender_id', user.id)
+    .is('read_at', null);
+
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  res.json({ count: unreadMessages?.length || 0 });
+});
+
 app.get('/api/messages/:conversation_id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
@@ -6045,37 +6079,6 @@ app.get('/api/conversations/unread', async (req, res) => {
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(data);
-});
-
-// Get unread message count
-app.get('/api/messages/unread/count', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  // Count unread messages where user is not the sender
-  const { data: conversations } = await supabase
-    .from('conversations')
-    .select('id')
-    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`);
-  
-  if (!conversations || conversations.length === 0) {
-    return res.json({ count: 0 });
-  }
-  
-  const conversationIds = conversations.map(c => c.id);
-  
-  const { data: unreadMessages, error } = await supabase
-    .from('messages')
-    .select('id', { count: 'exact' })
-    .in('conversation_id', conversationIds)
-    .neq('sender_id', user.id)
-    .is('read_at', null);
-  
-  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-  
-  res.json({ count: unreadMessages?.length || 0 });
 });
 
 // ============ USER TASKS ============
