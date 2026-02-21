@@ -6499,16 +6499,16 @@ app.get('/api/humans/:id/profile', async (req, res) => {
   });
 });
 
-// ============ TASK CREATION (Agents only) ============
+// ============ TASK CREATION (Agents and Humans) ============
 app.post('/api/tasks/create', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const user = await getUserByToken(req.headers.authorization);
-  if (!user || user.type !== 'agent') {
-    return res.status(401).json({ error: 'Agents only' });
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, assign_to } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -6554,6 +6554,100 @@ app.post('/api/tasks/create', async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  // If assign_to is provided (direct hire flow), assign the human immediately
+  if (assign_to && task) {
+    const humanId = assign_to;
+
+    // Verify the human exists
+    const { data: humanUser } = await supabase
+      .from('users')
+      .select('id, name')
+      .eq('id', humanId)
+      .single();
+
+    if (!humanUser) {
+      return res.json({ ...task, message: 'Task posted successfully, but could not find the specified human to assign.' });
+    }
+
+    // Check if creator has a payment method
+    let hasPaymentMethod = false;
+    if (user.stripe_customer_id && stripe) {
+      try {
+        const methods = await listPaymentMethods(user.stripe_customer_id);
+        hasPaymentMethod = methods.length > 0;
+      } catch (e) {
+        console.error('[DirectHire] Failed to list Stripe payment methods:', e.message);
+      }
+    }
+
+    if (hasPaymentMethod) {
+      // Stripe path: pending_acceptance with 24-hour review window
+      const reviewDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      await supabase
+        .from('tasks')
+        .update(cleanTaskData({
+          human_id: humanId,
+          human_ids: [humanId],
+          spots_filled: 1,
+          status: 'pending_acceptance',
+          escrow_status: 'unfunded',
+          escrow_amount: budgetAmount,
+          payment_method: 'stripe',
+          review_deadline: reviewDeadline,
+          updated_at: new Date().toISOString()
+        }))
+        .eq('id', id);
+
+      await createNotification(
+        humanId,
+        'task_offered',
+        'New Task Offer!',
+        `You've been offered "${title}" ($${budgetAmount}). You have 24 hours to accept or decline.`,
+        `/tasks/${id}`
+      );
+
+      return res.json({
+        ...task,
+        status: 'pending_acceptance',
+        human_id: humanId,
+        human_ids: [humanId],
+        review_deadline: reviewDeadline,
+        message: `Task created and offer sent to ${humanUser.name}. They have 24 hours to accept.`
+      });
+    } else {
+      // No payment method: set to pending_acceptance anyway, user can add payment later
+      await supabase
+        .from('tasks')
+        .update(cleanTaskData({
+          human_id: humanId,
+          human_ids: [humanId],
+          spots_filled: 1,
+          status: 'pending_acceptance',
+          escrow_status: 'unfunded',
+          escrow_amount: budgetAmount,
+          updated_at: new Date().toISOString()
+        }))
+        .eq('id', id);
+
+      await createNotification(
+        humanId,
+        'task_offered',
+        'New Task Offer!',
+        `You've been offered "${title}" ($${budgetAmount}). You have 24 hours to accept or decline.`,
+        `/tasks/${id}`
+      );
+
+      return res.json({
+        ...task,
+        status: 'pending_acceptance',
+        human_id: humanId,
+        human_ids: [humanId],
+        message: `Task created and offer sent to ${humanUser.name}.`
+      });
+    }
+  }
 
   res.json({
     ...task,

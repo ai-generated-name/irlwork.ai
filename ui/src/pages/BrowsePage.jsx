@@ -426,22 +426,21 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     setHireLoading(true)
     setHireError('')
     try {
+      // Create task and assign human in one step using assign_to
       const createRes = await fetch(`${API_URL}/tasks/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
-        body: JSON.stringify({ title: hireTitle.trim(), description: hireDescription.trim(), budget: Number(hireBudget), category: hireCategory || 'general' })
+        body: JSON.stringify({
+          title: hireTitle.trim(),
+          description: hireDescription.trim(),
+          budget: Number(hireBudget),
+          category: hireCategory || 'general',
+          assign_to: showHireModal.id
+        })
       })
       if (!createRes.ok) { const err = await createRes.json(); throw new Error(err.error || 'Failed to create task') }
-      const taskData = await createRes.json()
-      const taskId = taskData.id || taskData.task?.id
-      const assignRes = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
-        body: JSON.stringify({ worker_id: showHireModal.id })
-      })
-      if (!assignRes.ok) { const err = await assignRes.json(); throw new Error(err.error || 'Task created but failed to assign human') }
       setHireSuccess(true)
-      toast.success(`${showHireModal.name} has been hired!`)
+      toast.success(`Offer sent to ${showHireModal.name}!`)
       setTimeout(() => { resetHireForm() }, 2500)
     } catch (e) {
       setHireError(e.message || 'Something went wrong. Please try again.')
