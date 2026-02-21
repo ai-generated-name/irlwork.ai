@@ -1840,12 +1840,11 @@ app.get('/api/stats', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
-    // Count humans with completed profiles (verified humans)
+    // Count humans
     const { count: humansCount, error: humansError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
-      .eq('type', 'human')
-      .eq('verified', true);
+      .eq('type', 'human');
 
     // Count open tasks
     const { count: tasksCount, error: tasksError } = await supabase
@@ -1858,7 +1857,6 @@ app.get('/api/stats', async (req, res) => {
       .from('users')
       .select('city')
       .eq('type', 'human')
-      .eq('verified', true)
       .not('city', 'is', null);
 
     const { data: taskCities } = await supabase
@@ -4767,8 +4765,7 @@ app.post('/api/mcp', async (req, res) => {
         let query = supabase
           .from('users')
           .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, bio, languages, travel_radius, availability, headline, timezone')
-          .eq('type', 'human')
-          .eq('verified', true);
+          .eq('type', 'human');
 
         // Default to only showing available workers unless explicitly requesting all
         query = query.eq('availability', params.availability || 'available');
@@ -6638,7 +6635,6 @@ app.get('/api/humans/directory', async (req, res) => {
     .from('users')
     .select('id', { count: 'exact', head: true })
     .eq('type', 'human')
-    .eq('verified', true)
     .eq('availability', 'available');
 
   // Sanitize search params: escape LIKE wildcards (% and _) to prevent injection
@@ -6658,7 +6654,6 @@ app.get('/api/humans/directory', async (req, res) => {
     .from('users')
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
     .eq('type', 'human')
-    .eq('verified', true)
     .eq('availability', 'available');
 
   // Sorting
