@@ -544,6 +544,48 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// ============ PER-CONVERSATION MESSAGE RATE LIMITING ============
+// Prevents message spam: max 30 messages per minute per user per conversation
+const messageRateLimitStore = new Map();
+const MESSAGE_RATE_LIMIT = { maxMessages: 30, windowMs: 60 * 1000 };
+
+function checkMessageRateLimit(userId, conversationId) {
+  const key = `${userId}:${conversationId}`;
+  const now = Date.now();
+  let record = messageRateLimitStore.get(key);
+
+  if (record && now - record.windowStart > MESSAGE_RATE_LIMIT.windowMs) {
+    record = null;
+  }
+
+  if (!record) {
+    record = { count: 0, windowStart: now };
+    messageRateLimitStore.set(key, record);
+  }
+
+  record.count++;
+
+  if (record.count > MESSAGE_RATE_LIMIT.maxMessages) {
+    const resetAt = new Date(record.windowStart + MESSAGE_RATE_LIMIT.windowMs);
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.ceil((resetAt.getTime() - now) / 1000)
+    };
+  }
+
+  return { allowed: true };
+}
+
+// Clean up message rate limit store periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of messageRateLimitStore.entries()) {
+    if (now - record.windowStart > 5 * 60 * 1000) {
+      messageRateLimitStore.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
 /**
  * Build the correct avatar URL for a user, using the API proxy endpoint.
  * This ensures avatars always work regardless of R2 public URL configuration.
@@ -739,6 +781,7 @@ async function sendMessageEmailNotification(recipientUserId, senderName, taskTit
 }
 
 // Dispatch webhook to user if they have one configured
+// Supports retry with exponential backoff (3 attempts: 1s, 2s, 4s)
 async function dispatchWebhook(userId, event) {
   if (!supabase) return;
 
@@ -750,6 +793,11 @@ async function dispatchWebhook(userId, event) {
       .single();
 
     if (!user?.webhook_url) return; // No webhook registered, skip
+
+    if (!isValidWebhookUrl(user.webhook_url)) {
+      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${user.webhook_url}`);
+      return;
+    }
 
     const payload = {
       event_type: event.type,
@@ -769,19 +817,42 @@ async function dispatchWebhook(userId, event) {
       headers['X-Webhook-Signature'] = signature;
     }
 
-    if (!isValidWebhookUrl(user.webhook_url)) {
-      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${user.webhook_url}`);
-      return;
-    }
+    const body = JSON.stringify(payload);
+    const maxAttempts = 3;
+    const baseDelay = 1000; // 1 second
 
-    await fetch(user.webhook_url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000) // 5 second timeout
-    });
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await fetch(user.webhook_url, {
+          method: 'POST',
+          headers,
+          body,
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        if (response.ok || response.status < 500) {
+          // Success or client error (don't retry 4xx)
+          return;
+        }
+        // 5xx — retry
+        if (attempt < maxAttempts) {
+          const delay = baseDelay * Math.pow(2, attempt - 1);
+          console.warn(`[WEBHOOK] Attempt ${attempt}/${maxAttempts} failed (HTTP ${response.status}) for user ${userId}, retrying in ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+        } else {
+          console.error(`[WEBHOOK] All ${maxAttempts} attempts failed for user ${userId} (HTTP ${response.status})`);
+        }
+      } catch (fetchErr) {
+        if (attempt < maxAttempts) {
+          const delay = baseDelay * Math.pow(2, attempt - 1);
+          console.warn(`[WEBHOOK] Attempt ${attempt}/${maxAttempts} error for user ${userId}: ${fetchErr.message}, retrying in ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+        } else {
+          console.error(`[WEBHOOK] All ${maxAttempts} attempts failed for user ${userId}: ${fetchErr.message}`);
+        }
+      }
+    }
   } catch (err) {
-    console.error(`Webhook delivery failed for user ${userId}:`, err.message);
+    console.error(`[WEBHOOK] Dispatch setup failed for user ${userId}:`, err.message);
     // Don't throw - webhook failures shouldn't break the main flow
   }
 }
@@ -2470,6 +2541,17 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       notificationMessage,
       `/tasks/${taskId}`
     );
+
+    // Dispatch webhook to human about the assignment
+    dispatchWebhook(human_id, {
+      type: 'task_assigned',
+      task_id: taskId,
+      data: {
+        title: task.title,
+        budget: budgetAmount,
+        agent_id: user.id
+      }
+    }).catch(() => {});
   };
 
   // ============ STRIPE PATH: Send offer, charge on acceptance ============
@@ -2512,6 +2594,18 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       `You've been offered "${task.title}" ($${budgetAmount}). You have 24 hours to accept or decline.`,
       `/tasks/${taskId}`
     );
+
+    // Dispatch webhook to human about the offer
+    dispatchWebhook(human_id, {
+      type: 'task_offered',
+      task_id: taskId,
+      data: {
+        title: task.title,
+        budget: budgetAmount,
+        review_deadline: reviewDeadline,
+        agent_id: user.id
+      }
+    }).catch(() => {});
 
     return res.json({
       success: true,
@@ -3420,15 +3514,16 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   );
   
   // Deliver webhook to agent
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_submitted',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_submitted',
     task_id: taskId,
-    proof_id: proofId,
-    human_id: user.id,
-    human_name: user.name,
-    task_title: task.title,
-    timestamp: new Date().toISOString()
-  });
+    data: {
+      proof_id: proofId,
+      human_id: user.id,
+      human_name: user.name,
+      task_title: task.title
+    }
+  }).catch(() => {});
   
   res.json({ success: true, proof });
 });
@@ -3538,14 +3633,15 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   );
   
   // Deliver webhook
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_rejected',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_rejected',
     task_id: taskId,
-    proof_id: latestProof.id,
-    feedback,
-    new_deadline: newDeadline.toISOString(),
-    timestamp: new Date().toISOString()
-  });
+    data: {
+      proof_id: latestProof.id,
+      feedback,
+      new_deadline: newDeadline.toISOString()
+    }
+  }).catch(() => {});
   
   res.json({ 
     success: true, 
@@ -3639,13 +3735,25 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   );
 
   // Deliver webhook to agent
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_approved',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_approved',
     task_id: taskId,
-    proof_id: latestProof.id,
-    message: 'Proof approved. Payment will be processed.',
-    timestamp: new Date().toISOString()
-  });
+    data: {
+      proof_id: latestProof.id,
+      human_id: task.human_id,
+      message: 'Proof approved. Payment will be processed.'
+    }
+  }).catch(() => {});
+
+  // Also notify the human via webhook
+  dispatchWebhook(task.human_id, {
+    type: 'proof_approved',
+    task_id: taskId,
+    data: {
+      proof_id: latestProof.id,
+      message: 'Your proof has been approved! Payment is being processed.'
+    }
+  }).catch(() => {});
 
   // Stripe-paid tasks: auto-release to pending balance (no admin step needed)
   if (task.payment_method === 'stripe' && task.stripe_payment_intent_id) {
@@ -3895,14 +4003,25 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     `/tasks/${taskId}`
   );
   
-  // Deliver webhook
-  await deliverWebhook(task.agent_id, {
-    event: 'dispute_opened',
+  // Deliver webhook to both parties
+  dispatchWebhook(task.agent_id, {
+    type: 'dispute_opened',
     task_id: taskId,
-    disputed_by: user.id,
-    reason,
-    timestamp: new Date().toISOString()
-  });
+    data: {
+      disputed_by: user.id,
+      reason
+    }
+  }).catch(() => {});
+  if (notifyTo !== task.agent_id) {
+    dispatchWebhook(notifyTo, {
+      type: 'dispute_opened',
+      task_id: taskId,
+      data: {
+        disputed_by: user.id,
+        reason
+      }
+    }).catch(() => {});
+  }
   
   res.json({ success: true, status: 'disputed' });
 });
@@ -4309,47 +4428,6 @@ async function updateUserRating(userId) {
 }
 
 // ============ WEBHOOKS ============
-async function deliverWebhook(agentId, payload) {
-  if (!supabase) return;
-
-  try {
-    const { data: agent } = await supabase
-      .from('users')
-      .select('webhook_url, webhook_secret')
-      .eq('id', agentId)
-      .single();
-
-    if (!agent?.webhook_url) return;
-
-    const webhookUrl = agent.webhook_url;
-    const headers = { 'Content-Type': 'application/json' };
-
-    // Add HMAC signature if secret is configured
-    if (agent.webhook_secret) {
-      const signature = crypto
-        .createHmac('sha256', agent.webhook_secret)
-        .update(JSON.stringify(payload))
-        .digest('hex');
-      headers['X-Webhook-Signature'] = signature;
-    }
-
-    if (!isValidWebhookUrl(webhookUrl)) {
-      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${webhookUrl}`);
-      return;
-    }
-
-    console.log(`[WEBHOOK] Delivering to ${webhookUrl}`);
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000)
-    });
-  } catch (e) {
-    console.error('Webhook delivery error:', e.message);
-    // Don't throw - webhook failures shouldn't break the main flow
-  }
-}
 
 // Get webhook URL for an agent
 app.get('/api/agents/:id/webhook-url', async (req, res) => {
@@ -4408,6 +4486,87 @@ app.post('/api/webhooks/register', async (req, res) => {
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   res.json({ success: true, webhook_url });
+});
+
+// Get current webhook configuration
+app.get('/api/webhooks', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('webhook_url, webhook_secret')
+    .eq('id', user.id)
+    .single();
+
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  res.json({
+    webhook_url: data?.webhook_url || null,
+    has_secret: !!data?.webhook_secret
+  });
+});
+
+// Test webhook delivery — sends a test event to the caller's registered webhook URL
+app.post('/api/webhooks/test', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data } = await supabase
+    .from('users')
+    .select('webhook_url, webhook_secret')
+    .eq('id', user.id)
+    .single();
+
+  if (!data?.webhook_url) {
+    return res.status(400).json({ error: 'No webhook URL configured. Register one first via POST /api/webhooks/register.' });
+  }
+
+  if (!isValidWebhookUrl(data.webhook_url)) {
+    return res.status(400).json({ error: 'Registered webhook URL is invalid.' });
+  }
+
+  const payload = {
+    event_type: 'test',
+    task_id: null,
+    data: { message: 'Webhook test from irlwork.ai. If you receive this, your webhook is working correctly.' },
+    timestamp: new Date().toISOString()
+  };
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (data.webhook_secret) {
+    const signature = crypto
+      .createHmac('sha256', data.webhook_secret)
+      .update(JSON.stringify(payload))
+      .digest('hex');
+    headers['X-Webhook-Signature'] = signature;
+  }
+
+  try {
+    const response = await fetch(data.webhook_url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000)
+    });
+    res.json({
+      success: true,
+      webhook_url: data.webhook_url,
+      status_code: response.status,
+      delivered: response.ok
+    });
+  } catch (err) {
+    res.json({
+      success: false,
+      webhook_url: data.webhook_url,
+      error: err.message,
+      delivered: false
+    });
+  }
 });
 
 // ============ TRANSACTIONS ============
@@ -4996,6 +5155,39 @@ app.post('/api/mcp', async (req, res) => {
             content: messageContent,
             created_at: new Date().toISOString()
           });
+
+          // Update conversation preview
+          const preview = messageContent.length > 100 ? messageContent.substring(0, 100) + '...' : messageContent;
+          await supabase
+            .from('conversations')
+            .update({ updated_at: new Date().toISOString(), last_message: preview })
+            .eq('id', conversationId);
+
+          // Notify the human about the new message
+          await createNotification(
+            targetHumanId,
+            'new_message',
+            'New message',
+            `New message from ${user.name || 'an agent'}: ${preview}`,
+            `/tasks/${conversationId}`
+          );
+
+          // Send email notification (async, non-blocking)
+          sendMessageEmailNotification(targetHumanId, user.name, 'a conversation', preview, null).catch(() => {});
+
+          // Dispatch webhook to human
+          dispatchWebhook(targetHumanId, {
+            type: 'new_message',
+            task_id: null,
+            data: {
+              conversation_id: conversationId,
+              message_id: messageId,
+              sender_name: user.name,
+              sender_type: 'agent',
+              content: messageContent,
+              created_at: new Date().toISOString()
+            }
+          }).catch(() => {});
         }
 
         res.json({
@@ -5113,6 +5305,17 @@ app.post('/api/mcp', async (req, res) => {
           `/tasks/${task_id}`
         );
 
+        // Dispatch webhook to human about the assignment
+        dispatchWebhook(human_id, {
+          type: 'task_assigned',
+          task_id: task_id,
+          data: {
+            title: taskData.title,
+            budget: taskData.budget,
+            agent_id: user.id
+          }
+        }).catch(() => {});
+
         res.json({
           success: true,
           assigned_at: new Date().toISOString(),
@@ -5140,10 +5343,19 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(400).json({ error: 'conversation_id and content are required' });
         }
 
-        // Verify access to conversation
+        // Per-conversation rate limit check
+        const msgRateCheck = checkMessageRateLimit(user.id, conversation_id);
+        if (!msgRateCheck.allowed) {
+          return res.status(429).json({
+            error: 'Message rate limit exceeded. Please slow down.',
+            retry_after_seconds: msgRateCheck.retryAfterSeconds
+          });
+        }
+
+        // Verify access to conversation (include task_id and task title for notifications)
         const { data: conv, error: convError } = await supabase
           .from('conversations')
-          .select('id, human_id, agent_id')
+          .select('id, human_id, agent_id, task_id, tasks(title)')
           .eq('id', conversation_id)
           .single();
 
@@ -5163,10 +5375,41 @@ app.post('/api/mcp', async (req, res) => {
 
         if (msgError) throw msgError;
 
+        // Update conversation's updated_at and last_message preview
+        const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+        await supabase
+          .from('conversations')
+          .update({ updated_at: new Date().toISOString(), last_message: preview })
+          .eq('id', conversation_id);
+
         // Notify other party
         const recipientId = conv.human_id === user.id ? conv.agent_id : conv.human_id;
         if (recipientId) {
-          await createNotification(recipientId, 'new_message', 'New Message', content.substring(0, 100), `/conversations/${conversation_id}`);
+          const taskTitle = conv.tasks?.title || 'a task';
+          await createNotification(
+            recipientId,
+            'new_message',
+            'New message',
+            `New message about "${taskTitle}": ${preview}`,
+            `/tasks/${conv.task_id}?conversation=${conversation_id}`
+          );
+
+          // Send email notification (async, non-blocking)
+          sendMessageEmailNotification(recipientId, user.name, taskTitle, preview, conv.task_id).catch(() => {});
+
+          // Dispatch webhook to other party
+          dispatchWebhook(recipientId, {
+            type: 'new_message',
+            task_id: conv.task_id,
+            data: {
+              conversation_id,
+              message_id: msg.id,
+              sender_name: user.name,
+              sender_type: user.type || 'agent',
+              content,
+              created_at: msg.created_at
+            }
+          }).catch(() => {});
         }
 
         res.json(msg);
@@ -5874,6 +6117,17 @@ app.post('/api/messages', async (req, res) => {
     return res.status(400).json({ error: 'Message content is too long (max 10,000 characters)' });
   }
 
+  // Per-conversation rate limit check
+  if (conversation_id) {
+    const rateCheck = checkMessageRateLimit(user.id, conversation_id);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: 'Message rate limit exceeded. Please slow down.',
+        retry_after_seconds: rateCheck.retryAfterSeconds
+      });
+    }
+  }
+
   // Verify user has access to conversation (include task_id and task title for notifications)
   const { data: conversation, error: convError } = await supabase
     .from('conversations')
@@ -5923,7 +6177,7 @@ app.post('/api/messages', async (req, res) => {
       'new_message',
       'New message',
       `New message about "${taskTitle}": ${preview}`,
-      `/tasks/${conversation.task_id}`
+      `/tasks/${conversation.task_id}?conversation=${conversation_id}`
     );
 
     // Send email notification to the other party (async, non-blocking)
@@ -7257,6 +7511,19 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
         `${user.name || 'A worker'} has accepted your task "${task.title}". Payment has been charged and work can begin.`,
         `/tasks/${id}`
       );
+
+      // Dispatch webhook to agent
+      dispatchWebhook(task.agent_id, {
+        type: 'task_accepted',
+        task_id: id,
+        data: {
+          human_id: user.id,
+          human_name: user.name,
+          title: task.title,
+          status: 'in_progress',
+          escrow_status: 'deposited'
+        }
+      }).catch(() => {});
     }
 
     return res.json({ success: true, status: 'in_progress', escrow_status: 'deposited' });
@@ -7308,6 +7575,18 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       `${user.name || 'A worker'} has accepted your task "${acceptedTask.title}".`,
       `/tasks/${id}`
     );
+
+    // Dispatch webhook to agent
+    dispatchWebhook(acceptedTask.agent_id, {
+      type: 'task_accepted',
+      task_id: id,
+      data: {
+        human_id: user.id,
+        human_name: user.name,
+        title: acceptedTask.title,
+        status: 'in_progress'
+      }
+    }).catch(() => {});
   }
 
   res.json({ success: true });
@@ -7378,6 +7657,19 @@ app.post('/api/tasks/:id/decline', async (req, res) => {
       `${user.name || 'A worker'} declined your task "${task.title}"${reason ? ': ' + reason : ''}. The task is back to open.`,
       `/tasks/${id}`
     );
+
+    // Dispatch webhook to agent
+    dispatchWebhook(task.agent_id, {
+      type: 'task_declined',
+      task_id: id,
+      data: {
+        human_id: user.id,
+        human_name: user.name,
+        title: task.title,
+        reason: reason || null,
+        status: 'open'
+      }
+    }).catch(() => {});
   }
 
   res.json({ success: true, message: 'Task declined. The agent has been notified.' });
