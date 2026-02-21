@@ -7627,6 +7627,70 @@ select.select-v4-dark option:checked,
   color: var(--success);
 }
 
+/* Task ID badge */
+.mytasks-card__task-id {
+  font-family: var(--font-mono, 'SF Mono', 'Fira Code', monospace);
+  font-size: 10px;
+  color: var(--text-tertiary, #8A8A8A);
+  background: rgba(26, 26, 26, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* Payment breakdown row */
+.mytasks-card__payment-breakdown {
+  display: flex;
+  gap: var(--space-4, 16px);
+  font-size: 12px;
+  margin-bottom: var(--space-3, 12px);
+  padding: 6px 10px;
+  background: rgba(26, 26, 26, 0.02);
+  border-radius: 8px;
+}
+
+.mytasks-card__payment-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mytasks-card__payment-label {
+  color: var(--text-tertiary, #8A8A8A);
+}
+
+.mytasks-card__payment-value {
+  font-weight: 600;
+  color: var(--text-secondary, #525252);
+}
+
+.mytasks-card__payment-value--payout {
+  color: var(--success, #059669);
+}
+
+/* Compact payout info */
+.mytasks-card__payout-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--success, #059669);
+}
+
+.mytasks-card__payout-label {
+  font-weight: 400;
+  color: var(--text-tertiary, #8A8A8A);
+  font-size: 11px;
+}
+
+.mytasks-card__fee-label {
+  font-weight: 400;
+  color: var(--text-tertiary, #8A8A8A);
+  font-size: 11px;
+  margin-left: 6px;
+}
+
 /* Compact card variant */
 .mytasks-card--compact {
   padding: var(--space-3) var(--space-4);
