@@ -5128,6 +5128,13 @@ function App() {
       debug('[Auth] Bare /dashboard, redirecting to mode-specific URL')
       const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
       navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path === '/messages' && user) {
+      // Redirect /messages to dashboard messages tab
+      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+      navigate(savedHiring ? '/dashboard/hiring/messages' : '/dashboard/working/messages')
+    } else if (path === '/messages' && !user) {
+      const returnTo = encodeURIComponent('/messages')
+      navigate(`/auth?returnTo=${returnTo}`)
     } else if (path === '/browse') {
       // Redirect bare /browse to /browse/tasks (or /browse/humans if legacy ?mode=humans)
       const browseParams = new URLSearchParams(window.location.search)

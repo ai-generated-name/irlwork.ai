@@ -317,6 +317,23 @@ const handlers = {
     return await res.json()
   },
 
+  // Get current webhook configuration
+  async get_webhook() {
+    const res = await fetch(`${API_URL}/webhooks`, {
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // Test webhook delivery — sends a test event to verify webhook is working
+  async test_webhook() {
+    const res = await fetch(`${API_URL}/webhooks/test`, {
+      method: 'POST',
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
   // ===== Feedback =====
 
   // Submit feedback or bug report
@@ -451,7 +468,7 @@ server.listen(PORT, () => {
   console.log(`     view_proof, approve_task, dispute_task`)
   console.log(``)
   console.log(`   Notifications:`)
-  console.log(`     notifications, mark_notification_read, set_webhook`)
+  console.log(`     notifications, mark_notification_read, set_webhook, get_webhook, test_webhook`)
   console.log(``)
   console.log(`   Feedback:`)
   console.log(`     submit_feedback`)
