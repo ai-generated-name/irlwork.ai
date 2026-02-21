@@ -747,6 +747,17 @@ code, pre {
   font-weight: 500;
 }
 
+.task-card-v2-task-id {
+  font-family: var(--font-mono, 'SF Mono', 'Fira Code', monospace);
+  font-size: 10px;
+  color: var(--text-tertiary, #8A8A8A);
+  background: rgba(26, 26, 26, 0.04);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  margin-left: 4px;
+}
+
 .task-card-v2-distance {
   display: inline-flex;
   align-items: center;
