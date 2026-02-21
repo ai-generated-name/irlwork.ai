@@ -1267,7 +1267,10 @@ app.get('/api/auth/verify', async (req, res) => {
       // Derived metrics
       completion_rate: completionRate,
       payment_rate: paymentRate,
-      jobs_completed: user.jobs_completed || 0
+      jobs_completed: user.jobs_completed || 0,
+      headline: user.headline || '',
+      timezone: user.timezone || '',
+      gender: user.gender || null
     }
   });
 });
@@ -1973,7 +1976,7 @@ app.put('/api/humans/profile', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { name, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url, availability } = req.body;
+    const { name, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url, availability, gender } = req.body;
 
     const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true, type: 'human', account_type: 'human' };
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
@@ -2039,6 +2042,10 @@ app.put('/api/humans/profile', async (req, res) => {
     if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
     if (timezone !== undefined) updates.timezone = timezone;
     if (availability === 'available' || availability === 'unavailable') updates.availability = availability;
+    if (gender !== undefined) {
+      const validGenders = ['man', 'woman', 'other'];
+      updates.gender = validGenders.includes(gender) ? gender : null;
+    }
 
     // Auto-derive timezone from coordinates when location changes but timezone not explicitly set
     if (updates.latitude != null && updates.longitude != null && timezone === undefined) {

@@ -1383,6 +1383,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
   const [profileTimezone, setProfileTimezone] = useState(user?.timezone || '')
+  const [profileGender, setProfileGender] = useState(user?.gender || '')
   const [skillsList, setSkillsList] = useState(user?.skills || [])
   const [newSkillInput, setNewSkillInput] = useState('')
   const [languagesList, setLanguagesList] = useState(user?.languages || [])
@@ -3469,6 +3470,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
+            {/* Profile completion banner */}
+            <div style={{
+              maxWidth: 600,
+              marginBottom: 16,
+              padding: '12px 16px',
+              borderRadius: 10,
+              background: 'var(--orange-50, #fff7ed)',
+              border: '1px solid var(--orange-200, #fed7aa)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              fontSize: 14,
+              color: 'var(--orange-700, #c2410c)',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span>Update your profile to help agents find you.</span>
+            </div>
+
             {/* Profile editing sub-tabs */}
             <div className="settings-tabs">
               {['Profile', 'Skills', 'Languages', 'Social'].map(tab => (
@@ -3500,7 +3523,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       country_code: locationData.country_code || user?.country_code,
                       hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
                       bio: formData.get('bio'),
-                      travel_radius: parseInt(formData.get('travel_radius')) || 25
+                      travel_radius: parseInt(formData.get('travel_radius')) || 25,
+                      gender: profileGender || null
                     }
                     if (profileTimezone) payload.timezone = profileTimezone
                     const res = await fetch(`${API_URL}/humans/profile`, {
@@ -3538,6 +3562,42 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         placeholder="San Francisco"
                         className="dashboard-v4-city-input"
                       />
+                    </div>
+                  </div>
+
+                  <div className="dashboard-v4-form-group">
+                    <label className="dashboard-v4-form-label">Gender</label>
+                    <div style={{
+                      display: 'flex',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))',
+                      overflow: 'hidden',
+                    }}>
+                      {['Man', 'Woman', 'Other'].map((option, idx) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setProfileGender(option.toLowerCase())}
+                          style={{
+                            flex: 1,
+                            padding: '8px 16px',
+                            border: 'none',
+                            borderRight: idx < 2 ? '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))' : 'none',
+                            background: profileGender === option.toLowerCase()
+                              ? 'var(--orange-500, #f4845f)'
+                              : 'var(--bg-primary, white)',
+                            color: profileGender === option.toLowerCase()
+                              ? 'white'
+                              : 'var(--text-secondary)',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          {option}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
