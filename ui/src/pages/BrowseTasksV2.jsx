@@ -161,11 +161,14 @@ export default function BrowseTasksV2({
       const res = await fetch(`${API_URL}/tasks/available?${params}`, {
         headers: user?.id ? { Authorization: user.token || '' } : {}
       });
-      const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to fetch tasks');
+        let errorMsg = `Server error (${res.status})`;
+        try { const errData = await res.json(); errorMsg = errData.error || errorMsg; } catch {}
+        throw new Error(errorMsg);
       }
+
+      const data = await res.json();
 
       // Handle both old format (array) and new format ({ tasks: [] })
       const tasksList = Array.isArray(data) ? data : (data.tasks || []);
