@@ -701,6 +701,41 @@ code, pre {
   border-left: 1px solid rgba(26, 26, 26, 0.06);
 }
 
+/* Search this area button (inside Leaflet map container) */
+.task-map-search-area-wrapper {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.task-map-search-area-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  color: var(--text-primary, #1A1A1A);
+  border: 1px solid rgba(26, 26, 26, 0.12);
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.task-map-search-area-btn:hover {
+  background: linear-gradient(135deg, #E07A5F 0%, #F4845F 100%);
+  color: white;
+  border-color: #E07A5F;
+  box-shadow: 0 4px 12px rgba(224, 122, 95, 0.3);
+}
+
 /* Task Card V2 */
 .task-card-v2 {
   background: var(--bg-secondary);
