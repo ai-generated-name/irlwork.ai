@@ -1196,7 +1196,8 @@ app.get('/api/auth/verify', async (req, res) => {
       // Derived metrics
       completion_rate: completionRate,
       payment_rate: paymentRate,
-      jobs_completed: user.jobs_completed || 0
+      jobs_completed: user.jobs_completed || 0,
+      created_at: user.created_at
     }
   });
 });
