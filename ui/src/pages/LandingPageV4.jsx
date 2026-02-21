@@ -525,6 +525,9 @@ export default function LandingPageV4() {
       {/* Live Transaction Ticker */}
       <TransactionTicker />
 
+      {/* How It Works - Four Steps */}
+      <HowItWorksSection />
+
       {/* Features Row */}
       <section className="features-v4">
         <div className="features-grid">
@@ -566,9 +569,6 @@ export default function LandingPageV4() {
           </div>
         </div>
       </section>
-
-      {/* How It Works - Four Steps */}
-      <HowItWorksSection />
 
       {/* Combined Benefits Section - For Humans / For AI Agents */}
       <CombinedBenefitsSection />

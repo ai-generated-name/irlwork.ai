@@ -34,6 +34,20 @@ const STATUS_CONFIG = {
   cancelled: { label: 'Cancelled', className: 'mytasks-status--cancelled' },
 };
 
+const PLATFORM_FEE_PERCENT = 15;
+
+function formatTaskId(id) {
+  if (!id) return '';
+  return id.substring(0, 8).toUpperCase();
+}
+
+function calculatePayout(budget) {
+  const amount = Number(budget) || 0;
+  const fee = Math.round(amount * PLATFORM_FEE_PERCENT) / 100;
+  const payout = Math.round((amount - fee) * 100) / 100;
+  return { fee: fee.toFixed(2), payout: payout.toFixed(2) };
+}
+
 export default function MyTaskCard({
   task,
   variant = 'active', // 'active' | 'review' | 'compact'
@@ -48,6 +62,7 @@ export default function MyTaskCard({
   const status = STATUS_CONFIG[task.status] || { label: task.status || 'Unknown', className: '' };
   const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={16} />;
   const categoryLabel = task.category?.replace('-', ' ') || 'General';
+  const { fee, payout } = calculatePayout(task.budget);
 
   // Deadline urgency
   const getUrgencyClass = () => {
@@ -93,12 +108,19 @@ export default function MyTaskCard({
             <span className={`mytasks-status ${status.className}`}>{status.label}</span>
             <h3 className="mytasks-card__title mytasks-card__title--compact">{task.title}</h3>
           </div>
-          <span className="mytasks-card__budget">${task.budget || 0}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="mytasks-card__task-id">{formatTaskId(task.id)}</span>
+            <span className="mytasks-card__budget">${task.budget || 0}</span>
+          </div>
         </div>
         <div className="mytasks-card__meta">
           <span className="mytasks-card__meta-item">{categoryIcon} {categoryLabel}</span>
           <span className="mytasks-card__meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
           <span className="mytasks-card__meta-item"><CalendarDays size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+          <span className="mytasks-card__payout-info">
+            <span className="mytasks-card__payout-label">You earn</span> ${payout}
+            <span className="mytasks-card__fee-label">Fee ${fee}</span>
+          </span>
           <span className="mytasks-card__arrow">→</span>
         </div>
       </div>
@@ -110,10 +132,25 @@ export default function MyTaskCard({
     <div className={`mytasks-card ${urgencyClass}`} onClick={handleClick}>
       <div className="mytasks-card__header">
         <div>
-          <span className={`mytasks-status ${status.className}`}>{status.label}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span className={`mytasks-status ${status.className}`}>{status.label}</span>
+            <span className="mytasks-card__task-id">{formatTaskId(task.id)}</span>
+          </div>
           <h3 className="mytasks-card__title">{task.title}</h3>
         </div>
         <span className="mytasks-card__budget">${task.budget || 0}</span>
+      </div>
+
+      {/* Payment breakdown */}
+      <div className="mytasks-card__payment-breakdown">
+        <span className="mytasks-card__payment-item">
+          <span className="mytasks-card__payment-label">Platform fee:</span>
+          <span className="mytasks-card__payment-value">${fee}</span>
+        </span>
+        <span className="mytasks-card__payment-item">
+          <span className="mytasks-card__payment-label">Your payout:</span>
+          <span className="mytasks-card__payment-value mytasks-card__payment-value--payout">${payout}</span>
+        </span>
       </div>
 
       {task.description && (

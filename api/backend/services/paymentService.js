@@ -76,7 +76,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
       task_id: taskId,
       amount_cents: netAmountCents,
       status: 'pending',
-      payout_method: 'stripe',
+      payout_method: task.payment_method === 'usdc' ? 'usdc' : 'stripe',
       clears_at: clearsAt.toISOString(),
       created_at: new Date().toISOString()
     })
@@ -94,14 +94,14 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Failed to create pending transaction');
   }
 
-  // Record payout (Stripe transfer will happen after 48-hour hold)
+  // Record payout (transfer will happen after 48-hour hold via matching rail)
   await supabase.from('payouts').insert({
     id: uuidv4(),
     task_id: taskId,
     human_id: humanId,
     amount_cents: netAmountCents,
     fee_cents: platformFeeCents,
-    payout_method: 'stripe',
+    payout_method: task.payment_method === 'usdc' ? 'usdc' : 'stripe',
     status: 'pending',
     created_at: new Date().toISOString()
   });
@@ -184,11 +184,16 @@ async function getWalletBalance(supabase, userId) {
     total: total_cents / 100,
     transactions: transactions.map(tx => ({
       id: tx.id,
+      amount_cents: tx.amount_cents,
       amount: tx.amount_cents / 100,
+      amount_cents: tx.amount_cents,
       status: tx.status,
+      payout_method: tx.payout_method || 'stripe',
       created_at: tx.created_at,
       clears_at: tx.clears_at,
-      task_id: tx.task_id
+      task_id: tx.task_id,
+      task_title: tx.task_title || null,
+      withdrawn_at: tx.withdrawn_at || null
     }))
   };
 }
