@@ -2441,7 +2441,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   const { id: taskId } = req.params;
-  const { human_id, payment_method_id } = req.body;
+  const { human_id, payment_method_id, preferred_payment_method } = req.body;
 
   if (!human_id) {
     return res.status(400).json({ error: 'human_id is required' });
@@ -2507,11 +2507,13 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       return res.status(502).json({ error: 'Unable to verify payment method. Please try again or add a new card.' });
     }
   }
-  if (agentPaymentMethods.length === 0) {
+  // Agent must have a card (Stripe) OR choose USDC
+  const useUsdc = preferred_payment_method === 'usdc';
+  if (agentPaymentMethods.length === 0 && !useUsdc) {
     return res.status(402).json({
       error: 'No payment method on file',
-      code: 'card_required',
-      message: 'You must link a payment card before hiring. Add a card in your payment settings.'
+      code: 'payment_required',
+      message: 'You must link a payment card or choose USDC before hiring.'
     });
   }
 
@@ -2561,7 +2563,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   };
 
   // ============ STRIPE PATH: Send offer, charge on acceptance ============
-  if (agentPaymentMethods.length > 0) {
+  if (!useUsdc && agentPaymentMethods.length > 0) {
     // 24-hour review window for the human to accept/decline
     const reviewDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
@@ -3761,13 +3763,19 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     }
   }).catch(() => {});
 
-  // Stripe-paid tasks: auto-release to pending balance (no admin step needed)
-  if (task.payment_method === 'stripe' && task.stripe_payment_intent_id) {
+  // Auto-release to pending balance (no admin step needed)
+  // Stripe tasks: release if PaymentIntent exists
+  // USDC tasks: release if escrow was deposited (admin confirmed on-chain deposit)
+  const canAutoRelease =
+    (task.payment_method === 'stripe' && task.stripe_payment_intent_id) ||
+    (task.payment_method === 'usdc' && task.escrow_status === 'deposited');
+
+  if (canAutoRelease) {
     try {
       await releasePaymentToPending(supabase, taskId, task.human_id, task.agent_id, createNotification);
-      console.log(`[Approve] Auto-released payment for Stripe task ${taskId}`);
+      console.log(`[Approve] Auto-released payment for ${task.payment_method} task ${taskId}`);
     } catch (releaseError) {
-      console.error('[Approve] Auto-release failed for Stripe task:', releaseError.message);
+      console.error(`[Approve] Auto-release failed for ${task.payment_method} task:`, releaseError.message);
       // Don't fail the approve — admin can manually release if auto-release fails
     }
   }
@@ -7054,8 +7062,18 @@ app.get('/api/wallet/balance', async (req, res) => {
 
     const balance = await getWalletBalance(supabase, user.id);
 
+    // Calculate per-rail breakdowns
+    const txs = balance.transactions || [];
+    const stripeAvailableCents = txs.filter(tx => tx.payout_method !== 'usdc' && tx.status === 'available').reduce((s, tx) => s + tx.amount_cents, 0);
+    const usdcAvailableCents = txs.filter(tx => tx.payout_method === 'usdc' && tx.status === 'available').reduce((s, tx) => s + tx.amount_cents, 0);
+
     res.json({
       user_id: user.id,
+      wallet_address: user.wallet_address || null,
+      has_wallet: !!user.wallet_address,
+      has_bank: !!user.stripe_account_id && !!user.stripe_onboarding_complete,
+      stripe_available_cents: stripeAvailableCents,
+      usdc_available_cents: usdcAvailableCents,
       ...balance
     });
   } catch (error) {
@@ -7070,8 +7088,28 @@ app.post('/api/wallet/withdraw', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { amount_cents } = req.body;
+  const { amount_cents, method } = req.body;
 
+  if (method === 'usdc') {
+    // USDC withdrawal path
+    if (!user.wallet_address) {
+      return res.status(400).json({
+        error: 'No wallet address set',
+        action: 'connect_wallet',
+        message: 'Set up your wallet address to withdraw USDC.'
+      });
+    }
+    try {
+      const { processUsdcWithdrawal } = require('./backend/services/usdcWithdrawalService');
+      const result = await processUsdcWithdrawal(supabase, user.id, amount_cents || null, createNotification);
+      return res.json(result);
+    } catch (error) {
+      console.error('[USDC Withdraw] Error:', error.message);
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  // Stripe withdrawal path (default)
   if (!user.stripe_account_id) {
     return res.status(400).json({
       error: 'No bank account connected',
@@ -7127,8 +7165,10 @@ app.get('/api/wallet/status', async (req, res) => {
       available_cents: balance.available_cents,
       total_cents: balance.total_cents,
 
-      // Stripe Connect status
+      // Payment method status
       has_bank_account: !!user.stripe_account_id && !!user.stripe_onboarding_complete,
+      has_wallet: !!user.wallet_address,
+      wallet_address: user.wallet_address || null,
 
       // Transaction details
       transactions: balance.transactions
@@ -7137,6 +7177,36 @@ app.get('/api/wallet/status', async (req, res) => {
     console.error('Error fetching wallet status:', error);
     res.status(500).json({ error: 'Failed to fetch wallet status' });
   }
+});
+
+// ============ WALLET ADDRESS (USDC) ============
+app.get('/api/wallet/address', async (req, res) => {
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  res.json({ wallet_address: user.wallet_address || null, has_wallet: !!user.wallet_address });
+});
+
+app.put('/api/wallet/address', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { wallet_address } = req.body;
+
+  if (!wallet_address) {
+    // Clear wallet address
+    await supabase.from('users').update({ wallet_address: null, updated_at: new Date().toISOString() }).eq('id', user.id);
+    return res.json({ success: true, wallet_address: null });
+  }
+
+  if (!isValidWalletAddress(wallet_address)) {
+    return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Ethereum/Base address (0x...)' });
+  }
+
+  await supabase.from('users').update({ wallet_address, updated_at: new Date().toISOString() }).eq('id', user.id);
+  res.json({ success: true, wallet_address });
 });
 
 app.get('/api/admin/pending-stats', async (req, res) => {

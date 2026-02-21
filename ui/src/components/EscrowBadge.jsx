@@ -37,6 +37,7 @@ const STATUS_CONFIG = {
 export default function EscrowBadge({
   status = 'pending',
   amount,
+  paymentMethod = 'stripe',
   showDetails = false,
   onClick
 }) {
@@ -56,7 +57,7 @@ export default function EscrowBadge({
 
       {showDetails && amount != null && (
         <span className="text-[#1A1A1A] font-mono ml-2">
-          {Number(amount).toFixed(2)} USD
+          {Number(amount).toFixed(2)} {paymentMethod === 'usdc' ? 'USDC' : 'USD'}
         </span>
       )}
     </div>
@@ -67,6 +68,7 @@ export default function EscrowBadge({
 export function EscrowStatusCard({
   status,
   amount,
+  paymentMethod = 'stripe',
   showDetails = false,
   depositedAt,
   releasedAt
@@ -89,7 +91,7 @@ export function EscrowStatusCard({
         {amount != null && (
           <div className="text-right">
             <p className="text-2xl font-bold text-[#1A1A1A] font-mono">{Number(amount).toFixed(2)}</p>
-            <p className="text-[#8A8A8A] text-sm">USD</p>
+            <p className="text-[#8A8A8A] text-sm">{paymentMethod === 'usdc' ? 'USDC' : 'USD'}</p>
           </div>
         )}
       </div>
