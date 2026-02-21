@@ -2607,145 +2607,117 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {tasksSubTab === 'create' && (
               <div style={{ marginTop: 16 }}>
-                <div className="dashboard-v4-form create-task-form-wide">
-                  <h2 className="dashboard-v4-form-title">Create a New Task</h2>
+                <div className="create-task-container">
+                  <div className="create-task-header">
+                    <h2 className="create-task-title">Create a New Task</h2>
+                    <p className="create-task-subtitle">Fill in the details below to post your task</p>
+                  </div>
+
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
-                    <div className="create-task-grid">
-                      {/* Left column */}
-                      <div className="create-task-col">
-                        <div className="dashboard-v4-form-group">
+                    {/* Section 1: Basics */}
+                    <div className="create-task-section">
+                      <div className="create-task-section-label">Basics</div>
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">
+                          Task Title <span className="dashboard-v4-form-required">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="What do you need done?"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.title}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="create-task-row-3col">
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Task Title <span className="dashboard-v4-form-required">*</span>
+                            Category <span className="dashboard-v4-form-required">*</span>
+                          </label>
+                          <CustomDropdown
+                            value={taskForm.category}
+                            onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
+                            options={[
+                              { value: '', label: 'Select category' },
+                              ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
+                                value: c,
+                                label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                              }))
+                            ]}
+                            placeholder="Select category"
+                          />
+                        </div>
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                          <label className="dashboard-v4-form-label">
+                            Budget (USD) <span className="dashboard-v4-form-required">*</span>
                           </label>
                           <input
-                            type="text"
-                            placeholder="What do you need done?"
+                            type="number"
+                            placeholder="$"
                             className="dashboard-v4-form-input"
-                            value={taskForm.title}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                            value={taskForm.budget}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
+                            min="5"
                           />
                         </div>
-
-                        <div className="dashboard-v4-form-group">
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Description <span className="dashboard-v4-form-optional">(optional)</span>
+                            Duration <span className="dashboard-v4-form-optional">(hours)</span>
                           </label>
-                          <textarea
-                            placeholder="Provide details about the task..."
-                            className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                            style={{ minHeight: 80 }}
-                            value={taskForm.description}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
-                          />
-                        </div>
-
-                        <div className="dashboard-form-grid-2col">
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Category <span className="dashboard-v4-form-required">*</span>
-                            </label>
-                            <CustomDropdown
-                              value={taskForm.category}
-                              onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
-                              options={[
-                                { value: '', label: 'Select category' },
-                                ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
-                                  value: c,
-                                  label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                                }))
-                              ]}
-                              placeholder="Select category"
-                            />
-                          </div>
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Budget (USD) <span className="dashboard-v4-form-required">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              placeholder="$"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.budget}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
-                              min="5"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="dashboard-v4-form-group">
-                          <label className="dashboard-v4-form-label">
-                            Requirements <span className="dashboard-v4-form-optional">(optional)</span>
-                          </label>
-                          <textarea
-                            placeholder="Any specific requirements or qualifications needed..."
-                            className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                            style={{ minHeight: 60 }}
-                            value={taskForm.requirements}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                            rows={2}
+                          <input
+                            type="number"
+                            placeholder="e.g. 2"
+                            className="dashboard-v4-form-input"
+                            value={taskForm.duration_hours}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                            min="0.5"
+                            step="0.5"
                           />
                         </div>
                       </div>
 
-                      {/* Right column */}
-                      <div className="create-task-col">
-                        <div className="dashboard-form-grid-2col">
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Duration (hours) <span className="dashboard-v4-form-optional">(opt)</span>
-                            </label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 2"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.duration_hours}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
-                              min="0.5"
-                              step="0.5"
-                            />
-                          </div>
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Deadline <span className="dashboard-v4-form-optional">(opt)</span>
-                            </label>
-                            <input
-                              type="datetime-local"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.deadline}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
-                            />
-                          </div>
-                        </div>
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">
+                          Description <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
+                        <textarea
+                          placeholder="Provide details about the task..."
+                          className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                          style={{ minHeight: 80 }}
+                          value={taskForm.description}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                        />
+                      </div>
+                    </div>
 
-                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
-                          <label style={{
-                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                            fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                          }}>
-                            <input
-                              type="checkbox"
-                              checked={taskForm.is_remote}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                              style={{ width: 18, height: 18, cursor: 'pointer' }}
-                            />
-                            Remote task
-                          </label>
-                          <label style={{
-                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                            fontSize: 14, color: taskForm.is_anonymous ? '#7C3AED' : 'inherit'
-                          }}>
-                            <input
-                              type="checkbox"
-                              checked={taskForm.is_anonymous}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
-                              style={{ width: 18, height: 18, cursor: 'pointer' }}
-                            />
-                            Post anonymously
-                          </label>
-                        </div>
+                    {/* Section 2: Location & Schedule */}
+                    <div className="create-task-section">
+                      <div className="create-task-section-label">Location & Schedule</div>
+                      <div className="create-task-toggle-row">
+                        <label className={`create-task-toggle-chip ${taskForm.is_remote ? 'active-green' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_remote}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                          />
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                          Remote task
+                        </label>
+                        <label className={`create-task-toggle-chip ${taskForm.is_anonymous ? 'active-purple' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_anonymous}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
+                          />
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="23" y2="8"/></svg>
+                          Post anonymously
+                        </label>
+                      </div>
 
+                      <div className="create-task-row-2col">
                         {!taskForm.is_remote && (
-                          <div className="dashboard-v4-form-group">
+                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                             <label className="dashboard-v4-form-label">
                               City <span className="dashboard-v4-form-required">*</span>
                             </label>
@@ -2764,47 +2736,67 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             />
                           </div>
                         )}
-
-                        <div className="dashboard-v4-form-group">
-                          <label className="dashboard-v4-form-label">Required Skills <span className="dashboard-v4-form-optional">(optional)</span></label>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
-                            {taskForm.required_skills.map((skill, i) => (
-                              <span key={i} style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                background: '#EEF2FF', color: '#4338CA', borderRadius: 16,
-                                padding: '4px 10px', fontSize: 13, fontWeight: 500
-                              }}>
-                                {skill}
-                                <button type="button" onClick={() => setTaskForm(prev => ({
-                                  ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
-                                }))} style={{
-                                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                                  color: '#4338CA', fontSize: 16, lineHeight: 1, marginLeft: 2
-                                }}>×</button>
-                              </span>
-                            ))}
-                          </div>
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                          <label className="dashboard-v4-form-label">
+                            Deadline <span className="dashboard-v4-form-optional">(optional)</span>
+                          </label>
                           <input
-                            type="text"
-                            placeholder="Type a skill and press Enter"
+                            type="datetime-local"
                             className="dashboard-v4-form-input"
-                            value={taskForm.skillInput}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ',') {
-                                e.preventDefault()
-                                const skill = taskForm.skillInput.trim().toLowerCase()
-                                if (skill && !taskForm.required_skills.includes(skill)) {
-                                  setTaskForm(prev => ({
-                                    ...prev,
-                                    required_skills: [...prev.required_skills, skill],
-                                    skillInput: ''
-                                  }))
-                                }
-                              }
-                            }}
+                            value={taskForm.deadline}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Requirements (optional) */}
+                    <div className="create-task-section create-task-section-last">
+                      <div className="create-task-section-label">Additional Details <span className="dashboard-v4-form-optional">(optional)</span></div>
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">Requirements</label>
+                        <textarea
+                          placeholder="Any specific requirements or qualifications needed..."
+                          className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                          style={{ minHeight: 60 }}
+                          value={taskForm.requirements}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">Required Skills</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
+                          {taskForm.required_skills.map((skill, i) => (
+                            <span key={i} className="create-task-skill-chip">
+                              {skill}
+                              <button type="button" onClick={() => setTaskForm(prev => ({
+                                ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
+                              }))} className="create-task-skill-remove">×</button>
+                            </span>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Type a skill and press Enter"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.skillInput}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ',') {
+                              e.preventDefault()
+                              const skill = taskForm.skillInput.trim().toLowerCase()
+                              if (skill && !taskForm.required_skills.includes(skill)) {
+                                setTaskForm(prev => ({
+                                  ...prev,
+                                  required_skills: [...prev.required_skills, skill],
+                                  skillInput: ''
+                                }))
+                              }
+                            }
+                          }}
+                        />
                       </div>
                     </div>
 
