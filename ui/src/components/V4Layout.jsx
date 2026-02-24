@@ -3,6 +3,8 @@
 
 import React, { useState } from 'react'
 import MarketingFooter from './Footer'
+import LanguageSelector from './LanguageSelector'
+import { useLanguage } from '../context/LanguageContext'
 
 // V4 Design Tokens as CSS-in-JS for non-landing pages
 export const v4 = {
@@ -41,6 +43,7 @@ export const v4 = {
 // Shared Navbar Component
 export function NavbarV4({ user, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { t } = useLanguage()
 
   return (
     <nav className="navbar-v4" style={{
@@ -86,13 +89,15 @@ export function NavbarV4({ user, onLogout }) {
           textDecoration: 'none',
           fontSize: 14,
           fontWeight: 500,
-        }}>For Agents</a>
+        }}>{t('nav.forAgents')}</a>
         <a href="/dashboard" style={{
           color: v4.colors.textSecondary,
           textDecoration: 'none',
           fontSize: 14,
           fontWeight: 500,
-        }}>Browse Tasks</a>
+        }}>{t('nav.browseTasks')}</a>
+
+        <LanguageSelector />
 
         {user ? (
           <>
@@ -101,7 +106,7 @@ export function NavbarV4({ user, onLogout }) {
               textDecoration: 'none',
               fontSize: 14,
               fontWeight: 500,
-            }}>Dashboard</a>
+            }}>{t('nav.dashboard')}</a>
             {onLogout && (
               <button
                 onClick={onLogout}
@@ -117,7 +122,7 @@ export function NavbarV4({ user, onLogout }) {
                   fontFamily: v4.fonts.display,
                 }}
               >
-                Sign Out
+                {t('nav.signOut')}
               </button>
             )}
           </>
@@ -133,7 +138,7 @@ export function NavbarV4({ user, onLogout }) {
             textDecoration: 'none',
             boxShadow: v4.shadows.md,
           }}>
-            Join Now
+            {t('nav.joinNow')}
           </a>
         )}
       </div>
@@ -288,7 +293,9 @@ export function CardV4({ children, className = '', style = {}, ...props }) {
 }
 
 // V4 Loading Component
-export function LoadingV4({ message = 'Loading...' }) {
+export function LoadingV4({ message }) {
+  const { t } = useLanguage()
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -308,7 +315,7 @@ export function LoadingV4({ message = 'Loading...' }) {
         animation: 'spin 1s linear infinite',
         marginBottom: 16,
       }} />
-      <p style={{ color: v4.colors.textSecondary, fontSize: 14 }}>{message}</p>
+      <p style={{ color: v4.colors.textSecondary, fontSize: 14 }}>{message || t('loading')}</p>
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
