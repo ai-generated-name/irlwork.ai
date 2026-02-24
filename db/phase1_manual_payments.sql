@@ -79,8 +79,8 @@ CREATE TABLE IF NOT EXISTS manual_payments (
   deposit_notes TEXT,                     -- Admin notes for mismatched deposits
 
   -- Release info (calculated server-side at release)
-  worker_amount DECIMAL(12,2),            -- deposit_amount * 0.85
-  platform_fee DECIMAL(12,2),             -- deposit_amount * 0.15
+  worker_amount DECIMAL(12,2),            -- deposit_amount * 0.90
+  platform_fee DECIMAL(12,2),             -- deposit_amount * 0.10
 
   -- Withdrawal/refund info
   withdrawal_tx_hash TEXT,

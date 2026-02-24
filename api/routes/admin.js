@@ -10,11 +10,14 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
 const { PLATFORM_FEE_PERCENT } = require('../config/constants');
+const { getTierConfig } = require('../config/tiers');
 
 // Cents-based fee calculation to avoid floating-point rounding errors
-function calculateFees(depositAmount) {
+// Accepts optional workerTier for tier-based fee calculation
+function calculateFees(depositAmount, workerTier) {
   const depositCents = Math.round(parseFloat(depositAmount) * 100);
-  const platformFeeCents = Math.round(depositCents * PLATFORM_FEE_PERCENT / 100);
+  const feePercent = workerTier ? getTierConfig(workerTier).worker_fee_percent : PLATFORM_FEE_PERCENT;
+  const platformFeeCents = Math.round(depositCents * feePercent / 100);
   const workerCents = depositCents - platformFeeCents;
   return {
     worker_amount: (workerCents / 100).toFixed(2),

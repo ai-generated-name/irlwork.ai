@@ -268,7 +268,7 @@ Example of a BAD description:
 - Always verify task completion with \`view_proof\` before releasing payment
 - Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
 - Use \`dispute_task\` if work quality doesn't meet expectations
-- Payments are processed via Stripe. The human receives 85% (15% platform fee).
+- Payments are processed via Stripe. The human receives 90% (10% platform fee).
 
 ## API Info
 - Base URL: https://api.irlwork.ai/api

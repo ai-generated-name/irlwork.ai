@@ -6,7 +6,7 @@ import {
   Star, CalendarDays, Search, ChevronDown, Upload, Bell,
   FileText, CheckCircle, XCircle, Landmark, Scale, Ban, ArrowDownLeft,
   Shield, Hourglass, Bot, FolderOpen, RefreshCw,
-  Monitor, Sparkles, AlertTriangle, KeyRound
+  Monitor, Sparkles, AlertTriangle, KeyRound, Mail
 } from 'lucide-react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
@@ -28,6 +28,7 @@ import LandingPageV4 from './pages/LandingPageV4'
 import NotFoundPage from './pages/NotFoundPage'
 import ContactPage from './pages/ContactPage'
 import AboutPage from './pages/AboutPage'
+import ThesisPage from './pages/ThesisPage'
 import MarketingFooter from './components/Footer'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
@@ -99,6 +100,7 @@ import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import ApiKeysTab from './components/ApiKeysTab'
 // ConnectAgentPage defined inline below
 const MCPPage = lazy(() => import('./pages/MCPPage'))
+const PremiumPage = lazy(() => import('./pages/PremiumPage'))
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -673,6 +675,7 @@ function AuthPage({ onLogin, onNavigate }) {
   const [errorModal, setErrorModal] = useState(null)
   const [form, setForm] = useState({ email: '', password: '', name: '' })
   const [showPassword, setShowPassword] = useState(false)
+  const [signupSuccess, setSignupSuccess] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -686,19 +689,30 @@ function AuthPage({ onLogin, onNavigate }) {
     }
 
     try {
-      const { error } = isLogin
+      const { data, error } = isLogin
         ? await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
         : await supabase.auth.signUp({
             email: form.email,
             password: form.password,
-            options: { data: { name: form.name } }
+            options: {
+              data: { name: form.name },
+              emailRedirectTo: window.location.origin + '/auth'
+            }
           })
 
       if (error) throw error
       trackEvent(isLogin ? 'login' : 'sign_up', { method: 'email' })
-      // Don't navigate here — the parent App's onAuthStateChange will detect
-      // the new session and redirect from /auth to /dashboard automatically.
-      // This avoids a full page reload on mobile.
+
+      // For signups: Supabase may not return a session if email confirmation is enabled.
+      // In that case, show a confirmation message instead of navigating to dashboard
+      // (which would just bounce back to /auth since there's no authenticated session).
+      if (!isLogin && !data.session) {
+        setSignupSuccess(true)
+        return
+      }
+
+      // Login or signup with immediate session — navigate to dashboard.
+      // The parent App's onAuthStateChange will detect the session and handle redirects.
       const params = new URLSearchParams(window.location.search)
       const returnTo = params.get('returnTo')
       if (onNavigate) onNavigate(returnTo && decodeURIComponent(returnTo).startsWith('/dashboard') ? decodeURIComponent(returnTo) : '/dashboard')
@@ -846,6 +860,38 @@ function AuthPage({ onLogin, onNavigate }) {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show email confirmation screen after successful signup (when email verification is required)
+  if (signupSuccess) {
+    return (
+      <div className="auth-v4">
+        <div className="auth-v4-container">
+          <a href="/" className="auth-v4-logo">
+            <div className="logo-mark-v4">irl</div>
+            <span className="logo-name-v4">irlwork.ai</span>
+          </a>
+          <div className="auth-v4-card" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>
+              <Mail size={48} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+            </div>
+            <h1 className="auth-v4-title">Check your email</h1>
+            <p className="auth-v4-subtitle" style={{ marginBottom: 24 }}>
+              We sent a confirmation link to <strong>{form.email}</strong>. Click the link to verify your email and get started.
+            </p>
+            <button
+              className="auth-v4-submit"
+              onClick={() => { setSignupSuccess(false); setIsLogin(true); setError('') }}
+            >
+              Back to Sign In
+            </button>
+          </div>
+          <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+            ← Back to home
+          </button>
         </div>
       </div>
     )
@@ -1338,6 +1384,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
   const [profileTimezone, setProfileTimezone] = useState(user?.timezone || '')
+  const [profileGender, setProfileGender] = useState(user?.gender || '')
   const [skillsList, setSkillsList] = useState(user?.skills || [])
   const [newSkillInput, setNewSkillInput] = useState('')
   const [languagesList, setLanguagesList] = useState(user?.languages || [])
@@ -1708,16 +1755,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
   }
 
-  const handleAssignHuman = async (taskId, humanId) => {
+  const handleAssignHuman = async (taskId, humanId, preferredPaymentMethod) => {
     setAssigningHuman(humanId)
     try {
+      const body = { human_id: humanId }
+      if (preferredPaymentMethod) body.preferred_payment_method = preferredPaymentMethod
       const res = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: user.token || ''
         },
-        body: JSON.stringify({ human_id: humanId })
+        body: JSON.stringify(body)
       })
       if (res.ok) {
         const data = await res.json()
@@ -1726,7 +1775,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
 
         // Show appropriate toast based on payment method
-        if (data.amount_charged) {
+        if (data.payment_method === 'usdc') {
+          toast.success(`Worker assigned! Send ${data.deposit_instructions?.amount_usdc} USDC to complete escrow.`)
+        } else if (data.amount_charged) {
           toast.success(`Worker assigned! $${data.amount_charged?.toFixed(2)} charged to your card.`)
         } else {
           toast.success('Worker assigned! Payment charged to your card.')
@@ -2217,6 +2268,26 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           ))}
         </nav>
 
+        {/* Upgrade to Premium CTA */}
+        {user && (user.subscription_tier || 'free') !== 'pro' && (
+          <div style={{ padding: 'var(--space-2) var(--space-4)' }}>
+            <button
+              onClick={() => window.location.href = '/premium'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#fff',
+                fontSize: 13, fontWeight: 600, transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              <Sparkles size={16} />
+              <span>Upgrade to Premium</span>
+            </button>
+          </div>
+        )}
+
         {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
           {hiringMode ? (
@@ -2562,145 +2633,117 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {tasksSubTab === 'create' && (
               <div style={{ marginTop: 16 }}>
-                <div className="dashboard-v4-form create-task-form-wide">
-                  <h2 className="dashboard-v4-form-title">Create a New Task</h2>
+                <div className="create-task-container">
+                  <div className="create-task-header">
+                    <h2 className="create-task-title">Create a New Task</h2>
+                    <p className="create-task-subtitle">Fill in the details below to post your task</p>
+                  </div>
+
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
-                    <div className="create-task-grid">
-                      {/* Left column */}
-                      <div className="create-task-col">
-                        <div className="dashboard-v4-form-group">
+                    {/* Section 1: Basics */}
+                    <div className="create-task-section">
+                      <div className="create-task-section-label">Basics</div>
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">
+                          Task Title <span className="dashboard-v4-form-required">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="What do you need done?"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.title}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="create-task-row-3col">
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Task Title <span className="dashboard-v4-form-required">*</span>
+                            Category <span className="dashboard-v4-form-required">*</span>
+                          </label>
+                          <CustomDropdown
+                            value={taskForm.category}
+                            onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
+                            options={[
+                              { value: '', label: 'Select category' },
+                              ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
+                                value: c,
+                                label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                              }))
+                            ]}
+                            placeholder="Select category"
+                          />
+                        </div>
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                          <label className="dashboard-v4-form-label">
+                            Budget (USD) <span className="dashboard-v4-form-required">*</span>
                           </label>
                           <input
-                            type="text"
-                            placeholder="What do you need done?"
+                            type="number"
+                            placeholder="$"
                             className="dashboard-v4-form-input"
-                            value={taskForm.title}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                            value={taskForm.budget}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
+                            min="5"
                           />
                         </div>
-
-                        <div className="dashboard-v4-form-group">
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Description <span className="dashboard-v4-form-optional">(optional)</span>
+                            Duration <span className="dashboard-v4-form-optional">(hours)</span>
                           </label>
-                          <textarea
-                            placeholder="Provide details about the task..."
-                            className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                            style={{ minHeight: 80 }}
-                            value={taskForm.description}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
-                          />
-                        </div>
-
-                        <div className="dashboard-form-grid-2col">
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Category <span className="dashboard-v4-form-required">*</span>
-                            </label>
-                            <CustomDropdown
-                              value={taskForm.category}
-                              onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
-                              options={[
-                                { value: '', label: 'Select category' },
-                                ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
-                                  value: c,
-                                  label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                                }))
-                              ]}
-                              placeholder="Select category"
-                            />
-                          </div>
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Budget (USD) <span className="dashboard-v4-form-required">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              placeholder="$"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.budget}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
-                              min="5"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="dashboard-v4-form-group">
-                          <label className="dashboard-v4-form-label">
-                            Requirements <span className="dashboard-v4-form-optional">(optional)</span>
-                          </label>
-                          <textarea
-                            placeholder="Any specific requirements or qualifications needed..."
-                            className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                            style={{ minHeight: 60 }}
-                            value={taskForm.requirements}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                            rows={2}
+                          <input
+                            type="number"
+                            placeholder="e.g. 2"
+                            className="dashboard-v4-form-input"
+                            value={taskForm.duration_hours}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                            min="0.5"
+                            step="0.5"
                           />
                         </div>
                       </div>
 
-                      {/* Right column */}
-                      <div className="create-task-col">
-                        <div className="dashboard-form-grid-2col">
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Duration (hours) <span className="dashboard-v4-form-optional">(opt)</span>
-                            </label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 2"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.duration_hours}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
-                              min="0.5"
-                              step="0.5"
-                            />
-                          </div>
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Deadline <span className="dashboard-v4-form-optional">(opt)</span>
-                            </label>
-                            <input
-                              type="datetime-local"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.deadline}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
-                            />
-                          </div>
-                        </div>
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">
+                          Description <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
+                        <textarea
+                          placeholder="Provide details about the task..."
+                          className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                          style={{ minHeight: 80 }}
+                          value={taskForm.description}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                        />
+                      </div>
+                    </div>
 
-                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
-                          <label style={{
-                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                            fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                          }}>
-                            <input
-                              type="checkbox"
-                              checked={taskForm.is_remote}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                              style={{ width: 18, height: 18, cursor: 'pointer' }}
-                            />
-                            Remote task
-                          </label>
-                          <label style={{
-                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                            fontSize: 14, color: taskForm.is_anonymous ? '#7C3AED' : 'inherit'
-                          }}>
-                            <input
-                              type="checkbox"
-                              checked={taskForm.is_anonymous}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
-                              style={{ width: 18, height: 18, cursor: 'pointer' }}
-                            />
-                            Post anonymously
-                          </label>
-                        </div>
+                    {/* Section 2: Location & Schedule */}
+                    <div className="create-task-section">
+                      <div className="create-task-section-label">Location & Schedule</div>
+                      <div className="create-task-toggle-row">
+                        <label className={`create-task-toggle-chip ${taskForm.is_remote ? 'active-green' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_remote}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                          />
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                          Remote task
+                        </label>
+                        <label className={`create-task-toggle-chip ${taskForm.is_anonymous ? 'active-purple' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_anonymous}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
+                          />
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="23" y2="8"/></svg>
+                          Post anonymously
+                        </label>
+                      </div>
 
+                      <div className="create-task-row-2col">
                         {!taskForm.is_remote && (
-                          <div className="dashboard-v4-form-group">
+                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                             <label className="dashboard-v4-form-label">
                               City <span className="dashboard-v4-form-required">*</span>
                             </label>
@@ -2719,47 +2762,67 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             />
                           </div>
                         )}
-
-                        <div className="dashboard-v4-form-group">
-                          <label className="dashboard-v4-form-label">Required Skills <span className="dashboard-v4-form-optional">(optional)</span></label>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
-                            {taskForm.required_skills.map((skill, i) => (
-                              <span key={i} style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                background: '#EEF2FF', color: '#4338CA', borderRadius: 16,
-                                padding: '4px 10px', fontSize: 13, fontWeight: 500
-                              }}>
-                                {skill}
-                                <button type="button" onClick={() => setTaskForm(prev => ({
-                                  ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
-                                }))} style={{
-                                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                                  color: '#4338CA', fontSize: 16, lineHeight: 1, marginLeft: 2
-                                }}>×</button>
-                              </span>
-                            ))}
-                          </div>
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                          <label className="dashboard-v4-form-label">
+                            Deadline <span className="dashboard-v4-form-optional">(optional)</span>
+                          </label>
                           <input
-                            type="text"
-                            placeholder="Type a skill and press Enter"
+                            type="datetime-local"
                             className="dashboard-v4-form-input"
-                            value={taskForm.skillInput}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ',') {
-                                e.preventDefault()
-                                const skill = taskForm.skillInput.trim().toLowerCase()
-                                if (skill && !taskForm.required_skills.includes(skill)) {
-                                  setTaskForm(prev => ({
-                                    ...prev,
-                                    required_skills: [...prev.required_skills, skill],
-                                    skillInput: ''
-                                  }))
-                                }
-                              }
-                            }}
+                            value={taskForm.deadline}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Requirements (optional) */}
+                    <div className="create-task-section create-task-section-last">
+                      <div className="create-task-section-label">Additional Details <span className="dashboard-v4-form-optional">(optional)</span></div>
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">Requirements</label>
+                        <textarea
+                          placeholder="Any specific requirements or qualifications needed..."
+                          className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                          style={{ minHeight: 60 }}
+                          value={taskForm.requirements}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">Required Skills</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
+                          {taskForm.required_skills.map((skill, i) => (
+                            <span key={i} className="create-task-skill-chip">
+                              {skill}
+                              <button type="button" onClick={() => setTaskForm(prev => ({
+                                ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
+                              }))} className="create-task-skill-remove">×</button>
+                            </span>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Type a skill and press Enter"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.skillInput}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ',') {
+                              e.preventDefault()
+                              const skill = taskForm.skillInput.trim().toLowerCase()
+                              if (skill && !taskForm.required_skills.includes(skill)) {
+                                setTaskForm(prev => ({
+                                  ...prev,
+                                  required_skills: [...prev.required_skills, skill],
+                                  skillInput: ''
+                                }))
+                              }
+                            }
+                          }}
+                        />
                       </div>
                     </div>
 
@@ -2862,17 +2925,27 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
                                             )}
                                             {app.proposed_rate != null && (
-                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate} USDC</p>
+                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate}</p>
                                             )}
                                           </div>
                                         </div>
-                                        <button
-                                          onClick={() => handleAssignHuman(task.id, app.human_id)}
-                                          disabled={assigningHuman === app.human_id}
-                                          className="v4-btn v4-btn-primary"
-                                        >
-                                          {assigningHuman === app.human_id ? 'Assigning...' : 'Accept'}
-                                        </button>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                                          <button
+                                            onClick={() => handleAssignHuman(task.id, app.human_id)}
+                                            disabled={assigningHuman === app.human_id}
+                                            className="v4-btn v4-btn-primary"
+                                          >
+                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (Card)'}
+                                          </button>
+                                          <button
+                                            onClick={() => handleAssignHuman(task.id, app.human_id, 'usdc')}
+                                            disabled={assigningHuman === app.human_id}
+                                            className="v4-btn"
+                                            style={{ fontSize: 12, padding: '6px 12px', color: '#2563eb', border: '1px solid #2563eb', background: '#eff6ff' }}
+                                          >
+                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (USDC)'}
+                                          </button>
+                                        </div>
                                       </div>
                                     ))
                                   )}
@@ -3135,6 +3208,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                     `}>
                                       {isReleased ? 'Released' : isCompleted ? 'Completed' : isInProgress ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
                                     </span>
+                                    {task.payment_method === 'usdc' && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 flex-shrink-0">USDC</span>
+                                    )}
                                   </div>
 
                                   <p className="text-xs text-[#8A8A8A] mt-1">
@@ -3198,6 +3274,39 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </div>
                 </StripeProvider>
               </Suspense>
+            </div>
+
+            {/* USDC Payment Option */}
+            <div>
+              <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">USDC Payments</h3>
+              <div style={{ maxWidth: 520 }}>
+                <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#1A1A1A]">Pay with USDC on Base</p>
+                      <p className="text-xs text-[#525252] mt-1">
+                        When assigning a worker, choose USDC to send payment directly to our platform wallet. Workers will be paid in USDC.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-[#F5F2ED] rounded-lg p-3 mb-3">
+                    <p className="text-xs text-[#8A8A8A] mb-1">Platform Wallet (Base)</p>
+                    <p className="text-sm font-mono text-[#1A1A1A] break-all select-all">
+                      {import.meta.env.VITE_PLATFORM_WALLET_ADDRESS || 'Configure VITE_PLATFORM_WALLET_ADDRESS'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-[#8A8A8A]">
+                    <span>Network: Base</span>
+                    <span>Token: USDC</span>
+                    <span>Decimals: 6</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -3432,6 +3541,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
+            {/* Profile completion banner */}
+            <div style={{
+              maxWidth: 600,
+              marginBottom: 16,
+              padding: '12px 16px',
+              borderRadius: 10,
+              background: 'var(--orange-50, #fff7ed)',
+              border: '1px solid var(--orange-200, #fed7aa)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              fontSize: 14,
+              color: 'var(--orange-700, #c2410c)',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span>Update your profile to help agents find you.</span>
+            </div>
+
             {/* Profile editing sub-tabs */}
             <div className="settings-tabs">
               {['Profile', 'Skills', 'Languages', 'Social'].map(tab => (
@@ -3463,7 +3594,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       country_code: locationData.country_code || user?.country_code,
                       hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
                       bio: formData.get('bio'),
-                      travel_radius: parseInt(formData.get('travel_radius')) || 25
+                      travel_radius: parseInt(formData.get('travel_radius')) || 25,
+                      gender: profileGender || null
                     }
                     if (profileTimezone) payload.timezone = profileTimezone
                     const res = await fetch(`${API_URL}/humans/profile`, {
@@ -3501,6 +3633,42 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         placeholder="San Francisco"
                         className="dashboard-v4-city-input"
                       />
+                    </div>
+                  </div>
+
+                  <div className="dashboard-v4-form-group">
+                    <label className="dashboard-v4-form-label">Gender</label>
+                    <div style={{
+                      display: 'flex',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))',
+                      overflow: 'hidden',
+                    }}>
+                      {['Man', 'Woman', 'Other'].map((option, idx) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setProfileGender(option.toLowerCase())}
+                          style={{
+                            flex: 1,
+                            padding: '8px 16px',
+                            border: 'none',
+                            borderRight: idx < 2 ? '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))' : 'none',
+                            background: profileGender === option.toLowerCase()
+                              ? 'var(--orange-500, #f4845f)'
+                              : 'var(--bg-primary, white)',
+                            color: profileGender === option.toLowerCase()
+                              ? 'white'
+                              : 'var(--text-secondary)',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          {option}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
@@ -4729,7 +4897,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
                 <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
                   <li>Connect your bank account via Stripe Connect</li>
                   <li>Complete tasks and submit proof of work</li>
-                  <li>Receive 85% of the task budget (15% platform fee)</li>
+                  <li>Receive 90% of the task budget (10% platform fee)</li>
                   <li>48-hour hold after approval for dispute protection</li>
                   <li>Funds deposited directly to your bank account</li>
                 </ul>
@@ -5091,6 +5259,13 @@ function App() {
       debug('[Auth] Bare /dashboard, redirecting to mode-specific URL')
       const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
       navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path === '/messages' && user) {
+      // Redirect /messages to dashboard messages tab
+      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+      navigate(savedHiring ? '/dashboard/hiring/messages' : '/dashboard/working/messages')
+    } else if (path === '/messages' && !user) {
+      const returnTo = encodeURIComponent('/messages')
+      navigate(`/auth?returnTo=${returnTo}`)
     } else if (path === '/browse') {
       // Redirect bare /browse to /browse/tasks (or /browse/humans if legacy ?mode=humans)
       const browseParams = new URLSearchParams(window.location.search)
@@ -5159,8 +5334,10 @@ function App() {
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/connect-agent') return <ConnectAgentPage />
+    if (path === '/premium') return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
+    if (path === '/thesis') return <ThesisPage />
     if (path === '/browse' || path === '/browse/tasks' || path === '/browse/humans') return <Suspense fallback={<Loading />}><BrowsePage user={user} navigate={navigate} /></Suspense>
 
     // Homepage
