@@ -34,19 +34,18 @@ export class IRLWorkAgent {
     if (onNotification) {
       this.on('notification', onNotification)
     }
-    
-    // Auto-register webhook for notifications
-    this._registerWebhook()
   }
   
   /**
    * Register webhook for real-time notifications
-   * @private
+   * @param {string} webhookUrl - Your server's webhook endpoint URL
+   * @param {string} [secret] - Optional webhook secret for signature verification
    */
-  async _registerWebhook() {
+  async registerWebhook(webhookUrl, secret) {
     try {
       await this.client.callMcp('set_webhook', {
-        webhook_url: `${this.apiUrl}/webhooks/${this.apiKey}`
+        webhook_url: webhookUrl,
+        secret
       })
       console.log('[IRL Work] Webhook registered')
     } catch (error) {

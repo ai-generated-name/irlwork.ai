@@ -352,9 +352,10 @@ const VALID_STATUS_TRANSITIONS = {
   pending_acceptance: ['in_progress', 'open', 'cancelled'],
   assigned: ['in_progress', 'cancelled'],
   in_progress: ['pending_review', 'disputed', 'cancelled'],
-  pending_review: ['completed', 'rejected', 'disputed'],
+  pending_review: ['approved', 'completed', 'rejected', 'disputed'],
   rejected: ['pending_review', 'disputed', 'cancelled'],
-  disputed: ['paid', 'refunded', 'cancelled'],
+  approved: ['paid', 'disputed'],
+  disputed: ['paid', 'refunded', 'cancelled', 'pending_review'],
   completed: ['paid'],
 };
 
@@ -1981,7 +1982,7 @@ app.put('/api/humans/profile', async (req, res) => {
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
     if (name) updates.name = name;
-    if (hourly_rate) updates.hourly_rate = hourly_rate;
+    if (hourly_rate !== undefined) updates.hourly_rate = hourly_rate;
     if (bio !== undefined) updates.bio = bio;
     // Accept both 'skills' and 'categories' for backwards compatibility
     // Store as JSON string to match registration format
@@ -1998,7 +1999,7 @@ app.put('/api/humans/profile', async (req, res) => {
     if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
     if (country !== undefined) updates.country = country;
     if (country_code !== undefined) updates.country_code = country_code;
-    if (travel_radius) {
+    if (travel_radius !== undefined) {
       updates.travel_radius = travel_radius;
       updates.service_radius = travel_radius;
     }
@@ -2637,7 +2638,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
 
   // For open tasks with remaining spots, keep status 'open'
   const usdcStatus = nextStatus || 'assigned';
-  const { error } = await supabase
+  const { data: usdcUpdated, error } = await supabase
     .from('tasks')
     .update(cleanTaskData({
       human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
@@ -2650,9 +2651,14 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       payment_method: 'usdc',
       updated_at: new Date().toISOString()
     }))
-    .eq('id', taskId);
+    .eq('id', taskId)
+    .eq('status', 'open')
+    .select('id')
+    .single();
 
-  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+  if (error || !usdcUpdated) {
+    return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
+  }
 
   await finalizeAssignment(
     `You've been selected for "${task.title}". Funding is in progress — you'll be notified when work can begin.`
@@ -2785,11 +2791,12 @@ app.post('/api/tasks/:id/release', async (req, res) => {
     // Use the proper Stripe pipeline with 48-hour hold
     await releasePaymentToPending(supabase, id, task.human_id, user.id, createNotification);
 
-    // Update task status to paid
+    // Atomic update: only set 'paid' if still in completed/approved
     await supabase
       .from('tasks')
       .update({ status: 'paid', updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', id)
+      .in('status', ['completed', 'approved']);
 
     const budget = parseFloat(task.budget) || 0;
     const platformFee = Math.round(budget * PLATFORM_FEE_PERCENT) / 100;
@@ -3781,11 +3788,28 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     }
   }
 
+  // USDC-paid tasks: release to pending balance if escrow was deposited on-chain
+  if (task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held')) {
+    try {
+      await releasePaymentToPending(supabase, taskId, task.human_id, task.agent_id, createNotification);
+      console.log(`[Approve] Released USDC payment for task ${taskId}`);
+    } catch (releaseError) {
+      console.error('[Approve] USDC release failed for task:', releaseError.message);
+      // Don't fail the approve — admin can manually release
+    }
+  }
+
+  const isStripe = task.payment_method === 'stripe' && task.stripe_payment_intent_id;
+  const isUsdcFunded = task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held');
+  const paymentReleased = isStripe || isUsdcFunded;
+
   res.json({
     success: true,
     status: 'approved',
     payment_method: task.payment_method || 'stripe',
-    message: 'Proof approved. Payment released to pending balance with 48-hour hold.'
+    message: paymentReleased
+      ? 'Proof approved. Payment released to pending balance with 48-hour hold.'
+      : 'Proof approved. Payment will be released once escrow is funded.'
   });
 });
 
@@ -5016,8 +5040,8 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(403).json({ error: 'Not your task' });
         }
 
-        // Only allow approving tasks in valid statuses
-        if (!['pending_review', 'completed'].includes(task.status)) {
+        // Align with REST endpoint: allow pending_review and disputed
+        if (!['pending_review', 'disputed'].includes(task.status)) {
           return res.status(400).json({ error: `Cannot approve task with status "${task.status}"` });
         }
 
@@ -5030,12 +5054,13 @@ app.post('/api/mcp', async (req, res) => {
           .limit(1)
           .single();
 
-        // Update proof status
+        // Atomic proof status update — prevents double-approve
         if (latestProof) {
           await supabase
             .from('task_proofs')
             .update({ status: 'approved', updated_at: new Date().toISOString() })
-            .eq('id', latestProof.id);
+            .eq('id', latestProof.id)
+            .neq('status', 'approved');
         }
 
         // Atomic status transition — prevents double-approve
@@ -5043,7 +5068,7 @@ app.post('/api/mcp', async (req, res) => {
           .from('tasks')
           .update({ status: 'approved', updated_at: new Date().toISOString() })
           .eq('id', task_id)
-          .in('status', ['pending_review', 'completed'])
+          .in('status', ['pending_review', 'disputed'])
           .select('id')
           .single();
 
@@ -5051,19 +5076,18 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(409).json({ error: 'Task status changed — refresh and try again' });
         }
 
-        // Release payment via Stripe (same flow as non-MCP approve)
-        try {
-          await releasePaymentToPending(supabase, task_id, task.human_id, user.id, createNotification);
-          console.log(`[MCP Approve] Released payment for task ${task_id}`);
-        } catch (e) {
-          return res.status(409).json({ error: e.message || 'Payment release failed.' });
-        }
+        // Release payment (both Stripe and USDC tasks with funded escrow)
+        const canRelease = (task.payment_method === 'stripe' && task.stripe_payment_intent_id) ||
+          (task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held'));
 
-        // Mark as paid after successful release
-        await supabase
-          .from('tasks')
-          .update({ status: 'paid', updated_at: new Date().toISOString() })
-          .eq('id', task_id);
+        if (canRelease) {
+          try {
+            await releasePaymentToPending(supabase, task_id, task.human_id, user.id, createNotification);
+            console.log(`[MCP Approve] Released payment for task ${task_id}`);
+          } catch (e) {
+            return res.status(409).json({ error: e.message || 'Payment release failed.' });
+          }
+        }
 
         const escrowAmount = task.escrow_amount || task.budget || 50;
         const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
@@ -5071,8 +5095,13 @@ app.post('/api/mcp', async (req, res) => {
 
         res.json({
           success: true,
-          status: 'paid',
-          net_amount: netAmount
+          status: 'approved',
+          payment_released: canRelease,
+          payment_method: task.payment_method || 'stripe',
+          net_amount: canRelease ? netAmount : null,
+          message: canRelease
+            ? 'Proof approved. Payment released to pending balance with 48-hour hold.'
+            : 'Proof approved. Payment will be released once escrow is funded.'
         });
         break;
       }
@@ -6996,12 +7025,12 @@ app.put('/api/profile', async (req, res) => {
   if (bio !== undefined) updates.bio = bio;
   if (city) updates.city = city;
   if (state) updates.state = state;
-  if (hourly_rate) updates.hourly_rate = hourly_rate;
+  if (hourly_rate !== undefined) updates.hourly_rate = hourly_rate;
   if (availability) updates.availability = availability;
   if (skills) updates.skills = JSON.stringify(skills);
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
   if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
-  if (travel_radius) {
+  if (travel_radius !== undefined) {
     updates.travel_radius = travel_radius;
     updates.service_radius = travel_radius;
   }
@@ -7046,10 +7075,15 @@ app.put('/api/profile', async (req, res) => {
     .eq('id', user.id)
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-  
-  res.json({ success: true, profile });
+
+  // Parse JSONB fields before returning
+  res.json({ success: true, profile: {
+    ...profile,
+    skills: safeParseJsonArray(profile.skills),
+    languages: safeParseJsonArray(profile.languages)
+  }});
 });
 
 // ============ WALLET BALANCE & WITHDRAWALS ============
@@ -7614,9 +7648,68 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       return res.status(410).json({ error: 'The review period has expired. This offer is no longer available.' });
     }
 
-    // Charge the agent's card now
     const budgetAmount = task.escrow_amount || task.budget || 50;
     const amountCents = Math.round(budgetAmount * 100);
+
+    // USDC tasks: escrow funded externally — skip Stripe charge
+    if (task.payment_method === 'usdc') {
+      // For USDC, escrow must already be deposited on-chain before work starts.
+      // If escrow is still pending_deposit, the human can accept but work waits for funding.
+      const escrowReady = task.escrow_status === 'deposited' || task.escrow_status === 'held';
+
+      const { data: updatedTask, error } = await supabase
+        .from('tasks')
+        .update(cleanTaskData({
+          status: escrowReady ? 'in_progress' : 'assigned',
+          assigned_at: new Date().toISOString(),
+          work_started_at: escrowReady ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
+        }))
+        .eq('id', id)
+        .eq('status', 'pending_acceptance')
+        .select('id')
+        .single();
+
+      if (error || !updatedTask) {
+        return res.status(409).json({ error: 'Task is no longer available — it may have been accepted by someone else' });
+      }
+
+      // Increment total_tasks_accepted for human
+      const { data: acceptUser } = await supabase
+        .from('users')
+        .select('total_tasks_accepted')
+        .eq('id', user.id)
+        .single();
+      await supabase
+        .from('users')
+        .update({
+          total_tasks_accepted: (acceptUser?.total_tasks_accepted || 0) + 1,
+          last_active_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (task.agent_id) {
+        await createNotification(
+          task.agent_id,
+          'task_accepted',
+          'Task Accepted',
+          `${user.name || 'A worker'} has accepted your task "${task.title}".${escrowReady ? ' Work can begin.' : ' Waiting for USDC escrow deposit.'}`,
+          `/tasks/${id}`
+        );
+      }
+
+      return res.json({
+        success: true,
+        status: escrowReady ? 'in_progress' : 'assigned',
+        escrow_status: task.escrow_status,
+        payment_method: 'usdc',
+        message: escrowReady
+          ? 'Task accepted. USDC escrow is funded — work can begin.'
+          : 'Task accepted. Waiting for USDC escrow deposit before work can start.'
+      });
+    }
+
+    // STRIPE PATH: Charge the agent's card now
     const { chargeAgentForTask, refundPaymentIntent } = require('./backend/services/stripeService');
 
     let chargeResult;
@@ -7701,12 +7794,20 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
   }
 
   // Accept from open status (original flow — human browsing open tasks)
+  // If escrow is already funded (agent set up payment via /assign first), start work.
+  // Otherwise, mark as assigned and require agent to fund escrow before work begins.
+  const escrowFunded = task.escrow_status === 'deposited' || task.escrow_status === 'held';
+  const acceptStatus = escrowFunded ? 'in_progress' : 'assigned';
+
   const { data: updatedTask, error } = await supabase
     .from('tasks')
     .update({
-      status: 'in_progress',
+      status: acceptStatus,
       human_id: user.id,
-      work_started_at: new Date().toISOString()
+      assigned_at: new Date().toISOString(),
+      work_started_at: escrowFunded ? new Date().toISOString() : null,
+      escrow_status: task.escrow_status || 'unfunded',
+      updated_at: new Date().toISOString()
     })
     .eq('id', id)
     .eq('status', 'open')
@@ -7743,7 +7844,7 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       acceptedTask.agent_id,
       'task_accepted',
       'Task Accepted',
-      `${user.name || 'A worker'} has accepted your task "${acceptedTask.title}".`,
+      `${user.name || 'A worker'} has accepted your task "${acceptedTask.title}".${escrowFunded ? ' Work can begin.' : ' Please fund escrow so work can start.'}`,
       `/tasks/${id}`
     );
 
@@ -7760,7 +7861,14 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     }).catch(() => {});
   }
 
-  res.json({ success: true });
+  res.json({
+    success: true,
+    status: acceptStatus,
+    escrow_status: task.escrow_status || 'unfunded',
+    message: escrowFunded
+      ? 'Task accepted. Escrow is funded — work can begin.'
+      : 'Task accepted. Waiting for agent to fund escrow before work can start.'
+  });
 });
 
 app.post('/api/tasks/:id/decline', async (req, res) => {
@@ -8230,7 +8338,7 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       await supabase.from('payouts').update({ status: 'refunded' }).eq('id', dispute.payout.id);
     }
 
-    // Update task
+    // Atomic task update with status precondition
     await supabase
       .from('tasks')
       .update({
@@ -8240,7 +8348,8 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', dispute.task_id);
+      .eq('id', dispute.task_id)
+      .eq('status', 'disputed');
 
     await createNotification(
       dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Refund Issued',
@@ -8261,6 +8370,7 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       return res.status(409).json({ error: e.message || 'Payment has already been released.' });
     }
 
+    // Atomic task update with status precondition
     await supabase
       .from('tasks')
       .update({
@@ -8269,7 +8379,8 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', dispute.task_id);
+      .eq('id', dispute.task_id)
+      .eq('status', 'disputed');
 
     const escrowAmount = task.escrow_amount || task.budget;
     const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
@@ -8288,6 +8399,7 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
 
   } else if (resolution === 'partial') {
     // === PARTIAL RESOLUTION: Reset task for re-review ===
+    // Atomic task update with status precondition
     await supabase
       .from('tasks')
       .update({
@@ -8297,7 +8409,8 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', dispute.task_id);
+      .eq('id', dispute.task_id)
+      .eq('status', 'disputed');
 
     await createNotification(
       dispute.filed_by, 'dispute_resolved', 'Dispute Partially Resolved',

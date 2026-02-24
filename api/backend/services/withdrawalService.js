@@ -101,7 +101,7 @@ async function processStripeWithdrawal(supabase, userId, amountCents = null, cre
       throw new Error('No available balance to withdraw');
     }
 
-    // Select transactions to withdraw (FIFO, full amounts only — skip any too large, continue to smaller ones)
+    // Select transactions to withdraw (FIFO — oldest first, full amounts that fit)
     let remaining = withdrawAmountCents;
     const txsToWithdraw = [];
 
@@ -112,6 +112,22 @@ async function processStripeWithdrawal(supabase, userId, amountCents = null, cre
         remaining -= tx.amount_cents;
       }
       // Skip transactions larger than remaining — continue to check smaller ones
+    }
+
+    // If we couldn't match the exact amount with whole transactions,
+    // and there are still funds remaining, warn the user
+    if (remaining > 0 && amountCents !== null) {
+      const matched = withdrawAmountCents - remaining;
+      if (matched === 0) {
+        throw new Error(`Cannot withdraw $${(withdrawAmountCents / 100).toFixed(2)} — no individual transaction is small enough. Try withdrawing all available funds instead.`);
+      }
+      // Proceed with what we could match
+      console.warn(`[Stripe Withdrawal] Partial match: requested ${withdrawAmountCents}c, matched ${matched}c, remaining ${remaining}c`);
+    }
+
+    // Guard: if FIFO produced no matches (e.g., all txs larger than requested amount)
+    if (txsToWithdraw.length === 0) {
+      throw new Error('No transactions could be matched for withdrawal. Try withdrawing all available funds instead.');
     }
 
     const actualAmountCents = txsToWithdraw.reduce((sum, tx) => sum + tx.amount_cents, 0);
