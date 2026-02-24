@@ -53,6 +53,12 @@ const { stripe } = require('./backend/lib/stripe');
 const { chargeAgentForTask, listPaymentMethods, handleWebhookEvent } = require('./backend/services/stripeService');
 const initStripeRoutes = require('./routes/stripe');
 
+// Notification services
+console.log('[Startup] Loading notification services...');
+const { createEmailService } = require('./lib/notifications/emailService');
+const { createNotificationService } = require('./lib/notifications/notificationService');
+const initNotificationRoutes = require('./routes/notifications');
+
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
 const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./utils/distance');
@@ -665,78 +671,35 @@ async function getUserByToken(token) {
   return null;
 }
 
+// Notification services (initialized after supabase, used by createNotification)
+let _emailService = null;
+let _notificationService = null;
+
 async function createNotification(userId, type, title, message, link = null) {
-  if (!supabase) return;
-  await supabase.from('notifications').insert({
-    id: uuidv4(),
-    user_id: userId,
-    type,
-    title,
-    message,
-    link
-  });
-}
-
-// Send email notification for new messages (uses Supabase Edge Function or direct SMTP)
-async function sendMessageEmailNotification(recipientUserId, senderName, taskTitle, messagePreview, taskId) {
-  if (!supabase) return;
-
-  try {
-    // Get recipient's email and notification preferences
-    const { data: recipient } = await supabase
-      .from('users')
-      .select('email, name, notification_preferences')
-      .eq('id', recipientUserId)
-      .single();
-
-    if (!recipient?.email) return;
-
-    // Check if user has email notifications disabled
-    const prefs = recipient.notification_preferences || {};
-    if (prefs.email_messages === false) return;
-
-    // Throttle: don't send more than 1 email per 5 minutes per conversation
-    const cacheKey = `email_throttle_${recipientUserId}_${taskId}`;
-    if (global._emailThrottle?.[cacheKey]) {
-      const elapsed = Date.now() - global._emailThrottle[cacheKey];
-      if (elapsed < 5 * 60 * 1000) return; // Skip if within 5 min window
-    }
-    if (!global._emailThrottle) global._emailThrottle = {};
-    global._emailThrottle[cacheKey] = Date.now();
-
-    // Use Supabase's built-in email (via auth.admin) or a simple fetch to an edge function
-    // For now, use the Supabase edge function pattern if available
-    const RESEND_API_KEY = process.env.RESEND_API_KEY;
-    if (!RESEND_API_KEY) {
-      console.log(`[Email] Would notify ${recipient.email}: New message from ${senderName} about "${taskTitle}"`);
+  if (_notificationService) {
+    try {
+      await _notificationService.notify(userId, type, title, message, link);
       return;
+    } catch (err) {
+      console.error('[Notification] Service error, falling back to direct insert:', err.message);
     }
-
-    const taskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: 'IRL Work <notifications@irlwork.ai>',
-        to: recipient.email,
-        subject: `New message from ${senderName} about "${taskTitle}"`,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
-            <div style="background: #FAF8F5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-              <p style="color: #525252; font-size: 14px; margin: 0 0 8px 0;"><strong>${senderName}</strong> sent you a message:</p>
-              <p style="color: #1A1A1A; font-size: 15px; margin: 0; line-height: 1.5;">${messagePreview}</p>
-            </div>
-            <p style="font-size: 13px; color: #8A8A8A; margin: 0 0 16px 0;">Task: ${taskTitle}</p>
-            <a href="${taskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">Reply on IRL Work</a>
-            <p style="font-size: 11px; color: #B0B0B0; margin-top: 24px;">You received this because you have message notifications enabled on IRL Work.</p>
-          </div>
-        `
-      })
-    });
-  } catch (err) {
-    console.error('[Email] Failed to send message notification:', err.message);
   }
+  // Fallback: direct DB insert (when service not initialized or on error)
+  if (!supabase) return;
+  try {
+    await supabase.from('notifications').insert({
+      id: uuidv4(),
+      user_id: userId,
+      type,
+      title,
+      message,
+      link
+    });
+  } catch (e) { /* swallow to match original behavior */ }
 }
+
+// sendMessageEmailNotification — REMOVED: email is now handled by the notification service pipeline.
+// The createNotification() call for 'new_message' events triggers email via notificationService.notify().
 
 // Dispatch webhook to user if they have one configured
 async function dispatchWebhook(userId, event) {
@@ -799,6 +762,15 @@ if (supabase) {
   const stripeRoutes = initStripeRoutes(supabase, getUserByToken, createNotification);
   app.use('/api/stripe', stripeRoutes);
   console.log('[Startup] Stripe routes mounted at /api/stripe');
+}
+
+// ============ NOTIFICATION ROUTES ============
+if (supabase) {
+  _emailService = createEmailService(supabase);
+  _notificationService = createNotificationService(supabase, _emailService);
+  const notificationRoutes = initNotificationRoutes(supabase, getUserByToken, _notificationService);
+  app.use('/api/notifications', notificationRoutes);
+  console.log('[Startup] Notification routes mounted at /api/notifications');
 }
 
 // ============ CITY SEARCH ============
@@ -987,6 +959,13 @@ app.post('/api/auth/register/human', async (req, res) => {
       throw error;
     }
     
+    // Seed default notification preferences for new user
+    if (_notificationService) {
+      _notificationService.seedDefaultPreferences(id).catch(err => {
+        console.error('[Registration] Failed to seed notification preferences:', err.message);
+      });
+    }
+
     // Insert categories/skills
     if (userSkills.length > 0) {
       const categoryRows = userSkills.map(cat => ({
@@ -1132,6 +1111,13 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
       if (createError) throw createError;
       existingUser = newUser;
+
+      // Seed default notification preferences for new Google OAuth user
+      if (_notificationService && newUser?.id) {
+        _notificationService.seedDefaultPreferences(newUser.id).catch(err => {
+          console.error('[OAuth] Failed to seed notification preferences:', err.message);
+        });
+      }
     } else if (!existingUser.type || existingUser.type !== 'human') {
       // Existing user but type not set — update to ensure they appear in browse
       await supabase
@@ -1279,6 +1265,13 @@ app.post('/api/auth/onboard', async (req, res) => {
     if (error) {
       console.error('Onboarding error:', error);
       return res.status(500).json({ error: safeErrorMessage(error) });
+    }
+
+    // Seed default notification preferences (idempotent — ON CONFLICT DO NOTHING)
+    if (_notificationService && data?.id) {
+      _notificationService.seedDefaultPreferences(data.id).catch(err => {
+        console.error('[Onboarding] Failed to seed notification preferences:', err.message);
+      });
     }
 
     // Parse skills and languages back to arrays for response
@@ -1503,6 +1496,13 @@ app.post('/api/auth/register-agent', async (req, res) => {
     if (createError) {
       console.error('Agent registration error:', createError);
       return res.status(500).json({ error: 'Failed to create account' });
+    }
+
+    // Seed default notification preferences for new agent
+    if (_notificationService) {
+      _notificationService.seedDefaultPreferences(userId).catch(err => {
+        console.error('[Registration] Failed to seed notification preferences:', err.message);
+      });
     }
 
     // Generate API key
@@ -5602,37 +5602,7 @@ app.post('/api/mcp', async (req, res) => {
 });
 
 // ============ NOTIFICATIONS ============
-app.get('/api/notifications', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { data: notifications, error } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-  
-  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-  res.json(notifications || []);
-});
-
-app.post('/api/notifications/:id/read', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { error } = await supabase
-    .from('notifications')
-    .update({ is_read: true })
-    .eq('id', req.params.id)
-    .eq('user_id', user.id);
-
-  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-  res.json({ success: true });
-});
+// Notification routes moved to api/routes/notifications.js (mounted at /api/notifications above)
 
 // ============ ACTIVITY FEED ============
 app.get('/api/activity/feed', async (req, res) => {
@@ -5926,8 +5896,7 @@ app.post('/api/messages', async (req, res) => {
       `/tasks/${conversation.task_id}`
     );
 
-    // Send email notification to the other party (async, non-blocking)
-    sendMessageEmailNotification(otherPartyId, user.name, taskTitle, preview, conversation.task_id).catch(() => {});
+    // Email notification is now handled by createNotification → notificationService.notify() pipeline
 
     // Dispatch webhook if the other party has one configured
     await dispatchWebhook(otherPartyId, {
@@ -6934,6 +6903,11 @@ async function start() {
     // Start balance promoter (promotes pending → available after 48 hours)
     startBalancePromoter(supabase, createNotification);
     console.log('   ✅ Balance promoter started (15min interval)');
+
+    // Start email queue processor (processes pending notification emails)
+    if (_emailService) {
+      _emailService.startQueueProcessor(parseInt(process.env.EMAIL_QUEUE_INTERVAL_MS) || 60000);
+    }
 
     // Start task expiry service
     // Two expiry rules:
