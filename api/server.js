@@ -52,6 +52,7 @@ console.log('[Startup] Loading Stripe services...');
 const { stripe } = require('./backend/lib/stripe');
 const { chargeAgentForTask, listPaymentMethods, handleWebhookEvent } = require('./backend/services/stripeService');
 const initStripeRoutes = require('./routes/stripe');
+const initSubscriptionRoutes = require('./routes/subscription');
 
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
@@ -291,6 +292,7 @@ function cleanTaskData(data) {
 
 // Configuration
 const { PLATFORM_FEE_PERCENT } = require('./config/constants');
+const { getTierConfig, calculateWorkerFee, calculatePosterFee, canPostTask } = require('./config/tiers');
 const { isAdmin } = require('./middleware/adminAuth');
 
 // File upload validation
@@ -873,6 +875,13 @@ if (supabase) {
   console.log('[Startup] Stripe routes mounted at /api/stripe');
 }
 
+// ============ SUBSCRIPTION ROUTES ============
+if (supabase) {
+  const subscriptionRoutes = initSubscriptionRoutes(supabase, getUserByToken, createNotification);
+  app.use('/api/subscription', subscriptionRoutes);
+  console.log('[Startup] Subscription routes mounted at /api/subscription');
+}
+
 // ============ CITY SEARCH ============
 // Public endpoint — no auth required, no Supabase needed
 app.get('/api/cities/search', (req, res) => {
@@ -1272,7 +1281,10 @@ app.get('/api/auth/verify', async (req, res) => {
       created_at: user.created_at,
       headline: user.headline || '',
       timezone: user.timezone || '',
-      gender: user.gender || null
+      gender: user.gender || null,
+      // Subscription
+      subscription_tier: user.subscription_tier || 'free',
+      tasks_posted_this_month: user.tasks_posted_this_month || 0,
     }
   });
 });
@@ -1898,7 +1910,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier')
     .eq('type', 'human')
     .eq('availability', 'available');
 
@@ -1923,6 +1935,14 @@ app.get('/api/humans', async (req, res) => {
     results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
   }
 
+  // Sort by subscription tier priority (Pro > Builder > Free), then by rating
+  results.sort((a, b) => {
+    const aPriority = getTierConfig(a.subscription_tier || 'free').worker_priority;
+    const bPriority = getTierConfig(b.subscription_tier || 'free').worker_priority;
+    if (bPriority !== aPriority) return bPriority - aPriority;
+    return (b.rating || 0) - (a.rating || 0);
+  });
+
   res.json(results);
 });
 
@@ -1933,8 +1953,8 @@ app.get('/api/users/:id', async (req, res) => {
   const isSelf = requester && requester.id === req.params.id;
 
   const columns = isSelf
-    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_paid, type, avatar_url'
-    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url';
+    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_paid, type, avatar_url, subscription_tier, tasks_posted_this_month'
+    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url, subscription_tier';
 
   const { data: user, error } = await supabase
     .from('users')
@@ -2148,6 +2168,32 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Authentication required' });
 
+  // Task posting limit check (free tier: 5/month)
+  const userTier = user.subscription_tier || 'free';
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  let tasksPosted = user.tasks_posted_this_month || 0;
+
+  if (!user.tasks_posted_month_reset || new Date(user.tasks_posted_month_reset) < monthStart) {
+    // Reset counter for new month
+    await supabase.from('users').update({
+      tasks_posted_this_month: 0,
+      tasks_posted_month_reset: monthStart.toISOString()
+    }).eq('id', user.id);
+    tasksPosted = 0;
+  }
+
+  if (!canPostTask(tasksPosted, userTier)) {
+    const tierConfig = getTierConfig(userTier);
+    return res.status(403).json({
+      error: 'Monthly task posting limit reached',
+      code: 'task_limit_reached',
+      limit: tierConfig.task_limit_monthly,
+      posted: tasksPosted,
+      upgrade_url: '/premium'
+    });
+  }
+
   const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code } = req.body;
 
   // Validate required fields
@@ -2215,6 +2261,12 @@ app.post('/api/tasks', async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  // Increment monthly task posting counter
+  await supabase.from('users').update({
+    tasks_posted_this_month: (tasksPosted + 1),
+    updated_at: new Date().toISOString()
+  }).eq('id', user.id);
 
   res.json({
     ...task,
@@ -2799,7 +2851,11 @@ app.post('/api/tasks/:id/release', async (req, res) => {
       .in('status', ['completed', 'approved']);
 
     const budget = parseFloat(task.budget) || 0;
-    const platformFee = Math.round(budget * PLATFORM_FEE_PERCENT) / 100;
+    const budgetCents = Math.round(budget * 100);
+    // Use stored worker fee from task if available, otherwise look up
+    const workerFeePercent = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
+    const platformFeeCents = Math.round(budgetCents * workerFeePercent / 100);
+    const platformFee = platformFeeCents / 100;
     const netAmount = budget - platformFee;
 
     res.json({
@@ -4103,7 +4159,10 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
   if (release_to_human) {
     // Release payment to human
     const escrowAmount = task.escrow_amount || task.budget || 50;
-    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+    const escrowCents = Math.round(escrowAmount * 100);
+    const workerFeePercent = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
+    const platformFeeCents = Math.round(escrowCents * workerFeePercent / 100);
+    const platformFee = platformFeeCents / 100;
     const netAmount = escrowAmount - platformFee;
     const txHash = '0x' + crypto.randomBytes(32).toString('hex');
 
@@ -5090,8 +5149,10 @@ app.post('/api/mcp', async (req, res) => {
         }
 
         const escrowAmount = task.escrow_amount || task.budget || 50;
-        const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-        const netAmount = escrowAmount - platformFee;
+        const escrowCents = Math.round(escrowAmount * 100);
+        const workerFeePercent = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
+        const platformFeeCents = Math.round(escrowCents * workerFeePercent / 100);
+        const netAmount = (escrowCents - platformFeeCents) / 100;
 
         res.json({
           success: true,
@@ -6690,7 +6751,7 @@ app.get('/api/humans/directory', async (req, res) => {
   // Build data query with sorting
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url, subscription_tier')
     .eq('type', 'human')
     .eq('availability', 'available');
 
@@ -6732,11 +6793,21 @@ app.get('/api/humans/directory', async (req, res) => {
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
-  const parsed = humans?.map(h => ({
+  let parsed = humans?.map(h => ({
     ...h,
     skills: safeParseJsonArray(h.skills),
     languages: safeParseJsonArray(h.languages)
   })) || [];
+
+  // Apply tier-based priority sorting (Pro > Builder > Free) as a secondary sort
+  if (sort === 'rating' || !sort) {
+    parsed.sort((a, b) => {
+      const aPriority = getTierConfig(a.subscription_tier || 'free').worker_priority;
+      const bPriority = getTierConfig(b.subscription_tier || 'free').worker_priority;
+      if (bPriority !== aPriority) return bPriority - aPriority;
+      return (b.rating || 0) - (a.rating || 0);
+    });
+  }
 
   res.json({
     humans: parsed,
@@ -7649,7 +7720,7 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     }
 
     const budgetAmount = task.escrow_amount || task.budget || 50;
-    const amountCents = Math.round(budgetAmount * 100);
+    const budgetCents = Math.round(budgetAmount * 100);
 
     // USDC tasks: escrow funded externally — skip Stripe charge
     if (task.payment_method === 'usdc') {
@@ -7709,12 +7780,25 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       });
     }
 
-    // STRIPE PATH: Charge the agent's card now
+    // STRIPE PATH: Charge the agent's card now (budget + poster fee)
     const { chargeAgentForTask, refundPaymentIntent } = require('./backend/services/stripeService');
+
+    // Look up poster's tier for poster fee calculation
+    const { data: poster } = await supabase
+      .from('users')
+      .select('subscription_tier')
+      .eq('id', task.agent_id)
+      .single();
+    const posterTier = poster?.subscription_tier || 'free';
+    const posterFeeCents = calculatePosterFee(budgetCents, posterTier);
+    const totalChargeCents = budgetCents + posterFeeCents;
+
+    // Look up worker's tier for worker fee locking
+    const workerFeePercent = getTierConfig(user.subscription_tier || 'free').worker_fee_percent;
 
     let chargeResult;
     try {
-      chargeResult = await chargeAgentForTask(supabase, task.agent_id, id, amountCents);
+      chargeResult = await chargeAgentForTask(supabase, task.agent_id, id, totalChargeCents);
     } catch (stripeError) {
       console.error(`[Accept] Payment failed for task ${id}:`, stripeError.message);
       return res.status(402).json({
@@ -7724,7 +7808,7 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       });
     }
 
-    // Atomic update: move to in_progress with payment info
+    // Atomic update: move to in_progress with payment info and locked fees
     const { data: updatedTask, error } = await supabase
       .from('tasks')
       .update(cleanTaskData({
@@ -7732,6 +7816,10 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
         escrow_status: 'deposited',
         escrow_deposited_at: new Date().toISOString(),
         stripe_payment_intent_id: chargeResult.payment_intent_id,
+        poster_fee_percent: getTierConfig(posterTier).poster_fee_percent,
+        poster_fee_cents: posterFeeCents,
+        worker_fee_percent: workerFeePercent,
+        total_charge_cents: totalChargeCents,
         assigned_at: new Date().toISOString(),
         work_started_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -8383,8 +8471,10 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       .eq('status', 'disputed');
 
     const escrowAmount = task.escrow_amount || task.budget;
-    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-    const netAmount = escrowAmount - platformFee;
+    const escrowCents = Math.round(escrowAmount * 100);
+    const workerFeePercent = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
+    const platformFeeCents = Math.round(escrowCents * workerFeePercent / 100);
+    const netAmount = (escrowCents - platformFeeCents) / 100;
 
     await createNotification(
       dispute.filed_against, 'dispute_resolved', 'Dispute Resolved - Payment Released',
