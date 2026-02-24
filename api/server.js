@@ -1268,6 +1268,7 @@ app.get('/api/auth/verify', async (req, res) => {
       completion_rate: completionRate,
       payment_rate: paymentRate,
       jobs_completed: user.jobs_completed || 0,
+      created_at: user.created_at,
       headline: user.headline || '',
       timezone: user.timezone || '',
       gender: user.gender || null
