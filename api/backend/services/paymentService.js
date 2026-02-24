@@ -21,6 +21,7 @@ const { v4: uuidv4 } = require('uuid');
  */
 async function releasePaymentToPending(supabase, taskId, humanId, agentId, createNotification) {
   const { PLATFORM_FEE_PERCENT } = require('../../config/constants');
+  const { calculateWorkerFee, getTierConfig } = require('../../config/tiers');
 
   // Get task details
   const { data: task, error: taskError } = await supabase
@@ -38,13 +39,26 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Task has no valid escrow amount or budget set');
   }
 
-  // Calculate fees
-  const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-  const netAmount = escrowAmount - platformFee;
+  // Calculate fees — use the fee locked on the task if available, otherwise look up worker's tier
+  const escrowAmountCents = Math.round(escrowAmount * 100);
+  let platformFeeCents;
 
-  // Convert to cents for database storage
-  const netAmountCents = Math.round(netAmount * 100);
-  const platformFeeCents = Math.round(platformFee * 100);
+  if (task.worker_fee_percent != null) {
+    // Fee was locked on the task at funding time — always use it
+    platformFeeCents = Math.round(escrowAmountCents * task.worker_fee_percent / 100);
+  } else {
+    // Legacy task without locked fee — look up worker's current tier
+    const { data: worker } = await supabase
+      .from('users')
+      .select('subscription_tier')
+      .eq('id', humanId)
+      .single();
+    platformFeeCents = calculateWorkerFee(escrowAmountCents, worker?.subscription_tier || 'free');
+  }
+
+  const netAmountCents = escrowAmountCents - platformFeeCents;
+  const platformFee = platformFeeCents / 100;
+  const netAmount = netAmountCents / 100;
 
   // Calculate clears_at timestamp (48 hours from now)
   const clearsAt = new Date(Date.now() + 48 * 60 * 60 * 1000);

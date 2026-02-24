@@ -100,6 +100,7 @@ import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import ApiKeysTab from './components/ApiKeysTab'
 // ConnectAgentPage defined inline below
 const MCPPage = lazy(() => import('./pages/MCPPage'))
+const PremiumPage = lazy(() => import('./pages/PremiumPage'))
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -2266,6 +2267,26 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </button>
           ))}
         </nav>
+
+        {/* Upgrade to Premium CTA */}
+        {user && (user.subscription_tier || 'free') !== 'pro' && (
+          <div style={{ padding: 'var(--space-2) var(--space-4)' }}>
+            <button
+              onClick={() => window.location.href = '/premium'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#fff',
+                fontSize: 13, fontWeight: 600, transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              <Sparkles size={16} />
+              <span>Upgrade to Premium</span>
+            </button>
+          </div>
+        )}
 
         {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
@@ -5313,6 +5334,7 @@ function App() {
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/connect-agent') return <ConnectAgentPage />
+    if (path === '/premium') return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
     if (path === '/thesis') return <ThesisPage />
