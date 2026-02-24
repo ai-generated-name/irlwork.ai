@@ -67,6 +67,9 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Payment has already been released or is in a disputed state');
   }
 
+  // Determine payout method from task record
+  const payoutMethod = task.payment_method === 'usdc' ? 'usdc' : 'stripe';
+
   // Only insert pending_transaction AFTER the atomic guard succeeds
   const { data: pendingTx, error: pendingError } = await supabase
     .from('pending_transactions')
@@ -76,7 +79,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
       task_id: taskId,
       amount_cents: netAmountCents,
       status: 'pending',
-      payout_method: task.payment_method === 'usdc' ? 'usdc' : 'stripe',
+      payout_method: payoutMethod,
       clears_at: clearsAt.toISOString(),
       created_at: new Date().toISOString()
     })
@@ -101,8 +104,9 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     human_id: humanId,
     amount_cents: netAmountCents,
     fee_cents: platformFeeCents,
-    payout_method: task.payment_method === 'usdc' ? 'usdc' : 'stripe',
+    payout_method: payoutMethod,
     status: 'pending',
+    dispute_window_closes_at: clearsAt.toISOString(),
     created_at: new Date().toISOString()
   });
 

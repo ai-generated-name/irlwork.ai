@@ -204,7 +204,7 @@ export default function MyTaskCard({
         </div>
 
         {variant === 'review' && task.escrow_status && (
-          <EscrowBadge status={task.escrow_status} amount={task.budget} />
+          <EscrowBadge status={task.escrow_status} amount={task.budget} paymentMethod={task.payment_method} />
         )}
       </div>
     </div>

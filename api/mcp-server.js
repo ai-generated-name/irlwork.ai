@@ -222,19 +222,25 @@ const handlers = {
     return await res.json()
   },
 
-  // Hire a human for a task (with Stripe charge)
+  // Hire a human for a task (sends offer, charges on acceptance)
   async hire_human(params) {
-    const res = await fetch(`${API_URL}/tasks/${params.task_id}/hire`, {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}/assign`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': API_KEY
       },
       body: JSON.stringify({
-        human_id: params.human_id,
-        deadline_hours: params.deadline_hours,
-        instructions: params.instructions
+        human_id: params.human_id
       })
+    })
+    return await res.json()
+  },
+
+  // Get task details
+  async get_task_details(params) {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}`, {
+      headers: { 'Authorization': API_KEY }
     })
     return await res.json()
   },
@@ -253,6 +259,22 @@ const handlers = {
   async view_proof(params) {
     const res = await fetch(`${API_URL}/tasks/${params.task_id}/proofs`, {
       headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // Reject proof with feedback
+  async reject_task(params) {
+    const res = await fetch(`${API_URL}/tasks/${params.task_id}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({
+        feedback: params.feedback,
+        extend_deadline_hours: params.extend_deadline_hours || 24
+      })
     })
     return await res.json()
   },
@@ -297,7 +319,7 @@ const handlers = {
   // Mark notification read
   async mark_notification_read(params) {
     const res = await fetch(`${API_URL}/notifications/${params.notification_id}/read`, {
-      method: 'PATCH',
+      method: 'POST',
       headers: { 'Authorization': API_KEY }
     })
     return await res.json()
@@ -359,6 +381,32 @@ const handlers = {
     return await res.json()
   },
 
+  // Report an error from an agent (for logging/debugging)
+  async report_error(params) {
+    const res = await fetch(`${API_URL}/agent/errors`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({
+        action: params.action,
+        error_message: params.error_message || params.error,
+        error_code: params.error_code,
+        error_log: params.error_log,
+        task_id: params.task_id,
+        context: params.context,
+        timestamp: new Date().toISOString()
+      })
+    })
+    // If the endpoint doesn't exist yet, return a graceful response
+    if (!res.ok) {
+      console.warn(`[MCP] report_error: API returned ${res.status} — error logged locally`);
+      return { logged: true, message: 'Error reported (logged locally)' }
+    }
+    return await res.json()
+  },
+
   // Get the latest agent instructions/system prompt
   async get_instructions() {
     if (agentPrompt) {
@@ -382,6 +430,7 @@ handlers.get_tasks = handlers.my_tasks
 handlers.my_postings = handlers.my_tasks
 handlers.my_adhoc_tasks = handlers.my_tasks
 handlers.my_bookings = handlers.my_tasks
+handlers.reject_proof = handlers.reject_task
 handlers.release_escrow = handlers.approve_task
 handlers.release_payment = handlers.approve_task
 handlers.complete_booking = async (params) => {
@@ -459,13 +508,13 @@ server.listen(PORT, () => {
   console.log(``)
   console.log(`   Tasks:`)
   console.log(`     create_posting, direct_hire, my_tasks`)
-  console.log(`     get_applicants, assign_human, hire_human, get_task_status`)
+  console.log(`     get_applicants, assign_human, hire_human, get_task_details, get_task_status`)
   console.log(``)
   console.log(`   Conversations:`)
   console.log(`     start_conversation, send_message, get_messages, get_unread_summary`)
   console.log(``)
   console.log(`   Proofs & Completion:`)
-  console.log(`     view_proof, approve_task, dispute_task`)
+  console.log(`     view_proof, reject_task, approve_task, dispute_task`)
   console.log(``)
   console.log(`   Notifications:`)
   console.log(`     notifications, mark_notification_read, set_webhook, get_webhook, test_webhook`)
@@ -477,6 +526,7 @@ server.listen(PORT, () => {
   console.log(`     post_task, create_adhoc_task, create_task → create_posting`)
   console.log(`     create_booking → direct_hire`)
   console.log(`     get_tasks, my_postings, my_adhoc_tasks, my_bookings → my_tasks`)
+  console.log(`     reject_proof → reject_task`)
   console.log(`     release_escrow, release_payment → approve_task`)
   console.log(`     complete_booking → complete_task`)
   console.log(``)
