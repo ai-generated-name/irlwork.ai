@@ -1902,7 +1902,7 @@ app.put('/api/humans/profile', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { name, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
+    const { name, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url, availability } = req.body;
 
     const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true, type: 'human', account_type: 'human' };
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
@@ -1967,6 +1967,7 @@ app.put('/api/humans/profile', async (req, res) => {
     }
     if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
     if (timezone !== undefined) updates.timezone = timezone;
+    if (availability === 'available' || availability === 'unavailable') updates.availability = availability;
 
     // Auto-derive timezone from coordinates when location changes but timezone not explicitly set
     if (updates.latitude != null && updates.longitude != null && timezone === undefined) {
