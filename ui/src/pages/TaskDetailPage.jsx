@@ -8,7 +8,6 @@ import TaskHeader from '../components/TaskDetail/TaskHeader';
 import TaskTimeline from '../components/TaskDetail/TaskTimeline';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
 import PaymentCard from '../components/TaskDetail/PaymentCard';
-import StatsSection from '../components/TaskDetail/StatsSection';
 import ProofSection from '../components/TaskDetail/ProofSection';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
 import QuickApplyModal from '../components/QuickApplyModal';
@@ -449,6 +448,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 user={user}
                 isParticipant={isParticipant}
                 onApply={() => setShowApplyModal(true)}
+                taskId={taskId}
               />
             </div>
 
@@ -483,11 +483,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 user={user}
                 isParticipant={isParticipant}
                 onApply={() => setShowApplyModal(true)}
+                taskId={taskId}
               />
             </div>
-
-            {/* Stats (Applications & Views) */}
-            <StatsSection taskId={taskId} />
 
             {/* Agent Profile Card */}
             <AgentProfileCard agent={agentProfile} isAnonymous={task?.is_anonymous} />
@@ -514,7 +512,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       {/* Mobile Sticky Apply Bar */}
       {task.status === 'open' && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(26,26,26,0.12)] px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(26,26,26,0.12)] px-4 pr-20 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
           style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
           <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
@@ -523,7 +521,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 ${Number(task.budget) || 0}
               </span>
               {task.budget_type === 'hourly' && <span className="text-sm text-[#525252]">/hr</span>}
-              <span className="text-xs text-[#8A8A8A] ml-1">USDC</span>
+              <span className="text-xs text-[#8A8A8A] ml-1">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
             </div>
             {user && task.agent_id !== user.id && !hasApplied ? (
               <button
