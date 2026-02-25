@@ -28,6 +28,8 @@ import LandingPageV4 from './pages/LandingPageV4'
 import NotFoundPage from './pages/NotFoundPage'
 import ContactPage from './pages/ContactPage'
 import AboutPage from './pages/AboutPage'
+import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
 import ThesisPage from './pages/ThesisPage'
 import MarketingFooter from './components/Footer'
 import { Logo } from './components/Logo'
@@ -5389,6 +5391,8 @@ function App() {
     if (path === '/premium') return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
+    if (path === '/privacy') return <PrivacyPage />
+    if (path === '/terms') return <TermsPage />
     if (path === '/thesis') return <ThesisPage />
     if (path === '/browse' || path === '/browse/tasks' || path === '/browse/humans') return <Suspense fallback={<Loading />}><BrowsePage user={user} navigate={navigate} /></Suspense>
 
