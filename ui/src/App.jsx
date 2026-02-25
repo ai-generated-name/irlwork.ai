@@ -2576,6 +2576,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 tasks={tasks}
                 notifications={notifications}
                 onNavigate={(tab) => setActiveTab(tab)}
+                onUserUpdate={onUserUpdate}
               />
             </Suspense>
           </TabErrorBoundary>

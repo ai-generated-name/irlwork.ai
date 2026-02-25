@@ -77,7 +77,7 @@ export default function BrowseTasksV2({
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('');
-  const [sort, setSort] = useState('distance');
+  const [sort, setSort] = useState('newest');
   const [radius, setRadius] = useState(initialRadius || '25');
   const [includeRemote, setIncludeRemote] = useState(true);
   const [filterByMySkills, setFilterByMySkills] = useState(false);
@@ -280,6 +280,10 @@ export default function BrowseTasksV2({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Auto-switch to list view when all visible tasks are remote
+  const allTasksRemote = tasks.length > 0 && tasks.every(t => t.is_remote);
+  const effectiveViewMode = (allTasksRemote && viewMode === 'split') ? 'list' : viewMode;
+
   return (
     <div className="browse-tasks-v2">
       {/* Header */}
@@ -436,9 +440,9 @@ export default function BrowseTasksV2({
       </div>
 
       {/* Main content */}
-      <div className={`browse-tasks-v2-content ${viewMode}`}>
+      <div className={`browse-tasks-v2-content ${effectiveViewMode}`}>
         {/* Task list */}
-        {(viewMode === 'split' || viewMode === 'list') && (
+        {(effectiveViewMode === 'split' || effectiveViewMode === 'list') && (
           <div className="browse-tasks-v2-list" ref={taskListRef}>
             {loading ? (
               // Loading skeletons
@@ -569,8 +573,8 @@ export default function BrowseTasksV2({
           </div>
         )}
 
-        {/* Map */}
-        {(viewMode === 'split' || viewMode === 'map') && (
+        {/* Map - hidden when all tasks are remote */}
+        {(effectiveViewMode === 'split' || effectiveViewMode === 'map') && (
           <div className="browse-tasks-v2-map">
             <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>Loading map...</div>}>
               <TaskMap

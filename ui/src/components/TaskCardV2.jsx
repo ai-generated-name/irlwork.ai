@@ -77,7 +77,7 @@ export default function TaskCardV2({
   const quantity = task.quantity || 1;
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
   const spotsRemaining = Math.max(0, quantity - spotsFilled);
-  const agentName = task.is_anonymous ? 'Anon AI Agent' : (task.agent?.name || task.agent_name || null);
+  const agentName = task.is_anonymous ? 'AI Agent' : (task.agent?.name || task.agent_name || null);
   const durationHours = task.duration_hours || task.duration;
 
   return (

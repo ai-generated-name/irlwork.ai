@@ -88,72 +88,79 @@ export default function MyTasksPage({
       {/* Page Title */}
       <h1 className="dashboard-v4-page-title" style={{ marginBottom: 16 }}>My Tasks</h1>
 
+      {/* Always-visible tab headers showing task lifecycle */}
+      <div className="mytasks-filters">
+        {[
+          { id: 'all', label: 'All', count: safeTasks.length },
+          { id: 'in_progress', label: 'In Progress', count: safeTasks.filter(t => t.status === 'in_progress').length },
+          { id: 'pending_review', label: 'Pending Review', count: safeTasks.filter(t => REVIEW_STATUSES.includes(t.status)).length },
+          { id: 'paid', label: 'Paid', count: completedTasks.length },
+        ].map(filter => (
+          <button
+            key={filter.id}
+            className={`mytasks-filter-pill ${taskFilter === filter.id ? 'active' : ''} ${filter.count === 0 && filter.id !== 'all' ? 'mytasks-filter-pill--empty' : ''}`}
+            onClick={() => setTaskFilter(filter.id)}
+          >
+            {filter.label}
+            <span className="mytasks-filter-count">{filter.count}</span>
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="dashboard-v4-empty">
           <div className="dashboard-v4-empty-icon">&#8987;</div>
           <p className="dashboard-v4-empty-text">Loading...</p>
         </div>
       ) : safeTasks.length === 0 ? (
-        /* Focused Empty State */
-        <div style={{
-          textAlign: 'center',
-          padding: '48px 24px',
-          background: 'var(--bg-secondary)',
-          border: '1px solid rgba(26, 26, 26, 0.06)',
-          borderRadius: 'var(--radius-lg)',
-        }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: '50%',
-            background: 'var(--bg-tertiary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px',
-          }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5">
-              <rect x="2" y="3" width="20" height="14" rx="2" />
-              <path d="M8 21h8M12 17v4" />
-            </svg>
+        /* Rich empty state with preview cards */
+        <div className="mytasks-empty-state">
+          <div className="mytasks-empty-state-content">
+            <div className="mytasks-empty-state-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <h2 className="mytasks-empty-state-title">No tasks yet</h2>
+            <p className="mytasks-empty-state-description">
+              Tasks you apply to and get accepted for will appear here. Browse available tasks to find work that matches your skills.
+            </p>
+            <button
+              className="v4-btn v4-btn-primary mytasks-empty-state-cta"
+              onClick={() => onNavigate?.('browse')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+              </svg>
+              Browse Available Tasks
+            </button>
           </div>
-          <h2 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 18, fontWeight: 600,
-            color: 'var(--text-primary)',
-            marginBottom: 6,
-          }}>No active tasks</h2>
-          <p style={{
-            fontSize: 14, color: 'var(--text-secondary)',
-            marginBottom: 20, maxWidth: 320, margin: '0 auto 20px',
-          }}>Browse available tasks to find work that matches your skills.</p>
-          <button
-            className="v4-btn v4-btn-primary"
-            onClick={() => onNavigate?.('browse')}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-            </svg>
-            Browse Tasks
-          </button>
+
+          {/* Preview task cards to show what the page will look like */}
+          <div className="mytasks-empty-state-previews">
+            <h4 className="mytasks-empty-state-previews-label">What your tasks will look like:</h4>
+            {[
+              { title: 'Take photos of local restaurant menus', budget: 25, category: 'Photography', status: 'In Progress' },
+              { title: 'Verify business hours at 3 locations', budget: 18, category: 'Verification', status: 'Applied' },
+              { title: 'Deliver package to downtown office', budget: 32, category: 'Delivery', status: 'Completed' },
+            ].map((preview, i) => (
+              <div key={i} className="mytasks-preview-card">
+                <div className="mytasks-preview-card-header">
+                  <span className={`mytasks-preview-card-status mytasks-preview-card-status--${preview.status.toLowerCase().replace(' ', '-')}`}>
+                    {preview.status}
+                  </span>
+                  <span className="mytasks-preview-card-category">{preview.category}</span>
+                </div>
+                <p className="mytasks-preview-card-title">{preview.title}</p>
+                <span className="mytasks-preview-card-budget">${preview.budget}</span>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <>
-          {/* Quick Filter Pills */}
-          <div className="mytasks-filters">
-            {[
-              { id: 'all', label: 'All', count: safeTasks.length },
-              { id: 'in_progress', label: 'In Progress', count: safeTasks.filter(t => t.status === 'in_progress').length },
-              { id: 'pending_review', label: 'Pending Review', count: safeTasks.filter(t => REVIEW_STATUSES.includes(t.status)).length },
-              { id: 'paid', label: 'Paid', count: completedTasks.length },
-            ].filter(f => f.id === 'all' || f.count > 0).map(filter => (
-              <button
-                key={filter.id}
-                className={`mytasks-filter-pill ${taskFilter === filter.id ? 'active' : ''}`}
-                onClick={() => setTaskFilter(filter.id)}
-              >
-                {filter.label}
-                <span className="mytasks-filter-count">{filter.count}</span>
-              </button>
-            ))}
-          </div>
-
           {/* Task Sections */}
           {showAllSections ? (
             <div className="mytasks-sections">

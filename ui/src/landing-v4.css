@@ -8166,12 +8166,19 @@ select.select-v4-dark option:checked,
   margin: 2px 0 0;
 }
 
-/* Quick Actions */
+/* Quick Actions - hidden on desktop where sidebar covers navigation */
 .working-dash-actions,
 .hiring-dash-actions {
-  display: flex;
+  display: none;
   gap: var(--space-3);
   flex-wrap: wrap;
+}
+
+@media (max-width: 767px) {
+  .working-dash-actions,
+  .hiring-dash-actions {
+    display: flex;
+  }
 }
 
 .working-dash-action,
@@ -8196,6 +8203,382 @@ select.select-v4-dark option:checked,
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* ─── AVAILABILITY BANNER ─── */
+.working-dash-availability-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  border: 2px solid #F59E0B;
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-5);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+.working-dash-availability-banner-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: #92400E;
+  flex: 1;
+  min-width: 0;
+}
+
+.working-dash-availability-banner-content svg {
+  flex-shrink: 0;
+}
+
+.working-dash-availability-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.working-dash-availability-banner-text strong {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: #78350F;
+}
+
+.working-dash-availability-banner-text span {
+  font-size: 12px;
+  color: #92400E;
+  line-height: 1.4;
+}
+
+.working-dash-availability-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 20px;
+  background: #F59E0B;
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-smooth);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.working-dash-availability-toggle-btn:hover {
+  background: #D97706;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+
+.working-dash-availability-toggle-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ─── ZERO STATE CTA ─── */
+.working-dash-zero-cta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  background: linear-gradient(135deg, rgba(244, 132, 95, 0.06), rgba(244, 132, 95, 0.02));
+  border: 1px solid rgba(244, 132, 95, 0.15);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-4);
+}
+
+.working-dash-zero-cta-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-lg);
+  background: rgba(244, 132, 95, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--coral-500);
+  flex-shrink: 0;
+}
+
+.working-dash-zero-cta-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.working-dash-zero-cta-text h3 {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.working-dash-zero-cta-text p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ─── MY TASKS EMPTY STATE ─── */
+.mytasks-empty-state {
+  padding: var(--space-4) 0;
+}
+
+.mytasks-empty-state-content {
+  text-align: center;
+  padding: var(--space-8) var(--space-6);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(26, 26, 26, 0.06);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-6);
+}
+
+.mytasks-empty-state-icon {
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-4);
+}
+
+.mytasks-empty-state-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3);
+}
+
+.mytasks-empty-state-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 420px;
+  margin: 0 auto var(--space-6);
+}
+
+.mytasks-empty-state-cta {
+  font-size: 15px;
+  padding: 12px 28px;
+}
+
+.mytasks-empty-state-previews {
+  padding: 0 var(--space-2);
+}
+
+.mytasks-empty-state-previews-label {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 var(--space-3);
+}
+
+.mytasks-preview-card {
+  background: var(--bg-secondary);
+  border: 1px dashed rgba(26, 26, 26, 0.12);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: var(--space-3);
+  opacity: 0.6;
+}
+
+.mytasks-preview-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.mytasks-preview-card-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mytasks-preview-card-status--in-progress {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563EB;
+}
+
+.mytasks-preview-card-status--applied {
+  background: rgba(245, 158, 11, 0.1);
+  color: #D97706;
+}
+
+.mytasks-preview-card-status--completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.mytasks-preview-card-category {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.mytasks-preview-card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.mytasks-preview-card-budget {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--coral-500);
+}
+
+/* Empty filter pill style */
+.mytasks-filter-pill--empty {
+  opacity: 0.5;
+}
+
+/* ─── EARNINGS FLOW DIAGRAM ─── */
+.earnings-flow-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(26, 26, 26, 0.06);
+  border-radius: var(--radius-xl);
+}
+
+.earnings-flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  max-width: 140px;
+}
+
+.earnings-flow-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.earnings-flow-icon--teal {
+  background: rgba(15, 76, 92, 0.1);
+  color: var(--teal);
+}
+
+.earnings-flow-icon--amber {
+  background: rgba(245, 158, 11, 0.1);
+  color: #D97706;
+}
+
+.earnings-flow-icon--green {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.earnings-flow-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.earnings-flow-arrow {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  padding-bottom: 20px;
+}
+
+/* ─── EARNINGS ALT PAYMENTS ─── */
+.earnings-alt-payments {
+  border: 1px solid rgba(26, 26, 26, 0.08);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.earnings-alt-payments-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--bg-secondary);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background var(--duration-fast);
+}
+
+.earnings-alt-payments-toggle:hover {
+  background: var(--bg-tertiary);
+}
+
+.earnings-alt-payments-content {
+  padding: 14px 18px;
+  border-top: 1px solid rgba(26, 26, 26, 0.06);
+  background: var(--bg-primary);
+}
+
+@media (max-width: 640px) {
+  .working-dash-availability-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .working-dash-availability-toggle-btn {
+    text-align: center;
+    justify-content: center;
+  }
+
+  .working-dash-zero-cta {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-3);
+  }
+
+  .earnings-flow-diagram {
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+  }
+
+  .earnings-flow-arrow {
+    transform: rotate(90deg);
+    padding-bottom: 0;
+  }
+
+  .earnings-flow-step {
+    flex-direction: row;
+    gap: var(--space-3);
+    max-width: 100%;
+  }
+
+  .earnings-flow-label {
+    text-align: left;
+  }
+
+  .mytasks-empty-state-previews {
+    padding: 0;
+  }
 }
 
 /* ─── HIRING DASHBOARD ─── */
