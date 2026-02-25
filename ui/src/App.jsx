@@ -2318,16 +2318,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
         {/* Upgrade to Premium CTA */}
         <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-          <button
-            onClick={() => window.location.href = '/pricing'}
+          <a
+            href="/premium"
             className="dashboard-v4-upgrade-premium-btn"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" stroke="#F4845F" strokeWidth="2" fill="none" />
-              <path d="M8 12.5l2.5 2.5L16 9" stroke="#F4845F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <span style={{ display: 'flex', alignItems: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" fill="#D4A017" />
+                <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
             <span>Upgrade to Premium</span>
-          </button>
+          </a>
         </div>
 
         {/* Social & Feedback - pinned to bottom */}
