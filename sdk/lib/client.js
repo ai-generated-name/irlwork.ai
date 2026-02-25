@@ -88,5 +88,3 @@ export default class IRLWorkClient {
     return await this._request('/api/wallet/status')
   }
 }
-
-export default IRLWorkClient

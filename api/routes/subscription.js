@@ -1,20 +1,17 @@
 /**
- * Subscription Routes - Premium membership management
+ * Subscription Routes - Plan management, checkout, and billing portal.
  *
  * Follows the same dependency-injection pattern as stripe.js.
- * All routes require authentication except /plans.
  */
 
 const express = require('express');
+const { TIERS, getTierConfig } = require('../config/tiers');
 const {
-  createSubscriptionCheckout,
-  getSubscriptionDetails,
-  changeSubscriptionTier,
-  cancelSubscription,
-  resumeSubscription,
+  createCheckoutSession,
   createBillingPortalSession,
+  getUserSubscription,
+  syncSubscriptionFromStripe,
   getBillingHistory,
-  getAvailablePlans,
 } = require('../backend/services/subscriptionService');
 
 function initSubscriptionRoutes(supabase, getUserByToken, createNotification) {
@@ -35,106 +32,109 @@ function initSubscriptionRoutes(supabase, getUserByToken, createNotification) {
   };
 
   // ============================================================================
-  // GET /api/subscription/plans - Public endpoint for pricing display
+  // GET /api/subscription/tiers - Public tier info
   // ============================================================================
-  router.get('/plans', (req, res) => {
-    res.json({ plans: getAvailablePlans() });
+  router.get('/tiers', (req, res) => {
+    const tiers = Object.entries(TIERS).map(([key, config]) => ({
+      id: key,
+      name: config.name,
+      price_monthly: config.price_monthly,
+      price_annual: config.price_annual || null,
+      worker_fee_percent: config.worker_fee_percent,
+      poster_fee_percent: config.poster_fee_percent,
+      task_limit_monthly: config.task_limit_monthly === Infinity ? 'unlimited' : config.task_limit_monthly,
+      badge: config.badge,
+      badge_color: config.badge_color,
+      worker_priority: config.worker_priority,
+    }));
+    res.json({ tiers });
   });
 
   // All routes below require auth
   router.use(requireAuth);
 
   // ============================================================================
-  // GET /api/subscription - Get current subscription details
+  // GET /api/subscription - Current user's subscription
   // ============================================================================
   router.get('/', async (req, res) => {
     try {
-      const details = await getSubscriptionDetails(supabase, req.user);
-      res.json(details);
+      const subscription = await getUserSubscription(supabase, req.user.id);
+
+      // Freshness check: if user has a stripe_customer_id and their tier
+      // seems stale (still free but they may have just checked out), sync.
+      if (
+        req.user.stripe_customer_id &&
+        subscription.tier === 'free' &&
+        req.query.check_stripe === 'true'
+      ) {
+        const synced = await syncSubscriptionFromStripe(supabase, req.user.id);
+        if (synced) return res.json({ subscription: synced });
+      }
+
+      res.json({ subscription });
     } catch (error) {
-      console.error('[Subscription] Get details error:', error.message);
-      res.status(500).json({ error: error.message });
+      console.error('[Subscription] Get error:', error.message);
+      res.status(500).json({ error: 'Failed to get subscription' });
     }
   });
 
   // ============================================================================
-  // POST /api/subscription/checkout - Create checkout session for upgrade
+  // POST /api/subscription/checkout - Create Stripe Checkout Session
   // ============================================================================
   router.post('/checkout', async (req, res) => {
     try {
-      const { tier, interval } = req.body;
-
-      if (!tier) {
-        return res.status(400).json({ error: 'Tier is required' });
+      const { tier, billing_period } = req.body;
+      if (!tier || !['builder', 'pro'].includes(tier)) {
+        return res.status(400).json({ error: 'Invalid tier. Must be "builder" or "pro".' });
+      }
+      if (billing_period && !['monthly', 'annual'].includes(billing_period)) {
+        return res.status(400).json({ error: 'Invalid billing period. Must be "monthly" or "annual".' });
       }
 
-      const result = await createSubscriptionCheckout(
-        supabase, req.user, tier, interval || 'month'
-      );
+      // Don't allow checkout if already on this tier
+      if (req.user.subscription_tier === tier) {
+        return res.status(400).json({ error: `You are already on the ${getTierConfig(tier).name} plan.` });
+      }
+
+      const result = await createCheckoutSession(supabase, req.user, tier, billing_period || 'monthly');
       res.json(result);
     } catch (error) {
       console.error('[Subscription] Checkout error:', error.message);
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: 'Failed to create checkout session' });
     }
   });
 
   // ============================================================================
-  // POST /api/subscription/change - Upgrade or downgrade plan
-  // ============================================================================
-  router.post('/change', async (req, res) => {
-    try {
-      const { tier, interval } = req.body;
-
-      if (!tier) {
-        return res.status(400).json({ error: 'Tier is required' });
-      }
-
-      const result = await changeSubscriptionTier(
-        supabase, req.user, tier, interval || 'month'
-      );
-      res.json(result);
-    } catch (error) {
-      console.error('[Subscription] Change tier error:', error.message);
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  // ============================================================================
-  // POST /api/subscription/cancel - Cancel subscription at period end
-  // ============================================================================
-  router.post('/cancel', async (req, res) => {
-    try {
-      const result = await cancelSubscription(supabase, req.user);
-      res.json(result);
-    } catch (error) {
-      console.error('[Subscription] Cancel error:', error.message);
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  // ============================================================================
-  // POST /api/subscription/resume - Resume a cancelled subscription
-  // ============================================================================
-  router.post('/resume', async (req, res) => {
-    try {
-      const result = await resumeSubscription(supabase, req.user);
-      res.json(result);
-    } catch (error) {
-      console.error('[Subscription] Resume error:', error.message);
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  // ============================================================================
-  // POST /api/subscription/portal - Create Stripe billing portal session
+  // POST /api/subscription/portal - Open Stripe Billing Portal
   // ============================================================================
   router.post('/portal', async (req, res) => {
     try {
-      const result = await createBillingPortalSession(supabase, req.user);
+      if (!req.user.stripe_customer_id) {
+        return res.status(400).json({ error: 'No billing account found. Please subscribe to a plan first.' });
+      }
+
+      const result = await createBillingPortalSession(req.user.stripe_customer_id);
       res.json(result);
     } catch (error) {
       console.error('[Subscription] Portal error:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Failed to create billing portal session' });
+    }
+  });
+
+  // ============================================================================
+  // POST /api/subscription/sync - Manual subscription restore
+  // ============================================================================
+  router.post('/sync', async (req, res) => {
+    try {
+      if (!req.user.stripe_customer_id) {
+        return res.status(400).json({ error: 'No billing account found.' });
+      }
+
+      const subscription = await syncSubscriptionFromStripe(supabase, req.user.id);
+      res.json({ subscription, synced: true });
+    } catch (error) {
+      console.error('[Subscription] Sync error:', error.message);
+      res.status(500).json({ error: 'Failed to sync subscription' });
     }
   });
 
@@ -149,7 +149,7 @@ function initSubscriptionRoutes(supabase, getUserByToken, createNotification) {
       res.json(result);
     } catch (error) {
       console.error('[Subscription] Billing history error:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Failed to fetch billing history' });
     }
   });
 

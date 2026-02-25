@@ -2,15 +2,7 @@ const { stripe } = require('../lib/stripe');
 const { v4: uuidv4 } = require('uuid');
 
 const { PLATFORM_FEE_PERCENT } = require('../../config/constants');
-
-// Lazy-load subscription handlers to avoid circular deps
-let _subscriptionHandlers = null;
-function getSubscriptionHandlers() {
-  if (!_subscriptionHandlers) {
-    _subscriptionHandlers = require('./subscriptionService');
-  }
-  return _subscriptionHandlers;
-}
+const subscriptionService = require('./subscriptionService');
 
 // ============================================================================
 // CUSTOMER MANAGEMENT (Agents)
@@ -453,35 +445,29 @@ async function handleWebhookEvent(event, supabase, createNotification) {
       break;
 
     // Subscription lifecycle events
-    case 'customer.subscription.created': {
-      const subHandlers = getSubscriptionHandlers();
-      await subHandlers.handleSubscriptionCreated(event.data.object, supabase, createNotification);
+    case 'customer.subscription.created':
+      await subscriptionService.handleSubscriptionCreated(event.data.object, supabase, createNotification);
       break;
-    }
 
-    case 'customer.subscription.updated': {
-      const subHandlers = getSubscriptionHandlers();
-      await subHandlers.handleSubscriptionUpdated(event.data.object, supabase, createNotification);
+    case 'customer.subscription.updated':
+      await subscriptionService.handleSubscriptionUpdated(event.data.object, supabase);
       break;
-    }
 
-    case 'customer.subscription.deleted': {
-      const subHandlers = getSubscriptionHandlers();
-      await subHandlers.handleSubscriptionDeleted(event.data.object, supabase, createNotification);
+    case 'customer.subscription.deleted':
+      await subscriptionService.handleSubscriptionDeleted(event.data.object, supabase);
       break;
-    }
 
-    case 'invoice.paid': {
-      const subHandlers = getSubscriptionHandlers();
-      await subHandlers.handleInvoicePaid(event.data.object, supabase);
+    case 'checkout.session.completed':
+      await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
       break;
-    }
 
-    case 'invoice.payment_failed': {
-      const subHandlers = getSubscriptionHandlers();
-      await subHandlers.handleInvoicePaymentFailed(event.data.object, supabase, createNotification);
+    case 'invoice.paid':
+      await subscriptionService.handleInvoicePaid(event.data.object, supabase);
       break;
-    }
+
+    case 'invoice.payment_failed':
+      await subscriptionService.handleInvoicePaymentFailed(event.data.object, supabase, createNotification);
+      break;
 
     default:
       console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
