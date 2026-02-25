@@ -70,6 +70,7 @@ export default function MarketingFooter() {
             <h4 className="footer-v4-column-title">{t('footer.company')}</h4>
             <div className="footer-v4-links">
               <a href="/about" className="footer-v4-link">{t('footer.aboutUs')}</a>
+              <a href="/thesis" className="footer-v4-link">{t('footer.thesis')}</a>
               <a href="/contact" className="footer-v4-link">{t('footer.contactUs')}</a>
             </div>
           </div>

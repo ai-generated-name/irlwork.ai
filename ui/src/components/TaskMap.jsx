@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, Search } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -50,41 +50,102 @@ const createTaskIcon = (isSelected = false, isHovered = false) => {
 };
 
 // Component to handle map view updates
-function MapUpdater({ center, selectedTask }) {
+function MapUpdater({ center, selectedTask, programmaticMoveRef }) {
   const map = useMap();
 
   useEffect(() => {
     if (selectedTask?.latitude && selectedTask?.longitude) {
+      programmaticMoveRef.current++;
       map.panTo([selectedTask.latitude, selectedTask.longitude], { animate: true });
+      setTimeout(() => { programmaticMoveRef.current = Math.max(0, programmaticMoveRef.current - 1); }, 500);
     }
-  }, [selectedTask, map]);
+  }, [selectedTask, map, programmaticMoveRef]);
 
   useEffect(() => {
     if (center && center[0] && center[1]) {
+      programmaticMoveRef.current++;
       map.setView(center, map.getZoom());
+      setTimeout(() => { programmaticMoveRef.current = Math.max(0, programmaticMoveRef.current - 1); }, 500);
     }
-  }, [center, map]);
+  }, [center, map, programmaticMoveRef]);
 
   return null;
 }
 
 // Component to fit bounds to all tasks
-function FitBounds({ tasks }) {
+function FitBounds({ tasks, disabled, programmaticMoveRef }) {
   const map = useMap();
   const fittedRef = useRef(false);
 
   useEffect(() => {
+    if (disabled) return;
     if (tasks.length > 0 && !fittedRef.current) {
       const validTasks = tasks.filter(t => t.latitude && t.longitude);
       if (validTasks.length > 0) {
+        programmaticMoveRef.current++;
         const bounds = L.latLngBounds(validTasks.map(t => [t.latitude, t.longitude]));
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+        setTimeout(() => { programmaticMoveRef.current = Math.max(0, programmaticMoveRef.current - 1); }, 500);
         fittedRef.current = true;
       }
     }
-  }, [tasks, map]);
+  }, [tasks, map, disabled, programmaticMoveRef]);
 
   return null;
+}
+
+// Compute approximate visible radius in km from map bounds
+function boundsToRadiusKm(map) {
+  const bounds = map.getBounds();
+  const center = map.getCenter();
+  const corner = bounds.getNorthEast();
+  // Haversine between center and corner
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const lat1 = toRad(center.lat);
+  const lat2 = toRad(corner.lat);
+  const dLat = toRad(corner.lat - center.lat);
+  const dLng = toRad(corner.lng - center.lng);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 6371 * c; // Earth radius in km
+}
+
+// Component to detect user-initiated map moves and show "Search this area" button
+function MapMoveDetector({ programmaticMoveRef, onSearchArea }) {
+  const map = useMap();
+  const [showButton, setShowButton] = useState(false);
+  const pendingBoundsRef = useRef(null);
+
+  useEffect(() => {
+    const handleMoveEnd = () => {
+      if (programmaticMoveRef.current > 0) return;
+      const center = map.getCenter();
+      const radiusKm = boundsToRadiusKm(map);
+      pendingBoundsRef.current = { lat: center.lat, lng: center.lng, radiusKm };
+      setShowButton(true);
+    };
+
+    map.on('moveend', handleMoveEnd);
+    return () => { map.off('moveend', handleMoveEnd); };
+  }, [map, programmaticMoveRef]);
+
+  const handleClick = useCallback(() => {
+    if (pendingBoundsRef.current && onSearchArea) {
+      onSearchArea(pendingBoundsRef.current);
+    }
+    setShowButton(false);
+  }, [onSearchArea]);
+
+  if (!showButton || !onSearchArea) return null;
+
+  return (
+    <div className="task-map-search-area-wrapper">
+      <button className="task-map-search-area-btn" onClick={handleClick}>
+        <Search size={14} />
+        Search this area
+      </button>
+    </div>
+  );
 }
 
 const CATEGORY_ICONS = {
@@ -107,8 +168,11 @@ export default function TaskMap({
   hoveredTaskId = null,
   onTaskSelect = () => {},
   onTaskHover = () => {},
+  onBoundsChange = null,
+  disableFitBounds = false,
 }) {
   const selectedTask = tasks.find(t => t.id === selectedTaskId);
+  const programmaticMoveRef = useRef(0);
 
   return (
     <MapContainer
@@ -122,8 +186,9 @@ export default function TaskMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <MapUpdater center={center} selectedTask={selectedTask} />
-      <FitBounds tasks={tasks} />
+      <MapUpdater center={center} selectedTask={selectedTask} programmaticMoveRef={programmaticMoveRef} />
+      <FitBounds tasks={tasks} disabled={disableFitBounds} programmaticMoveRef={programmaticMoveRef} />
+      <MapMoveDetector programmaticMoveRef={programmaticMoveRef} onSearchArea={onBoundsChange} />
 
       {/* Radius circle */}
       {radius && center[0] && center[1] && (

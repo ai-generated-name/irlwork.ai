@@ -567,6 +567,9 @@ const translations = {
   'footer.aboutUs': {
     en: 'About Us', es: 'Acerca de Nosotros', zh: '关于我们', hi: 'हमारे बारे में', ar: 'من نحن',
   },
+  'footer.thesis': {
+    en: 'Thesis', es: 'Tesis', zh: '论点', hi: 'थीसिस', ar: 'الأطروحة',
+  },
   'footer.contactUs': {
     en: 'Contact Us', es: 'Contáctenos', zh: '联系我们', hi: 'संपर्क करें', ar: 'اتصل بنا',
   },

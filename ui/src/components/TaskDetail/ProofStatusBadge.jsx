@@ -11,6 +11,12 @@ const STATUS_CONFIG = {
     color: 'bg-[#FFE4DB] border-[#E07A5F] text-[#C45F4A]',
     description: 'Your proof has been submitted and is awaiting agent review'
   },
+  approved: {
+    label: 'Approved',
+    icon: '✓',
+    color: 'bg-[#D1FAE5] border-[#059669] text-[#059669]',
+    description: 'Your proof has been approved! Payment is being processed.'
+  },
   completed: {
     label: 'Approved',
     icon: '✓',
