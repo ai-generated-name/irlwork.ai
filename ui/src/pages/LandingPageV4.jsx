@@ -6,6 +6,7 @@ import {
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
+import HappeningNow from '../components/HappeningNow'
 import { Logo } from '../components/Logo'
 import LanguageSelector from '../components/LanguageSelector'
 import { useLanguage } from '../context/LanguageContext'
@@ -513,6 +514,9 @@ export default function LandingPageV4() {
           <HeroStats />
         </div>
       </section>
+
+      {/* Happening Right Now */}
+      <HappeningNow />
 
       {/* Live Transaction Ticker */}
       <TransactionTicker />
