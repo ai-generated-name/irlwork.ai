@@ -418,6 +418,53 @@ const handlers = {
       return { version: promptVersion, prompt: agentPrompt }
     }
     return { error: 'Agent prompt not available. Check API connection.' }
+  },
+
+  // ===== Subscription & Billing =====
+
+  // Get available subscription tiers and pricing
+  async subscription_tiers() {
+    const res = await fetch(`${API_URL}/subscription/tiers`)
+    return await res.json()
+  },
+
+  // Get current subscription status
+  async subscription_status() {
+    const res = await fetch(`${API_URL}/subscription`, {
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
+  },
+
+  // Start a subscription upgrade (returns Stripe checkout URL for user to complete)
+  async subscription_upgrade(params) {
+    if (!params.tier || !['builder', 'pro'].includes(params.tier)) {
+      return { error: 'tier parameter is required and must be "builder" or "pro"' }
+    }
+    if (params.billing_period && !['monthly', 'annual'].includes(params.billing_period)) {
+      return { error: 'billing_period must be "monthly" or "annual"' }
+    }
+    const res = await fetch(`${API_URL}/subscription/checkout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY
+      },
+      body: JSON.stringify({
+        tier: params.tier,
+        billing_period: params.billing_period || 'monthly'
+      })
+    })
+    return await res.json()
+  },
+
+  // Get Stripe billing portal URL for managing subscription
+  async subscription_portal() {
+    const res = await fetch(`${API_URL}/subscription/portal`, {
+      method: 'POST',
+      headers: { 'Authorization': API_KEY }
+    })
+    return await res.json()
   }
 }
 
@@ -521,6 +568,9 @@ server.listen(PORT, () => {
   console.log(``)
   console.log(`   Feedback:`)
   console.log(`     submit_feedback`)
+  console.log(``)
+  console.log(`   Subscription & Billing:`)
+  console.log(`     subscription_tiers, subscription_status, subscription_upgrade, subscription_portal`)
   console.log(``)
   console.log(`   Aliases (backward compat):`)
   console.log(`     post_task, create_adhoc_task, create_task → create_posting`)
