@@ -514,12 +514,11 @@ export default function LandingPageV4() {
         </div>
       </section>
 
-      {/* Stats + Hero Animation for Mobile - appears below hero as separate section */}
+      {/* Stats for Mobile - appears below hero as separate section */}
       <section className="hero-animation-mobile-section">
         <div className="hero-stats-mobile">
           <HeroStats />
         </div>
-        <HeroAnimation />
       </section>
 
       {/* Live Transaction Ticker */}
