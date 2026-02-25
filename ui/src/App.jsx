@@ -28,6 +28,8 @@ import LandingPageV4 from './pages/LandingPageV4'
 import NotFoundPage from './pages/NotFoundPage'
 import ContactPage from './pages/ContactPage'
 import AboutPage from './pages/AboutPage'
+import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
 import MarketingFooter from './components/Footer'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
@@ -5161,6 +5163,8 @@ function App() {
     if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
+    if (path === '/privacy') return <PrivacyPage />
+    if (path === '/terms') return <TermsPage />
     if (path === '/browse' || path === '/browse/tasks' || path === '/browse/humans') return <Suspense fallback={<Loading />}><BrowsePage user={user} navigate={navigate} /></Suspense>
 
     // Homepage
