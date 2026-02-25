@@ -3,6 +3,105 @@ import API_URL from '../config/api'
 import ProfileCompleteness from '../components/ProfileCompleteness'
 import HowPaymentsWork from '../components/HowPaymentsWork'
 
+function OnboardingChecklist({ user, onNavigate }) {
+  const steps = [
+    { key: 'city', label: 'Set your location', doneLabel: 'Location set', meta: 'Helps match you with nearby tasks', doneMeta: user?.city || 'Done', check: !!user?.city, tab: 'profile' },
+    { key: 'bio', label: 'Complete your profile', doneLabel: 'Profile complete', meta: 'Add a bio to stand out to agents', doneMeta: 'Looking good!', check: !!(user?.bio && user.bio.trim().length > 10), tab: 'profile' },
+    { key: 'browse', label: 'Browse and accept a task', doneLabel: 'First task accepted', meta: 'Find tasks that match your skills', doneMeta: 'Great start!', check: false, tab: 'browse' },
+  ]
+  const completedCount = steps.filter(s => s.check).length
+  const allDone = completedCount === steps.length
+
+  if (allDone) {
+    return (
+      <div style={{
+        background: 'var(--bg-secondary)',
+        border: '1px solid rgba(16, 185, 129, 0.2)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '16px 20px',
+        marginBottom: 20,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>You're all set! Browse tasks to get started.</span>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      background: 'var(--bg-secondary)',
+      border: '1px solid rgba(26, 26, 26, 0.06)',
+      borderRadius: 'var(--radius-lg)',
+      padding: '20px 24px',
+      marginBottom: 20,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+          Get started
+        </h3>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>
+          {completedCount} of {steps.length} complete
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {steps.map((step, i) => (
+          <button
+            key={step.key}
+            onClick={() => !step.check && onNavigate?.(step.tab)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 14px',
+              background: step.check ? 'rgba(16, 185, 129, 0.04)' : 'var(--bg-tertiary)',
+              border: step.check ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(26, 26, 26, 0.04)',
+              borderRadius: 'var(--radius-md)',
+              cursor: step.check ? 'default' : 'pointer',
+              textAlign: 'left',
+              width: '100%',
+              transition: 'all 0.15s',
+            }}
+          >
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: step.check ? '#16A34A' : 'var(--bg-secondary)',
+              color: step.check ? 'white' : 'var(--text-tertiary)',
+              border: step.check ? 'none' : '1px solid rgba(26, 26, 26, 0.1)',
+              fontSize: 13, fontWeight: 600,
+            }}>
+              {step.check ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+              ) : (
+                <span>{i + 1}</span>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={{
+                display: 'block', fontSize: 14, fontWeight: 500,
+                color: step.check ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                textDecoration: step.check ? 'line-through' : 'none',
+              }}>
+                {step.check ? step.doneLabel : step.label}
+              </span>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>
+                {step.check ? step.doneMeta : step.meta}
+              </span>
+            </div>
+            {!step.check && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const ACTIVE_STATUSES = ['open', 'accepted', 'assigned', 'in_progress']
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed']
 
@@ -135,6 +234,32 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         )}
       </div>
 
+      {/* Availability Warning */}
+      {user?.availability !== 'available' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 16px', marginBottom: 16,
+          background: '#FFFBEB',
+          border: '1px solid #FDE68A',
+          borderRadius: 'var(--radius-md)',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+          <span style={{ flex: 1, fontSize: 13, color: '#92400E' }}>
+            You're hidden from search. Turn on availability to get hired.
+          </span>
+          <button
+            onClick={() => onNavigate?.('settings')}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 600, color: '#D97706',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Go to Settings
+          </button>
+        </div>
+      )}
+
       {/* Profile Completeness Nudge */}
       <ProfileCompleteness user={user} onNavigate={onNavigate} />
 
@@ -187,6 +312,9 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         </div>
       </div>
 
+      {/* Onboarding Checklist — shown until all steps complete */}
+      <OnboardingChecklist user={user} onNavigate={onNavigate} />
+
       {/* Monthly Earnings Chart */}
       <MonthlyEarningsChart tasks={safeTasks} />
 
@@ -203,9 +331,9 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
                 const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                 const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
                 let label, bg, color;
-                if (diffHours < 1) { label = 'Due in < 1 hour'; bg = '#FEF3C7'; color = '#D97706'; }
-                else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#D97706'; }
-                else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#B45309'; }
+                if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
+                else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
+                else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#B45309'; }
                 else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
                 deadlineBadge = (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: bg, color, whiteSpace: 'nowrap' }}>

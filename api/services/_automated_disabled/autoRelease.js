@@ -23,7 +23,7 @@ const CHECK_INTERVAL_MS = parseInt(process.env.AUTO_RELEASE_INTERVAL_MS) || 15 *
 // 48 hour threshold in milliseconds
 const AUTO_RELEASE_THRESHOLD_MS = 48 * 60 * 60 * 1000;
 
-// Use shared platform fee constant (15%)
+// Use shared platform fee constant (10%)
 const { PLATFORM_FEE_PERCENT } = require('../../config/constants');
 
 /**

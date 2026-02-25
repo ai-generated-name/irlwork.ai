@@ -54,12 +54,12 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          color: value ? 'var(--text-primary, #1A1A1A)' : 'var(--text-tertiary, #8A8A8A)',
+          color: value ? 'var(--text-primary, #1A1A1A)' : 'var(--text-tertiary, #888888)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap'
         }}>
-          <Clock size={14} style={{ flexShrink: 0, color: 'var(--text-tertiary, #8A8A8A)' }} />
+          <Clock size={14} style={{ flexShrink: 0, color: 'var(--text-tertiary, #888888)' }} />
           {value
             ? TIMEZONE_OPTIONS.find(o => o.value === value)?.label || `${value.split('/').pop().replace(/_/g, ' ')} (${displayLabel})`
             : 'Select timezone...'
@@ -69,7 +69,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           size={14}
           style={{
             flexShrink: 0,
-            color: 'var(--text-tertiary, #8A8A8A)',
+            color: 'var(--text-tertiary, #888888)',
             transition: 'transform 0.2s',
             transform: open ? 'rotate(180deg)' : 'none'
           }}
@@ -84,7 +84,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           right: 0,
           background: 'white',
           borderRadius: 12,
-          border: '1px solid rgba(26,26,26,0.1)',
+          border: '1px solid rgba(0,0,0,0.1)',
           boxShadow: '0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06)',
           zIndex: 100,
           maxHeight: 280,
@@ -95,12 +95,12 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           {/* Search */}
           <div style={{
             padding: '8px 12px',
-            borderBottom: '1px solid rgba(26,26,26,0.06)',
+            borderBottom: '1px solid rgba(0,0,0,0.06)',
             display: 'flex',
             alignItems: 'center',
             gap: 8
           }}>
-            <Search size={14} style={{ color: 'var(--text-tertiary, #8A8A8A)', flexShrink: 0 }} />
+            <Search size={14} style={{ color: 'var(--text-tertiary, #888888)', flexShrink: 0 }} />
             <input
               ref={searchRef}
               type="text"
@@ -123,7 +123,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
                 onClick={() => setSearch('')}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
               >
-                <X size={12} style={{ color: 'var(--text-tertiary, #8A8A8A)' }} />
+                <X size={12} style={{ color: 'var(--text-tertiary, #888888)' }} />
               </button>
             )}
           </div>
@@ -145,11 +145,11 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
                   background: 'none',
                   cursor: 'pointer',
                   fontSize: 13,
-                  color: 'var(--text-tertiary, #8A8A8A)',
+                  color: 'var(--text-tertiary, #888888)',
                   textAlign: 'left',
                   fontStyle: 'italic'
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(244,132,95,0.04)' }}
+                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(232,133,61,0.04)' }}
                 onMouseOut={(e) => { e.currentTarget.style.background = 'none' }}
               >
                 Clear selection
@@ -168,22 +168,22 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
                   width: '100%',
                   padding: '8px 14px',
                   border: 'none',
-                  background: opt.value === value ? 'rgba(244,132,95,0.06)' : 'none',
+                  background: opt.value === value ? 'rgba(232,133,61,0.06)' : 'none',
                   cursor: 'pointer',
                   fontSize: 13,
-                  color: opt.value === value ? '#E07A5F' : 'var(--text-primary, #1A1A1A)',
+                  color: opt.value === value ? '#E8853D' : 'var(--text-primary, #1A1A1A)',
                   fontWeight: opt.value === value ? 500 : 400,
                   textAlign: 'left',
                   transition: 'background 0.15s'
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(244,132,95,0.06)' }}
-                onMouseOut={(e) => { e.currentTarget.style.background = opt.value === value ? 'rgba(244,132,95,0.06)' : 'none' }}
+                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(232,133,61,0.06)' }}
+                onMouseOut={(e) => { e.currentTarget.style.background = opt.value === value ? 'rgba(232,133,61,0.06)' : 'none' }}
               >
                 {opt.label}
               </button>
             ))}
             {filtered.length === 0 && (
-              <div style={{ padding: '16px 14px', fontSize: 13, color: 'var(--text-tertiary, #8A8A8A)', textAlign: 'center' }}>
+              <div style={{ padding: '16px 14px', fontSize: 13, color: 'var(--text-tertiary, #888888)', textAlign: 'center' }}>
                 No timezones found
               </div>
             )}
