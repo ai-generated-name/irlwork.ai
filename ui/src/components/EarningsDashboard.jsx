@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Timer, CreditCard, ArrowDownLeft, ChevronDown } from 'lucide-react'
 import API_URL from '../config/api'
 import { useToast } from '../context/ToastContext'
+import { supabase } from '../context/AuthContext'
 import WithdrawalMethodPicker from './WithdrawalMethodPicker'
 import ConnectBankButton from './ConnectBankButton'
 import ConnectWalletSection from './ConnectWalletSection'
@@ -74,8 +75,16 @@ function EarningsDashboard({ user }) {
     }
     try {
       setLoading(true)
+      // Get fresh token from Supabase session (auto-refreshes expired JWTs)
+      let token = user.token || ''
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          token = session.access_token
+        }
+      }
       const res = await fetch(`${API_URL}/wallet/balance`, {
-        headers: { Authorization: user.token || '' }
+        headers: { Authorization: token }
       })
 
       if (!res.ok) {
@@ -113,10 +122,18 @@ function EarningsDashboard({ user }) {
       setWithdrawing(true)
       setWithdrawResult(null)
 
+      // Get fresh token from Supabase session
+      let token = user.token || ''
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          token = session.access_token
+        }
+      }
       const res = await fetch(`${API_URL}/wallet/withdraw`, {
         method: 'POST',
         headers: {
-          'Authorization': user.token || '',
+          'Authorization': token,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
