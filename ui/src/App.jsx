@@ -2241,23 +2241,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <Logo variant="header" theme="light" />
         </a>
 
-        {/* Connect to AI Agent CTA - top of sidebar in hiring mode */}
-        {hiringMode && (
-          <div className="dashboard-v4-connect-agent-sidebar-top">
-            <button
-              onClick={() => !agentConnected && (window.location.href = '/connect-agent')}
-              className={`dashboard-v4-connect-agent-btn-top ${agentConnected ? 'connected' : ''}`}
-            >
-              <span className="dashboard-v4-connect-agent-icon">{agentConnected ? <CheckCircle size={16} /> : <Bot size={16} />}</span>
-              <span>{agentConnected ? 'AI Agent Connected' : 'Connect to AI Agent'}</span>
-              {!agentConnected && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', opacity: 0.5 }}>
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              )}
-            </button>
-          </div>
-        )}
 
 
         {/* Navigation */}
@@ -2332,23 +2315,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           )}
         </div>
 
-        {/* Upgrade to Premium — only show when not on a paid plan */}
-        {user && (user.subscription_tier || 'free') === 'free' && (
-          <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-            <button
-              onClick={() => window.location.href = '/premium'}
-              className="dashboard-v4-upgrade-premium-btn"
-            >
-              <span style={{ display: 'flex', alignItems: 'center' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  <polyline points="9 12 11 14 15 10" />
-                </svg>
-              </span>
-              <span>Upgrade to Premium</span>
-            </button>
-          </div>
-        )}
+        {/* Upgrade to Premium CTA */}
+        <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+          <button
+            onClick={() => window.location.href = '/pricing'}
+            className="dashboard-v4-upgrade-premium-btn"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" stroke="#F4845F" strokeWidth="2" fill="none" />
+              <path d="M8 12.5l2.5 2.5L16 9" stroke="#F4845F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Upgrade to Premium</span>
+          </button>
+        </div>
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
