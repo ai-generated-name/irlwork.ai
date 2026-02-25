@@ -9,34 +9,40 @@ import { useLanguage } from '../context/LanguageContext'
 // V4 Design Tokens as CSS-in-JS for non-landing pages
 export const v4 = {
   colors: {
-    bgPrimary: '#FAF8F5',
+    bgPrimary: '#FAFAF8',
     bgSecondary: '#FFFFFF',
-    bgTertiary: '#F5F2ED',
+    bgTertiary: '#F5F3F0',
     textPrimary: '#1A1A1A',
-    textSecondary: '#525252',
-    textTertiary: '#8A8A8A',
-    teal900: '#0A3540',
-    teal700: '#0F4C5C',
-    teal500: '#1A6B7F',
-    teal300: '#5DADE2',
-    coral600: '#C45F4A',
-    coral500: '#E07A5F',
-    coral400: '#E89679',
-    amber500: '#F4D58D',
-    success: '#059669',
-    successBg: '#D1FAE5',
-    error: '#DC2626',
-    errorBg: '#FEE2E2',
+    textSecondary: '#333333',
+    textTertiary: '#888888',
+    textMuted: '#AAAAAA',
+    textOnDark: '#DDDDDD',
+    // Legacy teal names remapped to orange accent
+    teal900: '#D4703A',
+    teal700: '#E8853D',
+    teal500: '#E8853D',
+    teal300: '#FFF3EB',
+    coral600: '#D4703A',
+    coral500: '#E8853D',
+    coral400: '#FFF3EB',
+    orange: '#E8853D',
+    orangeHover: '#D4703A',
+    orangeLight: '#FFF3EB',
+    amber500: '#FEBC2E',
+    success: '#16A34A',
+    successBg: 'rgba(22, 163, 74, 0.08)',
+    error: '#FF5F57',
+    errorBg: 'rgba(255, 95, 87, 0.1)',
   },
   fonts: {
     display: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    mono: "'Space Mono', 'Courier New', monospace",
+    mono: "'DM Mono', 'SF Mono', 'Fira Code', monospace",
   },
   shadows: {
-    sm: '0 1px 2px rgba(0, 0, 0, 0.04)',
-    md: '0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)',
-    lg: '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)',
-    xl: '0 16px 48px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)',
+    sm: '0 1px 3px rgba(0, 0, 0, 0.04)',
+    md: '0 1px 4px rgba(0, 0, 0, 0.02), 0 8px 40px rgba(0, 0, 0, 0.035)',
+    lg: '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
+    xl: '0 16px 48px rgba(0, 0, 0, 0.1)',
   }
 }
 
@@ -56,9 +62,9 @@ export function NavbarV4({ user, onLogout }) {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '16px 32px',
-      background: 'rgba(250, 248, 245, 0.95)',
-      backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid rgba(26, 26, 26, 0.1)',
+      background: 'rgba(250, 250, 248, 0.9)',
+      backdropFilter: 'blur(8px)',
+      borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
       fontFamily: v4.fonts.display,
     }}>
       <a href="/" className="logo-v4">
@@ -113,9 +119,9 @@ export function NavbarV4({ user, onLogout }) {
                 style={{
                   padding: '10px 20px',
                   background: 'transparent',
-                  border: `2px solid ${v4.colors.teal700}`,
-                  borderRadius: 12,
-                  color: v4.colors.teal700,
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  borderRadius: 10,
+                  color: v4.colors.textPrimary,
                   fontWeight: 600,
                   fontSize: 14,
                   cursor: 'pointer',
@@ -178,7 +184,7 @@ export function ButtonV4({
   const baseStyles = {
     fontFamily: v4.fonts.display,
     fontWeight: 600,
-    borderRadius: 12,
+    borderRadius: 10,
     cursor: disabled ? 'not-allowed' : 'pointer',
     transition: 'all 0.2s ease',
     border: 'none',
@@ -203,8 +209,8 @@ export function ButtonV4({
     },
     secondary: {
       background: 'transparent',
-      color: v4.colors.teal700,
-      border: `2px solid ${v4.colors.teal700}`,
+      color: v4.colors.textPrimary,
+      border: '1px solid rgba(0, 0, 0, 0.1)',
     },
     ghost: {
       background: 'transparent',
@@ -256,18 +262,18 @@ export function InputV4({
       onChange={onChange}
       style={{
         width: '100%',
-        padding: '14px 18px',
-        background: v4.colors.bgSecondary,
-        border: `2px solid rgba(26, 26, 26, 0.1)`,
-        borderRadius: 12,
+        padding: '10px 14px',
+        background: v4.colors.bgTertiary,
+        border: '1px solid rgba(0, 0, 0, 0.08)',
+        borderRadius: 10,
         color: v4.colors.textPrimary,
-        fontSize: 15,
+        fontSize: 14,
         fontFamily: v4.fonts.display,
         outline: 'none',
-        transition: 'border-color 0.2s ease',
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
       }}
-      onFocus={(e) => e.target.style.borderColor = v4.colors.teal500}
-      onBlur={(e) => e.target.style.borderColor = 'rgba(26, 26, 26, 0.1)'}
+      onFocus={(e) => { e.target.style.borderColor = '#E8853D'; e.target.style.boxShadow = '0 0 0 3px rgba(232, 133, 61, 0.1)'; }}
+      onBlur={(e) => { e.target.style.borderColor = 'rgba(0, 0, 0, 0.08)'; e.target.style.boxShadow = 'none'; }}
       {...props}
     />
   )
@@ -279,9 +285,9 @@ export function CardV4({ children, className = '', style = {}, ...props }) {
     <div
       style={{
         background: v4.colors.bgSecondary,
-        border: `2px solid rgba(26, 26, 26, 0.08)`,
-        borderRadius: 16,
-        padding: 24,
+        border: '1px solid rgba(0, 0, 0, 0.06)',
+        borderRadius: 14,
+        padding: 16,
         boxShadow: v4.shadows.sm,
         ...style,
       }}
@@ -310,7 +316,7 @@ export function LoadingV4({ message }) {
         width: 48,
         height: 48,
         border: `4px solid ${v4.colors.bgTertiary}`,
-        borderTopColor: v4.colors.teal500,
+        borderTopColor: v4.colors.orange,
         borderRadius: '50%',
         animation: 'spin 1s linear infinite',
         marginBottom: 16,
@@ -329,19 +335,19 @@ export function LoadingV4({ message }) {
 export function BadgeV4({ children, variant = 'default', style = {} }) {
   const variants = {
     default: { background: v4.colors.bgTertiary, color: v4.colors.textSecondary },
-    success: { background: v4.colors.successBg, color: v4.colors.success },
-    warning: { background: '#FEF3C7', color: '#D97706' },
+    success: { background: v4.colors.successBg, color: v4.colors.success, border: '1px solid rgba(22, 163, 74, 0.15)' },
+    warning: { background: 'rgba(254, 188, 46, 0.1)', color: '#FEBC2E' },
     error: { background: v4.colors.errorBg, color: v4.colors.error },
-    teal: { background: 'rgba(15, 76, 92, 0.1)', color: v4.colors.teal700 },
-    coral: { background: 'rgba(224, 122, 95, 0.1)', color: v4.colors.coral600 },
+    teal: { background: v4.colors.orangeLight, color: v4.colors.orange, fontFamily: v4.fonts.mono },
+    coral: { background: v4.colors.orangeLight, color: v4.colors.orange, fontFamily: v4.fonts.mono },
   }
 
   return (
     <span style={{
-      padding: '6px 12px',
-      borderRadius: 20,
-      fontSize: 12,
-      fontWeight: 600,
+      padding: '3px 8px',
+      borderRadius: 6,
+      fontSize: 10,
+      fontWeight: 700,
       fontFamily: v4.fonts.display,
       ...variants[variant],
       ...style,

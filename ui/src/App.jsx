@@ -110,18 +110,18 @@ const safeArr = v => { if (Array.isArray(v)) return v; if (!v) return []; try { 
 
 // === Styles ===
 const styles = {
-  btn: `px-5 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer border-0`,
+  btn: `px-5 py-2.5 rounded-[10px] font-medium transition-all duration-200 cursor-pointer border-0`,
   btnPrimary: `bg-coral text-white hover:bg-coral-dark shadow-v4-md hover:shadow-v4-lg`,
-  btnSecondary: `bg-teal/10 text-teal hover:bg-teal/20`,
+  btnSecondary: `bg-coral/10 text-coral hover:bg-coral/20`,
   btnSmall: `px-3 py-1.5 text-sm rounded-lg`,
-  input: `w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none transition-all`,
-  card: `bg-white border border-gray-100 rounded-2xl p-6 shadow-v4-sm hover:shadow-v4-md transition-shadow`,
+  input: `w-full px-4 py-2.5 bg-[#F5F3F0] border border-[rgba(0,0,0,0.08)] rounded-[10px] text-[#1A1A1A] placeholder-[#AAAAAA] focus:border-coral focus:ring-2 focus:ring-coral/20 focus:outline-none transition-all`,
+  card: `bg-white border border-[rgba(0,0,0,0.06)] rounded-[14px] p-4 shadow-v4-sm hover:shadow-v4-md transition-shadow`,
   container: `max-w-6xl mx-auto px-6`,
   gradient: `bg-cream`,
   // Dashboard-specific styles
-  sidebar: `bg-teal`,
-  sidebarNav: `text-white/70 hover:bg-teal-dark hover:text-white`,
-  sidebarNavActive: `bg-white text-teal font-medium`,
+  sidebar: `bg-cream`,
+  sidebarNav: `text-[#888888] hover:bg-[#F5F3F0] hover:text-[#1A1A1A]`,
+  sidebarNavActive: `bg-coral/[0.06] text-coral font-semibold`,
 }
 
 // === Icons ===
@@ -390,7 +390,7 @@ function Onboarding({ onComplete, user }) {
                   </p>
                 ) : nearbyTasks.length > 0 ? (
                   <div>
-                    <p style={{ fontSize: 13, color: '#10B981', fontWeight: 500, marginBottom: 8 }}>
+                    <p style={{ fontSize: 13, color: '#16A34A', fontWeight: 500, marginBottom: 8 }}>
                       {nearbyTasks.length} task{nearbyTasks.length !== 1 ? 's' : ''} near {form.city} — complete setup to apply
                     </p>
                     {nearbyTasks.map((task, i) => (
@@ -400,7 +400,7 @@ function Onboarding({ onComplete, user }) {
                         marginBottom: 4, fontSize: 13
                       }}>
                         <span style={{ color: 'var(--text-primary)' }}>{task.title}</span>
-                        <span style={{ color: '#10B981', fontWeight: 600 }}>${task.budget}</span>
+                        <span style={{ color: '#16A34A', fontWeight: 600 }}>${task.budget}</span>
                       </div>
                     ))}
                   </div>
@@ -439,9 +439,9 @@ function Onboarding({ onComplete, user }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 10,
-                    border: form.selectedCategories.includes(cat.value) ? '2px solid #10B981' : '2px solid rgba(0,0,0,0.12)',
+                    border: form.selectedCategories.includes(cat.value) ? '2px solid #16A34A' : '2px solid rgba(0,0,0,0.12)',
                     background: form.selectedCategories.includes(cat.value) ? 'rgba(16,185,129,0.15)' : 'rgba(0,0,0,0.03)',
-                    color: form.selectedCategories.includes(cat.value) ? '#10B981' : '#3d3d3d',
+                    color: form.selectedCategories.includes(cat.value) ? '#16A34A' : '#3d3d3d',
                     cursor: 'pointer', fontSize: 14, transition: 'all 0.15s',
                     textAlign: 'left'
                   }}
@@ -461,7 +461,7 @@ function Onboarding({ onComplete, user }) {
               aria-label="Other skills, comma separated"
             />
             {form.selectedCategories.length === 0 && !form.otherSkills.trim() && (
-              <p style={{ fontSize: 13, color: '#f59e0b', marginTop: 8 }}>Select at least one skill or add your own</p>
+              <p style={{ fontSize: 13, color: '#FEBC2E', marginTop: 8 }}>Select at least one skill or add your own</p>
             )}
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(1)}>Back</button>
@@ -531,7 +531,7 @@ function Onboarding({ onComplete, user }) {
               <div style={{
                 display: 'flex', alignItems: 'center',
                 background: 'var(--bg-secondary)',
-                border: '1px solid rgba(26, 26, 26, 0.1)',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
                 borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
                 transition: 'all var(--duration-fast)'
@@ -539,7 +539,7 @@ function Onboarding({ onComplete, user }) {
                 <span style={{
                   padding: '16px 14px', fontSize: 16, fontWeight: 600,
                   color: 'var(--text-tertiary)', background: 'var(--bg-tertiary)',
-                  borderRight: '1px solid rgba(26, 26, 26, 0.08)'
+                  borderRight: '1px solid rgba(0, 0, 0, 0.08)'
                 }}>$</span>
                 <input
                   type="number"
@@ -580,11 +580,11 @@ function Onboarding({ onComplete, user }) {
             {verificationSuccess ? (
               <div style={{
                 padding: '20px', borderRadius: 12,
-                background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                background: 'rgba(22, 163, 74, 0.08)', border: '1px solid rgba(22, 163, 74, 0.2)',
                 textAlign: 'center', marginBottom: 20
               }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>&#10003;</div>
-                <p style={{ color: '#059669', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
+                <p style={{ color: '#16A34A', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
                   {user?.email} is now verified
                 </p>
@@ -1143,12 +1143,12 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
             )}
           </div>
           {uploading && (
-            <p style={{ fontSize: 13, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <p style={{ fontSize: 13, color: '#FEBC2E', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="loading-v4-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Uploading files...
             </p>
           )}
           {uploadedUrls.length > 0 && !uploading && (
-            <p style={{ fontSize: 13, color: '#10B981', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <p style={{ fontSize: 13, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 8 }}>
               ✓ {uploadedUrls.length} file{uploadedUrls.length !== 1 ? 's' : ''} uploaded
             </p>
           )}
@@ -1231,14 +1231,14 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
           <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={() => setRejecting(!rejecting)}>
             {rejecting ? 'Cancel Reject' : 'Reject'}
           </button>
-          <button className="v4-btn v4-btn-primary" style={{ flex: 1, background: '#10B981' }} onClick={onApprove}>
+          <button className="v4-btn v4-btn-primary" style={{ flex: 1, background: '#16A34A' }} onClick={onApprove}>
             Approve & Pay
           </button>
         </div>
         {rejecting && (
           <button
             className="v4-btn"
-            style={{ width: '100%', marginTop: 12, background: '#DC2626', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: feedback.trim() ? 'pointer' : 'not-allowed', opacity: feedback.trim() ? 1 : 0.5 }}
+            style={{ width: '100%', marginTop: 12, background: '#FF5F57', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: feedback.trim() ? 'pointer' : 'not-allowed', opacity: feedback.trim() ? 1 : 0.5 }}
             onClick={() => onReject({ feedback, extendHours: hours })}
             disabled={!feedback.trim()}
           >
@@ -2332,7 +2332,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         )}
 
         {/* Social & Feedback - pinned to bottom */}
-        <div style={{ borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
+        <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
           {/* X / Twitter */}
           <a
             href="https://x.com/irlworkai"
@@ -2370,7 +2370,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <button
             onClick={() => setFeedbackOpen(!feedbackOpen)}
             className="dashboard-v4-nav-item"
-            style={{ width: '100%', background: feedbackOpen ? 'linear-gradient(135deg, rgba(15, 76, 92, 0.1), rgba(15, 76, 92, 0.04))' : undefined }}
+            style={{ width: '100%', background: feedbackOpen ? 'linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.04))' : undefined }}
           >
             <div className="dashboard-v4-nav-item-content">
               <span className="dashboard-v4-nav-icon">
@@ -2883,7 +2883,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
                           {/* View Applicants Button for open tasks */}
                           {isOpen && (
-                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
+                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
                               <button
                                 onClick={() => {
                                   if (isExpanded) {
@@ -3163,16 +3163,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               return (
                 <>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4">
-                      <p className="text-xs text-[#8A8A8A] font-medium uppercase tracking-wider">Total Spent</p>
+                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4">
+                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">Total Spent</p>
                       <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(totalSpent / 100).toFixed(2)}</p>
                     </div>
-                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4">
-                      <p className="text-xs text-[#8A8A8A] font-medium uppercase tracking-wider">In Escrow</p>
+                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4">
+                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">In Escrow</p>
                       <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(inEscrow / 100).toFixed(2)}</p>
                     </div>
-                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 col-span-2 md:col-span-1">
-                      <p className="text-xs text-[#8A8A8A] font-medium uppercase tracking-wider">Released</p>
+                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 col-span-2 md:col-span-1">
+                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">Released</p>
                       <p className="text-2xl md:text-3xl font-bold text-teal tracking-tight mt-1">${(released / 100).toFixed(2)}</p>
                     </div>
                   </div>
@@ -3191,7 +3191,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           return (
                             <div
                               key={task.id}
-                              className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
+                              className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
                             >
                               <div className="flex justify-between items-start gap-3">
                                 <div className="flex-1 min-w-0">
@@ -3203,8 +3203,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                       px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide flex-shrink-0
                                       ${isReleased ? 'bg-teal/8 text-teal' : ''}
                                       ${isCompleted ? 'bg-teal/8 text-teal' : ''}
-                                      ${isInProgress ? 'bg-[#F5F2ED] text-[#8A8A8A]' : ''}
-                                      ${!isReleased && !isCompleted && !isInProgress ? 'bg-[#F5F2ED] text-[#525252]' : ''}
+                                      ${isInProgress ? 'bg-[#F5F3F0] text-[#888888]' : ''}
+                                      ${!isReleased && !isCompleted && !isInProgress ? 'bg-[#F5F3F0] text-[#333333]' : ''}
                                     `}>
                                       {isReleased ? 'Released' : isCompleted ? 'Completed' : isInProgress ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
                                     </span>
@@ -3213,7 +3213,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                     )}
                                   </div>
 
-                                  <p className="text-xs text-[#8A8A8A] mt-1">
+                                  <p className="text-xs text-[#888888] mt-1">
                                     {task.escrow_deposited_at
                                       ? new Date(task.escrow_deposited_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                                       : 'Pending deposit'}
@@ -3226,7 +3226,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                     text-lg md:text-xl font-bold
                                     ${isReleased || isCompleted ? 'text-[#1A1A1A]' : ''}
                                     ${isInProgress ? 'text-[#1A1A1A]' : ''}
-                                    ${!isReleased && !isCompleted && !isInProgress ? 'text-[#8A8A8A]' : ''}
+                                    ${!isReleased && !isCompleted && !isInProgress ? 'text-[#888888]' : ''}
                                   `}>
                                     ${(task.escrow_amount / 100).toFixed(2)}
                                   </p>
@@ -3237,13 +3237,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         })}
                       </div>
                     ) : (
-                      <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
-                        <div className="w-12 h-12 bg-[#F5F2ED] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
-                          <svg className="w-6 h-6 text-[#8A8A8A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-8 md:p-12 text-center">
+                        <div className="w-12 h-12 bg-[#F5F3F0] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
+                          <svg className="w-6 h-6 text-[#888888]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
                           </svg>
                         </div>
-                        <p className="text-[#525252] font-medium text-sm md:text-base">No transactions yet</p>
+                        <p className="text-[#333333] font-medium text-sm md:text-base">No transactions yet</p>
                         <p className="text-xs md:text-sm text-[#A3A3A3] mt-1.5">
                           Fund a task to see your payment history
                         </p>
@@ -3261,14 +3261,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <StripeProvider>
                   <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div>
-                      <h4 className="text-sm font-medium text-[#525252] mb-3">Saved Cards</h4>
+                      <h4 className="text-sm font-medium text-[#333333] mb-3">Saved Cards</h4>
                       <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-[#525252] mb-3">Add New Card</h4>
+                      <h4 className="text-sm font-medium text-[#333333] mb-3">Add New Card</h4>
                       <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
                     </div>
-                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 text-xs text-[#8A8A8A]">
+                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 text-xs text-[#888888]">
                       When you assign a worker to a task, your default card will be charged automatically. Please ensure you have a card saved before assigning workers.
                     </div>
                   </div>
@@ -3357,7 +3357,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   {user?.avatar_url ? (
                     <img key={user.avatar_url} src={user.avatar_url} alt={user?.name || ''} style={{
                       width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
-                      boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                      boxShadow: '0 2px 8px rgba(232,133,61,0.25)'
                     }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                   ) : null}
                   <div style={{
@@ -3365,7 +3365,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
                     display: user?.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                     color: 'white', fontWeight: 700, fontSize: 28,
-                    boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                    boxShadow: '0 2px 8px rgba(232,133,61,0.25)'
                   }}>
                     {user?.name?.charAt(0) || '?'}
                   </div>
@@ -3714,12 +3714,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     {skillsList.map((skill, idx) => (
                       <span key={idx} style={{
                         padding: '6px 12px',
-                        background: 'rgba(244,132,95,0.08)',
+                        background: 'rgba(232,133,61,0.08)',
                         borderRadius: 999,
                         fontSize: 13,
-                        color: '#E07A5F',
+                        color: '#E8853D',
                         fontWeight: 500,
-                        border: '1px solid rgba(244,132,95,0.12)',
+                        border: '1px solid rgba(232,133,61,0.12)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6
@@ -3728,7 +3728,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         <button
                           type="button"
                           onClick={() => setSkillsList(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#E07A5F', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#E8853D', display: 'flex', alignItems: 'center' }}
                         >
                           <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
                         </button>
@@ -4032,7 +4032,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         cursor: 'pointer',
                         position: 'relative',
                         transition: 'background 0.2s',
-                        background: user?.availability === 'available' ? '#10B981' : '#D1D5DB',
+                        background: user?.availability === 'available' ? '#16A34A' : '#D1D5DB',
                         flexShrink: 0
                       }}
                     >
@@ -4153,11 +4153,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </button>
 
               <div style={{ padding: 16, border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-lg)', background: 'rgba(239,68,68,0.04)' }}>
-                <p style={{ fontWeight: 500, color: '#EF4444', marginBottom: 4, fontSize: 14 }}>Danger Zone</p>
+                <p style={{ fontWeight: 500, color: '#FF5F57', marginBottom: 4, fontSize: 14 }}>Danger Zone</p>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Deactivating your account hides your profile and pauses all activity. You can reactivate anytime by signing back in.</p>
                 <button
                   className="v4-btn v4-btn-secondary"
-                  style={{ fontSize: 13, color: '#EF4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                  style={{ fontSize: 13, color: '#FF5F57', borderColor: 'rgba(239,68,68,0.3)' }}
                   onClick={() => {
                     if (window.confirm('Are you sure you want to deactivate your account? Your profile will be hidden and all active tasks will be paused. You can reactivate by signing back in.')) {
                       toast.success('Account deactivated')
@@ -4204,7 +4204,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             if (!party?.last_active_at) return { status: 'offline', label: 'Offline' }
             const diff = Date.now() - new Date(party.last_active_at).getTime()
             if (diff < 5 * 60 * 1000) return { status: 'online', label: 'Online', color: '#22C55E' }
-            if (diff < 30 * 60 * 1000) return { status: 'idle', label: 'Away', color: '#F59E0B' }
+            if (diff < 30 * 60 * 1000) return { status: 'idle', label: 'Away', color: '#FEBC2E' }
             return { status: 'offline', label: 'Offline', color: '#9CA3AF' }
           }
           // Helper: relative time
@@ -4296,7 +4296,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 {selectedConversation && activeConv ? (
                   <>
                     {/* Thread Header: back button + other party + task link + online status */}
-                    <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(26,26,26,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
+                    <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
                       <button onClick={() => setSelectedConversation(null)} className="msg-back-btn" style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)' }}>
                         ←
                       </button>
@@ -4620,7 +4620,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
                 <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
                 <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Open workflows &bull; Best practices &bull; Rate limits</p>
                 {keys.length > 0 && (
-                  <p style={{ color: '#10B981', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
+                  <p style={{ color: '#16A34A', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
                 )}
               </div>
             </div>
@@ -4702,7 +4702,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
                         justifyContent: 'space-between',
                         alignItems: 'center'
                       }}>
-                        <span style={{ color: '#10B981' }}>{key.key_prefix}</span>
+                        <span style={{ color: '#16A34A' }}>{key.key_prefix}</span>
                         <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
                       </div>
                     ))}

@@ -19,7 +19,7 @@ L.Icon.Default.mergeOptions({
 // Custom coral marker icon for tasks
 const createTaskIcon = (isSelected = false, isHovered = false) => {
   const size = isSelected ? 40 : isHovered ? 36 : 32;
-  const color = isSelected ? '#C35A44' : '#E07A5F';
+  const color = isSelected ? '#C35A44' : '#E8853D';
 
   return L.divIcon({
     className: 'task-marker-icon',
@@ -196,8 +196,8 @@ export default function TaskMap({
           center={center}
           radius={radius * 1000} // km to meters
           pathOptions={{
-            color: '#E07A5F',
-            fillColor: '#E07A5F',
+            color: '#E8853D',
+            fillColor: '#E8853D',
             fillOpacity: 0.08,
             weight: 2,
             dashArray: '5, 5',
@@ -226,7 +226,7 @@ export default function TaskMap({
                 <span style={{ fontSize: 20 }}>{CATEGORY_ICONS[task.category] || <ClipboardList size={20} />}</span>
                 <span style={{
                   fontSize: 11,
-                  color: '#525252',
+                  color: '#333333',
                   textTransform: 'capitalize',
                 }}>
                   {task.category?.replace('-', ' ') || 'General'}
@@ -243,7 +243,7 @@ export default function TaskMap({
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                 <span style={{
                   fontWeight: 700,
-                  color: '#E07A5F',
+                  color: '#E8853D',
                   fontSize: 16,
                 }}>
                   ${task.budget || 0}
@@ -251,7 +251,7 @@ export default function TaskMap({
                 {task.distance_km != null && (
                   <span style={{
                     fontSize: 12,
-                    color: '#8A8A8A',
+                    color: '#888888',
                   }}>
                     {task.distance_km.toFixed(1)} km away
                   </span>
@@ -262,7 +262,7 @@ export default function TaskMap({
                 style={{
                   width: '100%',
                   padding: '8px 16px',
-                  background: 'linear-gradient(135deg, #E07A5F 0%, #F4845F 100%)',
+                  background: '#E8853D',
                   color: 'white',
                   border: 'none',
                   borderRadius: 8,

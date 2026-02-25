@@ -87,7 +87,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             height: 36,
             borderRadius: '50%',
             border: 'none',
-            background: 'rgba(26,26,26,0.06)',
+            background: 'rgba(0,0,0,0.06)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -95,15 +95,15 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             zIndex: 10,
             transition: 'all 0.2s'
           }}
-          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(26,26,26,0.12)' }}
-          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(26,26,26,0.06)' }}
+          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.12)' }}
+          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.06)' }}
         >
           <X size={18} style={{ color: 'var(--text-secondary)' }} />
         </button>
 
         {loading ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
-            <Loader2 size={32} style={{ color: '#F4845F', animation: 'spin 1s linear infinite' }} />
+            <Loader2 size={32} style={{ color: '#E8853D', animation: 'spin 1s linear infinite' }} />
             <p style={{ marginTop: 16, color: 'var(--text-tertiary)', fontSize: 14 }}>Loading profile...</p>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
@@ -124,7 +124,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   style={{
                     width: 80, height: 80, borderRadius: '50%',
                     objectFit: 'cover', flexShrink: 0,
-                    boxShadow: '0 4px 16px rgba(244,132,95,0.3)'
+                    boxShadow: '0 4px 16px rgba(232,133,61,0.3)'
                   }}
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
                 />
@@ -133,7 +133,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                 width: 80,
                 height: 80,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                background: '#E8853D',
                 display: profile.avatar_url ? 'none' : 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -141,7 +141,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                 fontWeight: 700,
                 fontSize: 32,
                 flexShrink: 0,
-                boxShadow: '0 4px 16px rgba(244,132,95,0.3)'
+                boxShadow: '0 4px 16px rgba(232,133,61,0.3)'
               }}>
                 {profile.name?.[0]?.toUpperCase() || '?'}
               </div>
@@ -164,7 +164,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                       width: 22,
                       height: 22,
                       borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #10B981, #059669)',
+                      background: 'linear-gradient(135deg, #16A34A, #16A34A)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -192,7 +192,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                     color: 'var(--text-secondary)',
                     marginBottom: 4
                   }}>
-                    <MapPin size={14} style={{ color: '#F4845F' }} />
+                    <MapPin size={14} style={{ color: '#E8853D' }} />
                     {profile.city}{profile.state ? `, ${profile.state}` : ''}
                     {profile.timezone && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 8, color: 'var(--text-tertiary)', fontSize: 13 }}>
@@ -240,7 +240,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               <span style={{
                 fontSize: 28,
                 fontWeight: 700,
-                color: '#F4845F'
+                color: '#E8853D'
               }}>
                 ${profile.hourly_rate || 25}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>/hr</span>
               </span>
@@ -269,12 +269,12 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   {skills.map((skill, idx) => (
                     <span key={idx} style={{
                       padding: '6px 14px',
-                      background: 'rgba(244,132,95,0.08)',
+                      background: 'rgba(232,133,61,0.08)',
                       borderRadius: 999,
                       fontSize: 13,
-                      color: '#E07A5F',
+                      color: '#E8853D',
                       fontWeight: 500,
-                      border: '1px solid rgba(244,132,95,0.12)'
+                      border: '1px solid rgba(232,133,61,0.12)'
                     }}>
                       {skill.replace(/_/g, ' ')}
                     </span>
@@ -342,7 +342,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                       padding: 16,
                       background: 'var(--bg-tertiary, #F9FAFB)',
                       borderRadius: 12,
-                      border: '1px solid rgba(26,26,26,0.04)'
+                      border: '1px solid rgba(0,0,0,0.04)'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                         <div style={{ display: 'flex', gap: 2 }}>
@@ -350,8 +350,8 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                             <Star
                               key={i}
                               size={12}
-                              fill={i <= (review.score || review.rating || 0) ? '#F59E0B' : 'none'}
-                              stroke={i <= (review.score || review.rating || 0) ? '#F59E0B' : '#D1D5DB'}
+                              fill={i <= (review.score || review.rating || 0) ? '#FEBC2E' : 'none'}
+                              stroke={i <= (review.score || review.rating || 0) ? '#FEBC2E' : '#D1D5DB'}
                               strokeWidth={1.5}
                             />
                           ))}
@@ -412,7 +412,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   style={{
                     width: '100%',
                     padding: '14px 24px',
-                    background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                    background: '#E8853D',
                     color: 'white',
                     fontWeight: 600,
                     fontSize: 16,
@@ -420,15 +420,15 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                     border: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    boxShadow: '0 4px 16px rgba(244,132,95,0.3)',
+                    boxShadow: '0 4px 16px rgba(232,133,61,0.3)',
                     marginTop: 16
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(244,132,95,0.4)'
+                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(232,133,61,0.4)'
                     e.currentTarget.style.transform = 'translateY(-1px)'
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(244,132,95,0.3)'
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,133,61,0.3)'
                     e.currentTarget.style.transform = 'translateY(0)'
                   }}
                 >
@@ -444,16 +444,16 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
 }
 
 function StatBox({ icon, value, label, highlight }) {
-  const valueColor = highlight === 'green' ? '#10B981' : highlight === 'gray' ? '#9CA3AF' : 'var(--text-primary)'
+  const valueColor = highlight === 'green' ? '#16A34A' : highlight === 'gray' ? '#9CA3AF' : 'var(--text-primary)'
   return (
     <div style={{
       padding: 14,
       background: 'var(--bg-tertiary, #F9FAFB)',
       borderRadius: 12,
       textAlign: 'center',
-      border: '1px solid rgba(26,26,26,0.04)'
+      border: '1px solid rgba(0,0,0,0.04)'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: '#F4845F' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: '#E8853D' }}>
         {icon}
       </div>
       <div style={{ fontSize: 18, fontWeight: 700, color: valueColor, marginBottom: 2 }}>

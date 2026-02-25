@@ -122,18 +122,18 @@ function EarningsDashboard({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-[#525252]">Loading balance...</div>
+        <div className="text-[#333333]">Loading balance...</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-[#FEE2E2] border border-[#DC2626]/20 rounded-xl p-4">
-        <p className="text-[#DC2626]">Error: {error}</p>
+      <div className="bg-[rgba(255, 95, 87, 0.1)] border border-[#FF5F57]/20 rounded-xl p-4">
+        <p className="text-[#FF5F57]">Error: {error}</p>
         <button
           onClick={fetchBalance}
-          className="mt-2 text-sm text-[#DC2626] hover:text-[#B91C1C] underline"
+          className="mt-2 text-sm text-[#FF5F57] hover:text-[#B91C1C] underline"
         >
           Retry
         </button>
@@ -163,7 +163,7 @@ function EarningsDashboard({ user }) {
           </div>
           <div>
             <p className="text-[#1A1A1A] font-semibold text-sm">Withdrawal Successful</p>
-            <p className="text-sm text-[#525252] mt-0.5">
+            <p className="text-sm text-[#333333] mt-0.5">
               {withdrawResult.method === 'usdc'
                 ? `${withdrawResult.amount} USDC sent to your wallet`
                 : `$${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account`}
@@ -175,14 +175,14 @@ function EarningsDashboard({ user }) {
       {/* Balance Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {/* Pending Balance Card */}
-        <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 md:p-6">
+        <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 md:p-6">
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <div>
-              <h3 className="text-[#8A8A8A] text-xs md:text-sm font-medium uppercase tracking-wider">Pending</h3>
+              <h3 className="text-[#888888] text-xs md:text-sm font-medium uppercase tracking-wider">Pending</h3>
               <p className="text-xs text-[#A3A3A3] mt-0.5 md:mt-1">48-hour hold</p>
             </div>
-            <div className="w-9 h-9 md:w-10 md:h-10 bg-[#F5F2ED] rounded-lg flex items-center justify-center">
-              <Timer size={18} className="text-[#8A8A8A]" />
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-[#F5F3F0] rounded-lg flex items-center justify-center">
+              <Timer size={18} className="text-[#888888]" />
             </div>
           </div>
 
@@ -193,10 +193,10 @@ function EarningsDashboard({ user }) {
           {pendingTransactions.length > 0 ? (
             <div className="mt-3 md:mt-4 space-y-2">
               {pendingTransactions.slice(0, 3).map(tx => (
-                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(26,26,26,0.06)]">
+                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(0,0,0,0.06)]">
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <p className="text-[#525252]">Task #{tx.task_id?.substring(0, 8)}</p>
+                      <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
                       {tx.payout_method === 'usdc' && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600">USDC</span>
                       )}
@@ -220,7 +220,7 @@ function EarningsDashboard({ user }) {
         </div>
 
         {/* Available Balance Card */}
-        <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 md:p-6 relative overflow-hidden">
+        <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 md:p-6 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-1 bg-teal" />
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <div>
@@ -255,9 +255,9 @@ function EarningsDashboard({ user }) {
           {availableTransactions.length > 0 && (
             <div className="mt-3 md:mt-4 space-y-2">
               {availableTransactions.slice(0, 2).map(tx => (
-                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(26,26,26,0.06)]">
+                <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(0,0,0,0.06)]">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-[#525252]">Task #{tx.task_id?.substring(0, 8)}</p>
+                    <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
                     {tx.payout_method === 'usdc' && (
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600">USDC</span>
                     )}
@@ -287,7 +287,7 @@ function EarningsDashboard({ user }) {
               return (
                 <div
                   key={tx.id}
-                  className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
+                  className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
                 >
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
@@ -297,9 +297,9 @@ function EarningsDashboard({ user }) {
                         </p>
                         <span className={`
                           px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide flex-shrink-0
-                          ${isPending ? 'bg-[#F5F2ED] text-[#8A8A8A]' : ''}
+                          ${isPending ? 'bg-[#F5F3F0] text-[#888888]' : ''}
                           ${isAvailable ? 'bg-teal/8 text-teal' : ''}
-                          ${isWithdrawn ? 'bg-[#F5F2ED] text-[#525252]' : ''}
+                          ${isWithdrawn ? 'bg-[#F5F3F0] text-[#333333]' : ''}
                         `}>
                           {tx.status}
                         </span>
@@ -315,7 +315,7 @@ function EarningsDashboard({ user }) {
                         )}
                       </div>
 
-                      <p className="text-xs text-[#8A8A8A] mt-1">
+                      <p className="text-xs text-[#888888] mt-1">
                         {new Date(tx.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -332,7 +332,7 @@ function EarningsDashboard({ user }) {
                       )}
 
                       {isWithdrawn && tx.withdrawn_at && (
-                        <p className="text-xs text-[#8A8A8A] mt-1">
+                        <p className="text-xs text-[#888888] mt-1">
                           Withdrawn {new Date(tx.withdrawn_at).toLocaleDateString()}
                         </p>
                       )}
@@ -343,7 +343,7 @@ function EarningsDashboard({ user }) {
                         text-lg md:text-xl font-bold
                         ${isPending ? 'text-[#1A1A1A]' : ''}
                         ${isAvailable ? 'text-teal' : ''}
-                        ${isWithdrawn ? 'text-[#8A8A8A]' : ''}
+                        ${isWithdrawn ? 'text-[#888888]' : ''}
                       `}>
                         ${(tx.amount_cents / 100).toFixed(2)}
                       </p>
@@ -354,11 +354,11 @@ function EarningsDashboard({ user }) {
             })}
           </div>
         ) : (
-          <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
-            <div className="w-12 h-12 bg-[#F5F2ED] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
-              <ArrowDownLeft size={22} className="text-[#8A8A8A]" />
+          <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-8 md:p-12 text-center">
+            <div className="w-12 h-12 bg-[#F5F3F0] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
+              <ArrowDownLeft size={22} className="text-[#888888]" />
             </div>
-            <p className="text-[#525252] font-medium text-sm md:text-base">No transactions yet</p>
+            <p className="text-[#333333] font-medium text-sm md:text-base">No transactions yet</p>
             <p className="text-xs md:text-sm text-[#A3A3A3] mt-1.5">
               Complete tasks to start earning
             </p>
@@ -371,13 +371,13 @@ function EarningsDashboard({ user }) {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-v4-xl">
             <h3 className="text-lg font-bold text-[#1A1A1A] mb-1">Confirm Withdrawal</h3>
-            <p className="text-[#525252] text-sm mb-5">
+            <p className="text-[#333333] text-sm mb-5">
               {showWithdrawConfirm === 'usdc'
                 ? <>Withdraw <span className="font-semibold text-[#1A1A1A]">{usdcAvailable.toFixed(2)} USDC</span> to your wallet?</>
                 : <>Withdraw <span className="font-semibold text-[#1A1A1A]">${stripeAvailable > 0 ? stripeAvailable.toFixed(2) : balanceData?.available?.toFixed(2)}</span> to your bank account?</>}
             </p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2.5 text-[#525252] hover:bg-[#F5F2ED] rounded-xl text-sm font-medium transition-colors">
+              <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2.5 text-[#333333] hover:bg-[#F5F3F0] rounded-xl text-sm font-medium transition-colors">
                 Cancel
               </button>
               <button onClick={executeWithdraw} className="px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-semibold hover:bg-teal-dark transition-colors">

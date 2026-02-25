@@ -80,10 +80,10 @@ function OpenClawIcon({ size = 20 }) {
 function MCPGenericIcon({ size = 20 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="6" width="18" height="12" rx="3" stroke="#8A8A8A" strokeWidth="1.5"/>
-      <circle cx="8" cy="12" r="1.5" fill="#8A8A8A"/>
-      <circle cx="12" cy="12" r="1.5" fill="#8A8A8A"/>
-      <circle cx="16" cy="12" r="1.5" fill="#8A8A8A"/>
+      <rect x="3" y="6" width="18" height="12" rx="3" stroke="#888888" strokeWidth="1.5"/>
+      <circle cx="8" cy="12" r="1.5" fill="#888888"/>
+      <circle cx="12" cy="12" r="1.5" fill="#888888"/>
+      <circle cx="16" cy="12" r="1.5" fill="#888888"/>
     </svg>
   )
 }
@@ -261,8 +261,8 @@ function HeroAnimation() {
       <svg className="connection-path connection-path-1" viewBox="0 0 100 100" preserveAspectRatio="none">
         <defs>
           <linearGradient id="pathGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#E07A5F" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#F4845F" stopOpacity="1" />
+            <stop offset="0%" stopColor="#E8853D" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#E8853D" stopOpacity="1" />
           </linearGradient>
         </defs>
         <path
@@ -278,8 +278,8 @@ function HeroAnimation() {
       <svg className="connection-path connection-path-2" viewBox="0 0 100 100" preserveAspectRatio="none">
         <defs>
           <linearGradient id="pathGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#F4845F" stopOpacity="1" />
-            <stop offset="100%" stopColor="#10B981" stopOpacity="0.8" />
+            <stop offset="0%" stopColor="#E8853D" stopOpacity="1" />
+            <stop offset="100%" stopColor="#16A34A" stopOpacity="0.8" />
           </linearGradient>
         </defs>
         <path
