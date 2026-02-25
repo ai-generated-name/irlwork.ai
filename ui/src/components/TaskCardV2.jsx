@@ -55,6 +55,11 @@ function getDeadlineInfo(deadline) {
   return { label: `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`, level: 'normal' };
 }
 
+function formatTaskId(id) {
+  if (!id) return '';
+  return id.substring(0, 8).toUpperCase();
+}
+
 export default function TaskCardV2({
   task,
   isSelected = false,
@@ -72,7 +77,7 @@ export default function TaskCardV2({
   const quantity = task.quantity || 1;
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
   const spotsRemaining = Math.max(0, quantity - spotsFilled);
-  const agentName = task.is_anonymous ? 'Anon AI Agent' : (task.agent?.name || task.agent_name || null);
+  const agentName = task.is_anonymous ? 'AI Agent' : (task.agent?.name || task.agent_name || null);
   const durationHours = task.duration_hours || task.duration;
 
   return (
@@ -87,6 +92,7 @@ export default function TaskCardV2({
         <div className="task-card-v2-category">
           <span className="task-card-v2-category-icon">{categoryIcon}</span>
           <span className="task-card-v2-category-label">{categoryLabel}</span>
+          <span className="task-card-v2-task-id">{formatTaskId(task.id)}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {isOpen && (
@@ -95,7 +101,7 @@ export default function TaskCardV2({
             </span>
           )}
           {quantity > 1 && (
-            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: spotsFilled >= quantity ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: spotsFilled >= quantity ? '#059669' : '#2563EB' }}>
+            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: spotsFilled >= quantity ? 'rgba(22, 163, 74, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: spotsFilled >= quantity ? '#16A34A' : '#2563EB' }}>
               {spotsFilled}/{quantity} filled
             </span>
           )}
@@ -123,13 +129,13 @@ export default function TaskCardV2({
                 cursor: 'pointer',
                 padding: '4px',
                 borderRadius: '6px',
-                color: '#8A8A8A',
+                color: '#888888',
                 transition: 'color 0.15s ease',
                 display: 'flex',
                 alignItems: 'center',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#DC2626'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#8A8A8A'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#FF5F57'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#888888'; }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
@@ -160,7 +166,7 @@ export default function TaskCardV2({
           {task.required_skills.length > 3 && (
             <span style={{
               display: 'inline-block', padding: '2px 8px', borderRadius: 12,
-              fontSize: 11, fontWeight: 500, background: '#F5F5F5', color: '#525252'
+              fontSize: 11, fontWeight: 500, background: '#F5F5F5', color: '#333333'
             }}>+{task.required_skills.length - 3} more</span>
           )}
         </div>
@@ -186,9 +192,9 @@ export default function TaskCardV2({
             const info = getDeadlineInfo(task.deadline);
             if (!info) return null;
             const colors = {
-              overdue: { bg: '#FEE2E2', color: '#DC2626' },
-              urgent: { bg: '#FEF3C7', color: '#D97706' },
-              soon: { bg: '#FEF3C7', color: '#B45309' },
+              overdue: { bg: 'rgba(255, 95, 87, 0.1)', color: '#FF5F57' },
+              urgent: { bg: 'rgba(254, 188, 46, 0.1)', color: '#FEBC2E' },
+              soon: { bg: 'rgba(254, 188, 46, 0.1)', color: '#B45309' },
               normal: { bg: '#F0F9FF', color: '#0369A1' }
             };
             const c = colors[info.level];

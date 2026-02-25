@@ -2,6 +2,7 @@ import React from 'react'
 import { MapPin, Star, Globe, Clock } from 'lucide-react'
 import { SocialIconsRow } from './SocialIcons'
 import { formatTimezoneShort } from '../utils/timezone'
+import TierBadge from './TierBadge'
 
 function StarRating({ rating, count, showNewBadge = false }) {
   const numRating = parseFloat(rating) || 0
@@ -12,7 +13,7 @@ function StarRating({ rating, count, showNewBadge = false }) {
       return (
         <span style={{
           padding: '3px 10px',
-          background: 'linear-gradient(135deg, #10B981, #059669)',
+          background: 'linear-gradient(135deg, #16A34A, #16A34A)',
           borderRadius: 999,
           fontSize: 11,
           color: 'white',
@@ -38,8 +39,8 @@ function StarRating({ rating, count, showNewBadge = false }) {
           <Star
             key={i}
             size={13}
-            fill={i <= fullStars ? '#F59E0B' : (i === fullStars + 1 && hasHalf ? '#F59E0B' : 'none')}
-            stroke={i <= fullStars || (i === fullStars + 1 && hasHalf) ? '#F59E0B' : '#D1D5DB'}
+            fill={i <= fullStars ? '#FEBC2E' : (i === fullStars + 1 && hasHalf ? '#FEBC2E' : 'none')}
+            stroke={i <= fullStars || (i === fullStars + 1 && hasHalf) ? '#FEBC2E' : '#D1D5DB'}
             strokeWidth={1.5}
             style={{ opacity: i <= fullStars ? 1 : (i === fullStars + 1 && hasHalf ? 0.6 : 0.4) }}
           />
@@ -53,17 +54,18 @@ function StarRating({ rating, count, showNewBadge = false }) {
   )
 }
 
-export default function HumanProfileCard({ human, onHire, onExpand, variant = 'browse' }) {
+export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, isBookmarked, variant = 'browse' }) {
   const skills = Array.isArray(human.skills) ? human.skills : []
   const languages = Array.isArray(human.languages) ? human.languages : []
   const maxSkills = variant === 'dashboard' ? 4 : 3
+  const firstName = human.name?.split(' ')[0] || 'Human'
 
   return (
     <div
       style={{
         background: 'white',
         borderRadius: 'var(--radius-lg)',
-        border: '1px solid rgba(26,26,26,0.06)',
+        border: '1px solid rgba(0,0,0,0.06)',
         padding: 24,
         transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
         display: 'flex',
@@ -75,14 +77,14 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
       }}
       onClick={() => onExpand?.(human)}
       onMouseOver={(e) => {
-        e.currentTarget.style.boxShadow = '0 8px 30px rgba(244,132,95,0.12), 0 4px 12px rgba(0,0,0,0.06)'
+        e.currentTarget.style.boxShadow = '0 8px 30px rgba(232,133,61,0.12), 0 4px 12px rgba(0,0,0,0.06)'
         e.currentTarget.style.transform = 'translateY(-3px)'
-        e.currentTarget.style.borderColor = 'rgba(244,132,95,0.18)'
+        e.currentTarget.style.borderColor = 'rgba(232,133,61,0.18)'
       }}
       onMouseOut={(e) => {
         e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
         e.currentTarget.style.transform = 'translateY(0)'
-        e.currentTarget.style.borderColor = 'rgba(26,26,26,0.06)'
+        e.currentTarget.style.borderColor = 'rgba(0,0,0,0.06)'
       }}
     >
       {/* Top accent line */}
@@ -92,10 +94,34 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         left: 0,
         right: 0,
         height: 3,
-        background: 'linear-gradient(90deg, #F4845F, #E07A5F)',
+        background: '#E8853D',
         borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
         opacity: 0.6
       }} />
+
+      {/* Bookmark button */}
+      {onBookmark && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onBookmark(human) }}
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 4,
+            zIndex: 2,
+            color: isBookmarked ? '#F4845F' : '#D1D5DB',
+            transition: 'color 0.2s'
+          }}
+          title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+          </svg>
+        </button>
+      )}
 
       {/* Header: Avatar + Info */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 10 }}>
@@ -109,8 +135,8 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               style={{
                 width: 56, height: 56, borderRadius: '50%',
                 objectFit: 'cover',
-                border: '2px solid rgba(244,132,95,0.2)',
-                boxShadow: '0 2px 8px rgba(244,132,95,0.15)'
+                border: '2px solid rgba(232,133,61,0.2)',
+                boxShadow: '0 2px 8px rgba(232,133,61,0.15)'
               }}
               onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
             />
@@ -119,15 +145,15 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
             width: 56,
             height: 56,
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+            background: '#E8853D',
             display: human.avatar_url ? 'none' : 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
             fontWeight: 700,
             fontSize: 22,
-            border: '2px solid rgba(244,132,95,0.2)',
-            boxShadow: '0 2px 8px rgba(244,132,95,0.15)'
+            border: '2px solid rgba(232,133,61,0.2)',
+            boxShadow: '0 2px 8px rgba(232,133,61,0.15)'
           }}>
             {human.name?.[0]?.toUpperCase() || '?'}
           </div>
@@ -139,25 +165,28 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
             width: 14,
             height: 14,
             borderRadius: '50%',
-            background: human.availability === 'available' ? '#10B981' : '#9CA3AF',
+            background: human.availability === 'available' ? '#16A34A' : '#9CA3AF',
             border: '2px solid white'
           }} />
         </div>
 
         {/* Name + Headline + Location */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{
-            fontSize: 16,
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            margin: 0,
-            lineHeight: 1.3
-          }}>
-            {human.name || 'Anonymous'}
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h3 style={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              margin: 0,
+              lineHeight: 1.3
+            }}>
+              {human.name || 'Anonymous'}
+            </h3>
+            <TierBadge tier={human.subscription_tier} size="xs" />
+          </div>
           {human.headline && (
             <p style={{
               fontSize: 13,
@@ -183,7 +212,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               overflow: 'hidden',
               textOverflow: 'ellipsis'
             }}>
-              <MapPin size={12} style={{ color: '#F4845F', flexShrink: 0 }} />
+              <MapPin size={12} style={{ color: '#E8853D', flexShrink: 0 }} />
               {human.city}{human.state ? `, ${human.state}` : ''}
               {human.timezone && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
@@ -237,12 +266,12 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
             key={idx}
             style={{
               padding: '5px 12px',
-              background: 'rgba(244,132,95,0.06)',
+              background: 'rgba(232,133,61,0.06)',
               borderRadius: 'var(--radius-full, 999px)',
               fontSize: 12,
-              color: '#E07A5F',
+              color: '#E8853D',
               fontWeight: 500,
-              border: '1px solid rgba(244,132,95,0.10)',
+              border: '1px solid rgba(232,133,61,0.10)',
               letterSpacing: '0.01em'
             }}
           >
@@ -283,13 +312,13 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         alignItems: 'center',
         marginTop: 'auto',
         paddingTop: 14,
-        borderTop: '1px solid rgba(26,26,26,0.06)'
+        borderTop: '1px solid rgba(0,0,0,0.06)'
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
           <span style={{
             fontSize: 24,
             fontWeight: 700,
-            color: '#F4845F',
+            color: '#E8853D',
             letterSpacing: '-0.02em'
           }}>
             ${human.hourly_rate || 25}
@@ -301,7 +330,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               color: 'var(--text-tertiary)',
               marginLeft: 10,
               padding: '2px 8px',
-              background: 'rgba(26,26,26,0.04)',
+              background: 'rgba(0,0,0,0.04)',
               borderRadius: 999
             }}>
               {human.jobs_completed || human.total_tasks_completed || 0} jobs
@@ -328,7 +357,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
             }}
             style={{
               padding: '10px 24px',
-              background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+              background: '#E8853D',
               color: 'white',
               fontWeight: 600,
               fontSize: 14,
@@ -336,19 +365,19 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               border: 'none',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              boxShadow: '0 2px 8px rgba(244,132,95,0.25)',
+              boxShadow: '0 2px 8px rgba(232,133,61,0.25)',
               letterSpacing: '0.02em'
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(244,132,95,0.35)'
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,133,61,0.35)'
               e.currentTarget.style.transform = 'translateY(-1px)'
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(244,132,95,0.25)'
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(232,133,61,0.25)'
               e.currentTarget.style.transform = 'translateY(0)'
             }}
           >
-            {variant === 'dashboard' ? 'Create Task' : 'Hire'}
+            Hire {firstName}
           </button>
         )}
       </div>
