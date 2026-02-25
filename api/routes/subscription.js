@@ -11,6 +11,7 @@ const {
   createBillingPortalSession,
   getUserSubscription,
   syncSubscriptionFromStripe,
+  getBillingHistory,
 } = require('../backend/services/subscriptionService');
 
 function initSubscriptionRoutes(supabase, getUserByToken, createNotification) {
@@ -134,6 +135,21 @@ function initSubscriptionRoutes(supabase, getUserByToken, createNotification) {
     } catch (error) {
       console.error('[Subscription] Sync error:', error.message);
       res.status(500).json({ error: 'Failed to sync subscription' });
+    }
+  });
+
+  // ============================================================================
+  // GET /api/subscription/billing - Get billing history
+  // ============================================================================
+  router.get('/billing', async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit) || 20;
+      const offset = parseInt(req.query.offset) || 0;
+      const result = await getBillingHistory(supabase, req.user.id, limit, offset);
+      res.json(result);
+    } catch (error) {
+      console.error('[Subscription] Billing history error:', error.message);
+      res.status(500).json({ error: 'Failed to fetch billing history' });
     }
   });
 

@@ -446,7 +446,7 @@ async function handleWebhookEvent(event, supabase, createNotification) {
 
     // Subscription lifecycle events
     case 'customer.subscription.created':
-      await subscriptionService.handleSubscriptionCreated(event.data.object, supabase);
+      await subscriptionService.handleSubscriptionCreated(event.data.object, supabase, createNotification);
       break;
 
     case 'customer.subscription.updated':
@@ -459,6 +459,10 @@ async function handleWebhookEvent(event, supabase, createNotification) {
 
     case 'checkout.session.completed':
       await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
+      break;
+
+    case 'invoice.paid':
+      await subscriptionService.handleInvoicePaid(event.data.object, supabase);
       break;
 
     case 'invoice.payment_failed':

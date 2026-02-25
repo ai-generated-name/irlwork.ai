@@ -122,7 +122,7 @@ async function handleCheckoutCompleted(session, supabase) {
 /**
  * Handle customer.subscription.created
  */
-async function handleSubscriptionCreated(subscription, supabase) {
+async function handleSubscriptionCreated(subscription, supabase, createNotification) {
   const user = await getUserByStripeCustomer(supabase, subscription.customer);
   if (!user) {
     console.warn(`[Subscription] No user found for customer ${subscription.customer}`);
@@ -149,6 +149,19 @@ async function handleSubscriptionCreated(subscription, supabase) {
     current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
     cancel_at_period_end: subscription.cancel_at_period_end || false,
   });
+
+  if (createNotification) {
+    const tierConfig = getTierConfig(tier);
+    try {
+      await createNotification(user.id, 'subscription_activated',
+        `Welcome to ${tierConfig.name}!`,
+        `Your ${tierConfig.name} membership is now active. Enjoy your new benefits!`,
+        '/premium'
+      );
+    } catch (e) {
+      console.error('[Subscription] Failed to create notification:', e.message);
+    }
+  }
 }
 
 /**
@@ -221,6 +234,18 @@ async function handleSubscriptionDeleted(subscription, supabase) {
 }
 
 /**
+ * Handle invoice.paid — record in billing history.
+ */
+async function handleInvoicePaid(invoice, supabase) {
+  if (!invoice.subscription) return; // Only track subscription invoices
+
+  const user = await getUserByStripeCustomer(supabase, invoice.customer);
+  if (!user) return;
+
+  await recordInvoice(supabase, user.id, invoice);
+}
+
+/**
  * Handle invoice.payment_failed — mark subscription as past_due.
  */
 async function handleInvoicePaymentFailed(invoice, supabase, createNotification) {
@@ -236,6 +261,8 @@ async function handleInvoicePaymentFailed(invoice, supabase, createNotification)
     .update({ status: 'past_due', updated_at: new Date().toISOString() })
     .eq('user_id', user.id);
 
+  await recordInvoice(supabase, user.id, invoice);
+
   if (createNotification) {
     try {
       await createNotification(user.id, 'payment_failed',
@@ -247,6 +274,56 @@ async function handleInvoicePaymentFailed(invoice, supabase, createNotification)
       console.error('[Subscription] Failed to create notification:', e.message);
     }
   }
+}
+
+// ============================================================================
+// BILLING HISTORY
+// ============================================================================
+
+/**
+ * Record an invoice in billing_history (upsert by stripe_invoice_id).
+ */
+async function recordInvoice(supabase, userId, invoice) {
+  const record = {
+    user_id: userId,
+    stripe_invoice_id: invoice.id,
+    stripe_charge_id: invoice.charge || null,
+    amount_cents: invoice.amount_paid || invoice.amount_due || 0,
+    currency: invoice.currency || 'usd',
+    status: invoice.status || 'unknown',
+    description: invoice.lines?.data?.[0]?.description || 'Subscription payment',
+    invoice_url: invoice.hosted_invoice_url || null,
+    invoice_pdf: invoice.invoice_pdf || null,
+    period_start: invoice.period_start ? new Date(invoice.period_start * 1000).toISOString() : null,
+    period_end: invoice.period_end ? new Date(invoice.period_end * 1000).toISOString() : null,
+  };
+
+  const { error } = await supabase
+    .from('billing_history')
+    .upsert(record, { onConflict: 'stripe_invoice_id' });
+
+  if (error) {
+    console.error('[Subscription] Error recording invoice:', error.message);
+  }
+}
+
+/**
+ * Get billing history from local DB (synced via webhooks).
+ */
+async function getBillingHistory(supabase, userId, limit = 20, offset = 0) {
+  const { data, error, count } = await supabase
+    .from('billing_history')
+    .select('*', { count: 'exact' })
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('[Subscription] Error fetching billing history:', error.message);
+    throw new Error('Failed to fetch billing history');
+  }
+
+  return { invoices: data || [], total: count || 0 };
 }
 
 // ============================================================================
@@ -372,8 +449,10 @@ module.exports = {
   handleSubscriptionCreated,
   handleSubscriptionUpdated,
   handleSubscriptionDeleted,
+  handleInvoicePaid,
   handleInvoicePaymentFailed,
   getUserSubscription,
   syncSubscriptionFromStripe,
+  getBillingHistory,
   TIER_PRICE_MAP,
 };

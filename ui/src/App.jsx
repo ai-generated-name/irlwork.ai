@@ -41,6 +41,7 @@ import DashboardTour from './components/DashboardTour'
 const StripeProvider = lazy(() => import('./components/StripeProvider'))
 const PaymentMethodForm = lazy(() => import('./components/PaymentMethodForm'))
 const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
+const MembershipBilling = lazy(() => import('./components/MembershipBilling'))
 import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER, extractHandle } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
@@ -3968,6 +3969,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {activeTab === 'settings' && (
           <div>
             <h1 className="dashboard-v4-page-title">Settings</h1>
+
+            {/* Membership & Billing */}
+            <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading...</div>}>
+              <MembershipBilling
+                user={user}
+                toast={toast}
+                onUserUpdate={(updates) => {
+                  const updatedUser = { ...user, ...updates }
+                  setUser(updatedUser)
+                  localStorage.setItem('user', JSON.stringify(updatedUser))
+                }}
+              />
+            </Suspense>
 
             {/* Mode Toggle */}
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>

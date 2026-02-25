@@ -859,6 +859,10 @@ if (supabase) {
   const stripeRoutes = initStripeRoutes(supabase, getUserByToken, createNotification);
   app.use('/api/stripe', stripeRoutes);
   console.log('[Startup] Stripe routes mounted at /api/stripe');
+
+  const subscriptionRoutes = initSubscriptionRoutes(supabase, getUserByToken, createNotification);
+  app.use('/api/subscription', subscriptionRoutes);
+  console.log('[Startup] Subscription routes mounted at /api/subscription');
 }
 
 // ============ SUBSCRIPTION ROUTES ============
@@ -1305,6 +1309,9 @@ app.get('/api/auth/verify', async (req, res) => {
       gender: user.gender || null,
       // Subscription
       subscription_tier: user.subscription_tier || 'free',
+      subscription_status: user.subscription_status || 'inactive',
+      subscription_current_period_end: user.subscription_current_period_end || null,
+      subscription_cancel_at_period_end: user.subscription_cancel_at_period_end || false,
       tasks_posted_this_month: user.tasks_posted_this_month || 0,
     }
   });
