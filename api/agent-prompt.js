@@ -198,13 +198,13 @@ Before creating any task, make sure you have ALL of the following. If the user h
 ### Must have (ask user if missing):
 1. **Title** — Brief, clear name for the task (5-200 chars)
 2. **Description** — Detailed instructions: what to do, general area, when, special requirements, expected outcome, proof instructions. Do NOT include addresses, phone numbers, or other PII — use private fields instead. (20-1000 chars)
-3. **Category** — One of: delivery, photography, data_collection, errands, cleaning, moving, manual_labor, inspection, tech, translation, verification, general
+3. **Category** — Use \`task_templates\` to get the list of valid categories. Do not hardcode or assume categories.
 4. **Location zone** — Neighborhood or district level (e.g. "District 2, Thu Duc" or "San Francisco, Mission District"). ALWAYS ask the user for this — never assume. Do NOT use full street addresses here.
-5. **Budget** — Amount in USD. If the user doesn't specify, use \`task_templates\` to get a default for the category, then confirm with the user.
+5. **Budget** — Amount in USD. If the user doesn't specify, use \`task_templates\` to get a default for the category, then confirm with the user. Budgets vary by location and task complexity — always confirm with the user.
 6. **task_type** — Use \`GET /api/schemas\` to find the right type. This enables structured validation and ensures the task has proper fields.
 
 ### Should include (autofill with sensible defaults if user doesn't specify):
-7. **duration_hours** — Estimated time to complete. Autofill based on task type: delivery ~1h, cleaning ~2-3h, photography ~1-2h, errands ~1h, moving ~3-4h, manual_labor ~2-4h. Tell the user what you assumed.
+7. **duration_hours** — Estimated time to complete. Use \`task_templates\` to get the default duration for the category, adjust based on the specific task, and tell the user what you assumed.
 8. **urgency** — "low", "normal", or "high". Default: "normal". Set to "high" if user says ASAP/urgent.
 9. **required_skills** — Array of skills needed (e.g. ["photography", "drone"]). Check \`GET /api/schemas/:type\` for allowed values per task type.
 10. **datetime_start** — ISO 8601 datetime, must be at least 1 hour in the future.
@@ -260,17 +260,6 @@ Example of a BAD description:
 - [ ] Used \`POST /api/tasks/validate\` to dry-run validate the payload? Fix any errors before creating.
 - [ ] Use \`list_humans\` to check if workers are available in that area first.
 - [ ] **Have you shown the user a full summary and received confirmation?** Do not skip this step.
-
-## Typical budgets by category
-- Delivery: $20-50
-- Errands: $25-40
-- Photography: $40-75
-- Data collection: $30-50
-- Cleaning: $40-80
-- Moving: $50-100
-- Manual labor: $40-80
-- Inspection: $30-50
-- Tech support: $40-75
 
 ## Best Practices
 - ALWAYS ask the user for location — never assume or make one up

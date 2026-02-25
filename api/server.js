@@ -6022,18 +6022,18 @@ app.post('/api/mcp', async (req, res) => {
       case 'task_templates': {
         // Return available task categories/templates
         const templates = [
-          { category: 'delivery', title: 'Package Delivery', description: 'Pick up and deliver a package', default_budget: 25 },
-          { category: 'photography', title: 'Photo/Video Capture', description: 'Take photos or video at a location', default_budget: 50 },
-          { category: 'data_collection', title: 'Data Collection', description: 'Collect data or information from a physical location', default_budget: 40 },
-          { category: 'errands', title: 'Run an Errand', description: 'Complete an errand (shopping, returns, etc.)', default_budget: 30 },
-          { category: 'cleaning', title: 'Cleaning', description: 'Clean a space, office, or property', default_budget: 40 },
-          { category: 'moving', title: 'Moving Help', description: 'Help move furniture, boxes, or belongings', default_budget: 50 },
-          { category: 'manual_labor', title: 'Manual Labor', description: 'Physical task like assembling, lifting, yard work', default_budget: 45 },
-          { category: 'inspection', title: 'Site Inspection', description: 'Visit and inspect a location, report findings', default_budget: 35 },
-          { category: 'tech', title: 'Tech Support', description: 'Set up, install, or troubleshoot technology', default_budget: 45 },
-          { category: 'translation', title: 'Translation', description: 'Translate text or provide interpretation', default_budget: 40 },
-          { category: 'verification', title: 'Verification', description: 'Verify information, identity, or conditions on-site', default_budget: 30 },
-          { category: 'general', title: 'General Task', description: 'Any other physical-world task', default_budget: 30 }
+          { category: 'delivery', title: 'Package Delivery', description: 'Pick up and deliver a package', default_budget: 25, budget_min: 20, budget_max: 50, default_duration_hours: 1 },
+          { category: 'photography', title: 'Photo/Video Capture', description: 'Take photos or video at a location', default_budget: 50, budget_min: 40, budget_max: 75, default_duration_hours: 1.5 },
+          { category: 'data_collection', title: 'Data Collection', description: 'Collect data or information from a physical location', default_budget: 40, budget_min: 30, budget_max: 50, default_duration_hours: 2 },
+          { category: 'errands', title: 'Run an Errand', description: 'Complete an errand (shopping, returns, etc.)', default_budget: 30, budget_min: 25, budget_max: 40, default_duration_hours: 1 },
+          { category: 'cleaning', title: 'Cleaning', description: 'Clean a space, office, or property', default_budget: 40, budget_min: 40, budget_max: 80, default_duration_hours: 2.5 },
+          { category: 'moving', title: 'Moving Help', description: 'Help move furniture, boxes, or belongings', default_budget: 50, budget_min: 50, budget_max: 100, default_duration_hours: 3.5 },
+          { category: 'manual_labor', title: 'Manual Labor', description: 'Physical task like assembling, lifting, yard work', default_budget: 45, budget_min: 40, budget_max: 80, default_duration_hours: 3 },
+          { category: 'inspection', title: 'Site Inspection', description: 'Visit and inspect a location, report findings', default_budget: 35, budget_min: 30, budget_max: 50, default_duration_hours: 1 },
+          { category: 'tech', title: 'Tech Support', description: 'Set up, install, or troubleshoot technology', default_budget: 45, budget_min: 40, budget_max: 75, default_duration_hours: 1.5 },
+          { category: 'translation', title: 'Translation', description: 'Translate text or provide interpretation', default_budget: 40, budget_min: 30, budget_max: 60, default_duration_hours: 2 },
+          { category: 'verification', title: 'Verification', description: 'Verify information, identity, or conditions on-site', default_budget: 30, budget_min: 25, budget_max: 50, default_duration_hours: 1 },
+          { category: 'general', title: 'General Task', description: 'Any other physical-world task', default_budget: 30, budget_min: 20, budget_max: 60, default_duration_hours: 2 }
         ];
 
         if (params.category) {
