@@ -291,6 +291,22 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         )}
       </div>
 
+      {/* Availability Warning */}
+      {user?.availability !== 'available' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 16px', marginBottom: 16,
+          background: '#FFFBEB', border: '1px solid #FCD34D',
+          borderRadius: 10, fontSize: 13, color: '#92400E'
+        }}>
+          <span style={{ fontSize: 16 }}>&#9888;</span>
+          <span>You're hidden from search. Turn on availability to get hired.</span>
+          <a href="#" onClick={(e) => { e.preventDefault(); onNavigate?.('settings') }} style={{ marginLeft: 'auto', fontWeight: 600, color: '#B45309', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+            Go to Settings
+          </a>
+        </div>
+      )}
+
       {/* Profile Completeness Nudge */}
       <ProfileCompleteness user={user} onNavigate={onNavigate} />
 
@@ -298,14 +314,14 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
       {hasActivity ? (
         <div className="working-dash-stats">
           <div className="working-dash-stat">
-            <div className="working-dash-stat-icon working-dash-stat-icon--orange">
+            <div className="working-dash-stat-icon working-dash-stat-icon--green">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
               </svg>
             </div>
             <div>
               <div className="working-dash-stat-label">Total Earned</div>
-              <div className="working-dash-stat-value working-dash-stat-value--orange">${totalEarned}</div>
+              <div className="working-dash-stat-value">${totalEarned}</div>
             </div>
           </div>
           <div className="working-dash-stat">

@@ -2332,7 +2332,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           )}
         </div>
 
-        {/* Bottom "Connect to AI Agent" removed — top banner version with chevron kept */}
+        {/* Upgrade to Premium — only show when not on a paid plan */}
+        {user && (user.subscription_tier || 'free') === 'free' && (
+          <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+            <button
+              onClick={() => window.location.href = '/premium'}
+              className="dashboard-v4-upgrade-premium-btn"
+            >
+              <span style={{ display: 'flex', alignItems: 'center' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <polyline points="9 12 11 14 15 10" />
+                </svg>
+              </span>
+              <span>Upgrade to Premium</span>
+            </button>
+          </div>
+        )}
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
@@ -3468,7 +3484,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               )
             })()}
 
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               {/* Avatar Upload */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
                 <div
@@ -3807,7 +3823,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                       <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
                       <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Your asking rate. Actual pay is set per task by the agent.</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>Your asking rate. Actual pay is set per task by the agent.</p>
                     </div>
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                       <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
@@ -3845,7 +3861,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         fontSize: 13,
                         color: '#374151',
                         fontWeight: 500,
-                        border: '1px solid rgba(55,65,81,0.08)',
+                        border: '1px solid rgba(26,26,26,0.06)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6
@@ -4119,7 +4135,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </Suspense>
 
             {/* Mode Toggle */}
-            <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Mode</h2>
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -4139,7 +4155,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {/* Available for Work — Working mode only */}
             {!hiringMode && (
-              <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
+              <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Availability</h2>
                 <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -4201,7 +4217,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             )}
 
             {/* Notification Preferences */}
-            <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notifications</h2>
 
               {/* Channel toggle */}
@@ -4270,7 +4286,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </div>
 
             {/* Account */}
-            <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
 
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
@@ -4323,7 +4339,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {activeTab === 'api-keys' && (
           <div>
             <h1 className="dashboard-v4-page-title">API Keys</h1>
-            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720 }}>
               <ApiKeysTab user={user} />
             </div>
           </div>
@@ -5479,8 +5495,8 @@ function App() {
       return <AuthPage onNavigate={navigate} />
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
-    if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/premium') return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
+    if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
     if (path === '/privacy') return <PrivacyPage />
