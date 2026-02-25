@@ -6,6 +6,7 @@ import {
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
+import HappeningNow from '../components/HappeningNow'
 
 // Animated Counter Component
 function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
@@ -521,6 +522,9 @@ export default function LandingPageV4() {
         </div>
         <HeroAnimation />
       </section>
+
+      {/* Happening Right Now */}
+      <HappeningNow />
 
       {/* Live Transaction Ticker */}
       <TransactionTicker />
