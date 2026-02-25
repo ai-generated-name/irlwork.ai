@@ -4581,6 +4581,32 @@
   padding: var(--space-3) var(--space-4);
 }
 
+/* Upgrade to Premium Button */
+.dashboard-v4-upgrade-premium-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgba(212, 160, 23, 0.3);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.08) 0%, rgba(212, 160, 23, 0.04) 100%);
+  color: #b8860b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s var(--ease-smooth);
+}
+
+.dashboard-v4-upgrade-premium-btn:hover {
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.15) 0%, rgba(212, 160, 23, 0.08) 100%);
+  border-color: #D4A017;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(212, 160, 23, 0.2);
+}
+
 .dashboard-v4-connect-agent-btn-top {
   display: flex;
   align-items: center;
