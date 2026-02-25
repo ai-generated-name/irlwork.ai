@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 @import './landing-v4.css';
 
 @tailwind base;
@@ -7,7 +7,7 @@
 
 /* ─── V4 DESIGN TOKENS (GLOBAL) ─── */
 :root {
-  /* Colors - Warm Minimal Premium */
+  /* Colors — Brand palette */
   --bg-primary: #FAFAF8;
   --bg-secondary: #FFFFFF;
   --bg-tertiary: #F5F3F0;
@@ -64,13 +64,15 @@
   /* Borders & Dividers */
   --border-default: rgba(0, 0, 0, 0.06);
   --border-light: rgba(0, 0, 0, 0.04);
+  --border-subtle: rgba(0, 0, 0, 0.04);
   --border-medium: rgba(0, 0, 0, 0.1);
+  --border-input: rgba(0, 0, 0, 0.1);
   --divider: #F2F1EE;
 
   /* Typography */
   --font-display: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-body: 'DM Sans', 'Helvetica Neue', -apple-system, sans-serif;
+  --font-mono: 'Courier Prime', 'DM Mono', 'SF Mono', 'Fira Code', monospace;
 
   /* Spacing */
   --space-1: 4px;
@@ -93,6 +95,7 @@
 
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.02), 0 8px 40px rgba(0, 0, 0, 0.035);
   --shadow-md: 0 1px 4px rgba(0, 0, 0, 0.02), 0 8px 40px rgba(0, 0, 0, 0.035);
   --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1);
@@ -116,11 +119,16 @@
   --cream: #FAFAF8;
 }
 
-/* ─── BASE STYLES ─── */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 html {
@@ -130,8 +138,9 @@ html {
 body {
   font-family: var(--font-body);
   background: var(--bg-primary);
-  color: var(--text-primary);
-  line-height: 1.6;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -147,13 +156,56 @@ code, pre {
   font-family: var(--font-mono);
 }
 
-/* ─── SCROLLBAR (hidden) ─── */
-::-webkit-scrollbar {
-  display: none;
-}
+@layer components {
+  /* Cards */
+  .card {
+    @apply bg-bg-secondary border border-border-light rounded-card p-4 shadow-card;
+  }
 
-* {
-  scrollbar-width: none;
+  /* Primary Button */
+  .btn-primary {
+    @apply bg-accent-orange text-white border-none rounded-button px-5 py-2.5
+           text-sm font-semibold cursor-pointer transition-all duration-200
+           hover:bg-accent-orange-hover active:scale-[0.98];
+  }
+
+  /* Secondary Button */
+  .btn-secondary {
+    @apply bg-transparent text-text-primary border border-border-input rounded-button
+           px-5 py-2.5 text-sm font-medium cursor-pointer transition-all duration-200
+           hover:bg-bg-tertiary active:scale-[0.98];
+  }
+
+  /* Input Fields */
+  .input {
+    @apply bg-bg-tertiary border border-border-input rounded-input px-3.5 py-2.5
+           text-sm text-text-primary font-sans
+           focus:border-accent-orange focus:outline-none focus:ring-[3px]
+           focus:ring-accent-orange/10;
+  }
+
+  /* Badge — Orange */
+  .badge-orange {
+    @apply bg-accent-orange-light text-accent-orange px-2 py-0.5
+           rounded-badge text-tag font-bold font-dm-mono;
+  }
+
+  /* Badge — Green */
+  .badge-green {
+    @apply bg-status-green-light text-status-green border border-status-green/15
+           px-2 py-0.5 rounded-badge text-tag font-bold;
+  }
+
+  /* Table Header */
+  .table-header {
+    @apply bg-bg-tertiary text-[11px] font-semibold text-text-tertiary
+           uppercase tracking-[0.06em];
+  }
+
+  /* Table Row */
+  .table-row {
+    @apply border-b border-border-subtle px-4 py-3 hover:bg-black/[0.01];
+  }
 }
 
 /* ─── GLOBAL V4 UTILITIES ─── */

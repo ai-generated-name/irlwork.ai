@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../App';
+import { Logo } from '../components/Logo';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
 import TaskTimeline from '../components/TaskDetail/TaskTimeline';
@@ -369,9 +370,8 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     <div className="landing-v4 min-h-screen" style={{ fontFamily: v4.fonts.display }}>
       {/* Navbar — uses global navbar-v4 CSS classes */}
       <nav className="navbar-v4">
-        <a href="/" className="logo-v4">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
+        <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
         </a>
         <div className="nav-links-v4" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <a href="/connect-agent" className="nav-link-v4">For Agents</a>

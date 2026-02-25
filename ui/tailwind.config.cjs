@@ -3,7 +3,45 @@ module.exports = {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"DM Sans"', '"Helvetica Neue"', '-apple-system', 'sans-serif'],
+        mono: ['"Courier Prime"', '"DM Mono"', '"SF Mono"', '"Fira Code"', 'monospace'],
+        'dm-mono': ['"DM Mono"', '"SF Mono"', '"Fira Code"', 'monospace'],
+      },
       colors: {
+        bg: {
+          primary: '#FAFAF8',
+          secondary: '#FFFFFF',
+          tertiary: '#F5F3F0',
+          dark: '#0B0B0C',
+        },
+        text: {
+          primary: '#1A1A1A',
+          secondary: '#333333',
+          tertiary: '#888888',
+          muted: '#AAAAAA',
+          subtle: '#BBBBBB',
+          'on-dark': '#DDDDDD',
+          'on-dark-muted': '#666666',
+        },
+        accent: {
+          orange: '#E8853D',
+          'orange-light': '#FFF3EB',
+          'orange-hover': '#D4703A',
+        },
+        status: {
+          green: '#16A34A',
+          'green-light': 'rgba(22, 163, 74, 0.08)',
+          red: '#FF5F57',
+          yellow: '#FEBC2E',
+          blue: '#3B82F6',
+        },
+        border: {
+          light: 'rgba(0, 0, 0, 0.06)',
+          subtle: 'rgba(0, 0, 0, 0.04)',
+          input: 'rgba(0, 0, 0, 0.1)',
+        },
+        divider: '#F2F1EE',
         cream: '#FAFAF8',
         teal: {
           DEFAULT: '#E8853D',
@@ -16,15 +54,30 @@ module.exports = {
           light: '#FFF3EB',
         },
       },
-      fontFamily: {
-        sans: ['DM Sans', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        mono: ['DM Mono', 'SF Mono', 'Fira Code', 'monospace'],
+      borderRadius: {
+        card: '14px',
+        button: '10px',
+        badge: '6px',
+        input: '10px',
+        tooltip: '12px',
       },
       boxShadow: {
+        sm: '0 1px 3px rgba(0, 0, 0, 0.04)',
+        card: '0 1px 4px rgba(0, 0, 0, 0.02), 0 8px 40px rgba(0, 0, 0, 0.035)',
+        lg: '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
         'v4-sm': '0 1px 3px rgba(0, 0, 0, 0.04)',
         'v4-md': '0 1px 4px rgba(0, 0, 0, 0.02), 0 8px 40px rgba(0, 0, 0, 0.035)',
         'v4-lg': '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
         'v4-xl': '0 16px 48px rgba(0, 0, 0, 0.1)',
+      },
+      fontSize: {
+        'page-title': ['28px', { lineHeight: '1.2', fontWeight: '700', letterSpacing: '-0.02em' }],
+        'section-heading': ['22px', { lineHeight: '1.3', fontWeight: '700', letterSpacing: '-0.02em' }],
+        'card-title': ['15px', { lineHeight: '1.4', fontWeight: '700', letterSpacing: '-0.01em' }],
+        body: ['14px', { lineHeight: '1.5', fontWeight: '400' }],
+        label: ['11px', { lineHeight: '1.4', fontWeight: '600', letterSpacing: '0.02em' }],
+        tag: ['10px', { lineHeight: '1.4', fontWeight: '700', letterSpacing: '0.01em' }],
+        'upper-label': ['10px', { lineHeight: '1.4', fontWeight: '600', letterSpacing: '0.12em' }],
       },
     },
   },

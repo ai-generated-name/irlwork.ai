@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { MapPin, Clock, DollarSign, Star, Briefcase, Users, X, Check, Copy, Bot, User, ChevronRight, ChevronLeft, Search, Globe, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
 import { supabase } from '../App'
+import { Logo } from '../components/Logo'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
 import CityAutocomplete from '../components/CityAutocomplete'
@@ -564,9 +565,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     <div className="landing-v4" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Navbar */}
       <nav className="navbar-v4">
-        <a href="/" className="logo-v4">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
+        <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
         </a>
         <div className="nav-links-v4">
           <a href="/connect-agent" className="nav-link-v4">For Agents</a>
