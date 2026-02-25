@@ -2276,13 +2276,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                 padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#fff',
-                fontSize: 13, fontWeight: 600, transition: 'opacity 0.15s',
+                background: '#1A1A1A', color: '#FFFFFF',
+                fontSize: 13, fontWeight: 600, transition: 'background 0.2s',
               }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              onMouseEnter={e => e.currentTarget.style.background = '#333333'}
+              onMouseLeave={e => e.currentTarget.style.background = '#1A1A1A'}
             >
-              <Sparkles size={16} />
+              <Sparkles size={16} style={{ color: '#F5A623' }} />
               <span>Upgrade to Premium</span>
             </button>
           </div>
@@ -2319,35 +2319,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         </div>
 
         {/* Bottom "Connect to AI Agent" removed — top banner version with chevron kept */}
-
-        {/* Upgrade to Premium */}
-        <div style={{ padding: '0 var(--space-4) var(--space-3)' }}>
-          <button
-            onClick={() => toast.info('Premium coming soon!')}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              padding: '10px 16px',
-              background: '#1A1A1A',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: 'var(--radius-md)',
-              fontFamily: 'var(--font-display)',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#333333'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#1A1A1A'}
-          >
-            <Sparkles size={16} style={{ color: '#F5A623' }} />
-            Upgrade to Premium
-          </button>
-        </div>
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
