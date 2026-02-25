@@ -83,8 +83,27 @@ export default function MyTasksPage({
 
   return (
     <div>
-      {/* Page Header */}
+      {/* Page Title */}
       <h1 className="dashboard-v4-page-title" style={{ marginBottom: 16 }}>My Tasks</h1>
+
+      {/* Always-visible tab headers showing task lifecycle */}
+      <div className="mytasks-filters">
+        {[
+          { id: 'all', label: 'All', count: safeTasks.length },
+          { id: 'in_progress', label: 'In Progress', count: safeTasks.filter(t => t.status === 'in_progress').length },
+          { id: 'pending_review', label: 'Pending Review', count: safeTasks.filter(t => REVIEW_STATUSES.includes(t.status)).length },
+          { id: 'paid', label: 'Paid', count: completedTasks.length },
+        ].map(filter => (
+          <button
+            key={filter.id}
+            className={`mytasks-filter-pill ${taskFilter === filter.id ? 'active' : ''} ${filter.count === 0 && filter.id !== 'all' ? 'mytasks-filter-pill--empty' : ''}`}
+            onClick={() => setTaskFilter(filter.id)}
+          >
+            {filter.label}
+            <span className="mytasks-filter-count">{filter.count}</span>
+          </button>
+        ))}
+      </div>
 
       {loading ? (
         <div className="dashboard-v4-empty">
@@ -106,33 +125,11 @@ export default function MyTasksPage({
             className="v4-btn v4-btn-primary"
             onClick={() => onNavigate?.('browse')}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-            </svg>
             Browse Tasks
           </button>
         </div>
       ) : (
         <>
-          {/* Quick Filter Pills */}
-          <div className="mytasks-filters">
-            {[
-              { id: 'all', label: 'All', count: safeTasks.length },
-              { id: 'in_progress', label: 'In Progress', count: safeTasks.filter(t => t.status === 'in_progress').length },
-              { id: 'pending_review', label: 'Pending Review', count: safeTasks.filter(t => REVIEW_STATUSES.includes(t.status)).length },
-              { id: 'paid', label: 'Paid', count: completedTasks.length },
-            ].filter(f => f.id === 'all' || f.count > 0).map(filter => (
-              <button
-                key={filter.id}
-                className={`mytasks-filter-pill ${taskFilter === filter.id ? 'active' : ''}`}
-                onClick={() => setTaskFilter(filter.id)}
-              >
-                {filter.label}
-                <span className="mytasks-filter-count">{filter.count}</span>
-              </button>
-            ))}
-          </div>
-
           {/* Task Sections */}
           {showAllSections ? (
             <div className="mytasks-sections">
@@ -200,7 +197,6 @@ export default function MyTasksPage({
           )}
         </>
       )}
-
     </div>
   );
 }

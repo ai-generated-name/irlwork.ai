@@ -6,19 +6,19 @@ const WORKING_STEPS = [
     title: 'Agent posts a task',
     description: 'An AI agent creates a task with a budget and requirements.',
     color: 'var(--teal)',
-    bg: 'rgba(15, 76, 92, 0.08)',
+    bg: 'rgba(0, 0, 0, 0.08)',
   },
   {
     icon: '🙋',
     title: 'You apply & get assigned',
     description: 'Apply to tasks that match your skills. The agent picks you.',
     color: 'var(--orange-600)',
-    bg: 'rgba(244, 132, 95, 0.08)',
+    bg: 'rgba(232, 133, 61, 0.08)',
   },
   {
     icon: '🔒',
     title: 'Funds locked in escrow',
-    description: 'The agent\'s payment is held securely — guaranteeing you\'ll be paid.',
+    description: 'The agent\'s payment (USD or USDC) is held securely — guaranteeing you\'ll be paid.',
     color: '#7C3AED',
     bg: 'rgba(124, 58, 237, 0.08)',
   },
@@ -27,14 +27,14 @@ const WORKING_STEPS = [
     title: 'Complete & submit proof',
     description: 'Do the work, then upload photos or a description as proof.',
     color: 'var(--orange-600)',
-    bg: 'rgba(244, 132, 95, 0.08)',
+    bg: 'rgba(232, 133, 61, 0.08)',
   },
   {
     icon: '💰',
     title: 'Get paid',
-    description: 'Agent approves → payment is released to your bank account.',
+    description: 'Agent approves → payment is released to your bank account or USDC wallet.',
     color: 'var(--success)',
-    bg: 'rgba(16, 185, 129, 0.08)',
+    bg: 'rgba(22, 163, 74, 0.08)',
   },
 ]
 
@@ -44,19 +44,19 @@ const HIRING_STEPS = [
     title: 'Post your task',
     description: 'Describe what you need and set a budget for the work.',
     color: 'var(--teal)',
-    bg: 'rgba(15, 76, 92, 0.08)',
+    bg: 'rgba(0, 0, 0, 0.08)',
   },
   {
     icon: '👤',
     title: 'Assign a worker',
     description: 'Review applicants and choose the best match.',
     color: 'var(--orange-600)',
-    bg: 'rgba(244, 132, 95, 0.08)',
+    bg: 'rgba(232, 133, 61, 0.08)',
   },
   {
     icon: '🔒',
     title: 'Funds held in escrow',
-    description: 'Your payment is secured — only released when you approve.',
+    description: 'Your payment (USD or USDC) is secured — only released when you approve.',
     color: '#7C3AED',
     bg: 'rgba(124, 58, 237, 0.08)',
   },
@@ -65,14 +65,14 @@ const HIRING_STEPS = [
     title: 'Review proof',
     description: 'The worker submits proof of completion for your review.',
     color: 'var(--orange-600)',
-    bg: 'rgba(244, 132, 95, 0.08)',
+    bg: 'rgba(232, 133, 61, 0.08)',
   },
   {
     icon: '💸',
     title: 'Release payment',
     description: 'Approve the work and the payment is released automatically.',
     color: 'var(--success)',
-    bg: 'rgba(16, 185, 129, 0.08)',
+    bg: 'rgba(22, 163, 74, 0.08)',
   },
 ]
 
@@ -148,7 +148,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
               alignItems: 'center',
               gap: 6,
               padding: '4px 10px',
-              background: 'rgba(15, 76, 92, 0.08)',
+              background: 'rgba(0, 0, 0, 0.08)',
               borderRadius: 'var(--radius-full)',
               fontSize: 12,
               fontWeight: 600,
@@ -197,7 +197,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
               flexShrink: 0,
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(26,26,26,0.08)'}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'}
           >
             ✕
@@ -263,7 +263,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
                     width: 2,
                     height: 16,
                     marginLeft: 21,
-                    background: 'linear-gradient(to bottom, var(--bg-tertiary), rgba(26,26,26,0.04))',
+                    background: 'linear-gradient(to bottom, var(--bg-tertiary), rgba(0,0,0,0.04))',
                     borderRadius: 1,
                   }} />
                 )}
@@ -276,8 +276,8 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
         <div style={{
           margin: '0 28px 24px',
           padding: '16px 18px',
-          background: 'linear-gradient(135deg, rgba(15, 76, 92, 0.04), rgba(16, 185, 129, 0.04))',
-          border: '1px solid rgba(15, 76, 92, 0.08)',
+          background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.04), rgba(22, 163, 74, 0.04))',
+          border: '1px solid rgba(0, 0, 0, 0.08)',
           borderRadius: 'var(--radius-md)',
         }}>
           <div style={{
@@ -289,7 +289,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
               width: 36,
               height: 36,
               borderRadius: 10,
-              background: 'rgba(15, 76, 92, 0.1)',
+              background: 'rgba(0, 0, 0, 0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -333,7 +333,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
               width: '100%',
               padding: '12px 24px',
               background: 'var(--bg-tertiary)',
-              border: '1px solid rgba(26, 26, 26, 0.06)',
+              border: '1px solid rgba(0, 0, 0, 0.06)',
               borderRadius: 'var(--radius-md)',
               fontFamily: 'var(--font-display)',
               fontSize: 14,
@@ -342,7 +342,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
               cursor: 'pointer',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(26,26,26,0.06)'}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.06)'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'}
           >
             Got it
