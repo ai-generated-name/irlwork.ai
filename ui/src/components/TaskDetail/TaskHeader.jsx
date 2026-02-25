@@ -16,14 +16,14 @@ const CATEGORY_ICONS = {
 };
 
 const STATUS_CONFIG = {
-  open: { label: 'Open', color: 'bg-[#D1E9F0] text-[#0F4C5C]' },
-  pending_acceptance: { label: 'Pending Acceptance', color: 'bg-[#FEF3C7] text-[#D97706]' },
+  open: { label: 'Open', color: 'bg-[rgba(232,133,61,0.1)] text-[#E8853D]' },
+  pending_acceptance: { label: 'Pending Acceptance', color: 'bg-[rgba(254, 188, 46, 0.1)] text-[#FEBC2E]' },
   accepted: { label: 'Accepted', color: 'bg-[#E8D5F0] text-[#6B21A8]' },
-  in_progress: { label: 'In Progress', color: 'bg-[#FEF3C7] text-[#D97706]' },
-  pending_review: { label: 'Pending Review', color: 'bg-[#FFE4DB] text-[#C45F4A]' },
-  completed: { label: 'Completed', color: 'bg-[#D1FAE5] text-[#059669]' },
-  paid: { label: 'Paid', color: 'bg-[#F5F2ED] text-[#525252]' },
-  disputed: { label: 'Disputed', color: 'bg-[#FEE2E2] text-[#DC2626]' }
+  in_progress: { label: 'In Progress', color: 'bg-[rgba(254, 188, 46, 0.1)] text-[#FEBC2E]' },
+  pending_review: { label: 'Pending Review', color: 'bg-[#FFE4DB] text-[#D4703A]' },
+  completed: { label: 'Completed', color: 'bg-[rgba(22, 163, 74, 0.08)] text-[#16A34A]' },
+  paid: { label: 'Paid', color: 'bg-[#F5F3F0] text-[#333333]' },
+  disputed: { label: 'Disputed', color: 'bg-[rgba(255, 95, 87, 0.1)] text-[#FF5F57]' }
 };
 
 export default function TaskHeader({ task }) {
@@ -35,31 +35,36 @@ export default function TaskHeader({ task }) {
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
-      {/* Status Badge + Type Badges */}
+    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm">
+      {/* Status Badge + Task ID + Type Badges */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-        <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusConfig.color}`}>
+        <span className={`inline-block px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
         </span>
+        {task.id && (
+          <span className="inline-block px-2 py-0.5 rounded text-[10px] sm:text-xs font-mono text-[#888888] bg-[rgba(0,0,0,0.04)] tracking-wider">
+            {task.id.substring(0, 8).toUpperCase()}
+          </span>
+        )}
         {isBounty && (
-          <span className="inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-semibold" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>
+          <span className="inline-block px-3 py-1 rounded-[6px] text-xs sm:text-sm font-semibold" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>
             Bounty
           </span>
         )}
         {quantity > 1 && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm font-semibold" style={{ background: spotsFilled >= quantity ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: spotsFilled >= quantity ? '#059669' : '#2563EB' }}>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-semibold" style={{ background: spotsFilled >= quantity ? 'rgba(22, 163, 74, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: spotsFilled >= quantity ? '#16A34A' : '#2563EB' }}>
             <Users size={14} />
             {spotsFilled}/{quantity} filled
           </span>
         )}
         {task.applicant_count > 0 && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm font-medium" style={{ background: 'rgba(15, 76, 92, 0.08)', color: '#0F4C5C' }}>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium" style={{ background: 'rgba(0, 0, 0, 0.08)', color: '#E8853D' }}>
             {task.applicant_count} applicant{task.applicant_count !== 1 ? 's' : ''}
           </span>
         )}
         {/* Compact budget shown inline on mobile only */}
-        <span className="lg:hidden text-lg font-bold text-[#059669] font-mono">
-          ${task.budget} <span className="text-xs font-normal text-[#8A8A8A]">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
+        <span className="lg:hidden text-lg font-bold text-[#16A34A] font-mono">
+          ${task.budget} <span className="text-xs font-normal text-[#888888]">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
         </span>
       </div>
 
@@ -70,7 +75,7 @@ export default function TaskHeader({ task }) {
 
       {/* Description */}
       <div className="mb-3 sm:mb-6">
-        <p className="text-[#525252] text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+        <p className="text-[#333333] text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
           {task.description}
         </p>
       </div>
@@ -79,7 +84,7 @@ export default function TaskHeader({ task }) {
       {task.requirements && (
         <div className="mb-3 sm:mb-6">
           <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Requirements</h3>
-          <p className="text-[#525252] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+          <p className="text-[#333333] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
             {task.requirements}
           </p>
         </div>
@@ -91,7 +96,7 @@ export default function TaskHeader({ task }) {
           <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Required Skills</h3>
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {task.required_skills.map((skill, i) => (
-              <span key={i} className="inline-block px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium bg-[#EEF2FF] text-[#4338CA]">
+              <span key={i} className="inline-block px-2.5 py-1 rounded-[6px] text-xs sm:text-sm font-medium bg-[#EEF2FF] text-[#4338CA]">
                 {skill}
               </span>
             ))}
@@ -103,14 +108,14 @@ export default function TaskHeader({ task }) {
       {task.instructions && (
         <div className="mb-3 sm:mb-6">
           <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Instructions</h3>
-          <p className="text-[#525252] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+          <p className="text-[#333333] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
             {task.instructions}
           </p>
         </div>
       )}
 
       {/* Metadata Row */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1.5 sm:gap-4 text-xs sm:text-sm text-[#525252]">
+      <div className="flex flex-wrap gap-x-3 gap-y-1.5 sm:gap-4 text-xs sm:text-sm text-[#333333]">
         {/* Posted Date */}
         <div className="flex items-center gap-1 sm:gap-2">
           <CalendarDays size={14} />
@@ -150,10 +155,10 @@ export default function TaskHeader({ task }) {
 
       {/* Skills Needed */}
       {task.category && (
-        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[rgba(26,26,26,0.08)]">
-          <h3 className="text-xs font-bold text-[#8A8A8A] uppercase tracking-wider mb-1.5 sm:mb-2">Skills Needed</h3>
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[rgba(0,0,0,0.08)]">
+          <h3 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-1.5 sm:mb-2">Skills Needed</h3>
           <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-[rgba(15,76,92,0.1)] text-[#0F4C5C]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium bg-[rgba(232,133,61,0.1)] text-[#E8853D]">
               {CATEGORY_ICONS[task.category] || '📋'} {task.category.replace('-', ' ')}
             </span>
           </div>

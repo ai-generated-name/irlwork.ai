@@ -99,13 +99,13 @@ export default function ReportTaskModal({
             {/* Header */}
             <div className="quick-apply-modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF5F57" strokeWidth="2">
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                   <line x1="4" y1="22" x2="4" y2="15" />
                 </svg>
                 <h2>Report Task</h2>
               </div>
-              <p style={{ fontSize: '14px', color: '#8A8A8A', marginTop: '4px' }}>
+              <p style={{ fontSize: '14px', color: '#888888', marginTop: '4px' }}>
                 Help keep the marketplace safe by reporting suspicious tasks.
               </p>
             </div>
@@ -132,12 +132,12 @@ export default function ReportTaskModal({
                         gap: '8px',
                         padding: '10px 14px',
                         borderRadius: '10px',
-                        border: reason === r.value ? '2px solid #DC2626' : '2px solid rgba(26,26,26,0.08)',
-                        background: reason === r.value ? 'rgba(220,38,38,0.05)' : 'rgba(26,26,26,0.02)',
+                        border: reason === r.value ? '2px solid #FF5F57' : '2px solid rgba(0,0,0,0.08)',
+                        background: reason === r.value ? 'rgba(220,38,38,0.05)' : 'rgba(0,0,0,0.02)',
                         cursor: 'pointer',
                         fontSize: '13px',
                         fontWeight: reason === r.value ? '600' : '500',
-                        color: reason === r.value ? '#DC2626' : '#525252',
+                        color: reason === r.value ? '#FF5F57' : '#333333',
                         transition: 'all 0.15s ease',
                         textAlign: 'left',
                       }}
@@ -189,7 +189,7 @@ export default function ReportTaskModal({
                   type="submit"
                   className="quick-apply-modal-btn primary"
                   disabled={loading || !reason || !description.trim()}
-                  style={{ backgroundColor: '#DC2626' }}
+                  style={{ backgroundColor: '#FF5F57' }}
                 >
                   {loading ? (
                     <>

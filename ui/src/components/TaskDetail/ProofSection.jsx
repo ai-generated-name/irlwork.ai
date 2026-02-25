@@ -7,7 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import API_URL from '../../config/api';
 
 const styles = {
-  input: 'w-full bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] transition-colors'
+  input: 'w-full bg-white border-2 border-[rgba(0,0,0,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#888888] focus:outline-none focus:border-[#E8853D] transition-colors'
 };
 
 export default function ProofSection({ task, user, onSubmit }) {
@@ -82,11 +82,17 @@ export default function ProofSection({ task, user, onSubmit }) {
       return;
     }
 
-    // Validate file sizes (20MB max per file, compress before upload)
-    const oversized = selected.find(f => f.size > 20 * 1024 * 1024);
-    if (oversized) {
-      toast.error('Each file must be under 20MB');
-      return;
+    // Validate file sizes — backend checks decoded base64 against 10MB.
+    // Images get compressed before upload (maxSizeMB: 2), so 10MB raw is fine.
+    // Videos are NOT compressed, and base64 encoding adds ~33% overhead,
+    // so cap videos at 7MB raw to stay under 10MB after encoding.
+    for (const f of selected) {
+      const isVideo = f.type?.startsWith('video/');
+      const limit = isVideo ? 7 * 1024 * 1024 : 10 * 1024 * 1024;
+      if (f.size > limit) {
+        toast.error(isVideo ? 'Videos must be under 7MB' : 'Images must be under 10MB');
+        return;
+      }
     }
 
     const newFiles = [...files, ...selected].slice(0, 3);
@@ -159,13 +165,13 @@ export default function ProofSection({ task, user, onSubmit }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm">
       <h2 className="text-base sm:text-xl font-bold text-[#1A1A1A] mb-3 sm:mb-4">Submit Proof of Work</h2>
 
       <div className="space-y-3 sm:space-y-4">
         {/* Proof Text */}
         <div>
-          <label className="block text-[#525252] text-xs sm:text-sm mb-1.5 sm:mb-2">Describe your work</label>
+          <label className="block text-[#333333] text-xs sm:text-sm mb-1.5 sm:mb-2">Describe your work</label>
           <textarea
             value={proofText}
             onChange={(e) => setProofText(e.target.value)}
@@ -177,31 +183,31 @@ export default function ProofSection({ task, user, onSubmit }) {
 
         {/* File Upload */}
         <div>
-          <label className="block text-[#525252] text-xs sm:text-sm mb-1.5 sm:mb-2">Upload Proof (max 3 images)</label>
+          <label className="block text-[#333333] text-xs sm:text-sm mb-1.5 sm:mb-2">Upload Proof (max 3 files)</label>
           <div
-            className="border-2 border-dashed border-[rgba(26,26,26,0.2)] rounded-xl p-4 sm:p-6 text-center cursor-pointer hover:border-[#0F4C5C] transition-colors bg-[#FAF8F5]"
+            className="border-2 border-dashed border-[rgba(0,0,0,0.2)] rounded-xl p-4 sm:p-6 text-center cursor-pointer hover:border-[#E8853D] transition-colors bg-[#FAFAF8]"
             onClick={() => !uploading && fileInputRef.current?.click()}
           >
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/mp4,video/quicktime,.mov"
               multiple
               onChange={handleFileSelect}
               className="hidden"
             />
             <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{uploading ? <Hourglass size={24} /> : <Upload size={24} />}</div>
-            <p className="text-[#525252] text-xs sm:text-sm">
-              {uploading ? (uploadProgress || 'Uploading...') : 'Tap to upload images'}
+            <p className="text-[#333333] text-xs sm:text-sm">
+              {uploading ? (uploadProgress || 'Uploading...') : 'Tap to upload photos or videos'}
             </p>
-            <p className="text-[#8A8A8A] text-xs mt-0.5 sm:mt-1">PNG, JPG, or JPEG (max 3)</p>
+            <p className="text-[#888888] text-xs mt-0.5 sm:mt-1">PNG, JPG, MP4, MOV (max 3)</p>
           </div>
 
           {/* Selected Files */}
           {files.length > 0 && (
             <div className="flex gap-1.5 sm:gap-2 mt-2 sm:mt-3 flex-wrap">
               {files.map((file, i) => (
-                <div key={i} className="bg-[#F5F2ED] rounded-lg p-1.5 sm:p-2 pr-2 sm:pr-3 flex items-center gap-1.5 sm:gap-2">
+                <div key={i} className="bg-[#F5F3F0] rounded-lg p-1.5 sm:p-2 pr-2 sm:pr-3 flex items-center gap-1.5 sm:gap-2">
                   <span className="text-xs sm:text-sm text-[#1A1A1A]">
                     {file.name.length > 15 ? file.name.slice(0, 15) + '...' : file.name}
                   </span>
@@ -210,7 +216,7 @@ export default function ProofSection({ task, user, onSubmit }) {
                       e.stopPropagation();
                       removeFile(i);
                     }}
-                    className="text-[#8A8A8A] hover:text-[#DC2626] text-xs sm:text-sm"
+                    className="text-[#888888] hover:text-[#FF5F57] text-xs sm:text-sm"
                   >
                     ✕
                   </button>
@@ -221,7 +227,7 @@ export default function ProofSection({ task, user, onSubmit }) {
 
           {/* Uploaded Confirmation */}
           {uploadedUrls.length > 0 && (
-            <p className="text-[#059669] text-xs sm:text-sm flex items-center gap-2 mt-2 sm:mt-3">
+            <p className="text-[#16A34A] text-xs sm:text-sm flex items-center gap-2 mt-2 sm:mt-3">
               <span>✓</span> {uploadedUrls.length} file(s) uploaded
             </p>
           )}
@@ -231,17 +237,17 @@ export default function ProofSection({ task, user, onSubmit }) {
         <button
           onClick={handleSubmit}
           disabled={submitting || uploading}
-          className="w-full bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
+          className="w-full bg-[#E8853D] hover:bg-[#D4703A] disabled:bg-[#F5F3F0] disabled:text-[#888888] disabled:cursor-not-allowed text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
         >
           {submitting ? 'Submitting...' : uploading ? (uploadProgress || 'Uploading files...') : 'Submit Proof'}
         </button>
 
         {/* Instructions */}
-        <div className="bg-[#D1E9F0] border border-[rgba(15,76,92,0.2)] rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-[#0F4C5C]">
+        <div className="bg-[rgba(232,133,61,0.08)] border border-[rgba(232,133,61,0.15)] rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-[#E8853D]">
           <p className="font-medium mb-1"><FileText size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Tips:</p>
-          <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-[#525252]">
+          <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-[#333333]">
             <li>Describe work completed in detail</li>
-            <li>Upload clear photos of finished task</li>
+            <li>Upload clear photos or videos of finished task</li>
             <li>48h review window before auto-release</li>
           </ul>
         </div>

@@ -6,7 +6,7 @@ import {
   Star, CalendarDays, Search, ChevronDown, Upload, Bell,
   FileText, CheckCircle, XCircle, Landmark, Scale, Ban, ArrowDownLeft,
   Shield, Hourglass, Bot, FolderOpen, RefreshCw,
-  Monitor, Sparkles, AlertTriangle, KeyRound
+  Monitor, Sparkles, AlertTriangle, KeyRound, Mail
 } from 'lucide-react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
@@ -28,7 +28,11 @@ import LandingPageV4 from './pages/LandingPageV4'
 import NotFoundPage from './pages/NotFoundPage'
 import ContactPage from './pages/ContactPage'
 import AboutPage from './pages/AboutPage'
+import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
+import ThesisPage from './pages/ThesisPage'
 import MarketingFooter from './components/Footer'
+import { Logo } from './components/Logo'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
@@ -39,6 +43,7 @@ import DashboardTour from './components/DashboardTour'
 const StripeProvider = lazy(() => import('./components/StripeProvider'))
 const PaymentMethodForm = lazy(() => import('./components/PaymentMethodForm'))
 const PaymentMethodList = lazy(() => import('./components/PaymentMethodList'))
+const MembershipBilling = lazy(() => import('./components/MembershipBilling'))
 import { SocialIconsRow, PLATFORMS, PLATFORM_ORDER, extractHandle } from './components/SocialIcons'
 
 import CityAutocomplete from './components/CityAutocomplete'
@@ -99,6 +104,7 @@ import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import ApiKeysTab from './components/ApiKeysTab'
 // ConnectAgentPage defined inline below
 const MCPPage = lazy(() => import('./pages/MCPPage'))
+const PremiumPage = lazy(() => import('./pages/PremiumPage'))
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -108,18 +114,18 @@ const safeArr = v => { if (Array.isArray(v)) return v; if (!v) return []; try { 
 
 // === Styles ===
 const styles = {
-  btn: `px-5 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer border-0`,
+  btn: `px-5 py-2.5 rounded-[10px] font-medium transition-all duration-200 cursor-pointer border-0`,
   btnPrimary: `bg-coral text-white hover:bg-coral-dark shadow-v4-md hover:shadow-v4-lg`,
-  btnSecondary: `bg-teal/10 text-teal hover:bg-teal/20`,
+  btnSecondary: `bg-coral/10 text-coral hover:bg-coral/20`,
   btnSmall: `px-3 py-1.5 text-sm rounded-lg`,
-  input: `w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:border-teal focus:ring-2 focus:ring-teal/20 focus:outline-none transition-all`,
-  card: `bg-white border border-gray-100 rounded-2xl p-6 shadow-v4-sm hover:shadow-v4-md transition-shadow`,
+  input: `w-full px-4 py-2.5 bg-[#F5F3F0] border border-[rgba(0,0,0,0.08)] rounded-[10px] text-[#1A1A1A] placeholder-[#AAAAAA] focus:border-coral focus:ring-2 focus:ring-coral/20 focus:outline-none transition-all`,
+  card: `bg-white border border-[rgba(0,0,0,0.06)] rounded-[14px] p-4 shadow-v4-sm hover:shadow-v4-md transition-shadow`,
   container: `max-w-6xl mx-auto px-6`,
   gradient: `bg-cream`,
   // Dashboard-specific styles
-  sidebar: `bg-teal`,
-  sidebarNav: `text-white/70 hover:bg-teal-dark hover:text-white`,
-  sidebarNavActive: `bg-white text-teal font-medium`,
+  sidebar: `bg-cream`,
+  sidebarNav: `text-[#888888] hover:bg-[#F5F3F0] hover:text-[#1A1A1A]`,
+  sidebarNavActive: `bg-coral/[0.06] text-coral font-semibold`,
 }
 
 // === Icons ===
@@ -388,7 +394,7 @@ function Onboarding({ onComplete, user }) {
                   </p>
                 ) : nearbyTasks.length > 0 ? (
                   <div>
-                    <p style={{ fontSize: 13, color: '#10B981', fontWeight: 500, marginBottom: 8 }}>
+                    <p style={{ fontSize: 13, color: '#16A34A', fontWeight: 500, marginBottom: 8 }}>
                       {nearbyTasks.length} task{nearbyTasks.length !== 1 ? 's' : ''} near {form.city} — complete setup to apply
                     </p>
                     {nearbyTasks.map((task, i) => (
@@ -398,7 +404,7 @@ function Onboarding({ onComplete, user }) {
                         marginBottom: 4, fontSize: 13
                       }}>
                         <span style={{ color: 'var(--text-primary)' }}>{task.title}</span>
-                        <span style={{ color: '#10B981', fontWeight: 600 }}>${task.budget}</span>
+                        <span style={{ color: '#16A34A', fontWeight: 600 }}>${task.budget}</span>
                       </div>
                     ))}
                   </div>
@@ -437,9 +443,9 @@ function Onboarding({ onComplete, user }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 10,
-                    border: form.selectedCategories.includes(cat.value) ? '2px solid #10B981' : '2px solid rgba(0,0,0,0.12)',
+                    border: form.selectedCategories.includes(cat.value) ? '2px solid #16A34A' : '2px solid rgba(0,0,0,0.12)',
                     background: form.selectedCategories.includes(cat.value) ? 'rgba(16,185,129,0.15)' : 'rgba(0,0,0,0.03)',
-                    color: form.selectedCategories.includes(cat.value) ? '#10B981' : '#3d3d3d',
+                    color: form.selectedCategories.includes(cat.value) ? '#16A34A' : '#3d3d3d',
                     cursor: 'pointer', fontSize: 14, transition: 'all 0.15s',
                     textAlign: 'left'
                   }}
@@ -459,7 +465,7 @@ function Onboarding({ onComplete, user }) {
               aria-label="Other skills, comma separated"
             />
             {form.selectedCategories.length === 0 && !form.otherSkills.trim() && (
-              <p style={{ fontSize: 13, color: '#f59e0b', marginTop: 8 }}>Select at least one skill or add your own</p>
+              <p style={{ fontSize: 13, color: '#FEBC2E', marginTop: 8 }}>Select at least one skill or add your own</p>
             )}
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(1)}>Back</button>
@@ -529,7 +535,7 @@ function Onboarding({ onComplete, user }) {
               <div style={{
                 display: 'flex', alignItems: 'center',
                 background: 'var(--bg-secondary)',
-                border: '1px solid rgba(26, 26, 26, 0.1)',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
                 borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
                 transition: 'all var(--duration-fast)'
@@ -537,7 +543,7 @@ function Onboarding({ onComplete, user }) {
                 <span style={{
                   padding: '16px 14px', fontSize: 16, fontWeight: 600,
                   color: 'var(--text-tertiary)', background: 'var(--bg-tertiary)',
-                  borderRight: '1px solid rgba(26, 26, 26, 0.08)'
+                  borderRight: '1px solid rgba(0, 0, 0, 0.08)'
                 }}>$</span>
                 <input
                   type="number"
@@ -578,11 +584,11 @@ function Onboarding({ onComplete, user }) {
             {verificationSuccess ? (
               <div style={{
                 padding: '20px', borderRadius: 12,
-                background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                background: 'rgba(22, 163, 74, 0.08)', border: '1px solid rgba(22, 163, 74, 0.2)',
                 textAlign: 'center', marginBottom: 20
               }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>&#10003;</div>
-                <p style={{ color: '#059669', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
+                <p style={{ color: '#16A34A', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
                   {user?.email} is now verified
                 </p>
@@ -673,6 +679,7 @@ function AuthPage({ onLogin, onNavigate }) {
   const [errorModal, setErrorModal] = useState(null)
   const [form, setForm] = useState({ email: '', password: '', name: '' })
   const [showPassword, setShowPassword] = useState(false)
+  const [signupSuccess, setSignupSuccess] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -686,19 +693,30 @@ function AuthPage({ onLogin, onNavigate }) {
     }
 
     try {
-      const { error } = isLogin
+      const { data, error } = isLogin
         ? await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
         : await supabase.auth.signUp({
             email: form.email,
             password: form.password,
-            options: { data: { name: form.name } }
+            options: {
+              data: { name: form.name },
+              emailRedirectTo: window.location.origin + '/auth'
+            }
           })
 
       if (error) throw error
       trackEvent(isLogin ? 'login' : 'sign_up', { method: 'email' })
-      // Don't navigate here — the parent App's onAuthStateChange will detect
-      // the new session and redirect from /auth to /dashboard automatically.
-      // This avoids a full page reload on mobile.
+
+      // For signups: Supabase may not return a session if email confirmation is enabled.
+      // In that case, show a confirmation message instead of navigating to dashboard
+      // (which would just bounce back to /auth since there's no authenticated session).
+      if (!isLogin && !data.session) {
+        setSignupSuccess(true)
+        return
+      }
+
+      // Login or signup with immediate session — navigate to dashboard.
+      // The parent App's onAuthStateChange will detect the session and handle redirects.
       const params = new URLSearchParams(window.location.search)
       const returnTo = params.get('returnTo')
       if (onNavigate) onNavigate(returnTo && decodeURIComponent(returnTo).startsWith('/dashboard') ? decodeURIComponent(returnTo) : '/dashboard')
@@ -851,12 +869,43 @@ function AuthPage({ onLogin, onNavigate }) {
     )
   }
 
+  // Show email confirmation screen after successful signup (when email verification is required)
+  if (signupSuccess) {
+    return (
+      <div className="auth-v4">
+        <div className="auth-v4-container">
+          <a href="/" className="auth-v4-logo">
+            <div className="logo-mark-v4">irl</div>
+            <span className="logo-name-v4">irlwork.ai</span>
+          </a>
+          <div className="auth-v4-card" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>
+              <Mail size={48} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+            </div>
+            <h1 className="auth-v4-title">Check your email</h1>
+            <p className="auth-v4-subtitle" style={{ marginBottom: 24 }}>
+              We sent a confirmation link to <strong>{form.email}</strong>. Click the link to verify your email and get started.
+            </p>
+            <button
+              className="auth-v4-submit"
+              onClick={() => { setSignupSuccess(false); setIsLogin(true); setError('') }}
+            >
+              Back to Sign In
+            </button>
+          </div>
+          <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+            ← Back to home
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="auth-v4">
       <div className="auth-v4-container">
-        <a href="/" className="auth-v4-logo">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
+        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
         </a>
 
         <div className="auth-v4-card">
@@ -1097,12 +1146,12 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
             )}
           </div>
           {uploading && (
-            <p style={{ fontSize: 13, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <p style={{ fontSize: 13, color: '#FEBC2E', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="loading-v4-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Uploading files...
             </p>
           )}
           {uploadedUrls.length > 0 && !uploading && (
-            <p style={{ fontSize: 13, color: '#10B981', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <p style={{ fontSize: 13, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 8 }}>
               ✓ {uploadedUrls.length} file{uploadedUrls.length !== 1 ? 's' : ''} uploaded
             </p>
           )}
@@ -1185,14 +1234,14 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
           <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={() => setRejecting(!rejecting)}>
             {rejecting ? 'Cancel Reject' : 'Reject'}
           </button>
-          <button className="v4-btn v4-btn-primary" style={{ flex: 1, background: '#10B981' }} onClick={onApprove}>
+          <button className="v4-btn v4-btn-primary" style={{ flex: 1, background: '#16A34A' }} onClick={onApprove}>
             Approve & Pay
           </button>
         </div>
         {rejecting && (
           <button
             className="v4-btn"
-            style={{ width: '100%', marginTop: 12, background: '#DC2626', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: feedback.trim() ? 'pointer' : 'not-allowed', opacity: feedback.trim() ? 1 : 0.5 }}
+            style={{ width: '100%', marginTop: 12, background: '#FF5F57', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: feedback.trim() ? 'pointer' : 'not-allowed', opacity: feedback.trim() ? 1 : 0.5 }}
             onClick={() => onReject({ feedback, extendHours: hours })}
             disabled={!feedback.trim()}
           >
@@ -1300,6 +1349,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [tasks, setTasks] = useState([])
   const [availableTasks, setAvailableTasks] = useState([]) // Tasks available for humans to browse
   const [humans, setHumans] = useState([])
+  const [bookmarkedHumans, setBookmarkedHumans] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('irlwork_bookmarked_humans') || '[]') } catch { return [] }
+  })
+  const toggleBookmark = (human) => {
+    setBookmarkedHumans(prev => {
+      const next = prev.includes(human.id) ? prev.filter(id => id !== human.id) : [...prev, human.id]
+      localStorage.setItem('irlwork_bookmarked_humans', JSON.stringify(next))
+      return next
+    })
+  }
   const [loading, setLoading] = useState(true)
   const [postedTasks, setPostedTasks] = useState([])
   const [wallet, setWallet] = useState({ balance: 0, transactions: [] })
@@ -1338,6 +1397,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   // Profile edit location state
   const [profileLocation, setProfileLocation] = useState(null)
   const [profileTimezone, setProfileTimezone] = useState(user?.timezone || '')
+  const [profileGender, setProfileGender] = useState(user?.gender || '')
   const [skillsList, setSkillsList] = useState(user?.skills || [])
   const [newSkillInput, setNewSkillInput] = useState('')
   const [languagesList, setLanguagesList] = useState(user?.languages || [])
@@ -1372,6 +1432,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
+  const [taskFormTouched, setTaskFormTouched] = useState({})
 
   useEffect(() => {
     localStorage.setItem('irlwork_hiringMode', hiringMode)
@@ -1486,10 +1547,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       // Detect mode change from URL path
       if (isHiring && !hiringMode) {
         setHiringMode(true)
-        setActiveTabState('posted')
+        setActiveTabState('dashboard')
       } else if (!isHiring && hiringMode) {
         setHiringMode(false)
-        setActiveTabState('tasks')
+        setActiveTabState('dashboard')
       }
 
       // Also support legacy ?tab= query param
@@ -1708,16 +1769,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
   }
 
-  const handleAssignHuman = async (taskId, humanId) => {
+  const handleAssignHuman = async (taskId, humanId, preferredPaymentMethod) => {
     setAssigningHuman(humanId)
     try {
+      const body = { human_id: humanId }
+      if (preferredPaymentMethod) body.preferred_payment_method = preferredPaymentMethod
       const res = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: user.token || ''
         },
-        body: JSON.stringify({ human_id: humanId })
+        body: JSON.stringify(body)
       })
       if (res.ok) {
         const data = await res.json()
@@ -1726,7 +1789,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
 
         // Show appropriate toast based on payment method
-        if (data.amount_charged) {
+        if (data.payment_method === 'usdc') {
+          toast.success(`Worker assigned! Send ${data.deposit_instructions?.amount_usdc} USDC to complete escrow.`)
+        } else if (data.amount_charged) {
           toast.success(`Worker assigned! $${data.amount_charged?.toFixed(2)} charged to your card.`)
         } else {
           toast.success('Worker assigned! Payment charged to your card.')
@@ -1950,6 +2015,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'open', quantity: 1, is_anonymous: false })
+        setTaskFormTouched({})
         // Close create form and show posted tasks list
         setTasksSubTab('tasks')
         setActiveTab('posted')
@@ -2171,9 +2237,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       {/* Sidebar */}
       <aside className={`dashboard-v4-sidebar ${sidebarOpen ? 'open' : ''}`}>
         {/* Logo */}
-        <a href="/" className="dashboard-v4-sidebar-logo">
-          <div className="dashboard-v4-sidebar-logo-mark">irl</div>
-          <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
+        <a href="/" className="dashboard-v4-sidebar-logo" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
         </a>
 
         {/* Connect to AI Agent CTA - top of sidebar in hiring mode */}
@@ -2217,12 +2282,32 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           ))}
         </nav>
 
+        {/* Upgrade to Premium CTA */}
+        {user && (user.subscription_tier || 'free') !== 'pro' && (
+          <div style={{ padding: 'var(--space-2) var(--space-4)' }}>
+            <button
+              onClick={() => window.location.href = '/premium'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: '#1A1A1A', color: '#FFFFFF',
+                fontSize: 13, fontWeight: 600, transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#333333'}
+              onMouseLeave={e => e.currentTarget.style.background = '#1A1A1A'}
+            >
+              <Sparkles size={16} style={{ color: '#F5A623' }} />
+              <span>Upgrade to Premium</span>
+            </button>
+          </div>
+        )}
+
         {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
           {hiringMode ? (
             <button
               className="dashboard-v4-mode-switch-btn"
-              onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false); setSidebarOpen(false) }}
+              onClick={() => { setHiringMode(false); setActiveTabState('dashboard'); updateTabUrl('dashboard', false); setSidebarOpen(false) }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -2234,7 +2319,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           ) : (
             <button
               className="dashboard-v4-mode-switch-btn hiring"
-              onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true); setSidebarOpen(false) }}
+              onClick={() => { setHiringMode(true); setActiveTabState('dashboard'); updateTabUrl('dashboard', true); setSidebarOpen(false) }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
@@ -2247,21 +2332,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           )}
         </div>
 
-        {/* Connect to AI Agent CTA - only show in hiring mode */}
-        {hiringMode && (
-          <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-            <button
-              onClick={() => window.location.href = '/connect-agent'}
-              className="dashboard-v4-connect-agent-btn"
-            >
-              <span style={{ display: 'flex', alignItems: 'center' }}><Bot size={18} /></span>
-              <span>Connect to AI Agent</span>
-            </button>
-          </div>
-        )}
+        {/* Bottom "Connect to AI Agent" removed — top banner version with chevron kept */}
 
         {/* Social & Feedback - pinned to bottom */}
-        <div style={{ borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
+        <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
           {/* X / Twitter */}
           <a
             href="https://x.com/irlworkai"
@@ -2299,7 +2373,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <button
             onClick={() => setFeedbackOpen(!feedbackOpen)}
             className="dashboard-v4-nav-item"
-            style={{ width: '100%', background: feedbackOpen ? 'linear-gradient(135deg, rgba(15, 76, 92, 0.1), rgba(15, 76, 92, 0.04))' : undefined }}
+            style={{ width: '100%', background: feedbackOpen ? 'linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.04))' : undefined }}
           >
             <div className="dashboard-v4-nav-item-content">
               <span className="dashboard-v4-nav-icon">
@@ -2335,9 +2409,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <path d="M3 12h18M3 6h18M3 18h18" />
               </svg>
             </button>
-            <a href={hiringMode ? '/dashboard/hiring' : '/dashboard/working'} className="dashboard-v4-topbar-logo">
-              <div className="logo-mark-v4">irl</div>
-              <span className="logo-name-v4">irlwork.ai</span>
+            <a href={hiringMode ? '/dashboard/hiring' : '/dashboard/working'} className="dashboard-v4-topbar-logo" style={{ textDecoration: 'none' }}>
+              <Logo variant="header" theme="light" />
             </a>
           </div>
 
@@ -2347,7 +2420,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <>
                 <button
                   className="dashboard-v4-topbar-link dashboard-v4-topbar-cta"
-                  onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true) }}
+                  onClick={() => { setHiringMode(true); setActiveTabState('dashboard'); updateTabUrl('dashboard', true) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
@@ -2370,7 +2443,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <>
                 <button
                   className="dashboard-v4-topbar-link dashboard-v4-topbar-cta dashboard-v4-topbar-cta-teal"
-                  onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
+                  onClick={() => { setHiringMode(false); setActiveTabState('dashboard'); updateTabUrl('dashboard', false) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -2515,6 +2588,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 tasks={tasks}
                 notifications={notifications}
                 onNavigate={(tab) => setActiveTab(tab)}
+                onUserUpdate={onUserUpdate}
               />
             </Suspense>
           </TabErrorBoundary>
@@ -2536,21 +2610,41 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-
-            {/* Sub-tabs: Create Task / Posted Tasks / Disputes */}
-            <div className="dashboard-v4-sub-tabs">
-              <button
-                className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}
-              >
-                + Create Task
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
+              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
+              <button className="hiring-dash-create-btn" onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Create Task
               </button>
+            </div>
+
+            {/* Sub-tabs: Status filters + Disputes */}
+            <div className="dashboard-v4-sub-tabs">
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
                 onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
               >
-                Posted Tasks
+                All
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'active' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('active'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
+              >
+                Active
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'in_review' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('in_review'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
+              >
+                In Review
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'completed' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('completed'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
+              >
+                Completed
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
@@ -2562,145 +2656,122 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {tasksSubTab === 'create' && (
               <div style={{ marginTop: 16 }}>
-                <div className="dashboard-v4-form create-task-form-wide">
-                  <h2 className="dashboard-v4-form-title">Create a New Task</h2>
+                <div className="create-task-container">
+                  <div className="create-task-header">
+                    <h2 className="create-task-title">Create a New Task</h2>
+                    <p className="create-task-subtitle">Fill in the details below to post your task</p>
+                  </div>
+
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
-                    <div className="create-task-grid">
-                      {/* Left column */}
-                      <div className="create-task-col">
-                        <div className="dashboard-v4-form-group">
+                    {/* Section 1: Basics */}
+                    <div className="create-task-section">
+                      <div className="create-task-section-label">Basics</div>
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">
+                          Task Title <span className="dashboard-v4-form-required">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="What do you need done?"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.title}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="create-task-row-3col">
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Task Title <span className="dashboard-v4-form-required">*</span>
+                            Category <span className="dashboard-v4-form-required">*</span>
+                          </label>
+                          <CustomDropdown
+                            value={taskForm.category}
+                            onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
+                            options={[
+                              { value: '', label: 'Select category' },
+                              ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
+                                value: c,
+                                label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                              }))
+                            ]}
+                            placeholder="Select category"
+                          />
+                        </div>
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                          <label className="dashboard-v4-form-label">
+                            Budget (USD) <span className="dashboard-v4-form-required">*</span>
                           </label>
                           <input
-                            type="text"
-                            placeholder="What do you need done?"
+                            type="number"
+                            placeholder="$"
                             className="dashboard-v4-form-input"
-                            value={taskForm.title}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                            style={taskFormTouched.budget && (!taskForm.budget || parseFloat(taskForm.budget) < 5) ? { borderColor: '#DC2626' } : {}}
+                            value={taskForm.budget}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
+                            onBlur={() => setTaskFormTouched(prev => ({ ...prev, budget: true }))}
+                            min="5"
                           />
+                          {taskFormTouched.budget && (!taskForm.budget || parseFloat(taskForm.budget) < 5) && (
+                            <p style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>Budget must be at least $5</p>
+                          )}
                         </div>
-
-                        <div className="dashboard-v4-form-group">
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Description <span className="dashboard-v4-form-optional">(optional)</span>
+                            Duration <span className="dashboard-v4-form-optional">(hours)</span>
                           </label>
-                          <textarea
-                            placeholder="Provide details about the task..."
-                            className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                            style={{ minHeight: 80 }}
-                            value={taskForm.description}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
-                          />
-                        </div>
-
-                        <div className="dashboard-form-grid-2col">
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Category <span className="dashboard-v4-form-required">*</span>
-                            </label>
-                            <CustomDropdown
-                              value={taskForm.category}
-                              onChange={(val) => setTaskForm(prev => ({ ...prev, category: val }))}
-                              options={[
-                                { value: '', label: 'Select category' },
-                                ...['delivery', 'photography', 'data_collection', 'errands', 'cleaning', 'moving', 'manual_labor', 'inspection', 'tech', 'translation', 'verification', 'general'].map(c => ({
-                                  value: c,
-                                  label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                                }))
-                              ]}
-                              placeholder="Select category"
-                            />
-                          </div>
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Budget (USD) <span className="dashboard-v4-form-required">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              placeholder="$"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.budget}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
-                              min="5"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="dashboard-v4-form-group">
-                          <label className="dashboard-v4-form-label">
-                            Requirements <span className="dashboard-v4-form-optional">(optional)</span>
-                          </label>
-                          <textarea
-                            placeholder="Any specific requirements or qualifications needed..."
-                            className="dashboard-v4-form-input dashboard-v4-form-textarea"
-                            style={{ minHeight: 60 }}
-                            value={taskForm.requirements}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
-                            rows={2}
+                          <input
+                            type="number"
+                            placeholder="e.g. 2"
+                            className="dashboard-v4-form-input"
+                            value={taskForm.duration_hours}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                            min="0.5"
+                            step="0.5"
                           />
                         </div>
                       </div>
 
-                      {/* Right column */}
-                      <div className="create-task-col">
-                        <div className="dashboard-form-grid-2col">
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Duration (hours) <span className="dashboard-v4-form-optional">(opt)</span>
-                            </label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 2"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.duration_hours}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
-                              min="0.5"
-                              step="0.5"
-                            />
-                          </div>
-                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                            <label className="dashboard-v4-form-label">
-                              Deadline <span className="dashboard-v4-form-optional">(opt)</span>
-                            </label>
-                            <input
-                              type="datetime-local"
-                              className="dashboard-v4-form-input"
-                              value={taskForm.deadline}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
-                            />
-                          </div>
-                        </div>
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">
+                          Description <span className="dashboard-v4-form-optional">(optional)</span>
+                        </label>
+                        <textarea
+                          placeholder="Provide details about the task..."
+                          className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                          style={{ minHeight: 80 }}
+                          value={taskForm.description}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                        />
+                      </div>
+                    </div>
 
-                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
-                          <label style={{
-                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                            fontSize: 14, color: taskForm.is_remote ? '#10B981' : 'inherit'
-                          }}>
-                            <input
-                              type="checkbox"
-                              checked={taskForm.is_remote}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
-                              style={{ width: 18, height: 18, cursor: 'pointer' }}
-                            />
-                            Remote task
-                          </label>
-                          <label style={{
-                            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                            fontSize: 14, color: taskForm.is_anonymous ? '#7C3AED' : 'inherit'
-                          }}>
-                            <input
-                              type="checkbox"
-                              checked={taskForm.is_anonymous}
-                              onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
-                              style={{ width: 18, height: 18, cursor: 'pointer' }}
-                            />
-                            Post anonymously
-                          </label>
-                        </div>
+                    {/* Section 2: Location & Schedule */}
+                    <div className="create-task-section">
+                      <div className="create-task-section-label">Location & Schedule</div>
+                      <div className="create-task-toggle-row">
+                        <label className={`create-task-toggle-chip ${taskForm.is_remote ? 'active-green' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_remote}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_remote: e.target.checked }))}
+                          />
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                          Remote task
+                        </label>
+                        <label className={`create-task-toggle-chip ${taskForm.is_anonymous ? 'active-purple' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={taskForm.is_anonymous}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, is_anonymous: e.target.checked }))}
+                          />
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="23" y2="8"/></svg>
+                          Post anonymously
+                        </label>
+                      </div>
 
+                      <div className="create-task-row-2col">
                         {!taskForm.is_remote && (
-                          <div className="dashboard-v4-form-group">
+                          <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                             <label className="dashboard-v4-form-label">
                               City <span className="dashboard-v4-form-required">*</span>
                             </label>
@@ -2719,47 +2790,84 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             />
                           </div>
                         )}
-
-                        <div className="dashboard-v4-form-group">
-                          <label className="dashboard-v4-form-label">Required Skills <span className="dashboard-v4-form-optional">(optional)</span></label>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
-                            {taskForm.required_skills.map((skill, i) => (
-                              <span key={i} style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                background: '#EEF2FF', color: '#4338CA', borderRadius: 16,
-                                padding: '4px 10px', fontSize: 13, fontWeight: 500
-                              }}>
-                                {skill}
-                                <button type="button" onClick={() => setTaskForm(prev => ({
-                                  ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
-                                }))} style={{
-                                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                                  color: '#4338CA', fontSize: 16, lineHeight: 1, marginLeft: 2
-                                }}>×</button>
-                              </span>
-                            ))}
-                          </div>
+                        <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
+                          <label className="dashboard-v4-form-label">
+                            Deadline <span className="dashboard-v4-form-optional">(optional)</span>
+                          </label>
                           <input
-                            type="text"
-                            placeholder="Type a skill and press Enter"
+                            type="datetime-local"
                             className="dashboard-v4-form-input"
-                            value={taskForm.skillInput}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ',') {
-                                e.preventDefault()
-                                const skill = taskForm.skillInput.trim().toLowerCase()
-                                if (skill && !taskForm.required_skills.includes(skill)) {
-                                  setTaskForm(prev => ({
-                                    ...prev,
-                                    required_skills: [...prev.required_skills, skill],
-                                    skillInput: ''
-                                  }))
-                                }
-                              }
-                            }}
+                            value={taskForm.deadline}
+                            onChange={(e) => setTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Requirements (optional) */}
+                    <div className="create-task-section create-task-section-last">
+                      <div className="create-task-section-label">Additional Details <span className="dashboard-v4-form-optional">(optional)</span></div>
+                      <div className="dashboard-v4-form-group">
+                        <label className="dashboard-v4-form-label">Requirements</label>
+                        <textarea
+                          placeholder="Any specific requirements or qualifications needed..."
+                          className="dashboard-v4-form-input dashboard-v4-form-textarea"
+                          style={{ minHeight: 60 }}
+                          value={taskForm.requirements}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, requirements: e.target.value }))}
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="dashboard-v4-form-group" style={{ position: 'relative' }}>
+                        <label className="dashboard-v4-form-label">Required Skills</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
+                          {taskForm.required_skills.map((skill, i) => (
+                            <span key={i} className="create-task-skill-chip">
+                              {skill}
+                              <button type="button" onClick={() => setTaskForm(prev => ({
+                                ...prev, required_skills: prev.required_skills.filter((_, idx) => idx !== i)
+                              }))} className="create-task-skill-remove">×</button>
+                            </span>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Type a skill and press Enter"
+                          className="dashboard-v4-form-input"
+                          value={taskForm.skillInput}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, skillInput: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ',') {
+                              e.preventDefault()
+                              const skill = taskForm.skillInput.trim().toLowerCase()
+                              if (skill && !taskForm.required_skills.includes(skill)) {
+                                setTaskForm(prev => ({
+                                  ...prev,
+                                  required_skills: [...prev.required_skills, skill],
+                                  skillInput: ''
+                                }))
+                              }
+                            }
+                          }}
+                        />
+                        {/* Skill autocomplete suggestions */}
+                        {taskForm.skillInput.trim().length > 0 && (() => {
+                          const allSkills = ['driving', 'photography', 'videography', 'cleaning', 'cooking', 'moving', 'handyman', 'painting', 'gardening', 'delivery', 'data entry', 'translation', 'transcription', 'research', 'writing', 'graphic design', 'web development', 'social media', 'customer service', 'teaching', 'tutoring', 'pet care', 'childcare', 'elderly care', 'personal shopping', 'event planning', 'organization', 'assembly', 'installation', 'repair']
+                          const matches = allSkills.filter(s => s.includes(taskForm.skillInput.trim().toLowerCase()) && !taskForm.required_skills.includes(s)).slice(0, 5)
+                          return matches.length > 0 ? (
+                            <div style={{ position: 'absolute', left: 0, right: 0, background: 'white', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, marginTop: 4, overflow: 'hidden' }}>
+                              {matches.map(skill => (
+                                <button key={skill} type="button" onClick={() => {
+                                  setTaskForm(prev => ({ ...prev, required_skills: [...prev.required_skills, skill], skillInput: '' }))
+                                }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)' }}
+                                onMouseOver={(e) => e.currentTarget.style.background = '#F5F2ED'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                                >{skill}</button>
+                              ))}
+                            </div>
+                          ) : null
+                        })()}
                       </div>
                     </div>
 
@@ -2774,22 +2882,38 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             )}
 
-            {tasksSubTab === 'tasks' && (
+            {['tasks', 'active', 'in_review', 'completed'].includes(tasksSubTab) && (
               <>
                 {loading ? (
                   <div className="dashboard-v4-empty">
                     <div className="dashboard-v4-empty-icon"><Hourglass size={24} /></div>
                     <p className="dashboard-v4-empty-text">Loading...</p>
                   </div>
-                ) : postedTasks.length === 0 ? (
-                  <div className="dashboard-v4-empty">
-                    <div className="dashboard-v4-empty-icon">{Icons.task}</div>
-                    <p className="dashboard-v4-empty-title">No tasks posted yet</p>
-                    <p className="dashboard-v4-empty-text">Create a task to get started</p>
+                ) : (() => {
+                  const filteredTasks = tasksSubTab === 'tasks' ? postedTasks
+                    : tasksSubTab === 'active' ? postedTasks.filter(t => ['open', 'assigned', 'in_progress'].includes(t.status))
+                    : tasksSubTab === 'in_review' ? postedTasks.filter(t => t.status === 'pending_review')
+                    : postedTasks.filter(t => ['completed', 'paid'].includes(t.status))
+                  return filteredTasks.length === 0 ? (
+                  <div className="dashboard-v4-empty" style={{ padding: '40px 24px' }}>
+                    <div className="dashboard-v4-empty-icon" style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      {tasksSubTab === 'tasks' ? <ClipboardList size={28} style={{ color: 'var(--text-tertiary)' }} /> : Icons.task}
+                    </div>
+                    <p className="dashboard-v4-empty-title" style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{tasksSubTab === 'tasks' ? 'No tasks posted yet' : `No ${tasksSubTab.replace('_', ' ')} tasks`}</p>
+                    <p className="dashboard-v4-empty-text" style={{ marginBottom: 20, color: 'var(--text-secondary)' }}>{tasksSubTab === 'tasks' ? 'Post a task and get matched with verified humans near you.' : 'Tasks matching this filter will appear here'}</p>
+                    {tasksSubTab === 'tasks' && (
+                      <button
+                        className="v4-btn v4-btn-primary"
+                        onClick={() => { setTasksSubTab('create'); window.history.pushState({}, '', '/dashboard/hiring/my-tasks/create'); }}
+                        style={{ margin: '0 auto' }}
+                      >
+                        <Plus size={16} /> Create Task
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div>
-                    {postedTasks.map(task => {
+                    {filteredTasks.map(task => {
                       const needsAction = task.status === 'pending_review'
                       const isOpen = task.status === 'open'
                       const isExpanded = expandedTask === task.id
@@ -2820,7 +2944,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
                           {/* View Applicants Button for open tasks */}
                           {isOpen && (
-                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
+                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
                               <button
                                 onClick={() => {
                                   if (isExpanded) {
@@ -2862,17 +2986,27 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
                                             )}
                                             {app.proposed_rate != null && (
-                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate} USDC</p>
+                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate}</p>
                                             )}
                                           </div>
                                         </div>
-                                        <button
-                                          onClick={() => handleAssignHuman(task.id, app.human_id)}
-                                          disabled={assigningHuman === app.human_id}
-                                          className="v4-btn v4-btn-primary"
-                                        >
-                                          {assigningHuman === app.human_id ? 'Assigning...' : 'Accept'}
-                                        </button>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                                          <button
+                                            onClick={() => handleAssignHuman(task.id, app.human_id)}
+                                            disabled={assigningHuman === app.human_id}
+                                            className="v4-btn v4-btn-primary"
+                                          >
+                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (Card)'}
+                                          </button>
+                                          <button
+                                            onClick={() => handleAssignHuman(task.id, app.human_id, 'usdc')}
+                                            disabled={assigningHuman === app.human_id}
+                                            className="v4-btn"
+                                            style={{ fontSize: 12, padding: '6px 12px', color: '#2563eb', border: '1px solid #2563eb', background: '#eff6ff' }}
+                                          >
+                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (USDC)'}
+                                          </button>
+                                        </div>
                                       </div>
                                     ))
                                   )}
@@ -2895,7 +3029,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       )
                     })}
                   </div>
-                )}
+                )
+                })()}
               </>
             )}
 
@@ -3058,6 +3193,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           variant="dashboard"
                           onExpand={(h) => window.location.href = `/humans/${h.id}`}
                           onHire={() => { setTasksSubTab('create'); setActiveTab('posted') }}
+                          onBookmark={toggleBookmark}
+                          isBookmarked={bookmarkedHumans.includes(human.id)}
                         />
                       ))}
                     </div>
@@ -3081,6 +3218,33 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <div className="space-y-4 md:space-y-6">
             <h1 className="dashboard-v4-page-title">Payments</h1>
 
+            {/* Payment Flow Explainer */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(15,76,92,0.06), rgba(224,122,95,0.06))',
+              border: '1px solid rgba(15,76,92,0.12)',
+              borderRadius: 16,
+              padding: '20px 24px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 16
+            }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                background: 'rgba(15,76,92,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F4C5C" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <div>
+                <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>How payments work</p>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  When you assign a worker, your payment is held in escrow. Once you approve the completed work, the payment is released to the worker.
+                </p>
+              </div>
+            </div>
+
             {/* Payment Overview */}
             {(() => {
               const paidTasks = postedTasks.filter(t => t.escrow_amount && t.escrow_status)
@@ -3090,16 +3254,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               return (
                 <>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4">
-                      <p className="text-xs text-[#8A8A8A] font-medium uppercase tracking-wider">Total Spent</p>
+                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4">
+                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">Total Spent</p>
                       <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(totalSpent / 100).toFixed(2)}</p>
                     </div>
-                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4">
-                      <p className="text-xs text-[#8A8A8A] font-medium uppercase tracking-wider">In Escrow</p>
+                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4">
+                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">In Escrow</p>
                       <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(inEscrow / 100).toFixed(2)}</p>
                     </div>
-                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 col-span-2 md:col-span-1">
-                      <p className="text-xs text-[#8A8A8A] font-medium uppercase tracking-wider">Released</p>
+                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 col-span-2 md:col-span-1">
+                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">Released</p>
                       <p className="text-2xl md:text-3xl font-bold text-teal tracking-tight mt-1">${(released / 100).toFixed(2)}</p>
                     </div>
                   </div>
@@ -3118,7 +3282,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           return (
                             <div
                               key={task.id}
-                              className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
+                              className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
                             >
                               <div className="flex justify-between items-start gap-3">
                                 <div className="flex-1 min-w-0">
@@ -3130,14 +3294,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                       px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide flex-shrink-0
                                       ${isReleased ? 'bg-teal/8 text-teal' : ''}
                                       ${isCompleted ? 'bg-teal/8 text-teal' : ''}
-                                      ${isInProgress ? 'bg-[#F5F2ED] text-[#8A8A8A]' : ''}
-                                      ${!isReleased && !isCompleted && !isInProgress ? 'bg-[#F5F2ED] text-[#525252]' : ''}
+                                      ${isInProgress ? 'bg-[#F5F3F0] text-[#888888]' : ''}
+                                      ${!isReleased && !isCompleted && !isInProgress ? 'bg-[#F5F3F0] text-[#333333]' : ''}
                                     `}>
                                       {isReleased ? 'Released' : isCompleted ? 'Completed' : isInProgress ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
                                     </span>
+                                    {task.payment_method === 'usdc' && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 flex-shrink-0">USDC</span>
+                                    )}
                                   </div>
 
-                                  <p className="text-xs text-[#8A8A8A] mt-1">
+                                  <p className="text-xs text-[#888888] mt-1">
                                     {task.escrow_deposited_at
                                       ? new Date(task.escrow_deposited_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                                       : 'Pending deposit'}
@@ -3150,7 +3317,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                     text-lg md:text-xl font-bold
                                     ${isReleased || isCompleted ? 'text-[#1A1A1A]' : ''}
                                     ${isInProgress ? 'text-[#1A1A1A]' : ''}
-                                    ${!isReleased && !isCompleted && !isInProgress ? 'text-[#8A8A8A]' : ''}
+                                    ${!isReleased && !isCompleted && !isInProgress ? 'text-[#888888]' : ''}
                                   `}>
                                     ${(task.escrow_amount / 100).toFixed(2)}
                                   </p>
@@ -3161,13 +3328,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         })}
                       </div>
                     ) : (
-                      <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
-                        <div className="w-12 h-12 bg-[#F5F2ED] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
-                          <svg className="w-6 h-6 text-[#8A8A8A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-8 md:p-12 text-center">
+                        <div className="w-12 h-12 bg-[#F5F3F0] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
+                          <svg className="w-6 h-6 text-[#888888]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
                           </svg>
                         </div>
-                        <p className="text-[#525252] font-medium text-sm md:text-base">No transactions yet</p>
+                        <p className="text-[#333333] font-medium text-sm md:text-base">No transactions yet</p>
                         <p className="text-xs md:text-sm text-[#A3A3A3] mt-1.5">
                           Fund a task to see your payment history
                         </p>
@@ -3185,19 +3352,52 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <StripeProvider>
                   <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div>
-                      <h4 className="text-sm font-medium text-[#525252] mb-3">Saved Cards</h4>
+                      <h4 className="text-sm font-medium text-[#333333] mb-3">Saved Cards</h4>
                       <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-[#525252] mb-3">Add New Card</h4>
+                      <h4 className="text-sm font-medium text-[#333333] mb-3">Add New Card</h4>
                       <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
                     </div>
-                    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-4 text-xs text-[#8A8A8A]">
+                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 text-xs text-[#888888]">
                       When you assign a worker to a task, your default card will be charged automatically. Please ensure you have a card saved before assigning workers.
                     </div>
                   </div>
                 </StripeProvider>
               </Suspense>
+            </div>
+
+            {/* USDC Payment Option */}
+            <div>
+              <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">USDC Payments</h3>
+              <div style={{ maxWidth: 520 }}>
+                <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#1A1A1A]">Pay with USDC on Base</p>
+                      <p className="text-xs text-[#525252] mt-1">
+                        When assigning a worker, choose USDC to send payment directly to our platform wallet. Workers will be paid in USDC.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-[#F5F2ED] rounded-lg p-3 mb-3">
+                    <p className="text-xs text-[#8A8A8A] mb-1">Platform Wallet (Base)</p>
+                    <p className="text-sm font-mono text-[#1A1A1A] break-all select-all">
+                      {import.meta.env.VITE_PLATFORM_WALLET_ADDRESS || 'Configure VITE_PLATFORM_WALLET_ADDRESS'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-[#8A8A8A]">
+                    <span>Network: Base</span>
+                    <span>Token: USDC</span>
+                    <span>Decimals: 6</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -3238,6 +3438,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </button>
             </div>
 
+            {/* Profile warning banner — auto-dismiss when profile is meaningfully complete */}
+            {(() => {
+              const hasPhoto = !!user?.avatar_url
+              const hasBio = !!(user?.bio && user.bio.trim().length > 10)
+              const hasSkills = Array.isArray(user?.skills) && user.skills.length > 0
+              const hasLang = Array.isArray(user?.languages) && user.languages.length > 0
+              const criteria = [hasPhoto, hasBio, hasSkills, hasLang]
+              const metCount = criteria.filter(Boolean).length
+              if (metCount >= 3) return null
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '12px 16px', marginBottom: 20,
+                  background: 'rgba(245, 166, 35, 0.06)',
+                  border: '1px solid rgba(245, 166, 35, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  position: 'relative',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                  <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>Update your profile to help agents find you</span>
+                  <button
+                    onClick={(e) => e.currentTarget.parentElement.style.display = 'none'}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', fontSize: 16, lineHeight: 1 }}
+                  >
+                    &times;
+                  </button>
+                </div>
+              )
+            })()}
+
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
               {/* Avatar Upload */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
@@ -3248,7 +3478,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   {user?.avatar_url ? (
                     <img key={user.avatar_url} src={user.avatar_url} alt={user?.name || ''} style={{
                       width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
-                      boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                      boxShadow: '0 2px 8px rgba(232,133,61,0.25)'
                     }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                   ) : null}
                   <div style={{
@@ -3256,7 +3486,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
                     display: user?.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                     color: 'white', fontWeight: 700, fontSize: 28,
-                    boxShadow: '0 2px 8px rgba(244,132,95,0.25)'
+                    boxShadow: '0 2px 8px rgba(232,133,61,0.25)'
                   }}>
                     {user?.name?.charAt(0) || '?'}
                   </div>
@@ -3432,6 +3662,28 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
+            {/* Profile completion banner */}
+            <div style={{
+              maxWidth: 600,
+              marginBottom: 16,
+              padding: '12px 16px',
+              borderRadius: 10,
+              background: 'var(--orange-50, #fff7ed)',
+              border: '1px solid var(--orange-200, #fed7aa)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              fontSize: 14,
+              color: 'var(--orange-700, #c2410c)',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span>Update your profile to help agents find you.</span>
+            </div>
+
             {/* Profile editing sub-tabs */}
             <div className="settings-tabs">
               {['Profile', 'Skills', 'Languages', 'Social'].map(tab => (
@@ -3463,7 +3715,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       country_code: locationData.country_code || user?.country_code,
                       hourly_rate: parseInt(formData.get('hourly_rate')) || 25,
                       bio: formData.get('bio'),
-                      travel_radius: parseInt(formData.get('travel_radius')) || 25
+                      travel_radius: parseInt(formData.get('travel_radius')) || 25,
+                      gender: profileGender || null
                     }
                     if (profileTimezone) payload.timezone = profileTimezone
                     const res = await fetch(`${API_URL}/humans/profile`, {
@@ -3477,9 +3730,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                         localStorage.setItem('user', JSON.stringify(updatedUser))
                       }
-                      toast.success('Profile updated!')
+                      const hasSkills = Array.isArray(data?.user?.skills || user?.skills) && (data?.user?.skills || user?.skills).length > 0
+                      const hasLangs = Array.isArray(data?.user?.languages || user?.languages) && (data?.user?.languages || user?.languages).length > 0
+                      if (!hasSkills) toast.success('Profile saved! Next: add your skills')
+                      else if (!hasLangs) toast.success('Profile saved! Next: add your languages')
+                      else toast.success('Profile updated')
                       setProfileLocation(null)
-                      setTimeout(() => window.location.reload(), 1000)
+                      setTimeout(() => window.location.reload(), 1500)
                     } else {
                       const err = await res.json()
                       toast.error(err.error || 'Unknown error')
@@ -3505,6 +3762,42 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </div>
 
                   <div className="dashboard-v4-form-group">
+                    <label className="dashboard-v4-form-label">Gender</label>
+                    <div style={{
+                      display: 'flex',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))',
+                      overflow: 'hidden',
+                    }}>
+                      {['Man', 'Woman', 'Other'].map((option, idx) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setProfileGender(option.toLowerCase())}
+                          style={{
+                            flex: 1,
+                            padding: '8px 16px',
+                            border: 'none',
+                            borderRight: idx < 2 ? '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))' : 'none',
+                            background: profileGender === option.toLowerCase()
+                              ? 'var(--orange-500, #f4845f)'
+                              : 'var(--bg-primary, white)',
+                            color: profileGender === option.toLowerCase()
+                              ? 'white'
+                              : 'var(--text-secondary)',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="dashboard-v4-form-group">
                     <label className="dashboard-v4-form-label">Headline</label>
                     <input type="text" name="headline" defaultValue={user?.headline || ''} maxLength={120} className="dashboard-v4-form-input" placeholder="e.g. Professional Photographer & Drone Pilot" />
                     <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>A short tagline that appears on your profile card</p>
@@ -3514,6 +3807,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                       <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
                       <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Your asking rate. Actual pay is set per task by the agent.</p>
                     </div>
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                       <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
@@ -3533,7 +3827,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Bio</label>
-                    <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Tell agents about yourself..." />
+                    <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Describe your experience, availability, and what makes you great at tasks." />
                   </div>
 
                   <button type="submit" className="dashboard-v4-form-submit">Save Changes</button>
@@ -3546,12 +3840,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     {skillsList.map((skill, idx) => (
                       <span key={idx} style={{
                         padding: '6px 12px',
-                        background: 'rgba(244,132,95,0.08)',
+                        background: '#F3F4F6',
                         borderRadius: 999,
                         fontSize: 13,
-                        color: '#E07A5F',
+                        color: '#374151',
                         fontWeight: 500,
-                        border: '1px solid rgba(244,132,95,0.12)',
+                        border: '1px solid rgba(55,65,81,0.08)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6
@@ -3560,7 +3854,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         <button
                           type="button"
                           onClick={() => setSkillsList(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#E07A5F', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#1A1A1A'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
                         >
                           <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
                         </button>
@@ -3598,8 +3894,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           setNewSkillInput('')
                         }
                       }}
-                      className="dashboard-v4-form-submit"
-                      style={{ width: 'auto', margin: 0, padding: '10px 20px' }}
+                      className="v4-btn v4-btn-primary"
+                      style={{ padding: '10px 20px', flexShrink: 0 }}
                     >
                       Add
                     </button>
@@ -3620,8 +3916,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                           }
-                          toast.success('Skills updated!')
-                          setTimeout(() => window.location.reload(), 1000)
+                          const hasLangs = Array.isArray(data?.user?.languages || user?.languages) && (data?.user?.languages || user?.languages).length > 0
+                          const hasSocial = data?.user?.social_links && Object.keys(data.user.social_links).length > 0
+                          if (!hasLangs) toast.success('Skills saved! Next: add your languages')
+                          else if (!hasSocial) toast.success('Skills saved! Next: add your social links')
+                          else toast.success('Skills updated')
+                          setTimeout(() => window.location.reload(), 1500)
                         } else {
                           const err = await res.json()
                           toast.error(err.error || 'Unknown error')
@@ -3694,8 +3994,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           setNewLanguageInput('')
                         }
                       }}
-                      className="dashboard-v4-form-submit"
-                      style={{ width: 'auto', margin: 0, padding: '10px 20px' }}
+                      className="v4-btn v4-btn-primary"
+                      style={{ padding: '10px 20px', flexShrink: 0 }}
                     >
                       Add
                     </button>
@@ -3716,8 +4016,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                           }
-                          toast.success('Languages updated!')
-                          setTimeout(() => window.location.reload(), 1000)
+                          const hasSocial = data?.user?.social_links && Object.keys(data.user.social_links).length > 0
+                          if (!hasSocial) toast.success('Languages saved! Next: add your social links')
+                          else toast.success('Languages updated')
+                          setTimeout(() => window.location.reload(), 1500)
                         } else {
                           const err = await res.json()
                           toast.error(err.error || 'Unknown error')
@@ -3753,8 +4055,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                         localStorage.setItem('user', JSON.stringify(updatedUser))
                       }
-                      toast.success('Social links updated!')
-                      setTimeout(() => window.location.reload(), 1000)
+                      toast.success('Social links updated')
+                      setTimeout(() => window.location.reload(), 1500)
                     } else {
                       const err = await res.json()
                       toast.error(err.error || 'Unknown error')
@@ -3800,11 +4102,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
         {/* Settings Tab */}
         {activeTab === 'settings' && (
-          <div>
+          <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <h1 className="dashboard-v4-page-title">Settings</h1>
 
+            {/* Membership & Billing */}
+            <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading...</div>}>
+              <MembershipBilling
+                user={user}
+                toast={toast}
+                onUserUpdate={(updates) => {
+                  const updatedUser = { ...user, ...updates }
+                  setUser(updatedUser)
+                  localStorage.setItem('user', JSON.stringify(updatedUser))
+                }}
+              />
+            </Suspense>
+
             {/* Mode Toggle */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Mode</h2>
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -3824,7 +4139,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {/* Available for Work — Working mode only */}
             {!hiringMode && (
-              <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Availability</h2>
                 <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3864,7 +4179,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         cursor: 'pointer',
                         position: 'relative',
                         transition: 'background 0.2s',
-                        background: user?.availability === 'available' ? '#10B981' : '#D1D5DB',
+                        background: user?.availability === 'available' ? '#16A34A' : '#D1D5DB',
                         flexShrink: 0
                       }}
                     >
@@ -3886,7 +4201,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             )}
 
             {/* Notification Preferences */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notifications</h2>
 
               {/* Channel toggle */}
@@ -3955,7 +4270,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </div>
 
             {/* Account */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
+            <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
 
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
@@ -3985,11 +4300,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </button>
 
               <div style={{ padding: 16, border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-lg)', background: 'rgba(239,68,68,0.04)' }}>
-                <p style={{ fontWeight: 500, color: '#EF4444', marginBottom: 4, fontSize: 14 }}>Danger Zone</p>
+                <p style={{ fontWeight: 500, color: '#FF5F57', marginBottom: 4, fontSize: 14 }}>Danger Zone</p>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Deactivating your account hides your profile and pauses all activity. You can reactivate anytime by signing back in.</p>
                 <button
                   className="v4-btn v4-btn-secondary"
-                  style={{ fontSize: 13, color: '#EF4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                  style={{ fontSize: 13, color: '#FF5F57', borderColor: 'rgba(239,68,68,0.3)' }}
                   onClick={() => {
                     if (window.confirm('Are you sure you want to deactivate your account? Your profile will be hidden and all active tasks will be paused. You can reactivate by signing back in.')) {
                       toast.success('Account deactivated')
@@ -4036,7 +4351,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             if (!party?.last_active_at) return { status: 'offline', label: 'Offline' }
             const diff = Date.now() - new Date(party.last_active_at).getTime()
             if (diff < 5 * 60 * 1000) return { status: 'online', label: 'Online', color: '#22C55E' }
-            if (diff < 30 * 60 * 1000) return { status: 'idle', label: 'Away', color: '#F59E0B' }
+            if (diff < 30 * 60 * 1000) return { status: 'idle', label: 'Away', color: '#FEBC2E' }
             return { status: 'offline', label: 'Offline', color: '#9CA3AF' }
           }
           // Helper: relative time
@@ -4128,7 +4443,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 {selectedConversation && activeConv ? (
                   <>
                     {/* Thread Header: back button + other party + task link + online status */}
-                    <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(26,26,26,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
+                    <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
                       <button onClick={() => setSelectedConversation(null)} className="msg-back-btn" style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)' }}>
                         ←
                       </button>
@@ -4403,9 +4718,8 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
     <div className="mcp-v4">
       <header className="mcp-v4-header">
         <div className="mcp-v4-header-inner">
-          <a href="/" className="logo-v4">
-            <div className="logo-mark-v4">irl</div>
-            <span className="logo-name-v4">irlwork.ai</span>
+          <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+            <Logo variant="header" theme="light" />
           </a>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
             <a href="/" className="mcp-v4-nav-link">← Home</a>
@@ -4452,7 +4766,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
                 <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
                 <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Open workflows &bull; Best practices &bull; Rate limits</p>
                 {keys.length > 0 && (
-                  <p style={{ color: '#10B981', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
+                  <p style={{ color: '#16A34A', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
                 )}
               </div>
             </div>
@@ -4534,7 +4848,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
                         justifyContent: 'space-between',
                         alignItems: 'center'
                       }}>
-                        <span style={{ color: '#10B981' }}>{key.key_prefix}</span>
+                        <span style={{ color: '#16A34A' }}>{key.key_prefix}</span>
                         <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
                       </div>
                     ))}
@@ -4729,7 +5043,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
                 <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
                   <li>Connect your bank account via Stripe Connect</li>
                   <li>Complete tasks and submit proof of work</li>
-                  <li>Receive 85% of the task budget (15% platform fee)</li>
+                  <li>Receive 90% of the task budget (10% platform fee)</li>
                   <li>48-hour hold after approval for dispute protection</li>
                   <li>Funds deposited directly to your bank account</li>
                 </ul>
@@ -5091,6 +5405,13 @@ function App() {
       debug('[Auth] Bare /dashboard, redirecting to mode-specific URL')
       const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
       navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
+    } else if (path === '/messages' && user) {
+      // Redirect /messages to dashboard messages tab
+      const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
+      navigate(savedHiring ? '/dashboard/hiring/messages' : '/dashboard/working/messages')
+    } else if (path === '/messages' && !user) {
+      const returnTo = encodeURIComponent('/messages')
+      navigate(`/auth?returnTo=${returnTo}`)
     } else if (path === '/browse') {
       // Redirect bare /browse to /browse/tasks (or /browse/humans if legacy ?mode=humans)
       const browseParams = new URLSearchParams(window.location.search)
@@ -5159,8 +5480,12 @@ function App() {
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/connect-agent') return <ConnectAgentPage />
+    if (path === '/premium') return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
+    if (path === '/privacy') return <PrivacyPage />
+    if (path === '/terms') return <TermsPage />
+    if (path === '/thesis') return <ThesisPage />
     if (path === '/browse' || path === '/browse/tasks' || path === '/browse/humans') return <Suspense fallback={<Loading />}><BrowsePage user={user} navigate={navigate} /></Suspense>
 
     // Homepage
