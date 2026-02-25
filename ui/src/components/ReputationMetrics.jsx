@@ -6,7 +6,7 @@ const styles = {
   statCard: 'bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col',
   statValue: 'text-2xl font-bold text-white mb-1',
   statLabel: 'text-sm text-gray-400',
-  badge: 'px-3 py-1 rounded-full text-sm font-medium',
+  badge: 'px-3 py-1 rounded-[6px] text-sm font-medium',
   progressBar: 'w-full h-2 bg-white/10 rounded-full overflow-hidden',
   progressFill: 'h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all duration-300',
 }

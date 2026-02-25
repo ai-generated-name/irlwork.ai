@@ -333,7 +333,7 @@ export default function AdminDashboard({ user }) {
             <span>{queue.icon}</span>
             <span>{queue.label}</span>
             {queue.count > 0 && (
-              <span className={`px-2 py-0.5 rounded-full text-xs ${
+              <span className={`px-2 py-0.5 rounded-[6px] text-xs ${
                 activeQueue === queue.id ? 'bg-white/20' : 'bg-gray-200'
               }`}>
                 {queue.count}
@@ -579,7 +579,7 @@ function QueueItem({ item, queue, onReleasePayment, onCancelAssignment, loading 
               {item.title || item.task?.title || `Task #${item.id?.substring(0, 8)}`}
             </h3>
             {item.hours_pending && (
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              <span className={`px-2 py-0.5 rounded-[6px] text-xs font-medium ${
                 item.hours_pending > 48 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
               }`}>
                 {item.hours_pending}h pending
@@ -658,7 +658,7 @@ function ReportQueueItem({ report, onResolve, loading }) {
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+            <span className={`px-2 py-0.5 rounded-[6px] text-xs font-medium ${
               isSevere ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
             }`}>
               {REASON_LABELS[report.reason] || report.reason}
@@ -667,12 +667,12 @@ function ReportQueueItem({ report, onResolve, loading }) {
               {report.task?.title || 'Unknown Task'}
             </h3>
             {report.task?.report_count > 1 && (
-              <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 font-medium">
+              <span className="px-2 py-0.5 rounded-[6px] text-xs bg-red-100 text-red-700 font-medium">
                 {report.task.report_count} reports
               </span>
             )}
             {report.task?.escrow_status === 'deposited' && (
-              <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">
+              <span className="px-2 py-0.5 rounded-[6px] text-xs bg-blue-100 text-blue-700 font-medium">
                 Active Escrow
               </span>
             )}
@@ -755,7 +755,7 @@ function ReportResolveModal({ report, onClose, onConfirm, loading }) {
         {/* Report details */}
         <div className="bg-gray-50 rounded-lg p-3 mb-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+            <span className={`px-2 py-0.5 rounded-[6px] text-xs font-medium ${
               ['scam_fraud', 'illegal'].includes(report.reason) ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
             }`}>
               {REASON_LABELS[report.reason] || report.reason}
@@ -895,13 +895,13 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${urgencyStyles[item.urgency]}`}>
+            <span className={`px-2 py-0.5 rounded-[6px] text-xs font-semibold ${urgencyStyles[item.urgency]}`}>
               {item.urgency.toUpperCase()}
             </span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[item.status]}`}>
+            <span className={`px-2 py-0.5 rounded-[6px] text-xs font-medium ${statusStyles[item.status]}`}>
               {item.status === 'in_review' ? 'In Review' : item.status.charAt(0).toUpperCase() + item.status.slice(1)}
             </span>
-            <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
+            <span className="px-2 py-0.5 rounded-[6px] text-xs bg-gray-100 text-gray-600">
               {typeLabels[item.type] || item.type}
             </span>
             <span className="text-xs text-gray-400">{timeAgo(item.created_at)}</span>
