@@ -32,7 +32,7 @@ export default class ErrorBoundary extends React.Component {
       return (
         <div style={{
           minHeight: '100vh',
-          background: '#FAF8F5',
+          background: '#FAFAF8',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -46,7 +46,7 @@ export default class ErrorBoundary extends React.Component {
             borderRadius: 16,
             padding: 48,
             boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-            border: '1px solid rgba(26,26,26,0.06)',
+            border: '1px solid rgba(0,0,0,0.06)',
           }}>
             <div style={{
               width: 64,
@@ -71,7 +71,7 @@ export default class ErrorBoundary extends React.Component {
             </h2>
             <p style={{
               fontSize: 15,
-              color: '#525252',
+              color: '#333333',
               lineHeight: 1.6,
               marginBottom: 16,
             }}>
@@ -83,18 +83,18 @@ export default class ErrorBoundary extends React.Component {
               <summary style={{
                 cursor: 'pointer',
                 fontSize: 13,
-                color: '#8A8A8A',
+                color: '#888888',
                 marginBottom: 8,
               }}>
                 Error details
               </summary>
               <div style={{
-                background: '#F5F2ED',
+                background: '#F5F3F0',
                 borderRadius: 8,
                 padding: 12,
                 fontSize: 12,
                 fontFamily: 'monospace',
-                color: '#525252',
+                color: '#333333',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
                 maxHeight: 200,
@@ -110,7 +110,7 @@ export default class ErrorBoundary extends React.Component {
                 onClick={this.handleGoHome}
                 style={{
                   padding: '14px 32px',
-                  background: '#E07A5F',
+                  background: '#E8853D',
                   color: 'white',
                   fontWeight: 600,
                   fontSize: 15,
@@ -119,8 +119,8 @@ export default class ErrorBoundary extends React.Component {
                   cursor: 'pointer',
                   transition: 'background 0.2s',
                 }}
-                onMouseOver={(e) => e.currentTarget.style.background = '#c45f4a'}
-                onMouseOut={(e) => e.currentTarget.style.background = '#E07A5F'}
+                onMouseOver={(e) => e.currentTarget.style.background = '#D4703A'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#E8853D'}
               >
                 Go to Homepage
               </button>
@@ -129,16 +129,16 @@ export default class ErrorBoundary extends React.Component {
                 style={{
                   padding: '14px 32px',
                   background: 'transparent',
-                  color: '#525252',
+                  color: '#333333',
                   fontWeight: 600,
                   fontSize: 15,
                   borderRadius: 12,
-                  border: '2px solid rgba(26,26,26,0.12)',
+                  border: '2px solid rgba(0,0,0,0.12)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.background = '#F5F2ED'; e.currentTarget.style.borderColor = 'rgba(26,26,26,0.2)' }}
-                onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(26,26,26,0.12)' }}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#F5F3F0'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.2)' }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)' }}
               >
                 Refresh Page
               </button>

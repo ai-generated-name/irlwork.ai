@@ -12,6 +12,7 @@ export default function NotFoundPage() {
       color: 'var(--text-primary)',
       fontFamily: 'var(--font-body)',
       padding: 'var(--space-6)',
+      paddingTop: 80,
       position: 'relative',
       overflow: 'hidden',
     }}>
@@ -19,7 +20,7 @@ export default function NotFoundPage() {
       <div style={{
         position: 'absolute',
         inset: 0,
-        backgroundImage: 'linear-gradient(rgba(26,26,26,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(26,26,26,0.03) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)',
         backgroundSize: '60px 60px',
         pointerEvents: 'none',
       }} />
@@ -32,7 +33,7 @@ export default function NotFoundPage() {
         transform: 'translateX(-50%)',
         width: '400px',
         height: '400px',
-        background: 'radial-gradient(circle, rgba(244,132,95,0.08) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(232,133,61,0.08) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
 
@@ -46,7 +47,7 @@ export default function NotFoundPage() {
         <div style={{
           width: '80px',
           height: '80px',
-          background: 'rgba(244, 132, 95, 0.1)',
+          background: 'rgba(232, 133, 61, 0.1)',
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
