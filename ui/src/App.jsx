@@ -2247,18 +2247,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           )}
         </div>
 
-        {/* Connect to AI Agent CTA - only show in hiring mode */}
-        {hiringMode && (
-          <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-            <button
-              onClick={() => window.location.href = '/connect-agent'}
-              className="dashboard-v4-connect-agent-btn"
-            >
-              <span style={{ display: 'flex', alignItems: 'center' }}><Bot size={18} /></span>
-              <span>Connect to AI Agent</span>
-            </button>
-          </div>
-        )}
+        {/* Bottom "Connect to AI Agent" removed — top banner version with chevron kept */}
+
+        {/* Upgrade to Premium */}
+        <div style={{ padding: '0 var(--space-4) var(--space-3)' }}>
+          <button
+            onClick={() => toast.info('Premium coming soon!')}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              background: '#1A1A1A',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
+              fontFamily: 'var(--font-display)',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#333333'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#1A1A1A'}
+          >
+            <Sparkles size={16} style={{ color: '#F5A623' }} />
+            Upgrade to Premium
+          </button>
+        </div>
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(26, 26, 26, 0.06)' }}>
@@ -2782,10 +2800,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <p className="dashboard-v4-empty-text">Loading...</p>
                   </div>
                 ) : postedTasks.length === 0 ? (
-                  <div className="dashboard-v4-empty">
-                    <div className="dashboard-v4-empty-icon">{Icons.task}</div>
-                    <p className="dashboard-v4-empty-title">No tasks posted yet</p>
-                    <p className="dashboard-v4-empty-text">Create a task to get started</p>
+                  <div className="dashboard-v4-empty" style={{ padding: '40px 24px' }}>
+                    <div className="dashboard-v4-empty-icon" style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      <ClipboardList size={28} style={{ color: 'var(--text-tertiary)' }} />
+                    </div>
+                    <p className="dashboard-v4-empty-title" style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>No tasks posted yet</p>
+                    <p className="dashboard-v4-empty-text" style={{ marginBottom: 20, color: 'var(--text-secondary)' }}>Post a task and get matched with verified humans near you.</p>
+                    <button
+                      className="v4-btn v4-btn-primary"
+                      onClick={() => { setTasksSubTab('create'); window.history.pushState({}, '', '/dashboard/hiring/my-tasks/create'); }}
+                      style={{ margin: '0 auto' }}
+                    >
+                      <Plus size={16} /> Create Task
+                    </button>
                   </div>
                 ) : (
                   <div>
@@ -3238,6 +3265,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </button>
             </div>
 
+            {/* Profile warning banner — auto-dismiss when profile is meaningfully complete */}
+            {(() => {
+              const hasPhoto = !!user?.avatar_url
+              const hasBio = !!(user?.bio && user.bio.trim().length > 10)
+              const hasSkills = Array.isArray(user?.skills) && user.skills.length > 0
+              const hasLang = Array.isArray(user?.languages) && user.languages.length > 0
+              const criteria = [hasPhoto, hasBio, hasSkills, hasLang]
+              const metCount = criteria.filter(Boolean).length
+              if (metCount >= 3) return null
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '12px 16px', marginBottom: 20,
+                  background: 'rgba(245, 166, 35, 0.06)',
+                  border: '1px solid rgba(245, 166, 35, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  position: 'relative',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                  <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>Update your profile to help agents find you</span>
+                  <button
+                    onClick={(e) => e.currentTarget.parentElement.style.display = 'none'}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', fontSize: 16, lineHeight: 1 }}
+                  >
+                    &times;
+                  </button>
+                </div>
+              )
+            })()}
+
             <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
               {/* Avatar Upload */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
@@ -3477,9 +3534,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                         localStorage.setItem('user', JSON.stringify(updatedUser))
                       }
-                      toast.success('Profile updated!')
+                      const hasSkills = Array.isArray(data?.user?.skills || user?.skills) && (data?.user?.skills || user?.skills).length > 0
+                      const hasLangs = Array.isArray(data?.user?.languages || user?.languages) && (data?.user?.languages || user?.languages).length > 0
+                      if (!hasSkills) toast.success('Profile saved! Next: add your skills')
+                      else if (!hasLangs) toast.success('Profile saved! Next: add your languages')
+                      else toast.success('Profile updated')
                       setProfileLocation(null)
-                      setTimeout(() => window.location.reload(), 1000)
+                      setTimeout(() => window.location.reload(), 1500)
                     } else {
                       const err = await res.json()
                       toast.error(err.error || 'Unknown error')
@@ -3514,6 +3575,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                       <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
                       <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Your asking rate. Actual pay is set per task by the agent.</p>
                     </div>
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                       <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
@@ -3533,7 +3595,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Bio</label>
-                    <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Tell agents about yourself..." />
+                    <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Describe your experience, availability, and what makes you great at tasks." />
                   </div>
 
                   <button type="submit" className="dashboard-v4-form-submit">Save Changes</button>
@@ -3546,12 +3608,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     {skillsList.map((skill, idx) => (
                       <span key={idx} style={{
                         padding: '6px 12px',
-                        background: 'rgba(244,132,95,0.08)',
+                        background: '#F3F4F6',
                         borderRadius: 999,
                         fontSize: 13,
-                        color: '#E07A5F',
+                        color: '#374151',
                         fontWeight: 500,
-                        border: '1px solid rgba(244,132,95,0.12)',
+                        border: '1px solid rgba(55,65,81,0.08)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6
@@ -3560,7 +3622,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         <button
                           type="button"
                           onClick={() => setSkillsList(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#E07A5F', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#1A1A1A'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
                         >
                           <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
                         </button>
@@ -3598,8 +3662,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           setNewSkillInput('')
                         }
                       }}
-                      className="dashboard-v4-form-submit"
-                      style={{ width: 'auto', margin: 0, padding: '10px 20px' }}
+                      className="v4-btn v4-btn-primary"
+                      style={{ padding: '10px 20px', flexShrink: 0 }}
                     >
                       Add
                     </button>
@@ -3620,8 +3684,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                           }
-                          toast.success('Skills updated!')
-                          setTimeout(() => window.location.reload(), 1000)
+                          const hasLangs = Array.isArray(data?.user?.languages || user?.languages) && (data?.user?.languages || user?.languages).length > 0
+                          const hasSocial = data?.user?.social_links && Object.keys(data.user.social_links).length > 0
+                          if (!hasLangs) toast.success('Skills saved! Next: add your languages')
+                          else if (!hasSocial) toast.success('Skills saved! Next: add your social links')
+                          else toast.success('Skills updated')
+                          setTimeout(() => window.location.reload(), 1500)
                         } else {
                           const err = await res.json()
                           toast.error(err.error || 'Unknown error')
@@ -3694,8 +3762,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           setNewLanguageInput('')
                         }
                       }}
-                      className="dashboard-v4-form-submit"
-                      style={{ width: 'auto', margin: 0, padding: '10px 20px' }}
+                      className="v4-btn v4-btn-primary"
+                      style={{ padding: '10px 20px', flexShrink: 0 }}
                     >
                       Add
                     </button>
@@ -3716,8 +3784,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                           }
-                          toast.success('Languages updated!')
-                          setTimeout(() => window.location.reload(), 1000)
+                          const hasSocial = data?.user?.social_links && Object.keys(data.user.social_links).length > 0
+                          if (!hasSocial) toast.success('Languages saved! Next: add your social links')
+                          else toast.success('Languages updated')
+                          setTimeout(() => window.location.reload(), 1500)
                         } else {
                           const err = await res.json()
                           toast.error(err.error || 'Unknown error')
@@ -3753,8 +3823,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                         localStorage.setItem('user', JSON.stringify(updatedUser))
                       }
-                      toast.success('Social links updated!')
-                      setTimeout(() => window.location.reload(), 1000)
+                      toast.success('Social links updated')
+                      setTimeout(() => window.location.reload(), 1500)
                     } else {
                       const err = await res.json()
                       toast.error(err.error || 'Unknown error')
@@ -3800,11 +3870,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
         {/* Settings Tab */}
         {activeTab === 'settings' && (
-          <div>
+          <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <h1 className="dashboard-v4-page-title">Settings</h1>
 
             {/* Mode Toggle */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Mode</h2>
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -3824,7 +3894,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {/* Available for Work — Working mode only */}
             {!hiringMode && (
-              <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Availability</h2>
                 <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3886,7 +3956,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             )}
 
             {/* Notification Preferences */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notifications</h2>
 
               {/* Channel toggle */}
@@ -3955,7 +4025,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </div>
 
             {/* Account */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
+            <div className="dashboard-v4-form" style={{ marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
 
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>

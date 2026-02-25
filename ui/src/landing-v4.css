@@ -5568,8 +5568,8 @@
 }
 
 .dashboard-v4-stat-icon--orange {
-  background: rgba(244, 132, 95, 0.12);
-  color: var(--orange-600);
+  background: rgba(22, 163, 74, 0.1);
+  color: #16A34A;
 }
 
 .dashboard-v4-stat-icon--blue {
@@ -5606,7 +5606,7 @@
 }
 
 .dashboard-v4-stat-value.orange {
-  color: var(--orange-600);
+  color: #16A34A;
 }
 
 .dashboard-v4-stat-value.success {
@@ -6016,7 +6016,7 @@
 .dashboard-v4-form-submit {
   width: 100%;
   padding: var(--space-4);
-  background: linear-gradient(135deg, var(--orange-600) 0%, var(--orange-500) 100%);
+  background: #1A1A1A;
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -6027,9 +6027,17 @@
   transition: all 0.2s var(--ease-smooth);
 }
 
+@media (min-width: 641px) {
+  .dashboard-v4-form-submit {
+    width: auto;
+    margin-left: auto;
+    display: block;
+    padding: var(--space-3) var(--space-6);
+  }
+}
+
 .dashboard-v4-form-submit:hover {
-  background: linear-gradient(135deg, var(--orange-700) 0%, var(--orange-600) 100%);
-  box-shadow: var(--shadow-glow-orange);
+  background: #333333;
 }
 
 .dashboard-v4-form-submit:disabled {
@@ -7657,8 +7665,8 @@ select.select-v4-dark option:checked,
 
 .working-dash-stat-icon--orange,
 .hiring-dash-stat-icon--orange {
-  background: rgba(244, 132, 95, 0.12);
-  color: var(--orange-600);
+  background: rgba(22, 163, 74, 0.1);
+  color: #16A34A;
 }
 
 .working-dash-stat-icon--blue,
@@ -7696,7 +7704,7 @@ select.select-v4-dark option:checked,
 
 .working-dash-stat-value--orange,
 .hiring-dash-stat-value--orange {
-  color: var(--orange-600);
+  color: #16A34A;
 }
 
 /* Monthly Earnings Chart */

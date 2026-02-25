@@ -201,6 +201,10 @@ export function ButtonV4({
       color: v4.colors.teal700,
       border: `2px solid ${v4.colors.teal700}`,
     },
+    charcoal: {
+      background: '#1A1A1A',
+      color: '#FFFFFF',
+    },
     ghost: {
       background: 'transparent',
       color: v4.colors.textSecondary,
