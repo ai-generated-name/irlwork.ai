@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Check, Sparkles, Crown, ArrowLeft, Loader2, RefreshCw } from 'lucide-react'
+import { BadgeCheck, ArrowLeft, Loader2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
@@ -24,7 +24,7 @@ const TIERS = [
     name: 'Builder',
     price_monthly: 10,
     price_annual: 90,
-    description: 'For active users who want lower fees',
+    description: 'Enhanced visibility and lower fees',
     badge: { label: 'Builder', color: '#3B82F6' },
     features: [
       { label: 'Badge', value: 'Blue', highlight: true },
@@ -39,7 +39,7 @@ const TIERS = [
     name: 'Pro',
     price_monthly: 30,
     price_annual: 270,
-    description: 'Maximum visibility and lowest fees',
+    description: 'Max visibility and lowest fees',
     badge: { label: 'Pro', color: '#F59E0B' },
     popular: true,
     features: [
@@ -58,17 +58,23 @@ export default function PremiumPage({ user }) {
   const [syncing, setSyncing] = useState(false)
   const [message, setMessage] = useState(null)
   const [billingPeriod, setBillingPeriod] = useState('monthly')
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768)
+  const [expandedTier, setExpandedTier] = useState(null)
 
   const currentTier = user?.subscription_tier || 'free'
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Check URL params for success/cancel status
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('subscription') === 'success') {
       setMessage({ type: 'success', text: 'Subscription activated! Your plan has been upgraded.' })
-      // Trigger a sync check to ensure tier is updated
       fetchSubscription(true)
-      // Clean URL
       window.history.replaceState({}, '', '/premium')
     } else if (params.get('subscription') === 'canceled') {
       setMessage({ type: 'info', text: 'Checkout was canceled. No changes were made.' })
@@ -168,7 +174,7 @@ export default function PremiumPage({ user }) {
       const formatted = effectiveMonthly % 1 === 0 ? effectiveMonthly.toString() : effectiveMonthly.toFixed(2)
       return {
         main: formatted,
-        sub: `$${tier.price_annual}/year, billed annually`,
+        sub: `$${tier.price_annual}/yr billed annually`,
         savings: `Save $${tier.price_monthly * 12 - tier.price_annual}/yr`,
       }
     }
@@ -176,16 +182,19 @@ export default function PremiumPage({ user }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fafafa' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '16px 24px' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/dashboard" style={{ color: '#6b7280', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <ArrowLeft size={20} />
+      <div style={{
+        background: 'var(--bg-secondary)', borderBottom: '1px solid rgba(26,26,26,0.06)',
+        padding: isMobile ? '12px 16px' : '16px 24px',
+      }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 12 }}>
+          <a href="/dashboard" style={{ color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <ArrowLeft size={isMobile ? 18 : 20} />
           </a>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111', margin: 0 }}>Upgrade Your Plan</h1>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>Lower fees, higher priority, unlimited posting</p>
+            <h1 style={{ fontSize: isMobile ? 17 : 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: 'var(--font-display)' }}>Upgrade Your Plan</h1>
+            <p style={{ fontSize: isMobile ? 12 : 13, color: 'var(--text-secondary)', margin: 0 }}>Lower fees, higher priority, unlimited posting</p>
           </div>
         </div>
       </div>
@@ -193,10 +202,10 @@ export default function PremiumPage({ user }) {
       {/* Message banner */}
       {message && (
         <div style={{
-          maxWidth: 1100, margin: '16px auto 0', padding: '12px 20px', borderRadius: 8,
-          background: message.type === 'success' ? '#ecfdf5' : message.type === 'error' ? '#fef2f2' : '#eff6ff',
+          maxWidth: 1100, margin: '16px auto 0', padding: isMobile ? '10px 16px' : '12px 20px', borderRadius: 'var(--radius-md)',
+          background: message.type === 'success' ? 'var(--success-bg)' : message.type === 'error' ? 'var(--error-bg)' : 'rgba(59,130,246,0.08)',
           color: message.type === 'success' ? '#065f46' : message.type === 'error' ? '#991b1b' : '#1e40af',
-          fontSize: 14, fontWeight: 500,
+          fontSize: isMobile ? 13 : 14, fontWeight: 500, marginLeft: isMobile ? 16 : 'auto', marginRight: isMobile ? 16 : 'auto',
         }}>
           {message.text}
         </div>
@@ -205,21 +214,22 @@ export default function PremiumPage({ user }) {
       {/* Cancellation notice */}
       {cancelDate && (
         <div style={{
-          maxWidth: 1100, margin: '16px auto 0', padding: '12px 20px', borderRadius: 8,
-          background: '#fef9c3', color: '#854d0e', fontSize: 14,
+          maxWidth: 1100, margin: '16px auto 0', padding: isMobile ? '10px 16px' : '12px 20px', borderRadius: 'var(--radius-md)',
+          background: 'var(--warning-bg)', color: '#854d0e', fontSize: isMobile ? 13 : 14,
+          marginLeft: isMobile ? 16 : 'auto', marginRight: isMobile ? 16 : 'auto',
         }}>
           Your plan will downgrade to Free on {cancelDate}. You can re-activate anytime before then.
         </div>
       )}
 
       {/* Billing period toggle */}
-      <div style={{ maxWidth: 1100, margin: '40px auto 0', padding: '0 24px' }}>
+      <div style={{ maxWidth: 1100, margin: isMobile ? '20px auto 0' : '40px auto 0', padding: isMobile ? '0 16px' : '0 24px' }}>
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 10 : 12,
         }}>
           <span style={{
-            fontSize: 14, fontWeight: billingPeriod === 'monthly' ? 600 : 400,
-            color: billingPeriod === 'monthly' ? '#111' : '#6b7280',
+            fontSize: isMobile ? 13 : 14, fontWeight: billingPeriod === 'monthly' ? 600 : 400,
+            color: billingPeriod === 'monthly' ? 'var(--text-primary)' : 'var(--text-tertiary)',
           }}>
             Monthly
           </span>
@@ -227,7 +237,7 @@ export default function PremiumPage({ user }) {
             onClick={() => setBillingPeriod(p => p === 'monthly' ? 'annual' : 'monthly')}
             style={{
               width: 48, height: 26, borderRadius: 13, border: 'none', padding: 0,
-              background: billingPeriod === 'annual' ? '#0f4c5c' : '#d1d5db',
+              background: billingPeriod === 'annual' ? 'var(--orange-600)' : '#d1d5db',
               position: 'relative', cursor: 'pointer', transition: 'background 0.2s',
             }}
           >
@@ -239,14 +249,14 @@ export default function PremiumPage({ user }) {
             }} />
           </button>
           <span style={{
-            fontSize: 14, fontWeight: billingPeriod === 'annual' ? 600 : 400,
-            color: billingPeriod === 'annual' ? '#111' : '#6b7280',
+            fontSize: isMobile ? 13 : 14, fontWeight: billingPeriod === 'annual' ? 600 : 400,
+            color: billingPeriod === 'annual' ? 'var(--text-primary)' : 'var(--text-tertiary)',
           }}>
             Annual
           </span>
           {billingPeriod === 'annual' && (
             <span style={{
-              background: '#ecfdf5', color: '#065f46', fontSize: 12, fontWeight: 600,
+              background: 'rgba(244,132,95,0.1)', color: 'var(--orange-700)', fontSize: isMobile ? 11 : 12, fontWeight: 600,
               padding: '3px 10px', borderRadius: 999, marginLeft: 4,
             }}>
               Save 25%
@@ -256,34 +266,56 @@ export default function PremiumPage({ user }) {
       </div>
 
       {/* Pricing cards */}
-      <div style={{ maxWidth: 1100, margin: '24px auto 40px', padding: '0 24px' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: 24,
-          alignItems: 'start',
-        }}>
+      <div style={{ maxWidth: 1100, margin: isMobile ? '16px auto 24px' : '24px auto 40px', padding: isMobile ? 0 : '0 24px' }}>
+        <div
+          className={isMobile ? 'premium-scroll-row' : undefined}
+          style={isMobile ? {
+            display: 'flex',
+            overflowX: 'auto',
+            gap: 12,
+            padding: '14px 16px 4px',
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            msOverflowStyle: 'none',
+            scrollbarWidth: 'none',
+          } : {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 24,
+            alignItems: 'start',
+          }}
+        >
           {TIERS.map(tier => {
             const isCurrent = currentTier === tier.id
             const isPopular = tier.popular
             const price = getDisplayPrice(tier)
+            const isExpanded = expandedTier === tier.id
 
             return (
               <div key={tier.id} style={{
-                background: '#fff',
-                borderRadius: 16,
-                border: isCurrent ? '2px solid #0f4c5c' : isPopular ? '2px solid #F59E0B' : '1px solid #e5e7eb',
-                padding: 32,
+                background: 'var(--bg-secondary)',
+                borderRadius: 'var(--radius-lg)',
+                border: isCurrent ? '2px solid var(--orange-600)' : isPopular ? '2px solid var(--orange-400)' : '1px solid rgba(26,26,26,0.06)',
+                padding: isMobile ? 16 : 28,
                 position: 'relative',
-                boxShadow: isPopular ? '0 4px 24px rgba(245,158,11,0.12)' : '0 1px 3px rgba(0,0,0,0.05)',
+                boxShadow: isPopular ? '0 4px 24px rgba(224,122,95,0.1)' : 'var(--shadow-sm)',
+                transition: 'box-shadow 0.2s, transform 0.2s',
+                ...(isMobile ? {
+                  minWidth: 200,
+                  maxWidth: 220,
+                  flex: '0 0 auto',
+                  scrollSnapAlign: 'start',
+                } : {}),
               }}>
                 {/* Popular badge */}
                 {isPopular && !isCurrent && (
                   <div style={{
-                    position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#fff',
-                    padding: '4px 16px', borderRadius: 999, fontSize: 12, fontWeight: 700,
-                    letterSpacing: '0.05em',
+                    position: 'absolute', top: isMobile ? -10 : -12, left: '50%', transform: 'translateX(-50%)',
+                    background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', color: '#fff',
+                    padding: isMobile ? '3px 10px' : '4px 16px', borderRadius: 999,
+                    fontSize: isMobile ? 10 : 12, fontWeight: 700,
+                    letterSpacing: '0.05em', fontFamily: 'var(--font-display)',
+                    whiteSpace: 'nowrap',
                   }}>
                     MOST POPULAR
                   </div>
@@ -292,67 +324,102 @@ export default function PremiumPage({ user }) {
                 {/* Current plan badge */}
                 {isCurrent && (
                   <div style={{
-                    position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
-                    background: '#0f4c5c', color: '#fff',
-                    padding: '4px 16px', borderRadius: 999, fontSize: 12, fontWeight: 700,
-                    letterSpacing: '0.05em',
+                    position: 'absolute', top: isMobile ? -10 : -12, left: '50%', transform: 'translateX(-50%)',
+                    background: 'var(--bg-dark)', color: '#fff',
+                    padding: isMobile ? '3px 10px' : '4px 16px', borderRadius: 999,
+                    fontSize: isMobile ? 10 : 12, fontWeight: 700,
+                    letterSpacing: '0.05em', fontFamily: 'var(--font-display)',
+                    whiteSpace: 'nowrap',
                   }}>
                     CURRENT PLAN
                   </div>
                 )}
 
                 {/* Tier header */}
-                <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
-                    {tier.id === 'pro' && <Crown size={20} color="#F59E0B" />}
-                    {tier.id === 'builder' && <Sparkles size={20} color="#3B82F6" />}
-                    <h2 style={{ fontSize: 22, fontWeight: 700, color: '#111', margin: 0 }}>{tier.name}</h2>
+                <div style={{ textAlign: 'center', marginBottom: isMobile ? 12 : 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: isMobile ? 4 : 8 }}>
+                    {tier.id === 'builder' && <BadgeCheck size={isMobile ? 16 : 20} color="#3B82F6" />}
+                    {tier.id === 'pro' && <BadgeCheck size={isMobile ? 16 : 20} color="#F59E0B" />}
+                    <h2 style={{ fontSize: isMobile ? 17 : 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: 'var(--font-display)' }}>{tier.name}</h2>
                   </div>
-                  <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>{tier.description}</p>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 2 }}>
-                    <span style={{ fontSize: 40, fontWeight: 800, color: '#111' }}>
-                      ${price.main}
-                    </span>
-                    <span style={{ fontSize: 14, color: '#6b7280' }}>/mo</span>
+                  <p style={{ fontSize: isMobile ? 11 : 13, color: 'var(--text-secondary)', margin: isMobile ? '0 0 8px' : '0 0 16px' }}>{tier.description}</p>
+                  <div style={{ minHeight: isMobile ? 50 : 70, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 2 }}>
+                      <span style={{ fontSize: isMobile ? 28 : 40, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                        ${price.main}
+                      </span>
+                      <span style={{ fontSize: isMobile ? 12 : 14, color: 'var(--text-tertiary)' }}>/mo</span>
+                    </div>
+                    {price.sub ? (
+                      <div style={{ fontSize: isMobile ? 10 : 12, color: 'var(--text-tertiary)', marginTop: isMobile ? 2 : 4 }}>
+                        {price.sub}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: isMobile ? 10 : 12, marginTop: isMobile ? 2 : 4, visibility: 'hidden' }}>&nbsp;</div>
+                    )}
+                    {isCurrent && subscription?.billing_period && (
+                      <div style={{ fontSize: isMobile ? 10 : 12, color: 'var(--orange-600)', marginTop: 2, fontWeight: 500 }}>
+                        {subscription.billing_period === 'annual' ? 'Annual plan' : 'Monthly plan'}
+                      </div>
+                    )}
                   </div>
-                  {price.sub && (
-                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                      {price.sub}
-                    </div>
-                  )}
-                  {isCurrent && subscription?.billing_period && (
-                    <div style={{ fontSize: 12, color: '#0f4c5c', marginTop: 4, fontWeight: 500 }}>
-                      {subscription.billing_period === 'annual' ? 'Annual plan' : 'Monthly plan'}
-                    </div>
-                  )}
                 </div>
 
                 {/* Features */}
-                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 20, marginBottom: 24 }}>
-                  {tier.features.map((f, i) => (
-                    <div key={i} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '10px 0', borderBottom: i < tier.features.length - 1 ? '1px solid #f9fafb' : 'none',
-                    }}>
-                      <span style={{ fontSize: 14, color: '#6b7280' }}>{f.label}</span>
-                      <span style={{
-                        fontSize: 14, fontWeight: 600,
-                        color: f.highlight ? '#0f4c5c' : '#374151',
+                {isMobile && !isExpanded ? (
+                  <button
+                    onClick={() => setExpandedTier(tier.id)}
+                    style={{
+                      width: '100%', border: 'none', background: 'none',
+                      borderTop: '1px solid rgba(26,26,26,0.04)',
+                      padding: '10px 0', marginBottom: 10, cursor: 'pointer',
+                      fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                    }}
+                  >
+                    View {tier.features.length} benefits <ChevronDown size={12} />
+                  </button>
+                ) : (
+                  <div style={{ borderTop: '1px solid rgba(26,26,26,0.04)', paddingTop: isMobile ? 10 : 20, marginBottom: isMobile ? 10 : 24 }}>
+                    {tier.features.map((f, i) => (
+                      <div key={i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: isMobile ? '6px 0' : '10px 0',
+                        borderBottom: i < tier.features.length - 1 ? '1px solid rgba(26,26,26,0.03)' : 'none',
                       }}>
-                        {f.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                        <span style={{ fontSize: isMobile ? 11 : 14, color: 'var(--text-secondary)' }}>{f.label}</span>
+                        <span style={{
+                          fontSize: isMobile ? 11 : 14, fontWeight: 600,
+                          color: f.highlight ? 'var(--orange-700)' : 'var(--text-primary)',
+                        }}>
+                          {f.value}
+                        </span>
+                      </div>
+                    ))}
+                    {isMobile && (
+                      <button
+                        onClick={() => setExpandedTier(null)}
+                        style={{
+                          width: '100%', border: 'none', background: 'none',
+                          padding: '6px 0 0', cursor: 'pointer',
+                          fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                        }}
+                      >
+                        Hide <ChevronUp size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* CTA */}
                 {isCurrent ? (
                   <button
                     disabled
                     style={{
-                      width: '100%', padding: '12px 0', borderRadius: 10,
-                      background: '#f3f4f6', color: '#9ca3af', border: 'none',
-                      fontSize: 14, fontWeight: 600, cursor: 'default',
+                      width: '100%', padding: isMobile ? '10px 0' : '12px 0', borderRadius: 'var(--radius-md)',
+                      background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', border: 'none',
+                      fontSize: isMobile ? 13 : 14, fontWeight: 600, cursor: 'default',
                     }}
                   >
                     Current Plan
@@ -363,9 +430,10 @@ export default function PremiumPage({ user }) {
                       onClick={handleManageSubscription}
                       disabled={loading === 'manage'}
                       style={{
-                        width: '100%', padding: '12px 0', borderRadius: 10,
-                        background: '#fff', color: '#374151', border: '1px solid #d1d5db',
-                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                        width: '100%', padding: isMobile ? '10px 0' : '12px 0', borderRadius: 'var(--radius-md)',
+                        background: 'var(--bg-secondary)', color: 'var(--text-primary)',
+                        border: '1px solid rgba(26,26,26,0.1)',
+                        fontSize: isMobile ? 13 : 14, fontWeight: 600, cursor: 'pointer',
                         opacity: loading === 'manage' ? 0.6 : 1,
                       }}
                     >
@@ -377,14 +445,14 @@ export default function PremiumPage({ user }) {
                     onClick={() => handleCheckout(tier.id)}
                     disabled={!!loading}
                     style={{
-                      width: '100%', padding: '12px 0', borderRadius: 10,
+                      width: '100%', padding: isMobile ? '10px 0' : '12px 0', borderRadius: 'var(--radius-md)',
                       background: tier.id === 'pro'
-                        ? 'linear-gradient(135deg, #F59E0B, #D97706)'
-                        : 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                        ? 'linear-gradient(135deg, var(--orange-600), var(--orange-500))'
+                        : 'var(--bg-dark)',
                       color: '#fff', border: 'none',
-                      fontSize: 14, fontWeight: 600, cursor: loading ? 'default' : 'pointer',
+                      fontSize: isMobile ? 13 : 14, fontWeight: 600, cursor: loading ? 'default' : 'pointer',
                       opacity: loading ? 0.6 : 1,
-                      transition: 'opacity 0.15s',
+                      transition: 'opacity 0.15s, transform 0.15s, box-shadow 0.15s',
                     }}
                   >
                     {loading === tier.id ? (
@@ -403,14 +471,14 @@ export default function PremiumPage({ user }) {
         </div>
 
         {/* Manage subscription / sync links */}
-        <div style={{ textAlign: 'center', marginTop: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{ textAlign: 'center', marginTop: isMobile ? 20 : 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: isMobile ? '0 16px' : 0 }}>
           {currentTier !== 'free' && (
             <button
               onClick={handleManageSubscription}
               disabled={loading === 'manage'}
               style={{
-                background: 'none', border: 'none', color: '#0f4c5c',
-                fontSize: 14, fontWeight: 500, cursor: 'pointer', textDecoration: 'underline',
+                background: 'none', border: 'none', color: 'var(--text-secondary)',
+                fontSize: isMobile ? 13 : 14, fontWeight: 500, cursor: 'pointer', textDecoration: 'underline',
               }}
             >
               Manage Billing & Cancel
@@ -421,8 +489,8 @@ export default function PremiumPage({ user }) {
             onClick={handleSync}
             disabled={syncing}
             style={{
-              background: 'none', border: 'none', color: '#9ca3af',
-              fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              background: 'none', border: 'none', color: 'var(--text-tertiary)',
+              fontSize: isMobile ? 12 : 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
             }}
           >
             <RefreshCw size={13} style={syncing ? { animation: 'spin 1s linear infinite' } : undefined} />
@@ -435,6 +503,9 @@ export default function PremiumPage({ user }) {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        .premium-scroll-row::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
 

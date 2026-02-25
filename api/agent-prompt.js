@@ -70,6 +70,20 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
 ### Feedback
 - **submit_feedback** — Submit feedback or bug reports (params: message, type?, urgency?, subject?)
 
+### Subscription & Billing
+- **subscription_tiers** — View available subscription plans with pricing, fees, and benefits
+- **subscription_status** — Check your current subscription tier and billing status
+- **subscription_upgrade** — Start an upgrade to Builder or Pro plan (params: tier, billing_period?). Returns a checkout URL — present this to the user to complete payment in their browser.
+- **subscription_portal** — Get a billing portal URL for managing subscription, payment methods, or cancellation. Present the URL to the user.
+
+## Subscription Upgrades
+When helping a user upgrade their plan:
+1. Use \`subscription_tiers\` to show available plans and pricing
+2. Use \`subscription_status\` to check what plan they're currently on
+3. Use \`subscription_upgrade\` to get a checkout URL, then present the URL to the user
+4. The user must complete payment themselves in their browser — you cannot enter payment details
+5. Use \`subscription_portal\` if the user wants to manage billing, update payment method, or cancel
+
 ## Task Types & Validation
 
 ### Discover Available Task Types

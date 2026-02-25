@@ -1593,3 +1593,189 @@ code, pre {
     padding: var(--space-3) !important;
   }
 }
+
+/* ─── GOOGLE TRANSLATE — HIDE DEFAULT UI ─── */
+/* Hide the top banner bar and tooltip popups */
+.goog-te-banner-frame,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.goog-tooltip,
+.goog-tooltip:hover,
+.goog-text-highlight {
+  display: none !important;
+}
+
+/* Hide the Google Translate widget visually but keep it in DOM
+   so the <select> can still be triggered programmatically */
+#google_translate_element,
+.skiptranslate {
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+/* Google Translate adds top:40px to body — undo it */
+body.translated-ltr,
+body.translated-rtl {
+  top: 0 !important;
+}
+
+/* Google Translate sometimes injects an iframe that pushes content down */
+.goog-te-banner-frame + * {
+  margin-top: 0 !important;
+}
+
+/* Remove Google Translate's inline highlight styling on hover */
+.goog-text-highlight {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Prevent Google Translate font wrappers from adding background */
+.translated-ltr font,
+.translated-rtl font {
+  background-color: transparent !important;
+}
+
+/* ─── LANGUAGE SELECTOR ─── */
+.lang-selector {
+  position: relative;
+  z-index: 1001;
+  font-family: var(--font-body);
+}
+
+.lang-selector__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(26, 26, 26, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  line-height: 1;
+}
+
+.lang-selector__toggle:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(26, 26, 26, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.lang-selector__flag {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.lang-selector__name {
+  font-size: 13px;
+}
+
+.lang-selector__chevron {
+  transition: transform 0.2s ease;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.lang-selector__chevron--open {
+  transform: rotate(180deg);
+}
+
+.lang-selector__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 170px;
+  background: #fff;
+  border: 1px solid rgba(26, 26, 26, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  animation: langDropdownIn 0.15s ease-out;
+}
+
+@keyframes langDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.lang-selector__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: left;
+  transition: background 0.12s ease;
+  font-family: var(--font-body);
+}
+
+.lang-selector__option:hover {
+  background: var(--bg-tertiary);
+}
+
+.lang-selector__option--active {
+  background: rgba(224, 122, 95, 0.06);
+}
+
+.lang-selector__option--active:hover {
+  background: rgba(224, 122, 95, 0.1);
+}
+
+.lang-selector__option-flag {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.lang-selector__option-name {
+  flex: 1;
+}
+
+.lang-selector__check {
+  color: var(--coral);
+  flex-shrink: 0;
+}
+
+/* Compact variant for tighter spaces */
+.lang-selector--compact .lang-selector__toggle {
+  padding: 4px 8px;
+  gap: 4px;
+}
+
+.lang-selector--compact .lang-selector__name {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .lang-selector__name {
+    display: none;
+  }
+  .lang-selector__toggle {
+    padding: 6px 8px;
+  }
+  .lang-selector__dropdown {
+    right: -8px;
+  }
+}
