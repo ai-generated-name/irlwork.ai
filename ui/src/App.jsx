@@ -29,6 +29,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import ContactPage from './pages/ContactPage'
 import AboutPage from './pages/AboutPage'
 import MarketingFooter from './components/Footer'
+import { Logo } from './components/Logo'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
@@ -854,9 +855,8 @@ function AuthPage({ onLogin, onNavigate }) {
   return (
     <div className="auth-v4">
       <div className="auth-v4-container">
-        <a href="/" className="auth-v4-logo">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
+        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
         </a>
 
         <div className="auth-v4-card">
@@ -2171,9 +2171,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       {/* Sidebar */}
       <aside className={`dashboard-v4-sidebar ${sidebarOpen ? 'open' : ''}`}>
         {/* Logo */}
-        <a href="/" className="dashboard-v4-sidebar-logo">
-          <div className="dashboard-v4-sidebar-logo-mark">irl</div>
-          <span className="dashboard-v4-sidebar-logo-name">irlwork.ai</span>
+        <a href="/" className="dashboard-v4-sidebar-logo" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
         </a>
 
         {/* Connect to AI Agent CTA - top of sidebar in hiring mode */}
@@ -2335,9 +2334,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <path d="M3 12h18M3 6h18M3 18h18" />
               </svg>
             </button>
-            <a href={hiringMode ? '/dashboard/hiring' : '/dashboard/working'} className="dashboard-v4-topbar-logo">
-              <div className="logo-mark-v4">irl</div>
-              <span className="logo-name-v4">irlwork.ai</span>
+            <a href={hiringMode ? '/dashboard/hiring' : '/dashboard/working'} className="dashboard-v4-topbar-logo" style={{ textDecoration: 'none' }}>
+              <Logo variant="header" theme="light" />
             </a>
           </div>
 
@@ -4403,9 +4401,8 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
     <div className="mcp-v4">
       <header className="mcp-v4-header">
         <div className="mcp-v4-header-inner">
-          <a href="/" className="logo-v4">
-            <div className="logo-mark-v4">irl</div>
-            <span className="logo-name-v4">irlwork.ai</span>
+          <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+            <Logo variant="header" theme="light" />
           </a>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
             <a href="/" className="mcp-v4-nav-link">← Home</a>

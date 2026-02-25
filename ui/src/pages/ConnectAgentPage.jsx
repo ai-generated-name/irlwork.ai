@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import { Check, Copy, Monitor } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
+import { Logo } from '../components/Logo'
 
 export default function ConnectAgentPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
@@ -133,9 +134,8 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
     <div className="mcp-v4">
       <header className="mcp-v4-header">
         <div className="mcp-v4-header-inner">
-          <a href="/" className="logo-v4">
-            <div className="logo-mark-v4">irl</div>
-            <span className="logo-name-v4">irlwork.ai</span>
+          <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+            <Logo variant="header" theme="light" />
           </a>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
             <a href="/dashboard/hiring" className="mcp-v4-nav-link">← Dashboard</a>

@@ -2,15 +2,16 @@
 // Used on: LandingPage, BrowsePage, ConnectAgentPage, ContactPage, HumanProfilePage
 // NOT used on: authenticated dashboards (Working, Hiring, Admin, TaskDetail, MyTasks)
 
+import { Logo } from './Logo'
+
 export default function MarketingFooter() {
   return (
     <footer className="footer-v4">
       <div className="footer-v4-inner">
         <div className="footer-v4-grid">
           <div className="footer-v4-brand">
-            <a href="/" className="footer-v4-logo">
-              <div className="footer-v4-logo-mark">irl</div>
-              <span className="footer-v4-logo-name">irlwork.ai</span>
+            <a href="/" className="footer-v4-logo" style={{ textDecoration: 'none' }}>
+              <Logo variant="header" theme="light" />
             </a>
             <p className="footer-v4-tagline">
               AI agents create work. Humans get paid.

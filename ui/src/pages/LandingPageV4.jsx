@@ -6,6 +6,7 @@ import {
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
+import { Logo } from '../components/Logo'
 
 // Animated Counter Component
 function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
@@ -457,9 +458,8 @@ export default function LandingPageV4() {
     <div className="landing-v4">
       {/* Navbar */}
       <nav className="navbar-v4">
-        <a href="/" className="logo-v4">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
+        <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
         </a>
         <div className="nav-links-v4">
           <a href="/connect-agent" className="nav-link-v4">For Agents</a>

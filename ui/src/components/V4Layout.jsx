@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react'
 import MarketingFooter from './Footer'
+import { Logo } from './Logo'
 
 // V4 Design Tokens as CSS-in-JS for non-landing pages
 export const v4 = {
@@ -58,9 +59,8 @@ export function NavbarV4({ user, onLogout }) {
       borderBottom: '1px solid rgba(26, 26, 26, 0.1)',
       fontFamily: v4.fonts.display,
     }}>
-      <a href="/" className="logo-v4">
-        <div className="logo-mark-v4">irl</div>
-        <span className="logo-name-v4">irlwork.ai</span>
+      <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+        <Logo variant="header" theme="light" />
       </a>
 
       {/* Mobile hamburger toggle */}
