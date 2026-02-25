@@ -53,10 +53,11 @@ function StarRating({ rating, count, showNewBadge = false }) {
   )
 }
 
-export default function HumanProfileCard({ human, onHire, onExpand, variant = 'browse' }) {
+export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, isBookmarked, variant = 'browse' }) {
   const skills = Array.isArray(human.skills) ? human.skills : []
   const languages = Array.isArray(human.languages) ? human.languages : []
   const maxSkills = variant === 'dashboard' ? 4 : 3
+  const firstName = human.name?.split(' ')[0] || 'Human'
 
   return (
     <div
@@ -96,6 +97,30 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
         borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
         opacity: 0.6
       }} />
+
+      {/* Bookmark button */}
+      {onBookmark && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onBookmark(human) }}
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 4,
+            zIndex: 2,
+            color: isBookmarked ? '#F4845F' : '#D1D5DB',
+            transition: 'color 0.2s'
+          }}
+          title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+          </svg>
+        </button>
+      )}
 
       {/* Header: Avatar + Info */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 10 }}>
@@ -348,7 +373,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
               e.currentTarget.style.transform = 'translateY(0)'
             }}
           >
-            {variant === 'dashboard' ? 'Create Task' : 'Hire'}
+            Hire {firstName}
           </button>
         )}
       </div>

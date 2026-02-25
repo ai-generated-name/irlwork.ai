@@ -128,31 +128,35 @@ export default function DisputePanel({ user }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-teal">Disputes</h2>
-          <p className="text-sm text-[#8A8A8A] mt-1">
-            {disputes.length} dispute{disputes.length !== 1 ? 's' : ''} found
-          </p>
+          {disputes.length > 0 && (
+            <p className="text-sm text-[#8A8A8A] mt-1">
+              {disputes.length} dispute{disputes.length !== 1 ? 's' : ''} found
+            </p>
+          )}
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-1 bg-[#F5F2ED] rounded-xl p-1">
-          {[
-            { value: 'all', label: 'All' },
-            { value: 'open', label: 'Open' },
-            { value: 'resolved', label: 'Resolved' }
-          ].map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setFilter(tab.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                filter === tab.value
-                  ? 'bg-white text-teal shadow-v4-sm'
-                  : 'text-[#8A8A8A] hover:text-[#525252]'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Filter Tabs — only show when disputes exist */}
+        {disputes.length > 0 && (
+          <div className="flex gap-1 bg-[#F5F2ED] rounded-xl p-1">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'open', label: 'Open' },
+              { value: 'resolved', label: 'Resolved' }
+            ].map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFilter(tab.value)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  filter === tab.value
+                    ? 'bg-white text-teal shadow-v4-sm'
+                    : 'text-[#8A8A8A] hover:text-[#525252]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Error Banner (non-blocking) */}
@@ -174,12 +178,19 @@ export default function DisputePanel({ user }) {
           <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
             <Scale size={28} />
           </div>
-          <p className="text-[#525252] font-medium text-sm md:text-base">No disputes found</p>
-          <p className="text-xs md:text-sm text-[#8A8A8A] mt-2">
+          <p className="text-[#525252] font-medium text-sm md:text-base">No disputes</p>
+          <p className="text-xs md:text-sm text-[#8A8A8A] mt-2 max-w-xs mx-auto">
             {filter !== 'all'
               ? `No ${filter} disputes. Try changing the filter.`
-              : 'Disputes will appear here when filed on your tasks.'}
+              : "If something goes wrong with a task, you or the worker can file a dispute. We'll help resolve it."}
           </p>
+          <a
+            href="/about#disputes"
+            className="text-xs md:text-sm text-coral hover:text-coral-dark mt-3 inline-block"
+            style={{ color: '#E07A5F' }}
+          >
+            Learn about disputes &rarr;
+          </a>
         </div>
       ) : (
         /* Dispute List */
