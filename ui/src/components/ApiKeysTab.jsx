@@ -160,12 +160,12 @@ export default function ApiKeysTab({ user }) {
                 />
                 {error && (
                   <div style={{
-                    background: '#FEE2E2',
+                    background: 'rgba(255, 95, 87, 0.1)',
                     border: '1px solid #FECACA',
                     borderRadius: 8,
                     padding: '12px 16px',
                     marginBottom: 20,
-                    color: '#DC2626',
+                    color: '#FF5F57',
                     fontSize: 14
                   }}>
                     {error}
@@ -190,7 +190,7 @@ export default function ApiKeysTab({ user }) {
             ) : (
               <>
                 <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                  <div style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #10B981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <div style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #16A34A, #16A34A)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                     <span style={{ fontSize: 28 }}>✓</span>
                   </div>
                   <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>API Key Generated</h2>
@@ -225,7 +225,7 @@ export default function ApiKeysTab({ user }) {
                       top: '50%',
                       right: 12,
                       transform: 'translateY(-50%)',
-                      background: copied ? '#10B981' : '#FF6B35',
+                      background: copied ? '#16A34A' : '#FF6B35',
                       border: 'none',
                       borderRadius: 6,
                       padding: '8px 14px',
@@ -242,8 +242,8 @@ export default function ApiKeysTab({ user }) {
                 </div>
 
                 <div style={{
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  background: 'rgba(254, 188, 46, 0.1)',
+                  border: '1px solid rgba(254, 188, 46, 0.3)',
                   borderRadius: 8,
                   padding: 12,
                   marginBottom: 20,
@@ -273,7 +273,7 @@ export default function ApiKeysTab({ user }) {
       {confirmRevoke && (
         <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 400, width: '90%' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: '#DC2626' }}>Revoke API Key?</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: '#FF5F57' }}>Revoke API Key?</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
               Are you sure you want to revoke <strong>{confirmRevoke.name}</strong>? Any agents using this key will lose access immediately.
             </p>
@@ -286,7 +286,7 @@ export default function ApiKeysTab({ user }) {
               </button>
               <button
                 style={{
-                  background: '#DC2626',
+                  background: '#FF5F57',
                   color: 'white',
                   border: 'none',
                   borderRadius: 8,
@@ -376,8 +376,8 @@ export default function ApiKeysTab({ user }) {
                     borderRadius: 6,
                     fontSize: 11,
                     fontWeight: 500,
-                    background: key.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    color: key.is_active ? '#059669' : '#DC2626'
+                    background: key.is_active ? 'rgba(22, 163, 74, 0.1)' : 'rgba(255, 95, 87, 0.1)',
+                    color: key.is_active ? '#16A34A' : '#FF5F57'
                   }}>
                     {key.is_active ? 'Active' : 'Revoked'}
                   </span>
@@ -413,14 +413,14 @@ export default function ApiKeysTab({ user }) {
                   <button
                     onClick={() => setConfirmRevoke(key)}
                     style={{
-                      background: 'rgba(239, 68, 68, 0.1)',
+                      background: 'rgba(255, 95, 87, 0.1)',
                       border: 'none',
                       borderRadius: 8,
                       padding: '8px 16px',
                       cursor: 'pointer',
                       fontSize: 13,
                       fontWeight: 500,
-                      color: '#DC2626'
+                      color: '#FF5F57'
                     }}
                   >
                     Revoke
@@ -453,16 +453,16 @@ export default function ApiKeysTab({ user }) {
         }}>
           <div style={{ color: '#8B8B8B', marginBottom: 4 }}># Post a task</div>
           <div>
-            <span style={{ color: '#10B981' }}>curl</span> -X POST https://api.irlwork.ai/api/mcp/tasks \
+            <span style={{ color: '#16A34A' }}>curl</span> -X POST https://api.irlwork.ai/api/mcp/tasks \
           </div>
           <div style={{ paddingLeft: 20 }}>
-            -H <span style={{ color: '#F4845F' }}>'Authorization: Bearer irl_sk_...'</span> \
+            -H <span style={{ color: '#E8853D' }}>'Authorization: Bearer irl_sk_...'</span> \
           </div>
           <div style={{ paddingLeft: 20 }}>
-            -H <span style={{ color: '#F4845F' }}>'Content-Type: application/json'</span> \
+            -H <span style={{ color: '#E8853D' }}>'Content-Type: application/json'</span> \
           </div>
           <div style={{ paddingLeft: 20 }}>
-            -d <span style={{ color: '#F4845F' }}>'{`{"title": "Package Pickup", "budget": 35}`}'</span>
+            -d <span style={{ color: '#E8853D' }}>'{`{"title": "Package Pickup", "budget": 35}`}'</span>
           </div>
         </div>
         <a
@@ -472,7 +472,7 @@ export default function ApiKeysTab({ user }) {
             alignItems: 'center',
             gap: 6,
             marginTop: 16,
-            color: '#F4845F',
+            color: '#E8853D',
             fontSize: 14,
             textDecoration: 'none'
           }}

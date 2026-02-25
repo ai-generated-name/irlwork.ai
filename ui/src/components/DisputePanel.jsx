@@ -103,18 +103,18 @@ export default function DisputePanel({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-[#525252]">Loading disputes...</div>
+        <div className="text-[#333333]">Loading disputes...</div>
       </div>
     )
   }
 
   if (error && disputes.length === 0) {
     return (
-      <div className="bg-[#FEE2E2] border border-[#DC2626]/20 rounded-xl p-4">
-        <p className="text-[#DC2626]">Error: {error}</p>
+      <div className="bg-[rgba(255, 95, 87, 0.1)] border border-[#FF5F57]/20 rounded-xl p-4">
+        <p className="text-[#FF5F57]">Error: {error}</p>
         <button
           onClick={fetchDisputes}
-          className="mt-2 text-sm text-[#DC2626] hover:text-[#B91C1C] underline"
+          className="mt-2 text-sm text-[#FF5F57] hover:text-[#B91C1C] underline"
         >
           Retry
         </button>
@@ -129,7 +129,7 @@ export default function DisputePanel({ user }) {
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-teal">Disputes</h2>
           {disputes.length > 0 && (
-            <p className="text-sm text-[#8A8A8A] mt-1">
+            <p className="text-sm text-[#888888] mt-1">
               {disputes.length} dispute{disputes.length !== 1 ? 's' : ''} found
             </p>
           )}
@@ -137,7 +137,7 @@ export default function DisputePanel({ user }) {
 
         {/* Filter Tabs — only show when disputes exist */}
         {disputes.length > 0 && (
-          <div className="flex gap-1 bg-[#F5F2ED] rounded-xl p-1">
+          <div className="flex gap-1 bg-[#F5F3F0] rounded-xl p-1">
             {[
               { value: 'all', label: 'All' },
               { value: 'open', label: 'Open' },
@@ -149,7 +149,7 @@ export default function DisputePanel({ user }) {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   filter === tab.value
                     ? 'bg-white text-teal shadow-v4-sm'
-                    : 'text-[#8A8A8A] hover:text-[#525252]'
+                    : 'text-[#888888] hover:text-[#333333]'
                 }`}
               >
                 {tab.label}
@@ -161,11 +161,11 @@ export default function DisputePanel({ user }) {
 
       {/* Error Banner (non-blocking) */}
       {error && (
-        <div className="bg-[#FEE2E2] border border-[#DC2626]/20 rounded-xl p-3 flex items-center justify-between">
-          <p className="text-[#DC2626] text-sm">{error}</p>
+        <div className="bg-[rgba(255, 95, 87, 0.1)] border border-[#FF5F57]/20 rounded-xl p-3 flex items-center justify-between">
+          <p className="text-[#FF5F57] text-sm">{error}</p>
           <button
             onClick={() => setError(null)}
-            className="text-[#DC2626] hover:text-[#B91C1C] text-sm font-medium ml-3"
+            className="text-[#FF5F57] hover:text-[#B91C1C] text-sm font-medium ml-3"
           >
             Dismiss
           </button>
@@ -174,12 +174,12 @@ export default function DisputePanel({ user }) {
 
       {/* Empty State */}
       {disputes.length === 0 ? (
-        <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-8 md:p-12 text-center">
+        <div className="bg-white border-2 border-[rgba(0,0,0,0.08)] rounded-xl p-8 md:p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
             <Scale size={28} />
           </div>
-          <p className="text-[#525252] font-medium text-sm md:text-base">No disputes</p>
-          <p className="text-xs md:text-sm text-[#8A8A8A] mt-2 max-w-xs mx-auto">
+          <p className="text-[#333333] font-medium text-sm md:text-base">No disputes</p>
+          <p className="text-xs md:text-sm text-[#888888] mt-2 max-w-xs mx-auto">
             {filter !== 'all'
               ? `No ${filter} disputes. Try changing the filter.`
               : "If something goes wrong with a task, you or the worker can file a dispute. We'll help resolve it."}
@@ -207,7 +207,7 @@ export default function DisputePanel({ user }) {
             return (
               <div
                 key={dispute.id}
-                className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl hover:shadow-v4-md transition-shadow"
+                className="bg-white border-2 border-[rgba(0,0,0,0.08)] rounded-xl hover:shadow-v4-md transition-shadow"
               >
                 {/* Dispute Summary Row */}
                 <button
@@ -222,25 +222,25 @@ export default function DisputePanel({ user }) {
                         </p>
                         {/* Status Badge */}
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${
+                          className={`px-2.5 py-0.5 rounded-[6px] text-xs font-semibold flex-shrink-0 ${
                             isOpen
-                              ? 'bg-[#FEF3C7] text-[#D97706]'
-                              : 'bg-[#D1FAE5] text-[#059669]'
+                              ? 'bg-[rgba(254, 188, 46, 0.1)] text-[#FEBC2E]'
+                              : 'bg-[rgba(22, 163, 74, 0.08)] text-[#16A34A]'
                           }`}
                         >
                           {isOpen ? 'Open' : 'Resolved'}
                         </span>
                         {/* Category Badge */}
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal/10 text-teal flex-shrink-0">
+                        <span className="px-2 py-0.5 rounded-[6px] text-xs font-medium bg-teal/10 text-teal flex-shrink-0">
                           {getCategoryLabel(dispute.category)}
                         </span>
                       </div>
 
-                      <p className="text-sm text-[#525252] line-clamp-1">
+                      <p className="text-sm text-[#333333] line-clamp-1">
                         {dispute.reason}
                       </p>
 
-                      <div className="flex items-center gap-3 mt-2 text-xs text-[#8A8A8A]">
+                      <div className="flex items-center gap-3 mt-2 text-xs text-[#888888]">
                         <span>
                           Filed by {isFiler ? 'you' : filedByName}
                         </span>
@@ -250,7 +250,7 @@ export default function DisputePanel({ user }) {
                     </div>
 
                     {/* Expand Arrow */}
-                    <div className="text-[#8A8A8A] flex-shrink-0 pt-1">
+                    <div className="text-[#888888] flex-shrink-0 pt-1">
                       <svg
                         className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         fill="none"
@@ -266,11 +266,11 @@ export default function DisputePanel({ user }) {
 
                 {/* Expanded Detail */}
                 {isExpanded && (
-                  <div className="border-t border-[rgba(26,26,26,0.08)] px-4 pb-4 pt-3 space-y-3">
+                  <div className="border-t border-[rgba(0,0,0,0.08)] px-4 pb-4 pt-3 space-y-3">
                     {/* Full Reason */}
                     <div>
                       <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Reason</p>
-                      <p className="text-sm text-[#525252]">{dispute.reason}</p>
+                      <p className="text-sm text-[#333333]">{dispute.reason}</p>
                     </div>
 
                     {/* Evidence URLs */}
@@ -297,13 +297,13 @@ export default function DisputePanel({ user }) {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Filed By</p>
-                        <p className="text-sm text-[#525252]">
+                        <p className="text-sm text-[#333333]">
                           {filedByName}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Filed Against</p>
-                        <p className="text-sm text-[#525252]">
+                        <p className="text-sm text-[#333333]">
                           {filedAgainstName}
                         </p>
                       </div>
@@ -311,11 +311,11 @@ export default function DisputePanel({ user }) {
 
                     {/* Resolution (if resolved) */}
                     {dispute.status === 'resolved' && dispute.resolution_notes && (
-                      <div className="bg-[#D1FAE5] border border-[#059669]/20 rounded-lg p-3">
-                        <p className="text-xs font-semibold text-[#059669] uppercase tracking-wide mb-1">Resolution</p>
+                      <div className="bg-[rgba(22, 163, 74, 0.08)] border border-[#16A34A]/20 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-[#16A34A] uppercase tracking-wide mb-1">Resolution</p>
                         <p className="text-sm text-[#065F46]">{dispute.resolution_notes}</p>
                         {dispute.resolved_at && (
-                          <p className="text-xs text-[#059669]/70 mt-1">
+                          <p className="text-xs text-[#16A34A]/70 mt-1">
                             Resolved {formatDate(dispute.resolved_at)}
                           </p>
                         )}
@@ -343,7 +343,7 @@ export default function DisputePanel({ user }) {
 
                         {/* Resolution Type */}
                         <div>
-                          <label className="text-xs font-medium text-[#525252] block mb-1.5">
+                          <label className="text-xs font-medium text-[#333333] block mb-1.5">
                             Resolution
                           </label>
                           <div className="flex gap-2">
@@ -351,8 +351,8 @@ export default function DisputePanel({ user }) {
                               onClick={() => setResolution('approved')}
                               className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
                                 resolution === 'approved'
-                                  ? 'border-[#059669] bg-[#D1FAE5] text-[#059669]'
-                                  : 'border-[rgba(26,26,26,0.08)] bg-white text-[#525252] hover:border-[#059669]/30'
+                                  ? 'border-[#16A34A] bg-[rgba(22, 163, 74, 0.08)] text-[#16A34A]'
+                                  : 'border-[rgba(0,0,0,0.08)] bg-white text-[#333333] hover:border-[#16A34A]/30'
                               }`}
                             >
                               Approve (Refund)
@@ -361,8 +361,8 @@ export default function DisputePanel({ user }) {
                               onClick={() => setResolution('rejected')}
                               className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
                                 resolution === 'rejected'
-                                  ? 'border-[#DC2626] bg-[#FEE2E2] text-[#DC2626]'
-                                  : 'border-[rgba(26,26,26,0.08)] bg-white text-[#525252] hover:border-[#DC2626]/30'
+                                  ? 'border-[#FF5F57] bg-[rgba(255, 95, 87, 0.1)] text-[#FF5F57]'
+                                  : 'border-[rgba(0,0,0,0.08)] bg-white text-[#333333] hover:border-[#FF5F57]/30'
                               }`}
                             >
                               Reject
@@ -372,7 +372,7 @@ export default function DisputePanel({ user }) {
 
                         {/* Resolution Notes */}
                         <div>
-                          <label className="text-xs font-medium text-[#525252] block mb-1.5">
+                          <label className="text-xs font-medium text-[#333333] block mb-1.5">
                             Resolution Notes
                           </label>
                           <textarea
@@ -380,7 +380,7 @@ export default function DisputePanel({ user }) {
                             onChange={(e) => setResolutionNotes(e.target.value)}
                             placeholder="Explain the resolution decision..."
                             rows={3}
-                            className="w-full px-3 py-2 border-2 border-[rgba(26,26,26,0.08)] rounded-xl text-sm text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-teal/40 resize-none"
+                            className="w-full px-3 py-2 border-2 border-[rgba(0,0,0,0.08)] rounded-xl text-sm text-[#1A1A1A] placeholder-[#888888] focus:outline-none focus:border-teal/40 resize-none"
                           />
                         </div>
 
@@ -391,7 +391,7 @@ export default function DisputePanel({ user }) {
                             disabled={submitting || !resolutionNotes.trim()}
                             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                               submitting || !resolutionNotes.trim()
-                                ? 'bg-[#F5F2ED] text-[#8A8A8A] cursor-not-allowed'
+                                ? 'bg-[#F5F3F0] text-[#888888] cursor-not-allowed'
                                 : 'bg-teal text-white hover:bg-teal-dark shadow-v4-sm hover:shadow-v4-md'
                             }`}
                           >
@@ -402,7 +402,7 @@ export default function DisputePanel({ user }) {
                               setResolvingId(null)
                               setResolutionNotes('')
                             }}
-                            className="px-4 py-2 rounded-xl text-sm font-medium text-[#8A8A8A] hover:text-[#525252] hover:bg-[#F5F2ED] transition-all"
+                            className="px-4 py-2 rounded-xl text-sm font-medium text-[#888888] hover:text-[#333333] hover:bg-[#F5F3F0] transition-all"
                           >
                             Cancel
                           </button>

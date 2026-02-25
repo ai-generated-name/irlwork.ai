@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import TierBadge from './TierBadge'
 
 export default function UserDropdown({ user, onLogout, onNavigate }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -39,7 +40,10 @@ export default function UserDropdown({ user, onLogout, onNavigate }) {
           {getInitials(user?.name)}
         </div>
         <div className="user-dropdown-v4-info flex-1">
-          <p className="user-dropdown-v4-name truncate">{user?.name || 'User'}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <p className="user-dropdown-v4-name truncate" style={{ margin: 0 }}>{user?.name || 'User'}</p>
+            <TierBadge tier={user?.subscription_tier} size="xs" />
+          </div>
           <p className="user-dropdown-v4-email truncate">{user?.email || ''}</p>
         </div>
         <svg
