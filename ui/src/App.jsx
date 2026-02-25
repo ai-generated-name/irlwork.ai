@@ -1349,6 +1349,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [tasks, setTasks] = useState([])
   const [availableTasks, setAvailableTasks] = useState([]) // Tasks available for humans to browse
   const [humans, setHumans] = useState([])
+  const [bookmarkedHumans, setBookmarkedHumans] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('irlwork_bookmarked_humans') || '[]') } catch { return [] }
+  })
+  const toggleBookmark = (human) => {
+    setBookmarkedHumans(prev => {
+      const next = prev.includes(human.id) ? prev.filter(id => id !== human.id) : [...prev, human.id]
+      localStorage.setItem('irlwork_bookmarked_humans', JSON.stringify(next))
+      return next
+    })
+  }
   const [loading, setLoading] = useState(true)
   const [postedTasks, setPostedTasks] = useState([])
   const [wallet, setWallet] = useState({ balance: 0, transactions: [] })
@@ -1422,6 +1432,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   })
   const [creatingTask, setCreatingTask] = useState(false)
   const [createTaskError, setCreateTaskError] = useState('')
+  const [taskFormTouched, setTaskFormTouched] = useState({})
 
   useEffect(() => {
     localStorage.setItem('irlwork_hiringMode', hiringMode)
@@ -1536,10 +1547,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       // Detect mode change from URL path
       if (isHiring && !hiringMode) {
         setHiringMode(true)
-        setActiveTabState('posted')
+        setActiveTabState('dashboard')
       } else if (!isHiring && hiringMode) {
         setHiringMode(false)
-        setActiveTabState('tasks')
+        setActiveTabState('dashboard')
       }
 
       // Also support legacy ?tab= query param
@@ -2004,6 +2015,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setPostedTasks(prev => [newTask, ...prev])
         // Reset form
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'open', quantity: 1, is_anonymous: false })
+        setTaskFormTouched({})
         // Close create form and show posted tasks list
         setTasksSubTab('tasks')
         setActiveTab('posted')
@@ -2295,7 +2307,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           {hiringMode ? (
             <button
               className="dashboard-v4-mode-switch-btn"
-              onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false); setSidebarOpen(false) }}
+              onClick={() => { setHiringMode(false); setActiveTabState('dashboard'); updateTabUrl('dashboard', false); setSidebarOpen(false) }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -2307,7 +2319,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           ) : (
             <button
               className="dashboard-v4-mode-switch-btn hiring"
-              onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true); setSidebarOpen(false) }}
+              onClick={() => { setHiringMode(true); setActiveTabState('dashboard'); updateTabUrl('dashboard', true); setSidebarOpen(false) }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
@@ -2408,7 +2420,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <>
                 <button
                   className="dashboard-v4-topbar-link dashboard-v4-topbar-cta"
-                  onClick={() => { setHiringMode(true); setActiveTabState('posted'); updateTabUrl('posted', true) }}
+                  onClick={() => { setHiringMode(true); setActiveTabState('dashboard'); updateTabUrl('dashboard', true) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
@@ -2431,7 +2443,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <>
                 <button
                   className="dashboard-v4-topbar-link dashboard-v4-topbar-cta dashboard-v4-topbar-cta-teal"
-                  onClick={() => { setHiringMode(false); setActiveTabState('tasks'); updateTabUrl('tasks', false) }}
+                  onClick={() => { setHiringMode(false); setActiveTabState('dashboard'); updateTabUrl('dashboard', false) }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -2598,21 +2610,41 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Hiring Mode: My Tasks Tab */}
         {hiringMode && activeTab === 'posted' && (
           <div>
-            <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-
-            {/* Sub-tabs: Create Task / Posted Tasks / Disputes */}
-            <div className="dashboard-v4-sub-tabs">
-              <button
-                className={`dashboard-v4-sub-tab ${tasksSubTab === 'create' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}
-              >
-                + Create Task
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
+              <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
+              <button className="hiring-dash-create-btn" onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Create Task
               </button>
+            </div>
+
+            {/* Sub-tabs: Status filters + Disputes */}
+            <div className="dashboard-v4-sub-tabs">
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
                 onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
               >
-                Posted Tasks
+                All
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'active' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('active'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
+              >
+                Active
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'in_review' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('in_review'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
+              >
+                In Review
+              </button>
+              <button
+                className={`dashboard-v4-sub-tab ${tasksSubTab === 'completed' ? 'active' : ''}`}
+                onClick={() => { setTasksSubTab('completed'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
+              >
+                Completed
               </button>
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'disputes' ? 'active' : ''}`}
@@ -2673,10 +2705,15 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             type="number"
                             placeholder="$"
                             className="dashboard-v4-form-input"
+                            style={taskFormTouched.budget && (!taskForm.budget || parseFloat(taskForm.budget) < 5) ? { borderColor: '#DC2626' } : {}}
                             value={taskForm.budget}
                             onChange={(e) => setTaskForm(prev => ({ ...prev, budget: e.target.value }))}
+                            onBlur={() => setTaskFormTouched(prev => ({ ...prev, budget: true }))}
                             min="5"
                           />
+                          {taskFormTouched.budget && (!taskForm.budget || parseFloat(taskForm.budget) < 5) && (
+                            <p style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>Budget must be at least $5</p>
+                          )}
                         </div>
                         <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
@@ -2782,7 +2819,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         />
                       </div>
 
-                      <div className="dashboard-v4-form-group">
+                      <div className="dashboard-v4-form-group" style={{ position: 'relative' }}>
                         <label className="dashboard-v4-form-label">Required Skills</label>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: taskForm.required_skills.length > 0 ? 8 : 0 }}>
                           {taskForm.required_skills.map((skill, i) => (
@@ -2814,6 +2851,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             }
                           }}
                         />
+                        {/* Skill autocomplete suggestions */}
+                        {taskForm.skillInput.trim().length > 0 && (() => {
+                          const allSkills = ['driving', 'photography', 'videography', 'cleaning', 'cooking', 'moving', 'handyman', 'painting', 'gardening', 'delivery', 'data entry', 'translation', 'transcription', 'research', 'writing', 'graphic design', 'web development', 'social media', 'customer service', 'teaching', 'tutoring', 'pet care', 'childcare', 'elderly care', 'personal shopping', 'event planning', 'organization', 'assembly', 'installation', 'repair']
+                          const matches = allSkills.filter(s => s.includes(taskForm.skillInput.trim().toLowerCase()) && !taskForm.required_skills.includes(s)).slice(0, 5)
+                          return matches.length > 0 ? (
+                            <div style={{ position: 'absolute', left: 0, right: 0, background: 'white', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, marginTop: 4, overflow: 'hidden' }}>
+                              {matches.map(skill => (
+                                <button key={skill} type="button" onClick={() => {
+                                  setTaskForm(prev => ({ ...prev, required_skills: [...prev.required_skills, skill], skillInput: '' }))
+                                }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)' }}
+                                onMouseOver={(e) => e.currentTarget.style.background = '#F5F2ED'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                                >{skill}</button>
+                              ))}
+                            </div>
+                          ) : null
+                        })()}
                       </div>
                     </div>
 
@@ -2828,31 +2882,38 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             )}
 
-            {tasksSubTab === 'tasks' && (
+            {['tasks', 'active', 'in_review', 'completed'].includes(tasksSubTab) && (
               <>
                 {loading ? (
                   <div className="dashboard-v4-empty">
                     <div className="dashboard-v4-empty-icon"><Hourglass size={24} /></div>
                     <p className="dashboard-v4-empty-text">Loading...</p>
                   </div>
-                ) : postedTasks.length === 0 ? (
+                ) : (() => {
+                  const filteredTasks = tasksSubTab === 'tasks' ? postedTasks
+                    : tasksSubTab === 'active' ? postedTasks.filter(t => ['open', 'assigned', 'in_progress'].includes(t.status))
+                    : tasksSubTab === 'in_review' ? postedTasks.filter(t => t.status === 'pending_review')
+                    : postedTasks.filter(t => ['completed', 'paid'].includes(t.status))
+                  return filteredTasks.length === 0 ? (
                   <div className="dashboard-v4-empty" style={{ padding: '40px 24px' }}>
                     <div className="dashboard-v4-empty-icon" style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                      <ClipboardList size={28} style={{ color: 'var(--text-tertiary)' }} />
+                      {tasksSubTab === 'tasks' ? <ClipboardList size={28} style={{ color: 'var(--text-tertiary)' }} /> : Icons.task}
                     </div>
-                    <p className="dashboard-v4-empty-title" style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>No tasks posted yet</p>
-                    <p className="dashboard-v4-empty-text" style={{ marginBottom: 20, color: 'var(--text-secondary)' }}>Post a task and get matched with verified humans near you.</p>
-                    <button
-                      className="v4-btn v4-btn-primary"
-                      onClick={() => { setTasksSubTab('create'); window.history.pushState({}, '', '/dashboard/hiring/my-tasks/create'); }}
-                      style={{ margin: '0 auto' }}
-                    >
-                      <Plus size={16} /> Create Task
-                    </button>
+                    <p className="dashboard-v4-empty-title" style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{tasksSubTab === 'tasks' ? 'No tasks posted yet' : `No ${tasksSubTab.replace('_', ' ')} tasks`}</p>
+                    <p className="dashboard-v4-empty-text" style={{ marginBottom: 20, color: 'var(--text-secondary)' }}>{tasksSubTab === 'tasks' ? 'Post a task and get matched with verified humans near you.' : 'Tasks matching this filter will appear here'}</p>
+                    {tasksSubTab === 'tasks' && (
+                      <button
+                        className="v4-btn v4-btn-primary"
+                        onClick={() => { setTasksSubTab('create'); window.history.pushState({}, '', '/dashboard/hiring/my-tasks/create'); }}
+                        style={{ margin: '0 auto' }}
+                      >
+                        <Plus size={16} /> Create Task
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div>
-                    {postedTasks.map(task => {
+                    {filteredTasks.map(task => {
                       const needsAction = task.status === 'pending_review'
                       const isOpen = task.status === 'open'
                       const isExpanded = expandedTask === task.id
@@ -2968,7 +3029,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       )
                     })}
                   </div>
-                )}
+                )
+                })()}
               </>
             )}
 
@@ -3131,6 +3193,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           variant="dashboard"
                           onExpand={(h) => window.location.href = `/humans/${h.id}`}
                           onHire={() => { setTasksSubTab('create'); setActiveTab('posted') }}
+                          onBookmark={toggleBookmark}
+                          isBookmarked={bookmarkedHumans.includes(human.id)}
                         />
                       ))}
                     </div>
@@ -3153,6 +3217,33 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {hiringMode && activeTab === 'payments' && (
           <div className="space-y-4 md:space-y-6">
             <h1 className="dashboard-v4-page-title">Payments</h1>
+
+            {/* Payment Flow Explainer */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(15,76,92,0.06), rgba(224,122,95,0.06))',
+              border: '1px solid rgba(15,76,92,0.12)',
+              borderRadius: 16,
+              padding: '20px 24px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 16
+            }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                background: 'rgba(15,76,92,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F4C5C" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <div>
+                <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>How payments work</p>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  When you assign a worker, your payment is held in escrow. Once you approve the completed work, the payment is released to the worker.
+                </p>
+              </div>
+            </div>
 
             {/* Payment Overview */}
             {(() => {

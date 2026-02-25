@@ -123,12 +123,14 @@ export default function ApiKeysTab({ user }) {
             Manage API keys for programmatic access to irlwork.ai
           </p>
         </div>
-        <button
-          className="v4-btn v4-btn-primary"
-          onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
-        >
-          + Generate New Key
-        </button>
+        {keys.length > 0 && (
+          <button
+            className="v4-btn v4-btn-primary"
+            onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
+          >
+            + Generate New Key
+          </button>
+        )}
       </div>
 
       {/* Generate Key Modal */}
