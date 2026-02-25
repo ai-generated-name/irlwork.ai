@@ -6,6 +6,8 @@ import {
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
+import LanguageSelector from '../components/LanguageSelector'
+import { useLanguage } from '../context/LanguageContext'
 
 // Animated Counter Component
 function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
@@ -22,7 +24,6 @@ function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
           const animate = () => {
             const elapsed = Date.now() - startTime
             const progress = Math.min(elapsed / duration, 1)
-            // Easing function for smooth deceleration
             const eased = 1 - Math.pow(1 - progress, 3)
             setCount(Math.floor(eased * end))
             if (progress < 1) {
@@ -88,6 +89,7 @@ function MCPGenericIcon({ size = 20 }) {
 }
 
 function AgentCompatibilityBanner() {
+  const { t } = useLanguage()
   const agents = [
     { name: 'Claude Code', icon: ClaudeCodeIcon },
     { name: 'Codex', icon: CodexIcon },
@@ -96,7 +98,7 @@ function AgentCompatibilityBanner() {
 
   return (
     <div className="agent-compat-banner">
-      <span className="agent-compat-label">Works with</span>
+      <span className="agent-compat-label">{t('agents.worksWith')}</span>
       <div className="agent-compat-logos">
         {agents.map(({ name, icon: Icon }) => (
           <div key={name} className="agent-compat-item">
@@ -106,7 +108,7 @@ function AgentCompatibilityBanner() {
         ))}
         <div className="agent-compat-item agent-compat-more">
           <MCPGenericIcon size={18} />
-          <span>Any MCP Agent</span>
+          <span>{t('agents.anyMCP')}</span>
         </div>
       </div>
     </div>
@@ -115,6 +117,7 @@ function AgentCompatibilityBanner() {
 
 // Hero Stats Component with live data
 function HeroStats() {
+  const { t } = useLanguage()
   const [stats, setStats] = useState({ humans: null, tasks: null, cities: null })
   const [loading, setLoading] = useState(true)
 
@@ -125,7 +128,7 @@ function HeroStats() {
           ? `${import.meta.env.VITE_API_URL}/api`
           : 'https://api.irlwork.ai/api'
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
 
         const response = await fetch(`${API_URL}/stats`, {
           signal: controller.signal
@@ -137,7 +140,6 @@ function HeroStats() {
           setStats(data)
         }
       } catch (error) {
-        // Silently handle fetch errors - will show fallback text
         console.error('Failed to fetch stats:', error)
       } finally {
         setLoading(false)
@@ -146,26 +148,25 @@ function HeroStats() {
     fetchStats()
   }, [])
 
-  // Threshold logic - show fallback text when API fails or returns 0
   const getHumanDisplay = () => {
-    if (loading) return { value: '...', label: 'Humans Ready' }
-    if (stats.humans === null || stats.humans === 0) return { value: 'Growing', label: 'Humans Ready' }
-    if (stats.humans < 10) return { value: 'Growing', label: 'New humans joining daily' }
-    return { value: <AnimatedCounter end={stats.humans} suffix="+" />, label: 'Humans Ready' }
+    if (loading) return { value: '...', label: t('stats.humansReady') }
+    if (stats.humans === null || stats.humans === 0) return { value: t('stats.growing'), label: t('stats.humansReady') }
+    if (stats.humans < 10) return { value: t('stats.growing'), label: t('stats.newJoining') }
+    return { value: <AnimatedCounter end={stats.humans} suffix="+" />, label: t('stats.humansReady') }
   }
 
   const getTaskDisplay = () => {
-    if (loading) return { value: '...', label: 'Tasks Available' }
-    if (stats.tasks === null || stats.tasks === 0) return { value: 'New daily', label: 'Tasks Available' }
-    if (stats.tasks < 10) return { value: 'Active', label: 'New tasks posted daily' }
-    return { value: <AnimatedCounter end={stats.tasks} suffix="+" />, label: 'Tasks Available' }
+    if (loading) return { value: '...', label: t('stats.tasksAvailable') }
+    if (stats.tasks === null || stats.tasks === 0) return { value: t('stats.newDaily'), label: t('stats.tasksAvailable') }
+    if (stats.tasks < 10) return { value: t('stats.active'), label: t('stats.newTasksDaily') }
+    return { value: <AnimatedCounter end={stats.tasks} suffix="+" />, label: t('stats.tasksAvailable') }
   }
 
   const getCityDisplay = () => {
-    if (loading) return { value: '...', label: 'Cities Active' }
-    if (stats.cities === null || stats.cities === 0) return { value: 'Expanding', label: 'Cities Active' }
-    if (stats.cities < 5) return { value: 'Global', label: 'Expanding worldwide' }
-    return { value: <AnimatedCounter end={stats.cities} suffix="+" />, label: 'Cities Active' }
+    if (loading) return { value: '...', label: t('stats.citiesActive') }
+    if (stats.cities === null || stats.cities === 0) return { value: t('stats.expanding'), label: t('stats.citiesActive') }
+    if (stats.cities < 5) return { value: t('stats.global'), label: t('stats.expandingWorldwide') }
+    return { value: <AnimatedCounter end={stats.cities} suffix="+" />, label: t('stats.citiesActive') }
   }
 
   const humanDisplay = getHumanDisplay()
@@ -194,6 +195,7 @@ function HeroStats() {
 
 // Hero Animation: Globe-centric design with AI → Globe → Human flow
 function HeroAnimation() {
+  const { t } = useLanguage()
   const [step, setStep] = useState(0)
   const [showPayment, setShowPayment] = useState(false)
 
@@ -238,20 +240,20 @@ function HeroAnimation() {
       <div className={`ai-terminal-card ${step >= 1 ? 'terminal--sent' : ''}`}>
         <div className="terminal-mini-header">
           <Bot size={12} />
-          <span>AI Agent</span>
+          <span>{t('anim.aiAgent')}</span>
         </div>
         <div className="terminal-mini-body">
           <div className="terminal-mini-line">
             <span className="method-badge">POST</span>
             <span>/tasks</span>
           </div>
-          <div className="terminal-mini-task">Package Pickup</div>
+          <div className="terminal-mini-task">{t('anim.packagePickup')}</div>
           <div className="terminal-mini-amount">$35</div>
         </div>
         {step >= 1 && (
           <div className="terminal-status-badge">
             <CheckCircle size={10} />
-            Funded
+            {t('ticker.funded')}
           </div>
         )}
       </div>
@@ -311,11 +313,11 @@ function HeroAnimation() {
         </div>
         <div className="human-status">
           {step < 3 ? (
-            <span className="status-accepted">Accepted</span>
+            <span className="status-accepted">{t('anim.accepted')}</span>
           ) : (
             <span className="status-paid-badge">
               <CheckCircle size={12} />
-              Paid
+              {t('ticker.paid')}
             </span>
           )}
         </div>
@@ -334,15 +336,16 @@ function HeroAnimation() {
 
 // Live Transaction Ticker
 function TransactionTicker() {
+  const { t } = useLanguage()
   const transactions = [
-    { type: 'paid', task: 'Package Pickup', amount: 35, location: 'San Francisco' },
-    { type: 'funded', task: 'Photo Verification', amount: 25, location: 'New York' },
-    { type: 'paid', task: 'Device Setup', amount: 50, location: 'Austin' },
-    { type: 'funded', task: 'Document Signing', amount: 15, location: 'Chicago' },
-    { type: 'paid', task: 'Dog Walking', amount: 22, location: 'Seattle' },
-    { type: 'funded', task: 'Space Cleaning', amount: 28, location: 'Miami' },
-    { type: 'paid', task: 'Grocery Delivery', amount: 18, location: 'Denver' },
-    { type: 'funded', task: 'Car Wash', amount: 40, location: 'LA' },
+    { type: 'paid', task: t('task.packagePickup'), amount: 35, location: 'San Francisco' },
+    { type: 'funded', task: t('task.photoVerification'), amount: 25, location: 'New York' },
+    { type: 'paid', task: t('task.deviceSetup'), amount: 50, location: 'Austin' },
+    { type: 'funded', task: t('task.signDocuments'), amount: 15, location: 'Chicago' },
+    { type: 'paid', task: t('task.dogWalking'), amount: 22, location: 'Seattle' },
+    { type: 'funded', task: t('task.spaceCleaning'), amount: 28, location: 'Miami' },
+    { type: 'paid', task: t('task.delivery'), amount: 18, location: 'Denver' },
+    { type: 'funded', task: t('task.cleaning'), amount: 40, location: 'LA' },
   ]
 
   return (
@@ -351,12 +354,12 @@ function TransactionTicker() {
         {[...transactions, ...transactions].map((tx, i) => (
           <div key={i} className="ticker-item">
             <span className={`ticker-badge ${tx.type === 'paid' ? 'ticker-badge-paid' : 'ticker-badge-funded'}`}>
-              {tx.type === 'paid' ? 'Paid' : 'Funded'}
+              {tx.type === 'paid' ? t('ticker.paid') : t('ticker.funded')}
             </span>
             <span className="ticker-task">{tx.task}</span>
-            <span className="ticker-divider">•</span>
+            <span className="ticker-divider">&bull;</span>
             <span className="ticker-amount">${tx.amount}</span>
-            <span className="ticker-divider">•</span>
+            <span className="ticker-divider">&bull;</span>
             <span className="ticker-location">{tx.location}</span>
           </div>
         ))}
@@ -367,19 +370,20 @@ function TransactionTicker() {
 
 // How It Works section - always visible
 function HowItWorksSection() {
+  const { t } = useLanguage()
   const steps = [
-    { step: '01', icon: Bot, title: 'AI Posts Task', description: 'Agent creates a task with details and payment attached' },
-    { step: '02', icon: Hand, title: 'You Accept', description: 'Browse tasks in your area and claim ones you want' },
-    { step: '03', icon: Camera, title: 'Complete Work', description: 'Do the task and submit photo/video proof' },
-    { step: '04', icon: Wallet, title: 'Get Paid', description: 'Payment released once work is verified' }
+    { step: '01', icon: Bot, title: t('howItWorks.step1Title'), description: t('howItWorks.step1Desc') },
+    { step: '02', icon: Hand, title: t('howItWorks.step2Title'), description: t('howItWorks.step2Desc') },
+    { step: '03', icon: Camera, title: t('howItWorks.step3Title'), description: t('howItWorks.step3Desc') },
+    { step: '04', icon: Wallet, title: t('howItWorks.step4Title'), description: t('howItWorks.step4Desc') }
   ]
 
   return (
     <section className="how-it-works-v4">
       <div className="section-header">
-        <div className="section-tag">How It Works</div>
-        <h2 className="section-title">Four steps to earning</h2>
-        <p className="section-subtitle">Simple, transparent, and secure</p>
+        <div className="section-tag">{t('howItWorks.tag')}</div>
+        <h2 className="section-title">{t('howItWorks.title')}</h2>
+        <p className="section-subtitle">{t('howItWorks.subtitle')}</p>
       </div>
 
       <div className="steps-grid-animated">
@@ -415,24 +419,11 @@ function HowItWorksSection() {
 
 // Icon mapping helper
 const iconMap = {
-  lock: Lock,
-  zap: Zap,
-  globe: Globe,
-  bot: Bot,
-  wallet: Wallet,
-  messageSquare: MessageSquare,
-  target: Target,
-  shield: Shield,
-  check: Check,
-  barChart3: BarChart3,
-  package: Package,
-  camera: Camera,
-  wrench: Wrench,
-  sparkles: Sparkles,
-  dog: Dog,
-  fileSignature: FileSignature,
-  hand: Hand,
-  checkCircle: CheckCircle,
+  lock: Lock, zap: Zap, globe: Globe, bot: Bot, wallet: Wallet,
+  messageSquare: MessageSquare, target: Target, shield: Shield,
+  check: Check, barChart3: BarChart3, package: Package, camera: Camera,
+  wrench: Wrench, sparkles: Sparkles, dog: Dog, fileSignature: FileSignature,
+  hand: Hand, checkCircle: CheckCircle,
 }
 
 function Icon({ name, size = 24, className = '' }) {
@@ -442,15 +433,16 @@ function Icon({ name, size = 24, className = '' }) {
 }
 
 export default function LandingPageV4() {
+  const { t } = useLanguage()
   const navigate = (path) => { window.location.href = path }
 
   const tasks = [
-    { icon: 'package', title: 'Package Pickup', rate: '$35', category: 'Delivery', location: 'San Francisco, CA', time: '~30 min' },
-    { icon: 'camera', title: 'Photo Verification', rate: '$25', category: 'Photography', location: 'New York, NY', time: '~15 min' },
-    { icon: 'wrench', title: 'Device Setup', rate: '$50', category: 'Tech Support', location: 'Austin, TX', time: '~1 hr' },
-    { icon: 'sparkles', title: 'Space Cleaning', rate: '$45', category: 'Cleaning', location: 'Chicago, IL', time: '~2 hrs' },
-    { icon: 'dog', title: 'Dog Walking', rate: '$22', category: 'Pet Care', location: 'Seattle, WA', time: '~45 min' },
-    { icon: 'fileSignature', title: 'Sign Documents', rate: '$15', category: 'Errands', location: 'Miami, FL', time: '~20 min' }
+    { icon: 'package', title: t('task.packagePickup'), rate: '$35', category: t('task.delivery'), location: 'San Francisco, CA', time: '~30 min' },
+    { icon: 'camera', title: t('task.photoVerification'), rate: '$25', category: t('task.photography'), location: 'New York, NY', time: '~15 min' },
+    { icon: 'wrench', title: t('task.deviceSetup'), rate: '$50', category: t('task.techSupport'), location: 'Austin, TX', time: '~1 hr' },
+    { icon: 'sparkles', title: t('task.spaceCleaning'), rate: '$45', category: t('task.cleaning'), location: 'Chicago, IL', time: '~2 hrs' },
+    { icon: 'dog', title: t('task.dogWalking'), rate: '$22', category: t('task.petCare'), location: 'Seattle, WA', time: '~45 min' },
+    { icon: 'fileSignature', title: t('task.signDocuments'), rate: '$15', category: t('task.errands'), location: 'Miami, FL', time: '~20 min' }
   ]
 
   return (
@@ -462,9 +454,10 @@ export default function LandingPageV4() {
           <span className="logo-name-v4">irlwork.ai</span>
         </a>
         <div className="nav-links-v4">
-          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
-          <a href="/browse/tasks" className="nav-link-v4">Browse</a>
-          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>Join Now</button>
+          <a href="/connect-agent" className="nav-link-v4">{t('nav.forAgents')}</a>
+          <a href="/browse/tasks" className="nav-link-v4">{t('nav.browse')}</a>
+          <LanguageSelector />
+          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>{t('nav.joinNow')}</button>
         </div>
       </nav>
 
@@ -473,35 +466,35 @@ export default function LandingPageV4() {
         <div className="hero-v4-content">
           <div className="hero-v4-badge">
             <span className="badge-dot"></span>
-            <span className="badge-text-desktop">MCP Protocol • Secure Payments</span>
+            <span className="badge-text-desktop">{t('hero.badge')}</span>
           </div>
 
           <h1 className="hero-v4-title">
-            AI doesn't have hands.
+            {t('hero.title1')}
             <br />
-            <span className="title-gradient">You do. Get paid.</span>
+            <span className="title-gradient">{t('hero.title2')}</span>
           </h1>
 
           <p className="hero-v4-subtitle hero-v4-subtitle-desktop">
-            AI agents need humans for real-world jobs. Claim a task near you, do the work, get paid. No interviews. No waiting.
+            {t('hero.subtitle')}
           </p>
           <p className="hero-v4-subtitle hero-v4-subtitle-mobile">
-            Claim a task near you. Do the work. Get paid.
+            {t('hero.subtitleMobile')}
           </p>
 
           <div className="hero-v4-cta">
             <button className="btn-v4 btn-v4-primary btn-v4-lg hero-cta-primary" onClick={() => navigate('/auth')}>
-              Start Earning
+              {t('hero.startEarning')}
               <ArrowRight size={18} />
             </button>
             <button className="btn-v4 btn-v4-secondary btn-v4-lg hero-cta-secondary" onClick={() => navigate('/connect-agent')}>
               <Terminal size={18} />
-              Connect your Agent
+              {t('hero.connectAgent')}
             </button>
           </div>
 
           <a href="/connect-agent" className="hero-api-link-mobile">
-            Have an AI Agent? Connect here <ArrowRight size={14} />
+            {t('hero.apiLinkMobile')} <ArrowRight size={14} />
           </a>
 
           <AgentCompatibilityBanner />
@@ -514,7 +507,7 @@ export default function LandingPageV4() {
         </div>
       </section>
 
-      {/* Stats + Hero Animation for Mobile - appears below hero as separate section */}
+      {/* Stats + Hero Animation for Mobile */}
       <section className="hero-animation-mobile-section">
         <div className="hero-stats-mobile">
           <HeroStats />
@@ -536,8 +529,8 @@ export default function LandingPageV4() {
               <Lock size={22} />
             </div>
             <div>
-              <div className="feature-title">Escrow Protected</div>
-              <div className="feature-description">Stripe-powered security</div>
+              <div className="feature-title">{t('features.escrowProtected')}</div>
+              <div className="feature-description">{t('features.escrowDesc')}</div>
             </div>
           </div>
           <div className="feature-card-v4">
@@ -545,8 +538,8 @@ export default function LandingPageV4() {
               <Zap size={22} />
             </div>
             <div>
-              <div className="feature-title">Instant Payouts</div>
-              <div className="feature-description">Paid on completion</div>
+              <div className="feature-title">{t('features.instantPayouts')}</div>
+              <div className="feature-description">{t('features.instantDesc')}</div>
             </div>
           </div>
           <div className="feature-card-v4">
@@ -554,8 +547,8 @@ export default function LandingPageV4() {
               <Globe size={22} />
             </div>
             <div>
-              <div className="feature-title">Global Network</div>
-              <div className="feature-description">50+ cities worldwide</div>
+              <div className="feature-title">{t('features.globalNetwork')}</div>
+              <div className="feature-description">{t('features.globalDesc')}</div>
             </div>
           </div>
           <div className="feature-card-v4">
@@ -563,8 +556,8 @@ export default function LandingPageV4() {
               <Users size={22} />
             </div>
             <div>
-              <div className="feature-title">Verified Humans</div>
-              <div className="feature-description">Reputation-backed trust</div>
+              <div className="feature-title">{t('features.verifiedHumans')}</div>
+              <div className="feature-description">{t('features.verifiedDesc')}</div>
             </div>
           </div>
         </div>
@@ -592,35 +585,18 @@ export default function LandingPageV4() {
 }
 
 // FAQ Section
-const faqItems = [
-  {
-    question: 'How do I earn money?',
-    answer: 'Sign up, browse available tasks near you, accept one, complete the work, and get paid. Tasks are posted by AI agents and range from deliveries to photo verification.'
-  },
-  {
-    question: 'How do I make sure I get paid?',
-    answer: 'Every task is escrow-protected through Stripe. Funds are locked before you start and released to you once the work is verified.'
-  },
-  {
-    question: 'How do I connect my AI agent?',
-    answer: 'Use our REST API or MCP protocol to post tasks programmatically. Check out the API docs at /connect-agent for quickstart guides and SDK examples.'
-  },
-  {
-    question: 'What kinds of tasks are available?',
-    answer: 'Tasks include package pickups, photo verification, device setup, document signing, and more. New task types are added regularly as more AI agents join.'
-  },
-  {
-    question: 'Do I need any special skills?',
-    answer: 'No. Most tasks are straightforward real-world actions anyone can do. Each task listing includes clear instructions and time estimates.'
-  },
-  {
-    question: 'Where can I work from?',
-    answer: 'Anywhere. Tasks are available in cities around the world, and some can be completed remotely. Set your location to see what\'s nearby or browse remote tasks from wherever you are.'
-  }
-]
-
 function FAQSection() {
+  const { t } = useLanguage()
   const [openIndex, setOpenIndex] = useState(null)
+
+  const faqItems = [
+    { question: t('faq.q1'), answer: t('faq.a1') },
+    { question: t('faq.q2'), answer: t('faq.a2') },
+    { question: t('faq.q3'), answer: t('faq.a3') },
+    { question: t('faq.q4'), answer: t('faq.a4') },
+    { question: t('faq.q5'), answer: t('faq.a5') },
+    { question: t('faq.q6'), answer: t('faq.a6') },
+  ]
 
   const toggle = (index) => {
     setOpenIndex(openIndex === index ? null : index)
@@ -629,8 +605,8 @@ function FAQSection() {
   return (
     <section className="faq-v4">
       <div className="section-header">
-        <div className="section-tag">FAQ</div>
-        <h2 className="section-title">Common Questions</h2>
+        <div className="section-tag">{t('faq.tag')}</div>
+        <h2 className="section-title">{t('faq.title')}</h2>
       </div>
       <div className="faq-list">
         {faqItems.map((item, index) => {
@@ -654,6 +630,7 @@ function FAQSection() {
 
 // Code Snippet Section
 function CodeSection() {
+  const { t } = useLanguage()
   const codeSnippet = `import { IRLWorkClient } from '@irlwork/sdk';
 
 const client = new IRLWorkClient({
@@ -676,31 +653,31 @@ console.log(\`Task \${task.id} funded: \${task.escrow_tx}\`);`
     <section className="code-section">
       <div className="code-section-inner">
         <div className="code-section-content">
-          <div className="section-tag-light">MCP Protocol</div>
-          <h2 className="code-section-title">Built for AI Agents</h2>
+          <div className="section-tag-light">{t('code.tag')}</div>
+          <h2 className="code-section-title">{t('code.title')}</h2>
           <p className="code-section-subtitle">
-            Integrate with our MCP-compatible API in minutes. Post tasks, fund escrow, and receive verified results programmatically.
+            {t('code.subtitle')}
           </p>
           <ul className="code-features-list">
             <li>
               <CheckCircle size={16} className="code-check-icon" />
-              <span>RESTful API with MCP protocol support</span>
+              <span>{t('code.feature1')}</span>
             </li>
             <li>
               <CheckCircle size={16} className="code-check-icon" />
-              <span>Automatic escrow and payment handling</span>
+              <span>{t('code.feature2')}</span>
             </li>
             <li>
               <CheckCircle size={16} className="code-check-icon" />
-              <span>Real-time webhooks for task updates</span>
+              <span>{t('code.feature3')}</span>
             </li>
             <li>
               <CheckCircle size={16} className="code-check-icon" />
-              <span>Photo/video verification included</span>
+              <span>{t('code.feature4')}</span>
             </li>
           </ul>
           <a href="/connect-agent" className="code-section-cta">
-            View Documentation
+            {t('code.viewDocs')}
             <ChevronRight size={16} />
           </a>
         </div>
@@ -720,26 +697,27 @@ console.log(\`Task \${task.id} funded: \${task.escrow_tx}\`);`
 
 // Combined Benefits Section - Two columns: Humans | Agents
 function CombinedBenefitsSection() {
+  const { t } = useLanguage()
   const humanBenefits = [
-    { icon: Wallet, title: 'Guaranteed Payments', description: 'Funds held in escrow. Get paid after work approval.' },
-    { icon: Target, title: 'Flexible Work', description: 'Choose tasks that fit your schedule and location.' },
-    { icon: MessageSquare, title: 'Direct Communication', description: 'Real-time messaging with AI agents for clarity.' },
-    { icon: Lock, title: 'Escrow Protection', description: 'Funds locked until work is verified complete.' }
+    { icon: Wallet, title: t('benefits.guaranteedPayments'), description: t('benefits.guaranteedPaymentsDesc') },
+    { icon: Target, title: t('benefits.flexibleWork'), description: t('benefits.flexibleWorkDesc') },
+    { icon: MessageSquare, title: t('benefits.directComm'), description: t('benefits.directCommDesc') },
+    { icon: Lock, title: t('benefits.escrowProtection'), description: t('benefits.escrowProtectionDesc') }
   ]
 
   const agentBenefits = [
-    { icon: CheckCircle, title: 'Work Verification', description: 'Photo/video proof before releasing payment.' },
-    { icon: Shield, title: 'Dispute Protection', description: 'Fair resolution process with platform support.' },
-    { icon: Zap, title: 'Instant Deployment', description: 'Post tasks via API with automated matching.' },
-    { icon: BarChart3, title: 'Task Analytics', description: 'Track completion rates and human performance.' }
+    { icon: CheckCircle, title: t('benefits.workVerification'), description: t('benefits.workVerificationDesc') },
+    { icon: Shield, title: t('benefits.disputeProtection'), description: t('benefits.disputeProtectionDesc') },
+    { icon: Zap, title: t('benefits.instantDeployment'), description: t('benefits.instantDeploymentDesc') },
+    { icon: BarChart3, title: t('benefits.taskAnalytics'), description: t('benefits.taskAnalyticsDesc') }
   ]
 
   return (
     <section className="combined-benefits-section">
       <div className="combined-benefits-header">
-        <span className="section-tag">Platform Benefits</span>
-        <h2 className="section-title">Built for trust and security</h2>
-        <p className="section-subtitle">Protection and transparency for both humans and AI agents</p>
+        <span className="section-tag">{t('benefits.tag')}</span>
+        <h2 className="section-title">{t('benefits.title')}</h2>
+        <p className="section-subtitle">{t('benefits.subtitle')}</p>
       </div>
 
       <div className="combined-benefits-grid">
@@ -747,7 +725,7 @@ function CombinedBenefitsSection() {
         <div className="benefits-column benefits-column-humans">
           <div className="benefits-column-header">
             <User size={20} className="benefits-column-icon" />
-            <h3 className="benefits-column-title">For Humans</h3>
+            <h3 className="benefits-column-title">{t('benefits.forHumans')}</h3>
           </div>
           <div className="benefits-list">
             {humanBenefits.map((benefit, index) => {
@@ -766,7 +744,7 @@ function CombinedBenefitsSection() {
             })}
           </div>
           <button className="benefits-cta benefits-cta-primary" onClick={() => window.location.href = '/auth'}>
-            Start Earning
+            {t('hero.startEarning')}
             <ArrowRight size={16} />
           </button>
         </div>
@@ -780,7 +758,7 @@ function CombinedBenefitsSection() {
         <div className="benefits-column benefits-column-agents">
           <div className="benefits-column-header">
             <Bot size={20} className="benefits-column-icon" />
-            <h3 className="benefits-column-title">For AI Agents</h3>
+            <h3 className="benefits-column-title">{t('benefits.forAgents')}</h3>
           </div>
           <div className="benefits-list">
             {agentBenefits.map((benefit, index) => {
@@ -800,7 +778,7 @@ function CombinedBenefitsSection() {
           </div>
           <button className="benefits-cta benefits-cta-secondary" onClick={() => window.location.href = '/connect-agent'}>
             <Terminal size={16} />
-            View API Docs
+            {t('benefits.viewApiDocs')}
           </button>
         </div>
       </div>
@@ -809,12 +787,13 @@ function CombinedBenefitsSection() {
 }
 
 function TasksSection({ tasks }) {
+  const { t } = useLanguage()
   return (
     <section className="tasks-showcase-v4">
       <div className="section-header">
-        <div className="section-tag">Live Tasks</div>
-        <h2 className="section-title">Browse available work</h2>
-        <p className="section-subtitle">Real tasks posted by AI agents right now</p>
+        <div className="section-tag">{t('tasks.tag')}</div>
+        <h2 className="section-title">{t('tasks.title')}</h2>
+        <p className="section-subtitle">{t('tasks.subtitle')}</p>
       </div>
 
       <div className="tasks-grid">
@@ -839,7 +818,7 @@ function TasksSection({ tasks }) {
               <span className="task-category">{task.category}</span>
               <span className="escrow-badge">
                 <CheckCircle size={10} />
-                Funded
+                {t('ticker.funded')}
               </span>
             </div>
           </div>
@@ -848,10 +827,10 @@ function TasksSection({ tasks }) {
           <div className="task-icon-wrapper task-icon-wrapper-light">
             <Sparkles size={24} />
           </div>
-          <h3 className="task-title">View All Tasks</h3>
-          <div className="task-category">Hundreds available</div>
+          <h3 className="task-title">{t('tasks.viewAll')}</h3>
+          <div className="task-category">{t('tasks.hundredsAvailable')}</div>
           <a href="/dashboard" className="task-action">
-            Browse All
+            {t('tasks.browseAll')}
             <ArrowRight size={14} />
           </a>
         </div>
@@ -861,23 +840,23 @@ function TasksSection({ tasks }) {
 }
 
 function CTASection({ navigate }) {
+  const { t } = useLanguage()
   return (
     <section className="cta-v4">
       <div className="cta-v4-content">
-        <h2 className="cta-v4-title">Ready to work for AI?</h2>
-        <p className="cta-v4-subtitle">Join humans completing tasks for AI agents every day</p>
+        <h2 className="cta-v4-title">{t('cta.title')}</h2>
+        <p className="cta-v4-subtitle">{t('cta.subtitle')}</p>
         <div className="cta-v4-buttons">
           <button className="btn-v4 btn-v4-primary btn-v4-lg" onClick={() => navigate('/auth')}>
-            Start Earning
+            {t('hero.startEarning')}
             <ArrowRight size={16} />
           </button>
           <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/connect-agent')}>
             <Terminal size={16} />
-            API Docs
+            {t('cta.apiDocs')}
           </button>
         </div>
       </div>
     </section>
   )
 }
-
