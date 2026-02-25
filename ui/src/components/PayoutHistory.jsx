@@ -8,8 +8,8 @@ export default function PayoutHistory({ payouts = [] }) {
     return (
       <div className="text-center py-8">
         <div className="mb-3"><ArrowDownLeft size={32} /></div>
-        <p className="text-[#525252]">No payouts yet</p>
-        <p className="text-[#8A8A8A] text-sm">Complete tasks to start earning</p>
+        <p className="text-[#333333]">No payouts yet</p>
+        <p className="text-[#888888] text-sm">Complete tasks to start earning</p>
       </div>
     );
   }
@@ -27,13 +27,13 @@ export default function PayoutHistory({ payouts = [] }) {
   return (
     <div className="space-y-3">
       {payouts.map((payout) => (
-        <div key={payout.id} className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-xl p-4 flex items-center justify-between">
+        <div key={payout.id} className="bg-white border-2 border-[rgba(0,0,0,0.08)] rounded-xl p-4 flex items-center justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[#059669] font-bold">+${payout.amount.toFixed(2)}</span>
-              <span className="text-[#8A8A8A] text-sm">USD</span>
+              <span className="text-[#16A34A] font-bold">+${payout.amount.toFixed(2)}</span>
+              <span className="text-[#888888] text-sm">USD</span>
             </div>
-            <p className="text-[#8A8A8A] text-xs">
+            <p className="text-[#888888] text-xs">
               {formatDate(payout.created_at)}
             </p>
           </div>

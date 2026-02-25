@@ -15,8 +15,8 @@ export default function LocationSection({ task }) {
   const locationStr = locationParts.join(', ') || task.location;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-6 mb-6 shadow-sm">
-      <h3 className="text-xs font-bold text-[#8A8A8A] uppercase tracking-wider mb-4">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-6 mb-6 shadow-sm">
+      <h3 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-4">
         Location
       </h3>
       <div className="flex items-center gap-3">
@@ -25,11 +25,11 @@ export default function LocationSection({ task }) {
           <p className="text-[#1A1A1A] font-medium">
             {locationStr || 'Remote'}
             {isRemote && locationStr && (
-              <span className="text-[#525252] font-normal"> (Remote OK)</span>
+              <span className="text-[#333333] font-normal"> (Remote OK)</span>
             )}
           </p>
           {isRemote && !locationStr && (
-            <p className="text-[#525252] text-sm mt-0.5">Work from anywhere</p>
+            <p className="text-[#333333] text-sm mt-0.5">Work from anywhere</p>
           )}
         </div>
       </div>

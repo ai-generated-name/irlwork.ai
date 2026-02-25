@@ -3,10 +3,12 @@ import React, { useState } from 'react'
 import { Check, Copy, Monitor } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
 import { Logo } from '../components/Logo'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function ConnectAgentPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedConfig, setCopiedConfig] = useState(false)
+  const { t } = useLanguage()
 
   const fullPrompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
 
@@ -138,8 +140,8 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
             <Logo variant="header" theme="light" />
           </a>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/dashboard/hiring" className="mcp-v4-nav-link">← Dashboard</a>
-            <a href="/mcp" className="mcp-v4-nav-link">Full API Docs</a>
+            <a href="/dashboard/hiring" className="mcp-v4-nav-link">{`← ${t('connect.dashboardLink')}`}</a>
+            <a href="/mcp" className="mcp-v4-nav-link">{t('connect.fullApiDocs')}</a>
           </div>
         </div>
       </header>
@@ -147,9 +149,9 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
       <main className="mcp-v4-main">
         {/* Hero with Copy Prompt CTA */}
         <div className="mcp-v4-hero">
-          <h1>Connect Your <span>AI Agent</span></h1>
+          <h1>{t('connect.heroTitle1')} <span>{t('connect.heroTitle2')}</span></h1>
           <p>
-            Give your AI agent the ability to hire real humans for physical-world tasks. Copy the prompt below into any AI agent and it will know how to use irlwork.ai.
+            {t('connect.heroDesc')}
           </p>
         </div>
 
@@ -158,10 +160,10 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           <div className="connect-agent-easy-install">
             <div className="connect-agent-easy-install-header">
               <div>
-                <div className="connect-agent-easy-label">Easiest way to start</div>
-                <h2 className="connect-agent-easy-title">Copy & Paste Into Your AI Agent</h2>
+                <div className="connect-agent-easy-label">{t('connect.easiestWay')}</div>
+                <h2 className="connect-agent-easy-title">{t('connect.copyPaste')}</h2>
                 <p className="connect-agent-easy-desc">
-                  This prompt contains everything your AI agent needs — setup instructions, all 22 available tools, workflows, and best practices. Just paste it into Claude, ChatGPT, or any AI agent.
+                  {t('connect.copyDesc')}
                 </p>
               </div>
               <button
@@ -169,15 +171,15 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
                 className={`connect-agent-copy-btn ${copiedPrompt ? 'copied' : ''}`}
               >
                 {copiedPrompt
-                  ? <><Check size={20} /> Copied to Clipboard!</>
-                  : <><Copy size={20} /> Copy Full Prompt</>
+                  ? <><Check size={20} /> {t('connect.copiedClipboard')}</>
+                  : <><Copy size={20} /> {t('connect.copyFullPrompt')}</>
                 }
               </button>
             </div>
 
             {/* Preview of what gets copied */}
             <div className="connect-agent-prompt-preview">
-              <div className="connect-agent-prompt-preview-label">Preview of what gets copied:</div>
+              <div className="connect-agent-prompt-preview-label">{t('connect.previewLabel')}</div>
               <div className="connect-agent-prompt-preview-content">
                 <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
                 <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Open workflows &bull; Best practices &bull; Rate limits</p>
@@ -189,15 +191,15 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
               <div className="connect-agent-step">
                 <div className="connect-agent-step-num">1</div>
                 <div>
-                  <strong>Copy the prompt</strong>
-                  <p>Click the button above</p>
+                  <strong>{t('connect.step1Copy')}</strong>
+                  <p>{t('connect.step1CopyDesc')}</p>
                 </div>
               </div>
               <div className="connect-agent-step-arrow">→</div>
               <div className="connect-agent-step">
                 <div className="connect-agent-step-num">2</div>
                 <div>
-                  <strong>Paste into your AI</strong>
+                  <strong>{t('connect.step2Paste')}</strong>
                   <p>Claude, ChatGPT, etc.</p>
                 </div>
               </div>
@@ -205,8 +207,8 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
               <div className="connect-agent-step">
                 <div className="connect-agent-step-num">3</div>
                 <div>
-                  <strong>Your agent walks you through setup</strong>
-                  <p>It will help you create an account and get an API key</p>
+                  <strong>{t('connect.step3Setup')}</strong>
+                  <p>{t('connect.step3SetupDesc')}</p>
                 </div>
               </div>
             </div>
@@ -215,12 +217,12 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
 
         {/* ===== DIVIDER ===== */}
         <div style={{ textAlign: 'center', padding: '8px 0 32px', color: 'var(--text-tertiary)', fontSize: 14 }}>
-          — or set up manually with the REST API —
+          {t('connect.orManual')}
         </div>
 
         {/* ===== MANUAL SETUP ===== */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🔧</span> Manual Setup (REST API)</h2>
+          <h2 className="mcp-v4-section-title"><span>🔧</span> {t('connect.manualSetup')}</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15 }}>
             For a direct integration where your agent calls the irlwork.ai API, get your API key and start making requests. No installation needed — just HTTP calls.
           </p>
@@ -295,7 +297,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
 
         {/* ===== PLATFORM CONFIGS ===== */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> Works With Any Agent</h2>
+          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> {t('connect.worksWithAny')}</h2>
 
           <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
             <h3>Claude, ChatGPT, or Any AI Agent</h3>
@@ -320,7 +322,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
 
         {/* ===== WHAT YOUR AGENT CAN DO ===== */}
         <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🛠️</span> What Your Agent Can Do</h2>
+          <h2 className="mcp-v4-section-title"><span>🛠️</span> {t('connect.whatAgentCanDo')}</h2>
           <div className="mcp-v4-two-col">
             <div className="mcp-v4-card">
               <h3>Search & Discovery</h3>
@@ -359,11 +361,11 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
 
         {/* CTA */}
         <section className="mcp-v4-cta">
-          <h2>Need the full API reference?</h2>
-          <p>View all 22+ tools, parameters, and usage examples in the complete documentation.</p>
+          <h2>{t('connect.needFullRef')}</h2>
+          <p>{t('connect.viewAllTools')}</p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">View Full API Docs →</a>
-            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
+            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">{t('connect.viewFullDocs')} →</a>
+            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">{t('connect.goToDashboard')}</a>
           </div>
         </section>
       </main>

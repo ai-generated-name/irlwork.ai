@@ -42,17 +42,16 @@ module.exports = {
           input: 'rgba(0, 0, 0, 0.1)',
         },
         divider: '#F2F1EE',
-        // Legacy colors (for gradual migration)
-        cream: '#FAF8F5',
+        cream: '#FAFAF8',
         teal: {
-          DEFAULT: '#0F4C5C',
-          dark: '#0A3540',
-          light: '#1A6B7F',
+          DEFAULT: '#E8853D',
+          dark: '#D4703A',
+          light: '#FFF3EB',
         },
         coral: {
-          DEFAULT: '#E07A5F',
-          dark: '#C45F4A',
-          light: '#E89679',
+          DEFAULT: '#E8853D',
+          dark: '#D4703A',
+          light: '#FFF3EB',
         },
       },
       borderRadius: {
@@ -66,11 +65,10 @@ module.exports = {
         sm: '0 1px 3px rgba(0, 0, 0, 0.04)',
         card: '0 1px 4px rgba(0, 0, 0, 0.02), 0 8px 40px rgba(0, 0, 0, 0.035)',
         lg: '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
-        // Legacy shadows
-        'v4-sm': '0 1px 2px rgba(15, 76, 92, 0.05)',
-        'v4-md': '0 4px 6px rgba(15, 76, 92, 0.08)',
-        'v4-lg': '0 10px 15px rgba(15, 76, 92, 0.1)',
-        'v4-xl': '0 20px 25px rgba(15, 76, 92, 0.15)',
+        'v4-sm': '0 1px 3px rgba(0, 0, 0, 0.04)',
+        'v4-md': '0 1px 4px rgba(0, 0, 0, 0.02), 0 8px 40px rgba(0, 0, 0, 0.035)',
+        'v4-lg': '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
+        'v4-xl': '0 16px 48px rgba(0, 0, 0, 0.1)',
       },
       fontSize: {
         'page-title': ['28px', { lineHeight: '1.2', fontWeight: '700', letterSpacing: '-0.02em' }],
