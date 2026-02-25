@@ -45,7 +45,7 @@ export default function ShareOnXButton({ task, variant = 'icon-text' }) {
           cursor: 'pointer',
           padding: '4px',
           borderRadius: '6px',
-          color: isHovered ? '#1DA1F2' : '#8A8A8A',
+          color: isHovered ? '#1DA1F2' : '#888888',
           transition: 'color 0.15s ease',
           display: 'flex',
           alignItems: 'center',
@@ -64,7 +64,7 @@ export default function ShareOnXButton({ task, variant = 'icon-text' }) {
       className="flex items-center gap-1 sm:gap-1.5 bg-transparent border-none cursor-pointer text-xs"
       title="Share on X"
       style={{
-        color: isHovered ? '#1DA1F2' : '#8A8A8A',
+        color: isHovered ? '#1DA1F2' : '#888888',
         transition: 'color 0.15s ease',
       }}
       onMouseEnter={() => setIsHovered(true)}
