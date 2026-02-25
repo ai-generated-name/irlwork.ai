@@ -33,6 +33,7 @@ import TermsPage from './pages/TermsPage'
 import ThesisPage from './pages/ThesisPage'
 import MarketingFooter from './components/Footer'
 import { Logo } from './components/Logo'
+import MarketingNavbar from './components/MarketingNavbar'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
@@ -4711,17 +4712,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
 
   return (
     <div className="mcp-v4">
-      <header className="mcp-v4-header">
-        <div className="mcp-v4-header-inner">
-          <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
-            <Logo variant="header" theme="light" />
-          </a>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/" className="mcp-v4-nav-link">← Home</a>
-            <a href="/dashboard/hiring" className="mcp-v4-nav-link">Dashboard</a>
-          </div>
-        </div>
-      </header>
+      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
       <main className="mcp-v4-main">
         {/* Hero with Copy Prompt CTA */}
@@ -5106,8 +5097,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
         </section>
       </main>
 
-      {/* Footer */}
-      <MarketingFooter />
+      {/* Footer provided by shared MarketingFooter in App.jsx */}
     </div>
   )
 }
@@ -5433,6 +5423,17 @@ function App() {
     return <Loading />
   }
 
+  // Determine active page for navbar highlight
+  const activePage = path.startsWith('/browse') ? 'browse'
+    : path === '/connect-agent' ? 'connect-agent'
+    : null
+
+  // Routes that should NOT get the shared marketing navbar+footer
+  const isAuthRoute = path === '/auth'
+  const isOnboardRoute = path === '/onboard'
+  const isDashboardRoute = path.startsWith('/dashboard')
+  const isMarketingPage = !isAuthRoute && !isOnboardRoute && !isDashboardRoute
+
   // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
   const routeContent = (() => {
     // Task detail route - /tasks/:id
@@ -5490,13 +5491,18 @@ function App() {
     return <NotFoundPage />
   })()
 
-  // Dashboard has feedback in sidebar, other pages use floating button
-  const isDashboard = path.startsWith('/dashboard')
-
   return (
     <>
-      {routeContent}
-      {!isDashboard && <FeedbackButton user={user} />}
+      {isMarketingPage ? (
+        <>
+          <MarketingNavbar user={user} activePage={activePage} />
+          {routeContent}
+          <MarketingFooter />
+        </>
+      ) : (
+        routeContent
+      )}
+      {!isDashboardRoute && <FeedbackButton user={user} />}
     </>
   )
 }

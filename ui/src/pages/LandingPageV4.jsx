@@ -5,7 +5,6 @@ import {
   Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight, ChevronDown,
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
 } from 'lucide-react'
-import MarketingFooter from '../components/Footer'
 import HappeningNow from '../components/HappeningNow'
 import { Logo } from '../components/Logo'
 import LanguageSelector from '../components/LanguageSelector'
@@ -611,18 +610,7 @@ export default function LandingPageV4() {
 
   return (
     <div className="landing-v4">
-      {/* Navbar */}
-      <nav className="navbar-v4">
-        <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
-          <Logo variant="header" theme="light" />
-        </a>
-        <div className="nav-links-v4">
-          <a href="/connect-agent" className="nav-link-v4">{t('nav.forAgents')}</a>
-          <a href="/browse/tasks" className="nav-link-v4">{t('nav.browse')}</a>
-          <LanguageSelector />
-          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>{t('nav.joinNow')}</button>
-        </div>
-      </nav>
+      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
       {/* Hero Section */}
       <section className="hero-v4">
@@ -743,8 +731,7 @@ export default function LandingPageV4() {
       {/* FAQ */}
       <FAQSection />
 
-      {/* Footer */}
-      <MarketingFooter />
+      {/* Footer provided by shared MarketingFooter in App.jsx */}
     </div>
   )
 }

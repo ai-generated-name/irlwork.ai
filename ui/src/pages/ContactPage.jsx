@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
-import { Mail, Send, ChevronDown, ArrowLeft } from 'lucide-react'
-import MarketingFooter from '../components/Footer'
+import { Mail, Send, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 
 export default function ContactPage() {
@@ -43,27 +42,7 @@ export default function ContactPage() {
           zIndex: 0,
         }} />
 
-        {/* Nav */}
-        <nav style={{
-          padding: 'var(--space-4) var(--space-6)',
-          position: 'relative',
-          zIndex: 10,
-          maxWidth: '1200px',
-          margin: '0 auto',
-        }}>
-          <a href="/" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            textDecoration: 'none',
-            color: 'var(--text-secondary)',
-            fontSize: '14px',
-            fontWeight: 500,
-          }}>
-            <ArrowLeft size={16} />
-            {t('about.backToHome')}
-          </a>
-        </nav>
+        {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
         {/* Hero */}
         <div style={{
@@ -71,7 +50,7 @@ export default function ContactPage() {
           zIndex: 1,
           maxWidth: '720px',
           margin: '0 auto',
-          padding: '40px var(--space-6) 80px',
+          padding: '100px var(--space-6) 80px',
         }}>
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
             <div style={{
@@ -380,7 +359,6 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
-      <MarketingFooter />
     </>
   )
 }

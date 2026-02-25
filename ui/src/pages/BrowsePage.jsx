@@ -9,7 +9,6 @@ import CountryAutocomplete from '../components/CountryAutocomplete'
 import SkillAutocomplete from '../components/SkillAutocomplete'
 import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
-import MarketingFooter from '../components/Footer'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { trackEvent } from '../utils/analytics'
 
@@ -563,21 +562,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
 
   return (
     <div className="landing-v4" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Navbar */}
-      <nav className="navbar-v4">
-        <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
-          <Logo variant="header" theme="light" />
-        </a>
-        <div className="nav-links-v4">
-          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
-          <a href="/browse/tasks" className="nav-link-v4" style={{ color: 'var(--coral-500)' }}>Browse</a>
-          {user ? (
-            <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/dashboard')}>Dashboard</button>
-          ) : (
-            <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>Join Now</button>
-          )}
-        </div>
-      </nav>
+      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
       {/* Main Content */}
       <div style={{ maxWidth: 1340, margin: '0 auto', padding: '110px 24px 48px', flex: 1, width: '100%', boxSizing: 'border-box' }}>
@@ -1713,8 +1698,7 @@ Use the start_conversation method with human_id "${showHireModal.id}" to message
         />
       )}
 
-      {/* Footer */}
-      <MarketingFooter />
+      {/* Footer provided by shared MarketingFooter in App.jsx */}
 
       <style>{`
         @keyframes spin {
