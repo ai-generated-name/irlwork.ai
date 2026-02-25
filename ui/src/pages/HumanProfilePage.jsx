@@ -591,7 +591,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
           </>
         ) : null}
       </div>
-    </div>
+    </PageLayoutV4>
   )
 }
 
