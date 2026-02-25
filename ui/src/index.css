@@ -1409,6 +1409,87 @@ code, pre {
   }
 }
 
+/* Fee Breakdown in Apply Modal */
+.quick-apply-fee-breakdown {
+  border-top: 1px solid rgba(26, 26, 26, 0.1);
+  padding-top: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.quick-apply-fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.quick-apply-fee-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.quick-apply-fee-amount {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.quick-apply-fee-payout {
+  color: #059669;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.quick-apply-fee-muted {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.quick-apply-fee-premium,
+.quick-apply-fee-upsell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.quick-apply-fee-premium {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+}
+
+.quick-apply-fee-upsell {
+  background: rgba(212, 160, 23, 0.08);
+  color: #92700C;
+}
+
+.quick-apply-fee-premium-icon {
+  color: #D4A017;
+  fill: #D4A017;
+  flex-shrink: 0;
+}
+
+.quick-apply-fee-premium .quick-apply-fee-premium-icon {
+  color: #059669;
+  fill: #059669;
+}
+
+.quick-apply-fee-upgrade-link {
+  color: #D4A017;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.quick-apply-fee-upgrade-link:hover {
+  color: #B8860B;
+}
+
 .quick-apply-modal-error {
   display: flex;
   align-items: center;
