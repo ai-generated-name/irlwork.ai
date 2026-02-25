@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { Bot, Copy, Check, ExternalLink } from 'lucide-react'
+import { Bot, Copy, Check, ExternalLink, ChevronDown } from 'lucide-react'
 
-export default function ForAgentsBox({ human }) {
+export default function ForAgentsBox({ human, collapsible = false }) {
   const [copied, setCopied] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const hireSnippet = `curl -X POST https://api.irlwork.ai/api/mcp \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
@@ -16,6 +17,155 @@ export default function ForAgentsBox({ human }) {
     })
   }
 
+  if (collapsible) {
+    return (
+      <div style={{
+        background: 'var(--bg-tertiary, #F9FAFB)',
+        borderRadius: 12,
+        border: '1px solid rgba(26,26,26,0.06)',
+      }}>
+        {/* Collapsed header - always visible */}
+        <button
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            width: '100%',
+            padding: '12px 16px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <div style={{
+            width: 28,
+            height: 28,
+            borderRadius: 7,
+            background: 'rgba(59,130,246,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Bot size={15} style={{ color: '#3B82F6' }} />
+          </div>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #1A1A1A)', flex: 1 }}>
+            For Agents
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary, #8A8A8A)' }}>
+            Book via REST API
+          </span>
+          <ChevronDown
+            size={16}
+            style={{
+              color: 'var(--text-tertiary, #8A8A8A)',
+              transition: 'transform 0.2s',
+              transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              flexShrink: 0,
+            }}
+          />
+        </button>
+
+        {/* Links row - always visible */}
+        <div style={{ display: 'flex', gap: 8, padding: '0 16px 12px', marginTop: -4 }}>
+          <a
+            href="/connect-agent"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 12,
+              fontWeight: 500,
+              color: '#3B82F6',
+              textDecoration: 'none',
+              padding: '4px 10px',
+              borderRadius: 6,
+              border: '1px solid rgba(59,130,246,0.2)',
+              background: 'rgba(59,130,246,0.04)',
+              transition: 'all 0.2s'
+            }}
+          >
+            <ExternalLink size={11} />
+            API Docs
+          </a>
+          <a
+            href="/dashboard"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 12,
+              fontWeight: 500,
+              color: '#3B82F6',
+              textDecoration: 'none',
+              padding: '4px 10px',
+              borderRadius: 6,
+              border: '1px solid rgba(59,130,246,0.2)',
+              background: 'rgba(59,130,246,0.04)',
+              transition: 'all 0.2s'
+            }}
+          >
+            <ExternalLink size={11} />
+            Get API Key
+          </a>
+        </div>
+
+        {/* Expandable code block */}
+        {expanded && (
+          <div style={{ padding: '0 16px 16px' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary, #525252)', margin: '0 0 12px', lineHeight: 1.5 }}>
+              Book {human?.name?.split(' ')[0] || 'this human'} programmatically via the REST API.
+            </p>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={copyToClipboard}
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 8px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  color: copied ? '#34D399' : '#9CA3AF',
+                  transition: 'all 0.2s',
+                  zIndex: 1,
+                }}
+              >
+                {copied ? <Check size={11} /> : <Copy size={11} />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+              <pre style={{
+                background: '#1a1a1a',
+                color: '#e0e0e0',
+                padding: 14,
+                borderRadius: 10,
+                fontSize: 11,
+                lineHeight: 1.6,
+                overflow: 'auto',
+                margin: 0,
+                fontFamily: "'JetBrains Mono', 'Space Mono', monospace",
+                maxHeight: 180,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all'
+              }}>
+                {hireSnippet}
+              </pre>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Original non-collapsible version (kept for backward compatibility)
   return (
     <div style={{
       background: 'var(--bg-tertiary, #F9FAFB)',
@@ -76,7 +226,7 @@ export default function ForAgentsBox({ human }) {
           lineHeight: 1.6,
           overflow: 'auto',
           margin: 0,
-          fontFamily: "'JetBrains Mono', 'Space Mono', monospace'",
+          fontFamily: "'JetBrains Mono', 'Space Mono', monospace",
           maxHeight: 200,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-all'
