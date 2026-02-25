@@ -6,29 +6,29 @@ const API_URL = import.meta.env.VITE_API_URL
   : 'https://api.irlwork.ai/api'
 
 const C = {
-  teal: '#0F4C5C',
-  tealLight: '#1A6B7F',
-  coral: '#E07A5F',
-  coralDark: '#C45F4A',
-  coralBg: 'rgba(224, 122, 95, 0.08)',
-  orange: '#F48C5F',
+  teal: '#E8853D',
+  tealLight: '#E8853D',
+  coral: '#E8853D',
+  coralDark: '#D4703A',
+  coralBg: 'rgba(232, 133, 61, 0.08)',
+  orange: '#E8853D',
   orangeBg: 'rgba(244, 140, 95, 0.1)',
-  cream: '#FAF8F5',
-  creamDark: '#F5F2ED',
+  cream: '#FAFAF8',
+  creamDark: '#F5F3F0',
   creamDeep: '#EDE8E1',
   white: '#FFFFFF',
   textPrimary: '#1A1A1A',
-  textSecondary: '#525252',
-  textTertiary: '#8A8A8A',
-  border: 'rgba(26, 26, 26, 0.08)',
-  borderMed: 'rgba(26, 26, 26, 0.12)',
-  borderHover: 'rgba(26, 26, 26, 0.18)',
-  success: '#059669',
-  successBg: '#D1FAE5',
-  error: '#DC2626',
-  errorBg: '#FEE2E2',
-  amber: '#D97706',
-  amberBg: '#FEF3C7',
+  textSecondary: '#333333',
+  textTertiary: '#888888',
+  border: 'rgba(0, 0, 0, 0.08)',
+  borderMed: 'rgba(0, 0, 0, 0.12)',
+  borderHover: 'rgba(0, 0, 0, 0.18)',
+  success: '#16A34A',
+  successBg: 'rgba(22, 163, 74, 0.08)',
+  error: '#FF5F57',
+  errorBg: 'rgba(255, 95, 87, 0.1)',
+  amber: '#FEBC2E',
+  amberBg: 'rgba(254, 188, 46, 0.1)',
   warmGray: '#78716C',
   warmGrayBg: '#F5F0EB',
 }
@@ -45,7 +45,7 @@ const TYPES = [
 const URGENCY = [
   { id: 'low', label: 'Low', color: C.warmGray, bg: C.warmGrayBg, dot: '#A8A29E' },
   { id: 'normal', label: 'Normal', color: C.teal, bg: C.creamDark, dot: C.teal },
-  { id: 'high', label: 'High', color: C.amber, bg: C.amberBg, dot: '#F59E0B' },
+  { id: 'high', label: 'High', color: C.amber, bg: C.amberBg, dot: '#FEBC2E' },
   { id: 'critical', label: 'Critical', color: C.error, bg: C.errorBg, dot: C.error },
 ]
 
@@ -202,8 +202,8 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
     style.id = 'feedback-btn-styles'
     style.textContent = `
       @keyframes feedbackPulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(224, 122, 95, 0.4); }
-        50% { box-shadow: 0 0 0 12px rgba(224, 122, 95, 0); }
+        0%, 100% { box-shadow: 0 0 0 0 rgba(232, 133, 61, 0.4); }
+        50% { box-shadow: 0 0 0 12px rgba(232, 133, 61, 0); }
       }
       @keyframes feedbackCheckIn {
         0% { transform: scale(0) rotate(-45deg); opacity: 0; }
@@ -232,7 +232,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(26, 26, 26, 0.25)',
+            background: 'rgba(0, 0, 0, 0.25)',
             zIndex: 9998,
             backdropFilter: 'blur(2px)',
           }}
@@ -251,7 +251,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
             width: 56,
             height: 56,
             borderRadius: '50%',
-            background: `linear-gradient(135deg, ${C.coral}, ${C.orange})`,
+            background: C.coral,
             color: C.white,
             border: 'none',
             cursor: 'pointer',
@@ -259,7 +259,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9998,
-            boxShadow: '0 6px 20px rgba(224, 122, 95, 0.35), 0 2px 6px rgba(0, 0, 0, 0.06)',
+            boxShadow: '0 6px 20px rgba(232, 133, 61, 0.35), 0 2px 6px rgba(0, 0, 0, 0.06)',
             transition: 'transform 0.2s ease, box-shadow 0.2s ease',
             animation: showPulse ? 'feedbackPulse 2s ease-in-out 3' : 'none',
             fontFamily: FONT,
@@ -267,12 +267,12 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.08)'
             e.currentTarget.style.boxShadow =
-              '0 12px 32px rgba(224, 122, 95, 0.4), 0 4px 10px rgba(0, 0, 0, 0.08)'
+              '0 12px 32px rgba(232, 133, 61, 0.4), 0 4px 10px rgba(0, 0, 0, 0.08)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)'
             e.currentTarget.style.boxShadow =
-              '0 6px 20px rgba(224, 122, 95, 0.35), 0 2px 6px rgba(0, 0, 0, 0.06)'
+              '0 6px 20px rgba(232, 133, 61, 0.35), 0 2px 6px rgba(0, 0, 0, 0.06)'
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -297,7 +297,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           borderTop: `1px solid ${C.borderMed}`,
           borderTopLeftRadius: 20,
           boxShadow: isOpen
-            ? '-8px -4px 40px rgba(26, 26, 26, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04)'
+            ? '-8px -4px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04)'
             : 'none',
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -685,7 +685,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                             width: 18,
                             height: 18,
                             borderRadius: '50%',
-                            background: 'rgba(26, 26, 26, 0.55)',
+                            background: 'rgba(0, 0, 0, 0.55)',
                             color: C.white,
                             border: 'none',
                             cursor: 'pointer',
@@ -715,7 +715,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                   borderRadius: 10,
                   border: 'none',
                   background: canSubmit
-                    ? `linear-gradient(135deg, ${C.coral}, ${C.orange})`
+                    ? C.coral
                     : C.creamDeep,
                   color: canSubmit ? C.white : C.textTertiary,
                   fontSize: 14,
@@ -728,7 +728,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                   gap: 8,
                   transition: 'opacity 0.15s, transform 0.1s',
                   boxShadow: canSubmit
-                    ? '0 4px 14px rgba(224, 122, 95, 0.25)'
+                    ? '0 4px 14px rgba(232, 133, 61, 0.25)'
                     : 'none',
                   letterSpacing: '-0.01em',
                 }}

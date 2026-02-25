@@ -8,31 +8,31 @@ const STATUS_CONFIG = {
   pending_review: {
     label: 'Pending Agent Review',
     icon: <Hourglass size={14} />,
-    color: 'bg-[#FFE4DB] border-[#E07A5F] text-[#C45F4A]',
+    color: 'bg-[#FFE4DB] border-[#E8853D] text-[#D4703A]',
     description: 'Your proof has been submitted and is awaiting agent review'
   },
   completed: {
     label: 'Approved',
     icon: '✓',
-    color: 'bg-[#D1FAE5] border-[#059669] text-[#059669]',
+    color: 'bg-[rgba(22, 163, 74, 0.08)] border-[#16A34A] text-[#16A34A]',
     description: 'Your proof has been approved by the agent'
   },
   paid: {
     label: 'Paid',
     icon: '✓',
-    color: 'bg-[#D1FAE5] border-[#059669] text-[#059669]',
+    color: 'bg-[rgba(22, 163, 74, 0.08)] border-[#16A34A] text-[#16A34A]',
     description: 'Payment has been released to your bank account'
   },
   disputed: {
     label: 'Disputed',
     icon: <AlertTriangle size={14} />,
-    color: 'bg-[#FEE2E2] border-[#DC2626] text-[#DC2626]',
+    color: 'bg-[rgba(255, 95, 87, 0.1)] border-[#FF5F57] text-[#FF5F57]',
     description: 'The agent has disputed your proof. Please check messages for feedback.'
   },
   rejected: {
     label: 'Rejected',
     icon: '✕',
-    color: 'bg-[#FEE2E2] border-[#DC2626] text-[#DC2626]',
+    color: 'bg-[rgba(255, 95, 87, 0.1)] border-[#FF5F57] text-[#FF5F57]',
     description: 'Your proof was rejected. Check messages for details.'
   }
 };

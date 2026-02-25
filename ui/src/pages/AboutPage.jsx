@@ -14,7 +14,7 @@ export default function AboutPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          backgroundImage: 'linear-gradient(rgba(26,26,26,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(26,26,26,0.03) 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)',
           backgroundSize: '60px 60px',
           pointerEvents: 'none',
           zIndex: 0,
@@ -164,7 +164,7 @@ export default function AboutPage() {
               <div style={{
                 width: '48px',
                 height: '48px',
-                background: 'rgba(244, 132, 95, 0.1)',
+                background: 'rgba(232, 133, 61, 0.1)',
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
@@ -203,7 +203,7 @@ export default function AboutPage() {
               <div style={{
                 width: '48px',
                 height: '48px',
-                background: 'rgba(244, 132, 95, 0.1)',
+                background: 'rgba(232, 133, 61, 0.1)',
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
@@ -242,7 +242,7 @@ export default function AboutPage() {
               <div style={{
                 width: '48px',
                 height: '48px',
-                background: 'rgba(244, 132, 95, 0.1)',
+                background: 'rgba(232, 133, 61, 0.1)',
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',

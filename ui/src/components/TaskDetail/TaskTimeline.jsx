@@ -48,17 +48,17 @@ export default function TaskTimeline({ task, taskStatus }) {
   const isDisputed = task.status === 'disputed';
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm">
       <div className="relative flex items-start justify-between">
         {/* Background connecting line */}
         <div
-          className="absolute h-0.5 bg-[rgba(26,26,26,0.1)]"
+          className="absolute h-0.5 bg-[rgba(0,0,0,0.1)]"
           style={{ top: 12, left: '10%', right: '10%' }}
         />
         {/* Completed portion of connecting line */}
         {activeIndex > 0 && (
           <div
-            className="absolute h-0.5 bg-[#059669] transition-all duration-500"
+            className="absolute h-0.5 bg-[#16A34A] transition-all duration-500"
             style={{
               top: 12,
               left: '10%',
@@ -73,22 +73,22 @@ export default function TaskTimeline({ task, taskStatus }) {
 
           let circleClasses;
           if (isCompleted) {
-            circleClasses = 'bg-[#059669] text-white';
+            circleClasses = 'bg-[#16A34A] text-white';
           } else if (isActive) {
             circleClasses = isDisputed
-              ? 'bg-[#DC2626] text-white ring-4 ring-[rgba(220,38,38,0.15)]'
-              : 'bg-[#0F4C5C] text-white ring-4 ring-[rgba(15,76,92,0.15)]';
+              ? 'bg-[#FF5F57] text-white ring-4 ring-[rgba(220,38,38,0.15)]'
+              : 'bg-[#E8853D] text-white ring-4 ring-[rgba(232,133,61,0.15)]';
           } else {
-            circleClasses = 'bg-[#F5F2ED] text-[#8A8A8A]';
+            circleClasses = 'bg-[#F5F3F0] text-[#888888]';
           }
 
           let labelClasses;
           if (isCompleted) {
-            labelClasses = 'text-[#059669]';
+            labelClasses = 'text-[#16A34A]';
           } else if (isActive) {
-            labelClasses = isDisputed ? 'text-[#DC2626]' : 'text-[#0F4C5C]';
+            labelClasses = isDisputed ? 'text-[#FF5F57]' : 'text-[#E8853D]';
           } else {
-            labelClasses = 'text-[#8A8A8A]';
+            labelClasses = 'text-[#888888]';
           }
 
           return (

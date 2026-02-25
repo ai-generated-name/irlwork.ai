@@ -58,7 +58,7 @@ function MethodCard({ method, description, params, response, errors, notes, exam
                         <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{p.type}</td>
                         <td style={{ padding: '8px 12px' }}>
                           {p.required
-                            ? <span style={{ color: '#ef4444', fontWeight: 600 }}>Yes</span>
+                            ? <span style={{ color: '#FF5F57', fontWeight: 600 }}>Yes</span>
                             : <span style={{ color: 'var(--text-tertiary)' }}>No</span>}
                         </td>
                         <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{p.desc}</td>
@@ -84,7 +84,7 @@ function MethodCard({ method, description, params, response, errors, notes, exam
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Errors</h4>
               <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0 }}>
-                {errors.map((e, i) => <li key={i} style={{ marginBottom: 4 }}><code style={{ color: '#ef4444' }}>{e.code}</code> — {e.desc}</li>)}
+                {errors.map((e, i) => <li key={i} style={{ marginBottom: 4 }}><code style={{ color: '#FF5F57' }}>{e.code}</code> — {e.desc}</li>)}
               </ul>
             </div>
           )}
@@ -251,7 +251,7 @@ export default function MCPPage() {
                           marginBottom: 8, fontFamily: 'monospace', fontSize: 14,
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                         }}>
-                          <span style={{ color: '#10B981' }}>{key.key_prefix}</span>
+                          <span style={{ color: '#16A34A' }}>{key.key_prefix}</span>
                           <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
                         </div>
                       ))}
@@ -284,7 +284,7 @@ export default function MCPPage() {
                 <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>hire_human / assign_human</span>
                 <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
-                <span style={{ background: '#f59e0b', color: 'white', padding: '2px 10px', borderRadius: 12, fontWeight: 600, fontSize: 12 }}>assigned</span>
+                <span style={{ background: '#FEBC2E', color: 'white', padding: '2px 10px', borderRadius: 12, fontWeight: 600, fontSize: 12 }}>assigned</span>
                 <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>human works</span>
                 <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
@@ -292,7 +292,7 @@ export default function MCPPage() {
                 <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>approve_task</span>
                 <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
-                <span style={{ background: '#10B981', color: 'white', padding: '2px 10px', borderRadius: 12, fontWeight: 600, fontSize: 12 }}>paid</span>
+                <span style={{ background: '#16A34A', color: 'white', padding: '2px 10px', borderRadius: 12, fontWeight: 600, fontSize: 12 }}>paid</span>
               </div>
             </div>
 
