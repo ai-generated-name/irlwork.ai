@@ -108,6 +108,9 @@ export default function MyTasksPage({
 
   const safeNotifications = Array.isArray(notifications) ? notifications : [];
 
+  // Determine if stats should show
+  const hasActivity = totalEarned > 0 || activeTasks.length > 0 || completedTasks.length > 0;
+
   return (
     <div>
       {/* Personalized Header */}
@@ -120,64 +123,68 @@ export default function MyTasksPage({
             {getContextualMessage()}
           </p>
         </div>
-        <span className="mytasks-active-count">{activeTasks.length} active</span>
+        {activeTasks.length > 0 && (
+          <span className="mytasks-active-count">{activeTasks.length} active</span>
+        )}
       </div>
 
-      {/* Enhanced Stats */}
-      <div className="dashboard-v4-stats dashboard-v4-stats--enhanced">
-        <div className="dashboard-v4-stat-card">
-          <div className="dashboard-v4-stat-icon-wrap dashboard-v4-stat-icon--orange">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-            </svg>
+      {/* Enhanced Stats - only when user has activity */}
+      {hasActivity && (
+        <div className="dashboard-v4-stats dashboard-v4-stats--enhanced">
+          <div className="dashboard-v4-stat-card">
+            <div className="dashboard-v4-stat-icon-wrap dashboard-v4-stat-icon--orange">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+              </svg>
+            </div>
+            <div className="dashboard-v4-stat-content">
+              <div className="dashboard-v4-stat-label">Total Earned</div>
+              <div className="dashboard-v4-stat-value orange">${totalEarned}</div>
+            </div>
           </div>
-          <div className="dashboard-v4-stat-content">
-            <div className="dashboard-v4-stat-label">Total Earned</div>
-            <div className="dashboard-v4-stat-value orange">${totalEarned}</div>
-          </div>
-        </div>
 
-        <div className="dashboard-v4-stat-card">
-          <div className="dashboard-v4-stat-icon-wrap dashboard-v4-stat-icon--blue">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-            </svg>
+          <div className="dashboard-v4-stat-card">
+            <div className="dashboard-v4-stat-icon-wrap dashboard-v4-stat-icon--blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+            </div>
+            <div className="dashboard-v4-stat-content">
+              <div className="dashboard-v4-stat-label">Active Tasks</div>
+              <div className="dashboard-v4-stat-value">{activeTasks.length}</div>
+            </div>
           </div>
-          <div className="dashboard-v4-stat-content">
-            <div className="dashboard-v4-stat-label">Active Tasks</div>
-            <div className="dashboard-v4-stat-value">{activeTasks.length}</div>
-          </div>
-        </div>
 
-        <div className="dashboard-v4-stat-card">
-          <div className="dashboard-v4-stat-icon-wrap dashboard-v4-stat-icon--green">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
+          <div className="dashboard-v4-stat-card">
+            <div className="dashboard-v4-stat-icon-wrap dashboard-v4-stat-icon--green">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <div className="dashboard-v4-stat-content">
+              <div className="dashboard-v4-stat-label">Completed</div>
+              <div className="dashboard-v4-stat-value">{completedTasks.length}</div>
+            </div>
           </div>
-          <div className="dashboard-v4-stat-content">
-            <div className="dashboard-v4-stat-label">Completed</div>
-            <div className="dashboard-v4-stat-value">{completedTasks.length}</div>
-          </div>
-        </div>
 
-        <div className="dashboard-v4-stat-card">
-          <div className="dashboard-v4-stat-icon-wrap dashboard-v4-stat-icon--purple">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-          </div>
-          <div className="dashboard-v4-stat-content">
-            <div className="dashboard-v4-stat-label">Success Rate</div>
-            <div className="dashboard-v4-stat-value">
-              {safeTasks.length > 0
-                ? Math.round((completedTasks.length / safeTasks.length) * 100) + '%'
-                : '--'}
+          <div className="dashboard-v4-stat-card">
+            <div className="dashboard-v4-stat-icon-wrap dashboard-v4-stat-icon--purple">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </div>
+            <div className="dashboard-v4-stat-content">
+              <div className="dashboard-v4-stat-label">Success Rate</div>
+              <div className="dashboard-v4-stat-value">
+                {safeTasks.length > 0
+                  ? Math.round((completedTasks.length / safeTasks.length) * 100) + '%'
+                  : '--'}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Quick Actions Bar */}
       {!loading && (
@@ -215,133 +222,79 @@ export default function MyTasksPage({
         </div>
       )}
 
+      {/* Always-visible tab headers showing task lifecycle */}
+      <div className="mytasks-filters">
+        {[
+          { id: 'all', label: 'All', count: safeTasks.length },
+          { id: 'in_progress', label: 'In Progress', count: safeTasks.filter(t => t.status === 'in_progress').length },
+          { id: 'pending_review', label: 'Pending Review', count: safeTasks.filter(t => REVIEW_STATUSES.includes(t.status)).length },
+          { id: 'paid', label: 'Paid', count: completedTasks.length },
+        ].map(filter => (
+          <button
+            key={filter.id}
+            className={`mytasks-filter-pill ${taskFilter === filter.id ? 'active' : ''} ${filter.count === 0 && filter.id !== 'all' ? 'mytasks-filter-pill--empty' : ''}`}
+            onClick={() => setTaskFilter(filter.id)}
+          >
+            {filter.label}
+            <span className="mytasks-filter-count">{filter.count}</span>
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="dashboard-v4-empty">
           <div className="dashboard-v4-empty-icon">&#8987;</div>
           <p className="dashboard-v4-empty-text">Loading...</p>
         </div>
       ) : safeTasks.length === 0 ? (
-        /* Rich Empty State with Onboarding Checklist */
-        <div className="dashboard-v4-zero-state">
-          <div className="dashboard-v4-zero-state-header">
-            <div className="dashboard-v4-zero-state-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        /* Redesigned empty state */
+        <div className="mytasks-empty-state">
+          <div className="mytasks-empty-state-content">
+            <div className="mytasks-empty-state-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 <path d="M2 17l10 5 10-5" />
                 <path d="M2 12l10 5 10-5" />
               </svg>
             </div>
-            <h2 className="dashboard-v4-zero-state-title">Welcome to irlwork.ai</h2>
-            <p className="dashboard-v4-zero-state-subtitle">Complete these steps to start earning money on real-world tasks</p>
-          </div>
-
-          <div className="dashboard-v4-checklist">
-            <div className={`dashboard-v4-checklist-item ${user?.city ? 'completed' : ''}`}>
-              <div className="dashboard-v4-checklist-check">
-                {user?.city ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : (
-                  <span>1</span>
-                )}
-              </div>
-              <div className="dashboard-v4-checklist-content">
-                <span className="dashboard-v4-checklist-label">
-                  {user?.city ? 'Location set' : 'Set your location'}
-                </span>
-                <span className="dashboard-v4-checklist-meta">
-                  {user?.city || 'Helps match you with nearby tasks'}
-                </span>
-              </div>
-            </div>
-
-            <div className={`dashboard-v4-checklist-item ${user?.bio ? 'completed' : ''}`}>
-              <div className="dashboard-v4-checklist-check">
-                {user?.bio ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : (
-                  <span>2</span>
-                )}
-              </div>
-              <div className="dashboard-v4-checklist-content">
-                <span className="dashboard-v4-checklist-label">
-                  {user?.bio ? 'Profile complete' : 'Complete your profile'}
-                </span>
-                <span className="dashboard-v4-checklist-meta">
-                  {user?.bio ? 'Looking good!' : 'Add a bio to stand out to agents'}
-                </span>
-              </div>
-            </div>
-
-            <div className="dashboard-v4-checklist-item">
-              <div className="dashboard-v4-checklist-check"><span>3</span></div>
-              <div className="dashboard-v4-checklist-content">
-                <span className="dashboard-v4-checklist-label">Browse and accept a task</span>
-                <span className="dashboard-v4-checklist-meta">Find tasks that match your skills</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="dashboard-v4-zero-state-actions">
+            <h2 className="mytasks-empty-state-title">No tasks yet</h2>
+            <p className="mytasks-empty-state-description">
+              Tasks you apply to and get accepted for will appear here. Browse available tasks to find work that matches your skills.
+            </p>
             <button
-              className="dashboard-v4-empty-action"
+              className="v4-btn v4-btn-primary mytasks-empty-state-cta"
               onClick={() => onNavigate?.('browse')}
             >
-              <div className="dashboard-v4-empty-action-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="M21 21l-4.35-4.35" />
-                </svg>
-              </div>
-              <div>
-                <div className="dashboard-v4-empty-action-title">Browse Tasks</div>
-                <div className="dashboard-v4-empty-action-text">Find tasks near you</div>
-              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+              </svg>
+              Browse Available Tasks
             </button>
+          </div>
 
-            {!user?.bio && (
-              <button
-                className="dashboard-v4-empty-action"
-                onClick={() => onNavigate?.('profile')}
-              >
-                <div className="dashboard-v4-empty-action-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4-4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
+          {/* Preview task cards to show what the page will look like */}
+          <div className="mytasks-empty-state-previews">
+            <h4 className="mytasks-empty-state-previews-label">What your tasks will look like:</h4>
+            {[
+              { title: 'Take photos of local restaurant menus', budget: 25, category: 'Photography', status: 'In Progress' },
+              { title: 'Verify business hours at 3 locations', budget: 18, category: 'Verification', status: 'Applied' },
+              { title: 'Deliver package to downtown office', budget: 32, category: 'Delivery', status: 'Completed' },
+            ].map((preview, i) => (
+              <div key={i} className="mytasks-preview-card">
+                <div className="mytasks-preview-card-header">
+                  <span className={`mytasks-preview-card-status mytasks-preview-card-status--${preview.status.toLowerCase().replace(' ', '-')}`}>
+                    {preview.status}
+                  </span>
+                  <span className="mytasks-preview-card-category">{preview.category}</span>
                 </div>
-                <div>
-                  <div className="dashboard-v4-empty-action-title">Complete Profile</div>
-                  <div className="dashboard-v4-empty-action-text">Stand out to AI agents</div>
-                </div>
-              </button>
-            )}
+                <p className="mytasks-preview-card-title">{preview.title}</p>
+                <span className="mytasks-preview-card-budget">${preview.budget}</span>
+              </div>
+            ))}
           </div>
         </div>
       ) : (
         <>
-          {/* Quick Filter Pills */}
-          <div className="mytasks-filters">
-            {[
-              { id: 'all', label: 'All', count: safeTasks.length },
-              { id: 'in_progress', label: 'In Progress', count: safeTasks.filter(t => t.status === 'in_progress').length },
-              { id: 'pending_review', label: 'Pending Review', count: safeTasks.filter(t => REVIEW_STATUSES.includes(t.status)).length },
-              { id: 'paid', label: 'Paid', count: completedTasks.length },
-            ].filter(f => f.id === 'all' || f.count > 0).map(filter => (
-              <button
-                key={filter.id}
-                className={`mytasks-filter-pill ${taskFilter === filter.id ? 'active' : ''}`}
-                onClick={() => setTaskFilter(filter.id)}
-              >
-                {filter.label}
-                <span className="mytasks-filter-count">{filter.count}</span>
-              </button>
-            ))}
-          </div>
-
           {/* Task Sections */}
           {showAllSections ? (
             <div className="mytasks-sections">

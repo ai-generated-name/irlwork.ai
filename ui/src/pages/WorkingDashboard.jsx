@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import API_URL from '../config/api'
 import ProfileCompleteness from '../components/ProfileCompleteness'
 import HowPaymentsWork from '../components/HowPaymentsWork'
+import { useToast } from '../context/ToastContext'
 
 const ACTIVE_STATUSES = ['open', 'accepted', 'assigned', 'in_progress']
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed']
@@ -90,7 +91,8 @@ function MonthlyEarningsChart({ tasks }) {
   )
 }
 
-export default function WorkingDashboard({ user, tasks, notifications, onNavigate }) {
+export default function WorkingDashboard({ user, tasks, notifications, onNavigate, onUserUpdate }) {
+  const toast = useToast()
   const safeTasks = Array.isArray(tasks) ? tasks : []
   const activeTasks = safeTasks.filter(t => ACTIVE_STATUSES.includes(t.status))
   const reviewTasks = safeTasks.filter(t => REVIEW_STATUSES.includes(t.status))
@@ -106,12 +108,43 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
   const unreadNotifs = safeNotifications.filter(n => !n.read_at)
 
   const [showPaymentsExplainer, setShowPaymentsExplainer] = useState(false)
+  const [togglingAvailability, setTogglingAvailability] = useState(false)
+
+  // Check if user has any activity at all
+  const hasActivity = totalEarned > 0 || activeTasks.length > 0 || paidTasks.length > 0
+  const hasCompletedTask = paidTasks.length > 0
 
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Good morning'
     if (hour < 17) return 'Good afternoon'
     return 'Good evening'
+  }
+
+  const handleToggleAvailability = async () => {
+    if (togglingAvailability) return
+    setTogglingAvailability(true)
+    const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
+    try {
+      const res = await fetch(`${API_URL}/humans/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
+        body: JSON.stringify({ availability: newStatus })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.user) {
+          const updatedUser = { ...data.user, skills: Array.isArray(data.user.skills) ? data.user.skills : [], languages: Array.isArray(data.user.languages) ? data.user.languages : [], supabase_user: true }
+          onUserUpdate?.(updatedUser)
+          localStorage.setItem('user', JSON.stringify(updatedUser))
+        }
+        toast.success(newStatus === 'available' ? "You're now visible and available for work" : "You're now hidden from search")
+      }
+    } catch {
+      toast.error('Failed to update availability')
+    } finally {
+      setTogglingAvailability(false)
+    }
   }
 
   return (
@@ -122,6 +155,30 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         onClose={() => setShowPaymentsExplainer(false)}
         mode="working"
       />
+
+      {/* Availability Banner - prominent sticky alert when user is hidden */}
+      {user?.availability !== 'available' && (
+        <div className="working-dash-availability-banner">
+          <div className="working-dash-availability-banner-content">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <div className="working-dash-availability-banner-text">
+              <strong>You're hidden from search</strong>
+              <span>Agents can't find or hire you directly. Turn on availability to start getting task offers.</span>
+            </div>
+          </div>
+          <button
+            className="working-dash-availability-toggle-btn"
+            onClick={handleToggleAvailability}
+            disabled={togglingAvailability}
+          >
+            {togglingAvailability ? 'Updating...' : 'Go Available'}
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <div className="working-dash-header">
@@ -138,57 +195,77 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
       {/* Profile Completeness Nudge */}
       <ProfileCompleteness user={user} onNavigate={onNavigate} />
 
-      {/* Stats Row */}
-      <div className="working-dash-stats">
-        <div className="working-dash-stat">
-          <div className="working-dash-stat-icon working-dash-stat-icon--orange">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-            </svg>
+      {/* Stats Row - only show when user has some activity */}
+      {hasActivity ? (
+        <div className="working-dash-stats">
+          <div className="working-dash-stat">
+            <div className="working-dash-stat-icon working-dash-stat-icon--orange">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+              </svg>
+            </div>
+            <div>
+              <div className="working-dash-stat-label">Total Earned</div>
+              <div className="working-dash-stat-value working-dash-stat-value--orange">${totalEarned}</div>
+            </div>
           </div>
-          <div>
-            <div className="working-dash-stat-label">Total Earned</div>
-            <div className="working-dash-stat-value working-dash-stat-value--orange">${totalEarned}</div>
+          <div className="working-dash-stat">
+            <div className="working-dash-stat-icon working-dash-stat-icon--blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+            </div>
+            <div>
+              <div className="working-dash-stat-label">Active</div>
+              <div className="working-dash-stat-value">{activeTasks.length}</div>
+            </div>
+          </div>
+          <div className="working-dash-stat">
+            <div className="working-dash-stat-icon working-dash-stat-icon--green">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <div>
+              <div className="working-dash-stat-label">Completed</div>
+              <div className="working-dash-stat-value">{paidTasks.length}</div>
+            </div>
+          </div>
+          <div className="working-dash-stat">
+            <div className="working-dash-stat-icon working-dash-stat-icon--purple">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </div>
+            <div>
+              <div className="working-dash-stat-label">Success</div>
+              <div className="working-dash-stat-value">{successRate > 0 ? `${successRate}%` : '--'}</div>
+            </div>
           </div>
         </div>
-        <div className="working-dash-stat">
-          <div className="working-dash-stat-icon working-dash-stat-icon--blue">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+      ) : (
+        /* Motivational CTA card when user has zero activity */
+        <div className="working-dash-zero-cta">
+          <div className="working-dash-zero-cta-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
             </svg>
           </div>
-          <div>
-            <div className="working-dash-stat-label">Active</div>
-            <div className="working-dash-stat-value">{activeTasks.length}</div>
+          <div className="working-dash-zero-cta-text">
+            <h3>Ready to earn?</h3>
+            <p>Browse available tasks and apply to your first one. Tasks pay $5-$200+ and take minutes to hours.</p>
           </div>
+          <button className="v4-btn v4-btn-primary" onClick={() => onNavigate?.('browse')}>
+            Browse Tasks
+          </button>
         </div>
-        <div className="working-dash-stat">
-          <div className="working-dash-stat-icon working-dash-stat-icon--green">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-          </div>
-          <div>
-            <div className="working-dash-stat-label">Completed</div>
-            <div className="working-dash-stat-value">{paidTasks.length}</div>
-          </div>
-        </div>
-        <div className="working-dash-stat">
-          <div className="working-dash-stat-icon working-dash-stat-icon--purple">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-          </div>
-          <div>
-            <div className="working-dash-stat-label">Success</div>
-            <div className="working-dash-stat-value">{successRate > 0 ? `${successRate}%` : '--'}</div>
-          </div>
-        </div>
-      </div>
+      )}
 
-      {/* Monthly Earnings Chart */}
-      <MonthlyEarningsChart tasks={safeTasks} />
+      {/* Monthly Earnings Chart - only show when user has completed tasks */}
+      {hasCompletedTask && <MonthlyEarningsChart tasks={safeTasks} />}
 
       {/* Attention Needed */}
       {(reviewTasks.length > 0 || inProgressTasks.length > 0) && (
@@ -271,7 +348,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         </div>
       )}
 
-      {/* Quick Actions */}
+      {/* Quick Actions - removed bottom tab bar, kept as compact action row */}
       <div className="working-dash-actions">
         <button className="working-dash-action" onClick={() => onNavigate?.('browse')}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
