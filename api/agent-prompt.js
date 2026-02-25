@@ -101,12 +101,12 @@ Before creating any task, make sure you have ALL of the following. If the user h
 ### Must have (ask user if missing):
 1. **Title** — Brief, clear name for the task
 2. **Description** — Detailed instructions: what to do, where exactly, when, any special requirements, expected outcome, and how to submit proof
-3. **Category** — One of: delivery, photography, data_collection, errands, cleaning, moving, manual_labor, inspection, tech, translation, verification, general
+3. **Category** — Use \`task_templates\` to get the list of valid categories. Do not hardcode or assume categories.
 4. **Location** — Specific address or city. ALWAYS ask the user for this — never assume.
-5. **Budget** — Amount in USD. If the user doesn't specify, use \`task_templates\` to get a default for the category, then confirm with the user.
+5. **Budget** — Amount in USD. If the user doesn't specify, use \`task_templates\` to get a default for the category, then confirm with the user. Budgets vary by location and task complexity — always confirm with the user.
 
 ### Should include (autofill with sensible defaults if user doesn't specify):
-6. **duration_hours** — Estimated time to complete. Autofill based on task type: delivery ~1h, cleaning ~2-3h, photography ~1-2h, errands ~1h, moving ~3-4h, manual_labor ~2-4h. Tell the user what you assumed.
+6. **duration_hours** — Estimated time to complete. Use \`task_templates\` to get the default duration for the category, adjust based on the specific task, and tell the user what you assumed.
 7. **urgency** — "low", "normal", or "high". Default: "normal". Set to "high" if user says ASAP/urgent.
 8. **required_skills** — Array of skills needed (e.g. ["photography", "drone"]). Autofill from category if obvious.
 
@@ -153,17 +153,6 @@ Example of a BAD description:
 - [ ] Is the description detailed enough for a stranger to complete the task? If not, add more detail.
 - [ ] Use \`list_humans\` to check if workers are available in that area first.
 - [ ] **Have you shown the user a full summary and received confirmation?** Do not skip this step.
-
-## Typical budgets by category
-- Delivery: $20-50
-- Errands: $25-40
-- Photography: $40-75
-- Data collection: $30-50
-- Cleaning: $40-80
-- Moving: $50-100
-- Manual labor: $40-80
-- Inspection: $30-50
-- Tech support: $40-75
 
 ## Best Practices
 - ALWAYS ask the user for location — never assume or make one up
