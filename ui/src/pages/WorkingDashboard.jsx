@@ -135,20 +135,36 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         )}
       </div>
 
+      {/* Availability Warning */}
+      {user?.availability !== 'available' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 16px', marginBottom: 16,
+          background: '#FFFBEB', border: '1px solid #FCD34D',
+          borderRadius: 10, fontSize: 13, color: '#92400E'
+        }}>
+          <span style={{ fontSize: 16 }}>&#9888;</span>
+          <span>You're hidden from search. Turn on availability to get hired.</span>
+          <a href="#" onClick={(e) => { e.preventDefault(); onNavigate?.('settings') }} style={{ marginLeft: 'auto', fontWeight: 600, color: '#B45309', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+            Go to Settings
+          </a>
+        </div>
+      )}
+
       {/* Profile Completeness Nudge */}
       <ProfileCompleteness user={user} onNavigate={onNavigate} />
 
       {/* Stats Row */}
       <div className="working-dash-stats">
         <div className="working-dash-stat">
-          <div className="working-dash-stat-icon working-dash-stat-icon--orange">
+          <div className="working-dash-stat-icon working-dash-stat-icon--green">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
             </svg>
           </div>
           <div>
             <div className="working-dash-stat-label">Total Earned</div>
-            <div className="working-dash-stat-value working-dash-stat-value--orange">${totalEarned}</div>
+            <div className="working-dash-stat-value">${totalEarned}</div>
           </div>
         </div>
         <div className="working-dash-stat">
@@ -186,6 +202,47 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </div>
         </div>
       </div>
+
+      {/* Onboarding Checklist - show when profile is incomplete */}
+      {(() => {
+        const steps = [
+          { done: !!user?.city, label: 'Set your location', doneLabel: 'Location set', meta: user?.city || 'Helps match you with nearby tasks' },
+          { done: !!user?.bio, label: 'Complete your profile', doneLabel: 'Profile complete', meta: user?.bio ? 'Looking good!' : 'Add a bio to stand out to agents' },
+          { done: paidTasks.length > 0, label: 'Complete your first task', doneLabel: 'First task completed', meta: paidTasks.length > 0 ? 'Great job!' : 'Browse and accept a task to start earning' },
+        ]
+        const completedCount = steps.filter(s => s.done).length
+        if (completedCount >= 3) return null
+        return (
+          <div className="working-dash-onboarding" style={{ background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 14, padding: '20px 24px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>Get Started</h3>
+              <span style={{ fontSize: 12, color: '#8A8A8A', fontWeight: 500 }}>{completedCount} of 3 steps complete</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {steps.map((step, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', opacity: step.done ? 0.6 : 1 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: step.done ? '#D1FAE5' : '#F3F4F6', color: step.done ? '#059669' : '#6B7280', fontSize: 12, fontWeight: 700
+                  }}>
+                    {step.done ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                    ) : (
+                      <span>{i + 1}</span>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A', textDecoration: step.done ? 'line-through' : 'none' }}>
+                      {step.done ? step.doneLabel : step.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#8A8A8A' }}>{step.meta}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Monthly Earnings Chart */}
       <MonthlyEarningsChart tasks={safeTasks} />

@@ -99,6 +99,8 @@ import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import ApiKeysTab from './components/ApiKeysTab'
 // ConnectAgentPage defined inline below
 const MCPPage = lazy(() => import('./pages/MCPPage'))
+const PremiumPage = lazy(() => import('./pages/PremiumPage'))
+const MembershipBilling = lazy(() => import('./components/MembershipBilling'))
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -2247,15 +2249,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           )}
         </div>
 
-        {/* Connect to AI Agent CTA - only show in hiring mode */}
-        {hiringMode && (
+        {/* Upgrade to Premium — only show when not on a paid plan */}
+        {user && (user.subscription_tier || 'free') === 'free' && (
           <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
             <button
-              onClick={() => window.location.href = '/connect-agent'}
-              className="dashboard-v4-connect-agent-btn"
+              onClick={() => window.location.href = '/premium'}
+              className="dashboard-v4-upgrade-premium-btn"
             >
-              <span style={{ display: 'flex', alignItems: 'center' }}><Bot size={18} /></span>
-              <span>Connect to AI Agent</span>
+              <span style={{ display: 'flex', alignItems: 'center' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <polyline points="9 12 11 14 15 10" />
+                </svg>
+              </span>
+              <span>Upgrade to Premium</span>
             </button>
           </div>
         )}
@@ -3238,7 +3245,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </button>
             </div>
 
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               {/* Avatar Upload */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
                 <div
@@ -3514,6 +3521,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                       <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
                       <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
+                      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>Your asking rate. Actual pay is set per task by the agent.</p>
                     </div>
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                       <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
@@ -3533,10 +3541,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                     <label className="dashboard-v4-form-label">Bio</label>
-                    <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Tell agents about yourself..." />
+                    <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Describe your experience, availability, and what makes you great at tasks." />
                   </div>
 
-                  <button type="submit" className="dashboard-v4-form-submit">Save Changes</button>
+                  <button type="submit" className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary">Save Changes</button>
                 </form>
               )}
 
@@ -3546,12 +3554,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     {skillsList.map((skill, idx) => (
                       <span key={idx} style={{
                         padding: '6px 12px',
-                        background: 'rgba(244,132,95,0.08)',
+                        background: '#F3F4F6',
                         borderRadius: 999,
                         fontSize: 13,
-                        color: '#E07A5F',
+                        color: '#374151',
                         fontWeight: 500,
-                        border: '1px solid rgba(244,132,95,0.12)',
+                        border: '1px solid rgba(26,26,26,0.06)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6
@@ -3560,7 +3568,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         <button
                           type="button"
                           onClick={() => setSkillsList(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#E07A5F', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#6B7280', display: 'flex', alignItems: 'center' }}
                         >
                           <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
                         </button>
@@ -3606,7 +3614,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </div>
                   <button
                     type="button"
-                    className="dashboard-v4-form-submit"
+                    className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary"
                     onClick={async () => {
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
@@ -3702,7 +3710,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </div>
                   <button
                     type="button"
-                    className="dashboard-v4-form-submit"
+                    className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary"
                     onClick={async () => {
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
@@ -3790,7 +3798,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     })}
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or paste a profile URL — it will be auto-formatted</p>
-                  <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
+                  <button type="submit" className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary">Update Social Links</button>
                 </form>
               )}
 
@@ -3800,11 +3808,24 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
         {/* Settings Tab */}
         {activeTab === 'settings' && (
-          <div>
+          <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <h1 className="dashboard-v4-page-title">Settings</h1>
 
+            {/* Membership & Billing */}
+            <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading...</div>}>
+              <MembershipBilling
+                user={user}
+                toast={toast}
+                onUserUpdate={(updates) => {
+                  const updatedUser = { ...user, ...updates }
+                  setUser(updatedUser)
+                  localStorage.setItem('user', JSON.stringify(updatedUser))
+                }}
+              />
+            </Suspense>
+
             {/* Mode Toggle */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Mode</h2>
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -3824,7 +3845,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             {/* Available for Work — Working mode only */}
             {!hiringMode && (
-              <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+              <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Availability</h2>
                 <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3886,7 +3907,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             )}
 
             {/* Notification Preferences */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600, marginBottom: 24 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notifications</h2>
 
               {/* Channel toggle */}
@@ -3955,7 +3976,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </div>
 
             {/* Account */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
 
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
@@ -4008,7 +4029,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {activeTab === 'api-keys' && (
           <div>
             <h1 className="dashboard-v4-page-title">API Keys</h1>
-            <div className="dashboard-v4-form" style={{ maxWidth: 600 }}>
+            <div className="dashboard-v4-form" style={{ maxWidth: 720 }}>
               <ApiKeysTab user={user} />
             </div>
           </div>
@@ -5158,6 +5179,7 @@ function App() {
       return <AuthPage onNavigate={navigate} />
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
+    if (path === '/premium') return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
     if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />

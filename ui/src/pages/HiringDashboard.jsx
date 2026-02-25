@@ -53,14 +53,14 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
       {/* Stats */}
       <div className="hiring-dash-stats">
         <div className="hiring-dash-stat">
-          <div className="hiring-dash-stat-icon hiring-dash-stat-icon--orange">
+          <div className="hiring-dash-stat-icon hiring-dash-stat-icon--green">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
             </svg>
           </div>
           <div>
             <div className="hiring-dash-stat-label">Total Spent</div>
-            <div className="hiring-dash-stat-value hiring-dash-stat-value--orange">${totalSpent}</div>
+            <div className="hiring-dash-stat-value">${totalSpent}</div>
           </div>
         </div>
         <div className="hiring-dash-stat">
@@ -227,13 +227,13 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
               <path d="M2 12l10 5 10-5" />
             </svg>
           </div>
-          <h3 className="hiring-dash-empty-title">No tasks yet</h3>
-          <p className="hiring-dash-empty-text">Create your first task to start hiring humans for real-world work.</p>
-          <button className="hiring-dash-create-btn" onClick={() => onNavigate?.('create')}>
+          <h3 className="hiring-dash-empty-title">No tasks posted yet</h3>
+          <p className="hiring-dash-empty-text">Post a task and get matched with verified humans near you.</p>
+          <button className="hiring-dash-create-btn" onClick={() => onNavigate?.('posted')} style={{ background: 'linear-gradient(135deg, var(--orange-600) 0%, var(--orange-500) 100%)', color: 'white', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 5v14M5 12h14" />
             </svg>
-            Create Task
+            + Create Task
           </button>
         </div>
       )}
