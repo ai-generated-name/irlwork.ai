@@ -37,7 +37,7 @@ export default function ContactPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          backgroundImage: 'linear-gradient(rgba(26,26,26,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(26,26,26,0.03) 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)',
           backgroundSize: '60px 60px',
           pointerEvents: 'none',
           zIndex: 0,
@@ -77,7 +77,7 @@ export default function ContactPage() {
             <div style={{
               width: '64px',
               height: '64px',
-              background: 'rgba(244, 132, 95, 0.1)',
+              background: 'rgba(232, 133, 61, 0.1)',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
@@ -122,7 +122,7 @@ export default function ContactPage() {
               textDecoration: 'none',
               transition: 'border-color 0.2s, box-shadow 0.2s',
             }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--orange-600)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(244,132,95,0.1)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--orange-600)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(232,133,61,0.1)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary)'; e.currentTarget.style.boxShadow = 'none' }}
             >
               <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>{t('contact.support')}</div>
@@ -139,7 +139,7 @@ export default function ContactPage() {
               textDecoration: 'none',
               transition: 'border-color 0.2s, box-shadow 0.2s',
             }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--orange-600)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(244,132,95,0.1)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--orange-600)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(232,133,61,0.1)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary)'; e.currentTarget.style.boxShadow = 'none' }}
             >
               <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>{t('contact.pressMedia')}</div>
@@ -251,7 +251,7 @@ export default function ContactPage() {
                               style={{
                                 width: '100%',
                                 padding: '14px 16px',
-                                background: category === key ? 'rgba(244,132,95,0.05)' : 'transparent',
+                                background: category === key ? 'rgba(232,133,61,0.05)' : 'transparent',
                                 border: 'none',
                                 borderBottom: key !== 'press' ? '1px solid var(--border-primary)' : 'none',
                                 fontSize: '15px',
@@ -261,7 +261,7 @@ export default function ContactPage() {
                                 transition: 'background 0.15s',
                               }}
                               onMouseEnter={e => { if (category !== key) e.currentTarget.style.background = 'var(--bg-secondary)' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = category === key ? 'rgba(244,132,95,0.05)' : 'transparent' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = category === key ? 'rgba(232,133,61,0.05)' : 'transparent' }}
                             >
                               <div style={{ fontWeight: 600 }}>{val.label}</div>
                               <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>{val.description}</div>

@@ -255,7 +255,7 @@ const SkillAutocomplete = ({
               onMouseDown={(e) => { e.preventDefault(); handleSelectCustom(); }}
               onMouseEnter={() => setSelectedIndex(customItemIndex)}
               className={`skill-autocomplete-item city-autocomplete-v4-item ${selectedIndex === customItemIndex ? 'selected' : ''}`}
-              style={{ borderTop: filtered.length > 0 ? '1px solid rgba(26,26,26,0.06)' : 'none' }}
+              style={{ borderTop: filtered.length > 0 ? '1px solid rgba(0,0,0,0.06)' : 'none' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 16, lineHeight: 1 }}>🔎</span>

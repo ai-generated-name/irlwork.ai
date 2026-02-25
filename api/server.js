@@ -60,6 +60,14 @@ const { createEmailService } = require('./lib/notifications/emailService');
 const { createNotificationService } = require('./lib/notifications/notificationService');
 const initNotificationRoutes = require('./routes/notifications');
 
+// Validation & schema routes
+console.log('[Startup] Loading validation system...');
+const initSchemaRoutes = require('./routes/schemas');
+const initTaskValidationRoutes = require('./routes/tasks-validation');
+const { flushTaskTypeCache } = require('./lib/validation/pipeline');
+const { runTaskValidation } = require('./lib/validation/task-creation-helper');
+const { encrypt: encryptField } = require('./services/encryption');
+
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
 const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./utils/distance');
@@ -273,6 +281,12 @@ function buildTaskInsertData(baseData, optionalFields = {}) {
   if (!taskColumnFlags.spots_filled) delete data.spots_filled;
   if (!taskColumnFlags.is_anonymous) delete data.is_anonymous;
   if (!taskColumnFlags.duration_hours) delete data.duration_hours;
+  if (!taskColumnFlags.task_type_id) delete data.task_type_id;
+  if (!taskColumnFlags.location_zone) delete data.location_zone;
+  if (!taskColumnFlags.private_address) delete data.private_address;
+  if (!taskColumnFlags.private_notes) delete data.private_notes;
+  if (!taskColumnFlags.private_contact) delete data.private_contact;
+  if (!taskColumnFlags.validation_attempts) delete data.validation_attempts;
   // Add optional fields only if column exists
   if (taskColumnFlags.spots_filled && optionalFields.spots_filled !== undefined) {
     data.spots_filled = optionalFields.spots_filled;
@@ -293,8 +307,17 @@ function cleanTaskData(data) {
   if (!taskColumnFlags.is_anonymous) delete cleaned.is_anonymous;
   if (!taskColumnFlags.duration_hours) delete cleaned.duration_hours;
   if (!taskColumnFlags.review_deadline) delete cleaned.review_deadline;
+  if (!taskColumnFlags.task_type_id) delete cleaned.task_type_id;
+  if (!taskColumnFlags.location_zone) delete cleaned.location_zone;
+  if (!taskColumnFlags.validation_attempts) delete cleaned.validation_attempts;
+  // Always strip private fields from public responses
+  delete cleaned.private_address;
+  delete cleaned.private_notes;
+  delete cleaned.private_contact;
   return cleaned;
 }
+
+const { stripPrivateFields } = require('./lib/privacy/strip-private-fields');
 
 // Configuration
 const { PLATFORM_FEE_PERCENT } = require('./config/constants');
@@ -852,6 +875,18 @@ if (supabase) {
   const notificationRoutes = initNotificationRoutes(supabase, getUserByToken, _notificationService);
   app.use('/api/notifications', notificationRoutes);
   console.log('[Startup] Notification routes mounted at /api/notifications');
+}
+
+// ============ TASK VALIDATION & SCHEMA ROUTES ============
+if (supabase) {
+  const schemaRoutes = initSchemaRoutes(supabase);
+  app.use('/api/schemas', schemaRoutes);
+  console.log('[Startup] Schema routes mounted at /api/schemas');
+
+  // Mount BEFORE existing /api/tasks routes so /api/tasks/validate matches first
+  const taskValidationRoutes = initTaskValidationRoutes(supabase, getUserByToken);
+  app.use('/api/tasks', taskValidationRoutes);
+  console.log('[Startup] Task validation routes mounted at /api/tasks');
 }
 
 // ============ CITY SEARCH ============
@@ -2112,13 +2147,21 @@ app.get('/api/tasks', async (req, res) => {
 
   if (category) query = query.eq('category', category);
   if (urgency) query = query.eq('urgency', urgency);
-  if (status) query = query.eq('status', status);
+  if (status) {
+    // Prevent querying internal statuses via public browse
+    const INTERNAL_STATUSES = ['pending_review'];
+    if (!my_tasks && INTERNAL_STATUSES.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status filter' });
+    }
+    query = query.eq('status', status);
+  }
   if (my_tasks && user) query = query.eq('agent_id', user.id);
 
-  // Filter out moderated and expired tasks from browse (unless viewing own tasks)
+  // Filter out moderated, expired, and pending_review tasks from browse (unless viewing own tasks)
   if (!my_tasks) {
     query = query.not('moderation_status', 'in', '("hidden","removed")');
     query = query.not('status', 'eq', 'expired');
+    query = query.not('status', 'eq', 'pending_review');
   }
 
   const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(100);
@@ -2194,9 +2237,13 @@ app.post('/api/tasks', async (req, res) => {
     });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code, task_type_id, location_zone, private_address, private_notes, private_contact, budget_usd, datetime_start, skills_required: skillsRequiredInput } = req.body;
 
-  // Validate required fields
+  // Run validation pipeline if task_type_id is provided
+  const { proceed, flagged: taskFlagged, errorResponse } = await runTaskValidation(supabase, req.body, user.id);
+  if (!proceed) return res.status(422).json(errorResponse);
+
+  // Validate required fields (legacy validation — runs for all tasks)
   if (!title || !title.trim()) {
     return res.status(400).json({ error: 'Title is required' });
   }
@@ -2212,42 +2259,60 @@ app.post('/api/tasks', async (req, res) => {
   if (location && location.length > 300) {
     return res.status(400).json({ error: 'Location must be 300 characters or less' });
   }
-  if (!budget || parseFloat(budget) < 5) {
+  if (!budget && !budget_usd || (parseFloat(budget || budget_usd) < 5)) {
     return res.status(400).json({ error: 'Budget must be at least $5' });
   }
-  if (parseFloat(budget) > 100000) {
+  if (parseFloat(budget || budget_usd) > 100000) {
     return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
   }
 
   const id = uuidv4();
-  const budgetAmount = parseFloat(budget) || 50;
+  const budgetAmount = parseFloat(budget || budget_usd) || 50;
   const taskType = task_type === 'open' ? 'open' : 'direct';
   const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(quantity) || 1) : 1;
-  const skillsArray = (Array.isArray(required_skills) ? required_skills : []).slice(0, 25);
+  const skillsArray = (Array.isArray(required_skills || skillsRequiredInput) ? (required_skills || skillsRequiredInput) : []).slice(0, 25);
+
+  // Encrypt private fields if provided
+  let encryptedAddress = null;
+  let encryptedNotes = null;
+  let encryptedContact = null;
+  try {
+    if (private_address) encryptedAddress = encryptField(private_address);
+    if (private_notes) encryptedNotes = encryptField(private_notes);
+    if (private_contact) encryptedContact = encryptField(private_contact);
+  } catch (encErr) {
+    console.error('[Tasks] Encryption error:', encErr.message);
+    // Continue without encrypting — fields won't be stored
+  }
 
   const insertData = buildTaskInsertData({
       id,
       agent_id: user.id,
       title: title.trim(),
       description,
-      category: category || 'general',
-      location,
-      latitude: latitude || null,
-      longitude: longitude || null,
+      category: category || (task_type_id ? task_type_id : 'general'),
+      location: location || location_zone || null,
+      latitude: latitude ? parseFloat(parseFloat(latitude).toFixed(3)) : null,
+      longitude: longitude ? parseFloat(parseFloat(longitude).toFixed(3)) : null,
       country: country || null,
       country_code: country_code || null,
       budget: budgetAmount,
-      status: 'open',
+      status: taskFlagged ? 'pending_review' : 'open',
       task_type: taskType,
       quantity: taskQuantity,
       human_ids: [],
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
-      deadline: deadline || null,
+      deadline: deadline || datetime_start || null,
       duration_hours: duration_hours || null,
       requirements: requirements || null,
       required_skills: skillsArray,
       max_humans: max_humans ? parseInt(max_humans) : 1,
+      task_type_id: task_type_id || null,
+      location_zone: location_zone || null,
+      private_address: encryptedAddress,
+      private_notes: encryptedNotes,
+      private_contact: encryptedContact,
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,
@@ -2268,10 +2333,21 @@ app.post('/api/tasks', async (req, res) => {
     updated_at: new Date().toISOString()
   }).eq('id', user.id);
 
-  res.json({
-    ...task,
-    message: 'Task posted successfully.'
-  });
+  const response = stripPrivateFields(task);
+  response.message = 'Task posted successfully.';
+  if (encryptedAddress || encryptedNotes || encryptedContact) {
+    response.private_fields_stored = [];
+    if (encryptedAddress) response.private_fields_stored.push('private_address');
+    if (encryptedNotes) response.private_fields_stored.push('private_notes');
+    if (encryptedContact) response.private_fields_stored.push('private_contact');
+    response.note = 'Private fields will be released to the assigned worker upon task acceptance';
+  }
+  if (taskFlagged) {
+    response.status = 'pending_review';
+    response.note = 'Task flagged for review. It will become visible after approval.';
+  }
+
+  res.json(response);
 });
 
 app.get('/api/tasks/:id', async (req, res, next) => {
@@ -2322,9 +2398,9 @@ app.get('/api/tasks/:id', async (req, res, next) => {
     const { escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at,
             deposit_amount_cents, unique_deposit_amount, instructions,
             work_started_at, proof_submitted_at, assigned_at, ...publicTask } = task;
-    return res.json({ ...publicTask, poster });
+    return res.json(stripPrivateFields({ ...publicTask, poster }));
   }
-  res.json({ ...task, poster });
+  res.json(stripPrivateFields({ ...task, poster }));
 });
 
 app.get('/api/tasks/:id/status', async (req, res) => {
@@ -5307,10 +5383,25 @@ app.post('/api/mcp', async (req, res) => {
       case 'create_adhoc_task': {
         // Create a public posting for humans to apply to
         if (!params.title) return res.status(400).json({ error: 'title is required' });
+
+        // Run validation pipeline if task_type_id is provided
+        const { proceed: mcpProceed, flagged: mcpTaskFlagged, errorResponse: mcpErrorResponse } = await runTaskValidation(supabase, params, user.id);
+        if (!mcpProceed) return res.status(422).json(mcpErrorResponse);
+
         const id = uuidv4();
-        const budgetAmount = params.budget || params.budget_max || params.budget_min || 50;
+        const budgetAmount = params.budget || params.budget_usd || params.budget_max || params.budget_min || 50;
         const taskType = params.task_type === 'open' ? 'open' : 'direct';
         const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(params.quantity) || 1) : 1;
+
+        // Encrypt private fields
+        let mcpEncAddr = null, mcpEncNotes = null, mcpEncContact = null;
+        try {
+          if (params.private_address) mcpEncAddr = encryptField(params.private_address);
+          if (params.private_notes) mcpEncNotes = encryptField(params.private_notes);
+          if (params.private_contact) mcpEncContact = encryptField(params.private_contact);
+        } catch (encErr) {
+          console.error('[MCP/create_posting] Encryption error:', encErr.message);
+        }
 
         const { data: task, error } = await supabase
           .from('tasks')
@@ -5319,17 +5410,22 @@ app.post('/api/mcp', async (req, res) => {
             agent_id: user.id,
             title: params.title,
             description: params.description,
-            category: params.category || 'other',
-            location: params.location,
+            category: params.category || (params.task_type_id ? params.task_type_id : 'other'),
+            location: params.location || params.location_zone || null,
             latitude: params.latitude || null,
             longitude: params.longitude || null,
             budget: budgetAmount,
-            status: 'open',
+            status: mcpTaskFlagged ? 'pending_review' : 'open',
             task_type: taskType,
             quantity: taskQuantity,
             human_ids: [],
             escrow_amount: budgetAmount,
             is_remote: !!params.is_remote,
+            task_type_id: params.task_type_id || null,
+            location_zone: params.location_zone || null,
+            private_address: mcpEncAddr,
+            private_notes: mcpEncNotes,
+            private_contact: mcpEncContact,
             created_at: new Date().toISOString()
           }, {
             is_anonymous: !!params.is_anonymous,
@@ -5339,7 +5435,15 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (error) throw error;
-        res.json({ id: task.id, status: 'open', task_type: taskType, quantity: taskQuantity, message: 'Task posted successfully.' });
+        const mcpResponse = { id: task.id, status: mcpTaskFlagged ? 'pending_review' : 'open', task_type: taskType, quantity: taskQuantity, message: 'Task posted successfully.' };
+        if (mcpEncAddr || mcpEncNotes || mcpEncContact) {
+          mcpResponse.private_fields_stored = [];
+          if (mcpEncAddr) mcpResponse.private_fields_stored.push('private_address');
+          if (mcpEncNotes) mcpResponse.private_fields_stored.push('private_notes');
+          if (mcpEncContact) mcpResponse.private_fields_stored.push('private_contact');
+          mcpResponse.note = 'Private fields will be released to the assigned worker upon task acceptance';
+        }
+        res.json(mcpResponse);
         break;
       }
 
@@ -6844,18 +6948,32 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, assign_to } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, assign_to, task_type_id, location_zone, private_address, private_notes, private_contact, budget_usd, datetime_start, skills_required: skillsRequiredInput } = req.body;
+
+  // Run validation pipeline if task_type_id is provided
+  const { proceed: createProceed, flagged: taskFlagged, errorResponse: createErrorResponse } = await runTaskValidation(supabase, req.body, user.id);
+  if (!createProceed) return res.status(422).json(createErrorResponse);
 
   const id = uuidv4();
-  const budgetAmount = budget || 50;
+  const budgetAmount = parseFloat(budget || budget_usd) || 50;
   const taskType = task_type === 'open' ? 'open' : 'direct';
   const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(quantity) || 1) : 1;
-  const skillsArray = Array.isArray(required_skills) ? required_skills : [];
+  const skillsArray = Array.isArray(required_skills || skillsRequiredInput) ? (required_skills || skillsRequiredInput) : [];
 
   // Non-remote tasks must have coordinates for location-based filtering
   const isRemote = !!req.body.is_remote;
   if (!isRemote && (latitude == null || longitude == null)) {
     return res.status(400).json({ error: 'Non-remote tasks must include latitude and longitude' });
+  }
+
+  // Encrypt private fields
+  let encAddr = null, encNotes = null, encContact = null;
+  try {
+    if (private_address) encAddr = encryptField(private_address);
+    if (private_notes) encNotes = encryptField(private_notes);
+    if (private_contact) encContact = encryptField(private_contact);
+  } catch (encErr) {
+    console.error('[Tasks/Create] Encryption error:', encErr.message);
   }
 
   const { data: task, error } = await supabase
@@ -6865,22 +6983,27 @@ app.post('/api/tasks/create', async (req, res) => {
       agent_id: user.id,
       title,
       description,
-      category: category || 'general',
-      location,
-      latitude: latitude != null ? parseFloat(latitude) : null,
-      longitude: longitude != null ? parseFloat(longitude) : null,
+      category: category || (task_type_id ? task_type_id : 'general'),
+      location: location || location_zone || null,
+      latitude: latitude != null ? parseFloat(parseFloat(latitude).toFixed(3)) : null,
+      longitude: longitude != null ? parseFloat(parseFloat(longitude).toFixed(3)) : null,
       country: country || null,
       country_code: country_code || null,
       budget: budgetAmount,
-      status: 'open',
+      status: taskFlagged ? 'pending_review' : 'open',
       task_type: taskType,
       quantity: taskQuantity,
       human_ids: [],
       escrow_amount: budgetAmount,
       is_remote: isRemote,
-      deadline: deadline || null,
+      deadline: deadline || datetime_start || null,
       requirements: requirements || null,
       required_skills: skillsArray,
+      task_type_id: task_type_id || null,
+      location_zone: location_zone || null,
+      private_address: encAddr,
+      private_notes: encNotes,
+      private_contact: encContact,
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,
@@ -6903,7 +7026,7 @@ app.post('/api/tasks/create', async (req, res) => {
       .single();
 
     if (!humanUser) {
-      return res.json({ ...task, message: 'Task posted successfully, but could not find the specified human to assign.' });
+      return res.json(stripPrivateFields({ ...task, message: 'Task posted successfully, but could not find the specified human to assign.' }));
     }
 
     // Check if creator has a payment method
@@ -6944,14 +7067,14 @@ app.post('/api/tasks/create', async (req, res) => {
         `/tasks/${id}`
       );
 
-      return res.json({
+      return res.json(stripPrivateFields({
         ...task,
         status: 'pending_acceptance',
         human_id: humanId,
         human_ids: [humanId],
         review_deadline: reviewDeadline,
         message: `Task created and offer sent to ${humanUser.name}. They have 24 hours to accept.`
-      });
+      }));
     } else {
       // No payment method: set to pending_acceptance anyway, user can add payment later
       await supabase
@@ -6975,20 +7098,28 @@ app.post('/api/tasks/create', async (req, res) => {
         `/tasks/${id}`
       );
 
-      return res.json({
+      return res.json(stripPrivateFields({
         ...task,
         status: 'pending_acceptance',
         human_id: humanId,
         human_ids: [humanId],
         message: `Task created and offer sent to ${humanUser.name}.`
-      });
+      }));
     }
   }
 
-  res.json({
-    ...task,
-    message: 'Task posted successfully.'
-  });
+  // Default response (no assign_to)
+  const response = stripPrivateFields(task);
+  response.message = 'Task posted successfully.';
+  if (encAddr || encNotes || encContact) {
+    response.private_fields_stored = [];
+    if (encAddr) response.private_fields_stored.push('private_address');
+    if (encNotes) response.private_fields_stored.push('private_notes');
+    if (encContact) response.private_fields_stored.push('private_contact');
+    response.note = 'Private fields will be released to the assigned worker upon task acceptance';
+  }
+
+  res.json(response);
 });
 
 // ============ USER PROFILE ============
@@ -7380,6 +7511,13 @@ const taskColumnFlags = {
   is_anonymous: true,
   duration_hours: true,
   review_deadline: true,
+  // Task validation system columns
+  task_type_id: true,
+  location_zone: true,
+  private_address: true,
+  private_notes: true,
+  private_contact: true,
+  validation_attempts: true,
 };
 
 async function checkTaskColumns() {

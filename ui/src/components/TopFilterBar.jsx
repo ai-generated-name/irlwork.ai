@@ -46,7 +46,7 @@ export default function TopFilterBar({
   };
 
   return (
-    <div className="bg-[var(--bg-secondary)] border-b border-[rgba(26,26,26,0.06)] px-4 md:px-6 py-3 md:py-4 sticky top-0 z-10" style={{ boxShadow: 'var(--shadow-sm)' }}>
+    <div className="bg-[var(--bg-secondary)] border-b border-[rgba(0,0,0,0.06)] px-4 md:px-6 py-3 md:py-4 sticky top-0 z-10" style={{ boxShadow: 'var(--shadow-sm)' }}>
       <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
         {/* Mobile Header Row */}
         <div className="flex items-center gap-3 md:hidden">
