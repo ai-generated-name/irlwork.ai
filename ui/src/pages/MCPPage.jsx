@@ -349,7 +349,7 @@ export default function MCPPage() {
               </div>
               <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
                 <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>4. Human Paid</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>After the 48-hour hold, funds transfer to the human's bank account via Stripe Connect. The human receives 85% (15% platform fee).</p>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>After the 48-hour hold, funds transfer to the human's bank account via Stripe Connect. The human receives 90% (10% platform fee).</p>
               </div>
             </div>
           </div>
@@ -379,9 +379,9 @@ export default function MCPPage() {
             <div className="mcp-v4-card">
               <h3>Fee Structure</h3>
               <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                <p><strong>Platform fee:</strong> 15% of the task budget</p>
+                <p><strong>Platform fee:</strong> 10% of the task budget</p>
                 <p><strong>Charged to:</strong> Deducted from the human's payout</p>
-                <p><strong>Example:</strong> $100 task &rarr; human receives $85</p>
+                <p><strong>Example:</strong> $100 task &rarr; human receives $90</p>
                 <p><strong>Agent pays:</strong> The full posted budget amount</p>
                 <p><strong>Dispute window:</strong> 48 hours after approval</p>
                 <p><strong>Refunds:</strong> Automatic if hire fails (race condition)</p>
@@ -811,7 +811,7 @@ export default function MCPPage() {
               { code: '403', desc: 'Not your task' },
               { code: '409', desc: 'Payment release failed' },
             ]}
-            notes={'Approves the latest proof submission, deducts 15% platform fee, and creates a pending payout with a 48-hour dispute window. The human receives funds after the hold clears. Aliases: release_escrow, release_payment also route here.'}
+            notes={'Approves the latest proof submission, deducts 10% platform fee, and creates a pending payout with a 48-hour dispute window. The human receives funds after the hold clears. Aliases: release_escrow, release_payment also route here.'}
             example={`{
   "method": "approve_task",
   "params": { "task_id": "task-uuid" }

@@ -4,6 +4,7 @@ import API_URL from '../config/api'
 import { useToast } from '../context/ToastContext'
 import WithdrawalMethodPicker from './WithdrawalMethodPicker'
 import ConnectBankButton from './ConnectBankButton'
+import ConnectWalletSection from './ConnectWalletSection'
 
 function EarningsDashboard({ user }) {
   const toast = useToast()
@@ -48,18 +49,21 @@ function EarningsDashboard({ user }) {
     }
   }
 
-  const handleWithdraw = () => {
+  const handleWithdraw = (method) => {
     if (!balanceData?.available_cents || balanceData.available_cents <= 0) {
       toast.error('No funds available to withdraw')
       return
     }
-
-    setShowWithdrawConfirm('stripe')
+    setShowWithdrawConfirm(method) // 'stripe' or 'usdc'
   }
 
   const executeWithdraw = async () => {
     const method = showWithdrawConfirm
     setShowWithdrawConfirm(false)
+
+    const withdrawAmountCents = method === 'usdc'
+      ? (balanceData.usdc_available_cents || 0)
+      : (balanceData.stripe_available_cents || balanceData.available_cents)
 
     try {
       setWithdrawing(true)
@@ -72,8 +76,8 @@ function EarningsDashboard({ user }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          amount_cents: balanceData.available_cents,
-          method: 'stripe'
+          amount_cents: withdrawAmountCents,
+          method
         })
       })
 
@@ -140,11 +144,14 @@ function EarningsDashboard({ user }) {
   const pendingTransactions = balanceData?.transactions?.filter(tx => tx.status === 'pending') || []
   const availableTransactions = balanceData?.transactions?.filter(tx => tx.status === 'available') || []
   const allTransactions = balanceData?.transactions || []
+  const stripeAvailable = (balanceData?.stripe_available_cents || 0) / 100
+  const usdcAvailable = (balanceData?.usdc_available_cents || 0) / 100
 
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Payment Account Setup */}
       <ConnectBankButton user={user} />
+      <ConnectWalletSection user={user} />
 
       {/* Success Message */}
       {withdrawResult && (
@@ -157,7 +164,9 @@ function EarningsDashboard({ user }) {
           <div>
             <p className="text-[#1A1A1A] font-semibold text-sm">Withdrawal Successful</p>
             <p className="text-sm text-[#333333] mt-0.5">
-              ${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account
+              {withdrawResult.method === 'usdc'
+                ? `${withdrawResult.amount} USDC sent to your wallet`
+                : `$${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account`}
             </p>
           </div>
         </div>
@@ -186,7 +195,12 @@ function EarningsDashboard({ user }) {
               {pendingTransactions.slice(0, 3).map(tx => (
                 <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(0,0,0,0.06)]">
                   <div>
-                    <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
+                      {tx.payout_method === 'usdc' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600">USDC</span>
+                      )}
+                    </div>
                     <p className="text-xs text-[#A3A3A3]">{formatDate(tx.clears_at)}</p>
                   </div>
                   <p className="text-[#1A1A1A] font-semibold">
@@ -227,6 +241,8 @@ function EarningsDashboard({ user }) {
               <WithdrawalMethodPicker
                 user={user}
                 availableBalance={balanceData?.available || 0}
+                stripeAvailable={stripeAvailable}
+                usdcAvailable={usdcAvailable}
                 onWithdraw={handleWithdraw}
               />
             </div>
@@ -240,7 +256,12 @@ function EarningsDashboard({ user }) {
             <div className="mt-3 md:mt-4 space-y-2">
               {availableTransactions.slice(0, 2).map(tx => (
                 <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(0,0,0,0.06)]">
-                  <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
+                    {tx.payout_method === 'usdc' && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600">USDC</span>
+                    )}
+                  </div>
                   <p className="text-[#1A1A1A] font-semibold">
                     ${(tx.amount_cents / 100).toFixed(2)}
                   </p>
@@ -261,6 +282,7 @@ function EarningsDashboard({ user }) {
               const isPending = tx.status === 'pending'
               const isAvailable = tx.status === 'available'
               const isWithdrawn = tx.status === 'withdrawn'
+              const isUsdc = tx.payout_method === 'usdc'
 
               return (
                 <div
@@ -281,6 +303,16 @@ function EarningsDashboard({ user }) {
                         `}>
                           {tx.status}
                         </span>
+                        {isUsdc && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 flex-shrink-0">
+                            USDC
+                          </span>
+                        )}
+                        {!isUsdc && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#F5F2ED] text-[#8A8A8A] flex-shrink-0">
+                            Bank
+                          </span>
+                        )}
                       </div>
 
                       <p className="text-xs text-[#888888] mt-1">
@@ -340,7 +372,9 @@ function EarningsDashboard({ user }) {
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-v4-xl">
             <h3 className="text-lg font-bold text-[#1A1A1A] mb-1">Confirm Withdrawal</h3>
             <p className="text-[#333333] text-sm mb-5">
-              Withdraw <span className="font-semibold text-[#1A1A1A]">${balanceData?.available?.toFixed(2)}</span> to your bank account?
+              {showWithdrawConfirm === 'usdc'
+                ? <>Withdraw <span className="font-semibold text-[#1A1A1A]">{usdcAvailable.toFixed(2)} USDC</span> to your wallet?</>
+                : <>Withdraw <span className="font-semibold text-[#1A1A1A]">${stripeAvailable > 0 ? stripeAvailable.toFixed(2) : balanceData?.available?.toFixed(2)}</span> to your bank account?</>}
             </p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2.5 text-[#333333] hover:bg-[#F5F3F0] rounded-xl text-sm font-medium transition-colors">

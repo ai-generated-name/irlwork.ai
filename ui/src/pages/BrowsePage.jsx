@@ -116,6 +116,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
   const [humansTotal, setHumansTotal] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [humansLoading, setHumansLoading] = useState(true)
+  const [humansError, setHumansError] = useState(null)
 
   // Humans filters
   const [skillFilter, setSkillFilter] = useState('')
@@ -133,7 +134,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
   const [tasks, setTasks] = useState([])
   const [tasksTotal, setTasksTotal] = useState(0)
   const [taskCurrentPage, setTaskCurrentPage] = useState(1)
-  const [tasksLoading, setTasksLoading] = useState(false)
+  const [tasksLoading, setTasksLoading] = useState(true)
+  const [tasksError, setTasksError] = useState(null)
   const [taskCategoryFilter, setTaskCategoryFilter] = useState('')
   const [taskCityFilter, setTaskCityFilter] = useState('')
   const [taskSearchQuery, setTaskSearchQuery] = useState('')
@@ -301,6 +303,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
 
   async function fetchHumans() {
     setHumansLoading(true)
+    setHumansError(null)
     try {
       const params = new URLSearchParams()
       params.set('limit', String(ITEMS_PER_PAGE))
@@ -316,19 +319,21 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       if (user?.token) headers['Authorization'] = user.token
 
       const res = await fetch(`${API_URL}/humans/directory?${params}`, { headers })
-      if (res.ok) {
-        const data = await res.json()
-        // Handle both old array format and new object format
-        if (Array.isArray(data)) {
-          setHumans(fixAvatarUrl(data))
-          setHumansTotal(data.length)
-        } else {
-          setHumans(fixAvatarUrl(data.humans || []))
-          setHumansTotal(data.total || 0)
-        }
+      if (!res.ok) {
+        throw new Error(`Server error (${res.status})`)
+      }
+      const data = await res.json()
+      // Handle both old array format and new object format
+      if (Array.isArray(data)) {
+        setHumans(fixAvatarUrl(data))
+        setHumansTotal(data.length)
+      } else {
+        setHumans(fixAvatarUrl(data.humans || []))
+        setHumansTotal(data.total || 0)
       }
     } catch (e) {
       console.error('Error fetching humans:', e)
+      setHumansError(e.message || 'Failed to load humans')
     } finally {
       setHumansLoading(false)
     }
@@ -336,6 +341,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
 
   async function fetchTasks() {
     setTasksLoading(true)
+    setTasksError(null)
     try {
       const params = new URLSearchParams()
       params.set('limit', String(ITEMS_PER_PAGE))
@@ -353,14 +359,16 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       }
 
       const res = await fetch(`${API_URL}/tasks/available?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-        const taskList = Array.isArray(data) ? data : (data.tasks || [])
-        setTasks(taskList)
-        setTasksTotal(data.total || taskList.length)
+      if (!res.ok) {
+        throw new Error(`Server error (${res.status})`)
       }
+      const data = await res.json()
+      const taskList = Array.isArray(data) ? data : (data.tasks || [])
+      setTasks(taskList)
+      setTasksTotal(data.total || taskList.length)
     } catch (e) {
       console.error('Error fetching tasks:', e)
+      setTasksError(e.message || 'Failed to load tasks')
     } finally {
       setTasksLoading(false)
     }
@@ -426,22 +434,21 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     setHireLoading(true)
     setHireError('')
     try {
+      // Create task and assign human in one step using assign_to
       const createRes = await fetch(`${API_URL}/tasks/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
-        body: JSON.stringify({ title: hireTitle.trim(), description: hireDescription.trim(), budget: Number(hireBudget), category: hireCategory || 'general' })
+        body: JSON.stringify({
+          title: hireTitle.trim(),
+          description: hireDescription.trim(),
+          budget: Number(hireBudget),
+          category: hireCategory || 'general',
+          assign_to: showHireModal.id
+        })
       })
       if (!createRes.ok) { const err = await createRes.json(); throw new Error(err.error || 'Failed to create task') }
-      const taskData = await createRes.json()
-      const taskId = taskData.id || taskData.task?.id
-      const assignRes = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
-        body: JSON.stringify({ worker_id: showHireModal.id })
-      })
-      if (!assignRes.ok) { const err = await assignRes.json(); throw new Error(err.error || 'Task created but failed to assign human') }
       setHireSuccess(true)
-      toast.success(`${showHireModal.name} has been hired!`)
+      toast.success(`Offer sent to ${showHireModal.name}!`)
       setTimeout(() => { resetHireForm() }, 2500)
     } catch (e) {
       setHireError(e.message || 'Something went wrong. Please try again.')
@@ -822,7 +829,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 )}
               </div>
               <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                {humansLoading ? '...' : humansTotal === 0 ? 'No results' : `Showing ${startItem}\u2013${endItem} of ${humansTotal} humans`}
+                {humansLoading ? '...' : humansError ? '' : humansTotal === 0 ? 'No results' : `Showing ${startItem}\u2013${endItem} of ${humansTotal} humans`}
               </span>
             </div>
 
@@ -838,6 +845,28 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   }}
                 >
                   {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+                </div>
+              ) : humansError ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: 48,
+                  background: 'white',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid rgba(26,26,26,0.06)'
+                }}>
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+                  <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Failed to load humans</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>{humansError}</p>
+                  <button
+                    onClick={() => fetchHumans()}
+                    style={{
+                      padding: '10px 24px', background: 'var(--coral-500)', color: 'white',
+                      fontWeight: 600, fontSize: 14, borderRadius: 'var(--radius-md)', border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Try Again
+                  </button>
                 </div>
               ) : humans.length === 0 ? (
                 <div style={{
@@ -874,7 +903,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
             </div>
 
             {/* Pagination */}
-            {!humansLoading && humansTotal > ITEMS_PER_PAGE && (
+            {!humansLoading && !humansError && humansTotal > ITEMS_PER_PAGE && (
               <div style={{
                 display: 'flex',
                 justifyContent: 'center',
@@ -1053,15 +1082,40 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
               </div>
             )}
 
+            {/* Tasks Error */}
+            {!tasksLoading && tasksError && (
+              <div style={{
+                textAlign: 'center',
+                padding: 48,
+                background: 'white',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid rgba(26,26,26,0.06)'
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Failed to load tasks</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>{tasksError}</p>
+                <button
+                  onClick={() => fetchTasks()}
+                  style={{
+                    padding: '10px 24px', background: 'var(--coral-500)', color: 'white',
+                    fontWeight: 600, fontSize: 14, borderRadius: 'var(--radius-md)', border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+
             {/* Tasks Result Count */}
-            {!tasksLoading && tasks.length > 0 && (
+            {!tasksLoading && !tasksError && tasks.length > 0 && (
               <div style={{ marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500, textAlign: 'right' }}>
                 {tasksTotal === 0 ? 'No results' : `Showing ${taskStartItem}\u2013${taskEndItem} of ${tasksTotal} tasks`}
               </div>
             )}
 
             {/* Tasks Grid */}
-            {!tasksLoading && (
+            {!tasksLoading && !tasksError && (
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
@@ -1194,7 +1248,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
             )}
 
             {/* Task Pagination */}
-            {!tasksLoading && tasksTotal > ITEMS_PER_PAGE && (
+            {!tasksLoading && !tasksError && tasksTotal > ITEMS_PER_PAGE && (
               <div style={{
                 display: 'flex',
                 justifyContent: 'center',

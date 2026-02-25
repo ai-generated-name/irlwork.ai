@@ -55,6 +55,11 @@ function getDeadlineInfo(deadline) {
   return { label: `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`, level: 'normal' };
 }
 
+function formatTaskId(id) {
+  if (!id) return '';
+  return id.substring(0, 8).toUpperCase();
+}
+
 export default function TaskCardV2({
   task,
   isSelected = false,
@@ -87,6 +92,7 @@ export default function TaskCardV2({
         <div className="task-card-v2-category">
           <span className="task-card-v2-category-icon">{categoryIcon}</span>
           <span className="task-card-v2-category-label">{categoryLabel}</span>
+          <span className="task-card-v2-task-id">{formatTaskId(task.id)}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {isOpen && (

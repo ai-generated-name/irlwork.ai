@@ -52,6 +52,7 @@ console.log('[Startup] Loading Stripe services...');
 const { stripe } = require('./backend/lib/stripe');
 const { chargeAgentForTask, listPaymentMethods, handleWebhookEvent } = require('./backend/services/stripeService');
 const initStripeRoutes = require('./routes/stripe');
+const initSubscriptionRoutes = require('./routes/subscription');
 
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
@@ -291,6 +292,7 @@ function cleanTaskData(data) {
 
 // Configuration
 const { PLATFORM_FEE_PERCENT } = require('./config/constants');
+const { getTierConfig, calculateWorkerFee, calculatePosterFee, canPostTask } = require('./config/tiers');
 const { isAdmin } = require('./middleware/adminAuth');
 
 // File upload validation
@@ -352,9 +354,10 @@ const VALID_STATUS_TRANSITIONS = {
   pending_acceptance: ['in_progress', 'open', 'cancelled'],
   assigned: ['in_progress', 'cancelled'],
   in_progress: ['pending_review', 'disputed', 'cancelled'],
-  pending_review: ['completed', 'rejected', 'disputed'],
+  pending_review: ['approved', 'completed', 'rejected', 'disputed'],
   rejected: ['pending_review', 'disputed', 'cancelled'],
-  disputed: ['paid', 'refunded', 'cancelled'],
+  approved: ['paid', 'disputed'],
+  disputed: ['paid', 'refunded', 'cancelled', 'pending_review'],
   completed: ['paid'],
 };
 
@@ -540,6 +543,48 @@ setInterval(() => {
   for (const [key, record] of rateLimitStore.entries()) {
     if (now - record.windowStart > 5 * 60 * 1000) {
       rateLimitStore.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// ============ PER-CONVERSATION MESSAGE RATE LIMITING ============
+// Prevents message spam: max 30 messages per minute per user per conversation
+const messageRateLimitStore = new Map();
+const MESSAGE_RATE_LIMIT = { maxMessages: 30, windowMs: 60 * 1000 };
+
+function checkMessageRateLimit(userId, conversationId) {
+  const key = `${userId}:${conversationId}`;
+  const now = Date.now();
+  let record = messageRateLimitStore.get(key);
+
+  if (record && now - record.windowStart > MESSAGE_RATE_LIMIT.windowMs) {
+    record = null;
+  }
+
+  if (!record) {
+    record = { count: 0, windowStart: now };
+    messageRateLimitStore.set(key, record);
+  }
+
+  record.count++;
+
+  if (record.count > MESSAGE_RATE_LIMIT.maxMessages) {
+    const resetAt = new Date(record.windowStart + MESSAGE_RATE_LIMIT.windowMs);
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.ceil((resetAt.getTime() - now) / 1000)
+    };
+  }
+
+  return { allowed: true };
+}
+
+// Clean up message rate limit store periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of messageRateLimitStore.entries()) {
+    if (now - record.windowStart > 5 * 60 * 1000) {
+      messageRateLimitStore.delete(key);
     }
   }
 }, 5 * 60 * 1000);
@@ -739,6 +784,7 @@ async function sendMessageEmailNotification(recipientUserId, senderName, taskTit
 }
 
 // Dispatch webhook to user if they have one configured
+// Supports retry with exponential backoff (3 attempts: 1s, 2s, 4s)
 async function dispatchWebhook(userId, event) {
   if (!supabase) return;
 
@@ -750,6 +796,11 @@ async function dispatchWebhook(userId, event) {
       .single();
 
     if (!user?.webhook_url) return; // No webhook registered, skip
+
+    if (!isValidWebhookUrl(user.webhook_url)) {
+      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${user.webhook_url}`);
+      return;
+    }
 
     const payload = {
       event_type: event.type,
@@ -769,19 +820,42 @@ async function dispatchWebhook(userId, event) {
       headers['X-Webhook-Signature'] = signature;
     }
 
-    if (!isValidWebhookUrl(user.webhook_url)) {
-      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${user.webhook_url}`);
-      return;
-    }
+    const body = JSON.stringify(payload);
+    const maxAttempts = 3;
+    const baseDelay = 1000; // 1 second
 
-    await fetch(user.webhook_url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000) // 5 second timeout
-    });
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await fetch(user.webhook_url, {
+          method: 'POST',
+          headers,
+          body,
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        if (response.ok || response.status < 500) {
+          // Success or client error (don't retry 4xx)
+          return;
+        }
+        // 5xx — retry
+        if (attempt < maxAttempts) {
+          const delay = baseDelay * Math.pow(2, attempt - 1);
+          console.warn(`[WEBHOOK] Attempt ${attempt}/${maxAttempts} failed (HTTP ${response.status}) for user ${userId}, retrying in ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+        } else {
+          console.error(`[WEBHOOK] All ${maxAttempts} attempts failed for user ${userId} (HTTP ${response.status})`);
+        }
+      } catch (fetchErr) {
+        if (attempt < maxAttempts) {
+          const delay = baseDelay * Math.pow(2, attempt - 1);
+          console.warn(`[WEBHOOK] Attempt ${attempt}/${maxAttempts} error for user ${userId}: ${fetchErr.message}, retrying in ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+        } else {
+          console.error(`[WEBHOOK] All ${maxAttempts} attempts failed for user ${userId}: ${fetchErr.message}`);
+        }
+      }
+    }
   } catch (err) {
-    console.error(`Webhook delivery failed for user ${userId}:`, err.message);
+    console.error(`[WEBHOOK] Dispatch setup failed for user ${userId}:`, err.message);
     // Don't throw - webhook failures shouldn't break the main flow
   }
 }
@@ -799,6 +873,13 @@ if (supabase) {
   const stripeRoutes = initStripeRoutes(supabase, getUserByToken, createNotification);
   app.use('/api/stripe', stripeRoutes);
   console.log('[Startup] Stripe routes mounted at /api/stripe');
+}
+
+// ============ SUBSCRIPTION ROUTES ============
+if (supabase) {
+  const subscriptionRoutes = initSubscriptionRoutes(supabase, getUserByToken, createNotification);
+  app.use('/api/subscription', subscriptionRoutes);
+  console.log('[Startup] Subscription routes mounted at /api/subscription');
 }
 
 // ============ CITY SEARCH ============
@@ -1196,7 +1277,14 @@ app.get('/api/auth/verify', async (req, res) => {
       // Derived metrics
       completion_rate: completionRate,
       payment_rate: paymentRate,
-      jobs_completed: user.jobs_completed || 0
+      jobs_completed: user.jobs_completed || 0,
+      created_at: user.created_at,
+      headline: user.headline || '',
+      timezone: user.timezone || '',
+      gender: user.gender || null,
+      // Subscription
+      subscription_tier: user.subscription_tier || 'free',
+      tasks_posted_this_month: user.tasks_posted_this_month || 0,
     }
   });
 });
@@ -1766,12 +1854,11 @@ app.get('/api/stats', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
-    // Count humans with completed profiles (verified humans)
+    // Count humans
     const { count: humansCount, error: humansError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
-      .eq('type', 'human')
-      .eq('verified', true);
+      .eq('type', 'human');
 
     // Count open tasks
     const { count: tasksCount, error: tasksError } = await supabase
@@ -1784,7 +1871,6 @@ app.get('/api/stats', async (req, res) => {
       .from('users')
       .select('city')
       .eq('type', 'human')
-      .eq('verified', true)
       .not('city', 'is', null);
 
     const { data: taskCities } = await supabase
@@ -1824,7 +1910,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier')
     .eq('type', 'human')
     .eq('availability', 'available');
 
@@ -1849,6 +1935,14 @@ app.get('/api/humans', async (req, res) => {
     results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
   }
 
+  // Sort by subscription tier priority (Pro > Builder > Free), then by rating
+  results.sort((a, b) => {
+    const aPriority = getTierConfig(a.subscription_tier || 'free').worker_priority;
+    const bPriority = getTierConfig(b.subscription_tier || 'free').worker_priority;
+    if (bPriority !== aPriority) return bPriority - aPriority;
+    return (b.rating || 0) - (a.rating || 0);
+  });
+
   res.json(results);
 });
 
@@ -1859,8 +1953,8 @@ app.get('/api/users/:id', async (req, res) => {
   const isSelf = requester && requester.id === req.params.id;
 
   const columns = isSelf
-    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_paid, type, avatar_url'
-    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url';
+    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_paid, type, avatar_url, subscription_tier, tasks_posted_this_month'
+    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url, subscription_tier';
 
   const { data: user, error } = await supabase
     .from('users')
@@ -1902,13 +1996,13 @@ app.put('/api/humans/profile', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { name, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url } = req.body;
+    const { name, hourly_rate, bio, categories, skills, city, latitude, longitude, travel_radius, country, country_code, social_links, headline, languages, timezone, avatar_url, availability, gender } = req.body;
 
     const updates = { updated_at: new Date().toISOString(), needs_onboarding: false, verified: true, type: 'human', account_type: 'human' };
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
     if (name) updates.name = name;
-    if (hourly_rate) updates.hourly_rate = hourly_rate;
+    if (hourly_rate !== undefined) updates.hourly_rate = hourly_rate;
     if (bio !== undefined) updates.bio = bio;
     // Accept both 'skills' and 'categories' for backwards compatibility
     // Store as JSON string to match registration format
@@ -1925,7 +2019,7 @@ app.put('/api/humans/profile', async (req, res) => {
     if (longitude !== undefined) updates.longitude = longitude != null ? parseFloat(longitude) : null;
     if (country !== undefined) updates.country = country;
     if (country_code !== undefined) updates.country_code = country_code;
-    if (travel_radius) {
+    if (travel_radius !== undefined) {
       updates.travel_radius = travel_radius;
       updates.service_radius = travel_radius;
     }
@@ -1967,6 +2061,11 @@ app.put('/api/humans/profile', async (req, res) => {
     }
     if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
     if (timezone !== undefined) updates.timezone = timezone;
+    if (availability === 'available' || availability === 'unavailable') updates.availability = availability;
+    if (gender !== undefined) {
+      const validGenders = ['man', 'woman', 'other'];
+      updates.gender = validGenders.includes(gender) ? gender : null;
+    }
 
     // Auto-derive timezone from coordinates when location changes but timezone not explicitly set
     if (updates.latitude != null && updates.longitude != null && timezone === undefined) {
@@ -2069,6 +2168,32 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Authentication required' });
 
+  // Task posting limit check (free tier: 5/month)
+  const userTier = user.subscription_tier || 'free';
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  let tasksPosted = user.tasks_posted_this_month || 0;
+
+  if (!user.tasks_posted_month_reset || new Date(user.tasks_posted_month_reset) < monthStart) {
+    // Reset counter for new month
+    await supabase.from('users').update({
+      tasks_posted_this_month: 0,
+      tasks_posted_month_reset: monthStart.toISOString()
+    }).eq('id', user.id);
+    tasksPosted = 0;
+  }
+
+  if (!canPostTask(tasksPosted, userTier)) {
+    const tierConfig = getTierConfig(userTier);
+    return res.status(403).json({
+      error: 'Monthly task posting limit reached',
+      code: 'task_limit_reached',
+      limit: tierConfig.task_limit_monthly,
+      posted: tasksPosted,
+      upgrade_url: '/premium'
+    });
+  }
+
   const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code } = req.body;
 
   // Validate required fields
@@ -2136,6 +2261,12 @@ app.post('/api/tasks', async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  // Increment monthly task posting counter
+  await supabase.from('users').update({
+    tasks_posted_this_month: (tasksPosted + 1),
+    updated_at: new Date().toISOString()
+  }).eq('id', user.id);
 
   res.json({
     ...task,
@@ -2364,7 +2495,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   const { id: taskId } = req.params;
-  const { human_id, payment_method_id } = req.body;
+  const { human_id, payment_method_id, preferred_payment_method } = req.body;
 
   if (!human_id) {
     return res.status(400).json({ error: 'human_id is required' });
@@ -2430,11 +2561,13 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       return res.status(502).json({ error: 'Unable to verify payment method. Please try again or add a new card.' });
     }
   }
-  if (agentPaymentMethods.length === 0) {
+  // Agent must have a card (Stripe) OR choose USDC
+  const useUsdc = preferred_payment_method === 'usdc';
+  if (agentPaymentMethods.length === 0 && !useUsdc) {
     return res.status(402).json({
       error: 'No payment method on file',
-      code: 'card_required',
-      message: 'You must link a payment card before hiring. Add a card in your payment settings.'
+      code: 'payment_required',
+      message: 'You must link a payment card or choose USDC before hiring.'
     });
   }
 
@@ -2470,10 +2603,21 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       notificationMessage,
       `/tasks/${taskId}`
     );
+
+    // Dispatch webhook to human about the assignment
+    dispatchWebhook(human_id, {
+      type: 'task_assigned',
+      task_id: taskId,
+      data: {
+        title: task.title,
+        budget: budgetAmount,
+        agent_id: user.id
+      }
+    }).catch(() => {});
   };
 
   // ============ STRIPE PATH: Send offer, charge on acceptance ============
-  if (agentPaymentMethods.length > 0) {
+  if (!useUsdc && agentPaymentMethods.length > 0) {
     // 24-hour review window for the human to accept/decline
     const reviewDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
@@ -2513,6 +2657,18 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       `/tasks/${taskId}`
     );
 
+    // Dispatch webhook to human about the offer
+    dispatchWebhook(human_id, {
+      type: 'task_offered',
+      task_id: taskId,
+      data: {
+        title: task.title,
+        budget: budgetAmount,
+        review_deadline: reviewDeadline,
+        agent_id: user.id
+      }
+    }).catch(() => {});
+
     return res.json({
       success: true,
       task_id: taskId,
@@ -2534,7 +2690,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
 
   // For open tasks with remaining spots, keep status 'open'
   const usdcStatus = nextStatus || 'assigned';
-  const { error } = await supabase
+  const { data: usdcUpdated, error } = await supabase
     .from('tasks')
     .update(cleanTaskData({
       human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
@@ -2547,9 +2703,14 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       payment_method: 'usdc',
       updated_at: new Date().toISOString()
     }))
-    .eq('id', taskId);
+    .eq('id', taskId)
+    .eq('status', 'open')
+    .select('id')
+    .single();
 
-  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+  if (error || !usdcUpdated) {
+    return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
+  }
 
   await finalizeAssignment(
     `You've been selected for "${task.title}". Funding is in progress — you'll be notified when work can begin.`
@@ -2682,14 +2843,19 @@ app.post('/api/tasks/:id/release', async (req, res) => {
     // Use the proper Stripe pipeline with 48-hour hold
     await releasePaymentToPending(supabase, id, task.human_id, user.id, createNotification);
 
-    // Update task status to paid
+    // Atomic update: only set 'paid' if still in completed/approved
     await supabase
       .from('tasks')
       .update({ status: 'paid', updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', id)
+      .in('status', ['completed', 'approved']);
 
     const budget = parseFloat(task.budget) || 0;
-    const platformFee = Math.round(budget * PLATFORM_FEE_PERCENT) / 100;
+    const budgetCents = Math.round(budget * 100);
+    // Use stored worker fee from task if available, otherwise look up
+    const workerFeePercent = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
+    const platformFeeCents = Math.round(budgetCents * workerFeePercent / 100);
+    const platformFee = platformFeeCents / 100;
     const netAmount = budget - platformFee;
 
     res.json({
@@ -3420,15 +3586,16 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   );
   
   // Deliver webhook to agent
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_submitted',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_submitted',
     task_id: taskId,
-    proof_id: proofId,
-    human_id: user.id,
-    human_name: user.name,
-    task_title: task.title,
-    timestamp: new Date().toISOString()
-  });
+    data: {
+      proof_id: proofId,
+      human_id: user.id,
+      human_name: user.name,
+      task_title: task.title
+    }
+  }).catch(() => {});
   
   res.json({ success: true, proof });
 });
@@ -3538,14 +3705,15 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   );
   
   // Deliver webhook
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_rejected',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_rejected',
     task_id: taskId,
-    proof_id: latestProof.id,
-    feedback,
-    new_deadline: newDeadline.toISOString(),
-    timestamp: new Date().toISOString()
-  });
+    data: {
+      proof_id: latestProof.id,
+      feedback,
+      new_deadline: newDeadline.toISOString()
+    }
+  }).catch(() => {});
   
   res.json({ 
     success: true, 
@@ -3639,30 +3807,65 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   );
 
   // Deliver webhook to agent
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_approved',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_approved',
     task_id: taskId,
-    proof_id: latestProof.id,
-    message: 'Proof approved. Payment will be processed.',
-    timestamp: new Date().toISOString()
-  });
+    data: {
+      proof_id: latestProof.id,
+      human_id: task.human_id,
+      message: 'Proof approved. Payment will be processed.'
+    }
+  }).catch(() => {});
 
-  // Stripe-paid tasks: auto-release to pending balance (no admin step needed)
-  if (task.payment_method === 'stripe' && task.stripe_payment_intent_id) {
+  // Also notify the human via webhook
+  dispatchWebhook(task.human_id, {
+    type: 'proof_approved',
+    task_id: taskId,
+    data: {
+      proof_id: latestProof.id,
+      message: 'Your proof has been approved! Payment is being processed.'
+    }
+  }).catch(() => {});
+
+  // Auto-release to pending balance (no admin step needed)
+  // Stripe tasks: release if PaymentIntent exists
+  // USDC tasks: release if escrow was deposited (admin confirmed on-chain deposit)
+  const canAutoRelease =
+    (task.payment_method === 'stripe' && task.stripe_payment_intent_id) ||
+    (task.payment_method === 'usdc' && task.escrow_status === 'deposited');
+
+  if (canAutoRelease) {
     try {
       await releasePaymentToPending(supabase, taskId, task.human_id, task.agent_id, createNotification);
-      console.log(`[Approve] Auto-released payment for Stripe task ${taskId}`);
+      console.log(`[Approve] Auto-released payment for ${task.payment_method} task ${taskId}`);
     } catch (releaseError) {
-      console.error('[Approve] Auto-release failed for Stripe task:', releaseError.message);
+      console.error(`[Approve] Auto-release failed for ${task.payment_method} task:`, releaseError.message);
       // Don't fail the approve — admin can manually release if auto-release fails
     }
   }
+
+  // USDC-paid tasks: release to pending balance if escrow was deposited on-chain
+  if (task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held')) {
+    try {
+      await releasePaymentToPending(supabase, taskId, task.human_id, task.agent_id, createNotification);
+      console.log(`[Approve] Released USDC payment for task ${taskId}`);
+    } catch (releaseError) {
+      console.error('[Approve] USDC release failed for task:', releaseError.message);
+      // Don't fail the approve — admin can manually release
+    }
+  }
+
+  const isStripe = task.payment_method === 'stripe' && task.stripe_payment_intent_id;
+  const isUsdcFunded = task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held');
+  const paymentReleased = isStripe || isUsdcFunded;
 
   res.json({
     success: true,
     status: 'approved',
     payment_method: task.payment_method || 'stripe',
-    message: 'Proof approved. Payment released to pending balance with 48-hour hold.'
+    message: paymentReleased
+      ? 'Proof approved. Payment released to pending balance with 48-hour hold.'
+      : 'Proof approved. Payment will be released once escrow is funded.'
   });
 });
 
@@ -3895,14 +4098,25 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     `/tasks/${taskId}`
   );
   
-  // Deliver webhook
-  await deliverWebhook(task.agent_id, {
-    event: 'dispute_opened',
+  // Deliver webhook to both parties
+  dispatchWebhook(task.agent_id, {
+    type: 'dispute_opened',
     task_id: taskId,
-    disputed_by: user.id,
-    reason,
-    timestamp: new Date().toISOString()
-  });
+    data: {
+      disputed_by: user.id,
+      reason
+    }
+  }).catch(() => {});
+  if (notifyTo !== task.agent_id) {
+    dispatchWebhook(notifyTo, {
+      type: 'dispute_opened',
+      task_id: taskId,
+      data: {
+        disputed_by: user.id,
+        reason
+      }
+    }).catch(() => {});
+  }
   
   res.json({ success: true, status: 'disputed' });
 });
@@ -3945,7 +4159,10 @@ app.post('/api/admin/resolve-dispute', async (req, res) => {
   if (release_to_human) {
     // Release payment to human
     const escrowAmount = task.escrow_amount || task.budget || 50;
-    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
+    const escrowCents = Math.round(escrowAmount * 100);
+    const workerFeePercent = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
+    const platformFeeCents = Math.round(escrowCents * workerFeePercent / 100);
+    const platformFee = platformFeeCents / 100;
     const netAmount = escrowAmount - platformFee;
     const txHash = '0x' + crypto.randomBytes(32).toString('hex');
 
@@ -4309,47 +4526,6 @@ async function updateUserRating(userId) {
 }
 
 // ============ WEBHOOKS ============
-async function deliverWebhook(agentId, payload) {
-  if (!supabase) return;
-
-  try {
-    const { data: agent } = await supabase
-      .from('users')
-      .select('webhook_url, webhook_secret')
-      .eq('id', agentId)
-      .single();
-
-    if (!agent?.webhook_url) return;
-
-    const webhookUrl = agent.webhook_url;
-    const headers = { 'Content-Type': 'application/json' };
-
-    // Add HMAC signature if secret is configured
-    if (agent.webhook_secret) {
-      const signature = crypto
-        .createHmac('sha256', agent.webhook_secret)
-        .update(JSON.stringify(payload))
-        .digest('hex');
-      headers['X-Webhook-Signature'] = signature;
-    }
-
-    if (!isValidWebhookUrl(webhookUrl)) {
-      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${webhookUrl}`);
-      return;
-    }
-
-    console.log(`[WEBHOOK] Delivering to ${webhookUrl}`);
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000)
-    });
-  } catch (e) {
-    console.error('Webhook delivery error:', e.message);
-    // Don't throw - webhook failures shouldn't break the main flow
-  }
-}
 
 // Get webhook URL for an agent
 app.get('/api/agents/:id/webhook-url', async (req, res) => {
@@ -4408,6 +4584,87 @@ app.post('/api/webhooks/register', async (req, res) => {
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   res.json({ success: true, webhook_url });
+});
+
+// Get current webhook configuration
+app.get('/api/webhooks', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('webhook_url, webhook_secret')
+    .eq('id', user.id)
+    .single();
+
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  res.json({
+    webhook_url: data?.webhook_url || null,
+    has_secret: !!data?.webhook_secret
+  });
+});
+
+// Test webhook delivery — sends a test event to the caller's registered webhook URL
+app.post('/api/webhooks/test', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data } = await supabase
+    .from('users')
+    .select('webhook_url, webhook_secret')
+    .eq('id', user.id)
+    .single();
+
+  if (!data?.webhook_url) {
+    return res.status(400).json({ error: 'No webhook URL configured. Register one first via POST /api/webhooks/register.' });
+  }
+
+  if (!isValidWebhookUrl(data.webhook_url)) {
+    return res.status(400).json({ error: 'Registered webhook URL is invalid.' });
+  }
+
+  const payload = {
+    event_type: 'test',
+    task_id: null,
+    data: { message: 'Webhook test from irlwork.ai. If you receive this, your webhook is working correctly.' },
+    timestamp: new Date().toISOString()
+  };
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (data.webhook_secret) {
+    const signature = crypto
+      .createHmac('sha256', data.webhook_secret)
+      .update(JSON.stringify(payload))
+      .digest('hex');
+    headers['X-Webhook-Signature'] = signature;
+  }
+
+  try {
+    const response = await fetch(data.webhook_url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000)
+    });
+    res.json({
+      success: true,
+      webhook_url: data.webhook_url,
+      status_code: response.status,
+      delivered: response.ok
+    });
+  } catch (err) {
+    res.json({
+      success: false,
+      webhook_url: data.webhook_url,
+      error: err.message,
+      delivered: false
+    });
+  }
 });
 
 // ============ TRANSACTIONS ============
@@ -4600,8 +4857,7 @@ app.post('/api/mcp', async (req, res) => {
         let query = supabase
           .from('users')
           .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, bio, languages, travel_radius, availability, headline, timezone')
-          .eq('type', 'human')
-          .eq('verified', true);
+          .eq('type', 'human');
 
         // Default to only showing available workers unless explicitly requesting all
         query = query.eq('availability', params.availability || 'available');
@@ -4843,8 +5099,8 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(403).json({ error: 'Not your task' });
         }
 
-        // Only allow approving tasks in valid statuses
-        if (!['pending_review', 'completed'].includes(task.status)) {
+        // Align with REST endpoint: allow pending_review and disputed
+        if (!['pending_review', 'disputed'].includes(task.status)) {
           return res.status(400).json({ error: `Cannot approve task with status "${task.status}"` });
         }
 
@@ -4857,12 +5113,13 @@ app.post('/api/mcp', async (req, res) => {
           .limit(1)
           .single();
 
-        // Update proof status
+        // Atomic proof status update — prevents double-approve
         if (latestProof) {
           await supabase
             .from('task_proofs')
             .update({ status: 'approved', updated_at: new Date().toISOString() })
-            .eq('id', latestProof.id);
+            .eq('id', latestProof.id)
+            .neq('status', 'approved');
         }
 
         // Atomic status transition — prevents double-approve
@@ -4870,7 +5127,7 @@ app.post('/api/mcp', async (req, res) => {
           .from('tasks')
           .update({ status: 'approved', updated_at: new Date().toISOString() })
           .eq('id', task_id)
-          .in('status', ['pending_review', 'completed'])
+          .in('status', ['pending_review', 'disputed'])
           .select('id')
           .single();
 
@@ -4878,28 +5135,34 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(409).json({ error: 'Task status changed — refresh and try again' });
         }
 
-        // Release payment via Stripe (same flow as non-MCP approve)
-        try {
-          await releasePaymentToPending(supabase, task_id, task.human_id, user.id, createNotification);
-          console.log(`[MCP Approve] Released payment for task ${task_id}`);
-        } catch (e) {
-          return res.status(409).json({ error: e.message || 'Payment release failed.' });
+        // Release payment (both Stripe and USDC tasks with funded escrow)
+        const canRelease = (task.payment_method === 'stripe' && task.stripe_payment_intent_id) ||
+          (task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held'));
+
+        if (canRelease) {
+          try {
+            await releasePaymentToPending(supabase, task_id, task.human_id, user.id, createNotification);
+            console.log(`[MCP Approve] Released payment for task ${task_id}`);
+          } catch (e) {
+            return res.status(409).json({ error: e.message || 'Payment release failed.' });
+          }
         }
 
-        // Mark as paid after successful release
-        await supabase
-          .from('tasks')
-          .update({ status: 'paid', updated_at: new Date().toISOString() })
-          .eq('id', task_id);
-
         const escrowAmount = task.escrow_amount || task.budget || 50;
-        const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-        const netAmount = escrowAmount - platformFee;
+        const escrowCents = Math.round(escrowAmount * 100);
+        const workerFeePercent = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
+        const platformFeeCents = Math.round(escrowCents * workerFeePercent / 100);
+        const netAmount = (escrowCents - platformFeeCents) / 100;
 
         res.json({
           success: true,
-          status: 'paid',
-          net_amount: netAmount
+          status: 'approved',
+          payment_released: canRelease,
+          payment_method: task.payment_method || 'stripe',
+          net_amount: canRelease ? netAmount : null,
+          message: canRelease
+            ? 'Proof approved. Payment released to pending balance with 48-hour hold.'
+            : 'Proof approved. Payment will be released once escrow is funded.'
         });
         break;
       }
@@ -4996,6 +5259,39 @@ app.post('/api/mcp', async (req, res) => {
             content: messageContent,
             created_at: new Date().toISOString()
           });
+
+          // Update conversation preview
+          const preview = messageContent.length > 100 ? messageContent.substring(0, 100) + '...' : messageContent;
+          await supabase
+            .from('conversations')
+            .update({ updated_at: new Date().toISOString(), last_message: preview })
+            .eq('id', conversationId);
+
+          // Notify the human about the new message
+          await createNotification(
+            targetHumanId,
+            'new_message',
+            'New message',
+            `New message from ${user.name || 'an agent'}: ${preview}`,
+            `/tasks/${conversationId}`
+          );
+
+          // Send email notification (async, non-blocking)
+          sendMessageEmailNotification(targetHumanId, user.name, 'a conversation', preview, null).catch(() => {});
+
+          // Dispatch webhook to human
+          dispatchWebhook(targetHumanId, {
+            type: 'new_message',
+            task_id: null,
+            data: {
+              conversation_id: conversationId,
+              message_id: messageId,
+              sender_name: user.name,
+              sender_type: 'agent',
+              content: messageContent,
+              created_at: new Date().toISOString()
+            }
+          }).catch(() => {});
         }
 
         res.json({
@@ -5113,6 +5409,17 @@ app.post('/api/mcp', async (req, res) => {
           `/tasks/${task_id}`
         );
 
+        // Dispatch webhook to human about the assignment
+        dispatchWebhook(human_id, {
+          type: 'task_assigned',
+          task_id: task_id,
+          data: {
+            title: taskData.title,
+            budget: taskData.budget,
+            agent_id: user.id
+          }
+        }).catch(() => {});
+
         res.json({
           success: true,
           assigned_at: new Date().toISOString(),
@@ -5140,10 +5447,19 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(400).json({ error: 'conversation_id and content are required' });
         }
 
-        // Verify access to conversation
+        // Per-conversation rate limit check
+        const msgRateCheck = checkMessageRateLimit(user.id, conversation_id);
+        if (!msgRateCheck.allowed) {
+          return res.status(429).json({
+            error: 'Message rate limit exceeded. Please slow down.',
+            retry_after_seconds: msgRateCheck.retryAfterSeconds
+          });
+        }
+
+        // Verify access to conversation (include task_id and task title for notifications)
         const { data: conv, error: convError } = await supabase
           .from('conversations')
-          .select('id, human_id, agent_id')
+          .select('id, human_id, agent_id, task_id, tasks(title)')
           .eq('id', conversation_id)
           .single();
 
@@ -5163,10 +5479,41 @@ app.post('/api/mcp', async (req, res) => {
 
         if (msgError) throw msgError;
 
+        // Update conversation's updated_at and last_message preview
+        const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+        await supabase
+          .from('conversations')
+          .update({ updated_at: new Date().toISOString(), last_message: preview })
+          .eq('id', conversation_id);
+
         // Notify other party
         const recipientId = conv.human_id === user.id ? conv.agent_id : conv.human_id;
         if (recipientId) {
-          await createNotification(recipientId, 'new_message', 'New Message', content.substring(0, 100), `/conversations/${conversation_id}`);
+          const taskTitle = conv.tasks?.title || 'a task';
+          await createNotification(
+            recipientId,
+            'new_message',
+            'New message',
+            `New message about "${taskTitle}": ${preview}`,
+            `/tasks/${conv.task_id}?conversation=${conversation_id}`
+          );
+
+          // Send email notification (async, non-blocking)
+          sendMessageEmailNotification(recipientId, user.name, taskTitle, preview, conv.task_id).catch(() => {});
+
+          // Dispatch webhook to other party
+          dispatchWebhook(recipientId, {
+            type: 'new_message',
+            task_id: conv.task_id,
+            data: {
+              conversation_id,
+              message_id: msg.id,
+              sender_name: user.name,
+              sender_type: user.type || 'agent',
+              content,
+              created_at: msg.created_at
+            }
+          }).catch(() => {});
         }
 
         res.json(msg);
@@ -5776,6 +6123,40 @@ app.get('/api/conversations/:id', async (req, res) => {
 });
 
 // ============ MESSAGES ============
+
+// Get unread message count
+// NOTE: This route MUST be defined before /api/messages/:conversation_id
+// to avoid Express matching "unread" as a conversation_id parameter.
+app.get('/api/messages/unread/count', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  // Count unread messages where user is not the sender
+  const { data: conversations } = await supabase
+    .from('conversations')
+    .select('id')
+    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`);
+
+  if (!conversations || conversations.length === 0) {
+    return res.json({ count: 0 });
+  }
+
+  const conversationIds = conversations.map(c => c.id);
+
+  const { data: unreadMessages, error } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact' })
+    .in('conversation_id', conversationIds)
+    .neq('sender_id', user.id)
+    .is('read_at', null);
+
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  res.json({ count: unreadMessages?.length || 0 });
+});
+
 app.get('/api/messages/:conversation_id', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
@@ -5874,6 +6255,17 @@ app.post('/api/messages', async (req, res) => {
     return res.status(400).json({ error: 'Message content is too long (max 10,000 characters)' });
   }
 
+  // Per-conversation rate limit check
+  if (conversation_id) {
+    const rateCheck = checkMessageRateLimit(user.id, conversation_id);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: 'Message rate limit exceeded. Please slow down.',
+        retry_after_seconds: rateCheck.retryAfterSeconds
+      });
+    }
+  }
+
   // Verify user has access to conversation (include task_id and task title for notifications)
   const { data: conversation, error: convError } = await supabase
     .from('conversations')
@@ -5923,7 +6315,7 @@ app.post('/api/messages', async (req, res) => {
       'new_message',
       'New message',
       `New message about "${taskTitle}": ${preview}`,
-      `/tasks/${conversation.task_id}`
+      `/tasks/${conversation.task_id}?conversation=${conversation_id}`
     );
 
     // Send email notification to the other party (async, non-blocking)
@@ -6045,37 +6437,6 @@ app.get('/api/conversations/unread', async (req, res) => {
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(data);
-});
-
-// Get unread message count
-app.get('/api/messages/unread/count', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  // Count unread messages where user is not the sender
-  const { data: conversations } = await supabase
-    .from('conversations')
-    .select('id')
-    .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`);
-  
-  if (!conversations || conversations.length === 0) {
-    return res.json({ count: 0 });
-  }
-  
-  const conversationIds = conversations.map(c => c.id);
-  
-  const { data: unreadMessages, error } = await supabase
-    .from('messages')
-    .select('id', { count: 'exact' })
-    .in('conversation_id', conversationIds)
-    .neq('sender_id', user.id)
-    .is('read_at', null);
-  
-  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-  
-  res.json({ count: unreadMessages?.length || 0 });
 });
 
 // ============ USER TASKS ============
@@ -6373,7 +6734,6 @@ app.get('/api/humans/directory', async (req, res) => {
     .from('users')
     .select('id', { count: 'exact', head: true })
     .eq('type', 'human')
-    .eq('verified', true)
     .eq('availability', 'available');
 
   // Sanitize search params: escape LIKE wildcards (% and _) to prevent injection
@@ -6391,9 +6751,8 @@ app.get('/api/humans/directory', async (req, res) => {
   // Build data query with sorting
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url, subscription_tier')
     .eq('type', 'human')
-    .eq('verified', true)
     .eq('availability', 'available');
 
   // Sorting
@@ -6434,11 +6793,21 @@ app.get('/api/humans/directory', async (req, res) => {
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
-  const parsed = humans?.map(h => ({
+  let parsed = humans?.map(h => ({
     ...h,
     skills: safeParseJsonArray(h.skills),
     languages: safeParseJsonArray(h.languages)
   })) || [];
+
+  // Apply tier-based priority sorting (Pro > Builder > Free) as a secondary sort
+  if (sort === 'rating' || !sort) {
+    parsed.sort((a, b) => {
+      const aPriority = getTierConfig(a.subscription_tier || 'free').worker_priority;
+      const bPriority = getTierConfig(b.subscription_tier || 'free').worker_priority;
+      if (bPriority !== aPriority) return bPriority - aPriority;
+      return (b.rating || 0) - (a.rating || 0);
+    });
+  }
 
   res.json({
     humans: parsed,
@@ -6499,16 +6868,16 @@ app.get('/api/humans/:id/profile', async (req, res) => {
   });
 });
 
-// ============ TASK CREATION (Agents only) ============
+// ============ TASK CREATION (Agents and Humans) ============
 app.post('/api/tasks/create', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const user = await getUserByToken(req.headers.authorization);
-  if (!user || user.type !== 'agent') {
-    return res.status(401).json({ error: 'Agents only' });
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity } = req.body;
+  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, assign_to } = req.body;
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -6554,6 +6923,100 @@ app.post('/api/tasks/create', async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  // If assign_to is provided (direct hire flow), assign the human immediately
+  if (assign_to && task) {
+    const humanId = assign_to;
+
+    // Verify the human exists
+    const { data: humanUser } = await supabase
+      .from('users')
+      .select('id, name')
+      .eq('id', humanId)
+      .single();
+
+    if (!humanUser) {
+      return res.json({ ...task, message: 'Task posted successfully, but could not find the specified human to assign.' });
+    }
+
+    // Check if creator has a payment method
+    let hasPaymentMethod = false;
+    if (user.stripe_customer_id && stripe) {
+      try {
+        const methods = await listPaymentMethods(user.stripe_customer_id);
+        hasPaymentMethod = methods.length > 0;
+      } catch (e) {
+        console.error('[DirectHire] Failed to list Stripe payment methods:', e.message);
+      }
+    }
+
+    if (hasPaymentMethod) {
+      // Stripe path: pending_acceptance with 24-hour review window
+      const reviewDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      await supabase
+        .from('tasks')
+        .update(cleanTaskData({
+          human_id: humanId,
+          human_ids: [humanId],
+          spots_filled: 1,
+          status: 'pending_acceptance',
+          escrow_status: 'unfunded',
+          escrow_amount: budgetAmount,
+          payment_method: 'stripe',
+          review_deadline: reviewDeadline,
+          updated_at: new Date().toISOString()
+        }))
+        .eq('id', id);
+
+      await createNotification(
+        humanId,
+        'task_offered',
+        'New Task Offer!',
+        `You've been offered "${title}" ($${budgetAmount}). You have 24 hours to accept or decline.`,
+        `/tasks/${id}`
+      );
+
+      return res.json({
+        ...task,
+        status: 'pending_acceptance',
+        human_id: humanId,
+        human_ids: [humanId],
+        review_deadline: reviewDeadline,
+        message: `Task created and offer sent to ${humanUser.name}. They have 24 hours to accept.`
+      });
+    } else {
+      // No payment method: set to pending_acceptance anyway, user can add payment later
+      await supabase
+        .from('tasks')
+        .update(cleanTaskData({
+          human_id: humanId,
+          human_ids: [humanId],
+          spots_filled: 1,
+          status: 'pending_acceptance',
+          escrow_status: 'unfunded',
+          escrow_amount: budgetAmount,
+          updated_at: new Date().toISOString()
+        }))
+        .eq('id', id);
+
+      await createNotification(
+        humanId,
+        'task_offered',
+        'New Task Offer!',
+        `You've been offered "${title}" ($${budgetAmount}). You have 24 hours to accept or decline.`,
+        `/tasks/${id}`
+      );
+
+      return res.json({
+        ...task,
+        status: 'pending_acceptance',
+        human_id: humanId,
+        human_ids: [humanId],
+        message: `Task created and offer sent to ${humanUser.name}.`
+      });
+    }
+  }
 
   res.json({
     ...task,
@@ -6633,12 +7096,12 @@ app.put('/api/profile', async (req, res) => {
   if (bio !== undefined) updates.bio = bio;
   if (city) updates.city = city;
   if (state) updates.state = state;
-  if (hourly_rate) updates.hourly_rate = hourly_rate;
+  if (hourly_rate !== undefined) updates.hourly_rate = hourly_rate;
   if (availability) updates.availability = availability;
   if (skills) updates.skills = JSON.stringify(skills);
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
   if (languages !== undefined) updates.languages = JSON.stringify(Array.isArray(languages) ? languages : []);
-  if (travel_radius) {
+  if (travel_radius !== undefined) {
     updates.travel_radius = travel_radius;
     updates.service_radius = travel_radius;
   }
@@ -6683,10 +7146,15 @@ app.put('/api/profile', async (req, res) => {
     .eq('id', user.id)
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-  
-  res.json({ success: true, profile });
+
+  // Parse JSONB fields before returning
+  res.json({ success: true, profile: {
+    ...profile,
+    skills: safeParseJsonArray(profile.skills),
+    languages: safeParseJsonArray(profile.languages)
+  }});
 });
 
 // ============ WALLET BALANCE & WITHDRAWALS ============
@@ -6700,8 +7168,18 @@ app.get('/api/wallet/balance', async (req, res) => {
 
     const balance = await getWalletBalance(supabase, user.id);
 
+    // Calculate per-rail breakdowns
+    const txs = balance.transactions || [];
+    const stripeAvailableCents = txs.filter(tx => tx.payout_method !== 'usdc' && tx.status === 'available').reduce((s, tx) => s + tx.amount_cents, 0);
+    const usdcAvailableCents = txs.filter(tx => tx.payout_method === 'usdc' && tx.status === 'available').reduce((s, tx) => s + tx.amount_cents, 0);
+
     res.json({
       user_id: user.id,
+      wallet_address: user.wallet_address || null,
+      has_wallet: !!user.wallet_address,
+      has_bank: !!user.stripe_account_id && !!user.stripe_onboarding_complete,
+      stripe_available_cents: stripeAvailableCents,
+      usdc_available_cents: usdcAvailableCents,
       ...balance
     });
   } catch (error) {
@@ -6716,8 +7194,28 @@ app.post('/api/wallet/withdraw', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { amount_cents } = req.body;
+  const { amount_cents, method } = req.body;
 
+  if (method === 'usdc') {
+    // USDC withdrawal path
+    if (!user.wallet_address) {
+      return res.status(400).json({
+        error: 'No wallet address set',
+        action: 'connect_wallet',
+        message: 'Set up your wallet address to withdraw USDC.'
+      });
+    }
+    try {
+      const { processUsdcWithdrawal } = require('./backend/services/usdcWithdrawalService');
+      const result = await processUsdcWithdrawal(supabase, user.id, amount_cents || null, createNotification);
+      return res.json(result);
+    } catch (error) {
+      console.error('[USDC Withdraw] Error:', error.message);
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  // Stripe withdrawal path (default)
   if (!user.stripe_account_id) {
     return res.status(400).json({
       error: 'No bank account connected',
@@ -6773,8 +7271,10 @@ app.get('/api/wallet/status', async (req, res) => {
       available_cents: balance.available_cents,
       total_cents: balance.total_cents,
 
-      // Stripe Connect status
+      // Payment method status
       has_bank_account: !!user.stripe_account_id && !!user.stripe_onboarding_complete,
+      has_wallet: !!user.wallet_address,
+      wallet_address: user.wallet_address || null,
 
       // Transaction details
       transactions: balance.transactions
@@ -6783,6 +7283,36 @@ app.get('/api/wallet/status', async (req, res) => {
     console.error('Error fetching wallet status:', error);
     res.status(500).json({ error: 'Failed to fetch wallet status' });
   }
+});
+
+// ============ WALLET ADDRESS (USDC) ============
+app.get('/api/wallet/address', async (req, res) => {
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  res.json({ wallet_address: user.wallet_address || null, has_wallet: !!user.wallet_address });
+});
+
+app.put('/api/wallet/address', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { wallet_address } = req.body;
+
+  if (!wallet_address) {
+    // Clear wallet address
+    await supabase.from('users').update({ wallet_address: null, updated_at: new Date().toISOString() }).eq('id', user.id);
+    return res.json({ success: true, wallet_address: null });
+  }
+
+  if (!isValidWalletAddress(wallet_address)) {
+    return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Ethereum/Base address (0x...)' });
+  }
+
+  await supabase.from('users').update({ wallet_address, updated_at: new Date().toISOString() }).eq('id', user.id);
+  res.json({ success: true, wallet_address });
 });
 
 app.get('/api/admin/pending-stats', async (req, res) => {
@@ -7189,14 +7719,86 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       return res.status(410).json({ error: 'The review period has expired. This offer is no longer available.' });
     }
 
-    // Charge the agent's card now
     const budgetAmount = task.escrow_amount || task.budget || 50;
-    const amountCents = Math.round(budgetAmount * 100);
+    const budgetCents = Math.round(budgetAmount * 100);
+
+    // USDC tasks: escrow funded externally — skip Stripe charge
+    if (task.payment_method === 'usdc') {
+      // For USDC, escrow must already be deposited on-chain before work starts.
+      // If escrow is still pending_deposit, the human can accept but work waits for funding.
+      const escrowReady = task.escrow_status === 'deposited' || task.escrow_status === 'held';
+
+      const { data: updatedTask, error } = await supabase
+        .from('tasks')
+        .update(cleanTaskData({
+          status: escrowReady ? 'in_progress' : 'assigned',
+          assigned_at: new Date().toISOString(),
+          work_started_at: escrowReady ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
+        }))
+        .eq('id', id)
+        .eq('status', 'pending_acceptance')
+        .select('id')
+        .single();
+
+      if (error || !updatedTask) {
+        return res.status(409).json({ error: 'Task is no longer available — it may have been accepted by someone else' });
+      }
+
+      // Increment total_tasks_accepted for human
+      const { data: acceptUser } = await supabase
+        .from('users')
+        .select('total_tasks_accepted')
+        .eq('id', user.id)
+        .single();
+      await supabase
+        .from('users')
+        .update({
+          total_tasks_accepted: (acceptUser?.total_tasks_accepted || 0) + 1,
+          last_active_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (task.agent_id) {
+        await createNotification(
+          task.agent_id,
+          'task_accepted',
+          'Task Accepted',
+          `${user.name || 'A worker'} has accepted your task "${task.title}".${escrowReady ? ' Work can begin.' : ' Waiting for USDC escrow deposit.'}`,
+          `/tasks/${id}`
+        );
+      }
+
+      return res.json({
+        success: true,
+        status: escrowReady ? 'in_progress' : 'assigned',
+        escrow_status: task.escrow_status,
+        payment_method: 'usdc',
+        message: escrowReady
+          ? 'Task accepted. USDC escrow is funded — work can begin.'
+          : 'Task accepted. Waiting for USDC escrow deposit before work can start.'
+      });
+    }
+
+    // STRIPE PATH: Charge the agent's card now (budget + poster fee)
     const { chargeAgentForTask, refundPaymentIntent } = require('./backend/services/stripeService');
+
+    // Look up poster's tier for poster fee calculation
+    const { data: poster } = await supabase
+      .from('users')
+      .select('subscription_tier')
+      .eq('id', task.agent_id)
+      .single();
+    const posterTier = poster?.subscription_tier || 'free';
+    const posterFeeCents = calculatePosterFee(budgetCents, posterTier);
+    const totalChargeCents = budgetCents + posterFeeCents;
+
+    // Look up worker's tier for worker fee locking
+    const workerFeePercent = getTierConfig(user.subscription_tier || 'free').worker_fee_percent;
 
     let chargeResult;
     try {
-      chargeResult = await chargeAgentForTask(supabase, task.agent_id, id, amountCents);
+      chargeResult = await chargeAgentForTask(supabase, task.agent_id, id, totalChargeCents);
     } catch (stripeError) {
       console.error(`[Accept] Payment failed for task ${id}:`, stripeError.message);
       return res.status(402).json({
@@ -7206,7 +7808,7 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       });
     }
 
-    // Atomic update: move to in_progress with payment info
+    // Atomic update: move to in_progress with payment info and locked fees
     const { data: updatedTask, error } = await supabase
       .from('tasks')
       .update(cleanTaskData({
@@ -7214,6 +7816,10 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
         escrow_status: 'deposited',
         escrow_deposited_at: new Date().toISOString(),
         stripe_payment_intent_id: chargeResult.payment_intent_id,
+        poster_fee_percent: getTierConfig(posterTier).poster_fee_percent,
+        poster_fee_cents: posterFeeCents,
+        worker_fee_percent: workerFeePercent,
+        total_charge_cents: totalChargeCents,
         assigned_at: new Date().toISOString(),
         work_started_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -7257,18 +7863,39 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
         `${user.name || 'A worker'} has accepted your task "${task.title}". Payment has been charged and work can begin.`,
         `/tasks/${id}`
       );
+
+      // Dispatch webhook to agent
+      dispatchWebhook(task.agent_id, {
+        type: 'task_accepted',
+        task_id: id,
+        data: {
+          human_id: user.id,
+          human_name: user.name,
+          title: task.title,
+          status: 'in_progress',
+          escrow_status: 'deposited'
+        }
+      }).catch(() => {});
     }
 
     return res.json({ success: true, status: 'in_progress', escrow_status: 'deposited' });
   }
 
   // Accept from open status (original flow — human browsing open tasks)
+  // If escrow is already funded (agent set up payment via /assign first), start work.
+  // Otherwise, mark as assigned and require agent to fund escrow before work begins.
+  const escrowFunded = task.escrow_status === 'deposited' || task.escrow_status === 'held';
+  const acceptStatus = escrowFunded ? 'in_progress' : 'assigned';
+
   const { data: updatedTask, error } = await supabase
     .from('tasks')
     .update({
-      status: 'in_progress',
+      status: acceptStatus,
       human_id: user.id,
-      work_started_at: new Date().toISOString()
+      assigned_at: new Date().toISOString(),
+      work_started_at: escrowFunded ? new Date().toISOString() : null,
+      escrow_status: task.escrow_status || 'unfunded',
+      updated_at: new Date().toISOString()
     })
     .eq('id', id)
     .eq('status', 'open')
@@ -7305,12 +7932,31 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       acceptedTask.agent_id,
       'task_accepted',
       'Task Accepted',
-      `${user.name || 'A worker'} has accepted your task "${acceptedTask.title}".`,
+      `${user.name || 'A worker'} has accepted your task "${acceptedTask.title}".${escrowFunded ? ' Work can begin.' : ' Please fund escrow so work can start.'}`,
       `/tasks/${id}`
     );
+
+    // Dispatch webhook to agent
+    dispatchWebhook(acceptedTask.agent_id, {
+      type: 'task_accepted',
+      task_id: id,
+      data: {
+        human_id: user.id,
+        human_name: user.name,
+        title: acceptedTask.title,
+        status: 'in_progress'
+      }
+    }).catch(() => {});
   }
 
-  res.json({ success: true });
+  res.json({
+    success: true,
+    status: acceptStatus,
+    escrow_status: task.escrow_status || 'unfunded',
+    message: escrowFunded
+      ? 'Task accepted. Escrow is funded — work can begin.'
+      : 'Task accepted. Waiting for agent to fund escrow before work can start.'
+  });
 });
 
 app.post('/api/tasks/:id/decline', async (req, res) => {
@@ -7378,6 +8024,19 @@ app.post('/api/tasks/:id/decline', async (req, res) => {
       `${user.name || 'A worker'} declined your task "${task.title}"${reason ? ': ' + reason : ''}. The task is back to open.`,
       `/tasks/${id}`
     );
+
+    // Dispatch webhook to agent
+    dispatchWebhook(task.agent_id, {
+      type: 'task_declined',
+      task_id: id,
+      data: {
+        human_id: user.id,
+        human_name: user.name,
+        title: task.title,
+        reason: reason || null,
+        status: 'open'
+      }
+    }).catch(() => {});
   }
 
   res.json({ success: true, message: 'Task declined. The agent has been notified.' });
@@ -7767,7 +8426,7 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       await supabase.from('payouts').update({ status: 'refunded' }).eq('id', dispute.payout.id);
     }
 
-    // Update task
+    // Atomic task update with status precondition
     await supabase
       .from('tasks')
       .update({
@@ -7777,7 +8436,8 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', dispute.task_id);
+      .eq('id', dispute.task_id)
+      .eq('status', 'disputed');
 
     await createNotification(
       dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Refund Issued',
@@ -7798,6 +8458,7 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       return res.status(409).json({ error: e.message || 'Payment has already been released.' });
     }
 
+    // Atomic task update with status precondition
     await supabase
       .from('tasks')
       .update({
@@ -7806,11 +8467,14 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', dispute.task_id);
+      .eq('id', dispute.task_id)
+      .eq('status', 'disputed');
 
     const escrowAmount = task.escrow_amount || task.budget;
-    const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-    const netAmount = escrowAmount - platformFee;
+    const escrowCents = Math.round(escrowAmount * 100);
+    const workerFeePercent = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
+    const platformFeeCents = Math.round(escrowCents * workerFeePercent / 100);
+    const netAmount = (escrowCents - platformFeeCents) / 100;
 
     await createNotification(
       dispute.filed_against, 'dispute_resolved', 'Dispute Resolved - Payment Released',
@@ -7825,6 +8489,7 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
 
   } else if (resolution === 'partial') {
     // === PARTIAL RESOLUTION: Reset task for re-review ===
+    // Atomic task update with status precondition
     await supabase
       .from('tasks')
       .update({
@@ -7834,7 +8499,8 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
         dispute_resolution: resolution,
         updated_at: new Date().toISOString()
       })
-      .eq('id', dispute.task_id);
+      .eq('id', dispute.task_id)
+      .eq('status', 'disputed');
 
     await createNotification(
       dispute.filed_by, 'dispute_resolved', 'Dispute Partially Resolved',

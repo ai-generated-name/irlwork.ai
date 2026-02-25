@@ -82,11 +82,17 @@ export default function ProofSection({ task, user, onSubmit }) {
       return;
     }
 
-    // Validate file sizes (20MB max per file, compress before upload)
-    const oversized = selected.find(f => f.size > 20 * 1024 * 1024);
-    if (oversized) {
-      toast.error('Each file must be under 20MB');
-      return;
+    // Validate file sizes — backend checks decoded base64 against 10MB.
+    // Images get compressed before upload (maxSizeMB: 2), so 10MB raw is fine.
+    // Videos are NOT compressed, and base64 encoding adds ~33% overhead,
+    // so cap videos at 7MB raw to stay under 10MB after encoding.
+    for (const f of selected) {
+      const isVideo = f.type?.startsWith('video/');
+      const limit = isVideo ? 7 * 1024 * 1024 : 10 * 1024 * 1024;
+      if (f.size > limit) {
+        toast.error(isVideo ? 'Videos must be under 7MB' : 'Images must be under 10MB');
+        return;
+      }
     }
 
     const newFiles = [...files, ...selected].slice(0, 3);
@@ -177,7 +183,7 @@ export default function ProofSection({ task, user, onSubmit }) {
 
         {/* File Upload */}
         <div>
-          <label className="block text-[#333333] text-xs sm:text-sm mb-1.5 sm:mb-2">Upload Proof (max 3 images)</label>
+          <label className="block text-[#333333] text-xs sm:text-sm mb-1.5 sm:mb-2">Upload Proof (max 3 files)</label>
           <div
             className="border-2 border-dashed border-[rgba(0,0,0,0.2)] rounded-xl p-4 sm:p-6 text-center cursor-pointer hover:border-[#E8853D] transition-colors bg-[#FAFAF8]"
             onClick={() => !uploading && fileInputRef.current?.click()}
@@ -185,16 +191,16 @@ export default function ProofSection({ task, user, onSubmit }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/mp4,video/quicktime,.mov"
               multiple
               onChange={handleFileSelect}
               className="hidden"
             />
             <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{uploading ? <Hourglass size={24} /> : <Upload size={24} />}</div>
             <p className="text-[#333333] text-xs sm:text-sm">
-              {uploading ? (uploadProgress || 'Uploading...') : 'Tap to upload images'}
+              {uploading ? (uploadProgress || 'Uploading...') : 'Tap to upload photos or videos'}
             </p>
-            <p className="text-[#888888] text-xs mt-0.5 sm:mt-1">PNG, JPG, or JPEG (max 3)</p>
+            <p className="text-[#888888] text-xs mt-0.5 sm:mt-1">PNG, JPG, MP4, MOV (max 3)</p>
           </div>
 
           {/* Selected Files */}
@@ -241,7 +247,7 @@ export default function ProofSection({ task, user, onSubmit }) {
           <p className="font-medium mb-1"><FileText size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Tips:</p>
           <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-[#333333]">
             <li>Describe work completed in detail</li>
-            <li>Upload clear photos of finished task</li>
+            <li>Upload clear photos or videos of finished task</li>
             <li>48h review window before auto-release</li>
           </ul>
         </div>

@@ -5,6 +5,7 @@ import { SocialIconsRow } from './SocialIcons'
 import ForAgentsBox from './ForAgentsBox'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { formatTimezoneShort } from '../utils/timezone'
+import TierBadge from './TierBadge'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -157,6 +158,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   }}>
                     {profile.name || 'Anonymous'}
                   </h2>
+                  <TierBadge tier={profile.subscription_tier} size="sm" />
                   {profile.verified && (
                     <div style={{
                       width: 22,

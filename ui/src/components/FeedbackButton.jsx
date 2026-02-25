@@ -25,12 +25,6 @@ const C = {
   borderHover: 'rgba(0, 0, 0, 0.18)',
   success: '#16A34A',
   successBg: 'rgba(22, 163, 74, 0.08)',
-  error: '#FF5F57',
-  errorBg: 'rgba(255, 95, 87, 0.1)',
-  amber: '#FEBC2E',
-  amberBg: 'rgba(254, 188, 46, 0.1)',
-  warmGray: '#78716C',
-  warmGrayBg: '#F5F0EB',
 }
 
 const FONT = "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
@@ -40,13 +34,6 @@ const TYPES = [
   { id: 'bug', label: 'Bug', icon: <Bug size={14} /> },
   { id: 'feature_request', label: 'Feature', icon: <Sparkles size={14} /> },
   { id: 'other', label: 'Other', icon: <Pin size={14} /> },
-]
-
-const URGENCY = [
-  { id: 'low', label: 'Low', color: C.warmGray, bg: C.warmGrayBg, dot: '#A8A29E' },
-  { id: 'normal', label: 'Normal', color: C.teal, bg: C.creamDark, dot: C.teal },
-  { id: 'high', label: 'High', color: C.amber, bg: C.amberBg, dot: '#FEBC2E' },
-  { id: 'critical', label: 'Critical', color: C.error, bg: C.errorBg, dot: C.error },
 ]
 
 const toBase64 = (file) =>
@@ -62,7 +49,6 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
   const isOpen = variant === 'sidebar' ? (controlledOpen || false) : internalOpen
   const setIsOpen = variant === 'sidebar' ? (onToggle || (() => {})) : setInternalOpen
   const [type, setType] = useState('feedback')
-  const [urgency, setUrgency] = useState('normal')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [files, setFiles] = useState([])
@@ -95,7 +81,6 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
 
   const resetForm = useCallback(() => {
     setType('feedback')
-    setUrgency('normal')
     setSubject('')
     setMessage('')
     setFiles([])
@@ -176,7 +161,6 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
         headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
         body: JSON.stringify({
           type,
-          urgency,
           subject: subject || undefined,
           message,
           image_urls: urls,
@@ -222,6 +206,8 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
   }, [])
 
   const canSubmit = message.trim() && user && !submitting
+
+  if (!user) return null
 
   return (
     <>
@@ -422,33 +408,6 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Not logged in notice */}
-              {!user && (
-                <div
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: 10,
-                    background: C.amberBg,
-                    border: `1px solid rgba(217, 119, 6, 0.15)`,
-                    fontSize: 13,
-                    color: '#92400E',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <a
-                    href="/auth"
-                    style={{
-                      color: C.coral,
-                      fontWeight: 600,
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Sign in
-                  </a>{' '}
-                  to submit feedback.
-                </div>
-              )}
-
               {/* Type Selector */}
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textTertiary, marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -477,48 +436,6 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                     >
                       <span style={{ fontSize: 13 }}>{t.icon}</span>
                       {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Urgency Selector */}
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.textTertiary, marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Urgency
-                </label>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {URGENCY.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => setUrgency(u.id)}
-                      style={{
-                        padding: '5px 11px',
-                        borderRadius: 8,
-                        border: `1.5px solid ${urgency === u.id ? u.color : C.border}`,
-                        background: urgency === u.id ? u.bg : C.white,
-                        color: urgency === u.id ? u.color : C.textTertiary,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        fontFamily: FONT,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          background: u.dot,
-                          opacity: urgency === u.id ? 1 : 0.35,
-                          transition: 'opacity 0.15s',
-                        }}
-                      />
-                      {u.label}
                     </button>
                   ))}
                 </div>

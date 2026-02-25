@@ -2,6 +2,7 @@ import React from 'react'
 import { MapPin, Star, Globe, Clock } from 'lucide-react'
 import { SocialIconsRow } from './SocialIcons'
 import { formatTimezoneShort } from '../utils/timezone'
+import TierBadge from './TierBadge'
 
 function StarRating({ rating, count, showNewBadge = false }) {
   const numRating = parseFloat(rating) || 0
@@ -146,18 +147,21 @@ export default function HumanProfileCard({ human, onHire, onExpand, variant = 'b
 
         {/* Name + Headline + Location */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{
-            fontSize: 16,
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            margin: 0,
-            lineHeight: 1.3
-          }}>
-            {human.name || 'Anonymous'}
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h3 style={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              margin: 0,
+              lineHeight: 1.3
+            }}>
+              {human.name || 'Anonymous'}
+            </h3>
+            <TierBadge tier={human.subscription_tier} size="xs" />
+          </div>
           {human.headline && (
             <p style={{
               fontSize: 13,
