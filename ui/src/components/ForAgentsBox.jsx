@@ -171,7 +171,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
       background: 'var(--bg-tertiary, #F9FAFB)',
       borderRadius: 16,
       padding: 24,
-      border: '1px solid rgba(26,26,26,0.06)',
+      border: '1px solid rgba(0,0,0,0.06)',
       marginBottom: 16
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -205,11 +205,11 @@ export default function ForAgentsBox({ human, collapsible = false }) {
               gap: 4,
               padding: '4px 8px',
               background: 'none',
-              border: '1px solid rgba(26,26,26,0.1)',
+              border: '1px solid rgba(0,0,0,0.1)',
               borderRadius: 6,
               cursor: 'pointer',
               fontSize: 12,
-              color: copied ? '#059669' : 'var(--text-tertiary)',
+              color: copied ? '#16A34A' : 'var(--text-tertiary)',
               transition: 'all 0.2s'
             }}
           >
@@ -226,7 +226,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
           lineHeight: 1.6,
           overflow: 'auto',
           margin: 0,
-          fontFamily: "'JetBrains Mono', 'Space Mono', monospace",
+          fontFamily: "'DM Mono', 'SF Mono', 'Fira Code', monospace",
           maxHeight: 200,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-all'

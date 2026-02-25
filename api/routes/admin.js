@@ -10,11 +10,14 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
 const { PLATFORM_FEE_PERCENT } = require('../config/constants');
+const { getTierConfig } = require('../config/tiers');
 
 // Cents-based fee calculation to avoid floating-point rounding errors
-function calculateFees(depositAmount) {
+// Accepts optional workerTier for tier-based fee calculation
+function calculateFees(depositAmount, workerTier) {
   const depositCents = Math.round(parseFloat(depositAmount) * 100);
-  const platformFeeCents = Math.round(depositCents * PLATFORM_FEE_PERCENT / 100);
+  const feePercent = workerTier ? getTierConfig(workerTier).worker_fee_percent : PLATFORM_FEE_PERCENT;
+  const platformFeeCents = Math.round(depositCents * feePercent / 100);
   const workerCents = depositCents - platformFeeCents;
   return {
     worker_amount: (workerCents / 100).toFixed(2),
@@ -1159,6 +1162,125 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       res.json({ success: true });
     } catch (error) {
       console.error('[Admin] Feedback status update error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // GET /api/admin/flagged-tasks - List tasks pending content review
+  // ============================================================================
+  router.get('/flagged-tasks', async (req, res) => {
+    try {
+      const { data: tasks, error } = await supabase
+        .from('tasks')
+        .select('id, title, description, task_type_id, status, created_at, poster_id, location_zone')
+        .eq('status', 'pending_review')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch validation log entries for these tasks to show policy_flags
+      const taskIds = (tasks || []).map(t => t.id);
+      let validationLogs = [];
+      if (taskIds.length > 0) {
+        const { data: logs } = await supabase
+          .from('task_validation_log')
+          .select('id, task_type_id, validation_result, errors, policy_flags, created_at')
+          .in('payload_hash', taskIds.map(id => id)) // payload_hash won't match task id
+          .eq('validation_result', 'flagged_for_review')
+          .order('created_at', { ascending: false });
+        validationLogs = logs || [];
+      }
+
+      // Also look up logs by agent_id association — more reliable approach
+      // For flagged tasks, fetch the most recent flagged log per task_type_id
+      const { data: flaggedLogs } = await supabase
+        .from('task_validation_log')
+        .select('*')
+        .eq('validation_result', 'flagged_for_review')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      await logAdminAction(req.user.id, 'view_flagged_tasks', null, null, { count: (tasks || []).length });
+
+      res.json({
+        tasks: tasks || [],
+        validation_logs: flaggedLogs || [],
+        count: (tasks || []).length,
+      });
+    } catch (error) {
+      console.error('[Admin] Flagged tasks fetch error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // POST /api/admin/review-task/:id - Approve or reject a flagged task
+  // ============================================================================
+  router.post('/review-task/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { decision, reason } = req.body;
+
+      if (!decision || !['approve', 'reject'].includes(decision)) {
+        return res.status(400).json({ error: 'decision must be "approve" or "reject"' });
+      }
+
+      // Verify task exists and is pending_review
+      const { data: task, error: fetchError } = await supabase
+        .from('tasks')
+        .select('id, status, title')
+        .eq('id', id)
+        .single();
+
+      if (fetchError || !task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+
+      if (task.status !== 'pending_review') {
+        return res.status(400).json({
+          error: `Task is not pending review (current status: ${task.status})`,
+        });
+      }
+
+      const newStatus = decision === 'approve' ? 'open' : 'rejected';
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      await logAdminAction(req.user.id, `review_task_${decision}`, id, null, { reason, previous_status: 'pending_review', new_status: newStatus });
+
+      res.json({
+        success: true,
+        task_id: id,
+        decision,
+        new_status: newStatus,
+      });
+    } catch (error) {
+      console.error('[Admin] Review task error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // POST /api/admin/flush-task-type-cache - Bust the task type registry cache
+  // ============================================================================
+  router.post('/flush-task-type-cache', async (req, res) => {
+    try {
+      const { flushTaskTypeCache } = require('../lib/validation/pipeline');
+      flushTaskTypeCache();
+
+      await logAdminAction(req.user.id, 'flush_task_type_cache', null, null, {});
+
+      res.json({ success: true, message: 'Task type cache flushed' });
+    } catch (error) {
+      console.error('[Admin] Cache flush error:', error);
       res.status(500).json({ error: error.message });
     }
   });

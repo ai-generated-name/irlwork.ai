@@ -144,7 +144,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
               disabled={deleting === pm.id}
               style={{
                 fontSize: '0.75rem',
-                color: '#ef4444',
+                color: '#FF5F57',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
