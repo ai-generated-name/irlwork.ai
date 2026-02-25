@@ -53,15 +53,17 @@ const logoStyles = {
     lineHeight: 1,
   },
 
-  // Light variant (for dark backgrounds) - keeping black as requested
+  // Light variant (for dark backgrounds)
   markLight: {
-    border: '1.5px solid #1A1A1A',
+    border: '1.5px solid white',
+    background: 'white',
+    color: 'var(--bg-dark, #1A1A1A)',
   },
   markTextLight: {
-    color: '#1A1A1A',
+    color: 'var(--bg-dark, #1A1A1A)',
   },
   wordmarkLight: {
-    color: '#1A1A1A',
+    color: 'white',
   },
 }
 
@@ -204,19 +206,19 @@ export const logoClassStyles = `
   line-height: 1;
 }
 
-/* Footer Logo Styles */
+/* Footer Logo Styles (white for dark footer background) */
 .footer-v4-logo-mark {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px 10px;
-  border: 1.5px solid #1A1A1A;
+  border: 2px solid white;
   border-radius: 4px;
-  background: transparent;
+  background: white;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 14px;
   font-weight: 700;
-  color: #1A1A1A;
+  color: var(--bg-dark, #1A1A1A);
   letter-spacing: -0.02em;
   line-height: 1;
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -224,14 +226,17 @@ export const logoClassStyles = `
 
 .footer-v4-logo:hover .footer-v4-logo-mark {
   border-width: 2px;
-  box-shadow: 2px 2px 0 #1A1A1A;
+  background: var(--orange-500, #F97316);
+  border-color: var(--orange-500, #F97316);
+  color: white;
+  box-shadow: 3px 3px 0 rgba(255, 255, 255, 0.3);
 }
 
 .footer-v4-logo-name {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 18px;
   font-weight: 600;
-  color: #1A1A1A;
+  color: white;
   letter-spacing: -0.01em;
   line-height: 1;
 }
