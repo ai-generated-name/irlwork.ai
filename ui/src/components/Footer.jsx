@@ -2,7 +2,10 @@
 // Used on: LandingPage, BrowsePage, ConnectAgentPage, ContactPage, HumanProfilePage
 // NOT used on: authenticated dashboards (Working, Hiring, Admin, TaskDetail, MyTasks)
 
+import { useLanguage } from '../context/LanguageContext'
+
 export default function MarketingFooter() {
+  const { t } = useLanguage()
   return (
     <footer className="footer-v4">
       <div className="footer-v4-inner">
@@ -13,7 +16,7 @@ export default function MarketingFooter() {
               <span className="footer-v4-logo-name">irlwork.ai</span>
             </a>
             <p className="footer-v4-tagline">
-              AI agents create work. Humans get paid.
+              {t('footer.tagline')}
             </p>
             <div className="footer-v4-emails">
               <a href="mailto:support@irlwork.ai" className="footer-v4-link">support@irlwork.ai</a>
@@ -46,29 +49,29 @@ export default function MarketingFooter() {
           </div>
 
           <div>
-            <h4 className="footer-v4-column-title">Platform</h4>
+            <h4 className="footer-v4-column-title">{t('footer.platform')}</h4>
             <div className="footer-v4-links">
-              <a href="/auth" className="footer-v4-link">Sign Up</a>
-              <a href="/browse/tasks" className="footer-v4-link">Browse Tasks</a>
-              <a href="/browse/humans" className="footer-v4-link">Browse Humans</a>
+              <a href="/auth" className="footer-v4-link">{t('footer.signUp')}</a>
+              <a href="/browse/tasks" className="footer-v4-link">{t('nav.browseTasks')}</a>
+              <a href="/browse/humans" className="footer-v4-link">{t('footer.browseHumans')}</a>
             </div>
           </div>
 
           <div>
-            <h4 className="footer-v4-column-title">For Agents</h4>
+            <h4 className="footer-v4-column-title">{t('footer.forAgentsTitle')}</h4>
             <div className="footer-v4-links">
-              <a href="/mcp" className="footer-v4-link">API Docs</a>
-              <a href="/connect-agent" className="footer-v4-link">MCP Protocol</a>
-              <a href="/connect-agent#how-it-works" className="footer-v4-link">Integration</a>
+              <a href="/mcp" className="footer-v4-link">{t('footer.apiDocs')}</a>
+              <a href="/connect-agent" className="footer-v4-link">{t('footer.mcpProtocol')}</a>
+              <a href="/connect-agent#how-it-works" className="footer-v4-link">{t('footer.integration')}</a>
             </div>
           </div>
 
           <div>
-            <h4 className="footer-v4-column-title">Company</h4>
+            <h4 className="footer-v4-column-title">{t('footer.company')}</h4>
             <div className="footer-v4-links">
-              <a href="/about" className="footer-v4-link">About Us</a>
-              <a href="/thesis" className="footer-v4-link">Thesis</a>
-              <a href="/contact" className="footer-v4-link">Contact Us</a>
+              <a href="/about" className="footer-v4-link">{t('footer.aboutUs')}</a>
+              <a href="/thesis" className="footer-v4-link">{t('footer.thesis')}</a>
+              <a href="/contact" className="footer-v4-link">{t('footer.contactUs')}</a>
             </div>
           </div>
         </div>
@@ -76,9 +79,9 @@ export default function MarketingFooter() {
         <div className="footer-v4-bottom">
           <p className="footer-v4-copyright">&copy; 2026 irlwork.ai</p>
           <div className="footer-v4-legal">
-            <a href="/privacy" className="footer-v4-legal-link">Privacy</a>
-            <a href="/terms" className="footer-v4-legal-link">Terms</a>
-            <a href="/security" className="footer-v4-legal-link">Security</a>
+            <a href="/privacy" className="footer-v4-legal-link">{t('footer.privacy')}</a>
+            <a href="/terms" className="footer-v4-legal-link">{t('footer.terms')}</a>
+            <a href="/security" className="footer-v4-legal-link">{t('footer.security')}</a>
           </div>
         </div>
       </div>
