@@ -3,7 +3,8 @@ import {
   Lock, Zap, Globe, Bot, Wallet, MessageSquare, Target, Shield,
   Check, BarChart3, Package, Camera, Wrench, Sparkles, Dog, FileSignature,
   Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight, ChevronDown,
-  DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter
+  DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter,
+  Search, Briefcase, Scale, Stamp
 } from 'lucide-react'
 import HappeningNow from '../components/HappeningNow'
 import { Logo } from '../components/Logo'
@@ -582,11 +583,29 @@ function HowItWorksSection() {
 
 // Icon mapping helper
 const iconMap = {
-  lock: Lock, zap: Zap, globe: Globe, bot: Bot, wallet: Wallet,
-  messageSquare: MessageSquare, target: Target, shield: Shield,
-  check: Check, barChart3: BarChart3, package: Package, camera: Camera,
-  wrench: Wrench, sparkles: Sparkles, dog: Dog, fileSignature: FileSignature,
-  hand: Hand, checkCircle: CheckCircle,
+  lock: Lock,
+  zap: Zap,
+  globe: Globe,
+  bot: Bot,
+  wallet: Wallet,
+  messageSquare: MessageSquare,
+  target: Target,
+  shield: Shield,
+  check: Check,
+  barChart3: BarChart3,
+  package: Package,
+  camera: Camera,
+  wrench: Wrench,
+  sparkles: Sparkles,
+  dog: Dog,
+  fileSignature: FileSignature,
+  hand: Hand,
+  checkCircle: CheckCircle,
+  search: Search,
+  briefcase: Briefcase,
+  scale: Scale,
+  stamp: Stamp,
+  building2: Building2,
 }
 
 function Icon({ name, size = 24, className = '' }) {
@@ -595,17 +614,64 @@ function Icon({ name, size = 24, className = '' }) {
   return <IconComponent size={size} className={className} />
 }
 
+// Language Selector with globe icon
+function LanguageSelector() {
+  const [open, setOpen] = useState(false)
+  const [selected, setSelected] = useState('English')
+  const ref = useRef(null)
+
+  const languages = [
+    { label: 'English', code: 'en' },
+    { label: 'Español', code: 'es' },
+    { label: '中文', code: 'zh' },
+    { label: 'हिन्दी', code: 'hi' },
+    { label: 'العربية', code: 'ar' },
+  ]
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="language-selector" ref={ref}>
+      <button className="language-trigger" onClick={() => setOpen(!open)} aria-label="Select language">
+        <Globe size={16} />
+        <span className="language-trigger-label">{selected}</span>
+        <ChevronDown size={14} className={`language-chevron ${open ? 'language-chevron-open' : ''}`} />
+      </button>
+      {open && (
+        <div className="language-dropdown">
+          {languages.map((lang) => (
+            <button
+              key={lang.code}
+              className={`language-option ${selected === lang.label ? 'language-option-active' : ''}`}
+              onClick={() => { setSelected(lang.label); setOpen(false) }}
+            >
+              <span>{lang.label}</span>
+              {selected === lang.label && <Check size={14} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function LandingPageV4() {
   const { t } = useLanguage()
   const navigate = (path) => { window.location.href = path }
 
   const tasks = [
-    { icon: 'package', title: t('task.packagePickup'), rate: '$35', category: t('task.delivery'), location: 'San Francisco, CA', time: '~30 min' },
-    { icon: 'camera', title: t('task.photoVerification'), rate: '$25', category: t('task.photography'), location: 'New York, NY', time: '~15 min' },
-    { icon: 'wrench', title: t('task.deviceSetup'), rate: '$50', category: t('task.techSupport'), location: 'Austin, TX', time: '~1 hr' },
-    { icon: 'sparkles', title: t('task.spaceCleaning'), rate: '$45', category: t('task.cleaning'), location: 'Chicago, IL', time: '~2 hrs' },
-    { icon: 'dog', title: t('task.dogWalking'), rate: '$22', category: t('task.petCare'), location: 'Seattle, WA', time: '~45 min' },
-    { icon: 'fileSignature', title: t('task.signDocuments'), rate: '$15', category: t('task.errands'), location: 'Miami, FL', time: '~20 min' }
+    { icon: 'package', title: 'Package Pickup', rate: '$35', category: 'Delivery', location: 'San Francisco, CA', time: '~30 min' },
+    { icon: 'building2', title: 'Property Inspection', rate: '$175', category: 'Real Estate', location: 'Denver, CO', time: '~3 hrs' },
+    { icon: 'search', title: 'Due Diligence Research', rate: '$500', category: 'Legal/Finance', location: 'New York, NY', time: '~4 hrs' },
+    { icon: 'camera', title: 'Product Photography', rate: '$150', category: 'Creative', location: 'Paris, FR', time: '~2 hrs' },
+    { icon: 'dog', title: 'Dog Walking', rate: '$22', category: 'Pet Care', location: 'Seattle, WA', time: '~45 min' },
+    { icon: 'stamp', title: 'Notarization', rate: '$40', category: 'Legal', location: 'São Paulo, BR', time: '~1 hr' }
   ]
 
   return (
@@ -668,8 +734,10 @@ export default function LandingPageV4() {
       {/* Happening Right Now */}
       <HappeningNow />
 
-      {/* Live Transaction Ticker */}
-      <TransactionTicker />
+      {/* Live Transaction Ticker — between stats and features for momentum */}
+      <div className="ticker-wrapper">
+        <TransactionTicker />
+      </div>
 
       {/* How It Works - Four Steps */}
       <HowItWorksSection />
