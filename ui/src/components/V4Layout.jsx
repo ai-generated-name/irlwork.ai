@@ -212,6 +212,10 @@ export function ButtonV4({
       color: v4.colors.textPrimary,
       border: '1px solid rgba(0, 0, 0, 0.1)',
     },
+    charcoal: {
+      background: '#1A1A1A',
+      color: '#FFFFFF',
+    },
     ghost: {
       background: 'transparent',
       color: v4.colors.textSecondary,
