@@ -3738,7 +3738,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Describe your experience, availability, and what makes you great at tasks." />
                   </div>
 
-                  <button type="submit" className="dashboard-v4-form-submit">Save Changes</button>
+                  <button type="submit" className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary">Save Changes</button>
                 </form>
               )}
 
@@ -3810,7 +3810,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </div>
                   <button
                     type="button"
-                    className="dashboard-v4-form-submit"
+                    className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary"
                     onClick={async () => {
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
@@ -3910,7 +3910,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </div>
                   <button
                     type="button"
-                    className="dashboard-v4-form-submit"
+                    className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary"
                     onClick={async () => {
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
@@ -4000,7 +4000,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     })}
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or paste a profile URL — it will be auto-formatted</p>
-                  <button type="submit" className="dashboard-v4-form-submit">Update Social Links</button>
+                  <button type="submit" className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary">Update Social Links</button>
                 </form>
               )}
 

@@ -276,7 +276,7 @@
   grid-template-columns: 1fr 1.2fr;
   gap: var(--space-6);
   align-items: center;
-  padding: calc(56px + var(--space-3)) var(--space-6) var(--space-4);
+  padding: calc(56px + var(--space-1)) var(--space-6) var(--space-2);
   max-width: 1300px;
   margin: 0 auto;
   position: relative;
@@ -394,7 +394,7 @@
 .hero-v4-cta {
   display: flex;
   gap: var(--space-3);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-3);
   flex-wrap: wrap;
 }
 
@@ -403,7 +403,7 @@
   display: flex;
   gap: var(--space-6);
   align-items: center;
-  padding-top: var(--space-4);
+  padding-top: var(--space-2);
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -441,8 +441,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding-bottom: var(--space-5);
-  margin-bottom: var(--space-1);
+  padding-bottom: var(--space-2);
+  margin-bottom: 0;
 }
 
 .agent-compat-label {
@@ -1249,6 +1249,11 @@
   gap: var(--space-8);
   animation: ticker-scroll 40s linear infinite;
   width: max-content;
+  will-change: transform;
+}
+
+.ticker-container:hover .ticker-track {
+  animation-play-state: paused;
 }
 
 @keyframes ticker-scroll {
@@ -6067,6 +6072,18 @@
   color: var(--text-tertiary);
   cursor: not-allowed;
   box-shadow: none;
+}
+
+/* Secondary variant — outline style for profile save buttons */
+.dashboard-v4-form-submit--secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid rgba(26, 26, 26, 0.2);
+}
+
+.dashboard-v4-form-submit--secondary:hover {
+  background: var(--bg-tertiary);
+  border-color: rgba(26, 26, 26, 0.35);
 }
 
 /* Required/Optional field indicators */
