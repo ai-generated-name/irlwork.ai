@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { Check, Copy, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../App'
-import MarketingFooter from '../components/Footer'
-import { Logo } from '../components/Logo'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -140,17 +138,7 @@ export default function MCPPage() {
 
   return (
     <div className="mcp-v4">
-      <header className="mcp-v4-header">
-        <div className="mcp-v4-header-inner">
-          <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
-            <Logo variant="header" theme="light" />
-          </a>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/connect-agent" className="mcp-v4-nav-link">Quick Start</a>
-            <a href="/dashboard/hiring" className="mcp-v4-nav-link">Dashboard</a>
-          </div>
-        </div>
-      </header>
+      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
       <main className="mcp-v4-main">
         {/* Hero */}
@@ -1123,7 +1111,6 @@ export default function MCPPage() {
         </section>
       </main>
 
-      <MarketingFooter />
     </div>
   )
 }

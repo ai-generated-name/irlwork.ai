@@ -3,7 +3,7 @@ import { MapPin, Check, Star, Briefcase, TrendingUp, Loader2, Clock, Calendar, A
 import { StarRating } from '../components/HumanProfileCard'
 import { SocialIconsRow } from '../components/SocialIcons'
 import ForAgentsBox from '../components/ForAgentsBox'
-import { PageLayoutV4 } from '../components/V4Layout'
+import { v4 } from '../components/V4Layout'
 import API_URL from '../config/api'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { formatTimezoneShort } from '../utils/timezone'
@@ -591,7 +591,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
           </>
         ) : null}
       </div>
-    </PageLayoutV4>
+    </div>
   )
 }
 
