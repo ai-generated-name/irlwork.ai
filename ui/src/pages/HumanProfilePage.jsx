@@ -62,11 +62,11 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
               gap: 6,
               padding: '8px 16px',
               background: 'none',
-              border: '1px solid rgba(26,26,26,0.1)',
+              border: '1px solid rgba(0,0,0,0.1)',
               borderRadius: 10,
               cursor: 'pointer',
               fontSize: 14,
-              color: 'var(--text-secondary, #525252)',
+              color: 'var(--text-secondary, #333333)',
               transition: 'all 0.2s'
             }}
           >
@@ -81,11 +81,11 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
               gap: 6,
               padding: '8px 16px',
               background: 'none',
-              border: '1px solid rgba(26,26,26,0.1)',
+              border: '1px solid rgba(0,0,0,0.1)',
               borderRadius: 10,
               cursor: 'pointer',
               fontSize: 14,
-              color: copied ? '#059669' : 'var(--text-secondary, #525252)',
+              color: copied ? '#16A34A' : 'var(--text-secondary, #333333)',
               transition: 'all 0.2s'
             }}
           >
@@ -96,20 +96,20 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
 
         {loading ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
-            <Loader2 size={32} style={{ color: '#F4845F', animation: 'spin 1s linear infinite' }} />
-            <p style={{ marginTop: 16, color: 'var(--text-tertiary, #8A8A8A)', fontSize: 14 }}>Loading profile...</p>
+            <Loader2 size={32} style={{ color: '#E8853D', animation: 'spin 1s linear infinite' }} />
+            <p style={{ marginTop: 16, color: 'var(--text-tertiary, #888888)', fontSize: 14 }}>Loading profile...</p>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
         ) : error ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary, #525252)', fontSize: 18, fontWeight: 600 }}>Profile not found</p>
-            <p style={{ color: 'var(--text-tertiary, #8A8A8A)', fontSize: 14, marginTop: 8 }}>{error}</p>
+            <p style={{ color: 'var(--text-secondary, #333333)', fontSize: 18, fontWeight: 600 }}>Profile not found</p>
+            <p style={{ color: 'var(--text-tertiary, #888888)', fontSize: 14, marginTop: 8 }}>{error}</p>
             <button
               onClick={() => window.location.href = '/browse/humans'}
               style={{
                 marginTop: 24,
                 padding: '10px 24px',
-                background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                background: '#E8853D',
                 color: 'white',
                 fontWeight: 600,
                 fontSize: 14,
@@ -125,7 +125,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
           <div style={{
             background: 'white',
             borderRadius: 20,
-            border: '1px solid rgba(26,26,26,0.06)',
+            border: '1px solid rgba(0,0,0,0.06)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             overflow: 'hidden'
           }}>
@@ -144,7 +144,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         height: 96,
                         borderRadius: '50%',
                         objectFit: 'cover',
-                        boxShadow: '0 4px 20px rgba(244,132,95,0.3)'
+                        boxShadow: '0 4px 20px rgba(232,133,61,0.3)'
                       }}
                       onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
                     />
@@ -153,14 +153,14 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                     width: 96,
                     height: 96,
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                    background: '#E8853D',
                     display: profile.avatar_url ? 'none' : 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'white',
                     fontWeight: 700,
                     fontSize: 38,
-                    boxShadow: '0 4px 20px rgba(244,132,95,0.3)'
+                    boxShadow: '0 4px 20px rgba(232,133,61,0.3)'
                   }}>
                     {profile.name?.[0]?.toUpperCase() || '?'}
                   </div>
@@ -183,7 +183,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         width: 24,
                         height: 24,
                         borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #10B981, #059669)',
+                        background: 'linear-gradient(135deg, #16A34A, #16A34A)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -196,7 +196,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
 
                   {/* Headline */}
                   {profile.headline && (
-                    <p style={{ fontSize: 16, color: 'var(--text-secondary, #525252)', margin: '4px 0 8px', lineHeight: 1.4 }}>
+                    <p style={{ fontSize: 16, color: 'var(--text-secondary, #333333)', margin: '4px 0 8px', lineHeight: 1.4 }}>
                       {profile.headline}
                     </p>
                   )}
@@ -208,14 +208,14 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                       alignItems: 'center',
                       gap: 6,
                       fontSize: 15,
-                      color: 'var(--text-secondary, #525252)',
+                      color: 'var(--text-secondary, #333333)',
                       marginBottom: 4,
                       flexWrap: 'wrap'
                     }}>
-                      <MapPin size={15} style={{ color: '#F4845F' }} />
+                      <MapPin size={15} style={{ color: '#E8853D' }} />
                       {profile.city}{profile.state ? `, ${profile.state}` : ''}
                       {profile.timezone && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, color: 'var(--text-tertiary, #8A8A8A)', fontSize: 14 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, color: 'var(--text-tertiary, #888888)', fontSize: 14 }}>
                           <Clock size={13} />
                           {formatTimezoneShort(profile.timezone)}
                         </span>
@@ -230,7 +230,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                       alignItems: 'center',
                       gap: 4,
                       fontSize: 14,
-                      color: 'var(--text-tertiary, #8A8A8A)',
+                      color: 'var(--text-tertiary, #888888)',
                       marginBottom: 8
                     }}>
                       <Calendar size={13} />
@@ -252,16 +252,16 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
             <div style={{
               padding: '16px 40px',
               background: 'rgba(245,158,11,0.04)',
-              borderTop: '1px solid rgba(26,26,26,0.04)',
-              borderBottom: '1px solid rgba(26,26,26,0.04)',
+              borderTop: '1px solid rgba(0,0,0,0.04)',
+              borderBottom: '1px solid rgba(0,0,0,0.04)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               marginBottom: 0
             }}>
               <StarRating rating={profile.rating} count={profile.total_ratings_count || 0} showNewBadge={true} />
-              <span style={{ fontSize: 32, fontWeight: 700, color: '#F4845F' }}>
-                ${profile.hourly_rate || 25}<span style={{ fontSize: 16, fontWeight: 400, color: 'var(--text-tertiary, #8A8A8A)' }}>/hr</span>
+              <span style={{ fontSize: 32, fontWeight: 700, color: '#E8853D' }}>
+                ${profile.hourly_rate || 25}<span style={{ fontSize: 16, fontWeight: 400, color: 'var(--text-tertiary, #888888)' }}>/hr</span>
               </span>
             </div>
 
@@ -273,7 +273,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                   <SectionLabel>About</SectionLabel>
                   <p style={{
                     fontSize: 15,
-                    color: 'var(--text-secondary, #525252)',
+                    color: 'var(--text-secondary, #333333)',
                     lineHeight: 1.7,
                     margin: 0
                   }}>
@@ -290,12 +290,12 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                     {skills.map((skill, idx) => (
                       <span key={idx} style={{
                         padding: '7px 16px',
-                        background: 'rgba(244,132,95,0.08)',
+                        background: 'rgba(232,133,61,0.08)',
                         borderRadius: 999,
                         fontSize: 14,
-                        color: '#E07A5F',
+                        color: '#E8853D',
                         fontWeight: 500,
-                        border: '1px solid rgba(244,132,95,0.12)'
+                        border: '1px solid rgba(232,133,61,0.12)'
                       }}>
                         {skill.replace(/_/g, ' ')}
                       </span>
@@ -361,7 +361,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         padding: 18,
                         background: 'var(--bg-tertiary, #F9FAFB)',
                         borderRadius: 14,
-                        border: '1px solid rgba(26,26,26,0.04)'
+                        border: '1px solid rgba(0,0,0,0.04)'
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                           <div style={{ display: 'flex', gap: 2 }}>
@@ -369,20 +369,20 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                               <Star
                                 key={i}
                                 size={14}
-                                fill={i <= (review.score || review.rating || review.rating_score || 0) ? '#F59E0B' : 'none'}
-                                stroke={i <= (review.score || review.rating || review.rating_score || 0) ? '#F59E0B' : '#D1D5DB'}
+                                fill={i <= (review.score || review.rating || review.rating_score || 0) ? '#FEBC2E' : 'none'}
+                                stroke={i <= (review.score || review.rating || review.rating_score || 0) ? '#FEBC2E' : '#D1D5DB'}
                                 strokeWidth={1.5}
                               />
                             ))}
                           </div>
-                          <span style={{ fontSize: 13, color: 'var(--text-tertiary, #8A8A8A)' }}>
+                          <span style={{ fontSize: 13, color: 'var(--text-tertiary, #888888)' }}>
                             {new Date(review.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </span>
                         </div>
                         {review.comment && (
                           <p style={{
                             fontSize: 14,
-                            color: 'var(--text-secondary, #525252)',
+                            color: 'var(--text-secondary, #333333)',
                             lineHeight: 1.6,
                             margin: 0
                           }}>
@@ -403,7 +403,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                       width: 48,
                       height: 48,
                       borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #10B981, #059669)',
+                      background: 'linear-gradient(135deg, #16A34A, #16A34A)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -412,7 +412,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                       <Star size={22} style={{ color: 'white' }} />
                     </div>
                     <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary, #1A1A1A)', margin: '0 0 4px' }}>New to irlwork</p>
-                    <p style={{ fontSize: 14, color: 'var(--text-tertiary, #8A8A8A)', margin: 0 }}>This human hasn't received any reviews yet. Be the first to work with them!</p>
+                    <p style={{ fontSize: 14, color: 'var(--text-tertiary, #888888)', margin: 0 }}>This human hasn't received any reviews yet. Be the first to work with them!</p>
                   </div>
                 )}
               </div>
@@ -448,7 +448,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                   style={{
                     width: '100%',
                     padding: '16px 24px',
-                    background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                    background: '#E8853D',
                     color: 'white',
                     fontWeight: 600,
                     fontSize: 17,
@@ -456,15 +456,15 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                     border: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    boxShadow: '0 4px 20px rgba(244,132,95,0.3)',
+                    boxShadow: '0 4px 20px rgba(232,133,61,0.3)',
                     marginTop: 16
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.boxShadow = '0 6px 28px rgba(244,132,95,0.4)'
+                    e.currentTarget.style.boxShadow = '0 6px 28px rgba(232,133,61,0.4)'
                     e.currentTarget.style.transform = 'translateY(-1px)'
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(244,132,95,0.3)'
+                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(232,133,61,0.3)'
                     e.currentTarget.style.transform = 'translateY(0)'
                   }}
                 >
@@ -484,7 +484,7 @@ function SectionLabel({ children }) {
     <h4 style={{
       fontSize: 13,
       fontWeight: 600,
-      color: 'var(--text-tertiary, #8A8A8A)',
+      color: 'var(--text-tertiary, #888888)',
       textTransform: 'uppercase',
       letterSpacing: '0.05em',
       margin: '0 0 12px 0'
@@ -495,22 +495,22 @@ function SectionLabel({ children }) {
 }
 
 function StatBox({ icon, value, label, highlight }) {
-  const valueColor = highlight === 'green' ? '#10B981' : highlight === 'gray' ? '#9CA3AF' : 'var(--text-primary, #1A1A1A)'
+  const valueColor = highlight === 'green' ? '#16A34A' : highlight === 'gray' ? '#9CA3AF' : 'var(--text-primary, #1A1A1A)'
   return (
     <div style={{
       padding: 18,
       background: 'var(--bg-tertiary, #F9FAFB)',
       borderRadius: 14,
       textAlign: 'center',
-      border: '1px solid rgba(26,26,26,0.04)'
+      border: '1px solid rgba(0,0,0,0.04)'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, color: '#F4845F' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, color: '#E8853D' }}>
         {icon}
       </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, marginBottom: 2 }}>
         {value}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--text-tertiary, #8A8A8A)', fontWeight: 500 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-tertiary, #888888)', fontWeight: 500 }}>
         {label}
       </div>
     </div>

@@ -21,6 +21,7 @@ const { v4: uuidv4 } = require('uuid');
  */
 async function releasePaymentToPending(supabase, taskId, humanId, agentId, createNotification) {
   const { PLATFORM_FEE_PERCENT } = require('../../config/constants');
+  const { calculateWorkerFee, getTierConfig } = require('../../config/tiers');
 
   // Get task details
   const { data: task, error: taskError } = await supabase
@@ -38,13 +39,26 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Task has no valid escrow amount or budget set');
   }
 
-  // Calculate fees
-  const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
-  const netAmount = escrowAmount - platformFee;
+  // Calculate fees — use the fee locked on the task if available, otherwise look up worker's tier
+  const escrowAmountCents = Math.round(escrowAmount * 100);
+  let platformFeeCents;
 
-  // Convert to cents for database storage
-  const netAmountCents = Math.round(netAmount * 100);
-  const platformFeeCents = Math.round(platformFee * 100);
+  if (task.worker_fee_percent != null) {
+    // Fee was locked on the task at funding time — always use it
+    platformFeeCents = Math.round(escrowAmountCents * task.worker_fee_percent / 100);
+  } else {
+    // Legacy task without locked fee — look up worker's current tier
+    const { data: worker } = await supabase
+      .from('users')
+      .select('subscription_tier')
+      .eq('id', humanId)
+      .single();
+    platformFeeCents = calculateWorkerFee(escrowAmountCents, worker?.subscription_tier || 'free');
+  }
+
+  const netAmountCents = escrowAmountCents - platformFeeCents;
+  const platformFee = platformFeeCents / 100;
+  const netAmount = netAmountCents / 100;
 
   // Calculate clears_at timestamp (48 hours from now)
   const clearsAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
@@ -67,6 +81,9 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Payment has already been released or is in a disputed state');
   }
 
+  // Determine payout method from task record
+  const payoutMethod = task.payment_method === 'usdc' ? 'usdc' : 'stripe';
+
   // Only insert pending_transaction AFTER the atomic guard succeeds
   const { data: pendingTx, error: pendingError } = await supabase
     .from('pending_transactions')
@@ -76,7 +93,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
       task_id: taskId,
       amount_cents: netAmountCents,
       status: 'pending',
-      payout_method: 'stripe',
+      payout_method: payoutMethod,
       clears_at: clearsAt.toISOString(),
       created_at: new Date().toISOString()
     })
@@ -94,15 +111,16 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     throw new Error('Failed to create pending transaction');
   }
 
-  // Record payout (Stripe transfer will happen after 48-hour hold)
+  // Record payout (transfer will happen after 48-hour hold via matching rail)
   await supabase.from('payouts').insert({
     id: uuidv4(),
     task_id: taskId,
     human_id: humanId,
     amount_cents: netAmountCents,
     fee_cents: platformFeeCents,
-    payout_method: 'stripe',
+    payout_method: payoutMethod,
     status: 'pending',
+    dispute_window_closes_at: clearsAt.toISOString(),
     created_at: new Date().toISOString()
   });
 
@@ -184,11 +202,16 @@ async function getWalletBalance(supabase, userId) {
     total: total_cents / 100,
     transactions: transactions.map(tx => ({
       id: tx.id,
+      amount_cents: tx.amount_cents,
       amount: tx.amount_cents / 100,
+      amount_cents: tx.amount_cents,
       status: tx.status,
+      payout_method: tx.payout_method || 'stripe',
       created_at: tx.created_at,
       clears_at: tx.clears_at,
-      task_id: tx.task_id
+      task_id: tx.task_id,
+      task_title: tx.task_title || null,
+      withdrawn_at: tx.withdrawn_at || null
     }))
   };
 }

@@ -143,8 +143,8 @@ curl -X POST http://localhost:3002/api/mcp \
 {
   "success": true,
   "amount": 50,
-  "platform_fee": 7.5,
-  "net_amount": 42.5,
+  "platform_fee": 5.0,
+  "net_amount": 45.0,
   "status": "pending",
   "clears_at": "2024-01-17T10:00:00Z",
   "message": "Payment released to pending balance with 48-hour dispute window"

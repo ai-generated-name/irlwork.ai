@@ -111,7 +111,7 @@ export default function ProfileCompleteness({ user, onNavigate }) {
     <div
       style={{
         background: 'var(--bg-secondary)',
-        border: '1px solid rgba(26, 26, 26, 0.06)',
+        border: '1px solid rgba(0, 0, 0, 0.06)',
         borderRadius: 'var(--radius-lg)',
         padding: '20px 24px',
         boxShadow: 'var(--shadow-sm)',
@@ -246,7 +246,7 @@ export default function ProfileCompleteness({ user, onNavigate }) {
               gap: 6,
               padding: '7px 14px',
               background: 'var(--bg-tertiary)',
-              border: '1px solid rgba(26, 26, 26, 0.06)',
+              border: '1px solid rgba(0, 0, 0, 0.06)',
               borderRadius: 'var(--radius-full)',
               fontSize: 13,
               fontWeight: 500,
@@ -256,13 +256,13 @@ export default function ProfileCompleteness({ user, onNavigate }) {
               whiteSpace: 'nowrap',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(244, 132, 95, 0.08)'
-              e.currentTarget.style.borderColor = 'rgba(244, 132, 95, 0.2)'
+              e.currentTarget.style.background = 'rgba(232, 133, 61, 0.08)'
+              e.currentTarget.style.borderColor = 'rgba(232, 133, 61, 0.2)'
               e.currentTarget.style.color = 'var(--orange-600)'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'var(--bg-tertiary)'
-              e.currentTarget.style.borderColor = 'rgba(26, 26, 26, 0.06)'
+              e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.06)'
               e.currentTarget.style.color = 'var(--text-secondary)'
             }}
           >

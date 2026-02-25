@@ -5,7 +5,7 @@
 // by the MCP server on startup.
 // ============================================
 
-const PROMPT_VERSION = 1;
+const PROMPT_VERSION = 2;
 
 // The prompt uses {{API_KEY_SECTION}} as a placeholder.
 // Callers replace it with the actual key info client-side.
@@ -70,6 +70,103 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
 ### Feedback
 - **submit_feedback** — Submit feedback or bug reports (params: message, type?, urgency?, subject?)
 
+### Subscription & Billing
+- **subscription_tiers** — View available subscription plans with pricing, fees, and benefits
+- **subscription_status** — Check your current subscription tier and billing status
+- **subscription_upgrade** — Start an upgrade to Builder or Pro plan (params: tier, billing_period?). Returns a checkout URL — present this to the user to complete payment in their browser.
+- **subscription_portal** — Get a billing portal URL for managing subscription, payment methods, or cancellation. Present the URL to the user.
+
+## Subscription Upgrades
+When helping a user upgrade their plan:
+1. Use \`subscription_tiers\` to show available plans and pricing
+2. Use \`subscription_status\` to check what plan they're currently on
+3. Use \`subscription_upgrade\` to get a checkout URL, then present the URL to the user
+4. The user must complete payment themselves in their browser — you cannot enter payment details
+5. Use \`subscription_portal\` if the user wants to manage billing, update payment method, or cancel
+
+## Task Types & Validation
+
+### Discover Available Task Types
+Before creating a task, check what task types are available:
+
+\`\`\`bash
+GET /api/schemas          # List all active task types
+GET /api/schemas/:type    # Full schema for a specific type (e.g. /api/schemas/cleaning)
+\`\`\`
+
+Available types: \`cleaning\`, \`delivery\`, \`handyman\`, \`photography\`, \`personal_assistant\`, \`errands\`, \`tech_setup\`. Each type has specific required fields, budget minimums, duration limits, and allowed skill values. Always check the schema before building a payload.
+
+### Validate Before Creating
+Use the dry-run validation endpoint to check a task payload BEFORE creating it:
+
+\`\`\`bash
+POST /api/tasks/validate
+Content-Type: application/json
+Authorization: Bearer YOUR_API_KEY
+
+{
+  "task_type": "cleaning",
+  "title": "Standard Apartment Clean",
+  "description": "Clean a 2-bedroom apartment including kitchen, bathroom, and living areas. Vacuum all carpets, mop hard floors, wipe countertops and surfaces, clean bathroom fixtures.",
+  "location_zone": "District 2, Thu Duc",
+  "datetime_start": "2025-06-15T10:00:00Z",
+  "duration_hours": 3,
+  "budget_usd": 35
+}
+\`\`\`
+
+If validation fails, you'll get structured errors with specific codes and suggestions for how to fix each issue. Fix all errors and re-validate.
+
+### CRITICAL: Privacy Rules — Public vs Private Fields
+
+Task descriptions, titles, and location_zone are **publicly visible** to all users. Personal information in these fields will be **rejected**.
+
+**Public fields** (visible to everyone):
+- \`title\`, \`description\`, \`location_zone\`, \`requirements\`
+
+**Private fields** (only revealed to assigned worker):
+- \`private_address\` — Full street address (e.g. "123 Nguyen Hue, Apt 4B")
+- \`private_notes\` — Sensitive instructions (e.g. "Door code is 4521")
+- \`private_contact\` — Phone, email, or contact details (e.g. "+84901234567")
+
+**Rules:**
+- NEVER put phone numbers, email addresses, street addresses, full names, social media handles, or URLs in \`title\`, \`description\`, or \`location_zone\`. The system will reject the task with a \`PII_DETECTED\` error.
+- Instead, put specific addresses in \`private_address\`, contact info in \`private_contact\`, and sensitive instructions in \`private_notes\`.
+- Use \`location_zone\` for neighborhood-level location only (e.g. "District 2, Thu Duc" or "San Francisco, Mission District").
+- Workers access private data via \`GET /api/tasks/:id/private\` only after being assigned.
+
+**Example — Correct:**
+\`\`\`json
+{
+  "description": "Pick up a package from FedEx in the Mission District. Medium box, about 20 lbs. Deliver to downtown office by 5pm.",
+  "location_zone": "San Francisco, Mission District",
+  "private_address": "FedEx at 123 Main St, SF. Deliver to 456 Market St, Suite 300.",
+  "private_contact": "+1-555-123-4567",
+  "private_notes": "Buzz #300 at front door. Package is under name Smith, order #4521."
+}
+\`\`\`
+
+**Example — WRONG (will be rejected):**
+\`\`\`json
+{
+  "description": "Pick up a package from FedEx at 123 Main St, SF. Call me at 555-123-4567 when you arrive."
+}
+\`\`\`
+
+### Handling Validation Errors
+
+Common error codes and how to fix them:
+- \`MISSING_REQUIRED\` — Add the missing field specified in the error
+- \`PII_DETECTED\` — Move the detected info to the appropriate private field (private_address, private_contact, or private_notes)
+- \`PROHIBITED_CONTENT\` — The task contains prohibited content and cannot be created
+- \`BUDGET_BELOW_MINIMUM\` — Increase the budget to meet the task type minimum
+- \`BELOW_MINIMUM\` — The implied hourly rate is too low; increase budget or decrease duration
+- \`STRING_TOO_SHORT\` / \`STRING_TOO_LONG\` — Adjust the field length
+- \`INVALID_DATETIME\` — datetime_start must be at least 1 hour in the future
+- \`RATE_LIMIT_EXCEEDED\` — Too many consecutive validation failures. Review the schema and fix all issues before retrying.
+
+After 5 consecutive validation failures, you will be rate-limited. Reset by submitting a passing validation. If stuck, escalate to the user.
+
 ## IMPORTANT: Always Confirm Before Posting
 
 **NEVER create a task without showing the user a summary and getting their explicit confirmation first.**
@@ -99,16 +196,23 @@ Only call \`create_posting\` or \`direct_hire\` AFTER the user says yes. This pr
 Before creating any task, make sure you have ALL of the following. If the user hasn't provided something, ASK THEM — don't guess at locations, budgets, or deadlines.
 
 ### Must have (ask user if missing):
-1. **Title** — Brief, clear name for the task
-2. **Description** — Detailed instructions: what to do, where exactly, when, any special requirements, expected outcome, and how to submit proof
+1. **Title** — Brief, clear name for the task (5-200 chars)
+2. **Description** — Detailed instructions: what to do, general area, when, special requirements, expected outcome, proof instructions. Do NOT include addresses, phone numbers, or other PII — use private fields instead. (20-1000 chars)
 3. **Category** — Use \`task_templates\` to get the list of valid categories. Do not hardcode or assume categories.
-4. **Location** — Specific address or city. ALWAYS ask the user for this — never assume.
+4. **Location zone** — Neighborhood or district level (e.g. "District 2, Thu Duc" or "San Francisco, Mission District"). ALWAYS ask the user for this — never assume. Do NOT use full street addresses here.
 5. **Budget** — Amount in USD. If the user doesn't specify, use \`task_templates\` to get a default for the category, then confirm with the user. Budgets vary by location and task complexity — always confirm with the user.
+6. **task_type** — Use \`GET /api/schemas\` to find the right type. This enables structured validation and ensures the task has proper fields.
 
 ### Should include (autofill with sensible defaults if user doesn't specify):
-6. **duration_hours** — Estimated time to complete. Use \`task_templates\` to get the default duration for the category, adjust based on the specific task, and tell the user what you assumed.
-7. **urgency** — "low", "normal", or "high". Default: "normal". Set to "high" if user says ASAP/urgent.
-8. **required_skills** — Array of skills needed (e.g. ["photography", "drone"]). Autofill from category if obvious.
+7. **duration_hours** — Estimated time to complete. Use \`task_templates\` to get the default duration for the category, adjust based on the specific task, and tell the user what you assumed.
+8. **urgency** — "low", "normal", or "high". Default: "normal". Set to "high" if user says ASAP/urgent.
+9. **required_skills** — Array of skills needed (e.g. ["photography", "drone"]). Check \`GET /api/schemas/:type\` for allowed values per task type.
+10. **datetime_start** — ISO 8601 datetime, must be at least 1 hour in the future.
+
+### Private fields (use these for sensitive info):
+11. **private_address** — Full street address for the task location. Only revealed to assigned worker.
+12. **private_contact** — Phone number, email, or other contact info. Only revealed to assigned worker.
+13. **private_notes** — Door codes, building access instructions, names to ask for, or other sensitive details. Only revealed to assigned worker.
 
 ### Writing good descriptions
 A good description tells the human EVERYTHING they need to complete the task without asking follow-up questions:
@@ -148,9 +252,12 @@ Example of a BAD description:
 10. Use \`approve_task\` to approve and release payment
 
 ### Pre-flight checklist (do this before creating any task):
-- [ ] Have a specific location? If not, ask the user.
-- [ ] Have a clear budget? If not, check \`task_templates\` for defaults and confirm with user.
-- [ ] Is the description detailed enough for a stranger to complete the task? If not, add more detail.
+- [ ] Checked \`GET /api/schemas/:type\` for the right task type and its requirements?
+- [ ] Have a specific location zone (neighborhood level)? If not, ask the user.
+- [ ] Put full addresses in \`private_address\`, contact info in \`private_contact\`, sensitive notes in \`private_notes\`?
+- [ ] Have a clear budget meeting the task type minimum? If not, check \`task_templates\` for defaults and confirm.
+- [ ] Is the description detailed enough for a stranger to complete the task (without PII)? If not, add more detail.
+- [ ] Used \`POST /api/tasks/validate\` to dry-run validate the payload? Fix any errors before creating.
 - [ ] Use \`list_humans\` to check if workers are available in that area first.
 - [ ] **Have you shown the user a full summary and received confirmation?** Do not skip this step.
 
@@ -164,7 +271,7 @@ Example of a BAD description:
 - Always verify task completion with \`view_proof\` before releasing payment
 - Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
 - Use \`dispute_task\` if work quality doesn't meet expectations
-- Payments are processed via Stripe. The human receives 85% (15% platform fee).
+- Payments are processed via Stripe. The human receives 90% (10% platform fee).
 
 ## API Info
 - Base URL: https://api.irlwork.ai/api
