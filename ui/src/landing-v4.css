@@ -276,7 +276,7 @@
   grid-template-columns: 1fr 1.2fr;
   gap: var(--space-6);
   align-items: center;
-  padding: calc(56px + var(--space-2)) var(--space-6) var(--space-3);
+  padding: calc(56px + var(--space-1)) var(--space-6) var(--space-2);
   max-width: 1300px;
   margin: 0 auto;
   position: relative;
@@ -403,8 +403,8 @@
   display: flex;
   gap: var(--space-6);
   align-items: center;
-  padding-top: var(--space-3);
-  border-top: 1px solid rgba(26, 26, 26, 0.08);
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .stat-item {
@@ -441,7 +441,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
   margin-bottom: 0;
 }
 

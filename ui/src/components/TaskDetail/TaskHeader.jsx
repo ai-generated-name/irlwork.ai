@@ -64,7 +64,7 @@ export default function TaskHeader({ task }) {
         )}
         {/* Compact budget shown inline on mobile only */}
         <span className="lg:hidden text-lg font-bold text-[#16A34A] font-mono">
-          ${task.budget} <span className="text-xs font-normal text-[#888888]">USD</span>
+          ${task.budget} <span className="text-xs font-normal text-[#888888]">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
         </span>
       </div>
 
@@ -153,22 +153,12 @@ export default function TaskHeader({ task }) {
         )}
       </div>
 
-      {/* Budget - Large and Prominent (desktop only, mobile shows inline above) */}
-      <div className="hidden lg:block mt-6 pt-6 border-t border-[rgba(0,0,0,0.08)]">
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-[#16A34A] font-mono">
-            ${task.budget}
-          </span>
-          <span className="text-xl text-[#333333]">USD</span>
-        </div>
-      </div>
-
       {/* Skills Needed */}
       {task.category && (
-        <div className="mt-3 sm:mt-6 pt-3 sm:pt-6 border-t border-[rgba(0,0,0,0.08)]">
-          <h3 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-2 sm:mb-3">Skills Needed</h3>
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[rgba(0,0,0,0.08)]">
+          <h3 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-1.5 sm:mb-2">Skills Needed</h3>
           <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs sm:text-sm font-medium bg-[rgba(232,133,61,0.1)] text-[#E8853D]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium bg-[rgba(232,133,61,0.1)] text-[#E8853D]">
               {CATEGORY_ICONS[task.category] || '📋'} {task.category.replace('-', ' ')}
             </span>
           </div>

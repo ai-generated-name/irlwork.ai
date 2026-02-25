@@ -1,10 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import EscrowBadge from '../EscrowBadge';
+import API_URL from '../../config/api';
 
-const PLATFORM_FEE_PERCENT = 15;
+export default function PaymentCard({ task, user, isParticipant, onApply, taskId }) {
+  const [stats, setStats] = useState(null);
 
-export default function PaymentCard({ task, user, isParticipant, onApply }) {
+  // Fetch stats inline
+  useEffect(() => {
+    const id = taskId || task?.id;
+    if (!id) return;
+    fetch(`${API_URL}/tasks/${id}/stats`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setStats(data); })
+      .catch(() => {});
+  }, [taskId, task?.id]);
+
   if (!task) return null;
 
   const isHourly = task.budget_type === 'hourly';
@@ -12,8 +23,6 @@ export default function PaymentCard({ task, user, isParticipant, onApply }) {
   const durationHours = Number(task.duration_hours) || 0;
   const estimatedTotal = isHourly && durationHours > 0 ? budget * durationHours : null;
   const currencyLabel = task.payment_method === 'stripe' ? 'USD' : 'USDC';
-  const platformFee = Math.round(budget * PLATFORM_FEE_PERCENT) / 100;
-  const workerPayout = Math.round((budget - platformFee) * 100) / 100;
   const quantity = task.quantity || 1;
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
 
@@ -54,7 +63,9 @@ export default function PaymentCard({ task, user, isParticipant, onApply }) {
           </span>
           {isHourly && <span className="text-base sm:text-lg text-[#333333]">/hr</span>}
         </div>
-        <div className="text-xs sm:text-sm text-[#888888] mt-1">{currencyLabel}</div>
+        <div className="text-xs sm:text-sm text-[#888888] mt-1">
+          {currencyLabel} {!isHourly ? '· Fixed Price' : ''}
+        </div>
       </div>
 
       {/* Slots info for multi-person tasks */}
@@ -94,28 +105,30 @@ export default function PaymentCard({ task, user, isParticipant, onApply }) {
         </div>
       )}
 
-      {/* Fixed price label */}
-      {!isHourly && (
-        <div className="text-center text-xs sm:text-sm text-[#333333]">Fixed Price</div>
+      {/* Apply button — public view only */}
+      {canApply && (
+        <button
+          onClick={onApply}
+          className="w-full mt-3 sm:mt-4 py-2.5 sm:py-3 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm sm:text-base shadow-md"
+        >
+          Apply for This Task
+        </button>
       )}
 
-      {/* Fee breakdown - always visible */}
-      <div className="border-t border-[rgba(26,26,26,0.08)] mt-3 sm:mt-4 pt-2 sm:pt-3 space-y-1.5">
-        <div className="flex justify-between text-xs sm:text-sm">
-          <span className="text-[#8A8A8A]">Platform fee ({PLATFORM_FEE_PERCENT}%)</span>
-          <span className="text-[#525252] font-medium">${platformFee.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between text-xs sm:text-sm">
-          <span className="text-[#1A1A1A] font-semibold">Worker payout</span>
-          <span className="text-[#059669] font-bold">${workerPayout.toFixed(2)}</span>
-        </div>
-      </div>
+      {showSignIn && (
+        <a
+          href="/auth"
+          className="block w-full mt-3 sm:mt-4 py-2.5 sm:py-3 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm sm:text-base shadow-md text-center no-underline"
+        >
+          Sign In to Apply
+        </a>
+      )}
 
-      {/* Posted date */}
-      {task.created_at && (
-        <div className="border-t border-[rgba(0,0,0,0.08)] mt-3 sm:mt-4 pt-2 sm:pt-3 text-center">
+      {/* Inline stats */}
+      {stats && (
+        <div className="mt-3 sm:mt-4 text-center">
           <span className="text-xs text-[#888888]">
-            Posted {new Date(task.created_at).toLocaleDateString()}
+            {stats.applications} applicant{stats.applications !== 1 ? 's' : ''} · {stats.views} view{stats.views !== 1 ? 's' : ''}
           </span>
         </div>
       )}
@@ -161,30 +174,11 @@ export default function PaymentCard({ task, user, isParticipant, onApply }) {
           {escrowStatus === 'deposited' && (
             <div className="mt-3 pt-3 border-t border-[rgba(0,0,0,0.08)]">
               <div className="text-xs text-[#888888]">
-                🔒 Payment protected. Funds released on proof approval or after the dispute window.
+                Payment protected. Funds released on proof approval or after the dispute window.
               </div>
             </div>
           )}
         </div>
-      )}
-
-      {/* Apply button — public view only */}
-      {canApply && (
-        <button
-          onClick={onApply}
-          className="w-full mt-3 sm:mt-5 py-2.5 sm:py-3 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm sm:text-base shadow-md"
-        >
-          Apply for This Task
-        </button>
-      )}
-
-      {showSignIn && (
-        <a
-          href="/auth"
-          className="block w-full mt-3 sm:mt-5 py-2.5 sm:py-3 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm sm:text-base shadow-md text-center no-underline"
-        >
-          Sign In to Apply
-        </a>
       )}
     </div>
   );

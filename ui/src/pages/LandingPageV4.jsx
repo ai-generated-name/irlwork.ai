@@ -761,8 +761,8 @@ function FAQSection() {
     { question: t('faq.q4'), answer: t('faq.a4') },
     { question: t('faq.q5'), answer: t('faq.a5') },
     { question: t('faq.q6'), answer: t('faq.a6') },
-    { question: 'Is my payment guaranteed?', answer: 'Yes. Every task is funded upfront through Stripe escrow before you start working. Once the work is verified and approved, the payment is released directly to your account. If there\'s a dispute, our platform mediates to ensure fair outcomes.' },
-    { question: 'How long do tasks take?', answer: 'It varies. Most tasks include a time estimate — from 15 minutes for quick verifications to a few hours for more involved work. You can filter tasks by estimated duration to find ones that fit your schedule.' },
+    { question: t('faq.q7'), answer: t('faq.a7') },
+    { question: t('faq.q8'), answer: t('faq.a8') },
   ]
 
   const toggle = (index) => {
