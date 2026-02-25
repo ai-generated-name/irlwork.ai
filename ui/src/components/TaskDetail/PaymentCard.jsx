@@ -2,6 +2,8 @@ import React from 'react';
 import { Users } from 'lucide-react';
 import EscrowBadge from '../EscrowBadge';
 
+const PLATFORM_FEE_PERCENT = 15;
+
 export default function PaymentCard({ task, user, isParticipant, onApply }) {
   if (!task) return null;
 
@@ -10,6 +12,8 @@ export default function PaymentCard({ task, user, isParticipant, onApply }) {
   const durationHours = Number(task.duration_hours) || 0;
   const estimatedTotal = isHourly && durationHours > 0 ? budget * durationHours : null;
   const currencyLabel = task.payment_method === 'stripe' ? 'USD' : 'USDC';
+  const platformFee = Math.round(budget * PLATFORM_FEE_PERCENT) / 100;
+  const workerPayout = Math.round((budget - platformFee) * 100) / 100;
   const quantity = task.quantity || 1;
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
 
@@ -94,6 +98,18 @@ export default function PaymentCard({ task, user, isParticipant, onApply }) {
       {!isHourly && (
         <div className="text-center text-xs sm:text-sm text-[#525252]">Fixed Price</div>
       )}
+
+      {/* Fee breakdown - always visible */}
+      <div className="border-t border-[rgba(26,26,26,0.08)] mt-3 sm:mt-4 pt-2 sm:pt-3 space-y-1.5">
+        <div className="flex justify-between text-xs sm:text-sm">
+          <span className="text-[#8A8A8A]">Platform fee ({PLATFORM_FEE_PERCENT}%)</span>
+          <span className="text-[#525252] font-medium">${platformFee.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between text-xs sm:text-sm">
+          <span className="text-[#1A1A1A] font-semibold">Worker payout</span>
+          <span className="text-[#059669] font-bold">${workerPayout.toFixed(2)}</span>
+        </div>
+      </div>
 
       {/* Posted date */}
       {task.created_at && (

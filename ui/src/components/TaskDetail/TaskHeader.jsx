@@ -36,11 +36,16 @@ export default function TaskHeader({ task }) {
 
   return (
     <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-4 sm:p-6 shadow-sm">
-      {/* Status Badge + Type Badges */}
+      {/* Status Badge + Task ID + Type Badges */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
         <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
         </span>
+        {task.id && (
+          <span className="inline-block px-2 py-0.5 rounded text-[10px] sm:text-xs font-mono text-[#8A8A8A] bg-[rgba(26,26,26,0.04)] tracking-wider">
+            {task.id.substring(0, 8).toUpperCase()}
+          </span>
+        )}
         {isBounty && (
           <span className="inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-semibold" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>
             Bounty

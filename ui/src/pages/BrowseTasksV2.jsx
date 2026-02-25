@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { MapPin, Search, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 const TaskMap = lazy(() => import('../components/TaskMap'));
 import { TASK_CATEGORIES } from '../components/CategoryPills';
@@ -89,6 +89,9 @@ export default function BrowseTasksV2({
     lng: initialLocation?.lng || user?.longitude || null,
   });
 
+  // Map-driven search state (true when user searched via map panning)
+  const [mapDrivenSearch, setMapDrivenSearch] = useState(false);
+
   // UI state
   const [viewMode, setViewMode] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) return 'list';
@@ -161,11 +164,14 @@ export default function BrowseTasksV2({
       const res = await fetch(`${API_URL}/tasks/available?${params}`, {
         headers: user?.id ? { Authorization: user.token || '' } : {}
       });
-      const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to fetch tasks');
+        let errorMsg = `Server error (${res.status})`;
+        try { const errData = await res.json(); errorMsg = errData.error || errorMsg; } catch {}
+        throw new Error(errorMsg);
       }
+
+      const data = await res.json();
 
       // Handle both old format (array) and new format ({ tasks: [] })
       const tasksList = Array.isArray(data) ? data : (data.tasks || []);
@@ -187,6 +193,7 @@ export default function BrowseTasksV2({
   // Handle location change from CityAutocomplete
   // CityAutocomplete passes a single object: { city, latitude, longitude, country, ... }
   const handleLocationChange = (locationData) => {
+    setMapDrivenSearch(false);
     if (typeof locationData === 'object' && locationData !== null) {
       setLocation({
         city: locationData.city || '',
@@ -203,6 +210,17 @@ export default function BrowseTasksV2({
     }
   };
 
+  // Handle map-driven search ("Search this area" button)
+  const handleMapBoundsChange = useCallback(({ lat, lng, radiusKm }) => {
+    setMapDrivenSearch(true);
+    // Snap to the nearest radius preset that covers the visible area
+    // If zoomed out beyond 100km, cap at 100km to avoid "anywhere" which ignores coordinates
+    const presets = [5, 10, 25, 50, 100];
+    const snapped = presets.find(p => p >= radiusKm) || 100;
+    setRadius(String(snapped));
+    setLocation({ city: 'Map Area', lat, lng });
+  }, []);
+
   // Handle task selection - navigate to task detail page
   const handleTaskSelect = (taskId) => {
     window.location.href = `/tasks/${taskId}`;
@@ -214,10 +232,12 @@ export default function BrowseTasksV2({
     setApplyModalTask(null);
   };
 
-  // Get map center
-  const mapCenter = location.lat && location.lng
-    ? [location.lat, location.lng]
-    : [10.8231, 106.6297]; // Default HCMC
+  // Get map center (memoized to prevent unnecessary map re-centering on every render)
+  const mapCenter = useMemo(() => {
+    return location.lat && location.lng
+      ? [location.lat, location.lng]
+      : [10.8231, 106.6297]; // Default HCMC
+  }, [location.lat, location.lng]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(tasksTotal / ITEMS_PER_PAGE));
@@ -371,6 +391,7 @@ export default function BrowseTasksV2({
             <button
               className="browse-tasks-v2-use-location-btn"
               onClick={() => {
+                setMapDrivenSearch(false);
                 if (navigator.geolocation) {
                   navigator.geolocation.getCurrentPosition(
                     (pos) => {
@@ -561,6 +582,8 @@ export default function BrowseTasksV2({
                 hoveredTaskId={hoveredTaskId}
                 onTaskSelect={handleTaskSelect}
                 onTaskHover={setHoveredTaskId}
+                onBoundsChange={handleMapBoundsChange}
+                disableFitBounds={mapDrivenSearch}
               />
             </Suspense>
           </div>
@@ -607,6 +630,8 @@ export default function BrowseTasksV2({
                 setShowMobileMap(false);
               }}
               onTaskHover={setHoveredTaskId}
+              onBoundsChange={handleMapBoundsChange}
+              disableFitBounds={mapDrivenSearch}
             />
           </Suspense>
         </div>

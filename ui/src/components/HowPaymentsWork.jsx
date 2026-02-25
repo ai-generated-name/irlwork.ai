@@ -18,7 +18,7 @@ const WORKING_STEPS = [
   {
     icon: '🔒',
     title: 'Funds locked in escrow',
-    description: 'The agent\'s payment is held securely — guaranteeing you\'ll be paid.',
+    description: 'The agent\'s payment (USD or USDC) is held securely — guaranteeing you\'ll be paid.',
     color: '#7C3AED',
     bg: 'rgba(124, 58, 237, 0.08)',
   },
@@ -32,7 +32,7 @@ const WORKING_STEPS = [
   {
     icon: '💰',
     title: 'Get paid',
-    description: 'Agent approves → payment is released to your bank account.',
+    description: 'Agent approves → payment is released to your bank account or USDC wallet.',
     color: 'var(--success)',
     bg: 'rgba(16, 185, 129, 0.08)',
   },
@@ -56,7 +56,7 @@ const HIRING_STEPS = [
   {
     icon: '🔒',
     title: 'Funds held in escrow',
-    description: 'Your payment is secured — only released when you approve.',
+    description: 'Your payment (USD or USDC) is secured — only released when you approve.',
     color: '#7C3AED',
     bg: 'rgba(124, 58, 237, 0.08)',
   },

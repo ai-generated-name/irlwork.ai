@@ -7171,29 +7171,163 @@ select.select-v4-dark option:checked,
 }
 
 /* ─── DASHBOARD RESPONSIVE UTILITY CLASSES ─── */
-/* ─── Create Task Form - Wide 2-column layout ─── */
-.create-task-form-wide {
-  max-width: 900px !important;
+
+/* ─── Create Task Form - Redesigned ─── */
+.create-task-container {
+  max-width: 680px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(26, 26, 26, 0.06);
+  border-radius: var(--radius-xl);
+  padding: 0;
+  overflow: hidden;
 }
 
-.create-task-grid {
+.create-task-header {
+  padding: var(--space-6) var(--space-8);
+  border-bottom: 1px solid rgba(26, 26, 26, 0.06);
+}
+
+.create-task-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.create-task-subtitle {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.create-task-section {
+  padding: var(--space-6) var(--space-8);
+  border-bottom: 1px solid rgba(26, 26, 26, 0.06);
+}
+
+.create-task-section-last {
+  border-bottom: none;
+}
+
+.create-task-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-4);
+}
+
+.create-task-row-3col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.create-task-row-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-6);
+  gap: var(--space-4);
 }
 
-.create-task-col {
+.create-task-toggle-row {
   display: flex;
-  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 
-@media (max-width: 768px) {
-  .create-task-grid {
+.create-task-toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(26, 26, 26, 0.1);
+  background: var(--bg-primary);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+  user-select: none;
+}
+
+.create-task-toggle-chip input[type="checkbox"] {
+  display: none;
+}
+
+.create-task-toggle-chip:hover {
+  border-color: rgba(26, 26, 26, 0.2);
+}
+
+.create-task-toggle-chip.active-green {
+  background: #ECFDF5;
+  border-color: #10B981;
+  color: #059669;
+}
+
+.create-task-toggle-chip.active-purple {
+  background: #F5F3FF;
+  border-color: #7C3AED;
+  color: #6D28D9;
+}
+
+.create-task-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #EEF2FF;
+  color: #4338CA;
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.create-task-skill-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: #4338CA;
+  font-size: 16px;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+.create-task-container .dashboard-v4-form-submit {
+  margin: 0 var(--space-8) var(--space-8);
+  width: calc(100% - var(--space-8) * 2);
+  border-radius: var(--radius-lg);
+}
+
+.create-task-container .dashboard-v4-form-error {
+  margin: 0 var(--space-8) var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .create-task-row-3col {
     grid-template-columns: 1fr;
     gap: var(--space-4);
   }
-  .create-task-form-wide {
-    max-width: 600px !important;
+  .create-task-row-2col {
+    grid-template-columns: 1fr;
+  }
+  .create-task-header,
+  .create-task-section {
+    padding: var(--space-4) var(--space-5);
+  }
+  .create-task-container .dashboard-v4-form-submit {
+    margin: 0 var(--space-5) var(--space-5);
+    width: calc(100% - var(--space-5) * 2);
+  }
+  .create-task-container .dashboard-v4-form-error {
+    margin: 0 var(--space-5) var(--space-4);
+  }
+  .create-task-toggle-row {
+    flex-wrap: wrap;
   }
 }
 
@@ -7491,6 +7625,70 @@ select.select-v4-dark option:checked,
 
 .mytasks-card__info-label--success {
   color: var(--success);
+}
+
+/* Task ID badge */
+.mytasks-card__task-id {
+  font-family: var(--font-mono, 'SF Mono', 'Fira Code', monospace);
+  font-size: 10px;
+  color: var(--text-tertiary, #8A8A8A);
+  background: rgba(26, 26, 26, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* Payment breakdown row */
+.mytasks-card__payment-breakdown {
+  display: flex;
+  gap: var(--space-4, 16px);
+  font-size: 12px;
+  margin-bottom: var(--space-3, 12px);
+  padding: 6px 10px;
+  background: rgba(26, 26, 26, 0.02);
+  border-radius: 8px;
+}
+
+.mytasks-card__payment-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mytasks-card__payment-label {
+  color: var(--text-tertiary, #8A8A8A);
+}
+
+.mytasks-card__payment-value {
+  font-weight: 600;
+  color: var(--text-secondary, #525252);
+}
+
+.mytasks-card__payment-value--payout {
+  color: var(--success, #059669);
+}
+
+/* Compact payout info */
+.mytasks-card__payout-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--success, #059669);
+}
+
+.mytasks-card__payout-label {
+  font-weight: 400;
+  color: var(--text-tertiary, #8A8A8A);
+  font-size: 11px;
+}
+
+.mytasks-card__fee-label {
+  font-weight: 400;
+  color: var(--text-tertiary, #8A8A8A);
+  font-size: 11px;
+  margin-left: 6px;
 }
 
 /* Compact card variant */
