@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 
 const styles = {
-  input: 'w-full bg-white border-2 border-[rgba(26,26,26,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#8A8A8A] focus:outline-none focus:border-[#0F4C5C] transition-colors'
+  input: 'w-full bg-white border-2 border-[rgba(0,0,0,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#888888] focus:outline-none focus:border-[#E8853D] transition-colors'
 };
 
 export default function TaskMessageThread({
@@ -71,21 +71,21 @@ export default function TaskMessageThread({
   const sortedMessages = [...(messages || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] flex flex-col h-[320px] sm:h-[420px] lg:h-[500px] shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] flex flex-col h-[320px] sm:h-[420px] lg:h-[500px] shadow-sm">
       {/* Header */}
-      <div className="px-3 py-2.5 sm:p-4 border-b border-[rgba(26,26,26,0.08)]">
+      <div className="px-3 py-2.5 sm:p-4 border-b border-[rgba(0,0,0,0.08)]">
         <h3 className="text-[#1A1A1A] font-bold text-sm sm:text-base">Messages</h3>
-        <p className="text-[#525252] text-xs sm:text-sm">Chat with the agent about this task</p>
+        <p className="text-[#333333] text-xs sm:text-sm">Chat with the agent about this task</p>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-[#FAF8F5]">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-[#FAFAF8]">
         {!conversation ? (
-          <div className="flex items-center justify-center h-full text-[#525252] text-xs sm:text-sm">
+          <div className="flex items-center justify-center h-full text-[#333333] text-xs sm:text-sm">
             No messages yet. Send a message to start the conversation.
           </div>
         ) : sortedMessages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-[#525252] text-xs sm:text-sm">
+          <div className="flex items-center justify-center h-full text-[#333333] text-xs sm:text-sm">
             No messages yet. Be the first to send a message!
           </div>
         ) : (
@@ -98,8 +98,8 @@ export default function TaskMessageThread({
                 <div
                   className={`max-w-[80%] sm:max-w-[70%] rounded-xl p-2.5 sm:p-3 ${
                     m.sender_id === user.id
-                      ? 'bg-[#0F4C5C] text-white'
-                      : 'bg-white text-[#1A1A1A] border border-[rgba(26,26,26,0.08)]'
+                      ? 'bg-[#E8853D] text-white'
+                      : 'bg-white text-[#1A1A1A] border border-[rgba(0,0,0,0.08)]'
                   }`}
                 >
                   <p className="whitespace-pre-wrap break-words text-sm">{m.content}</p>
@@ -136,7 +136,7 @@ export default function TaskMessageThread({
                     className={`text-xs mt-1 ${
                       m.sender_id === user.id
                         ? 'text-[rgba(255,255,255,0.7)]'
-                        : 'text-[#8A8A8A]'
+                        : 'text-[#888888]'
                     }`}
                   >
                     {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -150,7 +150,7 @@ export default function TaskMessageThread({
       </div>
 
       {/* Message Input */}
-      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(26,26,26,0.08)] flex gap-2 sm:gap-3 items-end bg-white rounded-b-2xl">
+      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(0,0,0,0.08)] flex gap-2 sm:gap-3 items-end bg-white rounded-b-2xl">
         <textarea
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
@@ -165,7 +165,7 @@ export default function TaskMessageThread({
         <button
           type="submit"
           disabled={sending || !newMessage.trim()}
-          className="bg-[#E07A5F] hover:bg-[#C45F4A] disabled:bg-[#F5F2ED] disabled:text-[#8A8A8A] disabled:cursor-not-allowed text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
+          className="bg-[#E8853D] hover:bg-[#D4703A] disabled:bg-[#F5F3F0] disabled:text-[#888888] disabled:cursor-not-allowed text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
         >
           {sending ? '...' : 'Send'}
         </button>

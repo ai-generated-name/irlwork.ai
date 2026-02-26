@@ -3,12 +3,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../App';
+import { Logo } from '../components/Logo';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
 import TaskTimeline from '../components/TaskDetail/TaskTimeline';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
 import PaymentCard from '../components/TaskDetail/PaymentCard';
-import StatsSection from '../components/TaskDetail/StatsSection';
 import ProofSection from '../components/TaskDetail/ProofSection';
 import TaskMessageThread from '../components/TaskDetail/TaskMessageThread';
 import QuickApplyModal from '../components/QuickApplyModal';
@@ -311,16 +311,16 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-[#F5F2ED] border-t-[#0F4C5C] rounded-full animate-spin mb-4"></div>
-          <div className="text-[#525252] text-lg">Loading task details...</div>
+          <div className="w-12 h-12 border-4 border-[#F5F3F0] border-t-[#E8853D] rounded-full animate-spin mb-4"></div>
+          <div className="text-[#333333] text-lg">Loading task details...</div>
           {loadingTimeout && (
             <div className="mt-4 text-center">
-              <p className="text-[#8A8A8A] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
+              <p className="text-[#888888] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
               <button
                 onClick={() => window.location.reload()}
-                className="text-[#0F4C5C] underline text-sm hover:text-[#0A3540]"
+                className="text-[#E8853D] underline text-sm hover:text-[#D4703A]"
               >
                 Retry
               </button>
@@ -334,12 +334,12 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-[#DC2626] text-xl mb-4">Error: {error}</div>
+          <div className="text-[#FF5F57] text-xl mb-4">Error: {error}</div>
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            className="bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
+            className="bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
           >
             Back to Dashboard
           </button>
@@ -351,12 +351,12 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   // Guard against task being null after loading completes (shouldn't happen, but defensive)
   if (!task) {
     return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-[#DC2626] text-xl mb-4">Error: Task not found</div>
+          <div className="text-[#FF5F57] text-xl mb-4">Error: Task not found</div>
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            className="bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
+            className="bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
           >
             Back to Dashboard
           </button>
@@ -367,30 +367,11 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
   return (
     <div className="landing-v4 min-h-screen" style={{ fontFamily: v4.fonts.display }}>
-      {/* Navbar — uses global navbar-v4 CSS classes */}
-      <nav className="navbar-v4">
-        <a href="/" className="logo-v4">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
-        </a>
-        <div className="nav-links-v4" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
-          <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
-          {user ? (
-            <a href="/dashboard" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
-              Dashboard
-            </a>
-          ) : (
-            <a href="/auth" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
-              Sign In
-            </a>
-          )}
-        </div>
-      </nav>
+      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
       {/* Sub-header with back button */}
       <header style={{
-        borderBottom: '1px solid rgba(26,26,26,0.08)',
+        borderBottom: '1px solid rgba(0,0,0,0.08)',
         position: 'sticky',
         top: 56,
         marginTop: 56,
@@ -401,7 +382,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         <div className="h-10 sm:h-14" style={{ maxWidth: 1280, margin: '0 auto', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            className="flex items-center gap-1.5 sm:gap-2 text-[#E07A5F] bg-transparent border-none cursor-pointer text-xs sm:text-sm font-medium"
+            className="flex items-center gap-1.5 sm:gap-2 text-[#E8853D] bg-transparent border-none cursor-pointer text-xs sm:text-sm font-medium"
           >
             <span>←</span>
             <span>Back</span>
@@ -413,7 +394,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             {user && task && task.agent_id !== user.id && (
               <button
                 onClick={() => setShowReportModal(true)}
-                className="flex items-center gap-1 sm:gap-1.5 text-[#8A8A8A] bg-transparent border-none cursor-pointer text-xs"
+                className="flex items-center gap-1 sm:gap-1.5 text-[#888888] bg-transparent border-none cursor-pointer text-xs"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
@@ -422,7 +403,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 Report
               </button>
             )}
-            <span className="text-[#8A8A8A] text-xs hidden sm:inline">
+            <span className="text-[#888888] text-xs hidden sm:inline">
               Task ID: {taskId.slice(0, 8)}...
             </span>
           </div>
@@ -449,6 +430,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 user={user}
                 isParticipant={isParticipant}
                 onApply={() => setShowApplyModal(true)}
+                taskId={taskId}
               />
             </div>
 
@@ -483,11 +465,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 user={user}
                 isParticipant={isParticipant}
                 onApply={() => setShowApplyModal(true)}
+                taskId={taskId}
               />
             </div>
-
-            {/* Stats (Applications & Views) */}
-            <StatsSection taskId={taskId} />
 
             {/* Agent Profile Card */}
             <AgentProfileCard agent={agentProfile} isAnonymous={task?.is_anonymous} />
@@ -514,30 +494,30 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       {/* Mobile Sticky Apply Bar */}
       {task.status === 'open' && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(26,26,26,0.12)] px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(0,0,0,0.12)] px-4 pr-20 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
           style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
           <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
             <div className="flex items-baseline gap-1 shrink-0">
-              <span className="text-xl font-bold text-[#059669] font-mono">
+              <span className="text-xl font-bold text-[#16A34A] font-mono">
                 ${Number(task.budget) || 0}
               </span>
-              {task.budget_type === 'hourly' && <span className="text-sm text-[#525252]">/hr</span>}
-              <span className="text-xs text-[#8A8A8A] ml-1">USDC</span>
+              {task.budget_type === 'hourly' && <span className="text-sm text-[#333333]">/hr</span>}
+              <span className="text-xs text-[#888888] ml-1">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
             </div>
             {user && task.agent_id !== user.id && !hasApplied ? (
               <button
                 onClick={() => setShowApplyModal(true)}
-                className="flex-1 max-w-[200px] py-2.5 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-sm shadow-md"
+                className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md"
               >
                 Apply for This Task
               </button>
             ) : hasApplied ? (
-              <span className="text-sm font-medium text-[#059669]">Applied ✓</span>
+              <span className="text-sm font-medium text-[#16A34A]">Applied ✓</span>
             ) : !user ? (
               <a
                 href="/auth"
-                className="flex-1 max-w-[200px] py-2.5 bg-[#E07A5F] hover:bg-[#C45F4A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block"
+                className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block"
               >
                 Sign In to Apply
               </a>

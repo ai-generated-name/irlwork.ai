@@ -4,8 +4,8 @@
  * Runs every 15 minutes to promote pending transactions to available
  * after the 48-hour dispute window has passed.
  *
- * All payments are Stripe-based. After promotion, auto-transfers to
- * the worker's connected Stripe account if they have one set up.
+ * After promotion, auto-transfers to the worker via the matching
+ * payment rail (Stripe Connect for bank, USDC on Base for wallet).
  *
  * Usage:
  *   const { startBalancePromoter } = require('./services/balancePromoter');
@@ -118,39 +118,100 @@ async function promotePendingBalances(supabase, createNotification, sendEmailNot
           .eq('task_id', tx.task_id)
           .eq('status', 'pending');
 
-        // Auto-transfer to worker's connected Stripe account if they have one
-        try {
-          const { transferToWorker, getConnectAccountStatus } = require('./stripeService');
-          const { data: worker } = await supabase
-            .from('users')
-            .select('stripe_account_id, stripe_onboarding_complete')
-            .eq('id', tx.user_id)
-            .single();
+        // Auto-transfer based on payout method (Stripe or USDC)
+        const payoutMethod = tx.payout_method || 'stripe';
+        let transferSucceeded = false;
 
-          if (worker?.stripe_account_id && worker?.stripe_onboarding_complete) {
-            const status = await getConnectAccountStatus(worker.stripe_account_id);
-            if (status.payouts_enabled) {
-              const result = await transferToWorker(supabase, tx.id, worker.stripe_account_id, tx.amount_cents, tx.task_id);
-              console.log(`[BalancePromoter] Auto-transferred $${amount.toFixed(2)} to Stripe account ${worker.stripe_account_id} (transfer: ${result.transfer_id})`);
+        if (payoutMethod === 'stripe') {
+          // Stripe auto-transfer to worker's connected bank account
+          try {
+            const { transferToWorker, getConnectAccountStatus } = require('./stripeService');
+            const { data: worker } = await supabase
+              .from('users')
+              .select('stripe_account_id, stripe_onboarding_complete')
+              .eq('id', tx.user_id)
+              .single();
 
-              // Mark as withdrawn with status precondition
-              await supabase
-                .from('pending_transactions')
-                .update({
-                  status: 'withdrawn',
-                  stripe_transfer_id: result.transfer_id,
-                  withdrawn_at: new Date().toISOString()
-                })
-                .eq('id', tx.id)
-                .eq('status', 'available');
+            if (worker?.stripe_account_id && worker?.stripe_onboarding_complete) {
+              const status = await getConnectAccountStatus(worker.stripe_account_id);
+              if (status.payouts_enabled) {
+                const result = await transferToWorker(supabase, tx.id, worker.stripe_account_id, tx.amount_cents, tx.task_id);
+                console.log(`[BalancePromoter] Auto-transferred $${amount.toFixed(2)} to Stripe account ${worker.stripe_account_id} (transfer: ${result.transfer_id})`);
+
+                // Mark as withdrawn with status precondition
+                await supabase
+                  .from('pending_transactions')
+                  .update({
+                    status: 'withdrawn',
+                    stripe_transfer_id: result.transfer_id,
+                    withdrawn_at: new Date().toISOString()
+                  })
+                  .eq('id', tx.id)
+                  .eq('status', 'available');
+                transferSucceeded = true;
+              }
             }
+            // If worker doesn't have Connect set up, funds stay as 'available'
+            // Mark as paid anyway — worker can manually withdraw later
+            if (!transferSucceeded) transferSucceeded = true;
+          } catch (transferError) {
+            console.error(`[BalancePromoter] Stripe auto-transfer failed for tx ${tx.id}:`, transferError.message);
+            // Funds stay as 'available' — worker can manually withdraw later
+            // Still mark task as paid since funds ARE available for withdrawal
+            transferSucceeded = true;
           }
-          // If worker doesn't have Connect set up, funds stay as 'available'
-          // and they'll be prompted to connect when they try to withdraw
-        } catch (transferError) {
-          console.error(`[BalancePromoter] Stripe auto-transfer failed for tx ${tx.id}:`, transferError.message);
-          // Funds stay as 'available' — worker can manually withdraw later
+        } else if (payoutMethod === 'usdc') {
+          // USDC auto-transfer to worker's wallet address on Base
+          try {
+            const { sendUSDC, isValidAddress } = require('../lib/wallet');
+            const { data: worker } = await supabase
+              .from('users')
+              .select('wallet_address')
+              .eq('id', tx.user_id)
+              .single();
+
+            if (worker?.wallet_address && isValidAddress(worker.wallet_address)) {
+              const amountUSDC = tx.amount_cents / 100;
+              const result = await sendUSDC(worker.wallet_address, amountUSDC);
+              if (result.success) {
+                console.log(`[BalancePromoter] Auto-transferred ${amountUSDC} USDC to ${worker.wallet_address} (tx: ${result.txHash})`);
+
+                await supabase
+                  .from('pending_transactions')
+                  .update({
+                    status: 'withdrawn',
+                    withdrawn_at: new Date().toISOString(),
+                    notes: `USDC auto-transfer: ${result.txHash}`
+                  })
+                  .eq('id', tx.id)
+                  .eq('status', 'available');
+                transferSucceeded = true;
+              } else {
+                console.error(`[BalancePromoter] USDC send failed for tx ${tx.id}: ${result.error}`);
+                // Funds stay as 'available' — worker can manually withdraw later
+                transferSucceeded = true;
+              }
+            } else {
+              // If worker doesn't have wallet set up, funds stay as 'available'
+              console.log(`[BalancePromoter] USDC transaction ${tx.id} promoted to available — worker can withdraw via wallet`);
+              transferSucceeded = true;
+            }
+          } catch (transferError) {
+            console.error(`[BalancePromoter] USDC auto-transfer failed for tx ${tx.id}:`, transferError.message);
+            // Funds stay as 'available' — worker can manually withdraw later
+            transferSucceeded = true;
+          }
         }
+
+        // Update task status to 'paid' AFTER transfer attempt (or confirmation funds are available)
+        if (transferSucceeded) {
+          await supabase
+            .from('tasks')
+            .update({ status: 'paid', updated_at: new Date().toISOString() })
+            .eq('id', tx.task_id)
+            .in('status', ['approved', 'completed']);
+        }
+        // Funds stay as 'available' if no matching payout method is set up — worker can manually withdraw later
 
       } catch (error) {
         console.error(`[BalancePromoter] Error processing transaction ${tx.id}:`, error);

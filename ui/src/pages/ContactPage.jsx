@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { Mail, Send, ChevronDown, ArrowLeft } from 'lucide-react'
-import MarketingFooter from '../components/Footer'
+import { Mail, Send, ChevronDown } from 'lucide-react'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function ContactPage() {
+  const { t } = useLanguage()
   const [category, setCategory] = useState('support')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -11,8 +12,8 @@ export default function ContactPage() {
   const [sent, setSent] = useState(false)
 
   const categories = {
-    support: { label: 'Support', email: 'support@irlwork.ai', description: 'Technical help, account issues, or general questions' },
-    press: { label: 'Press & Media', email: 'press@irlwork.ai', description: 'Media inquiries, interviews, and press coverage' },
+    support: { label: t('contact.support'), email: 'support@irlwork.ai', description: t('contact.supportDesc') },
+    press: { label: t('contact.pressMedia'), email: 'press@irlwork.ai', description: t('contact.pressDesc') },
   }
 
   const handleSubmit = (e) => {
@@ -35,33 +36,13 @@ export default function ContactPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          backgroundImage: 'linear-gradient(rgba(26,26,26,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(26,26,26,0.03) 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)',
           backgroundSize: '60px 60px',
           pointerEvents: 'none',
           zIndex: 0,
         }} />
 
-        {/* Nav */}
-        <nav style={{
-          padding: 'var(--space-4) var(--space-6)',
-          position: 'relative',
-          zIndex: 10,
-          maxWidth: '1200px',
-          margin: '0 auto',
-        }}>
-          <a href="/" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            textDecoration: 'none',
-            color: 'var(--text-secondary)',
-            fontSize: '14px',
-            fontWeight: 500,
-          }}>
-            <ArrowLeft size={16} />
-            Back to Home
-          </a>
-        </nav>
+        {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
         {/* Hero */}
         <div style={{
@@ -69,13 +50,13 @@ export default function ContactPage() {
           zIndex: 1,
           maxWidth: '720px',
           margin: '0 auto',
-          padding: '40px var(--space-6) 80px',
+          padding: '100px var(--space-6) 80px',
         }}>
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
             <div style={{
               width: '64px',
               height: '64px',
-              background: 'rgba(244, 132, 95, 0.1)',
+              background: 'rgba(232, 133, 61, 0.1)',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
@@ -92,7 +73,7 @@ export default function ContactPage() {
               marginBottom: '12px',
               lineHeight: 1.1,
             }}>
-              Contact Us
+              {t('contact.title')}
             </h1>
             <p style={{
               fontSize: '17px',
@@ -101,7 +82,7 @@ export default function ContactPage() {
               maxWidth: '480px',
               margin: '0 auto',
             }}>
-              Have a question or want to get in touch? We'd love to hear from you.
+              {t('contact.subtitle')}
             </p>
           </div>
 
@@ -120,13 +101,13 @@ export default function ContactPage() {
               textDecoration: 'none',
               transition: 'border-color 0.2s, box-shadow 0.2s',
             }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--orange-600)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(244,132,95,0.1)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--orange-600)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(232,133,61,0.1)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary)'; e.currentTarget.style.boxShadow = 'none' }}
             >
-              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Support</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>{t('contact.support')}</div>
               <div style={{ fontSize: '15px', color: 'var(--orange-600)', fontWeight: 500 }}>support@irlwork.ai</div>
               <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.5 }}>
-                Technical help, account issues, or general questions
+                {t('contact.supportDesc')}
               </div>
             </a>
             <a href="mailto:press@irlwork.ai" style={{
@@ -137,13 +118,13 @@ export default function ContactPage() {
               textDecoration: 'none',
               transition: 'border-color 0.2s, box-shadow 0.2s',
             }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--orange-600)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(244,132,95,0.1)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--orange-600)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(232,133,61,0.1)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary)'; e.currentTarget.style.boxShadow = 'none' }}
             >
-              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Press & Media</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>{t('contact.pressMedia')}</div>
               <div style={{ fontSize: '15px', color: 'var(--orange-600)', fontWeight: 500 }}>press@irlwork.ai</div>
               <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.5 }}>
-                Media inquiries, interviews, and press coverage
+                {t('contact.pressDesc')}
               </div>
             </a>
           </div>
@@ -162,7 +143,7 @@ export default function ContactPage() {
               color: 'var(--text-primary)',
               marginBottom: '24px',
             }}>
-              Send us a message
+              {t('contact.sendMessage')}
             </h2>
 
             {sent ? (
@@ -180,11 +161,11 @@ export default function ContactPage() {
                   <Send size={24} color="#22c55e" />
                 </div>
                 <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                  Opening your email client...
+                  {t('contact.openingEmail')}
                 </h3>
                 <p style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.6 }}>
-                  Your email app should open with the message pre-filled.<br />
-                  If it didn't, you can email us directly at{' '}
+                  {t('contact.emailPreFilled')}<br />
+                  {t('contact.ifNotOpened')}{' '}
                   <a href={`mailto:${categories[category].email}`} style={{ color: 'var(--orange-600)', fontWeight: 500 }}>
                     {categories[category].email}
                   </a>
@@ -194,7 +175,7 @@ export default function ContactPage() {
                   className="v4-btn v4-btn-secondary"
                   style={{ padding: '10px 24px', fontSize: '14px' }}
                 >
-                  Send another message
+                  {t('contact.sendAnother')}
                 </button>
               </div>
             ) : (
@@ -203,7 +184,7 @@ export default function ContactPage() {
                   {/* Category selector */}
                   <div>
                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                      What's this about?
+                      {t('contact.whatsThisAbout')}
                     </label>
                     <div style={{ position: 'relative' }}>
                       <button
@@ -249,7 +230,7 @@ export default function ContactPage() {
                               style={{
                                 width: '100%',
                                 padding: '14px 16px',
-                                background: category === key ? 'rgba(244,132,95,0.05)' : 'transparent',
+                                background: category === key ? 'rgba(232,133,61,0.05)' : 'transparent',
                                 border: 'none',
                                 borderBottom: key !== 'press' ? '1px solid var(--border-primary)' : 'none',
                                 fontSize: '15px',
@@ -259,7 +240,7 @@ export default function ContactPage() {
                                 transition: 'background 0.15s',
                               }}
                               onMouseEnter={e => { if (category !== key) e.currentTarget.style.background = 'var(--bg-secondary)' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = category === key ? 'rgba(244,132,95,0.05)' : 'transparent' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = category === key ? 'rgba(232,133,61,0.05)' : 'transparent' }}
                             >
                               <div style={{ fontWeight: 600 }}>{val.label}</div>
                               <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>{val.description}</div>
@@ -274,7 +255,7 @@ export default function ContactPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                        Your name
+                        {t('contact.yourName')}
                       </label>
                       <input
                         type="text"
@@ -300,7 +281,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                        Your email
+                        {t('contact.yourEmail')}
                       </label>
                       <input
                         type="email"
@@ -329,13 +310,13 @@ export default function ContactPage() {
                   {/* Message */}
                   <div>
                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                      Message
+                      {t('contact.message')}
                     </label>
                     <textarea
                       required
                       value={message}
                       onChange={e => setMessage(e.target.value)}
-                      placeholder="Tell us how we can help..."
+                      placeholder={t('contact.messagePlaceholder')}
                       rows={5}
                       style={{
                         width: '100%',
@@ -370,7 +351,7 @@ export default function ContactPage() {
                     }}
                   >
                     <Send size={18} />
-                    Send to {categories[category].email}
+                    {t('contact.sendTo')} {categories[category].email}
                   </button>
                 </div>
               </form>
@@ -378,7 +359,6 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
-      <MarketingFooter />
     </>
   )
 }

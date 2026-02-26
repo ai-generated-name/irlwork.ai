@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
+import { ClipboardList, Shield } from 'lucide-react';
 
 import API_URL from '../config/api';
 import { trackEvent } from '../utils/analytics';
+
+const PLATFORM_FEE_PERCENT = 15;
+const PREMIUM_FEE_PERCENT = 10;
 
 const CATEGORY_ICONS = {
   delivery: '📦',
@@ -29,6 +32,7 @@ export default function QuickApplyModal({
   onClose,
   onSuccess,
   userToken,
+  isPremium = false,
 }) {
   const [whyFit, setWhyFit] = useState('');
   const [availability, setAvailability] = useState('');
@@ -45,8 +49,27 @@ export default function QuickApplyModal({
     }
   }, [isOpen]);
 
+  // Fee calculation — dynamically updates when counter offer changes
+  const feeBreakdown = useMemo(() => {
+    if (!task) return null;
+    const baseAmount = counterOffer ? parseFloat(counterOffer) : Number(task.budget) || 0;
+    if (isNaN(baseAmount) || baseAmount <= 0) return null;
+
+    const feeRate = isPremium ? PREMIUM_FEE_PERCENT : PLATFORM_FEE_PERCENT;
+    const fee = Math.round(baseAmount * feeRate) / 100;
+    const payout = Math.round((baseAmount - fee) * 100) / 100;
+
+    // Calculate what Premium users would earn (for upsell)
+    const premiumFee = Math.round(baseAmount * PREMIUM_FEE_PERCENT) / 100;
+    const premiumPayout = Math.round((baseAmount - premiumFee) * 100) / 100;
+    const savings = Math.round((premiumPayout - payout) * 100) / 100;
+
+    return { baseAmount, feeRate, fee, payout, premiumPayout, savings };
+  }, [task, counterOffer, isPremium]);
+
   if (!isOpen || !task) return null;
 
+  const currencyLabel = task.payment_method === 'stripe' ? 'USD' : 'USDC';
   const canSubmit = whyFit.trim().length > 0 && availability.trim().length > 0;
 
   const handleSubmit = async (e) => {
@@ -139,7 +162,7 @@ export default function QuickApplyModal({
               <h3 className="quick-apply-modal-task-title">{task.title}</h3>
               <div className="quick-apply-modal-task-meta">
                 <span className="quick-apply-modal-task-budget">
-                  ${task.budget || 0} USD
+                  ${task.budget || 0} {currencyLabel}
                 </span>
                 {task.distance_km != null && (
                   <span className="quick-apply-modal-task-distance">
@@ -215,15 +238,51 @@ export default function QuickApplyModal({
                     step="0.01"
                     value={counterOffer}
                     onChange={(e) => setCounterOffer(e.target.value)}
-                    placeholder="0.00"
+                    placeholder={`${task.budget || '0.00'}`}
                     className="quick-apply-modal-counter-input"
                   />
-                  <span className="quick-apply-modal-currency-suffix">USDC</span>
+                  <span className="quick-apply-modal-currency-suffix">{currencyLabel}</span>
                 </div>
                 <span className="quick-apply-modal-field-hint">
-                  Task budget: ${task.budget || 0} USDC
+                  Leave blank to accept ${task.budget || 0} {currencyLabel}
                 </span>
               </div>
+
+              {/* Fee Breakdown */}
+              {feeBreakdown && (
+                <div className="quick-apply-fee-breakdown">
+                  <div className="quick-apply-fee-row">
+                    <span className="quick-apply-fee-label">You'll earn</span>
+                    <span className="quick-apply-fee-amount quick-apply-fee-payout">
+                      ${feeBreakdown.payout.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="quick-apply-fee-row">
+                    <span className="quick-apply-fee-label quick-apply-fee-muted">
+                      Platform fee ({feeBreakdown.feeRate}%)
+                    </span>
+                    <span className="quick-apply-fee-amount quick-apply-fee-muted">
+                      -${feeBreakdown.fee.toFixed(2)}
+                    </span>
+                  </div>
+                  {isPremium ? (
+                    <div className="quick-apply-fee-premium">
+                      <Shield size={14} className="quick-apply-fee-premium-icon" />
+                      <span>Premium saved you ${(feeBreakdown.savings > 0 ? (Number(feeBreakdown.baseAmount) * (PLATFORM_FEE_PERCENT - PREMIUM_FEE_PERCENT) / 100).toFixed(2) : '0.00')} on this task</span>
+                    </div>
+                  ) : feeBreakdown.savings > 0 ? (
+                    <div className="quick-apply-fee-upsell">
+                      <Shield size={14} className="quick-apply-fee-premium-icon" />
+                      <span>
+                        With Premium you'd earn ${feeBreakdown.premiumPayout.toFixed(2)}{' '}
+                        <a href="/premium" target="_blank" rel="noopener noreferrer" className="quick-apply-fee-upgrade-link">
+                          Upgrade
+                        </a>
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
 
               {error && (
                 <div className="quick-apply-modal-error">

@@ -36,14 +36,14 @@ export default function PosterInfoBar({ task }) {
   const isAnonymous = task.is_anonymous || !poster;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(26,26,26,0.08)] p-5 mb-6 shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-5 mb-6 shadow-sm">
       <div className="flex items-center gap-4">
         {/* Avatar */}
         <div
           className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
             isAnonymous
-              ? 'bg-[#F5F2ED] text-[#8A8A8A]'
-              : 'bg-[rgba(15,76,92,0.1)] text-[#0F4C5C]'
+              ? 'bg-[#F5F3F0] text-[#888888]'
+              : 'bg-[rgba(232,133,61,0.1)] text-[#E8853D]'
           }`}
         >
           {isAnonymous ? '?' : (poster.name?.[0]?.toUpperCase() || 'A')}
@@ -61,7 +61,7 @@ export default function PosterInfoBar({ task }) {
               <span
                 className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
                   poster.type === 'human'
-                    ? 'bg-[#D1E9F0] text-[#0F4C5C]'
+                    ? 'bg-[rgba(232,133,61,0.1)] text-[#E8853D]'
                     : 'bg-[#E8D5F0] text-[#6B21A8]'
                 }`}
               >
@@ -71,12 +71,12 @@ export default function PosterInfoBar({ task }) {
 
             {/* Verified badge */}
             {!isAnonymous && poster.verified && (
-              <span className="text-[#059669] text-sm" title="Verified">✓</span>
+              <span className="text-[#16A34A] text-sm" title="Verified">✓</span>
             )}
           </div>
 
           {/* Meta row */}
-          <div className="flex items-center gap-3 mt-1 text-sm text-[#8A8A8A]">
+          <div className="flex items-center gap-3 mt-1 text-sm text-[#888888]">
             <span>{formatTimeAgo(task.created_at)}</span>
             {!isAnonymous && poster.total_tasks_posted != null && (
               <>
