@@ -4173,11 +4173,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <button
                       onClick={async () => {
                         const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
+                        console.log('[Availability] Toggling:', user?.availability, '→', newStatus)
                         try {
                           let token = user.token || ''
                           if (supabase) {
                             const { data: { session } } = await supabase.auth.getSession()
                             if (session?.access_token) token = session.access_token
+                          }
+                          if (!token) {
+                            console.error('[Availability] No auth token available')
+                            toast.error('Please sign in again to update availability')
+                            return
                           }
                           const res = await fetch(`${API_URL}/humans/profile`, {
                             method: 'PUT',
@@ -4186,14 +4192,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           })
                           if (res.ok) {
                             const data = await res.json()
+                            console.log('[Availability] API response:', data.user?.availability)
                             if (data.user) {
-                              const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
+                              const updatedUser = { ...data.user, token, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                               onUserUpdate(updatedUser)
-                              localStorage.setItem('user', JSON.stringify(updatedUser))
+                              localStorage.setItem('user', JSON.stringify({ ...updatedUser, token: undefined }))
                             }
                             toast.success(newStatus === 'available' ? 'You\'re now available for work' : 'You\'re now unavailable')
                           } else {
                             const err = await res.json().catch(() => ({}))
+                            console.error('[Availability] API error:', res.status, err)
                             toast.error(err.error || 'Failed to update availability')
                           }
                         } catch (e) { console.error('[Availability] Error:', e); toast.error('Failed to update availability') }
