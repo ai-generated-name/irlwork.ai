@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { BadgeCheck, ArrowLeft, Loader2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
-import MarketingFooter from '../components/Footer'
 import { supabase } from '../context/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
@@ -195,7 +194,7 @@ export default function PremiumPage({ user }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingTop: 56 }}>
       {/* Header */}
       <div style={{
         background: 'var(--bg-secondary)', borderBottom: '1px solid rgba(26,26,26,0.06)',
@@ -522,7 +521,6 @@ export default function PremiumPage({ user }) {
         }
       `}</style>
 
-      <MarketingFooter />
     </div>
   )
 }

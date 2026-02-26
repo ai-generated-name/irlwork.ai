@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Bot } from 'lucide-react'
-import MarketingFooter from '../components/Footer'
+import { ArrowRight, Bot } from 'lucide-react'
 
 /* ─── Animated floating orb (pure CSS) ─── */
 function GradientOrb({ size = 400, top, left, right, bottom, color1, color2, delay = 0, duration = 20 }) {
@@ -380,42 +379,7 @@ export default function ThesisPage() {
           <GradientOrb size={400} bottom="-100px" right="20%" color1="rgba(16,185,129,0.08)" color2="rgba(16,185,129,0)" delay={6} duration={22} />
         </div>
 
-        {/* ─── Nav ─── */}
-        <nav style={{
-          padding: '20px var(--space-6)',
-          position: 'relative',
-          zIndex: 20,
-          maxWidth: '1200px',
-          margin: '0 auto',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <a href="/" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            textDecoration: 'none',
-            color: 'var(--text-secondary)',
-            fontSize: '14px',
-            fontWeight: 500,
-            transition: 'color 0.2s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
-          >
-            <ArrowLeft size={16} />
-            Back to Home
-          </a>
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
-            color: 'var(--text-tertiary)',
-            letterSpacing: '0.05em',
-          }}>
-            FEB 2026
-          </div>
-        </nav>
+        {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
 
         {/* ═══════════════════════════════════════
@@ -426,7 +390,7 @@ export default function ThesisPage() {
           zIndex: 1,
           maxWidth: '900px',
           margin: '0 auto',
-          padding: '80px var(--space-6) 0',
+          padding: '100px var(--space-6) 0',
           textAlign: 'center',
         }}>
           <ParticleField />
@@ -880,7 +844,6 @@ export default function ThesisPage() {
           </Reveal>
         </article>
       </div>
-      <MarketingFooter />
     </>
   )
 }
