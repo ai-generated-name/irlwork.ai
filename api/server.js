@@ -572,6 +572,9 @@ function getAvatarUrl(user, req) {
  * 3. API key (irl_sk_... format for programmatic access)
  * 4. Legacy API key in users table
  */
+// Explicit column list for users table to avoid Supabase schema cache issues with select('*')
+const USER_SELECT_COLUMNS = 'id, email, password_hash, name, type, api_key, avatar_url, bio, hourly_rate, account_type, city, state, zip, service_radius, professional_category, license_number, certification_url, insurance_provider, insurance_expiry, portfolio_url, skills, social_links, profile_completeness, availability, rating, review_count, jobs_completed, verified, wallet_address, wallet_chain, stripe_account_id, created_at, updated_at, travel_radius, needs_onboarding, languages, headline, timezone, country, country_code, latitude, longitude, total_tasks_completed, total_tasks_posted, total_tasks_accepted, total_disputes_filed, total_paid, last_active_at, onboarding_completed_at, role, agent_name, webhook_url, stripe_customer_id, stripe_onboarding_complete, webhook_secret, avatar_data, avatar_r2_key, phone, email_verified_at, deposit_address, notification_preferences';
+
 async function getUserByToken(token) {
   if (!token || !supabase) return null;
 
@@ -588,7 +591,7 @@ async function getUserByToken(token) {
         // JWT verified — look up user in our DB by Supabase auth user ID
         const { data: dbUser } = await supabase
           .from('users')
-          .select('*')
+          .select(USER_SELECT_COLUMNS)
           .eq('id', authUser.id)
           .single();
         if (dbUser) return dbUser;
@@ -597,7 +600,7 @@ async function getUserByToken(token) {
         if (authUser.email) {
           const { data: byEmail } = await supabase
             .from('users')
-            .select('*')
+            .select(USER_SELECT_COLUMNS)
             .eq('email', authUser.email)
             .single();
           if (byEmail) return byEmail;
@@ -652,7 +655,7 @@ async function getUserByToken(token) {
       // Get the user
       const { data: user } = await supabase
         .from('users')
-        .select('*')
+        .select(USER_SELECT_COLUMNS)
         .eq('id', apiKeyRecord.user_id)
         .single();
       return user;
@@ -1023,7 +1026,7 @@ app.post('/api/auth/login', async (req, res) => {
   // Fetch user by email (bcrypt hashes are non-deterministic, can't use .eq() for comparison)
   const { data: user, error } = await supabase
     .from('users')
-    .select('*')
+    .select(USER_SELECT_COLUMNS)
     .eq('email', email)
     .single();
 
@@ -1101,7 +1104,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
     // Check if user exists
     let { data: existingUser, error: selectError } = await supabase
       .from('users')
-      .select('*')
+      .select(USER_SELECT_COLUMNS)
       .eq('email', email)
       .single();
     
@@ -6452,10 +6455,9 @@ app.get('/api/humans/directory', async (req, res) => {
 app.get('/api/humans/:id/profile', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  // Use SELECT * to avoid 404s when columns from migrations haven't been applied yet
   let { data: user, error } = await supabase
     .from('users')
-    .select('*')
+    .select(USER_SELECT_COLUMNS)
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
@@ -6571,7 +6573,7 @@ app.get('/api/profile', async (req, res) => {
   // Get full profile data
   const { data: profile, error } = await supabase
     .from('users')
-    .select('*')
+    .select(USER_SELECT_COLUMNS)
     .eq('id', user.id)
     .single();
   
