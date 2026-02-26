@@ -5680,7 +5680,9 @@ function App() {
       {isMarketingPage ? (
         <>
           <MarketingNavbar user={user} activePage={activePage} />
-          {routeContent}
+          <div className="marketing-content-wrapper">
+            {routeContent}
+          </div>
           <MarketingFooter />
         </>
       ) : (
