@@ -73,6 +73,9 @@ export default function BrowseTasksV2({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // All mappable tasks (fetched once for map pins when local results lack coordinates)
+  const [allMappableTasks, setAllMappableTasks] = useState([]);
+
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -190,6 +193,20 @@ export default function BrowseTasksV2({
     fetchTasks();
   }, [fetchTasks]);
 
+  // Fetch all tasks with coordinates once for map background pins
+  useEffect(() => {
+    async function fetchAllMappable() {
+      try {
+        const res = await fetch(`${API_URL}/tasks/available?radius_km=anywhere&include_remote=false&limit=100&sort=newest`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.tasks || []);
+        setAllMappableTasks(list.filter(t => t.latitude && t.longitude));
+      } catch {}
+    }
+    fetchAllMappable();
+  }, []);
+
   // Handle location change from CityAutocomplete
   // CityAutocomplete passes a single object: { city, latitude, longitude, country, ... }
   const handleLocationChange = (locationData) => {
@@ -238,6 +255,16 @@ export default function BrowseTasksV2({
       ? [location.lat, location.lng]
       : [10.8231, 106.6297]; // Default HCMC
   }, [location.lat, location.lng]);
+
+  // Tasks to show on map: filtered results + background mappable tasks (deduped)
+  const mapTasks = useMemo(() => {
+    const filteredWithCoords = tasks.filter(t => t.latitude && t.longitude);
+    if (filteredWithCoords.length > 0) return tasks; // filtered results have pins, use as-is
+    // No local pins — merge in all mappable tasks so the map isn't empty
+    const filteredIds = new Set(tasks.map(t => t.id));
+    const extra = allMappableTasks.filter(t => !filteredIds.has(t.id));
+    return [...tasks, ...extra];
+  }, [tasks, allMappableTasks]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(tasksTotal / ITEMS_PER_PAGE));
@@ -571,12 +598,12 @@ export default function BrowseTasksV2({
           </div>
         )}
 
-        {/* Map - hidden when all tasks are remote */}
+        {/* Map */}
         {(effectiveViewMode === 'split' || effectiveViewMode === 'map') && (
           <div className="browse-tasks-v2-map">
             <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>Loading map...</div>}>
               <TaskMap
-                tasks={tasks}
+                tasks={mapTasks}
                 center={mapCenter}
                 zoom={12}
                 radius={radius !== 'anywhere' ? parseFloat(radius) : null}
@@ -621,7 +648,7 @@ export default function BrowseTasksV2({
           </button>
           <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>Loading map...</div>}>
             <TaskMap
-              tasks={tasks}
+              tasks={mapTasks}
               center={mapCenter}
               zoom={12}
               radius={radius !== 'anywhere' ? parseFloat(radius) : null}
