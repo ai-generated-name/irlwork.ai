@@ -456,7 +456,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                       width: 7,
                       height: 7,
                       borderRadius: '50%',
-                      background: isAvailable ? '#10B981' : '#9CA3AF',
+                      background: isAvailable ? 'var(--success)' : '#9CA3AF',
                       display: 'inline-block',
                     }} />
                     {isAvailable ? 'Available' : 'Unavailable'}

@@ -9277,7 +9277,7 @@ select.select-v4-dark option:checked,
 }
 
 .hn-section-header h2 {
-  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-family: var(--font-display, 'DM Sans', sans-serif);
   font-size: clamp(28px, 5vw, 44px);
   font-weight: 700;
   letter-spacing: -0.03em;

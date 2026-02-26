@@ -4139,7 +4139,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         width: 9,
                         height: 9,
                         borderRadius: '50%',
-                        background: user?.availability === 'available' ? '#10B981' : '#9CA3AF',
+                        background: user?.availability === 'available' ? 'var(--success)' : '#9CA3AF',
                         marginTop: 5,
                         flexShrink: 0
                       }} />
@@ -4180,7 +4180,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         cursor: 'pointer',
                         position: 'relative',
                         transition: 'background 0.2s',
-                        background: user?.availability === 'available' ? '#10B981' : '#D1D5DB',
+                        background: user?.availability === 'available' ? 'var(--success)' : '#D1D5DB',
                         flexShrink: 0
                       }}
                     >

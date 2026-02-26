@@ -151,7 +151,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
                 lineHeight: 1.6,
                 overflow: 'auto',
                 margin: 0,
-                fontFamily: "'JetBrains Mono', 'Space Mono', monospace",
+                fontFamily: "var(--font-mono)",
                 maxHeight: 180,
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-all'
