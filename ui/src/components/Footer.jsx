@@ -35,7 +35,7 @@ export default function MarketingFooter() {
                 </svg>
               </a>
               <a
-                href="#"
+                href="https://github.com/IRLWork/mcp"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="footer-v4-social-link"
