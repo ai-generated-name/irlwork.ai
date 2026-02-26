@@ -6108,6 +6108,65 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
+      // ===== Subscriptions & Billing =====
+
+      case 'subscription_tiers': {
+        const { TIERS } = require('./config/tiers');
+        const tiers = Object.entries(TIERS).map(([key, config]) => ({
+          id: key,
+          name: config.name,
+          price_monthly: config.price_monthly,
+          price_annual: config.price_annual || null,
+          worker_fee_percent: config.worker_fee_percent,
+          poster_fee_percent: config.poster_fee_percent,
+          task_limit_monthly: config.task_limit_monthly === Infinity ? 'unlimited' : config.task_limit_monthly,
+          badge: config.badge,
+          badge_color: config.badge_color,
+          worker_priority: config.worker_priority,
+        }));
+        res.json({ tiers });
+        break;
+      }
+
+      case 'subscription_status': {
+        const { getUserSubscription } = require('./backend/services/subscriptionService');
+        const subscription = await getUserSubscription(supabase, user.id);
+        res.json({ subscription });
+        break;
+      }
+
+      case 'subscription_upgrade': {
+        const { createCheckoutSession } = require('./backend/services/subscriptionService');
+        const tier = params.tier;
+        const billingPeriod = params.billing_period || 'monthly';
+
+        if (!tier || !['builder', 'pro'].includes(tier)) {
+          return res.status(400).json({ error: 'tier parameter is required and must be "builder" or "pro"' });
+        }
+        if (billingPeriod && !['monthly', 'annual'].includes(billingPeriod)) {
+          return res.status(400).json({ error: 'billing_period must be "monthly" or "annual"' });
+        }
+
+        const { getTierConfig } = require('./config/tiers');
+        if (user.subscription_tier === tier) {
+          return res.status(400).json({ error: `You are already on the ${getTierConfig(tier).name} plan.` });
+        }
+
+        const result = await createCheckoutSession(supabase, user, tier, billingPeriod);
+        res.json(result);
+        break;
+      }
+
+      case 'subscription_portal': {
+        const { createBillingPortalSession } = require('./backend/services/subscriptionService');
+        if (!user.stripe_customer_id) {
+          return res.status(400).json({ error: 'No billing account found. Please subscribe to a plan first.' });
+        }
+        const portalResult = await createBillingPortalSession(user.stripe_customer_id);
+        res.json(portalResult);
+        break;
+      }
+
       default:
         res.status(400).json({ error: `Unknown method: ${method}` });
     }
