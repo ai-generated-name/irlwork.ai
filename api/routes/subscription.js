@@ -106,7 +106,15 @@ function initSubscriptionRoutes(supabase, getUserByToken, createNotification) {
       res.json(result);
     } catch (error) {
       console.error('[Subscription] Checkout error:', error.message);
-      res.status(500).json({ error: 'Failed to create checkout session' });
+      // Surface actionable errors to help diagnose configuration issues
+      if (error.message.includes('not configured') || error.message.includes('No Stripe price')) {
+        res.status(503).json({ error: 'Subscription billing is being set up. Please try again later.' });
+      } else if (error.message.includes('permissions')) {
+        console.error('[Subscription] Stripe API key lacks required permissions for checkout');
+        res.status(503).json({ error: 'Subscription billing is being set up. Please try again later.' });
+      } else {
+        res.status(500).json({ error: 'Failed to create checkout session. Please try again.' });
+      }
     }
   });
 
