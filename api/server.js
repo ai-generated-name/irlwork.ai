@@ -658,7 +658,9 @@ const USER_OPTIONAL_COLUMNS = [
   'onboarding_completed_at', 'role', 'agent_name', 'webhook_url',
   'stripe_customer_id', 'stripe_onboarding_complete', 'webhook_secret',
   'avatar_data', 'avatar_r2_key', 'phone',
-  'email_verified_at', 'deposit_address', 'notification_preferences'
+  'email_verified_at', 'deposit_address', 'notification_preferences',
+  'subscription_tier', 'subscription_status',
+  'subscription_current_period_end', 'subscription_cancel_at_period_end'
 ];
 
 // Built dynamically at startup by checkUserColumns()
@@ -691,26 +693,37 @@ async function getUserByToken(token) {
   if (!uuidRegex.test(cleanToken) && !cleanToken.startsWith('irl_sk_')) {
     try {
       const { data: { user: authUser }, error } = await supabase.auth.getUser(cleanToken);
+      if (error) {
+        console.error('[getUserByToken] JWT verify error:', error.message);
+      }
       if (authUser && !error) {
         // JWT verified — look up user in our DB by Supabase auth user ID
-        const { data: dbUser } = await supabase
+        const { data: dbUser, error: dbError } = await supabase
           .from('users')
           .select(USER_SELECT_COLUMNS)
           .eq('id', authUser.id)
           .single();
+        if (dbError) {
+          console.error('[getUserByToken] DB lookup by ID error:', dbError.message, 'for authUser.id:', authUser.id);
+        }
         if (dbUser) return dbUser;
 
         // Fall back to email lookup (handles ID mismatch from OAuth)
         if (authUser.email) {
-          const { data: byEmail } = await supabase
+          const { data: byEmail, error: emailError } = await supabase
             .from('users')
             .select(USER_SELECT_COLUMNS)
             .eq('email', authUser.email)
             .single();
+          if (emailError) {
+            console.error('[getUserByToken] DB lookup by email error:', emailError.message, 'for email:', authUser.email);
+          }
           if (byEmail) return byEmail;
         }
+        console.error('[getUserByToken] JWT valid but no DB user found. authUser.id:', authUser.id, 'email:', authUser.email);
       }
     } catch (e) {
+      console.error('[getUserByToken] JWT verification exception:', e.message);
       // JWT verification failed — continue to other auth methods
     }
   }
@@ -898,12 +911,7 @@ if (supabase) {
   console.log('[Startup] Subscription routes mounted at /api/subscription');
 }
 
-// ============ SUBSCRIPTION ROUTES ============
-if (supabase) {
-  const subscriptionRoutes = initSubscriptionRoutes(supabase, getUserByToken, createNotification);
-  app.use('/api/subscription', subscriptionRoutes);
-  console.log('[Startup] Subscription routes mounted at /api/subscription');
-}
+// (Subscription routes already mounted above with Stripe routes)
 
 // ============ NOTIFICATION ROUTES ============
 if (supabase) {

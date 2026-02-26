@@ -21,9 +21,15 @@ function initSubscriptionRoutes(supabase, getUserByToken, createNotification) {
   const requireAuth = async (req, res, next) => {
     try {
       const token = req.headers.authorization;
-      if (!token) return res.status(401).json({ error: 'Unauthorized' });
+      if (!token) {
+        console.error('[Subscription Routes] No token provided in Authorization header');
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
       req.user = await getUserByToken(token);
-      if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+      if (!req.user) {
+        console.error('[Subscription Routes] getUserByToken returned null for token (first 20 chars):', token.substring(0, 20) + '...');
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
       next();
     } catch (error) {
       console.error('[Subscription Routes] Auth error:', error.message);
