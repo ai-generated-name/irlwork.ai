@@ -1312,6 +1312,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
+  const [settingsPageTab, setSettingsPageTab] = useState('general')
 
   // Helper to update URL path without page reload
   const updateTabUrl = (tabId, mode) => {
@@ -4087,51 +4088,56 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <h1 className="dashboard-v4-page-title">Settings</h1>
 
-            {/* Membership & Billing */}
-            <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading...</div>}>
-              <MembershipBilling
-                user={user}
-                toast={toast}
-                onUserUpdate={(updates) => {
-                  const updatedUser = { ...user, ...updates }
-                  setUser(updatedUser)
-                  localStorage.setItem('user', JSON.stringify(updatedUser))
-                }}
-              />
-            </Suspense>
-
-            {/* Mode Toggle */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Mode</h2>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div>
-                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Dashboard Mode</p>
-                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Switch between working and hiring</p>
-                  </div>
-                  <span className={hiringMode ? 'v4-badge v4-badge-success' : 'v4-badge v4-badge-orange'}>
-                    {hiringMode ? 'Hiring' : 'Working'}
-                  </span>
-                </div>
-                <button className="v4-btn v4-btn-secondary" style={{ width: '100%' }} onClick={toggleHiringMode}>
-                  {hiringMode ? '← Switch to Working Mode' : 'Switch to Hiring Mode →'}
+            {/* Settings Page Tabs */}
+            <div className="settings-page-tabs">
+              {['General', 'Notifications', 'Account'].map(tab => (
+                <button
+                  key={tab}
+                  className={`settings-page-tab${settingsPageTab === tab.toLowerCase() ? ' settings-page-tab-active' : ''}`}
+                  onClick={() => setSettingsPageTab(tab.toLowerCase())}
+                >
+                  {tab}
                 </button>
-              </div>
+              ))}
             </div>
 
-            {/* Available for Work — Working mode only */}
-            {!hiringMode && (
-              <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Availability</h2>
-                <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+            {/* ===== GENERAL TAB ===== */}
+            {settingsPageTab === 'general' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                {/* Membership & Billing */}
+                <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading...</div>}>
+                  <MembershipBilling
+                    user={user}
+                    toast={toast}
+                    onUserUpdate={(updates) => {
+                      const updatedUser = { ...user, ...updates }
+                      setUser(updatedUser)
+                      localStorage.setItem('user', JSON.stringify(updatedUser))
+                    }}
+                  />
+                </Suspense>
+
+                {/* Available for Hire */}
+                <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Available for work</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                        {user?.availability === 'available'
-                          ? 'You\'re visible in search and can be directly hired.'
-                          : 'You\'re hidden from search. No one can hire you directly.'}
-                      </p>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <div style={{
+                        width: 9,
+                        height: 9,
+                        borderRadius: '50%',
+                        background: user?.availability === 'available' ? '#10B981' : '#9CA3AF',
+                        marginTop: 5,
+                        flexShrink: 0
+                      }} />
+                      <div>
+                        <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 2 }}>Available for Hire</p>
+                        <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                          {user?.availability === 'available'
+                            ? 'Your profile is visible and agents can send task invitations'
+                            : 'Your profile is hidden from search results'}
+                        </p>
+                      </div>
                     </div>
                     <button
                       onClick={async () => {
@@ -4161,7 +4167,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         cursor: 'pointer',
                         position: 'relative',
                         transition: 'background 0.2s',
-                        background: user?.availability === 'available' ? '#16A34A' : '#D1D5DB',
+                        background: user?.availability === 'available' ? '#10B981' : '#D1D5DB',
                         flexShrink: 0
                       }}
                     >
@@ -4179,125 +4185,191 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     </button>
                   </div>
                 </div>
+
+                {/* Dashboard Mode — Segmented Control */}
+                <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 2 }}>Dashboard Mode</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Switch between working and hiring</p>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      background: 'rgba(26,26,26,0.06)',
+                      borderRadius: 999,
+                      padding: 3,
+                      gap: 2
+                    }}>
+                      <button
+                        onClick={() => {
+                          if (hiringMode) {
+                            setHiringMode(false)
+                            setUserProperties({ user_mode: 'working' })
+                            trackEvent('mode_switch', { mode: 'working' })
+                            updateTabUrl('settings', false)
+                          }
+                        }}
+                        style={{
+                          padding: '6px 16px',
+                          borderRadius: 999,
+                          border: 'none',
+                          fontSize: 13,
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          background: !hiringMode ? 'white' : 'transparent',
+                          color: !hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                          boxShadow: !hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                        }}
+                      >
+                        Working
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!hiringMode) {
+                            setHiringMode(true)
+                            setUserProperties({ user_mode: 'hiring' })
+                            trackEvent('mode_switch', { mode: 'hiring' })
+                            updateTabUrl('settings', true)
+                          }
+                        }}
+                        style={{
+                          padding: '6px 16px',
+                          borderRadius: 999,
+                          border: 'none',
+                          fontSize: 13,
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          background: hiringMode ? 'white' : 'transparent',
+                          color: hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                          boxShadow: hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                        }}
+                      >
+                        Hiring
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Notification Preferences */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Notifications</h2>
-
-              {/* Channel toggle */}
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Email notifications</p>
-                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Receive notifications via email when you're offline</p>
+            {/* ===== NOTIFICATIONS TAB ===== */}
+            {settingsPageTab === 'notifications' && (
+              <div>
+                <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                  {/* Email notifications master toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>Email notifications</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Receive notifications via email when you're offline</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={localStorage.getItem('irlwork_email_notifs') !== 'false'}
+                      onChange={(e) => {
+                        localStorage.setItem('irlwork_email_notifs', e.target.checked)
+                        toast.success(e.target.checked ? 'Email notifications enabled' : 'Email notifications disabled')
+                      }}
+                      style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
+                    />
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={localStorage.getItem('irlwork_email_notifs') !== 'false'}
-                    onChange={(e) => {
-                      localStorage.setItem('irlwork_email_notifs', e.target.checked)
-                      toast.success(e.target.checked ? 'Email notifications enabled' : 'Email notifications disabled')
+
+                  <div style={{ borderTop: '1px solid var(--border-secondary)', margin: '14px 0', opacity: 0.5 }} />
+
+                  {/* Category toggles */}
+                  <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>Notify me about</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(hiringMode ? [
+                      { key: 'new_applications', label: 'New applications', desc: 'When someone applies to your posted task' },
+                      { key: 'task_completed', label: 'Task completions', desc: 'When a worker marks a task as done' },
+                      { key: 'messages', label: 'Messages', desc: 'New messages from workers' },
+                      { key: 'reviews', label: 'Reviews received', desc: 'When a worker leaves you a review' },
+                    ] : [
+                      { key: 'task_assignments', label: 'Task assignments', desc: 'When you\'re assigned or invited to a task' },
+                      { key: 'task_updates', label: 'Task updates', desc: 'Status changes on tasks you\'re working on' },
+                      { key: 'payments', label: 'Payments', desc: 'Payment received, pending, or failed' },
+                      { key: 'messages', label: 'Messages', desc: 'New messages from agents' },
+                      { key: 'reviews', label: 'Reviews received', desc: 'When an agent leaves you a review' },
+                    ]).map(({ key, label, desc }) => (
+                      <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', padding: '6px 0' }}>
+                        <input
+                          type="checkbox"
+                          defaultChecked={localStorage.getItem(`irlwork_notif_${key}`) !== 'false'}
+                          onChange={(e) => localStorage.setItem(`irlwork_notif_${key}`, e.target.checked)}
+                          style={{ width: 18, height: 18, marginTop: 2, accentColor: 'var(--orange-500)', flexShrink: 0 }}
+                        />
+                        <div>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14 }}>{label}</span>
+                          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{desc}</p>
+                        </div>
+                      </label>
+                    ))}
+
+                    <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: 8, marginTop: 2 }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', padding: '6px 0' }}>
+                        <input
+                          type="checkbox"
+                          defaultChecked={localStorage.getItem('irlwork_notif_marketing') === 'true'}
+                          onChange={(e) => localStorage.setItem('irlwork_notif_marketing', e.target.checked)}
+                          style={{ width: 18, height: 18, marginTop: 2, accentColor: 'var(--orange-500)', flexShrink: 0 }}
+                        />
+                        <div>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14 }}>Marketing & updates</span>
+                          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>Product news, tips, and feature announcements</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ===== ACCOUNT TAB ===== */}
+            {settingsPageTab === 'account' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Account info card */}
+                <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
+                  <div style={{ marginBottom: 14 }}>
+                    <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14 }}>Email</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{user?.email}</p>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: 14, marginBottom: 14, opacity: 0.5 }} />
+
+                  <div>
+                    <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14 }}>Member since</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}</p>
+                  </div>
+
+                  <button
+                    className="v4-btn v4-btn-secondary"
+                    style={{ width: '100%', marginTop: 16 }}
+                    onClick={onLogout}
+                  >
+                    Sign Out
+                  </button>
+                </div>
+
+                {/* Danger Zone */}
+                <div style={{ padding: '14px 16px', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-lg)', background: 'rgba(239,68,68,0.04)' }}>
+                  <p style={{ fontWeight: 500, color: '#FF5F57', marginBottom: 4, fontSize: 14 }}>Danger Zone</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Deactivating your account hides your profile and pauses all activity. You can reactivate anytime by signing back in.</p>
+                  <button
+                    className="v4-btn v4-btn-secondary"
+                    style={{ fontSize: 13, color: '#FF5F57', borderColor: 'rgba(239,68,68,0.3)' }}
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to deactivate your account? Your profile will be hidden and all active tasks will be paused. You can reactivate by signing back in.')) {
+                        toast.success('Account deactivated')
+                        onLogout()
+                      }
                     }}
-                    style={{ width: 20, height: 20, accentColor: 'var(--orange-500)', cursor: 'pointer', flexShrink: 0 }}
-                  />
+                  >
+                    Deactivate Account
+                  </button>
                 </div>
               </div>
-
-              {/* Category toggles */}
-              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 12 }}>Notify me about</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {(hiringMode ? [
-                  { key: 'new_applications', label: 'New applications', desc: 'When someone applies to your posted task' },
-                  { key: 'task_completed', label: 'Task completions', desc: 'When a worker marks a task as done' },
-                  { key: 'messages', label: 'Messages', desc: 'New messages from workers' },
-                  { key: 'reviews', label: 'Reviews received', desc: 'When a worker leaves you a review' },
-                ] : [
-                  { key: 'task_assignments', label: 'Task assignments', desc: 'When you\'re assigned or invited to a task' },
-                  { key: 'task_updates', label: 'Task updates', desc: 'Status changes on tasks you\'re working on' },
-                  { key: 'payments', label: 'Payments', desc: 'Payment received, pending, or failed' },
-                  { key: 'messages', label: 'Messages', desc: 'New messages from agents' },
-                  { key: 'reviews', label: 'Reviews received', desc: 'When an agent leaves you a review' },
-                ]).map(({ key, label, desc }) => (
-                  <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', padding: '8px 0' }}>
-                    <input
-                      type="checkbox"
-                      defaultChecked={localStorage.getItem(`irlwork_notif_${key}`) !== 'false'}
-                      onChange={(e) => localStorage.setItem(`irlwork_notif_${key}`, e.target.checked)}
-                      style={{ width: 18, height: 18, marginTop: 2, accentColor: 'var(--orange-500)', flexShrink: 0 }}
-                    />
-                    <div>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14 }}>{label}</span>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{desc}</p>
-                    </div>
-                  </label>
-                ))}
-
-                <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: 12, marginTop: 4 }}>
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', padding: '8px 0' }}>
-                    <input
-                      type="checkbox"
-                      defaultChecked={localStorage.getItem('irlwork_notif_marketing') === 'true'}
-                      onChange={(e) => localStorage.setItem('irlwork_notif_marketing', e.target.checked)}
-                      style={{ width: 18, height: 18, marginTop: 2, accentColor: 'var(--orange-500)', flexShrink: 0 }}
-                    />
-                    <div>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14 }}>Marketing & updates</span>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Product news, tips, and feature announcements</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Account */}
-            <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 24 }}>Account</h2>
-
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Email</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{user?.email}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Member since</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                className="v4-btn v4-btn-secondary"
-                style={{ width: '100%', marginBottom: 12 }}
-                onClick={onLogout}
-              >
-                Sign Out
-              </button>
-
-              <div style={{ padding: 16, border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-lg)', background: 'rgba(239,68,68,0.04)' }}>
-                <p style={{ fontWeight: 500, color: '#FF5F57', marginBottom: 4, fontSize: 14 }}>Danger Zone</p>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Deactivating your account hides your profile and pauses all activity. You can reactivate anytime by signing back in.</p>
-                <button
-                  className="v4-btn v4-btn-secondary"
-                  style={{ fontSize: 13, color: '#FF5F57', borderColor: 'rgba(239,68,68,0.3)' }}
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to deactivate your account? Your profile will be hidden and all active tasks will be paused. You can reactivate by signing back in.')) {
-                      toast.success('Account deactivated')
-                      onLogout()
-                    }
-                  }}
-                >
-                  Deactivate Account
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         )}
 
