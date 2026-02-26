@@ -1,16 +1,139 @@
 const { stripe } = require('../lib/stripe');
 const { getTierConfig, TIERS } = require('../../config/tiers');
 
+// Price map — populated from env vars, or auto-provisioned from Stripe
 const TIER_PRICE_MAP = {
   builder: {
-    monthly: process.env.STRIPE_PRICE_BUILDER,
-    annual: process.env.STRIPE_PRICE_BUILDER_ANNUAL,
+    monthly: process.env.STRIPE_PRICE_BUILDER || null,
+    annual: process.env.STRIPE_PRICE_BUILDER_ANNUAL || null,
   },
   pro: {
-    monthly: process.env.STRIPE_PRICE_PRO,
-    annual: process.env.STRIPE_PRICE_PRO_ANNUAL,
+    monthly: process.env.STRIPE_PRICE_PRO || null,
+    annual: process.env.STRIPE_PRICE_PRO_ANNUAL || null,
   },
 };
+
+// Tier product/pricing definitions for auto-provisioning
+const TIER_DEFINITIONS = {
+  builder: {
+    name: 'irlwork.ai Builder Plan',
+    description: 'Enhanced visibility, lower fees, unlimited task posting',
+    monthly_amount: 1000, // $10.00
+    annual_amount: 9000,  // $90.00
+  },
+  pro: {
+    name: 'irlwork.ai Pro Plan',
+    description: 'Max visibility, lowest fees, unlimited task posting',
+    monthly_amount: 3000, // $30.00
+    annual_amount: 27000, // $270.00
+  },
+};
+
+let _pricesProvisioned = false;
+
+/**
+ * Ensure Stripe products and prices exist. Creates them if missing.
+ * Called lazily on first checkout attempt.
+ */
+async function ensureStripePrices() {
+  if (_pricesProvisioned) return;
+  if (!stripe) return;
+
+  // Check if all prices are already configured
+  const allSet = Object.values(TIER_PRICE_MAP).every(p => p.monthly && p.annual);
+  if (allSet) {
+    _pricesProvisioned = true;
+    return;
+  }
+
+  console.log('[Subscription] Auto-provisioning missing Stripe products/prices...');
+
+  for (const [tier, def] of Object.entries(TIER_DEFINITIONS)) {
+    if (TIER_PRICE_MAP[tier].monthly && TIER_PRICE_MAP[tier].annual) continue;
+
+    try {
+      // Search for existing product by metadata
+      let productId = null;
+      const existingProducts = await stripe.products.search({
+        query: `metadata["tier"]:"${tier}"`,
+      });
+      if (existingProducts.data.length > 0) {
+        productId = existingProducts.data[0].id;
+        console.log(`[Subscription] Found existing ${tier} product: ${productId}`);
+      } else {
+        const product = await stripe.products.create({
+          name: def.name,
+          description: def.description,
+          metadata: { tier, platform: 'irlwork' },
+        });
+        productId = product.id;
+        console.log(`[Subscription] Created ${tier} product: ${productId}`);
+      }
+
+      // Create monthly price if missing
+      if (!TIER_PRICE_MAP[tier].monthly) {
+        // Search for existing price
+        const existingPrices = await stripe.prices.list({
+          product: productId,
+          active: true,
+          type: 'recurring',
+        });
+        const monthlyPrice = existingPrices.data.find(p => p.recurring?.interval === 'month');
+        if (monthlyPrice) {
+          TIER_PRICE_MAP[tier].monthly = monthlyPrice.id;
+          console.log(`[Subscription] Found existing ${tier} monthly price: ${monthlyPrice.id}`);
+        } else {
+          const price = await stripe.prices.create({
+            product: productId,
+            unit_amount: def.monthly_amount,
+            currency: 'usd',
+            recurring: { interval: 'month' },
+            metadata: { tier, period: 'monthly' },
+          });
+          TIER_PRICE_MAP[tier].monthly = price.id;
+          console.log(`[Subscription] Created ${tier} monthly price: ${price.id} ($${def.monthly_amount / 100}/mo)`);
+        }
+      }
+
+      // Create annual price if missing
+      if (!TIER_PRICE_MAP[tier].annual) {
+        const existingPrices = await stripe.prices.list({
+          product: productId,
+          active: true,
+          type: 'recurring',
+        });
+        const annualPrice = existingPrices.data.find(p => p.recurring?.interval === 'year');
+        if (annualPrice) {
+          TIER_PRICE_MAP[tier].annual = annualPrice.id;
+          console.log(`[Subscription] Found existing ${tier} annual price: ${annualPrice.id}`);
+        } else {
+          const price = await stripe.prices.create({
+            product: productId,
+            unit_amount: def.annual_amount,
+            currency: 'usd',
+            recurring: { interval: 'year' },
+            metadata: { tier, period: 'annual' },
+          });
+          TIER_PRICE_MAP[tier].annual = price.id;
+          console.log(`[Subscription] Created ${tier} annual price: ${price.id} ($${def.annual_amount / 100}/yr)`);
+        }
+      }
+    } catch (e) {
+      console.error(`[Subscription] Failed to provision ${tier} prices:`, e.message);
+      if (e.message.includes('permissions')) {
+        console.error('[Subscription] ⚠️ Stripe API key lacks permissions to create products/prices.');
+        console.error('[Subscription] Please use a full secret key (sk_live_* or sk_test_*) or set STRIPE_PRICE_* env vars.');
+      }
+    }
+  }
+
+  _pricesProvisioned = true;
+
+  // Log final state
+  for (const [tier, prices] of Object.entries(TIER_PRICE_MAP)) {
+    console.log(`[Subscription] ${tier}: monthly=${prices.monthly || 'MISSING'}, annual=${prices.annual || 'MISSING'}`);
+  }
+}
 
 /**
  * Look up the tier name from a Stripe price ID.
@@ -54,11 +177,15 @@ async function getUserByStripeCustomer(supabase, stripeCustomerId) {
  */
 async function createCheckoutSession(supabase, user, tier, billingPeriod = 'monthly') {
   if (!stripe) throw new Error('Stripe not configured');
+
+  // Auto-provision Stripe products/prices if not configured via env vars
+  await ensureStripePrices();
+
   const prices = TIER_PRICE_MAP[tier];
   if (!prices) throw new Error(`No Stripe price configured for tier: ${tier}`);
 
   const priceId = billingPeriod === 'annual' ? prices.annual : prices.monthly;
-  if (!priceId) throw new Error(`No Stripe price configured for tier: ${tier}, period: ${billingPeriod}`);
+  if (!priceId) throw new Error(`No Stripe price configured for tier: ${tier}, period: ${billingPeriod}. Please set STRIPE_PRICE_${tier.toUpperCase()}${billingPeriod === 'annual' ? '_ANNUAL' : ''} or use a Stripe key with product/price creation permissions.`);
 
   // Ensure user has a Stripe customer
   const { getOrCreateStripeCustomer } = require('./stripeService');
@@ -445,6 +572,7 @@ async function upsertSubscription(supabase, userId, fields) {
 module.exports = {
   createCheckoutSession,
   createBillingPortalSession,
+  ensureStripePrices,
   handleCheckoutCompleted,
   handleSubscriptionCreated,
   handleSubscriptionUpdated,
