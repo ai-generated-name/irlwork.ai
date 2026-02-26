@@ -280,9 +280,7 @@ export default function BrowseTasksV2({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Auto-switch to list view when all visible tasks are remote
-  const allTasksRemote = tasks.length > 0 && tasks.every(t => t.is_remote);
-  const effectiveViewMode = (allTasksRemote && viewMode === 'split') ? 'list' : viewMode;
+  const effectiveViewMode = viewMode;
 
   return (
     <div className="browse-tasks-v2">
