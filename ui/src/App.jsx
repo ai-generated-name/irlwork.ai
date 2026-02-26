@@ -2314,8 +2314,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           >
             <span style={{ display: 'flex', alignItems: 'center' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" fill="#D4A017" />
-                <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="10" stroke="#B8860B" strokeWidth="2" fill="none" />
+                <path d="M9 12l2 2 4-4" stroke="#B8860B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
             <span>Upgrade to Premium</span>
@@ -3429,15 +3429,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </button>
             </div>
 
-            {/* Profile warning banner — auto-dismiss when profile is meaningfully complete */}
+            {/* Profile warning banner — smart contextual messaging */}
             {(() => {
-              const hasPhoto = !!user?.avatar_url
               const hasBio = !!(user?.bio && user.bio.trim().length > 10)
               const hasSkills = Array.isArray(user?.skills) && user.skills.length > 0
-              const hasLang = Array.isArray(user?.languages) && user.languages.length > 0
-              const criteria = [hasPhoto, hasBio, hasSkills, hasLang]
-              const metCount = criteria.filter(Boolean).length
-              if (metCount >= 3) return null
+              const hasHeadline = !!(user?.headline && user.headline.trim())
+              const hasPhoto = !!user?.avatar_url
+
+              // Priority order: Bio → Skills → Headline → Photo
+              let bannerMessage = null
+              if (!hasBio) bannerMessage = 'Add a bio to stand out — profiles with bios get 2× more task invites'
+              else if (!hasSkills) bannerMessage = 'Add your skills to get matched with higher-paying tasks'
+              else if (!hasHeadline) bannerMessage = 'Add a headline so agents know what you\'re great at'
+              else if (!hasPhoto) bannerMessage = 'Add a profile photo — profiles with photos are trusted more by agents'
+
+              if (!bannerMessage) return null
               return (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -3448,7 +3454,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   position: 'relative',
                 }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                  <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>Update your profile to help agents find you</span>
+                  <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{bannerMessage}</span>
                   <button
                     onClick={(e) => e.currentTarget.parentElement.style.display = 'none'}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', fontSize: 16, lineHeight: 1 }}
@@ -3653,27 +3659,41 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
-            {/* Profile completion banner */}
-            <div style={{
-              maxWidth: 600,
-              marginBottom: 16,
-              padding: '12px 16px',
-              borderRadius: 10,
-              background: 'var(--orange-50, #fff7ed)',
-              border: '1px solid var(--orange-200, #fed7aa)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              fontSize: 14,
-              color: 'var(--orange-700, #c2410c)',
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-              <span>Update your profile to help agents find you.</span>
-            </div>
+            {/* Profile completion banner — smart contextual messaging */}
+            {(() => {
+              const hasBio = !!(user?.bio && user.bio.trim().length > 10)
+              const hasSkills = Array.isArray(user?.skills) && user.skills.length > 0
+              const hasHeadline = !!(user?.headline && user.headline.trim())
+              const hasPhoto = !!user?.avatar_url
+              let msg = null
+              if (!hasBio) msg = 'Add a bio to stand out — profiles with bios get 2× more task invites'
+              else if (!hasSkills) msg = 'Add your skills to get matched with higher-paying tasks'
+              else if (!hasHeadline) msg = 'Add a headline so agents know what you\'re great at'
+              else if (!hasPhoto) msg = 'Add a profile photo — profiles with photos are trusted more by agents'
+              if (!msg) return null
+              return (
+                <div style={{
+                  maxWidth: 600,
+                  marginBottom: 16,
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  background: 'var(--orange-50, #fff7ed)',
+                  border: '1px solid var(--orange-200, #fed7aa)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 14,
+                  color: 'var(--orange-700, #c2410c)',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <span>{msg}</span>
+                </div>
+              )
+            })()}
 
             {/* Profile editing sub-tabs */}
             <div className="settings-tabs">
