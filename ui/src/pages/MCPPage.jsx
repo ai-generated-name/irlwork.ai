@@ -380,7 +380,7 @@ export default function MCPPage() {
 
         {/* ===== ALL METHODS ===== */}
         <section id="methods" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'🛠️'}</span> All Methods ({22})</h2>
+          <h2 className="mcp-v4-section-title"><span>{'🛠️'}</span> All Methods ({26})</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 14 }}>
             Click any method to expand its full parameter and response documentation.
           </p>
@@ -1026,6 +1026,122 @@ export default function MCPPage() {
     "type": "bug",
     "urgency": "normal"
   }
+}`}
+          />
+
+          {/* --- Subscriptions & Billing --- */}
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Subscriptions & Billing</h3>
+
+          <MethodCard
+            method="subscription_tiers"
+            description="Get available subscription plans and pricing (no auth required)"
+            params={[]}
+            response={`{
+  "tiers": [
+    {
+      "id": "free",
+      "name": "Free",
+      "price_monthly": 0,
+      "price_annual": null,
+      "worker_fee_percent": 15,
+      "poster_fee_percent": 15,
+      "task_limit_monthly": 3,
+      "badge": null,
+      "worker_priority": 0
+    },
+    {
+      "id": "builder",
+      "name": "Builder",
+      "price_monthly": 10,
+      "price_annual": 90,
+      "worker_fee_percent": 10,
+      "poster_fee_percent": 10,
+      "task_limit_monthly": "unlimited",
+      "badge": "builder",
+      "worker_priority": 1
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "price_monthly": 30,
+      "price_annual": 270,
+      "worker_fee_percent": 5,
+      "poster_fee_percent": 5,
+      "task_limit_monthly": "unlimited",
+      "badge": "pro",
+      "worker_priority": 2
+    }
+  ]
+}`}
+            example={`{
+  "method": "subscription_tiers",
+  "params": {}
+}`}
+          />
+
+          <MethodCard
+            method="subscription_status"
+            description="Get your current subscription tier and billing status"
+            params={[]}
+            response={`{
+  "subscription": {
+    "tier": "free",
+    "status": null,
+    "current_period_end": null,
+    "cancel_at_period_end": false
+  }
+}`}
+            errors={[
+              { code: '401', desc: 'Missing or invalid API key' },
+            ]}
+            example={`{
+  "method": "subscription_status",
+  "params": {}
+}`}
+          />
+
+          <MethodCard
+            method="subscription_upgrade"
+            description="Start a subscription upgrade — returns a Stripe checkout URL for the user to complete payment"
+            params={[
+              { name: 'tier', type: 'string', required: true, desc: '"builder" or "pro"' },
+              { name: 'billing_period', type: 'string', required: false, desc: '"monthly" (default) or "annual"' },
+            ]}
+            response={`{
+  "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_...",
+  "session_id": "cs_live_..."
+}`}
+            errors={[
+              { code: '400', desc: 'Invalid tier or billing_period' },
+              { code: '400', desc: 'Already on the requested plan' },
+              { code: '401', desc: 'Missing or invalid API key' },
+              { code: '503', desc: 'Stripe billing not configured' },
+            ]}
+            notes={'Returns a Stripe Checkout URL. The user must open this URL in their browser to complete payment. Agents cannot enter payment details — present the URL to the user.'}
+            example={`{
+  "method": "subscription_upgrade",
+  "params": {
+    "tier": "builder",
+    "billing_period": "monthly"
+  }
+}`}
+          />
+
+          <MethodCard
+            method="subscription_portal"
+            description="Get a Stripe billing portal URL to manage subscription, update payment method, or cancel"
+            params={[]}
+            response={`{
+  "portal_url": "https://billing.stripe.com/p/session/..."
+}`}
+            errors={[
+              { code: '400', desc: 'No billing account found — subscribe to a plan first' },
+              { code: '401', desc: 'Missing or invalid API key' },
+            ]}
+            notes={'Returns a Stripe Billing Portal URL. The user can manage their subscription, update payment methods, view invoices, or cancel their plan.'}
+            example={`{
+  "method": "subscription_portal",
+  "params": {}
 }`}
           />
         </section>
