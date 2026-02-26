@@ -2266,26 +2266,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           ))}
         </nav>
 
-        {/* Upgrade to Premium CTA */}
-        {user && (user.subscription_tier || 'free') !== 'pro' && (
-          <div style={{ padding: 'var(--space-2) var(--space-4)' }}>
-            <button
-              onClick={() => window.location.href = '/premium'}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: '#1A1A1A', color: '#FFFFFF',
-                fontSize: 13, fontWeight: 600, transition: 'background 0.2s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#333333'}
-              onMouseLeave={e => e.currentTarget.style.background = '#1A1A1A'}
-            >
-              <Sparkles size={16} style={{ color: '#F5A623' }} />
-              <span>Upgrade to Premium</span>
-            </button>
-          </div>
-        )}
-
         {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
           {hiringMode ? (
