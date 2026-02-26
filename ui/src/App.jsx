@@ -4133,17 +4133,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* Compact Plan Row */}
-                <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)' }}>
+                <div className="settings-plan-row" style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
+                    <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', flexShrink: 0 }}>
                       {(user?.subscription_tier || 'free').charAt(0).toUpperCase() + (user?.subscription_tier || 'free').slice(1)} Plan
                     </span>
-                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
-                      {user?.subscription_tier === 'business' ? '5% platform fee'
-                        : user?.subscription_tier === 'pro' ? '10% platform fee'
-                        : '15% platform fee'}
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)', minWidth: 0 }}>
+                      {user?.subscription_tier === 'business' ? '5% fee'
+                        : user?.subscription_tier === 'pro' ? '10% fee'
+                        : '15% fee'}
                       {' · '}
-                      <span style={{ color: 'var(--orange-600)' }}>Get verified to save on fees and increase visibility</span>
+                      <span style={{ color: 'var(--orange-600)' }}>Save on fees with verification</span>
                     </span>
                   </div>
                   <a href="/premium" style={{ fontSize: 13, fontWeight: 500, color: 'var(--orange-500)', textDecoration: 'none', whiteSpace: 'nowrap' }}>View Plans →</a>
@@ -4165,8 +4165,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 2 }}>Available for Hire</p>
                         <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                           {user?.availability === 'available'
-                            ? 'Your profile is visible and agents can send task invitations'
-                            : 'Your profile is hidden from search results'}
+                            ? 'Visible to agents for task invites'
+                            : 'Hidden from search results'}
                         </p>
                       </div>
                     </div>
@@ -4266,9 +4266,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           transition: 'all 0.2s',
                           background: !hiringMode ? 'white' : 'transparent',
                           color: !hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          boxShadow: !hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                          boxShadow: !hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
                         }}
                       >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
                         Working
                       </button>
                       <button
@@ -4290,9 +4294,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           transition: 'all 0.2s',
                           background: hiringMode ? 'white' : 'transparent',
                           color: hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          boxShadow: hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                          boxShadow: hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
                         }}
                       >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>
                         Hiring
                       </button>
                     </div>
@@ -4491,10 +4499,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
                   </div>
                 ) : conversations.length === 0 ? (
-                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                    <div style={{ marginBottom: 8 }}><MessageCircle size={32} /></div>
-                    <p style={{ fontWeight: 500, marginBottom: 4 }}>No conversations yet</p>
-                    <p style={{ fontSize: 13 }}>Messages will appear here when you communicate about a task</p>
+                  <div className="mobile-empty-state" style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div className="mobile-empty-state-icon" style={{ width: 48, height: 48, background: 'var(--bg-tertiary)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                      <MessageCircle size={24} />
+                    </div>
+                    <p style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)', fontSize: 16 }}>No conversations yet</p>
+                    <p style={{ fontSize: 13, maxWidth: 240, margin: '0 auto', lineHeight: 1.5 }}>Start a conversation by applying to a task or browsing available work</p>
                   </div>
                 ) : (
                   conversations.map(c => {
@@ -4721,6 +4731,48 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           />
         )}
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="mobile-bottom-nav">
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          <BarChart3 size={22} />
+          <span>Dashboard</span>
+        </button>
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'tasks' || activeTab === 'posted' ? 'active' : ''}`}
+          onClick={() => setActiveTab(hiringMode ? 'posted' : 'tasks')}
+        >
+          <ClipboardList size={22} />
+          <span>Tasks</span>
+        </button>
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'browse' ? 'active' : ''}`}
+          onClick={() => setActiveTab('browse')}
+        >
+          <Search size={22} />
+          <span>Browse</span>
+        </button>
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'messages' ? 'active' : ''}`}
+          onClick={() => setActiveTab('messages')}
+        >
+          <MessageCircle size={22} />
+          <span>Messages</span>
+          {unreadMessages > 0 && (
+            <span className="mobile-bottom-nav-badge">{unreadMessages > 9 ? '9+' : unreadMessages}</span>
+          )}
+        </button>
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          <Settings size={22} />
+          <span>Settings</span>
+        </button>
+      </nav>
     </div>
   )
 }

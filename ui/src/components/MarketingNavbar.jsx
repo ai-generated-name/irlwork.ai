@@ -18,22 +18,25 @@ export default function MarketingNavbar({ user, activePage }) {
         <Logo variant="header" theme="light" />
       </a>
 
-      {/* Mobile hamburger toggle */}
-      <button
-        className="navbar-v4-mobile-toggle"
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        aria-label="Toggle navigation menu"
-      >
-        {mobileMenuOpen ? (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 12h18M3 6h18M3 18h18" />
-          </svg>
-        )}
-      </button>
+      {/* Right side: language selector + hamburger (mobile) */}
+      <div className="navbar-v4-mobile-right">
+        <LanguageSelector variant="compact" />
+        <button
+          className="navbar-v4-mobile-toggle"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle navigation menu"
+        >
+          {mobileMenuOpen ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12h18M3 6h18M3 18h18" />
+            </svg>
+          )}
+        </button>
+      </div>
 
       <div className={`navbar-v4-links${mobileMenuOpen ? ' open' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
         <a
@@ -50,7 +53,10 @@ export default function MarketingNavbar({ user, activePage }) {
         >
           {t('nav.browseTasks')}
         </a>
-        <LanguageSelector variant="compact" />
+        {/* Language selector shown inline on desktop, hidden on mobile (shown in header bar instead) */}
+        <span className="navbar-v4-lang-desktop">
+          <LanguageSelector variant="compact" />
+        </span>
         {user ? (
           <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/dashboard')}>{t('nav.dashboard')}</button>
         ) : (
