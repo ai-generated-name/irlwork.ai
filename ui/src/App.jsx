@@ -4188,7 +4188,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             const data = await res.json()
                             if (data.user) {
                               const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
-                              setUser(updatedUser)
+                              onUserUpdate(updatedUser)
                               localStorage.setItem('user', JSON.stringify(updatedUser))
                             }
                             toast.success(newStatus === 'available' ? 'You\'re now available for work' : 'You\'re now unavailable')
@@ -4196,7 +4196,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             const err = await res.json().catch(() => ({}))
                             toast.error(err.error || 'Failed to update availability')
                           }
-                        } catch { toast.error('Failed to update availability') }
+                        } catch (e) { console.error('[Availability] Error:', e); toast.error('Failed to update availability') }
                       }}
                       style={{
                         width: 48,
