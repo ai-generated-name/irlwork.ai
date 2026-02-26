@@ -176,22 +176,29 @@ async function getUserByStripeCustomer(supabase, stripeCustomerId) {
  * Create a Stripe Checkout Session for a subscription upgrade.
  */
 async function createCheckoutSession(supabase, user, tier, billingPeriod = 'monthly') {
-  if (!stripe) throw new Error('Stripe not configured');
+  console.log(`[Subscription] createCheckoutSession called: tier=${tier}, period=${billingPeriod}, user=${user.id}`);
+
+  if (!stripe) throw new Error('Stripe not configured — STRIPE_SECRET_KEY is missing');
 
   // Auto-provision Stripe products/prices if not configured via env vars
   await ensureStripePrices();
 
   const prices = TIER_PRICE_MAP[tier];
+  console.log(`[Subscription] TIER_PRICE_MAP[${tier}]:`, JSON.stringify(prices));
   if (!prices) throw new Error(`No Stripe price configured for tier: ${tier}`);
 
   const priceId = billingPeriod === 'annual' ? prices.annual : prices.monthly;
+  console.log(`[Subscription] Resolved priceId: ${priceId}`);
   if (!priceId) throw new Error(`No Stripe price configured for tier: ${tier}, period: ${billingPeriod}. Please set STRIPE_PRICE_${tier.toUpperCase()}${billingPeriod === 'annual' ? '_ANNUAL' : ''} or use a Stripe key with product/price creation permissions.`);
 
   // Ensure user has a Stripe customer
+  console.log(`[Subscription] Getting/creating Stripe customer for user ${user.id}, existing stripe_customer_id: ${user.stripe_customer_id || 'none'}`);
   const { getOrCreateStripeCustomer } = require('./stripeService');
   const customerId = await getOrCreateStripeCustomer(supabase, user);
+  console.log(`[Subscription] Stripe customer ID: ${customerId}`);
 
   const baseUrl = process.env.FRONTEND_URL || process.env.VITE_APP_URL || 'http://localhost:5173';
+  console.log(`[Subscription] Creating checkout session with baseUrl=${baseUrl}, priceId=${priceId}, customerId=${customerId}`);
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
@@ -203,6 +210,7 @@ async function createCheckoutSession(supabase, user, tier, billingPeriod = 'mont
     subscription_data: { metadata: { user_id: user.id, tier, billing_period: billingPeriod } },
   });
 
+  console.log(`[Subscription] Checkout session created: ${session.id}, url: ${session.url}`);
   return { checkout_url: session.url, session_id: session.id };
 }
 
