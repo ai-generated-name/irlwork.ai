@@ -367,25 +367,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
   return (
     <div className="landing-v4 min-h-screen" style={{ fontFamily: v4.fonts.display }}>
-      {/* Navbar — uses global navbar-v4 CSS classes */}
-      <nav className="navbar-v4">
-        <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
-          <Logo variant="header" theme="light" />
-        </a>
-        <div className="nav-links-v4" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <a href="/connect-agent" className="nav-link-v4">For Agents</a>
-          <a href="/dashboard" className="nav-link-v4">Browse Tasks</a>
-          {user ? (
-            <a href="/dashboard" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
-              Dashboard
-            </a>
-          ) : (
-            <a href="/auth" className="v4-btn v4-btn-primary v4-btn-sm" style={{ textDecoration: 'none' }}>
-              Sign In
-            </a>
-          )}
-        </div>
-      </nav>
+      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
       {/* Sub-header with back button */}
       <header style={{

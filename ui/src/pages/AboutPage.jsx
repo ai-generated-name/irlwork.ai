@@ -1,6 +1,5 @@
 import React from 'react'
-import { ArrowLeft, Bot, Users, Shield, Globe, Zap, DollarSign, ArrowRight, TrendingUp, MapPin, Handshake } from 'lucide-react'
-import MarketingFooter from '../components/Footer'
+import { Bot, Users, Shield, Globe, Zap, DollarSign, ArrowRight, TrendingUp, MapPin, Handshake } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 
 export default function AboutPage() {
@@ -23,27 +22,7 @@ export default function AboutPage() {
           zIndex: 0,
         }} />
 
-        {/* Nav */}
-        <nav style={{
-          padding: 'var(--space-4) var(--space-6)',
-          position: 'relative',
-          zIndex: 10,
-          maxWidth: '1200px',
-          margin: '0 auto',
-        }}>
-          <a href="/" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            textDecoration: 'none',
-            color: 'var(--text-secondary)',
-            fontSize: '14px',
-            fontWeight: 500,
-          }}>
-            <ArrowLeft size={16} />
-            {t('about.backToHome')}
-          </a>
-        </nav>
+        {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
         {/* Hero */}
         <div style={{
@@ -51,7 +30,7 @@ export default function AboutPage() {
           zIndex: 1,
           maxWidth: '800px',
           margin: '0 auto',
-          padding: '40px var(--space-6) 0',
+          padding: '100px var(--space-6) 0',
           textAlign: 'center',
         }}>
           <p style={{
@@ -440,7 +419,6 @@ export default function AboutPage() {
           </div>
         </div>
       </div>
-      <MarketingFooter />
     </>
   )
 }

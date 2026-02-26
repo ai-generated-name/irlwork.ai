@@ -33,6 +33,7 @@ import TermsPage from './pages/TermsPage'
 import ThesisPage from './pages/ThesisPage'
 import MarketingFooter from './components/Footer'
 import { Logo } from './components/Logo'
+import MarketingNavbar from './components/MarketingNavbar'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
@@ -2241,23 +2242,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <Logo variant="header" theme="light" />
         </a>
 
-        {/* Connect to AI Agent CTA - top of sidebar in hiring mode */}
-        {hiringMode && (
-          <div className="dashboard-v4-connect-agent-sidebar-top">
-            <button
-              onClick={() => !agentConnected && (window.location.href = '/connect-agent')}
-              className={`dashboard-v4-connect-agent-btn-top ${agentConnected ? 'connected' : ''}`}
-            >
-              <span className="dashboard-v4-connect-agent-icon">{agentConnected ? <CheckCircle size={16} /> : <Bot size={16} />}</span>
-              <span>{agentConnected ? 'AI Agent Connected' : 'Connect to AI Agent'}</span>
-              {!agentConnected && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', opacity: 0.5 }}>
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              )}
-            </button>
-          </div>
-        )}
 
 
         {/* Navigation */}
@@ -2281,26 +2265,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </button>
           ))}
         </nav>
-
-        {/* Upgrade to Premium CTA */}
-        {user && (user.subscription_tier || 'free') !== 'pro' && (
-          <div style={{ padding: 'var(--space-2) var(--space-4)' }}>
-            <button
-              onClick={() => window.location.href = '/premium'}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: '#1A1A1A', color: '#FFFFFF',
-                fontSize: 13, fontWeight: 600, transition: 'background 0.2s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#333333'}
-              onMouseLeave={e => e.currentTarget.style.background = '#1A1A1A'}
-            >
-              <Sparkles size={16} style={{ color: '#F5A623' }} />
-              <span>Upgrade to Premium</span>
-            </button>
-          </div>
-        )}
 
         {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
@@ -2332,23 +2296,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           )}
         </div>
 
-        {/* Upgrade to Premium — only show when not on a paid plan */}
-        {user && (user.subscription_tier || 'free') === 'free' && (
-          <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-            <button
-              onClick={() => window.location.href = '/premium'}
-              className="dashboard-v4-upgrade-premium-btn"
-            >
-              <span style={{ display: 'flex', alignItems: 'center' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  <polyline points="9 12 11 14 15 10" />
-                </svg>
-              </span>
-              <span>Upgrade to Premium</span>
-            </button>
-          </div>
-        )}
+        {/* Upgrade to Premium CTA */}
+        <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+          <a
+            href="/premium"
+            className="dashboard-v4-upgrade-premium-btn"
+          >
+            <span style={{ display: 'flex', alignItems: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" fill="#D4A017" />
+                <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <span>Upgrade to Premium</span>
+          </a>
+        </div>
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
@@ -4732,17 +4694,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
 
   return (
     <div className="mcp-v4">
-      <header className="mcp-v4-header">
-        <div className="mcp-v4-header-inner">
-          <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
-            <Logo variant="header" theme="light" />
-          </a>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/" className="mcp-v4-nav-link">← Home</a>
-            <a href="/dashboard/hiring" className="mcp-v4-nav-link">Dashboard</a>
-          </div>
-        </div>
-      </header>
+      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
       <main className="mcp-v4-main">
         {/* Hero with Copy Prompt CTA */}
@@ -5127,8 +5079,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
         </section>
       </main>
 
-      {/* Footer */}
-      <MarketingFooter />
+      {/* Footer provided by shared MarketingFooter in App.jsx */}
     </div>
   )
 }
@@ -5454,6 +5405,17 @@ function App() {
     return <Loading />
   }
 
+  // Determine active page for navbar highlight
+  const activePage = path.startsWith('/browse') ? 'browse'
+    : path === '/connect-agent' ? 'connect-agent'
+    : null
+
+  // Routes that should NOT get the shared marketing navbar+footer
+  const isAuthRoute = path === '/auth'
+  const isOnboardRoute = path === '/onboard'
+  const isDashboardRoute = path.startsWith('/dashboard')
+  const isMarketingPage = !isAuthRoute && !isOnboardRoute && !isDashboardRoute
+
   // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
   const routeContent = (() => {
     // Task detail route - /tasks/:id
@@ -5511,13 +5473,18 @@ function App() {
     return <NotFoundPage />
   })()
 
-  // Dashboard has feedback in sidebar, other pages use floating button
-  const isDashboard = path.startsWith('/dashboard')
-
   return (
     <>
-      {routeContent}
-      {!isDashboard && <FeedbackButton user={user} />}
+      {isMarketingPage ? (
+        <>
+          <MarketingNavbar user={user} activePage={activePage} />
+          {routeContent}
+          <MarketingFooter />
+        </>
+      ) : (
+        routeContent
+      )}
+      {!isDashboardRoute && <FeedbackButton user={user} />}
     </>
   )
 }

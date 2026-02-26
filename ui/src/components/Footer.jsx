@@ -13,7 +13,7 @@ export default function MarketingFooter() {
         <div className="footer-v4-grid">
           <div className="footer-v4-brand">
             <a href="/" className="footer-v4-logo" style={{ textDecoration: 'none' }}>
-              <Logo variant="header" theme="light" />
+              <Logo variant="header" theme="dark" />
             </a>
             <p className="footer-v4-tagline">
               {t('footer.tagline')}
