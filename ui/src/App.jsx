@@ -1579,9 +1579,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       )
       .subscribe()
 
+    // Subscribe to changes on worker's assigned tasks (for human users)
+    let workerChannel = null
+    if (user.type === 'human') {
+      workerChannel = safeSupabase
+        .channel(`worker-tasks-${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'tasks', filter: `human_id=eq.${user.id}` },
+          () => { fetchTasks() }
+        )
+        .subscribe()
+    }
+
     return () => {
       safeSupabase.removeChannel(tasksChannel)
       safeSupabase.removeChannel(applicationsChannel)
+      if (workerChannel) safeSupabase.removeChannel(workerChannel)
     }
   }, [hiringMode, user, expandedTask])
 
@@ -2851,6 +2865,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                             <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
                                             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                                               <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                              {app.applicant?.success_rate !== null && app.applicant?.success_rate !== undefined && app.applicant?.success_rate < 70 && (
+                                                <span style={{ color: '#D97706', fontSize: 12, marginLeft: 6 }} title="Below average success rate">
+                                                  ⚠ {app.applicant.success_rate}% success
+                                                </span>
+                                              )}
                                             </p>
                                             {app.cover_letter && (
                                               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>

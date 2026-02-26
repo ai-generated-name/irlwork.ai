@@ -103,6 +103,7 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
     fee_cents: platformFeeCents,
     payout_method: 'stripe',
     status: 'pending',
+    dispute_window_closes_at: clearsAt.toISOString(),
     created_at: new Date().toISOString()
   });
 

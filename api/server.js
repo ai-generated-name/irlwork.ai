@@ -1,4 +1,7 @@
 // irlwork.ai - API Server with Supabase + Payments
+// IMPORTANT: See ARCHITECTURE.md in repo root for platform architecture reference.
+// Any changes to status transitions, payment flows, cancellation policy, or notifications
+// must be reflected in ARCHITECTURE.md.
 console.log('[Startup] Loading environment...');
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
@@ -286,6 +289,13 @@ function cleanTaskData(data) {
   if (!taskColumnFlags.is_anonymous) delete cleaned.is_anonymous;
   if (!taskColumnFlags.duration_hours) delete cleaned.duration_hours;
   if (!taskColumnFlags.review_deadline) delete cleaned.review_deadline;
+  if (!taskColumnFlags.escrow_captured) delete cleaned.escrow_captured;
+  if (!taskColumnFlags.auth_hold_expires_at) delete cleaned.auth_hold_expires_at;
+  if (!taskColumnFlags.rejection_feedback) delete cleaned.rejection_feedback;
+  if (!taskColumnFlags.auto_approved) delete cleaned.auto_approved;
+  if (!taskColumnFlags.revision_count) delete cleaned.revision_count;
+  if (!taskColumnFlags.deadline_warning_sent) delete cleaned.deadline_warning_sent;
+  if (!taskColumnFlags.instructions_attachments) delete cleaned.instructions_attachments;
   return cleaned;
 }
 
@@ -346,16 +356,18 @@ function validateUploadFile(filename, mimeType, fileBuffer) {
   return { valid: true, ext };
 }
 
-// Task status transition validation
+// Task status transition validation — see ARCHITECTURE.md for full diagram
 const VALID_STATUS_TRANSITIONS = {
-  open: ['pending_acceptance', 'assigned', 'in_progress', 'cancelled'],
-  pending_acceptance: ['in_progress', 'open', 'cancelled'],
+  open: ['pending_acceptance', 'assigned', 'expired', 'cancelled'],
+  pending_acceptance: ['assigned', 'open', 'cancelled'],  // open = human declined
   assigned: ['in_progress', 'cancelled'],
-  in_progress: ['pending_review', 'disputed', 'cancelled'],
-  pending_review: ['completed', 'rejected', 'disputed'],
-  rejected: ['pending_review', 'disputed', 'cancelled'],
-  disputed: ['paid', 'refunded', 'cancelled'],
-  completed: ['paid'],
+  in_progress: ['pending_review', 'disputed'],  // NO cancel after work starts
+  pending_review: ['approved', 'in_progress', 'disputed'],  // in_progress = revision
+  approved: ['paid'],
+  disputed: ['approved', 'cancelled', 'paid'],  // resolved by platform
+  paid: [],      // terminal
+  expired: [],   // terminal
+  cancelled: [], // terminal
 };
 
 function validateStatusTransition(currentStatus, newStatus) {
@@ -738,19 +750,63 @@ async function sendMessageEmailNotification(recipientUserId, senderName, taskTit
   }
 }
 
+// Generic email notification helper for lifecycle events
+async function sendEmailNotification(recipientUserId, subject, bodyHtml) {
+  if (!supabase) return;
+
+  try {
+    const { data: recipient } = await supabase
+      .from('users')
+      .select('email, name, notification_preferences')
+      .eq('id', recipientUserId)
+      .single();
+
+    if (!recipient?.email) return;
+
+    // Respect email preference opt-out
+    const prefs = recipient.notification_preferences || {};
+    if (prefs.email_notifications === false) return;
+
+    // Global throttle: max 1 email per minute per user
+    const cacheKey = `email_throttle_global_${recipientUserId}`;
+    if (global._emailThrottle?.[cacheKey]) {
+      const elapsed = Date.now() - global._emailThrottle[cacheKey];
+      if (elapsed < 60 * 1000) return; // Skip if within 1 min window
+    }
+    if (!global._emailThrottle) global._emailThrottle = {};
+    global._emailThrottle[cacheKey] = Date.now();
+
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    if (!RESEND_API_KEY) {
+      console.log(`[Email] Would notify ${recipient.email}: ${subject}`);
+      return;
+    }
+
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'IRL Work <notifications@irlwork.ai>',
+        to: recipient.email,
+        subject,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
+            ${bodyHtml}
+            <p style="font-size: 11px; color: #B0B0B0; margin-top: 24px;">You received this because you have notifications enabled on IRL Work.</p>
+          </div>
+        `
+      })
+    });
+  } catch (err) {
+    console.error('[Email] Failed to send notification:', err.message);
+  }
+}
+
 // Dispatch webhook to user if they have one configured
 async function dispatchWebhook(userId, event) {
   if (!supabase) return;
 
   try {
-    const { data: user } = await supabase
-      .from('users')
-      .select('webhook_url, webhook_secret')
-      .eq('id', userId)
-      .single();
-
-    if (!user?.webhook_url) return; // No webhook registered, skip
-
     const payload = {
       event_type: event.type,
       task_id: event.task_id,
@@ -758,31 +814,27 @@ async function dispatchWebhook(userId, event) {
       timestamp: new Date().toISOString()
     };
 
-    const headers = { 'Content-Type': 'application/json' };
+    // Enqueue for reliable delivery with retries
+    const { error: insertErr } = await supabase
+      .from('webhook_deliveries')
+      .insert({
+        user_id: userId,
+        event_type: event.type || 'unknown',
+        payload: payload,
+        status: 'pending',
+        attempts: 0,
+        max_attempts: 5,
+        next_retry_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      });
 
-    // Add HMAC signature if secret is configured
-    if (user.webhook_secret) {
-      const signature = crypto
-        .createHmac('sha256', user.webhook_secret)
-        .update(JSON.stringify(payload))
-        .digest('hex');
-      headers['X-Webhook-Signature'] = signature;
+    if (insertErr) {
+      // Fallback to direct delivery if queue table doesn't exist yet
+      console.warn(`[WEBHOOK] Queue insert failed (${insertErr.message}), falling back to direct`);
+      await deliverWebhookDirect(userId, payload);
     }
-
-    if (!isValidWebhookUrl(user.webhook_url)) {
-      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${user.webhook_url}`);
-      return;
-    }
-
-    await fetch(user.webhook_url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000) // 5 second timeout
-    });
   } catch (err) {
-    console.error(`Webhook delivery failed for user ${userId}:`, err.message);
-    // Don't throw - webhook failures shouldn't break the main flow
+    console.error(`Webhook enqueue failed for user ${userId}:`, err.message);
   }
 }
 
@@ -1824,7 +1876,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, total_tasks_completed, total_rejections, total_disputes_lost')
     .eq('type', 'human')
     .eq('availability', 'available');
 
@@ -2069,7 +2121,25 @@ app.post('/api/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Authentication required' });
 
-  const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code } = req.body;
+  const { title, description, instructions, instructions_attachments, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code } = req.body;
+
+  // Verify agent has payment method before allowing task creation
+  if (user.type === 'agent') {
+    const { verifyAgentHasPaymentMethod } = require('./backend/services/stripeService');
+    try {
+      const pmCheck = await verifyAgentHasPaymentMethod(supabase, user.id);
+      if (!pmCheck.valid) {
+        return res.status(402).json({
+          error: 'card_required',
+          code: 'card_required',
+          message: 'Add a payment method before creating tasks.'
+        });
+      }
+    } catch (pmErr) {
+      console.error(`[CreateTask] PM verification failed:`, pmErr.message);
+      // Don't block task creation if Stripe check fails
+    }
+  }
 
   // Validate required fields
   if (!title || !title.trim()) {
@@ -2105,6 +2175,8 @@ app.post('/api/tasks', async (req, res) => {
       agent_id: user.id,
       title: title.trim(),
       description,
+      instructions: instructions || null,
+      instructions_attachments: Array.isArray(instructions_attachments) ? instructions_attachments : [],
       category: category || 'general',
       location,
       latitude: latitude || null,
@@ -2136,6 +2208,13 @@ app.post('/api/tasks', async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  // Increment total_tasks_posted for agent
+  if (user.type === 'agent') {
+    await supabase.rpc('increment_user_stat', {
+      user_id_param: user.id, stat_name: 'total_tasks_posted', increment_by: 1
+    });
+  }
 
   res.json({
     ...task,
@@ -2189,7 +2268,7 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   if (!isParticipant) {
     const { escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at,
-            deposit_amount_cents, unique_deposit_amount, instructions,
+            deposit_amount_cents, unique_deposit_amount, instructions, instructions_attachments,
             work_started_at, proof_submitted_at, assigned_at, ...publicTask } = task;
     return res.json({ ...publicTask, poster });
   }
@@ -2275,18 +2354,31 @@ app.get('/api/tasks/:id/stats', async (req, res) => {
 
 app.post('/api/tasks/:id/apply', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const { cover_letter, availability, questions, proposed_rate } = req.body;
 
+  const { cover_letter, availability, questions, proposed_rate } = req.body;
+  const taskId = req.params.id;
+
+  // Verify task exists, is open, and user is not the agent
+  const { data: taskForApply } = await supabase
+    .from('tasks').select('status, agent_id, title').eq('id', taskId).single();
+  if (!taskForApply) return res.status(404).json({ error: 'Task not found' });
+  if (taskForApply.status !== 'open') {
+    return res.status(409).json({ error: 'task_not_open', message: 'This task is no longer accepting applications.' });
+  }
+  if (taskForApply.agent_id === user.id) {
+    return res.status(400).json({ error: 'Cannot apply to your own task.' });
+  }
+
+  // Check for duplicate application
   const { data: existing } = await supabase
     .from('task_applications')
-    .select('*')
-    .eq('task_id', req.params.id)
+    .select('id')
+    .eq('task_id', taskId)
     .eq('human_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     return res.status(400).json({ error: 'Already applied' });
@@ -2297,7 +2389,7 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
     .from('task_applications')
     .insert({
       id,
-      task_id: req.params.id,
+      task_id: taskId,
       human_id: user.id,
       cover_letter: cover_letter || '',
       availability: availability || '',
@@ -2308,8 +2400,34 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
     })
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  // P1-1: Notify agent about new application
+  await createNotification(
+    taskForApply.agent_id,
+    'new_application',
+    'New Applicant',
+    `${user.name || 'A worker'} applied to "${taskForApply.title}"`,
+    `/tasks/${taskId}`
+  );
+  await deliverWebhook(taskForApply.agent_id, {
+    event: 'new_application',
+    task_id: taskId,
+    applicant: { id: user.id, name: user.name, proposed_rate }
+  });
+
+  // Email notification for new application
+  const applyTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
+  sendEmailNotification(taskForApply.agent_id,
+    `New applicant for "${taskForApply.title}"`,
+    `<div style="background: #EEF2FF; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+      <p style="color: #4338CA; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">New Application</p>
+      <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${user.name || 'A worker'}</strong> applied to your task "${taskForApply.title}".</p>
+    </div>
+    <a href="${applyTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">Review Applicants</a>`
+  ).catch(() => {});
+
   res.json({ id: application.id, status: 'pending' });
 });
 
@@ -2333,7 +2451,7 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  // Get all applications for this task
+  // Get all applications for this task (with reputation fields)
   const { data: applications, error } = await supabase
     .from('task_applications')
     .select(`
@@ -2345,14 +2463,85 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
         rating,
         jobs_completed,
         bio,
-        city
+        city,
+        total_tasks_completed,
+        total_tasks_accepted,
+        total_rejections,
+        total_disputes_lost
       )
     `)
     .eq('task_id', taskId)
     .order('created_at', { ascending: false });
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-  res.json(applications || []);
+
+  // Enrich with computed success_rate
+  const enriched = (applications || []).map(app => {
+    const a = app.applicant;
+    if (a) {
+      const denominator = (a.total_tasks_completed || 0) + (a.total_disputes_lost || 0);
+      a.success_rate = denominator > 0
+        ? Math.round(((a.total_tasks_completed || 0) / denominator) * 100)
+        : null; // null = no history yet
+    }
+    return app;
+  });
+
+  res.json(enriched);
+});
+
+// Check if current user has applied to a task
+app.get('/api/tasks/:id/applications/check', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data: application } = await supabase
+    .from('task_applications')
+    .select('id, status')
+    .eq('task_id', req.params.id)
+    .eq('human_id', user.id)
+    .maybeSingle();
+
+  res.json({
+    has_applied: !!application,
+    application: application || null
+  });
+});
+
+// Withdraw application
+app.delete('/api/tasks/:id/apply', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const taskId = req.params.id;
+
+  // Verify task is still open
+  const { data: task } = await supabase
+    .from('tasks').select('status').eq('id', taskId).single();
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  if (task.status !== 'open') {
+    return res.status(409).json({ error: 'Cannot withdraw — task is no longer accepting applications.' });
+  }
+
+  // Update application status
+  const { data: withdrawn, error } = await supabase
+    .from('task_applications')
+    .update({ status: 'withdrawn', updated_at: new Date().toISOString() })
+    .eq('task_id', taskId)
+    .eq('human_id', user.id)
+    .eq('status', 'pending')
+    .select('id')
+    .single();
+
+  if (error || !withdrawn) {
+    return res.status(400).json({ error: 'No pending application to withdraw.' });
+  }
+
+  res.json({ success: true, message: 'Application withdrawn.' });
 });
 
 // Agent assigns a human to a task
@@ -2470,6 +2659,17 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       notificationMessage,
       `/tasks/${taskId}`
     );
+
+    // Email notification for task assignment
+    const taskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
+    sendEmailNotification(human_id,
+      `You've been assigned to "${task.title}"`,
+      `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+        <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">You've been assigned!</p>
+        <p style="color: #1A1A1A; font-size: 14px; margin: 0;">${notificationMessage}</p>
+      </div>
+      <a href="${taskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task & Instructions</a>`
+    ).catch(() => {});
   };
 
   // ============ STRIPE PATH: Send offer, charge on acceptance ============
@@ -2793,16 +2993,20 @@ app.post('/api/upload/proof', async (req, res) => {
       uploadSuccess = true;
     } catch (s3Error) {
       console.error('R2 upload error:', s3Error.message);
-      // Fallback to demo URL
+      if (process.env.DEMO_MODE === 'true') {
+        // Only fall back to demo URL in explicit demo mode
+        const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${uniqueFilename}`;
+        return res.json({ url: publicUrl, filename: uniqueFilename, success: true, demo: true });
+      }
+      return res.status(502).json({ error: 'upload_failed', message: 'File storage temporarily unavailable. Please try again.' });
     }
 
     const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${uniqueFilename}` : `https://pub-${R2_ACCOUNT_ID}.r2.dev/${uniqueFilename}`;
-    
+
     res.json({
       url: publicUrl,
       filename: uniqueFilename,
-      success: uploadSuccess,
-      demo: !uploadSuccess
+      success: true
     });
   } catch (e) {
     console.error('Upload error:', e.message);
@@ -3400,16 +3604,23 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   
-  // Update task status to pending_review
-  await supabase
+  // Update task status to pending_review (atomic guard prevents TOCTOU race)
+  const { data: updatedProofTask, error: proofUpdateErr } = await supabase
     .from('tasks')
     .update({
       status: 'pending_review',
       proof_submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', taskId);
-  
+    .eq('id', taskId)
+    .eq('status', 'in_progress')
+    .select('id')
+    .single();
+
+  if (proofUpdateErr || !updatedProofTask) {
+    return res.status(409).json({ error: 'Task status changed before proof could be submitted.' });
+  }
+
   // Notify agent
   await createNotification(
     task.agent_id,
@@ -3458,34 +3669,20 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   }
 
   // Only allow rejecting tasks in pending_review status
-  if (!['pending_review', 'in_progress'].includes(task.status)) {
-    return res.status(400).json({ error: `Cannot reject proof on task with status "${task.status}"` });
+  if (task.status !== 'pending_review') {
+    return res.status(400).json({ error: `Cannot reject proof on task with status "${task.status}". Task must be in pending_review.` });
   }
 
-  // Check proof rejection limit — auto-escalate to dispute after 3 rejections
-  const MAX_REJECTIONS = 3;
-  const { count: rejectionCount } = await supabase
-    .from('task_proofs')
-    .select('id', { count: 'exact', head: true })
-    .eq('task_id', taskId)
-    .eq('status', 'rejected');
+  // Revision system: max 2 revisions, tracked via revision_count (sole source of truth)
+  const MAX_REVISIONS = 2;
+  const currentRevisionCount = task.revision_count || 0;
 
-  if (rejectionCount >= MAX_REJECTIONS) {
-    await supabase.from('tasks').update({
-      status: 'disputed',
-      dispute_reason: `Auto-escalated: proof rejected ${MAX_REJECTIONS} times`,
-      disputed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }).eq('id', taskId).in('status', ['in_progress', 'pending_review']);
-
-    await createNotification(task.human_id, 'dispute', 'Task Escalated to Dispute',
-      `Task "${task.title}" auto-escalated after ${MAX_REJECTIONS} proof rejections. An admin will review.`, `/tasks/${taskId}`);
-    await createNotification(task.agent_id, 'dispute', 'Task Escalated to Dispute',
-      `Task "${task.title}" auto-escalated after ${MAX_REJECTIONS} proof rejections. An admin will review.`, `/tasks/${taskId}`);
-
-    return res.status(400).json({
-      error: `Maximum proof rejections (${MAX_REJECTIONS}) reached. Task escalated to dispute resolution.`,
-      rejection_count: rejectionCount
+  if (currentRevisionCount >= MAX_REVISIONS) {
+    return res.status(409).json({
+      error: 'max_revisions_reached',
+      message: 'Maximum revisions reached (2). Please approve the work or open a dispute.',
+      actions: ['approve', 'dispute'],
+      revision_count: currentRevisionCount
     });
   }
 
@@ -3498,16 +3695,16 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
-  
+
   if (!latestProof) {
     return res.status(400).json({ error: 'No pending proof to reject' });
   }
-  
+
   // Calculate new deadline
   const currentDeadline = task.deadline ? new Date(task.deadline) : new Date();
   const newDeadline = new Date(currentDeadline.getTime() + extend_deadline_hours * 60 * 60 * 1000);
-  
-  // Update proof status
+
+  // Update proof status to 'rejected' (preserved for history)
   await supabase
     .from('task_proofs')
     .update({
@@ -3516,40 +3713,61 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
       updated_at: new Date().toISOString()
     })
     .eq('id', latestProof.id);
-  
-  // Update task back to in_progress with new deadline
-  await supabase
+
+  // Atomic update: set status to in_progress, increment revision_count, store rejection_feedback
+  // rejection_feedback is SEPARATE from instructions — human sees both
+  const { data: rejectedTask, error: rejectErr } = await supabase
     .from('tasks')
-    .update({
+    .update(cleanTaskData({
       status: 'in_progress',
       deadline: newDeadline.toISOString(),
-      instructions: feedback,
+      rejection_feedback: feedback,
+      revision_count: currentRevisionCount + 1,
+      deadline_warning_sent: false,
       updated_at: new Date().toISOString()
-    })
-    .eq('id', taskId);
-  
+    }))
+    .eq('id', taskId)
+    .eq('status', 'pending_review')
+    .select('id')
+    .single();
+
+  if (rejectErr || !rejectedTask) {
+    return res.status(409).json({ error: 'Task status changed before rejection could complete.' });
+  }
+
+  // Increment total_rejections on human's user record
+  if (task.human_id) {
+    await supabase.rpc('increment_user_stat', {
+      user_id_param: task.human_id, stat_name: 'total_rejections', increment_by: 1
+    });
+  }
+
   // Notify human
   await createNotification(
     task.human_id,
     'proof_rejected',
-    'Proof Rejected',
-    `Your proof was rejected. ${extend_deadline_hours > 0 ? `Deadline extended by ${extend_deadline_hours} hours.` : ''} Feedback: ${feedback || 'See details.'}`,
+    'Revision Requested',
+    `Your proof was rejected (${currentRevisionCount + 1}/${MAX_REVISIONS} revisions used). ${extend_deadline_hours > 0 ? `Deadline extended by ${extend_deadline_hours} hours.` : ''} Feedback: ${feedback || 'See details.'}`,
     `/tasks/${taskId}`
   );
-  
+
   // Deliver webhook
   await deliverWebhook(task.agent_id, {
     event: 'proof_rejected',
     task_id: taskId,
     proof_id: latestProof.id,
     feedback,
+    revision_count: currentRevisionCount + 1,
+    revisions_remaining: MAX_REVISIONS - (currentRevisionCount + 1),
     new_deadline: newDeadline.toISOString(),
     timestamp: new Date().toISOString()
   });
-  
-  res.json({ 
-    success: true, 
-    message: 'Proof rejected, human can resubmit',
+
+  res.json({
+    success: true,
+    message: `Proof rejected (revision ${currentRevisionCount + 1}/${MAX_REVISIONS}). Human can resubmit.`,
+    revision_count: currentRevisionCount + 1,
+    revisions_remaining: MAX_REVISIONS - (currentRevisionCount + 1),
     new_deadline: newDeadline.toISOString()
   });
 });
@@ -3638,6 +3856,17 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     `/tasks/${taskId}`
   );
 
+  // Email notification for task approval
+  const approveTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
+  sendEmailNotification(task.human_id,
+    `Your work on "${task.title}" has been approved!`,
+    `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+      <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Work Approved!</p>
+      <p style="color: #1A1A1A; font-size: 14px; margin: 0;">Your work on "${task.title}" has been approved. $${task.budget} is being processed and will be available after the 48-hour clearing period.</p>
+    </div>
+    <a href="${approveTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
+  ).catch(() => {});
+
   // Deliver webhook to agent
   await deliverWebhook(task.agent_id, {
     event: 'proof_approved',
@@ -3648,7 +3877,7 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   });
 
   // Stripe-paid tasks: auto-release to pending balance (no admin step needed)
-  if (task.payment_method === 'stripe' && task.stripe_payment_intent_id) {
+  if (task.stripe_payment_intent_id) {
     try {
       await releasePaymentToPending(supabase, taskId, task.human_id, task.agent_id, createNotification);
       console.log(`[Approve] Auto-released payment for Stripe task ${taskId}`);
@@ -3656,13 +3885,28 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
       console.error('[Approve] Auto-release failed for Stripe task:', releaseError.message);
       // Don't fail the approve — admin can manually release if auto-release fails
     }
+  } else {
+    // Non-Stripe: flag for manual processing + notify admins
+    await supabase.from('tasks').update({
+      requires_manual_payment: true, updated_at: new Date().toISOString()
+    }).eq('id', taskId);
+
+    const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean);
+    for (const adminId of adminIds) {
+      await createNotification(adminId.trim(), 'manual_payment_required', 'Manual Payment Required',
+        `Task "${task.title}" (${taskId}) approved but requires manual payment processing.`,
+        `/admin/tasks/${taskId}`);
+    }
+    console.warn(`[Approve] Task ${taskId} approved — manual payment required, ${adminIds.length} admins notified`);
   }
 
   res.json({
     success: true,
     status: 'approved',
-    payment_method: task.payment_method || 'stripe',
-    message: 'Proof approved. Payment released to pending balance with 48-hour hold.'
+    payment_method: task.stripe_payment_intent_id ? 'stripe' : 'manual',
+    message: task.stripe_payment_intent_id
+      ? 'Proof approved. Payment released to pending balance with 48-hour hold.'
+      : 'Proof approved. Manual payment processing required.'
   });
 });
 
@@ -3884,7 +4128,31 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
   if (disputeErr || !disputedTask) {
     return res.status(409).json({ error: 'Task status changed before dispute could be filed. Please refresh.' });
   }
-  
+
+  // Create disputes table record
+  const filedAgainst = user.id === task.human_id ? task.agent_id : task.human_id;
+  const disputeId = uuidv4();
+  await supabase.from('disputes').insert({
+    id: disputeId,
+    task_id: taskId,
+    filed_by: user.id,
+    filed_against: filedAgainst,
+    reason: reason,
+    status: 'open',
+    created_at: new Date().toISOString()
+  });
+
+  // Freeze payout if exists
+  await supabase.from('payouts')
+    .update({ status: 'frozen', updated_at: new Date().toISOString() })
+    .eq('task_id', taskId)
+    .in('status', ['pending', 'available']);
+
+  // Increment total_disputes_filed on the filing party
+  await supabase.rpc('increment_user_stat', {
+    user_id_param: user.id, stat_name: 'total_disputes_filed', increment_by: 1
+  });
+
   // Notify relevant parties
   const notifyTo = user.id === task.human_id ? task.agent_id : task.human_id;
   await createNotification(
@@ -3894,17 +4162,30 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     `A dispute has been opened for task "${task.title}". Reason: ${reason}`,
     `/tasks/${taskId}`
   );
-  
+
+  // Email notification to both parties about the dispute
+  const disputeTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
+  const disputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+    <p style="color: #DC2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Dispute Opened</p>
+    <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task "${task.title}".</p>
+    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${reason}</p>
+  </div>
+  <p style="font-size: 13px; color: #525252; margin-bottom: 16px;">Our team will review the evidence and make a fair decision.</p>
+  <a href="${disputeTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`;
+  sendEmailNotification(task.human_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
+  sendEmailNotification(task.agent_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
+
   // Deliver webhook
   await deliverWebhook(task.agent_id, {
     event: 'dispute_opened',
     task_id: taskId,
+    dispute_id: disputeId,
     disputed_by: user.id,
     reason,
     timestamp: new Date().toISOString()
   });
-  
-  res.json({ success: true, status: 'disputed' });
+
+  res.json({ success: true, status: 'disputed', dispute_id: disputeId });
 });
 
 // ============ ADMIN DISPUTE RESOLUTION ============
@@ -4313,42 +4594,68 @@ async function deliverWebhook(agentId, payload) {
   if (!supabase) return;
 
   try {
-    const { data: agent } = await supabase
-      .from('users')
-      .select('webhook_url, webhook_secret')
-      .eq('id', agentId)
-      .single();
+    // Enqueue webhook for reliable delivery with retries
+    const eventType = payload.event || payload.type || 'unknown';
+    const { error: insertErr } = await supabase
+      .from('webhook_deliveries')
+      .insert({
+        user_id: agentId,
+        event_type: eventType,
+        payload: payload,
+        status: 'pending',
+        attempts: 0,
+        max_attempts: 5,
+        next_retry_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      });
 
-    if (!agent?.webhook_url) return;
-
-    const webhookUrl = agent.webhook_url;
-    const headers = { 'Content-Type': 'application/json' };
-
-    // Add HMAC signature if secret is configured
-    if (agent.webhook_secret) {
-      const signature = crypto
-        .createHmac('sha256', agent.webhook_secret)
-        .update(JSON.stringify(payload))
-        .digest('hex');
-      headers['X-Webhook-Signature'] = signature;
+    if (insertErr) {
+      // Fallback to direct delivery if queue table doesn't exist yet
+      console.warn(`[WEBHOOK] Queue insert failed (${insertErr.message}), falling back to direct delivery`);
+      await deliverWebhookDirect(agentId, payload);
     }
-
-    if (!isValidWebhookUrl(webhookUrl)) {
-      console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${webhookUrl}`);
-      return;
-    }
-
-    console.log(`[WEBHOOK] Delivering to ${webhookUrl}`);
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000)
-    });
   } catch (e) {
-    console.error('Webhook delivery error:', e.message);
-    // Don't throw - webhook failures shouldn't break the main flow
+    console.error('Webhook enqueue error:', e.message);
+    // Fallback to direct delivery
+    try { await deliverWebhookDirect(agentId, payload); } catch (_) {}
   }
+}
+
+// Direct webhook delivery (used by queue processor and as fallback)
+async function deliverWebhookDirect(agentId, payload) {
+  if (!supabase) return;
+
+  const { data: agent } = await supabase
+    .from('users')
+    .select('webhook_url, webhook_secret')
+    .eq('id', agentId)
+    .single();
+
+  if (!agent?.webhook_url) return;
+
+  const webhookUrl = agent.webhook_url;
+  const headers = { 'Content-Type': 'application/json' };
+
+  if (agent.webhook_secret) {
+    const signature = crypto
+      .createHmac('sha256', agent.webhook_secret)
+      .update(JSON.stringify(payload))
+      .digest('hex');
+    headers['X-Webhook-Signature'] = signature;
+  }
+
+  if (!isValidWebhookUrl(webhookUrl)) {
+    console.warn(`[WEBHOOK] Blocked delivery to invalid URL: ${webhookUrl}`);
+    return;
+  }
+
+  console.log(`[WEBHOOK] Delivering to ${webhookUrl}`);
+  await fetch(webhookUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(5000)
+  });
 }
 
 // Get webhook URL for an agent
@@ -4408,6 +4715,41 @@ app.post('/api/webhooks/register', async (req, res) => {
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
   res.json({ success: true, webhook_url });
+});
+
+// Webhook delivery history — allows agents to check delivery status
+app.get('/api/webhooks/deliveries', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+  const offset = (page - 1) * limit;
+  const statusFilter = req.query.status; // optional: pending, delivered, failed, exhausted
+
+  let query = supabase
+    .from('webhook_deliveries')
+    .select('id, event_type, payload, status, attempts, max_attempts, next_retry_at, last_error, created_at, delivered_at', { count: 'exact' })
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (statusFilter) {
+    query = query.eq('status', statusFilter);
+  }
+
+  const { data: deliveries, error, count } = await query;
+
+  if (error) {
+    if (error.message?.includes('does not exist')) {
+      return res.json({ deliveries: [], total: 0, page, limit });
+    }
+    return res.status(500).json({ error: safeErrorMessage(error) });
+  }
+
+  res.json({ deliveries: deliveries || [], total: count || 0, page, limit });
 });
 
 // ============ TRANSACTIONS ============
@@ -4650,26 +4992,25 @@ app.post('/api/mcp', async (req, res) => {
         if (fetchError || !taskData) throw new Error('Task not found');
 
         // Agent must have a pre-linked card before hiring
-        const { listPaymentMethods } = require('./backend/services/stripeService');
-        if (!user.stripe_customer_id) {
-          return res.status(402).json({
-            error: 'No payment method on file',
-            code: 'card_required',
-            message: 'You must link a payment card before hiring. Add a card in your payment settings.'
-          });
-        }
-        let agentCards = [];
+        const { verifyAgentHasPaymentMethod: verifyPMHire } = require('./backend/services/stripeService');
         try {
-          agentCards = await listPaymentMethods(user.stripe_customer_id);
+          const pmCheck = await verifyPMHire(supabase, user.id);
+          if (!pmCheck.valid) {
+            return res.status(402).json({
+              error: 'No payment method on file',
+              code: 'card_required',
+              message: 'You must link a payment card before hiring. Add a card in your payment settings.'
+            });
+          }
         } catch (e) {
-          console.error('[MCP Hire] Failed to list payment methods:', e.message);
+          console.error('[MCP Hire] PM verification failed:', e.message);
         }
-        if (agentCards.length === 0) {
-          return res.status(402).json({
-            error: 'No payment method on file',
-            code: 'card_required',
-            message: 'You must link a payment card before hiring. Add a card in your payment settings.'
-          });
+
+        // Verify the human has applied to this task
+        const { data: hireAppCheck } = await supabase.from('task_applications')
+          .select('id').eq('task_id', task_id).eq('human_id', human_id).maybeSingle();
+        if (!hireAppCheck?.id) {
+          return res.status(400).json({ error: 'This worker has not applied to this task.' });
         }
 
         // Multi-hire support
@@ -4878,19 +5219,34 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(409).json({ error: 'Task status changed — refresh and try again' });
         }
 
-        // Release payment via Stripe (same flow as non-MCP approve)
-        try {
-          await releasePaymentToPending(supabase, task_id, task.human_id, user.id, createNotification);
-          console.log(`[MCP Approve] Released payment for task ${task_id}`);
-        } catch (e) {
-          return res.status(409).json({ error: e.message || 'Payment release failed.' });
-        }
+        // Release payment via Stripe
+        if (task.stripe_payment_intent_id) {
+          try {
+            await releasePaymentToPending(supabase, task_id, task.human_id, user.id, createNotification);
+            console.log(`[MCP Approve] Released payment for task ${task_id}`);
+          } catch (e) {
+            return res.status(409).json({ error: e.message || 'Payment release failed.' });
+          }
 
-        // Mark as paid after successful release
-        await supabase
-          .from('tasks')
-          .update({ status: 'paid', updated_at: new Date().toISOString() })
-          .eq('id', task_id);
+          // Mark as paid after successful release
+          await supabase
+            .from('tasks')
+            .update({ status: 'paid', updated_at: new Date().toISOString() })
+            .eq('id', task_id);
+        } else {
+          // Non-Stripe: flag for manual processing + notify admins
+          await supabase.from('tasks').update({
+            requires_manual_payment: true, updated_at: new Date().toISOString()
+          }).eq('id', task_id);
+
+          const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean);
+          for (const adminId of adminIds) {
+            await createNotification(adminId.trim(), 'manual_payment_required', 'Manual Payment Required',
+              `Task "${task.title}" (${task_id}) approved but requires manual payment processing.`,
+              `/admin/tasks/${task_id}`);
+          }
+          console.warn(`[MCP Approve] Task ${task_id} approved — manual payment required`);
+        }
 
         const escrowAmount = task.escrow_amount || task.budget || 50;
         const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
@@ -4898,7 +5254,7 @@ app.post('/api/mcp', async (req, res) => {
 
         res.json({
           success: true,
-          status: 'paid',
+          status: task.stripe_payment_intent_id ? 'paid' : 'approved',
           net_amount: netAmount
         });
         break;
@@ -5012,6 +5368,22 @@ app.post('/api/mcp', async (req, res) => {
       case 'create_adhoc_task': {
         // Create a public posting for humans to apply to
         if (!params.title) return res.status(400).json({ error: 'title is required' });
+
+        // Verify agent has payment method
+        const { verifyAgentHasPaymentMethod: verifyPM } = require('./backend/services/stripeService');
+        try {
+          const pmCheck = await verifyPM(supabase, user.id);
+          if (!pmCheck.valid) {
+            return res.status(402).json({
+              error: 'card_required',
+              code: 'card_required',
+              message: 'Add a payment method before creating tasks.'
+            });
+          }
+        } catch (pmErr) {
+          console.error(`[MCP create_posting] PM verification failed:`, pmErr.message);
+        }
+
         const id = uuidv4();
         const budgetAmount = params.budget || params.budget_max || params.budget_min || 50;
         const taskType = params.task_type === 'open' ? 'open' : 'direct';
@@ -5024,6 +5396,8 @@ app.post('/api/mcp', async (req, res) => {
             agent_id: user.id,
             title: params.title,
             description: params.description,
+            instructions: params.instructions || null,
+            instructions_attachments: Array.isArray(params.instructions_attachments) ? params.instructions_attachments : [],
             category: params.category || 'other',
             location: params.location,
             latitude: params.latitude || null,
@@ -5044,6 +5418,12 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (error) throw error;
+
+        // Increment total_tasks_posted for agent
+        await supabase.rpc('increment_user_stat', {
+          user_id_param: user.id, stat_name: 'total_tasks_posted', increment_by: 1
+        });
+
         res.json({ id: task.id, status: 'open', task_type: taskType, quantity: taskQuantity, message: 'Task posted successfully.' });
         break;
       }
@@ -5060,6 +5440,13 @@ app.post('/api/mcp', async (req, res) => {
         if (fetchError || !taskData) throw new Error('Task not found');
         if (taskData.status !== 'open' && taskData.status !== 'assigned') {
           throw new Error('Task is not available for assignment');
+        }
+
+        // Verify the human has applied to this task
+        const { data: appCheck } = await supabase.from('task_applications')
+          .select('id').eq('task_id', task_id).eq('human_id', human_id).maybeSingle();
+        if (!appCheck?.id) {
+          return res.status(400).json({ error: 'This worker has not applied to this task.' });
         }
 
         // Multi-hire support
@@ -5135,7 +5522,7 @@ app.post('/api/mcp', async (req, res) => {
 
       // ===== Messaging tools =====
       case 'send_message': {
-        const { conversation_id, content } = params;
+        const { conversation_id, content, attachments: mcpAttachments } = params;
         if (!conversation_id || !content) {
           return res.status(400).json({ error: 'conversation_id and content are required' });
         }
@@ -5143,7 +5530,7 @@ app.post('/api/mcp', async (req, res) => {
         // Verify access to conversation
         const { data: conv, error: convError } = await supabase
           .from('conversations')
-          .select('id, human_id, agent_id')
+          .select('id, human_id, agent_id, task_id')
           .eq('id', conversation_id)
           .single();
 
@@ -5152,21 +5539,68 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(403).json({ error: 'Not your conversation' });
         }
 
+        // Validate attachments if provided
+        let mcpValidatedAttachments = [];
+        if (mcpAttachments && Array.isArray(mcpAttachments)) {
+          if (mcpAttachments.length > 5) {
+            return res.status(400).json({ error: 'Maximum 5 attachments per message' });
+          }
+          for (const att of mcpAttachments) {
+            if (!att.url || !att.filename) continue;
+            mcpValidatedAttachments.push({
+              url: att.url, filename: att.filename,
+              type: att.type || 'file', size: att.size || 0
+            });
+          }
+        }
+
         const messageId = uuidv4();
-        const { data: msg, error: msgError } = await supabase.from('messages').insert({
+        const mcpMsgInsert = {
           id: messageId,
           conversation_id,
           sender_id: user.id,
           content,
           created_at: new Date().toISOString()
-        }).select().single();
+        };
+        if (mcpValidatedAttachments.length > 0) {
+          mcpMsgInsert.attachments = mcpValidatedAttachments;
+        }
+        const { data: msg, error: msgError } = await supabase.from('messages')
+          .insert(mcpMsgInsert).select().single();
 
         if (msgError) throw msgError;
 
-        // Notify other party
+        // Update conversation's last_message preview
+        await supabase.from('conversations').update({
+          last_message: content.substring(0, 200),
+          updated_at: new Date().toISOString()
+        }).eq('id', conversation_id);
+
+        // Notify other party via ALL channels (in-app + email + webhook)
         const recipientId = conv.human_id === user.id ? conv.agent_id : conv.human_id;
         if (recipientId) {
-          await createNotification(recipientId, 'new_message', 'New Message', content.substring(0, 100), `/conversations/${conversation_id}`);
+          const taskLink = conv.task_id ? `/tasks/${conv.task_id}` : `/conversations/${conversation_id}`;
+          await createNotification(recipientId, 'new_message', 'New Message', content.substring(0, 100), taskLink);
+
+          // Email notification (non-blocking)
+          try {
+            const { data: taskForEmail } = conv.task_id
+              ? await supabase.from('tasks').select('title').eq('id', conv.task_id).single()
+              : { data: null };
+            await sendMessageEmailNotification(recipientId, user.name || 'Someone', taskForEmail?.title || 'a task', content.substring(0, 200), conv.task_id);
+          } catch (emailErr) {
+            console.error(`[MCP send_message] Email notification failed:`, emailErr.message);
+          }
+
+          // Webhook (for agent recipients)
+          await deliverWebhook(recipientId, {
+            event: 'new_message',
+            conversation_id,
+            task_id: conv.task_id,
+            sender_id: user.id,
+            message_preview: content.substring(0, 200),
+            timestamp: new Date().toISOString()
+          });
         }
 
         res.json(msg);
@@ -5236,12 +5670,25 @@ app.post('/api/mcp', async (req, res) => {
 
         const { data: applications, error } = await supabase
           .from('task_applications')
-          .select('*, applicant:users!task_applications_human_id_fkey(id, name, hourly_rate, rating, jobs_completed, bio, city)')
+          .select('*, applicant:users!task_applications_human_id_fkey(id, name, hourly_rate, rating, jobs_completed, bio, city, total_tasks_completed, total_tasks_accepted, total_rejections, total_disputes_lost)')
           .eq('task_id', task_id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        res.json(applications || []);
+
+        // Enrich with computed success_rate
+        const enrichedApps = (applications || []).map(app => {
+          const a = app.applicant;
+          if (a) {
+            const denominator = (a.total_tasks_completed || 0) + (a.total_disputes_lost || 0);
+            a.success_rate = denominator > 0
+              ? Math.round(((a.total_tasks_completed || 0) / denominator) * 100)
+              : null;
+          }
+          return app;
+        });
+
+        res.json(enrichedApps);
         break;
       }
 
@@ -5476,8 +5923,23 @@ app.post('/api/mcp', async (req, res) => {
       case 'direct_hire':
       case 'create_booking': {
         // Hire a specific human directly (from conversation or by human_id)
-        const { conversation_id, human_id: directHumanId, title, description, location, scheduled_at, duration_hours, hourly_rate, budget, category } = params;
+        const { conversation_id, human_id: directHumanId, title, description, instructions: directInstructions, location, scheduled_at, duration_hours, hourly_rate, budget, category } = params;
         if (!title) return res.status(400).json({ error: 'title is required' });
+
+        // Verify agent has payment method
+        const { verifyAgentHasPaymentMethod: verifyPMDirect } = require('./backend/services/stripeService');
+        try {
+          const pmCheck = await verifyPMDirect(supabase, user.id);
+          if (!pmCheck.valid) {
+            return res.status(402).json({
+              error: 'card_required',
+              code: 'card_required',
+              message: 'Add a payment method before hiring.'
+            });
+          }
+        } catch (pmErr) {
+          console.error(`[MCP direct_hire] PM verification failed:`, pmErr.message);
+        }
 
         let humanId = directHumanId || null;
         if (!humanId && conversation_id) {
@@ -5502,6 +5964,7 @@ app.post('/api/mcp', async (req, res) => {
             human_id: humanId,
             title,
             description: description || title,
+            instructions: directInstructions || null,
             category: category || 'other',
             location: location || null,
             budget: budgetAmount,
@@ -5516,6 +5979,12 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (error) throw error;
+
+        // Increment total_tasks_posted for agent
+        await supabase.rpc('increment_user_stat', {
+          user_id_param: user.id, stat_name: 'total_tasks_posted', increment_by: 1
+        });
+
         res.json({
           booking_id: task.id,
           task_id: task.id,
@@ -5864,7 +6333,7 @@ app.post('/api/messages', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { conversation_id, content } = req.body;
+  const { conversation_id, content, attachments } = req.body;
 
   // Validate message content
   if (!content || typeof content !== 'string' || !content.trim()) {
@@ -5872,6 +6341,25 @@ app.post('/api/messages', async (req, res) => {
   }
   if (content.length > 10000) {
     return res.status(400).json({ error: 'Message content is too long (max 10,000 characters)' });
+  }
+
+  // Validate attachments if provided
+  let validatedAttachments = [];
+  if (attachments && Array.isArray(attachments)) {
+    if (attachments.length > 5) {
+      return res.status(400).json({ error: 'Maximum 5 attachments per message' });
+    }
+    for (const att of attachments) {
+      if (!att.url || !att.filename) {
+        return res.status(400).json({ error: 'Each attachment must have url and filename' });
+      }
+      validatedAttachments.push({
+        url: att.url,
+        filename: att.filename,
+        type: att.type || 'file',
+        size: att.size || 0
+      });
+    }
   }
 
   // Verify user has access to conversation (include task_id and task title for notifications)
@@ -5889,16 +6377,29 @@ app.post('/api/messages', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
+  // Check if conversation is locked (task in terminal status)
+  if (conversation.task_id) {
+    const { data: taskStatus } = await supabase
+      .from('tasks').select('status').eq('id', conversation.task_id).single();
+    if (taskStatus && ['paid', 'cancelled', 'expired'].includes(taskStatus.status)) {
+      return res.status(409).json({ error: 'conversation_closed', message: 'This task is closed. Messages cannot be sent.' });
+    }
+  }
+
   const id = uuidv4();
+  const messageInsert = {
+    id,
+    conversation_id,
+    sender_id: user.id,
+    content: content || '',
+    created_at: new Date().toISOString()
+  };
+  if (validatedAttachments.length > 0) {
+    messageInsert.attachments = validatedAttachments;
+  }
   const { data: message, error } = await supabase
     .from('messages')
-    .insert({
-      id,
-      conversation_id,
-      sender_id: user.id,
-      content: content || '',
-      created_at: new Date().toISOString()
-    })
+    .insert(messageInsert)
     .select()
     .single();
 
@@ -6508,7 +7009,22 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Agents only' });
   }
 
-  const { title, description, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity } = req.body;
+  const { title, description, instructions, instructions_attachments, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity } = req.body;
+
+  // Verify agent has payment method
+  const { verifyAgentHasPaymentMethod } = require('./backend/services/stripeService');
+  try {
+    const pmCheck = await verifyAgentHasPaymentMethod(supabase, user.id);
+    if (!pmCheck.valid) {
+      return res.status(402).json({
+        error: 'card_required',
+        code: 'card_required',
+        message: 'Add a payment method before creating tasks.'
+      });
+    }
+  } catch (pmErr) {
+    console.error(`[CreateTask] PM verification failed:`, pmErr.message);
+  }
 
   const id = uuidv4();
   const budgetAmount = budget || 50;
@@ -6529,6 +7045,8 @@ app.post('/api/tasks/create', async (req, res) => {
       agent_id: user.id,
       title,
       description,
+      instructions: instructions || null,
+      instructions_attachments: Array.isArray(instructions_attachments) ? instructions_attachments : [],
       category: category || 'general',
       location,
       latitude: latitude != null ? parseFloat(latitude) : null,
@@ -6554,6 +7072,11 @@ app.post('/api/tasks/create', async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  // Increment total_tasks_posted for agent
+  await supabase.rpc('increment_user_stat', {
+    user_id_param: user.id, stat_name: 'total_tasks_posted', increment_by: 1
+  });
 
   res.json({
     ...task,
@@ -6883,6 +7406,13 @@ const taskColumnFlags = {
   is_anonymous: true,
   duration_hours: true,
   review_deadline: true,
+  escrow_captured: true,
+  auth_hold_expires_at: true,
+  rejection_feedback: true,
+  auto_approved: true,
+  revision_count: true,
+  deadline_warning_sent: true,
+  instructions_attachments: true,
 };
 
 async function checkTaskColumns() {
@@ -6932,7 +7462,7 @@ async function start() {
     // console.log('   ✅ Auto-release service started (48h threshold)');
 
     // Start balance promoter (promotes pending → available after 48 hours)
-    startBalancePromoter(supabase, createNotification);
+    startBalancePromoter(supabase, createNotification, sendEmailNotification);
     console.log('   ✅ Balance promoter started (15min interval)');
 
     // Start task expiry service
@@ -7045,6 +7575,112 @@ async function start() {
             }
           }
         }
+        // Rule 4: Auto-approve tasks pending review for more than 48 hours
+        const autoApproveThreshold = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+        const { data: staleReviews } = await supabase
+          .from('tasks')
+          .select('id, agent_id, human_id, title, stripe_payment_intent_id, escrow_amount, budget')
+          .eq('status', 'pending_review')
+          .not('proof_submitted_at', 'is', null)
+          .lt('proof_submitted_at', autoApproveThreshold);
+
+        for (const task of (staleReviews || [])) {
+          const { data: approved } = await supabase.from('tasks')
+            .update(cleanTaskData({ status: 'approved', auto_approved: true, updated_at: new Date().toISOString() }))
+            .eq('id', task.id).eq('status', 'pending_review').select('id').single();
+          if (!approved) continue;
+
+          // Release payment for Stripe tasks
+          if (task.stripe_payment_intent_id) {
+            try { await releasePaymentToPending(supabase, task.id, task.human_id, task.agent_id, createNotification); }
+            catch (e) { console.error(`[AutoApprove] Release failed for ${task.id}:`, e.message); }
+          }
+
+          await deliverWebhook(task.agent_id, { event: 'task_auto_approved', task_id: task.id, reason: '48-hour review period expired' });
+          await createNotification(task.agent_id, 'task_auto_approved', 'Task Auto-Approved',
+            `Task "${task.title}" was auto-approved after 48 hours without review.`, `/tasks/${task.id}`);
+          await createNotification(task.human_id, 'task_approved', 'Work Approved!',
+            `Your work on "${task.title}" has been approved.`, `/tasks/${task.id}`);
+          console.log(`[AutoApprove] Auto-approved task ${task.id}`);
+        }
+
+        // Send warning at 24h mark (proof submitted between 24-25h ago)
+        const warningThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const warningCutoff = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+        const { data: warningTasks } = await supabase
+          .from('tasks')
+          .select('id, agent_id, title')
+          .eq('status', 'pending_review')
+          .not('proof_submitted_at', 'is', null)
+          .lt('proof_submitted_at', warningThreshold)
+          .gt('proof_submitted_at', warningCutoff);
+
+        for (const task of (warningTasks || [])) {
+          await deliverWebhook(task.agent_id, {
+            event: 'auto_approve_warning', task_id: task.id,
+            message: '24 hours remaining to review proof before auto-approval'
+          });
+        }
+
+        // Rule 5: Deadline warnings for in_progress tasks
+        const nowDate = new Date();
+        if (taskColumnFlags.deadline_warning_sent) {
+          const { data: pastDeadlineTasks } = await supabase
+            .from('tasks')
+            .select('id, human_id, agent_id, title, deadline')
+            .eq('status', 'in_progress')
+            .eq('deadline_warning_sent', false)
+            .not('deadline', 'is', null)
+            .lt('deadline', nowDate.toISOString());
+
+          for (const task of (pastDeadlineTasks || [])) {
+            const { data: marked } = await supabase
+              .from('tasks')
+              .update(cleanTaskData({ deadline_warning_sent: true, updated_at: nowDate.toISOString() }))
+              .eq('id', task.id).eq('deadline_warning_sent', false).select('id').single();
+            if (!marked) continue;
+
+            await createNotification(task.human_id, 'deadline_passed', 'Deadline Passed',
+              `The deadline for "${task.title}" has passed. Please submit proof within 24 hours to avoid an automatic dispute.`,
+              `/tasks/${task.id}`);
+            await deliverWebhook(task.agent_id, {
+              event: 'deadline_passed', task_id: task.id,
+              message: 'Task deadline has passed. Worker has 24 hours to submit proof.'
+            });
+          }
+
+          // Rule 6: Auto-dispute in_progress tasks 24h past deadline
+          const graceCutoff = new Date(nowDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
+          const { data: graceExpiredTasks } = await supabase
+            .from('tasks')
+            .select('id, human_id, agent_id, title')
+            .eq('status', 'in_progress')
+            .eq('deadline_warning_sent', true)
+            .not('deadline', 'is', null)
+            .lt('deadline', graceCutoff);
+
+          for (const task of (graceExpiredTasks || [])) {
+            // Auto-dispute: set task to disputed and create dispute record
+            const { data: disputed } = await supabase.from('tasks')
+              .update({ status: 'disputed', dispute_reason: 'Deadline expired without proof (auto-filed)', disputed_by: task.agent_id, disputed_at: nowDate.toISOString(), updated_at: nowDate.toISOString() })
+              .eq('id', task.id).eq('status', 'in_progress').select('id').single();
+            if (!disputed) continue;
+
+            const disputeId = uuidv4();
+            await supabase.from('disputes').insert({
+              id: disputeId, task_id: task.id, filed_by: task.agent_id, filed_against: task.human_id,
+              reason: 'Deadline expired without proof submission (auto-filed after 24h grace period)',
+              status: 'open', created_at: nowDate.toISOString()
+            });
+
+            await createNotification(task.human_id, 'dispute_opened', 'Auto-Dispute Filed',
+              `A dispute was auto-filed for "${task.title}" because the deadline passed without proof submission.`, `/tasks/${task.id}`);
+            await createNotification(task.agent_id, 'dispute_opened', 'Auto-Dispute Filed',
+              `A dispute was auto-filed for "${task.title}" — deadline expired without proof.`, `/tasks/${task.id}`);
+            console.log(`[DeadlineTimeout] Auto-disputed task ${task.id}`);
+          }
+        }
+
       } catch (err) {
         console.error('[TaskExpiry] Error:', err.message);
       }
@@ -7052,7 +7688,199 @@ async function start() {
     // Run once on startup, then on interval
     expireOpenTasks();
     setInterval(expireOpenTasks, TASK_EXPIRY_INTERVAL_MS);
-    console.log(`   ✅ Task expiry service started (deadline + ${TASK_EXPIRY_DAYS}-day stale + review expiry, hourly check)`);
+    console.log(`   ✅ Task expiry service started (deadline + ${TASK_EXPIRY_DAYS}-day stale + review expiry + auto-approve + deadline timeout, hourly check)`);
+
+    // Auth hold renewal — renews expiring Stripe auth holds on assigned tasks
+    async function renewExpiringAuthHolds() {
+      try {
+        const { authorizeEscrow, cancelEscrowHold } = require('./backend/services/stripeService');
+        // Find assigned tasks with auth holds expiring within 24 hours
+        const cutoff = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        const { data: expiringTasks } = await supabase
+          .from('tasks')
+          .select('id, stripe_payment_intent_id, escrow_amount, budget, agent_id, title, escrow_captured')
+          .eq('status', 'assigned')
+          .eq('escrow_captured', false)
+          .not('auth_hold_expires_at', 'is', null)
+          .lt('auth_hold_expires_at', cutoff)
+          .gt('auth_hold_expires_at', new Date().toISOString()); // not yet expired
+
+        for (const task of (expiringTasks || [])) {
+          try {
+            // Cancel old PI
+            await cancelEscrowHold(task.stripe_payment_intent_id);
+            // Create new auth hold
+            const amountCents = Math.round((task.escrow_amount || task.budget || 0) * 100);
+            const newAuth = await authorizeEscrow(supabase, task.agent_id, task.id, amountCents);
+
+            if (newAuth.requires_action) {
+              // 3DS required on renewal — notify agent
+              await createNotification(task.agent_id, 'auth_hold_failed', 'Payment Hold Expiring',
+                `Your payment hold for "${task.title}" could not be renewed. Please update your payment method within 24 hours or the task will be cancelled.`,
+                `/tasks/${task.id}`);
+              // Set a short expiry so next cycle auto-cancels if still unresolved
+              await supabase.from('tasks').update({
+                auth_hold_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                updated_at: new Date().toISOString()
+              }).eq('id', task.id);
+              continue;
+            }
+
+            await supabase.from('tasks').update({
+              stripe_payment_intent_id: newAuth.payment_intent_id,
+              auth_hold_expires_at: newAuth.auth_hold_expires_at,
+              updated_at: new Date().toISOString()
+            }).eq('id', task.id);
+
+            console.log(`[AuthRenewal] Renewed auth hold for task ${task.id}`);
+          } catch (err) {
+            console.error(`[AuthRenewal] Failed for task ${task.id}:`, err.message);
+            await createNotification(task.agent_id, 'auth_hold_failed', 'Payment Hold Failed',
+              `Your payment hold for "${task.title}" could not be renewed. Update your payment method or the task may be cancelled.`,
+              `/tasks/${task.id}`);
+          }
+        }
+
+        // Auto-cancel tasks with expired auth holds (hold expired AND past grace)
+        const { data: expiredHolds } = await supabase
+          .from('tasks')
+          .select('id, stripe_payment_intent_id, agent_id, human_id, title')
+          .eq('status', 'assigned')
+          .eq('escrow_captured', false)
+          .lt('auth_hold_expires_at', new Date().toISOString());
+
+        for (const task of (expiredHolds || [])) {
+          const { data: cancelled } = await supabase.from('tasks').update(cleanTaskData({
+            status: 'cancelled',
+            cancelled_at: new Date().toISOString(),
+            cancellation_reason: 'Auth hold expired — payment method issue',
+            updated_at: new Date().toISOString()
+          })).eq('id', task.id).eq('status', 'assigned').select('id').single();
+
+          if (!cancelled) continue;
+
+          await createNotification(task.agent_id, 'task_cancelled', 'Task Auto-Cancelled',
+            `Task "${task.title}" was cancelled because the payment hold expired.`, `/tasks/${task.id}`);
+          if (task.human_id) {
+            await createNotification(task.human_id, 'task_cancelled', 'Task Cancelled',
+              `Task "${task.title}" was cancelled due to a payment issue with the requester.`, `/tasks/${task.id}`);
+          }
+          console.log(`[AuthRenewal] Auto-cancelled task ${task.id} — auth hold expired`);
+        }
+      } catch (err) {
+        console.error('[AuthRenewal] Error:', err.message);
+      }
+    }
+    // Run every 6 hours
+    renewExpiringAuthHolds();
+    setInterval(renewExpiringAuthHolds, 6 * 60 * 60 * 1000);
+    console.log('   ✅ Auth hold renewal service started (every 6 hours)');
+
+    // ---- Webhook Retry Queue Processor (every 60 seconds) ----
+    async function processWebhookQueue() {
+      try {
+        // Pick up to 10 pending/failed deliveries ready for retry
+        const { data: deliveries, error: fetchErr } = await supabase
+          .from('webhook_deliveries')
+          .select('id, user_id, event_type, payload, attempts, max_attempts')
+          .in('status', ['pending', 'failed'])
+          .lt('next_retry_at', new Date().toISOString())
+          .order('next_retry_at', { ascending: true })
+          .limit(10);
+
+        if (fetchErr) {
+          // Table may not exist yet — silent fail
+          if (!fetchErr.message?.includes('does not exist')) {
+            console.error('[WebhookQueue] Fetch error:', fetchErr.message);
+          }
+          return;
+        }
+
+        if (!deliveries || deliveries.length === 0) return;
+
+        for (const delivery of deliveries) {
+          try {
+            // Fetch user's webhook config
+            const { data: webhookUser } = await supabase
+              .from('users')
+              .select('webhook_url, webhook_secret')
+              .eq('id', delivery.user_id)
+              .single();
+
+            if (!webhookUser?.webhook_url) {
+              // No webhook URL — mark as exhausted
+              await supabase.from('webhook_deliveries').update({
+                status: 'exhausted',
+                last_error: 'No webhook URL configured for user'
+              }).eq('id', delivery.id);
+              continue;
+            }
+
+            if (!isValidWebhookUrl(webhookUser.webhook_url)) {
+              await supabase.from('webhook_deliveries').update({
+                status: 'exhausted',
+                last_error: 'Invalid webhook URL'
+              }).eq('id', delivery.id);
+              continue;
+            }
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (webhookUser.webhook_secret) {
+              const signature = crypto
+                .createHmac('sha256', webhookUser.webhook_secret)
+                .update(JSON.stringify(delivery.payload))
+                .digest('hex');
+              headers['X-Webhook-Signature'] = signature;
+            }
+
+            const response = await fetch(webhookUser.webhook_url, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(delivery.payload),
+              signal: AbortSignal.timeout(10000)
+            });
+
+            if (response.ok) {
+              await supabase.from('webhook_deliveries').update({
+                status: 'delivered',
+                delivered_at: new Date().toISOString(),
+                attempts: delivery.attempts + 1
+              }).eq('id', delivery.id);
+            } else {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+          } catch (deliveryErr) {
+            const newAttempts = delivery.attempts + 1;
+            if (newAttempts >= delivery.max_attempts) {
+              await supabase.from('webhook_deliveries').update({
+                status: 'exhausted',
+                attempts: newAttempts,
+                last_error: deliveryErr.message
+              }).eq('id', delivery.id);
+            } else {
+              // Exponential backoff: 1min, 5min, 30min, 2hr, 12hr
+              const backoffMs = [60, 300, 1800, 7200, 43200][newAttempts - 1] * 1000;
+              const nextRetry = new Date(Date.now() + backoffMs).toISOString();
+              await supabase.from('webhook_deliveries').update({
+                status: 'failed',
+                attempts: newAttempts,
+                last_error: deliveryErr.message,
+                next_retry_at: nextRetry
+              }).eq('id', delivery.id);
+            }
+          }
+        }
+      } catch (err) {
+        // Don't log if table doesn't exist yet
+        if (!err.message?.includes('does not exist')) {
+          console.error('[WebhookQueue] Processor error:', err.message);
+        }
+      }
+    }
+    processWebhookQueue();
+    setInterval(processWebhookQueue, 60 * 1000); // every 60 seconds
+    console.log('   ✅ Webhook retry queue processor started (every 60s)');
+
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
@@ -7175,7 +8003,7 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     return res.status(404).json({ error: 'Task not found' });
   }
 
-  // Accept from pending_acceptance (agent hired this human, charge agent's card now)
+  // Accept from pending_acceptance (agent hired this human — authorize escrow hold)
   if (task.status === 'pending_acceptance') {
     // Verify this human is the one who was offered the task
     const isOffered = task.human_id === user.id ||
@@ -7189,33 +8017,42 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       return res.status(410).json({ error: 'The review period has expired. This offer is no longer available.' });
     }
 
-    // Charge the agent's card now
+    // Place auth hold on agent's card (funds reserved, NOT charged yet)
     const budgetAmount = task.escrow_amount || task.budget || 50;
     const amountCents = Math.round(budgetAmount * 100);
-    const { chargeAgentForTask, refundPaymentIntent } = require('./backend/services/stripeService');
+    const { authorizeEscrow, cancelEscrowHold } = require('./backend/services/stripeService');
 
-    let chargeResult;
+    let authResult;
     try {
-      chargeResult = await chargeAgentForTask(supabase, task.agent_id, id, amountCents);
+      authResult = await authorizeEscrow(supabase, task.agent_id, id, amountCents);
     } catch (stripeError) {
-      console.error(`[Accept] Payment failed for task ${id}:`, stripeError.message);
+      console.error(`[Accept] Auth hold failed for task ${id}:`, stripeError.message);
       return res.status(402).json({
         error: 'Payment failed',
         code: 'payment_error',
-        message: 'The agent\'s payment could not be processed. The task cannot start until payment succeeds. Please contact the agent.'
+        message: 'The agent\'s payment could not be authorized. The task cannot start until payment succeeds. Please contact the agent.'
       });
     }
 
-    // Atomic update: move to in_progress with payment info
+    // Handle 3DS/SCA requirement — task stays pending_acceptance
+    if (authResult.requires_action) {
+      return res.status(402).json({
+        error: 'authentication_required',
+        client_secret: authResult.client_secret,
+        payment_intent_id: authResult.payment_intent_id,
+        message: 'Card requires authentication. The agent must complete verification.'
+      });
+    }
+
+    // Auth hold placed — move to 'assigned' (NOT in_progress — that happens at /start)
     const { data: updatedTask, error } = await supabase
       .from('tasks')
       .update(cleanTaskData({
-        status: 'in_progress',
-        escrow_status: 'deposited',
-        escrow_deposited_at: new Date().toISOString(),
-        stripe_payment_intent_id: chargeResult.payment_intent_id,
+        status: 'assigned',
+        escrow_status: 'authorized',
+        stripe_payment_intent_id: authResult.payment_intent_id,
+        auth_hold_expires_at: authResult.auth_hold_expires_at,
         assigned_at: new Date().toISOString(),
-        work_started_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
       .eq('id', id)
@@ -7224,29 +8061,40 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       .single();
 
     if (error || !updatedTask) {
-      // Task was already accepted or changed — refund the charge
+      // Task was already accepted or changed — cancel the auth hold
       try {
-        await refundPaymentIntent(chargeResult.payment_intent_id, 'duplicate');
-        console.log(`[Accept] Refunded charge for task ${id} (concurrent accept)`);
-      } catch (refundErr) {
-        console.error(`[Accept] CRITICAL: Failed to refund charge for task ${id}:`, refundErr);
+        await cancelEscrowHold(authResult.payment_intent_id);
+        console.log(`[Accept] Cancelled auth hold for task ${id} (concurrent accept)`);
+      } catch (cancelErr) {
+        console.error(`[Accept] CRITICAL: Failed to cancel auth hold for task ${id}:`, cancelErr);
       }
       return res.status(409).json({ error: 'Task is no longer available — it may have been accepted by someone else' });
     }
 
-    // Increment total_tasks_accepted for human
-    const { data: acceptUser } = await supabase
-      .from('users')
-      .select('total_tasks_accepted')
-      .eq('id', user.id)
-      .single();
-    await supabase
-      .from('users')
-      .update({
-        total_tasks_accepted: (acceptUser?.total_tasks_accepted || 0) + 1,
-        last_active_at: new Date().toISOString()
-      })
-      .eq('id', user.id);
+    // Increment total_tasks_accepted for human (atomic via RPC)
+    await supabase.rpc('increment_user_stat', {
+      user_id_param: user.id, stat_name: 'total_tasks_accepted', increment_by: 1
+    });
+    await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', user.id);
+
+    // Auto-create conversation for task communication
+    const convId = uuidv4();
+    await supabase.from('conversations').upsert(
+      { id: convId, human_id: user.id, agent_id: task.agent_id, task_id: id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { onConflict: 'human_id,agent_id,task_id', ignoreDuplicates: true }
+    );
+
+    // Reject other pending applicants and notify them
+    const { data: rejectedApps } = await supabase
+      .from('task_applications')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('task_id', id).neq('human_id', user.id).eq('status', 'pending')
+      .select('human_id');
+
+    for (const app of (rejectedApps || [])) {
+      await createNotification(app.human_id, 'application_rejected', 'Not Selected',
+        `Another worker was selected for "${task.title}". Browse other tasks →`, '/tasks');
+    }
 
     // Notify the agent
     if (task.agent_id) {
@@ -7254,12 +8102,12 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
         task.agent_id,
         'task_accepted',
         'Task Accepted',
-        `${user.name || 'A worker'} has accepted your task "${task.title}". Payment has been charged and work can begin.`,
+        `${user.name || 'A worker'} has accepted your task "${task.title}". Payment hold placed — work can begin when the worker starts.`,
         `/tasks/${id}`
       );
     }
 
-    return res.json({ success: true, status: 'in_progress', escrow_status: 'deposited' });
+    return res.json({ success: true, status: 'assigned', escrow_status: 'authorized' });
   }
 
   // Accept from open status (original flow — human browsing open tasks)
@@ -7383,6 +8231,125 @@ app.post('/api/tasks/:id/decline', async (req, res) => {
   res.json({ success: true, message: 'Task declined. The agent has been notified.' });
 });
 
+// 3DS payment confirmation — agent completes card verification after auth hold
+app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: taskId } = req.params;
+
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('id, agent_id, human_id, title, status, stripe_payment_intent_id, escrow_amount, budget')
+    .eq('id', taskId)
+    .single();
+
+  if (taskError || !task) return res.status(404).json({ error: 'Task not found' });
+
+  // Auth: must be the agent
+  if (task.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Only the task creator can confirm payment' });
+  }
+
+  if (task.status !== 'pending_acceptance') {
+    return res.status(400).json({ error: `Task is in '${task.status}' status, not pending_acceptance` });
+  }
+
+  if (!task.stripe_payment_intent_id) {
+    return res.status(400).json({ error: 'No payment intent associated with this task' });
+  }
+
+  // Retrieve PaymentIntent from Stripe
+  const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  let pi;
+  try {
+    pi = await stripe.paymentIntents.retrieve(task.stripe_payment_intent_id);
+  } catch (stripeErr) {
+    console.error(`[ConfirmPayment] Stripe retrieve failed for ${task.stripe_payment_intent_id}:`, stripeErr.message);
+    return res.status(502).json({ error: 'Failed to verify payment status with Stripe' });
+  }
+
+  if (pi.status === 'requires_capture') {
+    // 3DS succeeded — auth hold is in place, assign the task
+    const authHoldExpiresAt = new Date(Date.now() + 6.5 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: updated, error: updateErr } = await supabase
+      .from('tasks')
+      .update(cleanTaskData({
+        status: 'assigned',
+        escrow_status: 'authorized',
+        auth_hold_expires_at: authHoldExpiresAt,
+        assigned_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }))
+      .eq('id', taskId)
+      .eq('status', 'pending_acceptance')
+      .select('id')
+      .single();
+
+    if (updateErr || !updated) {
+      return res.status(409).json({ error: 'Task status changed before payment could be confirmed' });
+    }
+
+    // Reject other applicants
+    const { data: rejectedApps } = await supabase
+      .from('task_applications')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('task_id', taskId).neq('human_id', task.human_id).eq('status', 'pending')
+      .select('human_id');
+    for (const app of (rejectedApps || [])) {
+      await createNotification(app.human_id, 'application_rejected', 'Not Selected',
+        `Another worker was selected for "${task.title}". Browse other tasks →`, '/tasks');
+    }
+
+    await createNotification(task.agent_id, 'payment_confirmed', 'Payment Verified',
+      `Payment for "${task.title}" has been verified. Task is now assigned.`,
+      `/tasks/${taskId}`);
+    if (task.human_id) {
+      await createNotification(task.human_id, 'task_assigned', 'You\'ve Been Assigned',
+        `You've been assigned to "${task.title}". Review the instructions and start when ready.`,
+        `/tasks/${taskId}`);
+    }
+
+    return res.json({ success: true, status: 'assigned', escrow_status: 'authorized' });
+  }
+
+  if (pi.status === 'requires_action' || pi.status === 'requires_confirmation') {
+    return res.status(402).json({
+      error: 'authentication_pending',
+      message: 'Card authentication has not been completed yet. Please complete the verification.',
+      client_secret: pi.client_secret
+    });
+  }
+
+  if (pi.status === 'canceled') {
+    await supabase.from('tasks')
+      .update({ status: 'open', human_id: null, updated_at: new Date().toISOString() })
+      .eq('id', taskId)
+      .eq('status', 'pending_acceptance');
+    return res.status(400).json({
+      error: 'payment_cancelled',
+      message: 'Payment was cancelled. The task has been reopened.'
+    });
+  }
+
+  if (pi.status === 'requires_payment_method') {
+    return res.status(402).json({
+      error: 'payment_failed',
+      message: 'Payment method was declined. Please update your payment method and try again.'
+    });
+  }
+
+  // Any other unexpected status
+  console.warn(`[ConfirmPayment] Unexpected PI status '${pi.status}' for task ${taskId}`);
+  return res.status(400).json({
+    error: 'unexpected_payment_status',
+    message: `Unexpected payment status: ${pi.status}. Please contact support.`
+  });
+});
+
 // NOTE: /api/tasks/:id/complete and /api/tasks/:id/approve duplicates removed.
 // Use /api/tasks/:id/submit-proof (line ~1911) for proof submission.
 // Use /api/tasks/:id/approve (line ~2085) for task approval.
@@ -7415,15 +8382,69 @@ app.post('/api/tasks/:id/start', async (req, res) => {
     return res.status(400).json({ error: `Cannot start a task with status "${task.status}". Task must be assigned first.` });
   }
 
-  await supabase
-    .from('tasks')
-    .update({
-      status: 'in_progress',
-      work_started_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', id)
-    .in('status', startableStatuses);
+  // Capture escrow if auth hold exists and hasn't been captured yet
+  if (task.stripe_payment_intent_id && !task.escrow_captured) {
+    const { captureEscrow } = require('./backend/services/stripeService');
+    try {
+      await captureEscrow(task.stripe_payment_intent_id);
+    } catch (captureErr) {
+      console.error(`[Start] Escrow capture failed for task ${id}:`, captureErr.message);
+      return res.status(402).json({
+        error: 'capture_failed',
+        message: 'Payment capture failed. Please contact the task requester.'
+      });
+    }
+
+    // Atomic update with capture confirmation
+    const { data: startedTask, error: startErr } = await supabase
+      .from('tasks')
+      .update(cleanTaskData({
+        status: 'in_progress',
+        escrow_status: 'deposited',
+        escrow_deposited_at: new Date().toISOString(),
+        escrow_captured: true,
+        escrow_captured_at: new Date().toISOString(),
+        work_started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }))
+      .eq('id', id)
+      .eq('status', 'assigned')
+      .select('id')
+      .single();
+
+    if (startErr || !startedTask) {
+      return res.status(409).json({ error: 'Task status changed before work could start.' });
+    }
+  } else {
+    // No Stripe PI (USDC/legacy) or already captured — just update status
+    const { data: startedTask, error: startErr } = await supabase
+      .from('tasks')
+      .update({
+        status: 'in_progress',
+        work_started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .in('status', startableStatuses)
+      .select('id')
+      .single();
+
+    if (startErr || !startedTask) {
+      return res.status(409).json({ error: 'Task status changed before work could start.' });
+    }
+  }
+
+  // Notify agent that work has started
+  if (task.agent_id) {
+    await createNotification(
+      task.agent_id,
+      'task_started',
+      'Work Started',
+      `${user.name || 'The worker'} has started work on "${task.title}".`,
+      `/tasks/${id}`
+    );
+    await deliverWebhook(task.agent_id, { event: 'task_started', task_id: id });
+  }
 
   res.json({ success: true, status: 'in_progress' });
 });
@@ -7438,7 +8459,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
 
   const { data: task } = await supabase
     .from('tasks')
-    .select('agent_id, human_id, title, status, escrow_status')
+    .select('agent_id, human_id, title, status, escrow_status, stripe_payment_intent_id, escrow_captured')
     .eq('id', id)
     .single();
 
@@ -7446,35 +8467,94 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  // Only allow cancellation of tasks that haven't been paid or completed
-  const cancellableStatuses = ['open', 'pending_acceptance', 'assigned', 'in_progress'];
-  if (!cancellableStatuses.includes(task.status)) {
-    return res.status(400).json({
-      error: `Cannot cancel a task with status "${task.status}". Only open, pending, assigned, or in-progress tasks can be cancelled.`
+  const { cancellation_reason } = req.body || {};
+
+  // Tier 1: Pre-work cancellation (free, no fees, no friction)
+  if (['open', 'pending_acceptance', 'assigned'].includes(task.status)) {
+    // Release auth hold if exists and escrow not yet captured
+    if (task.stripe_payment_intent_id && !task.escrow_captured) {
+      const { cancelEscrowHold } = require('./backend/services/stripeService');
+      try {
+        await cancelEscrowHold(task.stripe_payment_intent_id);
+        console.log(`[Cancel] Released auth hold for task ${id}`);
+      } catch (holdErr) {
+        console.warn(`[Cancel] Auth hold release failed for task ${id}:`, holdErr.message);
+        // Continue with cancellation — hold will expire on its own
+      }
+    }
+
+    const { data: cancelledTask, error: cancelErr } = await supabase
+      .from('tasks')
+      .update(cleanTaskData({
+        status: 'cancelled',
+        escrow_status: task.stripe_payment_intent_id ? 'refunded' : task.escrow_status,
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: cancellation_reason || null,
+        updated_at: new Date().toISOString()
+      }))
+      .eq('id', id)
+      .in('status', ['open', 'pending_acceptance', 'assigned'])
+      .select('id')
+      .single();
+
+    if (cancelErr || !cancelledTask) {
+      return res.status(409).json({ error: 'Task status changed before cancellation could complete.' });
+    }
+
+    // Increment total_cancellations if a human was assigned
+    if (['assigned', 'pending_acceptance'].includes(task.status) && task.human_id) {
+      await supabase.rpc('increment_user_stat', {
+        user_id_param: user.id, stat_name: 'total_cancellations', increment_by: 1
+      });
+    }
+
+    // Notify the assigned human if one exists
+    if (task.human_id) {
+      await createNotification(
+        task.human_id,
+        'task_cancelled',
+        'Task Cancelled',
+        `The task "${task.title}" has been cancelled by the poster.`,
+        `/tasks/${id}`
+      );
+    }
+
+    // Fire webhook to agent
+    await deliverWebhook(user.id, { event: 'task_cancelled', task_id: id, tier: 'pre_work' });
+
+    return res.json({ success: true, tier: 'pre_work' });
+  }
+
+  // Tier 2: In-progress — cannot cancel, must dispute
+  if (task.status === 'in_progress') {
+    return res.status(409).json({
+      error: 'task_in_progress',
+      message: 'This task is in progress. Open a dispute if there is an issue.',
+      action: 'dispute'
     });
   }
 
-  await supabase
-    .from('tasks')
-    .update({
-      status: 'cancelled',
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', id)
-    .in('status', cancellableStatuses);
-
-  // Notify the assigned human if one exists
-  if (task.human_id) {
-    await createNotification(
-      task.human_id,
-      'task_cancelled',
-      'Task Cancelled',
-      `The task "${task.title}" has been cancelled by the poster.`,
-      `/tasks/${id}`
-    );
+  // Proof submitted — cannot cancel
+  if (task.status === 'pending_review') {
+    return res.status(409).json({
+      error: 'proof_submitted',
+      message: 'Work has been submitted. Please approve, request a revision, or open a dispute.',
+      actions: ['approve', 'reject', 'dispute']
+    });
   }
 
-  res.json({ success: true });
+  // Dispute active — cannot cancel
+  if (task.status === 'disputed') {
+    return res.status(409).json({
+      error: 'dispute_active',
+      message: 'A dispute is active. Cancellation is not available during dispute resolution.'
+    });
+  }
+
+  // Any other status (paid, expired, cancelled) — terminal
+  return res.status(400).json({
+    error: `Cannot cancel a task with status "${task.status}".`
+  });
 });
 
 // ============================================
@@ -7532,13 +8612,15 @@ app.post('/api/disputes', async (req, res) => {
 
   // Check if we're still within the 48-hour dispute window
   const now = new Date();
-  const disputeWindowCloses = new Date(payout.dispute_window_closes_at);
-
-  if (now > disputeWindowCloses) {
-    return res.status(400).json({
-      error: 'Dispute window has closed. You had 48 hours from payment release to file a dispute.'
-    });
+  if (payout.dispute_window_closes_at) {
+    const disputeWindowCloses = new Date(payout.dispute_window_closes_at);
+    if (now > disputeWindowCloses) {
+      return res.status(400).json({
+        error: 'Dispute window has closed. You had 48 hours from payment release to file a dispute.'
+      });
+    }
   }
+  // If dispute_window_closes_at is null (legacy data), window is treated as open
 
   // Check if dispute already exists for this task
   const { data: existingDispute } = await supabase
@@ -7590,19 +8672,11 @@ app.post('/api/disputes', async (req, res) => {
     return res.status(500).json({ error: 'Failed to create dispute: ' + disputeError.message });
   }
 
-  // Increment total_disputes_filed for agent
-  const { data: disputeUser } = await supabase
-    .from('users')
-    .select('total_disputes_filed')
-    .eq('id', user.id)
-    .single();
-  await supabase
-    .from('users')
-    .update({
-      total_disputes_filed: (disputeUser?.total_disputes_filed || 0) + 1,
-      last_active_at: new Date().toISOString()
-    })
-    .eq('id', user.id);
+  // Increment total_disputes_filed for agent (atomic via RPC)
+  await supabase.rpc('increment_user_stat', {
+    user_id_param: user.id, stat_name: 'total_disputes_filed', increment_by: 1
+  });
+  await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', user.id);
 
   // Notify the human about the dispute
   const amountDollars = (payout.amount_cents / 100).toFixed(2);
@@ -7779,6 +8853,11 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       })
       .eq('id', dispute.task_id);
 
+    // Increment total_disputes_lost on the losing party (filed_against loses)
+    await supabase.rpc('increment_user_stat', {
+      user_id_param: dispute.filed_against, stat_name: 'total_disputes_lost', increment_by: 1
+    });
+
     await createNotification(
       dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Refund Issued',
       `Your dispute for task "${taskTitle}" was approved. A refund has been issued.`,
@@ -7811,6 +8890,11 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     const escrowAmount = task.escrow_amount || task.budget;
     const platformFee = Math.round(escrowAmount * PLATFORM_FEE_PERCENT) / 100;
     const netAmount = escrowAmount - platformFee;
+
+    // Increment total_disputes_lost on the losing party (filed_by loses)
+    await supabase.rpc('increment_user_stat', {
+      user_id_param: dispute.filed_by, stat_name: 'total_disputes_lost', increment_by: 1
+    });
 
     await createNotification(
       dispute.filed_against, 'dispute_resolved', 'Dispute Resolved - Payment Released',
