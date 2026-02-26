@@ -15,7 +15,7 @@ export default function MarketingNavbar({ user, activePage }) {
   return (
     <nav className="navbar-v4">
       <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
-        <Logo variant="header" theme="dark" />
+        <Logo variant="header" theme="light" />
       </a>
 
       {/* Mobile hamburger toggle */}
