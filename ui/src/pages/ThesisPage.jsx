@@ -180,13 +180,13 @@ function BridgeGraphic() {
       <circle cx="75" cy="80" r="38" fill="rgba(244,132,95,0.1)" stroke="rgba(244,132,95,0.5)" strokeWidth="2">
         <animate attributeName="r" values="38;42;38" dur="3s" repeatCount="indefinite" />
       </circle>
-      <text x="75" y="74" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="16" fontFamily="JetBrains Mono, monospace" fontWeight="700">AI</text>
+      <text x="75" y="74" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="16" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="700">AI</text>
       <text x="75" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="DM Sans, sans-serif">DIGITAL</text>
       {/* Right node — Human */}
       <circle cx="425" cy="80" r="38" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.5)" strokeWidth="2">
         <animate attributeName="r" values="38;42;38" dur="3s" begin="1.5s" repeatCount="indefinite" />
       </circle>
-      <text x="425" y="74" textAnchor="middle" fill="rgba(251,191,36,0.9)" fontSize="16" fontFamily="JetBrains Mono, monospace" fontWeight="700">IRL</text>
+      <text x="425" y="74" textAnchor="middle" fill="rgba(251,191,36,0.9)" fontSize="16" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="700">IRL</text>
       <text x="425" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="DM Sans, sans-serif">PHYSICAL</text>
       {/* Bridge */}
       <line x1="120" y1="80" x2="380" y2="80" stroke="url(#bridgeGrad)" strokeWidth="1.5" strokeDasharray="8 5">
@@ -200,7 +200,7 @@ function BridgeGraphic() {
       </circle>
       {/* Center label */}
       <rect x="205" y="62" width="90" height="28" rx="14" fill="rgba(244,132,95,0.15)" stroke="rgba(244,132,95,0.3)" strokeWidth="0.75" />
-      <text x="250" y="81" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="11" fontFamily="JetBrains Mono, monospace">irlwork.ai</text>
+      <text x="250" y="81" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="11" fontFamily="Courier Prime, DM Mono, monospace">irlwork.ai</text>
       <defs>
         <linearGradient id="bridgeGrad" x1="120" y1="0" x2="380" y2="0" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="rgba(244,132,95,0.6)" />
@@ -226,9 +226,9 @@ function ConvergenceGraphic() {
         <animate attributeName="stroke-dashoffset" values="250;0" dur="3s" begin="0.6s" repeatCount="indefinite" />
       </path>
       {/* Labels */}
-      <text x="20" y="45" fill="rgba(244,132,95,0.85)" fontSize="13" fontFamily="JetBrains Mono, monospace" fontWeight="600">AGENTS</text>
-      <text x="20" y="135" fill="rgba(251,191,36,0.85)" fontSize="13" fontFamily="JetBrains Mono, monospace" fontWeight="600">PAYMENTS</text>
-      <text x="20" y="225" fill="rgba(16,185,129,0.85)" fontSize="13" fontFamily="JetBrains Mono, monospace" fontWeight="600">GAP</text>
+      <text x="20" y="45" fill="rgba(244,132,95,0.85)" fontSize="13" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="600">AGENTS</text>
+      <text x="20" y="135" fill="rgba(251,191,36,0.85)" fontSize="13" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="600">PAYMENTS</text>
+      <text x="20" y="225" fill="rgba(16,185,129,0.85)" fontSize="13" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="600">GAP</text>
       {/* Center convergence */}
       <circle cx="220" cy="130" r="28" fill="rgba(244,132,95,0.1)" stroke="rgba(244,132,95,0.5)" strokeWidth="1.5">
         <animate attributeName="r" values="28;33;28" dur="2s" repeatCount="indefinite" />
@@ -236,7 +236,7 @@ function ConvergenceGraphic() {
       {/* Output */}
       <path d="M250 130 L390 130" stroke="rgba(244,132,95,0.5)" strokeWidth="2.5" fill="none" />
       <polygon points="398,130 385,122 385,138" fill="rgba(244,132,95,0.7)" />
-      <text x="320" y="118" fill="rgba(26,26,26,0.5)" fontSize="12" fontFamily="JetBrains Mono, monospace" fontWeight="600">OPPORTUNITY</text>
+      <text x="320" y="118" fill="rgba(26,26,26,0.5)" fontSize="12" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="600">OPPORTUNITY</text>
     </svg>
   )
 }

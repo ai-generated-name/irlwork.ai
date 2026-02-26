@@ -317,7 +317,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                     <span className="v4-badge v4-badge-success" style={{ fontSize: 11 }}>Active</span>
                   )}
                   {isCancelling && (
-                    <span className="v4-badge" style={{ fontSize: 11, background: 'rgba(245,158,11,0.1)', color: '#F59E0B' }}>Cancelling</span>
+                    <span className="v4-badge" style={{ fontSize: 11, background: 'rgba(245,158,11,0.1)', color: 'var(--warning)' }}>Cancelling</span>
                   )}
                 </div>
                 {periodEnd && (
@@ -347,7 +347,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 ) : (
                   <button
                     className="v4-btn v4-btn-secondary"
-                    style={{ fontSize: 13, padding: '8px 16px', color: '#EF4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                    style={{ fontSize: 13, padding: '8px 16px', color: 'var(--error)', borderColor: 'rgba(239,68,68,0.3)' }}
                     onClick={handleCancel}
                     disabled={actionLoading === 'cancel'}
                   >
@@ -423,7 +423,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 marginLeft: 6,
                 fontSize: 11,
                 fontWeight: 600,
-                color: '#10B981',
+                color: 'var(--success)',
                 background: 'rgba(16,185,129,0.1)',
                 padding: '2px 6px',
                 borderRadius: 4,
@@ -489,7 +489,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                     top: -10,
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    background: '#10B981',
+                    background: 'var(--success)',
                     color: 'white',
                     fontSize: 11,
                     fontWeight: 600,
@@ -545,7 +545,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                       }}>
                         <FeatureIcon
                           size={14}
-                          style={{ color: feature.included ? '#10B981' : 'var(--text-tertiary)', flexShrink: 0 }}
+                          style={{ color: feature.included ? 'var(--success)' : 'var(--text-tertiary)', flexShrink: 0 }}
                         />
                         <span style={{ fontSize: 13, color: feature.included ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
                           {feature.text}
