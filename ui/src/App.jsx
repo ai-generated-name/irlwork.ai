@@ -4119,8 +4119,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       <span style={{ color: 'var(--orange-600)' }}>Get verified to save on fees and increase visibility</span>
                     </span>
                   </div>
-                  {/* TODO: Route to /pricing or /settings/plans when page is built */}
-                  <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 13, fontWeight: 500, color: 'var(--orange-500)', textDecoration: 'none', whiteSpace: 'nowrap' }}>View Plans →</a>
+                  <a href="/premium" style={{ fontSize: 13, fontWeight: 500, color: 'var(--orange-500)', textDecoration: 'none', whiteSpace: 'nowrap' }}>View Plans →</a>
                 </div>
 
                 {/* Available for Hire */}
