@@ -4105,18 +4105,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             {settingsPageTab === 'general' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-                {/* Membership & Billing */}
-                <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading...</div>}>
-                  <MembershipBilling
-                    user={user}
-                    toast={toast}
-                    onUserUpdate={(updates) => {
-                      const updatedUser = { ...user, ...updates }
-                      setUser(updatedUser)
-                      localStorage.setItem('user', JSON.stringify(updatedUser))
-                    }}
-                  />
-                </Suspense>
+                {/* Compact Plan Row */}
+                <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)' }}>
+                      {(user?.subscription_tier || 'free').charAt(0).toUpperCase() + (user?.subscription_tier || 'free').slice(1)} Plan
+                    </span>
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
+                      {user?.subscription_tier === 'business' ? 'Unlimited tasks · 5% platform fee'
+                        : user?.subscription_tier === 'pro' ? '15 active tasks · 10% platform fee'
+                        : '3 active tasks · 15% platform fee'}
+                    </span>
+                  </div>
+                  {/* TODO: Route to /pricing or /settings/plans when page is built */}
+                  <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 13, fontWeight: 500, color: 'var(--orange-500)', textDecoration: 'none', whiteSpace: 'nowrap' }}>View Plans →</a>
+                </div>
 
                 {/* Available for Hire */}
                 <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
