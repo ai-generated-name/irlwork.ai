@@ -106,14 +106,17 @@ function initSubscriptionRoutes(supabase, getUserByToken, createNotification) {
       res.json(result);
     } catch (error) {
       console.error('[Subscription] Checkout error:', error.message);
+      console.error('[Subscription] Checkout error type:', error.type || 'unknown');
+      console.error('[Subscription] Checkout error code:', error.code || 'unknown');
+      console.error('[Subscription] Full checkout error:', JSON.stringify({ message: error.message, type: error.type, code: error.code, statusCode: error.statusCode }, null, 2));
       // Surface actionable errors to help diagnose configuration issues
       if (error.message.includes('not configured') || error.message.includes('No Stripe price')) {
-        res.status(503).json({ error: 'Subscription billing is being set up. Please try again later.' });
-      } else if (error.message.includes('permissions')) {
+        res.status(503).json({ error: `Subscription billing is being set up. Please try again later. [Debug: ${error.message}]` });
+      } else if (error.message.includes('permissions') || error.message.includes('restricted') || error.type === 'StripePermissionError') {
         console.error('[Subscription] Stripe API key lacks required permissions for checkout');
-        res.status(503).json({ error: 'Subscription billing is being set up. Please try again later.' });
+        res.status(503).json({ error: `Stripe API key lacks permissions. Please update to a full secret key (sk_live_*). [Debug: ${error.message}]` });
       } else {
-        res.status(500).json({ error: 'Failed to create checkout session. Please try again.' });
+        res.status(500).json({ error: `Failed to create checkout session: ${error.message}` });
       }
     }
   });
