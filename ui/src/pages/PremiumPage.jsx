@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { BadgeCheck, ArrowLeft, Loader2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
+import { supabase } from '../context/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
+
+async function getFreshToken(fallback) {
+  if (supabase) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) return session.access_token
+  }
+  return fallback || ''
+}
 
 const TIERS = [
   {
@@ -88,9 +97,10 @@ export default function PremiumPage({ user }) {
 
   async function fetchSubscription(checkStripe = false) {
     try {
+      const token = await getFreshToken(user?.token)
       const url = checkStripe ? `${API_URL}/subscription?check_stripe=true` : `${API_URL}/subscription`
       const res = await fetch(url, {
-        headers: { Authorization: user?.token || '' }
+        headers: { Authorization: token }
       })
       if (res.ok) {
         const data = await res.json()
@@ -104,11 +114,12 @@ export default function PremiumPage({ user }) {
   async function handleCheckout(tier) {
     setLoading(tier)
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user?.token || '',
+          Authorization: token,
         },
         body: JSON.stringify({ tier, billing_period: billingPeriod }),
       })
@@ -128,9 +139,10 @@ export default function PremiumPage({ user }) {
   async function handleManageSubscription() {
     setLoading('manage')
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription/portal`, {
         method: 'POST',
-        headers: { Authorization: user?.token || '' },
+        headers: { Authorization: token },
       })
       const data = await res.json()
       if (data.portal_url) {
@@ -148,9 +160,10 @@ export default function PremiumPage({ user }) {
   async function handleSync() {
     setSyncing(true)
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription/sync`, {
         method: 'POST',
-        headers: { Authorization: user?.token || '' },
+        headers: { Authorization: token },
       })
       const data = await res.json()
       if (data.subscription) {

@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Crown, Check, CreditCard, ExternalLink, Loader2, ArrowRight, Shield, Zap, BarChart3, Users, Key, Sparkles, Receipt, X } from 'lucide-react'
+import { supabase } from '../context/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
+
+async function getFreshToken(fallback) {
+  if (supabase) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) return session.access_token
+  }
+  return fallback || ''
+}
 
 // ============================================================================
 // PLAN DEFINITIONS (mirrors backend constants)
@@ -125,11 +134,12 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
   }, [])
 
   const fetchSubscription = useCallback(async () => {
-    if (!user?.token) return
+    if (!user?.id) return
     setLoadingSubscription(true)
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription`, {
-        headers: { Authorization: user.token }
+        headers: { Authorization: token }
       })
       if (res.ok) {
         const data = await res.json()
@@ -140,18 +150,19 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
     } finally {
       setLoadingSubscription(false)
     }
-  }, [user?.token])
+  }, [user?.id])
 
   useEffect(() => {
     fetchSubscription()
   }, [fetchSubscription])
 
   const fetchBillingHistory = async () => {
-    if (!user?.token) return
+    if (!user?.id) return
     setLoadingBilling(true)
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription/billing?limit=20`, {
-        headers: { Authorization: user.token }
+        headers: { Authorization: token }
       })
       if (res.ok) {
         const data = await res.json()
@@ -167,11 +178,12 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
   const handleUpgrade = async (tier) => {
     setActionLoading(`checkout-${tier}`)
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token
+          Authorization: token
         },
         body: JSON.stringify({ tier, interval: billingInterval })
       })
@@ -189,11 +201,12 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
   const handleChangePlan = async (tier) => {
     setActionLoading(`checkout-${tier}`)
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription/change`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token
+          Authorization: token
         },
         body: JSON.stringify({ tier, interval: billingInterval })
       })
@@ -220,9 +233,10 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
     }
     setActionLoading('cancel')
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription/cancel`, {
         method: 'POST',
-        headers: { Authorization: user.token }
+        headers: { Authorization: token }
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to cancel subscription')
@@ -239,9 +253,10 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
   const handleResume = async () => {
     setActionLoading('resume')
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription/resume`, {
         method: 'POST',
-        headers: { Authorization: user.token }
+        headers: { Authorization: token }
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to resume subscription')
@@ -258,9 +273,10 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
   const handleOpenPortal = async () => {
     setActionLoading('portal')
     try {
+      const token = await getFreshToken(user?.token)
       const res = await fetch(`${API_URL}/subscription/portal`, {
         method: 'POST',
-        headers: { Authorization: user.token }
+        headers: { Authorization: token }
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to open billing portal')
