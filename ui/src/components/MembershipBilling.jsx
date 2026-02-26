@@ -379,7 +379,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
           </h2>
 
           {/* Billing interval toggle */}
-          <div style={{
+          <div className="membership-billing-toggle" style={{
             display: 'inline-flex',
             background: 'var(--bg-tertiary)',
             borderRadius: 'var(--radius-lg)',
@@ -435,7 +435,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
         </div>
 
         {/* Plan cards */}
-        <div style={{
+        <div className="membership-plan-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 16,

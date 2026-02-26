@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 @import './landing-v4.css';
+@import './mobile-fixes.css';
 
 @tailwind base;
 @tailwind components;
