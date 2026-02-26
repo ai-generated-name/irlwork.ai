@@ -4112,9 +4112,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       {(user?.subscription_tier || 'free').charAt(0).toUpperCase() + (user?.subscription_tier || 'free').slice(1)} Plan
                     </span>
                     <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
-                      {user?.subscription_tier === 'business' ? 'Unlimited tasks · 5% platform fee'
-                        : user?.subscription_tier === 'pro' ? '15 active tasks · 10% platform fee'
-                        : '3 active tasks · 15% platform fee'}
+                      {user?.subscription_tier === 'business' ? '5% platform fee'
+                        : user?.subscription_tier === 'pro' ? '10% platform fee'
+                        : '15% platform fee'}
+                      {' · '}
+                      <span style={{ color: 'var(--orange-600)' }}>Get verified to save on fees and increase visibility</span>
                     </span>
                   </div>
                   {/* TODO: Route to /pricing or /settings/plans when page is built */}
