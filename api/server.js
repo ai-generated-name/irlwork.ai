@@ -1,4 +1,16 @@
-// irlwork.ai - API Server with Supabase + Payments
+// =========================================================================
+// irlwork.ai API Server
+// =========================================================================
+// Reference documentation (repo root):
+// ARCHITECTURE.md     — Status machine, payment flows, cancellation policy, notifications
+// BRAND_GUIDELINES.md — Colors, typography, component patterns, anti-patterns
+// API_REFERENCE.md    — Endpoint schemas, auth, webhooks
+// DATABASE_SCHEMA.md  — Table definitions, relationships
+// DEVELOPMENT.md      — Getting started, project structure
+//
+// IMPORTANT: Any changes to endpoints, status transitions, payment flows,
+// or notifications must be reflected in the corresponding reference doc.
+// =========================================================================
 console.log('[Startup] Loading environment...');
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
