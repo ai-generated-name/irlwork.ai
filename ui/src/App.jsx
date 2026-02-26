@@ -1589,6 +1589,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }, [hiringMode])
 
   useEffect(() => {
+    if (!user?.token) return // Wait for auth token before fetching
     if (hiringMode) {
       fetchPostedTasks()
       fetchHumans() // For hiring mode to browse humans
@@ -1600,7 +1601,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     fetchConversations()
     fetchNotifications()
     fetchUnreadMessages()
-  }, [hiringMode])
+  }, [hiringMode, user?.token])
 
   // Re-fetch tasks when location/radius filters change
   useEffect(() => {
@@ -1694,8 +1695,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }, [user, selectedConversation])
 
   const fetchTasks = async () => {
+    if (!user?.token) return
     try {
-      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.token || '' } })
+      const res = await fetch(`${API_URL}/my-tasks`, { headers: { Authorization: user.token } })
       if (res.ok) {
         const data = await res.json()
         setTasks(data || [])
@@ -1733,8 +1735,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchHumans = async () => {
+    if (!user?.token) return
     try {
-      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token || '' } })
+      const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token } })
       if (res.ok) {
         const data = await res.json()
         setHumans(fixAvatarUrl(data || []))
@@ -1745,8 +1748,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchPostedTasks = async () => {
+    if (!user?.token) return
     try {
-      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.token || '' } })
+      const res = await fetch(`${API_URL}/agent/tasks`, { headers: { Authorization: user.token } })
       if (res.ok) {
         const data = await res.json()
         setPostedTasks(data || [])
@@ -1815,8 +1819,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchWallet = async () => {
+    if (!user?.token) return
     try {
-      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.token || '' } })
+      const res = await fetch(`${API_URL}/wallet/status`, { headers: { Authorization: user.token } })
       if (res.ok) {
         const data = await res.json()
         setWallet(data || { balance: 0, transactions: [] })
@@ -1827,8 +1832,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchNotifications = async () => {
+    if (!user?.token) return
     try {
-      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.token || '' } })
+      const res = await fetch(`${API_URL}/notifications`, { headers: { Authorization: user.token } })
       if (res.ok) {
         const data = await res.json()
         // Only show unread notifications — clicked/read ones are removed from the list
@@ -1931,9 +1937,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchConversations = async () => {
+    if (!user?.token) return
     setConversationsLoading(prev => prev || conversations.length === 0) // Only show loading on first load
     try {
-      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.token || '' } })
+      const res = await fetch(`${API_URL}/conversations`, { headers: { Authorization: user.token } })
       if (res.ok) {
         const data = await res.json()
         setConversations(data || [])
@@ -1949,8 +1956,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   }
 
   const fetchUnreadMessages = async () => {
+    if (!user?.token) return
     try {
-      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.token || '' } })
+      const res = await fetch(`${API_URL}/messages/unread/count`, { headers: { Authorization: user.token } })
       if (res.ok) {
         const data = await res.json()
         setUnreadMessages(data.count || 0)

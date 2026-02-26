@@ -61,15 +61,15 @@ function EarningsDashboard({ user }) {
   const [showAltPayments, setShowAltPayments] = useState(false)
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!user?.id || !user?.token) {
       setLoading(false)
       return
     }
     fetchBalance()
-  }, [user])
+  }, [user?.id, user?.token])
 
   const fetchBalance = async () => {
-    if (!user?.id) {
+    if (!user?.id || !user?.token) {
       setLoading(false)
       return
     }
