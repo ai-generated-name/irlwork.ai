@@ -7620,6 +7620,15 @@ async function start() {
     // autoReleaseService.start();
     // console.log('   ✅ Auto-release service started (48h threshold)');
 
+    // Pre-provision Stripe subscription products/prices if not configured via env vars
+    try {
+      const { ensureStripePrices } = require('./backend/services/subscriptionService');
+      await ensureStripePrices();
+      console.log('   ✅ Stripe subscription prices verified');
+    } catch (e) {
+      console.warn('   ⚠️ Stripe subscription setup:', e.message);
+    }
+
     // Start balance promoter (promotes pending → available after 48 hours)
     startBalancePromoter(supabase, createNotification);
     console.log('   ✅ Balance promoter started (15min interval)');
