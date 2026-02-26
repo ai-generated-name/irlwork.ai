@@ -1352,6 +1352,7 @@ app.get('/api/auth/verify', async (req, res) => {
       headline: user.headline || '',
       timezone: user.timezone || '',
       gender: user.gender || null,
+      availability: user.availability || 'available',
       // Subscription
       subscription_tier: user.subscription_tier || 'free',
       subscription_status: user.subscription_status || 'inactive',
