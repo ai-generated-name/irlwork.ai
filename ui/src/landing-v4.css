@@ -4990,170 +4990,1048 @@
   box-shadow: none;
 }
 
-/* ===== Connect Agent Page: Easy Install Section ===== */
-.connect-agent-easy-install {
-  background: linear-gradient(135deg, #0B0B0C 0%, #1A1A1A 100%);
-  border-radius: var(--radius-xl);
-  padding: 40px;
-  color: white;
+/* ═══════════════════════════════════════════
+ *  CONNECT AGENT PAGE (ca-*) — Redesigned
+ * ═══════════════════════════════════════════ */
+
+.ca-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  font-family: var(--font-body);
 }
 
-.connect-agent-easy-install-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 32px;
-  margin-bottom: 32px;
+/* ─── Header ─── */
+.ca-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(250, 250, 248, 0.92);
+  backdrop-filter: blur(12px);
 }
 
-.connect-agent-easy-label {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--orange-400);
-  margin-bottom: 8px;
-}
-
-.connect-agent-easy-title {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: 12px;
-  color: white;
-}
-
-.connect-agent-easy-desc {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1.6;
-  max-width: 520px;
-}
-
-.connect-agent-copy-btn {
+.ca-header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 56px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 16px 32px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--accent-orange);
-  color: white;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s var(--ease-smooth);
+  justify-content: space-between;
+}
+
+.ca-nav-link {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 150ms;
+}
+
+.ca-nav-link:hover {
+  color: var(--text-primary);
+}
+
+/* ─── Main ─── */
+.ca-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+  padding-top: calc(56px + 48px);
+  padding-bottom: 64px;
+}
+
+/* ─── 1. Compact Hero ─── */
+.ca-hero {
+  text-align: center;
+  margin-bottom: 36px;
+  max-height: 200px;
+}
+
+.ca-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(232, 133, 61, 0.08);
+  border: 1px solid rgba(232, 133, 61, 0.15);
+  border-radius: var(--radius-full);
+  padding: 5px 14px;
+  margin-bottom: 16px;
+}
+
+.ca-hero-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
   flex-shrink: 0;
 }
 
-.connect-agent-copy-btn:hover {
-  background: var(--accent-orange-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(232, 133, 61, 0.35);
+.ca-hero-badge-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-orange);
+  letter-spacing: 0.02em;
 }
 
-.connect-agent-copy-btn.copied {
-  background: #16A34A;
-}
-
-.connect-agent-prompt-preview {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  padding: 20px;
-  margin-bottom: 32px;
-}
-
-.connect-agent-prompt-preview-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.4);
+.ca-hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 44px);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
   margin-bottom: 10px;
+  line-height: 1.1;
 }
 
-.connect-agent-prompt-preview-content {
+.ca-hero-subtitle {
+  font-size: 16px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ─── 2. Pill Tab Switcher ─── */
+.ca-tabs-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.ca-tabs {
+  display: inline-flex;
+  background: #f0efed;
+  border-radius: var(--radius-full);
+  padding: 4px;
+  gap: 2px;
+}
+
+.ca-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 200ms var(--ease-smooth);
+  white-space: nowrap;
+}
+
+.ca-tab:hover {
+  color: var(--text-secondary);
+}
+
+.ca-tab.active {
+  background: #fff;
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.ca-tab svg {
+  opacity: 0.6;
+}
+
+.ca-tab.active svg {
+  opacity: 1;
+}
+
+/* ─── 3. Install Content Card ─── */
+.ca-install-wrapper {
+  max-width: 680px;
+  margin: 0 auto 32px;
+}
+
+.ca-install-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 20px;
+  padding: 40px;
+}
+
+.ca-install-heading {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.ca-install-subheading {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-tertiary);
+  text-align: center;
+  margin-bottom: 28px;
   line-height: 1.5;
 }
 
-.connect-agent-steps-row {
+/* Copy & Paste tab */
+.ca-tab-copy-paste {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
 }
 
-.connect-agent-step {
-  display: flex;
+.ca-copy-prompt-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  padding: 16px 20px;
-  flex: 1;
+  gap: 8px;
+  padding: 13px 28px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent-orange);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 200ms var(--ease-smooth);
+  margin-bottom: 24px;
 }
 
-.connect-agent-step strong {
-  display: block;
-  font-size: 14px;
-  margin-bottom: 2px;
+.ca-copy-prompt-btn:hover {
+  background: var(--accent-orange-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(232, 133, 61, 0.3);
 }
 
-.connect-agent-step p {
+.ca-copy-prompt-btn.copied {
+  background: var(--success);
+}
+
+.ca-prompt-preview {
+  width: 100%;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+}
+
+.ca-prompt-preview-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+.ca-prompt-preview-line {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  line-height: 1.5;
+}
+
+.ca-prompt-preview-meta {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-tertiary);
   margin: 0;
 }
 
-.connect-agent-step-num {
-  width: 32px;
-  height: 32px;
+.ca-inline-steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ca-inline-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ca-inline-step-num {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--accent-orange);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
 }
 
-.connect-agent-step-arrow {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 20px;
+.ca-inline-step-arrow {
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+/* One-Click Install tab */
+.ca-ide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.ca-ide-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 20px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  text-decoration: none;
+  transition: all 200ms var(--ease-smooth);
+  cursor: pointer;
+}
+
+.ca-ide-card:hover {
+  border-color: rgba(232, 133, 61, 0.3);
+  box-shadow: 0 4px 16px rgba(232, 133, 61, 0.08);
+  transform: translateY(-3px);
+}
+
+.ca-ide-icon-letter {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.ca-ide-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ca-ide-subtitle {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: -4px;
+}
+
+/* Terminal / CLI tab */
+.ca-cli-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ca-cli-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.ca-cli-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.ca-cli-command {
+  flex: 1;
+  overflow-x: auto;
+}
+
+.ca-cli-command code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  white-space: pre;
+}
+
+.ca-cli-dollar {
+  color: var(--accent-orange);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.ca-cli-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: all 150ms;
+}
+
+.ca-cli-copy:hover {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: var(--text-primary);
+}
+
+/* ─── 4. Endpoint Line ─── */
+.ca-endpoint-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 56px;
+}
+
+.ca-endpoint-line code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.ca-endpoint-dot {
+  font-size: 16px;
+  opacity: 0.4;
+}
+
+.ca-endpoint-line a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-orange);
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 150ms;
+}
+
+.ca-endpoint-line a:hover {
+  opacity: 0.8;
+}
+
+/* ─── 5. Section Divider ─── */
+.ca-divider {
+  max-width: 960px;
+  margin: 0 auto;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Sections ─── */
+.ca-section {
+  padding: 56px 0;
+}
+
+.ca-section-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.ca-section-subtitle {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+/* ─── 6. What Your Agent Can Do ─── */
+.ca-capability-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.ca-capability-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 24px 20px;
+}
+
+.ca-capability-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(232, 133, 61, 0.1);
+  color: var(--accent-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.ca-capability-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.ca-capability-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ca-capability-list li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.9;
+  padding-left: 12px;
+  position: relative;
+}
+
+.ca-capability-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.ca-capability-footer {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 24px;
+}
+
+/* ─── 8. How It Works ─── */
+.ca-hiw-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.ca-hiw-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 24px 20px;
+}
+
+.ca-hiw-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--accent-orange);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.ca-hiw-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.ca-hiw-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ─── 10. Payments ─── */
+.ca-payments-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.ca-payments-col {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 28px 24px;
+}
+
+.ca-payments-col-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.ca-payments-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-@media (max-width: 768px) {
-  .connect-agent-easy-install {
-    padding: 24px;
+.ca-payments-dot-orange {
+  background: var(--accent-orange);
+}
+
+.ca-payments-dot-green {
+  background: var(--success);
+}
+
+.ca-payments-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ca-payments-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.ca-payments-bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+.ca-payments-bullet-orange {
+  background: var(--accent-orange);
+}
+
+.ca-payments-bullet-green {
+  background: var(--success);
+}
+
+/* ─── 12. Trust & Safety ─── */
+.ca-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.ca-trust-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 24px 20px;
+}
+
+.ca-trust-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(22, 163, 74, 0.1);
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.ca-trust-card-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.ca-trust-card-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ─── 14. REST API ─── */
+.ca-api-keys-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-top: 24px;
+  margin-bottom: 20px;
+}
+
+.ca-api-keys-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 2px;
+}
+
+.ca-api-keys-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.ca-btn-orange {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 22px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent-orange);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 200ms var(--ease-smooth);
+  white-space: nowrap;
+}
+
+.ca-btn-orange:hover {
+  background: var(--accent-orange-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(232, 133, 61, 0.25);
+}
+
+.ca-btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.ca-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 200ms var(--ease-smooth);
+  white-space: nowrap;
+}
+
+.ca-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.ca-code-block {
+  background: #0B0B0C;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.ca-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ca-code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.ca-code-copy:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.ca-code-pre {
+  padding: 16px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #E2E8F0;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ca-rate-limit-note {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 24px;
+}
+
+.ca-workflow-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.ca-workflow-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.ca-workflow-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 14px;
+}
+
+.ca-workflow-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: wf;
+}
+
+.ca-workflow-steps li {
+  counter-increment: wf;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.ca-workflow-steps li:last-child {
+  border-bottom: none;
+}
+
+.ca-workflow-steps li::before {
+  content: counter(wf);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.ca-workflow-steps code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-orange);
+  background: rgba(232, 133, 61, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* ─── 15. Bottom CTA ─── */
+.ca-bottom-cta {
+  background: #1a1a1a;
+  border-radius: 20px;
+  padding: 48px 40px;
+  text-align: center;
+  margin-top: 56px;
+}
+
+.ca-bottom-cta-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.ca-bottom-cta-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 28px;
+}
+
+.ca-bottom-cta-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 900px) {
+  .ca-capability-grid,
+  .ca-trust-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
-  .connect-agent-easy-install-header {
+
+  .ca-hiw-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .ca-install-card {
+    padding: 28px 20px;
+  }
+
+  .ca-ide-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .ca-ide-card {
+    flex-direction: row;
+    padding: 16px 20px;
+  }
+
+  .ca-capability-grid,
+  .ca-trust-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ca-hiw-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ca-payments-grid,
+  .ca-workflow-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ca-hero-title {
+    font-size: 28px;
+  }
+
+  .ca-tabs {
     flex-direction: column;
-    gap: 20px;
-  }
-  .connect-agent-easy-title {
-    font-size: 22px;
-  }
-  .connect-agent-copy-btn {
+    border-radius: 14px;
     width: 100%;
+  }
+
+  .ca-tabs-wrapper {
+    padding: 0;
+  }
+
+  .ca-tab {
     justify-content: center;
-    padding: 14px 24px;
   }
-  .connect-agent-steps-row {
+
+  .ca-inline-steps {
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
-  .connect-agent-step-arrow {
+
+  .ca-inline-step-arrow {
     transform: rotate(90deg);
   }
-  .connect-agent-step {
+
+  .ca-cli-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .ca-cli-name {
+    min-width: auto;
+  }
+
+  .ca-cli-copy {
+    align-self: flex-end;
+  }
+
+  .ca-api-keys-row {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .ca-bottom-cta {
+    padding: 36px 24px;
+    border-radius: 16px;
+  }
+
+  .ca-bottom-cta-buttons {
+    flex-direction: column;
+  }
+
+  .ca-btn-orange,
+  .ca-btn-ghost {
     width: 100%;
+    justify-content: center;
   }
 }
 
