@@ -43,23 +43,20 @@ function parseJsonFields(row, jsonFields = ['skills']) {
 
 // ================== USER OPERATIONS ==================
 
-// Explicit column list to avoid Supabase schema cache issues with select('*')
-const USER_SELECT_COLUMNS = 'id, email, password_hash, name, type, api_key, avatar_url, bio, hourly_rate, account_type, city, state, zip, service_radius, professional_category, license_number, certification_url, insurance_provider, insurance_expiry, portfolio_url, skills, social_links, profile_completeness, availability, rating, review_count, jobs_completed, verified, wallet_address, wallet_chain, stripe_account_id, created_at, updated_at, travel_radius, needs_onboarding, languages, headline, timezone, country, country_code, latitude, longitude, total_tasks_completed, total_tasks_posted, total_tasks_accepted, total_disputes_filed, total_paid, last_active_at, onboarding_completed_at, role, agent_name, webhook_url, stripe_customer_id, stripe_onboarding_complete, webhook_secret, avatar_data, avatar_r2_key, phone, email_verified_at, deposit_address, notification_preferences';
-
 async function getUserById(id) {
-  const { data, error } = await supabase.from('users').select(USER_SELECT_COLUMNS).eq('id', id).single();
+  const { data, error } = await supabase.from('users').select('*').eq('id', id).single();
   if (error) return null;
   return parseJsonFields(data);
 }
 
 async function getUserByEmail(email) {
-  const { data, error } = await supabase.from('users').select(USER_SELECT_COLUMNS).eq('email', email).single();
+  const { data, error } = await supabase.from('users').select('*').eq('email', email).single();
   if (error) return null;
   return parseJsonFields(data);
 }
 
 async function getUserByApiKey(apiKey) {
-  const { data, error } = await supabase.from('users').select(USER_SELECT_COLUMNS).eq('api_key', apiKey).single();
+  const { data, error } = await supabase.from('users').select('*').eq('api_key', apiKey).single();
   if (error) return null;
   return parseJsonFields(data);
 }
@@ -79,7 +76,7 @@ async function updateUser(id, updates) {
 // ================== HUMAN OPERATIONS ==================
 
 async function listHumans(filters = {}) {
-  let query = supabase.from('users').select(USER_SELECT_COLUMNS).eq('type', 'human').eq('verified', true);
+  let query = supabase.from('users').select('*').eq('type', 'human').eq('verified', true);
   
   if (filters.category) {
     query = query.contains('skills', [filters.category]);

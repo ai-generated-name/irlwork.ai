@@ -572,8 +572,38 @@ function getAvatarUrl(user, req) {
  * 3. API key (irl_sk_... format for programmatic access)
  * 4. Legacy API key in users table
  */
-// Explicit column list for users table to avoid Supabase schema cache issues with select('*')
-const USER_SELECT_COLUMNS = 'id, email, password_hash, name, type, api_key, avatar_url, bio, hourly_rate, account_type, city, state, zip, service_radius, professional_category, license_number, certification_url, insurance_provider, insurance_expiry, portfolio_url, skills, social_links, profile_completeness, availability, rating, review_count, jobs_completed, verified, wallet_address, wallet_chain, stripe_account_id, created_at, updated_at, travel_radius, needs_onboarding, languages, headline, timezone, country, country_code, latitude, longitude, total_tasks_completed, total_tasks_posted, total_tasks_accepted, total_disputes_filed, total_paid, last_active_at, onboarding_completed_at, role, agent_name, webhook_url, stripe_customer_id, stripe_onboarding_complete, webhook_secret, avatar_data, avatar_r2_key, phone, email_verified_at, deposit_address, notification_preferences';
+// Core columns guaranteed to exist in the users table (from base migration.sql)
+const USER_CORE_COLUMNS = 'id, email, password_hash, name, type, api_key, avatar_url, bio, hourly_rate, account_type, city, state, zip, service_radius, professional_category, license_number, certification_url, insurance_provider, insurance_expiry, portfolio_url, skills, social_links, profile_completeness, availability, rating, review_count, jobs_completed, verified, wallet_address, wallet_chain, stripe_account_id, created_at, updated_at';
+
+// Optional columns added by migrations — checked at startup and only included if they exist
+const USER_OPTIONAL_COLUMNS = [
+  'travel_radius', 'needs_onboarding', 'languages', 'headline', 'timezone',
+  'country', 'country_code', 'latitude', 'longitude',
+  'total_tasks_completed', 'total_tasks_posted', 'total_tasks_accepted',
+  'total_disputes_filed', 'total_paid', 'last_active_at',
+  'onboarding_completed_at', 'role', 'agent_name', 'webhook_url',
+  'stripe_customer_id', 'stripe_onboarding_complete', 'webhook_secret',
+  'avatar_data', 'avatar_r2_key', 'phone',
+  'email_verified_at', 'deposit_address', 'notification_preferences'
+];
+
+// Built dynamically at startup by checkUserColumns()
+let USER_SELECT_COLUMNS = USER_CORE_COLUMNS;
+
+async function checkUserColumns() {
+  if (!supabase) return;
+  const verified = [];
+  for (const col of USER_OPTIONAL_COLUMNS) {
+    const { error } = await supabase.from('users').select(col).limit(1);
+    if (!error) {
+      verified.push(col);
+    } else {
+      console.log(`[Schema] Column 'users.${col}' not found — will be excluded from queries.`);
+    }
+  }
+  USER_SELECT_COLUMNS = USER_CORE_COLUMNS + (verified.length > 0 ? ', ' + verified.join(', ') : '');
+  console.log(`[Schema] User columns: ${USER_CORE_COLUMNS.split(', ').length} core + ${verified.length} optional`);
+}
 
 async function getUserByToken(token) {
   if (!token || !supabase) return null;
@@ -935,9 +965,9 @@ app.post('/api/auth/register/human', async (req, res) => {
         onboarding_completed_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       })
-      .select()
+      .select(USER_SELECT_COLUMNS)
       .single();
-    
+
     if (error) {
       if (error.message.includes('duplicate key') || error.code === '23505') {
         // User already exists - update their profile instead
@@ -954,7 +984,7 @@ app.post('/api/auth/register/human', async (req, res) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', id)
-          .select()
+          .select(USER_SELECT_COLUMNS)
           .single();
 
         if (updateError) {
@@ -972,7 +1002,7 @@ app.post('/api/auth/register/human', async (req, res) => {
               updated_at: new Date().toISOString()
             })
             .eq('email', email)
-            .select()
+            .select(USER_SELECT_COLUMNS)
             .single();
 
           if (emailError) throw emailError;
@@ -1130,7 +1160,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
           jobs_completed: 0,
           created_at: new Date().toISOString()
         })
-        .select()
+        .select(USER_SELECT_COLUMNS)
         .single();
 
       if (createError) throw createError;
@@ -1276,7 +1306,7 @@ app.post('/api/auth/onboard', async (req, res) => {
         onboarding_completed_at: new Date().toISOString(),
         ...(emailVerifiedAt ? { email_verified_at: emailVerifiedAt } : {})
       }, { onConflict: 'id' })
-      .select()
+      .select(USER_SELECT_COLUMNS)
       .single();
 
     if (error) {
@@ -1987,7 +2017,7 @@ app.put('/api/humans/profile', async (req, res) => {
       .from('users')
       .update(updates)
       .eq('id', user.id)
-      .select()
+      .select(USER_SELECT_COLUMNS)
       .single();
 
     if (error) return res.status(500).json({ error: safeErrorMessage(error) });
@@ -6683,9 +6713,9 @@ app.put('/api/profile', async (req, res) => {
     .from('users')
     .update(updates)
     .eq('id', user.id)
-    .select()
+    .select(USER_SELECT_COLUMNS)
     .single();
-  
+
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   
   res.json({ success: true, profile });
@@ -6909,6 +6939,7 @@ async function start() {
     // Check and report missing columns
     await ensureTaskColumns();
     await checkTaskColumns();
+    await checkUserColumns();
 
     // Ensure avatar_data column exists on users table
     const { error: avatarColCheck } = await supabase.from('users').select('avatar_data').limit(1);
