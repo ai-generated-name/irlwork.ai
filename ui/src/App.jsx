@@ -99,6 +99,7 @@ import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import ApiKeysTab from './components/ApiKeysTab'
 // ConnectAgentPage defined inline below
 const MCPPage = lazy(() => import('./pages/MCPPage'))
+const PremiumPage = lazy(() => import('./pages/PremiumPage'))
 
 // Only log diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
@@ -5158,6 +5159,14 @@ function App() {
       return <AuthPage onNavigate={navigate} />
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
+    if (path === '/premium') {
+      if (loading && !user) return <Loading />
+      if (!user) {
+        navigate('/auth')
+        return <Loading />
+      }
+      return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
+    }
     if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />

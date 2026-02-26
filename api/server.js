@@ -52,6 +52,7 @@ console.log('[Startup] Loading Stripe services...');
 const { stripe } = require('./backend/lib/stripe');
 const { chargeAgentForTask, listPaymentMethods, handleWebhookEvent } = require('./backend/services/stripeService');
 const initStripeRoutes = require('./routes/stripe');
+const initSubscriptionRoutes = require('./routes/subscription');
 
 // Distance calculation utilities
 console.log('[Startup] Loading utils...');
@@ -799,6 +800,10 @@ if (supabase) {
   const stripeRoutes = initStripeRoutes(supabase, getUserByToken, createNotification);
   app.use('/api/stripe', stripeRoutes);
   console.log('[Startup] Stripe routes mounted at /api/stripe');
+
+  const subscriptionRoutes = initSubscriptionRoutes(supabase, getUserByToken, createNotification);
+  app.use('/api/subscription', subscriptionRoutes);
+  console.log('[Startup] Subscription routes mounted at /api/subscription');
 }
 
 // ============ CITY SEARCH ============
