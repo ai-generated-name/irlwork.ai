@@ -97,10 +97,12 @@ export default function PremiumPage({ user }) {
   async function fetchSubscription(checkStripe = false) {
     try {
       const token = await getFreshToken(user?.token)
+      console.log('[Premium] fetchSubscription token present:', !!token, 'length:', token?.length)
       const url = checkStripe ? `${API_URL}/subscription?check_stripe=true` : `${API_URL}/subscription`
       const res = await fetch(url, {
         headers: { Authorization: token }
       })
+      console.log('[Premium] fetchSubscription response status:', res.status)
       if (res.ok) {
         const data = await res.json()
         setSubscription(data.subscription)
@@ -116,8 +118,15 @@ export default function PremiumPage({ user }) {
       return
     }
     setLoading(tier)
+    setMessage(null)
     try {
       const token = await getFreshToken(user?.token)
+      console.log('[Premium] handleCheckout token present:', !!token, 'length:', token?.length)
+      if (!token) {
+        setMessage({ type: 'error', text: 'Session expired. Please refresh the page and try again.' })
+        setLoading(null)
+        return
+      }
       const res = await fetch(`${API_URL}/subscription/checkout`, {
         method: 'POST',
         headers: {
@@ -126,13 +135,11 @@ export default function PremiumPage({ user }) {
         },
         body: JSON.stringify({ tier, billing_period: billingPeriod }),
       })
+      console.log('[Premium] checkout response status:', res.status)
       const data = await res.json()
+      console.log('[Premium] checkout response data:', JSON.stringify(data).substring(0, 200))
       if (!res.ok) {
-        if (res.status === 401) {
-          setMessage({ type: 'error', text: 'Please sign in to upgrade your plan.' })
-        } else {
-          setMessage({ type: 'error', text: data.error || 'Failed to start checkout' })
-        }
+        setMessage({ type: 'error', text: data.error || 'Failed to start checkout' })
         setLoading(null)
         return
       }
@@ -143,6 +150,7 @@ export default function PremiumPage({ user }) {
         setLoading(null)
       }
     } catch (e) {
+      console.error('[Premium] checkout error:', e)
       setMessage({ type: 'error', text: 'Something went wrong. Please try again.' })
       setLoading(null)
     }
