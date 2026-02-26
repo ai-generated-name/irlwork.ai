@@ -73,7 +73,12 @@ const SkillAutocomplete = ({
     const val = e.target.value;
     setQuery(val);
     setShowDropdown(true);
-    setSelectedIndex(0);
+    // When user is typing, default to the first result (not "All")
+    // The filtered list updates synchronously so we can check it after setQuery
+    const willHaveResults = val.trim().length > 0
+      ? ALL_SKILLS.some(s => s.label.toLowerCase().includes(val.toLowerCase()))
+      : true;
+    setSelectedIndex(val.trim().length > 0 && willHaveResults ? 1 : 0);
     // If user clears the input, reset the filter
     if (!val.trim()) {
       onChange('');
@@ -88,7 +93,8 @@ const SkillAutocomplete = ({
       if (e.key === 'ArrowDown' || e.key === 'Enter') {
         e.preventDefault();
         setShowDropdown(true);
-        setSelectedIndex(0);
+        // When user has typed a query, default to the first result (not "All")
+        setSelectedIndex(query.trim().length > 0 && filtered.length > 0 ? 1 : 0);
       }
       return;
     }
@@ -127,7 +133,8 @@ const SkillAutocomplete = ({
 
   const handleFocus = () => {
     setShowDropdown(true);
-    setSelectedIndex(0);
+    // When user has typed a query, default to the first result (not "All")
+    setSelectedIndex(query.trim().length > 0 && filtered.length > 0 ? 1 : 0);
     if (inputRef.current && window.innerWidth <= 767) {
       const rect = inputRef.current.getBoundingClientRect();
       setDropdownTop(rect.bottom + 4);
