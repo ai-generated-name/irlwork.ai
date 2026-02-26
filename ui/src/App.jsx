@@ -1318,6 +1318,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [filterCategory, setFilterCategory] = useState('')
   const [browseCityFilter, setBrowseCityFilter] = useState('')
   const [browseCountryFilter, setBrowseCountryFilter] = useState('')
+  const [browseCountryCodeFilter, setBrowseCountryCodeFilter] = useState('')
   const [browseMaxRate, setBrowseMaxRate] = useState('')
   const [browseSort, setBrowseSort] = useState('rating')
   const [locationFilter, setLocationFilter] = useState('')
@@ -2996,7 +2997,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   <div style={{ flex: '0 1 180px' }}>
                     <CountryAutocomplete
                       value={browseCountryFilter}
-                      onChange={setBrowseCountryFilter}
+                      onChange={(name, code) => {
+                        setBrowseCountryFilter(name)
+                        setBrowseCountryCodeFilter(code || '')
+                      }}
                       placeholder="Search country..."
                     />
                   </div>
@@ -3031,7 +3035,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
                     .filter(h => !filterCategory || h.skills?.includes(filterCategory))
                     .filter(h => !browseCityFilter || h.city?.toLowerCase().includes(browseCityFilter.toLowerCase()))
-                    .filter(h => !browseCountryFilter || h.country?.toLowerCase().includes(browseCountryFilter.trim().toLowerCase()))
+                    .filter(h => !browseCountryFilter || (browseCountryCodeFilter ? h.country_code?.toLowerCase() === browseCountryCodeFilter.toLowerCase() : h.country?.toLowerCase().includes(browseCountryFilter.trim().toLowerCase())))
                     .filter(h => !browseMaxRate || (h.hourly_rate || 25) <= Number(browseMaxRate))
                     .sort((a, b) => {
                       switch (browseSort) {

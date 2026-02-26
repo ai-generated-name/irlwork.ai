@@ -121,6 +121,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
   const [skillFilter, setSkillFilter] = useState('')
   const [cityFilter, setCityFilter] = useState('')
   const [countryFilter, setCountryFilter] = useState('')
+  const [countryCodeFilter, setCountryCodeFilter] = useState('')
   const [nameSearch, setNameSearch] = useState('')
   const [maxRate, setMaxRate] = useState('')
   const [humanSort, setHumanSort] = useState('rating')
@@ -189,13 +190,13 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [skillFilter, cityFilter, countryFilter, debouncedName, debouncedMaxRate, humanSort])
+  }, [skillFilter, cityFilter, countryFilter, countryCodeFilter, debouncedName, debouncedMaxRate, humanSort])
 
   // Fetch humans
   useEffect(() => {
     if (viewMode !== 'humans') return
     fetchHumans()
-  }, [viewMode, currentPage, skillFilter, cityFilter, countryFilter, debouncedName, debouncedMaxRate, humanSort])
+  }, [viewMode, currentPage, skillFilter, cityFilter, countryFilter, countryCodeFilter, debouncedName, debouncedMaxRate, humanSort])
 
   // Handle ?hire= URL param — open hire modal for a specific human
   useEffect(() => {
@@ -308,7 +309,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       params.set('sort', humanSort)
       if (skillFilter) params.set('skill', skillFilter)
       if (cityFilter) params.set('city', cityFilter)
-      if (countryFilter) params.set('country', countryFilter)
+      if (countryCodeFilter) params.set('country_code', countryCodeFilter)
+      else if (countryFilter) params.set('country', countryFilter)
       if (debouncedName) params.set('name', debouncedName)
       if (debouncedMaxRate) params.set('max_rate', debouncedMaxRate)
 
@@ -536,7 +538,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     activeFilters.push({ key: 'skill', label: `Skill: ${label}`, clear: () => setSkillFilter('') })
   }
   if (cityFilter) activeFilters.push({ key: 'city', label: `City: ${cityFilter}`, clear: () => setCityFilter('') })
-  if (countryFilter) activeFilters.push({ key: 'country', label: `Country: ${countryFilter}`, clear: () => setCountryFilter('') })
+  if (countryFilter) activeFilters.push({ key: 'country', label: `Country: ${countryFilter}`, clear: () => { setCountryFilter(''); setCountryCodeFilter('') } })
   if (debouncedMaxRate) activeFilters.push({ key: 'rate', label: `Max $${debouncedMaxRate}/hr`, clear: () => { setMaxRate(''); setDebouncedMaxRate('') } })
 
   const inputStyle = {
@@ -725,7 +727,10 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   </label>
                   <CountryAutocomplete
                     value={countryFilter}
-                    onChange={setCountryFilter}
+                    onChange={(name, code) => {
+                      setCountryFilter(name)
+                      setCountryCodeFilter(code || '')
+                    }}
                     placeholder="Search country..."
                   />
                 </div>
@@ -804,7 +809,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       setNameSearch(''); setDebouncedName('')
                       setSkillFilter('')
                       setCityFilter('')
-                      setCountryFilter('')
+                      setCountryFilter(''); setCountryCodeFilter('')
                       setMaxRate(''); setDebouncedMaxRate('')
                     }}
                     style={{

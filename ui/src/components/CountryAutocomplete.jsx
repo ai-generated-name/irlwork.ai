@@ -59,13 +59,13 @@ const CountryAutocomplete = ({
       setQuery(country.name);
       lastValidCountry.current = country.name;
       setShowDropdown(false);
-      onChange(country.name);
+      onChange(country.name, country.code);
     } else {
       // "All" option
       setQuery('');
       lastValidCountry.current = null;
       setShowDropdown(false);
-      onChange('');
+      onChange('', '');
     }
   };
 
