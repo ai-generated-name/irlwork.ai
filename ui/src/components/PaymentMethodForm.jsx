@@ -9,7 +9,7 @@ const cardStyle = {
       color: '#1a1a2e',
       '::placeholder': { color: '#9ca3af' },
     },
-    invalid: { color: '#ef4444' },
+    invalid: { color: '#FF5F57' },
   },
 };
 
@@ -79,7 +79,7 @@ export default function PaymentMethodForm({ user, onSaved }) {
       </div>
 
       {error && (
-        <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.5rem' }}>{error}</p>
+        <p style={{ color: '#FF5F57', fontSize: '0.875rem', marginTop: '0.5rem' }}>{error}</p>
       )}
 
       {success && (

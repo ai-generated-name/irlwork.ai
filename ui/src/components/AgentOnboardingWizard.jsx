@@ -168,7 +168,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
               alignItems: 'center',
               gap: 6,
               padding: '4px 12px',
-              background: 'rgba(15, 76, 92, 0.08)',
+              background: 'rgba(0, 0, 0, 0.08)',
               borderRadius: 'var(--radius-full)',
               fontSize: 12,
               fontWeight: 600,
@@ -223,14 +223,14 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                     padding: '16px 18px',
                     background: 'var(--bg-tertiary)',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(26, 26, 26, 0.04)',
+                    border: '1px solid rgba(0, 0, 0, 0.04)',
                   }}
                 >
                   <div style={{
                     width: 40,
                     height: 40,
                     borderRadius: 10,
-                    background: 'rgba(15, 76, 92, 0.08)',
+                    background: 'rgba(0, 0, 0, 0.08)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -260,8 +260,8 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                       alignItems: 'center',
                       gap: 14,
                       padding: '14px 16px',
-                      background: s.accent ? 'rgba(244, 132, 95, 0.06)' : 'var(--bg-tertiary)',
-                      border: s.accent ? '1px solid rgba(244, 132, 95, 0.15)' : '1px solid rgba(26, 26, 26, 0.04)',
+                      background: s.accent ? 'rgba(232, 133, 61, 0.06)' : 'var(--bg-tertiary)',
+                      border: s.accent ? '1px solid rgba(232, 133, 61, 0.15)' : '1px solid rgba(0, 0, 0, 0.04)',
                       borderRadius: 'var(--radius-md)',
                     }}
                   >
@@ -269,7 +269,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                       width: 28,
                       height: 28,
                       borderRadius: '50%',
-                      background: s.accent ? 'linear-gradient(135deg, var(--orange-600), var(--orange-500))' : 'rgba(26, 26, 26, 0.06)',
+                      background: s.accent ? 'linear-gradient(135deg, var(--orange-600), var(--orange-500))' : 'rgba(0, 0, 0, 0.06)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -288,8 +288,8 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                 <div style={{
                   marginTop: 14,
                   padding: '12px 16px',
-                  background: 'rgba(16, 185, 129, 0.06)',
-                  border: '1px solid rgba(16, 185, 129, 0.12)',
+                  background: 'rgba(22, 163, 74, 0.06)',
+                  border: '1px solid rgba(22, 163, 74, 0.12)',
                   borderRadius: 'var(--radius-md)',
                   fontSize: 13,
                   color: 'var(--text-secondary)',
@@ -353,8 +353,8 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                 <div style={{
                   marginTop: 12,
                   padding: '12px 16px',
-                  background: 'rgba(15, 76, 92, 0.04)',
-                  border: '1px solid rgba(15, 76, 92, 0.1)',
+                  background: 'rgba(0, 0, 0, 0.04)',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
                   borderRadius: 'var(--radius-md)',
                   fontSize: 13,
                   color: 'var(--text-secondary)',
@@ -379,8 +379,8 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                       alignItems: 'center',
                       gap: 14,
                       padding: '14px 16px',
-                      background: i === 0 ? 'rgba(15, 76, 92, 0.06)' : 'var(--bg-tertiary)',
-                      border: i === 0 ? '1px solid rgba(15, 76, 92, 0.15)' : '1px solid rgba(26, 26, 26, 0.04)',
+                      background: i === 0 ? 'rgba(0, 0, 0, 0.06)' : 'var(--bg-tertiary)',
+                      border: i === 0 ? '1px solid rgba(0, 0, 0, 0.15)' : '1px solid rgba(0, 0, 0, 0.04)',
                       borderRadius: 'var(--radius-md)',
                     }}
                   >
@@ -388,7 +388,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                       width: 28,
                       height: 28,
                       borderRadius: '50%',
-                      background: i === 0 ? 'linear-gradient(135deg, var(--teal), var(--teal-light))' : 'rgba(26, 26, 26, 0.06)',
+                      background: i === 0 ? 'linear-gradient(135deg, var(--teal), var(--teal-light))' : 'rgba(0, 0, 0, 0.06)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -407,8 +407,8 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                 <div style={{
                   marginTop: 14,
                   padding: '12px 16px',
-                  background: 'rgba(16, 185, 129, 0.06)',
-                  border: '1px solid rgba(16, 185, 129, 0.12)',
+                  background: 'rgba(22, 163, 74, 0.06)',
+                  border: '1px solid rgba(22, 163, 74, 0.12)',
                   borderRadius: 'var(--radius-md)',
                   fontSize: 13,
                   color: 'var(--text-secondary)',
@@ -429,7 +429,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                 style={{
                   padding: '12px 20px',
                   background: 'var(--bg-tertiary)',
-                  border: '1px solid rgba(26, 26, 26, 0.08)',
+                  border: '1px solid rgba(0, 0, 0, 0.08)',
                   borderRadius: 'var(--radius-md)',
                   fontFamily: 'var(--font-display)',
                   fontSize: 14,
@@ -447,7 +447,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
               style={{
                 flex: 1,
                 padding: '12px 24px',
-                background: 'linear-gradient(135deg, var(--teal), var(--teal-light))',
+                background: 'var(--accent-orange)',
                 border: 'none',
                 borderRadius: 'var(--radius-md)',
                 fontFamily: 'var(--font-display)',

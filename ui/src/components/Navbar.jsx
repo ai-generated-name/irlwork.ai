@@ -1,15 +1,15 @@
 import { useNavigate, Link } from 'react-router-dom'
+import { Logo } from './Logo'
 
 export default function Navbar() {
   const navigate = useNavigate()
 
   return (
     <>
-      {/* Dark theme navbar for dashboard pages - uses V4 logo style */}
+      {/* Dark theme navbar for dashboard pages */}
       <nav className="navbar">
-        <Link to="/" className="logo-v4">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
+        <Link to="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
         </Link>
         <div className="nav-right">
           <Link to="/connect-agent" className="nav-link">API Docs</Link>
@@ -22,9 +22,8 @@ export default function Navbar() {
 
       {/* Light theme navbar for landing page V4 */}
       <nav className="navbar-v4">
-        <Link to="/" className="logo-v4">
-          <div className="logo-mark-v4">irl</div>
-          <span className="logo-name-v4">irlwork.ai</span>
+        <Link to="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
         </Link>
         <div className="nav-links-v4">
           <Link to="/connect-agent" className="nav-link-v4">API Docs</Link>

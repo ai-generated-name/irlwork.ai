@@ -37,7 +37,8 @@ const CountryAutocomplete = ({
         .then(countries => {
           setResults(countries);
           setShowDropdown(true);
-          setSelectedIndex(0);
+          // When user has typed a query, default to the first result (not "All Countries")
+          setSelectedIndex(query.length >= 1 && countries.length > 0 ? 1 : 0);
         })
         .catch(err => {
           if (err.name !== 'AbortError') {
@@ -59,13 +60,13 @@ const CountryAutocomplete = ({
       setQuery(country.name);
       lastValidCountry.current = country.name;
       setShowDropdown(false);
-      onChange(country.name);
+      onChange(country.name, country.code);
     } else {
       // "All" option
       setQuery('');
       lastValidCountry.current = null;
       setShowDropdown(false);
-      onChange('');
+      onChange('', '');
     }
   };
 
@@ -74,7 +75,8 @@ const CountryAutocomplete = ({
       if (e.key === 'ArrowDown' || e.key === 'Enter') {
         e.preventDefault();
         setShowDropdown(true);
-        setSelectedIndex(0);
+        // When user has typed a query, default to the first result (not "All Countries")
+        setSelectedIndex(query.length >= 1 && results.length > 0 ? 1 : 0);
       }
       return;
     }
@@ -112,7 +114,8 @@ const CountryAutocomplete = ({
 
   const handleFocus = () => {
     setShowDropdown(true);
-    setSelectedIndex(0);
+    // When user has typed a query, default to the first result (not "All Countries")
+    setSelectedIndex(query.length >= 1 && results.length > 0 ? 1 : 0);
     if (inputRef.current && window.innerWidth <= 767) {
       const rect = inputRef.current.getBoundingClientRect();
       setDropdownTop(rect.bottom + 4);
