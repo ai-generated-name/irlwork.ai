@@ -5510,7 +5510,8 @@ function App() {
   const isAuthRoute = path === '/auth'
   const isOnboardRoute = path === '/onboard'
   const isDashboardRoute = path.startsWith('/dashboard')
-  const isMarketingPage = !isAuthRoute && !isOnboardRoute && !isDashboardRoute
+  const isMCPRoute = path === '/mcp'
+  const isMarketingPage = !isAuthRoute && !isOnboardRoute && !isDashboardRoute && !isMCPRoute
 
   // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
   const routeContent = (() => {
