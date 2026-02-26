@@ -676,7 +676,8 @@ const USER_OPTIONAL_COLUMNS = [
   'avatar_data', 'avatar_r2_key', 'phone',
   'email_verified_at', 'deposit_address', 'notification_preferences',
   'subscription_tier', 'subscription_status',
-  'subscription_current_period_end', 'subscription_cancel_at_period_end'
+  'subscription_current_period_end', 'subscription_cancel_at_period_end',
+  'gender'
 ];
 
 // Built dynamically at startup by checkUserColumns()
