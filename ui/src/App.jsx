@@ -5461,7 +5461,14 @@ function App() {
       return <AuthPage onNavigate={navigate} />
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
-    if (path === '/premium') return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
+    if (path === '/premium') {
+      if (loading && !user) return <Loading />
+      if (!user) {
+        navigate('/auth')
+        return <Loading />
+      }
+      return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
+    }
     if (path === '/connect-agent') return <ConnectAgentPage />
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />

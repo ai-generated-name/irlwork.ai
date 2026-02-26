@@ -111,6 +111,10 @@ export default function PremiumPage({ user }) {
   }
 
   async function handleCheckout(tier) {
+    if (!user) {
+      window.location.href = '/auth'
+      return
+    }
     setLoading(tier)
     try {
       const token = await getFreshToken(user?.token)
@@ -123,10 +127,19 @@ export default function PremiumPage({ user }) {
         body: JSON.stringify({ tier, billing_period: billingPeriod }),
       })
       const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 401) {
+          setMessage({ type: 'error', text: 'Please sign in to upgrade your plan.' })
+        } else {
+          setMessage({ type: 'error', text: data.error || 'Failed to start checkout' })
+        }
+        setLoading(null)
+        return
+      }
       if (data.checkout_url) {
         window.location.href = data.checkout_url
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to start checkout' })
+        setMessage({ type: 'error', text: 'Failed to start checkout. Please try again.' })
         setLoading(null)
       }
     } catch (e) {
@@ -136,6 +149,10 @@ export default function PremiumPage({ user }) {
   }
 
   async function handleManageSubscription() {
+    if (!user) {
+      window.location.href = '/auth'
+      return
+    }
     setLoading('manage')
     try {
       const token = await getFreshToken(user?.token)
@@ -144,10 +161,15 @@ export default function PremiumPage({ user }) {
         headers: { Authorization: token },
       })
       const data = await res.json()
+      if (!res.ok) {
+        setMessage({ type: 'error', text: res.status === 401 ? 'Please sign in to manage billing.' : (data.error || 'Failed to open billing portal') })
+        setLoading(null)
+        return
+      }
       if (data.portal_url) {
         window.location.href = data.portal_url
       } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to open billing portal' })
+        setMessage({ type: 'error', text: 'Failed to open billing portal' })
         setLoading(null)
       }
     } catch (e) {
@@ -157,6 +179,10 @@ export default function PremiumPage({ user }) {
   }
 
   async function handleSync() {
+    if (!user) {
+      window.location.href = '/auth'
+      return
+    }
     setSyncing(true)
     try {
       const token = await getFreshToken(user?.token)
@@ -164,6 +190,11 @@ export default function PremiumPage({ user }) {
         method: 'POST',
         headers: { Authorization: token },
       })
+      if (!res.ok) {
+        setMessage({ type: 'error', text: res.status === 401 ? 'Please sign in to sync.' : 'Failed to sync. Please try again.' })
+        setSyncing(false)
+        return
+      }
       const data = await res.json()
       if (data.subscription) {
         setSubscription(data.subscription)
