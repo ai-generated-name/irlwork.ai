@@ -24,7 +24,11 @@ export default function LanguageSelector({ variant = 'default' }) {
         aria-label="Select language"
         aria-expanded={open}
       >
-        <span className="lang-selector__flag">{current.flag}</span>
+        <svg className="lang-selector__globe" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M2 12h20" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
         <span className="lang-selector__name">{current.name}</span>
         <svg
           className={`lang-selector__chevron ${open ? 'lang-selector__chevron--open' : ''}`}
@@ -49,7 +53,6 @@ export default function LanguageSelector({ variant = 'default' }) {
               className={`lang-selector__option ${code === language ? 'lang-selector__option--active' : ''}`}
               onClick={() => { setLanguage(code); setOpen(false) }}
             >
-              <span className="lang-selector__option-flag">{lang.flag}</span>
               <span className="lang-selector__option-name">{lang.name}</span>
               {code === language && (
                 <svg className="lang-selector__check" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

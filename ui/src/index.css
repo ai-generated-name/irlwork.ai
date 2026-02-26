@@ -1832,9 +1832,14 @@ body.translated-rtl {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.lang-selector__flag {
-  font-size: 16px;
-  line-height: 1;
+.lang-selector__globe {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: color 0.2s ease;
+}
+
+.lang-selector__toggle:hover .lang-selector__globe {
+  color: var(--coral, #E07A5F);
 }
 
 .lang-selector__name {
@@ -1904,10 +1909,7 @@ body.translated-rtl {
   background: rgba(224, 122, 95, 0.1);
 }
 
-.lang-selector__option-flag {
-  font-size: 18px;
-  line-height: 1;
-}
+/* flag styles removed — text-only language names */
 
 .lang-selector__option-name {
   flex: 1;
