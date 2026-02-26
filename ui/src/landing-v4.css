@@ -276,7 +276,7 @@
   grid-template-columns: 1fr 1.2fr;
   gap: var(--space-6);
   align-items: center;
-  padding: calc(56px + var(--space-3)) var(--space-6) 0;
+  padding: calc(56px + var(--space-3)) var(--space-6) 80px;
   max-width: 1300px;
   margin: 0 auto;
   position: relative;
@@ -312,7 +312,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--orange-700);
-  margin-bottom: var(--space-3);
+  margin-bottom: 32px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -365,7 +365,7 @@
   line-height: 1.05;
   letter-spacing: -0.04em;
   color: var(--text-primary);
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
 }
 
 .title-gradient {
@@ -388,13 +388,13 @@
   line-height: 1.7;
   color: var(--text-secondary);
   max-width: 480px;
-  margin-bottom: var(--space-5);
+  margin-bottom: 40px;
 }
 
 .hero-v4-cta {
   display: flex;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  margin-bottom: 0;
   flex-wrap: wrap;
 }
 
@@ -436,61 +436,79 @@
   opacity: 0.3;
 }
 
-/* ─── AGENT COMPATIBILITY BANNER ─── */
-.agent-compat-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding-bottom: var(--space-2);
-  margin-bottom: 0;
+/* ─── AGENT COMPATIBILITY STRIP (full-width divider) ─── */
+.agent-strip {
+  width: 100%;
+  background: #FAFAF8;
+  border-top: 1px solid #E7E5E4;
+  border-bottom: 1px solid #E7E5E4;
+  padding: 40px 24px;
 }
 
-.agent-compat-label {
+.agent-strip-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.agent-strip-label {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-tertiary);
+  color: #A8A29E;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-  flex-shrink: 0;
+  letter-spacing: 0.12em;
 }
 
-.agent-compat-logos {
-  display: flex;
+.agent-strip-pill {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 32px;
+  border: 1px solid #E7E5E4;
+  border-radius: 9999px;
+  padding: 24px 48px;
   flex-wrap: wrap;
 }
 
-.agent-compat-item {
-  display: inline-flex;
+.agent-strip-item {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: var(--bg-secondary);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: var(--radius-full);
+  gap: 8px;
+  transition: opacity 0.2s ease;
+}
+
+.agent-strip-item span {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
-  color: var(--text-secondary);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  white-space: nowrap;
+  color: #57534E;
 }
 
-.agent-compat-item:hover {
-  border-color: rgba(232, 133, 61, 0.3);
-  box-shadow: 0 1px 4px rgba(232, 133, 61, 0.08);
-}
-
-.agent-compat-item svg {
+.agent-strip-item svg {
   flex-shrink: 0;
+  width: 40px;
+  height: 40px;
 }
 
-.agent-compat-more {
-  border-style: dashed;
-  color: var(--text-tertiary);
+.agent-strip-mcp {
+  opacity: 0.65;
+}
+
+.agent-strip-mcp svg {
+  color: #A8A29E;
+}
+
+.agent-strip .hero-v4-stats {
+  justify-content: center;
+  border-top: none;
+  padding-top: 0;
+  margin-top: 8px;
+  gap: 48px;
 }
 
 /* ─── SOCIAL PROOF BANNER ─── */
@@ -1224,7 +1242,7 @@
   background: var(--bg-dark);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding: var(--space-3) 0;
+  padding: 10px 0;
   overflow: hidden;
   position: relative;
 }
@@ -2756,7 +2774,7 @@
     grid-template-columns: 1fr;
     gap: var(--space-5);
     min-height: auto;
-    padding-top: calc(56px + var(--space-4));
+    padding: calc(56px + var(--space-4)) 24px 40px;
   }
 
   .hero-v4-content {
@@ -2764,8 +2782,7 @@
   }
 
   .hero-v4-visual {
-    order: 1; /* Animation second */
-    min-height: 280px;
+    display: none;
   }
 
   .hero-animation-v2 {
@@ -2839,15 +2856,25 @@
   }
 
   .hero-v4-cta {
-    margin-bottom: var(--space-4);
-  }
-
-  .agent-compat-banner {
-    padding-bottom: var(--space-4);
+    margin-bottom: 0;
   }
 
   .happening-now-grid {
     grid-template-columns: 1fr;
+  }
+
+  .agent-strip-pill {
+    gap: 24px;
+    padding: 20px 36px;
+  }
+
+  .agent-strip-item svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .agent-strip .hero-v4-stats {
+    gap: 32px;
   }
 }
 
@@ -2856,11 +2883,11 @@
   .hero-v4 {
     grid-template-columns: 1fr;
     gap: 0;
-    padding: calc(56px + 16px) var(--space-4) 24px; /* 16px top after navbar, 24px bottom */
+    padding: calc(56px + 16px) 16px 32px;
     min-height: auto;
   }
 
-  /* Hide animation inside hero on mobile - it moves to separate section below */
+  /* Hide animation inside hero on mobile */
   .hero-v4-visual {
     display: none;
   }
@@ -2870,15 +2897,24 @@
     text-align: center;
   }
 
-  /* Hide badge entirely on mobile */
+  /* Show badge on mobile with worker-friendly text */
   .hero-v4-badge {
+    display: inline-flex;
+    margin-bottom: 20px;
+  }
+
+  .badge-text-desktop {
     display: none;
+  }
+
+  .badge-text-mobile {
+    display: inline;
   }
 
   .hero-v4-title {
     font-size: 32px;
     line-height: 1.15;
-    margin-bottom: var(--space-3);
+    margin-bottom: 12px;
     text-align: center;
   }
 
@@ -2891,17 +2927,18 @@
     display: block;
     font-size: 16px;
     line-height: 1.5;
-    margin-bottom: var(--space-4);
+    margin-bottom: 24px;
     text-align: center;
     max-width: 340px;
     margin-left: auto;
     margin-right: auto;
   }
 
-  /* CTA: Single full-width button on mobile */
+  /* CTA: Stack vertically, full-width on mobile */
   .hero-v4-cta {
     flex-direction: column;
-    margin-bottom: var(--space-3);
+    gap: 12px;
+    margin-bottom: 0;
   }
 
   .hero-cta-primary {
@@ -2909,9 +2946,9 @@
     justify-content: center;
   }
 
-  /* Hide secondary button (API Docs) on mobile */
   .hero-cta-secondary {
-    display: none;
+    width: 100%;
+    justify-content: center;
   }
 
   /* Mobile API link below CTA */
@@ -2921,7 +2958,7 @@
     justify-content: center;
     gap: 6px;
     margin-top: var(--space-2);
-    margin-bottom: var(--space-4);
+    margin-bottom: 0;
     font-size: 13px;
     color: var(--text-muted);
     text-decoration: none;
@@ -2940,74 +2977,63 @@
     transform: translateX(3px);
   }
 
-  /* Agent compatibility banner - compact on mobile */
-  .agent-compat-banner {
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-    padding-bottom: var(--space-3);
+  /* ─── AGENT STRIP - Mobile ─── */
+  .agent-strip {
+    padding: 32px 16px;
   }
 
-  .agent-compat-logos {
-    gap: 5px;
-    justify-content: center;
+  .agent-strip-pill {
+    gap: 24px;
+    padding: 20px 24px;
+    border-radius: 16px;
   }
 
-  .agent-compat-item {
-    font-size: 11px;
-    padding: 3px 8px;
-    gap: 5px;
+  .agent-strip-item svg {
+    width: 32px;
+    height: 32px;
   }
 
-  .agent-compat-item svg {
-    width: 16px;
-    height: 16px;
+  .agent-strip-item span {
+    font-size: 12px;
   }
 
-  /* Hide stats inside hero content on mobile (shown in mobile section instead) */
-  .hero-v4-content > .hero-v4-stats {
-    display: none;
+  .agent-strip .hero-v4-stats {
+    gap: 24px;
   }
 
-  /* Mobile stats wrapper above animation */
-  .hero-stats-mobile {
-    margin-bottom: var(--space-4);
-  }
-
-  .hero-stats-mobile .hero-v4-stats {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-5);
-    padding: 0;
-    border-top: none;
-  }
-
-  .hero-stats-mobile .stat-item {
+  .agent-strip .stat-item {
     align-items: center;
     text-align: center;
   }
 
-  .hero-stats-mobile .stat-value {
+  .agent-strip .stat-value {
     font-size: 20px;
   }
 
-  .hero-stats-mobile .stat-label {
+  .agent-strip .stat-label {
     font-size: 10px;
   }
 
-  .hero-stats-mobile .stat-divider {
+  .agent-strip .stat-divider {
     height: 24px;
   }
 
-  /* Mobile hero animation section - stats only, animation hidden */
+  /* Hide the standalone mobile stats section (stats now in agent strip) */
   .hero-animation-mobile-section {
-    display: block;
-    padding: var(--space-4) var(--space-4) var(--space-5);
-    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    display: none;
   }
 
-  .hero-animation-mobile-section .hero-animation-v2 {
+  /* ─── HAPPENING NOW - Mobile ─── */
+  .hn-terminal-side {
     display: none;
+  }
+
+  .hn-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .hn-map-side {
+    height: 300px;
   }
 
   /* ─── HERO ANIMATION (Mobile: Horizontal flow layout) ─── */
@@ -3624,6 +3650,7 @@
   /* ─── TICKER WRAPPER (mobile) ─── */
   .ticker-wrapper {
     margin-top: 0;
+    margin-bottom: 0;
   }
 
   /* ─── MISC ─── */
@@ -3647,7 +3674,7 @@
 /* ─── EXTRA SMALL SCREENS (iPhone SE, etc.) ─── */
 @media (max-width: 390px) {
   .hero-v4 {
-    padding: calc(56px + 16px) var(--space-3) var(--space-5);
+    padding: calc(56px + 16px) 12px 24px;
   }
 
   .hero-v4-title {
@@ -3670,6 +3697,25 @@
   /* Hide animation entirely on very small screens */
   .hero-v4-visual {
     display: none;
+  }
+
+  .agent-strip {
+    padding: 24px 12px;
+  }
+
+  .agent-strip-pill {
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 12px;
+  }
+
+  .agent-strip-item svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .agent-strip-item span {
+    font-size: 11px;
   }
 
   .tasks-grid {
@@ -9689,9 +9735,7 @@ select.select-v4-dark option:checked,
   }
 
   .hn-terminal-side {
-    height: 170px;
-    border-left: none;
-    border-top: 1px solid #2A2A2A;
+    display: none;
   }
 }
 
@@ -9755,8 +9799,8 @@ select.select-v4-dark option:checked,
 
 /* ─── TICKER WRAPPER ─── */
 .ticker-wrapper {
-  margin-top: var(--space-3);
-  margin-bottom: var(--space-2);
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 /* ─── REDUCED MOTION ─── */
