@@ -7,8 +7,6 @@ import {
   Search, Briefcase, Scale, Stamp
 } from 'lucide-react'
 import HappeningNow from '../components/HappeningNow'
-import { Logo } from '../components/Logo'
-import LanguageSelector from '../components/LanguageSelector'
 import { useLanguage } from '../context/LanguageContext'
 
 // Animated Counter Component
