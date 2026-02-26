@@ -520,13 +520,13 @@ export default function LandingPageV4() {
         </div>
       </section>
 
-      {/* Happening Right Now */}
-      <HappeningNow />
-
-      {/* Live Transaction Ticker — between stats and features for momentum */}
+      {/* Live Transaction Ticker — between stats and Happening Right Now */}
       <div className="ticker-wrapper">
         <TransactionTicker />
       </div>
+
+      {/* Happening Right Now */}
+      <HappeningNow />
 
       {/* How It Works - Four Steps */}
       <HowItWorksSection />
