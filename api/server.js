@@ -647,10 +647,14 @@ function getAvatarUrl(user, req) {
  * 4. Legacy API key in users table
  */
 // Core columns guaranteed to exist in the users table (from base migration.sql)
-const USER_CORE_COLUMNS = 'id, email, password_hash, name, type, api_key, avatar_url, bio, hourly_rate, account_type, city, state, zip, service_radius, professional_category, license_number, certification_url, insurance_provider, insurance_expiry, portfolio_url, skills, social_links, profile_completeness, availability, rating, review_count, jobs_completed, verified, wallet_address, wallet_chain, stripe_account_id, created_at, updated_at';
+const USER_CORE_COLUMNS = 'id, email, password_hash, name, type, api_key, avatar_url, bio, hourly_rate, account_type, city, state, service_radius, skills, social_links, profile_completeness, availability, rating, jobs_completed, verified, wallet_address, stripe_account_id, created_at, updated_at';
 
 // Optional columns added by migrations — checked at startup and only included if they exist
 const USER_OPTIONAL_COLUMNS = [
+  // Columns that may or may not exist depending on migrations
+  'zip', 'professional_category', 'license_number', 'certification_url',
+  'insurance_provider', 'insurance_expiry', 'portfolio_url',
+  'review_count', 'wallet_chain',
   'travel_radius', 'needs_onboarding', 'languages', 'headline', 'timezone',
   'country', 'country_code', 'latitude', 'longitude',
   'total_tasks_completed', 'total_tasks_posted', 'total_tasks_accepted',
