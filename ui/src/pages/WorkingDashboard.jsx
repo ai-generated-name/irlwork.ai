@@ -1,11 +1,54 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import API_URL from '../config/api'
-import ProfileCompleteness from '../components/ProfileCompleteness'
 import HowPaymentsWork from '../components/HowPaymentsWork'
+import { useToast } from '../context/ToastContext'
 
 const ACTIVE_STATUSES = ['open', 'accepted', 'assigned', 'in_progress']
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed']
 
+// Safely handle JSONB values that may already be parsed arrays or still be JSON strings
+const safeArr = v => { if (Array.isArray(v)) return v; if (!v) return []; try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } }
+
+// ─── Get Started checklist items ───
+const GET_STARTED_ITEMS = [
+  {
+    id: 'location',
+    label: 'Set your location',
+    subtitle: 'Help agents find you for nearby tasks',
+    tab: 'profile',
+    check: (u) => !!(u?.city && u.city.trim()),
+    completedDetail: (u) => u?.city || '',
+  },
+  {
+    id: 'bio',
+    label: 'Write a bio',
+    subtitle: 'Introduce yourself to agents',
+    tab: 'profile',
+    check: (u) => !!(u?.bio && u.bio.trim().length > 10),
+  },
+  {
+    id: 'languages',
+    label: 'Add languages you speak',
+    subtitle: 'Help agents match you with the right tasks',
+    tab: 'profile',
+    check: (u) => {
+      const langs = safeArr(u?.languages)
+      return langs.length > 0
+    },
+  },
+  {
+    id: 'browse',
+    label: 'Browse and accept a task',
+    subtitle: 'Find tasks that match your skills',
+    tab: 'browse',
+    check: (u, tasks) => {
+      const safeTasks = Array.isArray(tasks) ? tasks : []
+      return safeTasks.some(t => ['accepted', 'assigned', 'in_progress', 'pending_review', 'approved', 'completed', 'paid'].includes(t.status))
+    },
+  },
+]
+
+// ─── Monthly Earnings Chart ───
 function MonthlyEarningsChart({ tasks }) {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -50,7 +93,7 @@ function MonthlyEarningsChart({ tasks }) {
   const todayDate = today.getDate()
 
   return (
-    <div className="working-dash-chart">
+    <div className="wd-card wd-fade-in" style={{ animationDelay: '0.3s', padding: 'var(--space-6)' }}>
       <div className="working-dash-chart-header">
         <div>
           <h3 className="working-dash-chart-title">Monthly Earnings</h3>
@@ -90,7 +133,45 @@ function MonthlyEarningsChart({ tasks }) {
   )
 }
 
-export default function WorkingDashboard({ user, tasks, notifications, onNavigate }) {
+// ─── Progress Ring (small) ───
+function ProgressRing({ completed, total }) {
+  const size = 40
+  const strokeWidth = 3.5
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
+  const progress = total > 0 ? completed / total : 0
+  const offset = circumference * (1 - progress)
+
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none" stroke="var(--bg-tertiary)" strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none" stroke="var(--orange-600)" strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+        />
+      </svg>
+      <span style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700,
+        color: 'var(--text-primary)',
+      }}>
+        {completed}/{total}
+      </span>
+    </div>
+  )
+}
+
+export default function WorkingDashboard({ user, tasks, notifications, onNavigate, onUserUpdate }) {
+  const toast = useToast()
   const safeTasks = Array.isArray(tasks) ? tasks : []
   const activeTasks = safeTasks.filter(t => ACTIVE_STATUSES.includes(t.status))
   const reviewTasks = safeTasks.filter(t => REVIEW_STATUSES.includes(t.status))
@@ -106,6 +187,48 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
   const unreadNotifs = safeNotifications.filter(n => !n.read_at)
 
   const [showPaymentsExplainer, setShowPaymentsExplainer] = useState(false)
+  const [togglingAvailability, setTogglingAvailability] = useState(false)
+
+  const isHidden = user?.availability !== 'available'
+
+  // ─── Get Started checklist state ───
+  const checklist = useMemo(() => {
+    return GET_STARTED_ITEMS.map(item => ({
+      ...item,
+      completed: item.check(user, safeTasks),
+    }))
+  }, [user, safeTasks])
+
+  const completedCount = checklist.filter(i => i.completed).length
+  const allComplete = completedCount === checklist.length
+  const [checklistDismissed] = useState(() =>
+    localStorage.getItem('irlwork_checklist_dismissed') === 'true'
+  )
+
+  // ─── Toggle availability ───
+  const handleGoAvailable = useCallback(async () => {
+    setTogglingAvailability(true)
+    try {
+      const res = await fetch(`${API_URL}/humans/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: user?.token || '' },
+        body: JSON.stringify({ availability: 'available' })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.user) {
+          const updatedUser = { ...data.user, token: user?.token, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
+          onUserUpdate?.(updatedUser)
+          localStorage.setItem('user', JSON.stringify({ ...updatedUser, token: undefined }))
+        }
+        toast.success("You're now available for work")
+      }
+    } catch {
+      toast.error('Failed to update availability')
+    } finally {
+      setTogglingAvailability(false)
+    }
+  }, [user, onUserUpdate, toast])
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -123,8 +246,8 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         mode="working"
       />
 
-      {/* Header */}
-      <div className="working-dash-header">
+      {/* Header / Greeting */}
+      <div className="working-dash-header wd-fade-in">
         <h1 className="working-dash-greeting">
           {getGreeting()}, {user?.name?.split(' ')[0] || 'there'}
         </h1>
@@ -135,12 +258,97 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
         )}
       </div>
 
-      {/* Profile Completeness Nudge */}
-      <ProfileCompleteness user={user} onNavigate={onNavigate} />
+      {/* ─── Availability Banner (consolidated) ─── */}
+      {isHidden && (
+        <div className="wd-availability-banner wd-fade-in" style={{ animationDelay: '0.05s' }}>
+          <div className="wd-availability-banner-left">
+            <div className="wd-availability-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            </div>
+            <div>
+              <p className="wd-availability-title">You're hidden from search</p>
+              <p className="wd-availability-subtitle">Turn on availability so agents can find and hire you.</p>
+            </div>
+          </div>
+          <button
+            className="wd-go-available-btn"
+            onClick={handleGoAvailable}
+            disabled={togglingAvailability}
+          >
+            {togglingAvailability ? 'Updating...' : 'Go Available'}
+          </button>
+        </div>
+      )}
+
+      {/* ─── Get Started Checklist (merged profile + onboarding) ─── */}
+      {!allComplete && !checklistDismissed && (
+        <div className="wd-card wd-checklist-card wd-fade-in" style={{ animationDelay: '0.1s' }}>
+          <div className="wd-checklist-header">
+            <ProgressRing completed={completedCount} total={checklist.length} />
+            <div>
+              <h3 className="wd-checklist-title">Get started</h3>
+              <p className="wd-checklist-subtitle">Complete your profile to start earning</p>
+            </div>
+          </div>
+          <div className="wd-checklist-items">
+            {checklist.map((item, index) => (
+              <button
+                key={item.id}
+                className={`wd-checklist-item ${item.completed ? 'completed' : ''}`}
+                onClick={() => !item.completed && onNavigate?.(item.tab)}
+              >
+                <div className="wd-checklist-item-indicator">
+                  {item.completed ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <span className="wd-checklist-item-number">{index + 1}</span>
+                  )}
+                </div>
+                <div className="wd-checklist-item-content">
+                  <span className="wd-checklist-item-label">
+                    {item.label}
+                    {item.completed && item.completedDetail?.(user) ? (
+                      <span className="wd-checklist-item-detail"> — {item.completedDetail(user)}</span>
+                    ) : null}
+                  </span>
+                  {!item.completed && (
+                    <span className="wd-checklist-item-subtitle">{item.subtitle}</span>
+                  )}
+                </div>
+                {!item.completed && (
+                  <svg className="wd-checklist-item-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Apply for Tasks CTA ─── */}
+      <div className="wd-card wd-browse-cta wd-fade-in" style={{ animationDelay: '0.15s' }}>
+        <div className="wd-browse-cta-text">
+          <h3 className="wd-browse-cta-title">Apply for tasks and get paid</h3>
+          <p className="wd-browse-cta-subtitle">Tasks pay $5–$200+ and take minutes to hours.</p>
+        </div>
+        <button className="wd-browse-btn" onClick={() => onNavigate?.('browse')}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+          </svg>
+          Browse Tasks
+        </button>
+      </div>
 
       {/* Stats Row */}
-      <div className="working-dash-stats">
-        <div className="working-dash-stat">
+      <div className="working-dash-stats wd-fade-in" style={{ animationDelay: '0.2s' }}>
+        <div className="wd-card working-dash-stat">
           <div className="working-dash-stat-icon working-dash-stat-icon--orange">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
@@ -148,10 +356,10 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </div>
           <div>
             <div className="working-dash-stat-label">Total Earned</div>
-            <div className="working-dash-stat-value working-dash-stat-value--orange">${totalEarned}</div>
+            <div className="working-dash-stat-value">${totalEarned}</div>
           </div>
         </div>
-        <div className="working-dash-stat">
+        <div className="wd-card working-dash-stat">
           <div className="working-dash-stat-icon working-dash-stat-icon--blue">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
@@ -162,7 +370,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
             <div className="working-dash-stat-value">{activeTasks.length}</div>
           </div>
         </div>
-        <div className="working-dash-stat">
+        <div className="wd-card working-dash-stat">
           <div className="working-dash-stat-icon working-dash-stat-icon--green">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
@@ -174,7 +382,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
             <div className="working-dash-stat-value">{paidTasks.length}</div>
           </div>
         </div>
-        <div className="working-dash-stat">
+        <div className="wd-card working-dash-stat">
           <div className="working-dash-stat-icon working-dash-stat-icon--purple">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -192,7 +400,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
 
       {/* Attention Needed */}
       {(reviewTasks.length > 0 || inProgressTasks.length > 0) && (
-        <div className="working-dash-attention">
+        <div className="wd-card wd-fade-in" style={{ animationDelay: '0.35s', padding: 'var(--space-5)' }}>
           <h3 className="working-dash-section-title">Needs Attention</h3>
           <div className="working-dash-attention-items">
             {inProgressTasks.map(task => {
@@ -213,7 +421,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
                     {label}
                   </span>
                 );
-                } // end if (diffMs > 0)
+                }
               }
               return (
                 <button
@@ -251,7 +459,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
 
       {/* Recent Activity */}
       {unreadNotifs.length > 0 && (
-        <div className="working-dash-activity">
+        <div className="wd-card wd-fade-in" style={{ animationDelay: '0.4s', padding: 'var(--space-5)' }}>
           <h3 className="working-dash-section-title">Recent Activity</h3>
           <div className="working-dash-activity-list">
             {unreadNotifs.slice(0, 5).map(n => (
@@ -272,13 +480,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
       )}
 
       {/* Quick Actions */}
-      <div className="working-dash-actions">
-        <button className="working-dash-action" onClick={() => onNavigate?.('browse')}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-          </svg>
-          Browse Tasks
-        </button>
+      <div className="working-dash-actions wd-fade-in" style={{ animationDelay: '0.45s' }}>
         <button className="working-dash-action" onClick={() => onNavigate?.('tasks')}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />

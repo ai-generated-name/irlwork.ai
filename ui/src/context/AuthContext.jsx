@@ -166,13 +166,22 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  // Authenticated fetch wrapper — auto-logs-out on 401 responses
+  // Authenticated fetch wrapper — uses fresh Supabase token, auto-logs-out on 401
   const authenticatedFetch = useCallback(async (url, options = {}) => {
+    // Get fresh token from Supabase session (auto-refreshes expired JWTs)
+    let token = user?.token || ''
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        token = session.access_token
+      }
+    }
+
     const res = await fetch(url, {
       ...options,
       headers: {
         ...options.headers,
-        Authorization: user?.token || ''
+        Authorization: token
       }
     })
 
