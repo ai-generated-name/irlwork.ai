@@ -4127,8 +4127,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       <span style={{ color: 'var(--orange-600)' }}>Get verified to save on fees and increase visibility</span>
                     </span>
                   </div>
-                  {/* TODO: Route to /pricing or /settings/plans when page is built */}
-                  <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 13, fontWeight: 500, color: 'var(--orange-500)', textDecoration: 'none', whiteSpace: 'nowrap' }}>View Plans →</a>
+                  <a href="/premium" style={{ fontSize: 13, fontWeight: 500, color: 'var(--orange-500)', textDecoration: 'none', whiteSpace: 'nowrap' }}>View Plans →</a>
                 </div>
 
                 {/* Available for Hire */}
@@ -4156,9 +4155,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       onClick={async () => {
                         const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
                         try {
+                          let token = user.token || ''
+                          if (supabase) {
+                            const { data: { session } } = await supabase.auth.getSession()
+                            if (session?.access_token) token = session.access_token
+                          }
                           const res = await fetch(`${API_URL}/humans/profile`, {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
+                            headers: { 'Content-Type': 'application/json', Authorization: token },
                             body: JSON.stringify({ availability: newStatus })
                           })
                           if (res.ok) {
@@ -4169,6 +4173,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                               localStorage.setItem('user', JSON.stringify(updatedUser))
                             }
                             toast.success(newStatus === 'available' ? 'You\'re now available for work' : 'You\'re now unavailable')
+                          } else {
+                            const err = await res.json().catch(() => ({}))
+                            toast.error(err.error || 'Failed to update availability')
                           }
                         } catch { toast.error('Failed to update availability') }
                       }}
