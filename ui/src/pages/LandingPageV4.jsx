@@ -614,52 +614,7 @@ function Icon({ name, size = 24, className = '' }) {
   return <IconComponent size={size} className={className} />
 }
 
-// Language Selector with globe icon
-function LanguageSelector() {
-  const [open, setOpen] = useState(false)
-  const [selected, setSelected] = useState('English')
-  const ref = useRef(null)
-
-  const languages = [
-    { label: 'English', code: 'en' },
-    { label: 'Español', code: 'es' },
-    { label: '中文', code: 'zh' },
-    { label: 'हिन्दी', code: 'hi' },
-    { label: 'العربية', code: 'ar' },
-  ]
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  return (
-    <div className="language-selector" ref={ref}>
-      <button className="language-trigger" onClick={() => setOpen(!open)} aria-label="Select language">
-        <Globe size={16} />
-        <span className="language-trigger-label">{selected}</span>
-        <ChevronDown size={14} className={`language-chevron ${open ? 'language-chevron-open' : ''}`} />
-      </button>
-      {open && (
-        <div className="language-dropdown">
-          {languages.map((lang) => (
-            <button
-              key={lang.code}
-              className={`language-option ${selected === lang.label ? 'language-option-active' : ''}`}
-              onClick={() => { setSelected(lang.label); setOpen(false) }}
-            >
-              <span>{lang.label}</span>
-              {selected === lang.label && <Check size={14} />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+// LanguageSelector imported from ../components/LanguageSelector
 
 export default function LandingPageV4() {
   const { t } = useLanguage()
