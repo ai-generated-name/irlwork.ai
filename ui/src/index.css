@@ -806,6 +806,370 @@ code, pre {
   box-shadow: 0 4px 12px rgba(224, 122, 95, 0.3);
 }
 
+/* ─── MAP CONTAINER (for popup overlay positioning) ─── */
+.task-map-container {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ─── PRICE TOOLTIP (hover) ─── */
+.task-map-price-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1A1A1A;
+  color: white;
+  font-family: var(--font-display, 'DM Sans', sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: taskMapTooltipFadeIn 0.15s ease;
+  z-index: 10;
+}
+
+.task-map-price-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: #1A1A1A;
+}
+
+@keyframes taskMapTooltipFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ─── POPUP CARD (desktop) ─── */
+.task-map-popup-card {
+  position: absolute;
+  z-index: 1001;
+  width: 300px;
+  background: var(--bg-secondary, white);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 16px;
+  transform: translate(-50%, calc(-100% - 16px));
+  animation: taskMapPopupIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  pointer-events: auto;
+}
+
+.task-map-popup-card::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-top-color: var(--bg-secondary, white);
+  border-bottom: none;
+}
+
+@keyframes taskMapPopupIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 16px)) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 16px)) scale(1);
+  }
+}
+
+.task-map-popup-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-tertiary, #888);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.task-map-popup-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary, #1A1A1A);
+}
+
+.task-map-popup-category {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.task-map-popup-category-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(232, 133, 61, 0.1);
+  color: var(--accent-orange, #E8853D);
+  border-radius: 8px;
+}
+
+.task-map-popup-category-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #333);
+  text-transform: capitalize;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.task-map-popup-title {
+  font-family: var(--font-display, 'DM Sans', sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A1A);
+  margin: 0 0 4px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-map-popup-description {
+  font-size: 13px;
+  color: var(--text-secondary, #333);
+  margin: 0 0 10px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-map-popup-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.task-map-popup-price-amount {
+  font-family: var(--font-display, 'DM Sans', sans-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--orange-600, #E8853D);
+}
+
+.task-map-popup-price-label {
+  font-size: 12px;
+  color: var(--text-tertiary, #888);
+  font-weight: 500;
+}
+
+.task-map-popup-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.task-map-popup-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #333);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.task-map-popup-applicants {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-tertiary, #888);
+  white-space: nowrap;
+}
+
+.task-map-popup-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 16px;
+  background: var(--accent-orange, #E8853D);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.task-map-popup-cta:hover {
+  background: var(--accent-orange-hover, #D4703A);
+  box-shadow: 0 0 20px rgba(232, 133, 61, 0.15);
+  transform: translateY(-1px);
+}
+
+/* ─── MOBILE BOTTOM SHEET ─── */
+.task-map-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 999;
+  background: transparent;
+}
+
+.task-map-bottom-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--bg-secondary, white);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+  height: 35vh;
+  transition: height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: taskMapSheetSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  touch-action: none;
+}
+
+.task-map-bottom-sheet.expanded {
+  height: 70vh;
+}
+
+@keyframes taskMapSheetSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.task-map-sheet-drag-handle {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 6px;
+  cursor: grab;
+}
+
+.task-map-sheet-drag-bar {
+  width: 40px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+}
+
+.task-map-sheet-content {
+  padding: 0 20px 20px;
+  overflow-y: auto;
+  max-height: calc(100% - 30px);
+  -webkit-overflow-scrolling: touch;
+}
+
+.task-map-sheet-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.task-map-sheet-skill-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #EEF2FF;
+  color: #4338CA;
+}
+
+.task-map-sheet-skill-pill.more {
+  background: #F5F5F5;
+  color: #333;
+}
+
+/* ─── MARKER CLUSTER STYLES ─── */
+.task-cluster-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.task-cluster-marker {
+  width: 40px;
+  height: 40px;
+  background: var(--accent-orange, #E8853D);
+  border: 3px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(232, 133, 61, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.task-cluster-marker span {
+  color: white;
+  font-family: var(--font-display, 'DM Sans', sans-serif);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.task-cluster-marker:hover {
+  transform: scale(1.1);
+}
+
+/* Override default markercluster styles */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
+  background: transparent !important;
+}
+
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background: transparent !important;
+}
+
+/* ─── TASK CARD SELECTED STATE (left accent) ─── */
+.task-card-v2.selected {
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 0 3px rgba(232, 133, 61, 0.1);
+  border-left: 3px solid var(--accent-orange);
+  background: var(--accent-orange-light, #FFF3EB);
+}
+
+/* ─── LEAFLET POPUP OVERRIDE ─── */
+/* Hide default leaflet popups since we render custom ones */
+.task-marker-icon .leaflet-popup {
+  display: none;
+}
+
 /* Task Card V2 */
 .task-card-v2 {
   background: var(--bg-secondary);
