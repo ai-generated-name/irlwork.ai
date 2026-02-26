@@ -1,6 +1,6 @@
 // MarketingNavbar — single source of truth for public/marketing page navbar
-// Used via shared layout in App.jsx for all public pages
-// Consistent with NavbarV4 (V4Layout.jsx) — brand kit Logo, LanguageSelector, mobile hamburger
+// Used via MarketingLayout in App.jsx for all public pages
+// Uses brand-v2 Logo component and globe-icon LanguageSelector
 
 import React, { useState } from 'react'
 import { Logo } from './Logo'
@@ -9,13 +9,13 @@ import { useLanguage } from '../context/LanguageContext'
 
 export default function MarketingNavbar({ user, activePage }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const navigate = (path) => { window.location.href = path }
   const { t } = useLanguage()
+  const navigate = (path) => { window.location.href = path }
 
   return (
     <nav className="navbar-v4">
       <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
-        <Logo variant="header" theme="light" />
+        <Logo variant="header" theme="dark" />
       </a>
 
       {/* Mobile hamburger toggle */}
@@ -48,19 +48,13 @@ export default function MarketingNavbar({ user, activePage }) {
           className="nav-link-v4"
           style={activePage === 'browse' ? { color: 'var(--accent-orange)' } : undefined}
         >
-          {t('nav.browse')}
+          {t('nav.browseTasks')}
         </a>
-
-        <LanguageSelector />
-
+        <LanguageSelector variant="compact" />
         {user ? (
-          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/dashboard')}>
-            {t('nav.dashboard')}
-          </button>
+          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/dashboard')}>{t('nav.dashboard')}</button>
         ) : (
-          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>
-            {t('nav.joinNow')}
-          </button>
+          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>{t('nav.joinNow')}</button>
         )}
       </div>
     </nav>
