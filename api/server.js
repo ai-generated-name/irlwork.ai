@@ -1351,7 +1351,7 @@ app.get('/api/auth/verify', async (req, res) => {
       created_at: user.created_at,
       headline: user.headline || '',
       timezone: user.timezone || '',
-      gender: user.gender || null,
+      ...(userHasGenderColumn ? { gender: user.gender || null } : {}),
       availability: user.availability || 'available',
       // Subscription
       subscription_tier: user.subscription_tier || 'free',
@@ -2150,7 +2150,7 @@ app.put('/api/humans/profile', async (req, res) => {
     if (headline !== undefined) updates.headline = (headline || '').slice(0, 120);
     if (timezone !== undefined) updates.timezone = timezone;
     if (availability === 'available' || availability === 'unavailable') updates.availability = availability;
-    if (gender !== undefined) {
+    if (gender !== undefined && userHasGenderColumn) {
       const validGenders = ['man', 'woman', 'other'];
       updates.gender = validGenders.includes(gender) ? gender : null;
     }
@@ -7574,6 +7574,8 @@ const taskColumnFlags = {
   validation_attempts: true,
 };
 
+let userHasGenderColumn = true;
+
 async function checkTaskColumns() {
   if (!supabase) return;
   for (const col of Object.keys(taskColumnFlags)) {
@@ -7613,6 +7615,24 @@ async function start() {
       }
     } else {
       console.log('[Schema] users.avatar_data column exists');
+    }
+
+    // Ensure gender column exists on users table
+    const { error: genderColCheck } = await supabase.from('users').select('gender').limit(1);
+    if (genderColCheck && genderColCheck.message && genderColCheck.message.includes('does not exist')) {
+      console.log('[Migration] gender column missing from users table, attempting to add...');
+      const { error: rpcErr } = await supabase.rpc('run_migration', {
+        migration_sql: 'ALTER TABLE public.users ADD COLUMN IF NOT EXISTS gender VARCHAR(10)'
+      });
+      if (rpcErr) {
+        userHasGenderColumn = false;
+        console.log('[Migration] Cannot auto-add gender. Please run in Supabase SQL Editor:');
+        console.log('  ALTER TABLE public.users ADD COLUMN IF NOT EXISTS gender VARCHAR(10);');
+      } else {
+        console.log('[Migration] Successfully added gender column to users table.');
+      }
+    } else {
+      console.log('[Schema] users.gender column exists');
     }
 
     // DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
