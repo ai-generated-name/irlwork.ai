@@ -6795,7 +6795,7 @@ app.get('/api/tasks/available', async (req, res) => {
 app.get('/api/humans/directory', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const { category, city, country, skill, name, min_rate, max_rate, limit = 16, offset = 0, sort = 'rating' } = req.query;
+  const { category, city, country, country_code, skill, name, min_rate, max_rate, limit = 16, offset = 0, sort = 'rating' } = req.query;
 
   // Check if user is authenticated
   const authUser = await getUserByToken(req.headers.authorization);
@@ -6822,7 +6822,8 @@ app.get('/api/humans/directory', async (req, res) => {
   if (category) countQuery = countQuery.like('skills', `%${escapeLike(category)}%`);
   if (skill) countQuery = countQuery.like('skills', `%${escapeLike(skill)}%`);
   if (city) countQuery = countQuery.ilike('city', `%${escapeLike(city)}%`);
-  if (country) countQuery = countQuery.ilike('country', `%${escapeLike(country)}%`);
+  if (country_code) countQuery = countQuery.ilike('country_code', escapeLike(country_code));
+  else if (country) countQuery = countQuery.ilike('country', `%${escapeLike(country)}%`);
   if (name) countQuery = countQuery.ilike('name', `%${escapeLike(name)}%`);
   if (min_rate) countQuery = countQuery.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) countQuery = countQuery.lte('hourly_rate', parseFloat(max_rate));
@@ -6865,7 +6866,8 @@ app.get('/api/humans/directory', async (req, res) => {
   if (category) query = query.like('skills', `%${escapeLike(category)}%`);
   if (skill) query = query.like('skills', `%${escapeLike(skill)}%`);
   if (city) query = query.ilike('city', `%${escapeLike(city)}%`);
-  if (country) query = query.ilike('country', `%${escapeLike(country)}%`);
+  if (country_code) query = query.ilike('country_code', escapeLike(country_code));
+  else if (country) query = query.ilike('country', `%${escapeLike(country)}%`);
   if (name) query = query.ilike('name', `%${escapeLike(name)}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));

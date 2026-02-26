@@ -19,6 +19,7 @@ const CityAutocomplete = ({
   const queryRef = useRef(query);
   const isSelectingRef = useRef(false);
   const abortRef = useRef(null);
+  const justSelectedRef = useRef(false);
 
   // Search cities via API when query changes (debounced)
   useEffect(() => {
@@ -62,12 +63,13 @@ const CityAutocomplete = ({
   // Handle city selection
   const handleSelect = (city) => {
     isSelectingRef.current = false;
+    justSelectedRef.current = true;
     setQuery(city.displayName);
     lastValidCity.current = city.displayName;
     setShowDropdown(false);
 
     onChange({
-      city: city.displayName,
+      city: city.name,
       latitude: city.lat,
       longitude: city.lng,
       country: city.country,
@@ -134,9 +136,16 @@ const CityAutocomplete = ({
     }
   }, [showDropdown]);
 
-  // Sync query with value prop
+  // Sync query with value prop (skip if we just selected internally)
   useEffect(() => {
-    if (value && value !== query) {
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
+    if (!value) {
+      setQuery('');
+      lastValidCity.current = null;
+    } else if (value !== query) {
       setQuery(value);
       lastValidCity.current = value;
     }
