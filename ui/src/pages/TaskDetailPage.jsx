@@ -374,7 +374,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         borderBottom: '1px solid rgba(0,0,0,0.08)',
         position: 'sticky',
         top: 56,
-        marginTop: 56,
         background: 'white',
         zIndex: 10,
         boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
