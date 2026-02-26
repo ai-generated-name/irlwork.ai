@@ -428,9 +428,6 @@ code, pre {
   padding: var(--space-6);
   background: var(--bg-secondary);
   border-bottom: 1px solid rgba(26, 26, 26, 0.06);
-  position: sticky;
-  top: 0;
-  z-index: 100;
 }
 
 .browse-tasks-v2-title {
@@ -669,7 +666,6 @@ code, pre {
 /* Main Content */
 .browse-tasks-v2-content {
   display: flex;
-  height: calc(100vh - 280px);
 }
 
 .browse-tasks-v2-content.split .browse-tasks-v2-list {
@@ -689,15 +685,14 @@ code, pre {
 }
 
 .browse-tasks-v2-list {
-  overflow-y: auto;
   padding: var(--space-4);
   background: var(--bg-primary);
 }
 
 .browse-tasks-v2-map {
   position: sticky;
-  top: 280px;
-  height: calc(100vh - 280px);
+  top: 0;
+  height: 100vh;
   border-left: 1px solid rgba(26, 26, 26, 0.06);
 }
 
@@ -1515,7 +1510,6 @@ code, pre {
 
   .browse-tasks-v2-content {
     flex-direction: column;
-    height: auto;
     min-height: calc(100vh - 340px);
   }
 
