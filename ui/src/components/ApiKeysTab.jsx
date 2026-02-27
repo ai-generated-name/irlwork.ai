@@ -1,10 +1,12 @@
 // ApiKeysTab - Extracted from App.jsx
 import React, { useState, useEffect } from 'react'
 import { RefreshCw, AlertTriangle } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
 export default function ApiKeysTab({ user }) {
+  const { authenticatedFetch } = useAuth()
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -18,9 +20,7 @@ export default function ApiKeysTab({ user }) {
 
   const fetchKeys = async () => {
     try {
-      const response = await fetch(`${API_URL}/keys`, {
-        headers: { 'Authorization': user?.token || '' }
-      })
+      const response = await authenticatedFetch(`${API_URL}/keys`)
       if (response.ok) {
         const data = await response.json()
         setKeys(data)
@@ -40,12 +40,9 @@ export default function ApiKeysTab({ user }) {
     setGenerating(true)
     setError(null)
     try {
-      const response = await fetch(`${API_URL}/keys/generate`, {
+      const response = await authenticatedFetch(`${API_URL}/keys/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': user?.token || ''
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newKeyName || 'API Key' })
       })
       if (response.ok) {
@@ -67,9 +64,8 @@ export default function ApiKeysTab({ user }) {
 
   const revokeKey = async (keyId) => {
     try {
-      const response = await fetch(`${API_URL}/keys/${keyId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': user?.token || '' }
+      const response = await authenticatedFetch(`${API_URL}/keys/${keyId}`, {
+        method: 'DELETE'
       })
       if (response.ok) {
         setConfirmRevoke(null)
@@ -82,9 +78,8 @@ export default function ApiKeysTab({ user }) {
 
   const rotateKey = async (keyId) => {
     try {
-      const response = await fetch(`${API_URL}/keys/${keyId}/rotate`, {
-        method: 'POST',
-        headers: { 'Authorization': user?.token || '' }
+      const response = await authenticatedFetch(`${API_URL}/keys/${keyId}/rotate`, {
+        method: 'POST'
       })
       if (response.ok) {
         const data = await response.json()
