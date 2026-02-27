@@ -380,6 +380,8 @@ function cleanTaskData(data) {
   if (!taskColumnFlags.task_type_id) delete cleaned.task_type_id;
   if (!taskColumnFlags.location_zone) delete cleaned.location_zone;
   if (!taskColumnFlags.validation_attempts) delete cleaned.validation_attempts;
+  if (!taskColumnFlags.cancelled_at) delete cleaned.cancelled_at;
+  if (!taskColumnFlags.cancellation_reason) delete cleaned.cancellation_reason;
   // Always strip private fields from public responses
   delete cleaned.private_address;
   delete cleaned.private_notes;
@@ -8390,6 +8392,9 @@ const taskColumnFlags = {
   revision_count: true,
   deadline_warning_sent: true,
   instructions_attachments: true,
+  // Cancellation columns (migration 002)
+  cancelled_at: true,
+  cancellation_reason: true,
 };
 
 let userHasGenderColumn = true;
