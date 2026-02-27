@@ -1289,7 +1289,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [decliningAppId, setDecliningAppId] = useState(null)
   const [negotiateAppId, setNegotiateAppId] = useState(null)
   const [negotiateMsg, setNegotiateMsg] = useState('')
-  const [assignNotes, setAssignNotes] = useState({})
+  const [assignNotes, setAssignNotes] = useState({}) // { [humanId]: 'note text' }
 
   // Task creation form state
   const [taskForm, setTaskForm] = useState({
