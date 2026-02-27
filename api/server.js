@@ -5298,7 +5298,7 @@ app.post('/api/mcp', async (req, res) => {
   const apiKey = req.headers.authorization || req.headers['x-api-key'];
   const user = await getUserByToken(apiKey);
 
-  if (!user || user.type !== 'agent') {
+  if (!user) {
     return res.status(401).json({ error: 'Invalid API key' });
   }
 
