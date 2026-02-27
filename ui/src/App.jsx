@@ -1121,6 +1121,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   })
   const [hireTarget, setHireTarget] = useState(null) // Human selected via "Hire" button for direct hire
 
+  // Restore hireTarget from URL ?hire=<id> on mount (e.g. page refresh or direct link)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const hireId = params.get('hire')
+    if (hireId && !hireTarget) {
+      fetch(`${API_URL}/humans/${hireId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(human => { if (human) setHireTarget(human) })
+        .catch(() => {}) // silently ignore — user can still create open task
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Read initial tab from URL path: /dashboard/working/browse → 'browse'
   const getInitialTab = () => {
     const pathParts = window.location.pathname.split('/')
@@ -2503,7 +2515,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
               <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              <button className="hiring-dash-create-btn" onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}>
+              <button className="hiring-dash-create-btn" onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); setHireTarget(null); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
@@ -2585,7 +2597,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       </div>
                       <button
                         type="button"
-                        onClick={() => setHireTarget(null)}
+                        onClick={() => { setHireTarget(null); window.history.pushState({}, '', '/dashboard/hiring/create'); }}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer', padding: 6,
                           color: 'var(--text-tertiary)', borderRadius: 8, flexShrink: 0
@@ -3160,7 +3172,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           human={human}
                           variant="dashboard"
                           onExpand={(h) => window.location.href = `/humans/${h.id}`}
-                          onHire={(human) => { setHireTarget(human); setTasksSubTab('create'); setActiveTab('posted') }}
+                          onHire={(human) => { setHireTarget(human); setTasksSubTab('create'); setActiveTabState('posted'); window.history.pushState({}, '', `/dashboard/hiring/create?hire=${human.id}`); trackPageView('/dashboard/hiring/create'); }}
                           onBookmark={toggleBookmark}
                           isBookmarked={bookmarkedHumans.includes(human.id)}
                         />
@@ -4862,7 +4874,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               setExpandedHumanId(null)
               setHireTarget(human)
               setTasksSubTab('create')
-              setActiveTab('posted')
+              setActiveTabState('posted')
+              window.history.pushState({}, '', `/dashboard/hiring/create?hire=${human.id}`)
+              trackPageView('/dashboard/hiring/create')
             }}
             user={user}
           />
