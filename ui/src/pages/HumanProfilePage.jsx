@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MapPin, Check, Star, Briefcase, TrendingUp, Loader2, Clock, Calendar, ArrowLeft, Share2 } from 'lucide-react'
+import { MapPin, Check, Star, Briefcase, TrendingUp, Loader2, Clock, Calendar, ArrowLeft, Share2, ShieldCheck } from 'lucide-react'
 import { StarRating } from '../components/HumanProfileCard'
 import { SocialIconsRow } from '../components/SocialIcons'
 import ForAgentsBox from '../components/ForAgentsBox'
@@ -254,6 +254,33 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                           }}>
                             NEW
                           </span>
+                        )}
+                        {isOwnProfile && !profile.verified && (
+                          <a
+                            href="/premium"
+                            title="Verified profiles get up to 3× more task offers"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '3px 10px',
+                              background: 'transparent',
+                              border: '1px solid #E8863A',
+                              borderRadius: 999,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: '#E8863A',
+                              textDecoration: 'none',
+                              cursor: 'pointer',
+                              transition: 'background 0.15s',
+                              whiteSpace: 'nowrap',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(232, 134, 58, 0.08)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <ShieldCheck size={13} />
+                            Get Verified
+                          </a>
                         )}
                       </div>
 

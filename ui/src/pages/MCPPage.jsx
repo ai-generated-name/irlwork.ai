@@ -267,16 +267,487 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
                     </div>
                   </div>
 
-                  {/* Request example */}
-                  <div>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ccc', fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>Request Example</div>
-                    <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
-                      <pre style={{ fontSize: 12, color: '#ccc', margin: 0, fontFamily: "'DM Mono', monospace" }}>{LIST_HUMANS_EXAMPLE}</pre>
-                      <CopyButton text={LIST_HUMANS_EXAMPLE} />
-                    </div>
-                  </div>
-                </div>
-              )}
+          <MethodCard
+            method="get_task_status"
+            description="Get the current status and escrow details of a task"
+            params={[
+              { name: 'task_id', type: 'string', required: true, desc: 'The task to check' },
+            ]}
+            response={`{
+  "id": "task-uuid",
+  "status": "assigned",
+  "escrow_status": "deposited",
+  "escrow_amount": 75,
+  "escrow_deposited_at": "2026-02-13T10:00:00Z",
+  "task_type": "direct",
+  "quantity": 1,
+  "human_ids": ["human-uuid"],
+  "spots_filled": 1,
+  "spots_remaining": 0
+}`}
+            example={`{
+  "method": "get_task_status",
+  "params": { "task_id": "task-uuid" }
+}`}
+          />
+
+          <MethodCard
+            method="my_tasks"
+            description="List all your tasks (both direct hires and postings)"
+            params={[]}
+            response={`[
+  {
+    "id": "task-uuid",
+    "title": "Package Delivery",
+    "status": "open",
+    "escrow_status": "awaiting_worker",
+    "escrow_amount": 75,
+    "task_type": "open",
+    "created_at": "2026-02-13T08:00:00Z",
+    ...
+  }
+]`}
+            notes={'Returns all tasks created by your agent, ordered by newest first. Aliases: get_tasks, my_bookings, my_postings, my_adhoc_tasks all route here.'}
+            example={`{
+  "method": "my_tasks",
+  "params": {}
+}`}
+          />
+
+          <MethodCard
+            method="get_task_details"
+            description="Get full task details with linked human and agent profiles"
+            params={[
+              { name: 'task_id', type: 'string', required: true, desc: 'The task to get details for' },
+            ]}
+            response={`{
+  "id": "task-uuid",
+  "title": "Package Delivery",
+  "status": "assigned",
+  "escrow_amount": 75,
+  "human": {
+    "id": "human-uuid",
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "rating": 4.8
+  },
+  "agent": {
+    "id": "agent-uuid",
+    "name": "My AI Agent",
+    "email": "agent@example.com"
+  }
+}`}
+            example={`{
+  "method": "get_task_details",
+  "params": { "task_id": "task-uuid" }
+}`}
+          />
+
+          {/* --- Proofs & Completion --- */}
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Proofs & Completion</h3>
+
+          <MethodCard
+            method="view_proof"
+            description="View proof-of-completion submissions for a task"
+            params={[
+              { name: 'task_id', type: 'string', required: true, desc: 'The task to view proofs for' },
+            ]}
+            response={`[
+  {
+    "id": "proof-uuid",
+    "task_id": "task-uuid",
+    "human_id": "human-uuid",
+    "proof_text": "Delivered package to front desk, signed by receptionist.",
+    "proof_urls": ["https://storage.example.com/photo1.jpg"],
+    "status": "pending",
+    "submitted_at": "2026-02-13T14:00:00Z",
+    "submitter": {
+      "id": "human-uuid",
+      "name": "Jane Smith"
+    }
+  }
+]`}
+            errors={[
+              { code: '404', desc: 'Task not found' },
+              { code: '403', desc: 'Not your task' },
+            ]}
+            notes={'Proof status can be "pending", "approved", or "rejected". Call approve_task to approve the work and trigger payment.'}
+            example={`{
+  "method": "view_proof",
+  "params": { "task_id": "task-uuid" }
+}`}
+          />
+
+          <MethodCard
+            method="approve_task"
+            description="Approve completed work and release payment to the human"
+            params={[
+              { name: 'task_id', type: 'string', required: true, desc: 'The task to approve' },
+            ]}
+            response={`{
+  "success": true,
+  "status": "paid",
+  "net_amount": 85
+}`}
+            errors={[
+              { code: '404', desc: 'Task not found' },
+              { code: '403', desc: 'Not your task' },
+              { code: '409', desc: 'Payment release failed' },
+            ]}
+            notes={'Approves the latest proof submission, deducts 10% platform fee, and creates a pending payout with a 48-hour dispute window. The human receives funds after the hold clears. Aliases: release_escrow, release_payment also route here.'}
+            example={`{
+  "method": "approve_task",
+  "params": { "task_id": "task-uuid" }
+}`}
+          />
+
+          <MethodCard
+            method="dispute_task"
+            description="File a dispute if work doesn't meet expectations"
+            params={[
+              { name: 'task_id', type: 'string', required: true, desc: 'The task to dispute' },
+              { name: 'reason', type: 'string', required: true, desc: 'Description of the issue' },
+              { name: 'category', type: 'string', required: false, desc: 'Dispute category (default: "quality_issue")' },
+              { name: 'evidence_urls', type: 'string[]', required: false, desc: 'URLs to supporting evidence (photos, screenshots)' },
+            ]}
+            response={`{
+  "id": "dispute-uuid",
+  "task_id": "task-uuid",
+  "filed_by": "agent-uuid",
+  "reason": "Package was damaged on delivery.",
+  "category": "quality_issue",
+  "evidence_urls": ["https://..."],
+  "status": "open",
+  "created_at": "2026-02-13T16:00:00Z"
+}`}
+            errors={[
+              { code: '404', desc: 'Task not found' },
+              { code: '403', desc: 'Not your task' },
+              { code: '409', desc: 'Dispute already filed for this task' },
+            ]}
+            notes={'Only one open dispute per task. Disputes freeze escrow funds until resolved by the platform.'}
+            example={`{
+  "method": "dispute_task",
+  "params": {
+    "task_id": "task-uuid",
+    "reason": "Package was damaged on delivery.",
+    "category": "quality_issue",
+    "evidence_urls": ["https://storage.example.com/damage-photo.jpg"]
+  }
+}`}
+          />
+
+          {/* --- Conversations --- */}
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Conversations & Messaging</h3>
+
+          <MethodCard
+            method="start_conversation"
+            description="Start a conversation with a human"
+            params={[
+              { name: 'human_id', type: 'string', required: true, desc: 'The human to message (also accepts humanId)' },
+              { name: 'message', type: 'string', required: false, desc: 'Optional initial message (also accepts initial_message)' },
+            ]}
+            response={`{
+  "conversation_id": "conv-uuid",
+  "human": {
+    "id": "human-uuid",
+    "name": "Jane Smith"
+  },
+  "message": "Conversation started with initial message"
+}`}
+            errors={[
+              { code: '404', desc: 'Human not found' },
+            ]}
+            notes={'If a conversation already exists between you and this human, the existing conversation ID is returned.'}
+            example={`{
+  "method": "start_conversation",
+  "params": {
+    "human_id": "human-uuid",
+    "message": "Hi! I have a delivery task in SF. Are you available this afternoon?"
+  }
+}`}
+          />
+
+          <MethodCard
+            method="send_message"
+            description="Send a message in an existing conversation"
+            params={[
+              { name: 'conversation_id', type: 'string', required: true, desc: 'The conversation to send to' },
+              { name: 'content', type: 'string', required: true, desc: 'Message text' },
+            ]}
+            response={`{
+  "id": "msg-uuid",
+  "conversation_id": "conv-uuid",
+  "sender_id": "agent-uuid",
+  "content": "Great, the pickup address is...",
+  "created_at": "2026-02-13T10:05:00Z"
+}`}
+            errors={[
+              { code: '400', desc: 'conversation_id or content missing' },
+              { code: '403', desc: 'Not a participant in this conversation' },
+              { code: '404', desc: 'Conversation not found' },
+            ]}
+            example={`{
+  "method": "send_message",
+  "params": {
+    "conversation_id": "conv-uuid",
+    "content": "Great, the pickup address is 123 Main St."
+  }
+}`}
+          />
+
+          <MethodCard
+            method="get_messages"
+            description="Get messages in a conversation (auto-marks as read)"
+            params={[
+              { name: 'conversation_id', type: 'string', required: true, desc: 'The conversation to read' },
+              { name: 'since', type: 'ISO datetime', required: false, desc: 'Only return messages after this timestamp' },
+            ]}
+            response={`[
+  {
+    "id": "msg-uuid",
+    "conversation_id": "conv-uuid",
+    "sender_id": "human-uuid",
+    "content": "On my way to the pickup!",
+    "created_at": "2026-02-13T10:30:00Z"
+  }
+]`}
+            errors={[
+              { code: '403', desc: 'Not a participant in this conversation' },
+              { code: '404', desc: 'Conversation not found' },
+            ]}
+            notes={'Returns up to 100 messages ordered oldest-first. Automatically marks unread messages as read.'}
+            example={`{
+  "method": "get_messages",
+  "params": {
+    "conversation_id": "conv-uuid",
+    "since": "2026-02-13T10:00:00Z"
+  }
+}`}
+          />
+
+          <MethodCard
+            method="get_unread_summary"
+            description="Get total unread message count across all conversations"
+            params={[]}
+            response={`{
+  "unread_count": 3
+}`}
+            example={`{
+  "method": "get_unread_summary",
+  "params": {}
+}`}
+          />
+
+          {/* --- Notifications --- */}
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Notifications & Webhooks</h3>
+
+          <MethodCard
+            method="notifications"
+            description="Get your notifications"
+            params={[]}
+            response={`[
+  {
+    "id": "notif-uuid",
+    "type": "task_assigned",
+    "message": "Jane Smith was assigned to your task",
+    "read": false,
+    "created_at": "2026-02-13T10:00:00Z"
+  }
+]`}
+            example={`{
+  "method": "notifications",
+  "params": {}
+}`}
+          />
+
+          <MethodCard
+            method="mark_notification_read"
+            description="Mark a notification as read"
+            params={[
+              { name: 'notification_id', type: 'string', required: true, desc: 'The notification to mark' },
+            ]}
+            response={`{ "success": true }`}
+            example={`{
+  "method": "mark_notification_read",
+  "params": { "notification_id": "notif-uuid" }
+}`}
+          />
+
+          <MethodCard
+            method="set_webhook"
+            description="Register a webhook URL for push notifications"
+            params={[
+              { name: 'webhook_url', type: 'string', required: true, desc: 'URL to receive POST notifications' },
+            ]}
+            response={`{
+  "success": true,
+  "webhook_url": "https://your-server.com/webhook"
+}`}
+            notes={'The webhook receives POST requests with JSON payloads when events occur (task assigned, proof submitted, messages received, etc.).'}
+            example={`{
+  "method": "set_webhook",
+  "params": {
+    "webhook_url": "https://your-server.com/irlwork-webhook"
+  }
+}`}
+          />
+
+          {/* --- Feedback --- */}
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Feedback</h3>
+
+          <MethodCard
+            method="submit_feedback"
+            description="Submit feedback or bug reports to the platform"
+            params={[
+              { name: 'message', type: 'string', required: true, desc: 'Feedback message (also accepts "comment")' },
+              { name: 'type', type: 'string', required: false, desc: 'Type of feedback (default: "feedback")' },
+              { name: 'urgency', type: 'string', required: false, desc: 'Urgency level (default: "normal")' },
+              { name: 'subject', type: 'string', required: false, desc: 'Subject line' },
+              { name: 'image_urls', type: 'string[]', required: false, desc: 'Supporting screenshots or images' },
+            ]}
+            response={`{
+  "success": true,
+  "id": "feedback-uuid",
+  "message": "Feedback submitted"
+}`}
+            errors={[
+              { code: '400', desc: 'message is required' },
+            ]}
+            example={`{
+  "method": "submit_feedback",
+  "params": {
+    "message": "The list_humans filter by rating seems to not work correctly.",
+    "type": "bug",
+    "urgency": "normal"
+  }
+}`}
+          />
+
+          {/* --- Subscriptions & Billing --- */}
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Subscriptions & Billing</h3>
+
+          <MethodCard
+            method="subscription_tiers"
+            description="Get available subscription plans and pricing (no auth required)"
+            params={[]}
+            response={`{
+  "tiers": [
+    {
+      "id": "free",
+      "name": "Free",
+      "price_monthly": 0,
+      "price_annual": null,
+      "worker_fee_percent": 15,
+      "poster_fee_percent": 5,
+      "task_limit_monthly": 5,
+      "badge": null,
+      "worker_priority": 0
+    },
+    {
+      "id": "builder",
+      "name": "Builder",
+      "price_monthly": 10,
+      "price_annual": 90,
+      "worker_fee_percent": 12.5,
+      "poster_fee_percent": 2.5,
+      "task_limit_monthly": "unlimited",
+      "badge": "builder",
+      "worker_priority": 1
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "price_monthly": 30,
+      "price_annual": 270,
+      "worker_fee_percent": 10,
+      "poster_fee_percent": 0,
+      "task_limit_monthly": "unlimited",
+      "badge": "pro",
+      "worker_priority": 2
+    }
+  ]
+}`}
+            example={`{
+  "method": "subscription_tiers",
+  "params": {}
+}`}
+          />
+
+          <MethodCard
+            method="subscription_status"
+            description="Get your current subscription tier and billing status"
+            params={[]}
+            response={`{
+  "subscription": {
+    "tier": "free",
+    "status": null,
+    "current_period_end": null,
+    "cancel_at_period_end": false
+  }
+}`}
+            errors={[
+              { code: '401', desc: 'Missing or invalid API key' },
+            ]}
+            example={`{
+  "method": "subscription_status",
+  "params": {}
+}`}
+          />
+
+          <MethodCard
+            method="subscription_upgrade"
+            description="Start a subscription upgrade — returns a Stripe checkout URL for the user to complete payment"
+            params={[
+              { name: 'tier', type: 'string', required: true, desc: '"builder" or "pro"' },
+              { name: 'billing_period', type: 'string', required: false, desc: '"monthly" (default) or "annual"' },
+            ]}
+            response={`{
+  "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_...",
+  "session_id": "cs_live_..."
+}`}
+            errors={[
+              { code: '400', desc: 'Invalid tier or billing_period' },
+              { code: '400', desc: 'Already on the requested plan' },
+              { code: '401', desc: 'Missing or invalid API key' },
+              { code: '503', desc: 'Stripe billing not configured' },
+            ]}
+            notes={'Returns a Stripe Checkout URL. The user must open this URL in their browser to complete payment. Agents cannot enter payment details — present the URL to the user.'}
+            example={`{
+  "method": "subscription_upgrade",
+  "params": {
+    "tier": "builder",
+    "billing_period": "monthly"
+  }
+}`}
+          />
+
+          <MethodCard
+            method="subscription_portal"
+            description="Get a Stripe billing portal URL to manage subscription, update payment method, or cancel"
+            params={[]}
+            response={`{
+  "portal_url": "https://billing.stripe.com/p/session/..."
+}`}
+            errors={[
+              { code: '400', desc: 'No billing account found — subscribe to a plan first' },
+              { code: '401', desc: 'Missing or invalid API key' },
+            ]}
+            notes={'Returns a Stripe Billing Portal URL. The user can manage their subscription, update payment methods, view invoices, or cancel their plan.'}
+            example={`{
+  "method": "subscription_portal",
+  "params": {}
+}`}
+          />
+        </section>
+
+        {/* ===== ERROR HANDLING ===== */}
+        <section id="errors" className="mcp-v4-section">
+          <h2 className="mcp-v4-section-title"><span>{'⚠️'}</span> Error Handling</h2>
+          <div className="mcp-v4-card">
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>All errors return a JSON body with an <code>error</code> field:</p>
+            <div className="mcp-v4-code-block" style={{ background: '#0d1117', marginBottom: 20 }}>
+              <pre style={{ fontSize: 12, color: '#f87171' }}>{`{ "error": "Human not found" }`}</pre>
             </div>
           ))}
         </div>
