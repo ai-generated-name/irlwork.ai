@@ -2012,8 +2012,7 @@ app.get('/api/humans', async (req, res) => {
   let query = supabase
     .from('users')
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier')
-    .eq('type', 'human')
-    .eq('availability', 'available');
+    .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
@@ -2036,8 +2035,11 @@ app.get('/api/humans', async (req, res) => {
     results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
   }
 
-  // Sort by subscription tier priority (Pro > Builder > Free), then by rating
+  // Sort: available first, then by subscription tier priority (Pro > Builder > Free), then by rating
   results.sort((a, b) => {
+    const aAvail = a.availability === 'available' ? 1 : 0;
+    const bAvail = b.availability === 'available' ? 1 : 0;
+    if (bAvail !== aAvail) return bAvail - aAvail;
     const aPriority = getTierConfig(a.subscription_tier || 'free').worker_priority;
     const bPriority = getTierConfig(b.subscription_tier || 'free').worker_priority;
     if (bPriority !== aPriority) return bPriority - aPriority;
@@ -6870,8 +6872,7 @@ app.get('/api/humans/directory', async (req, res) => {
   let countQuery = supabase
     .from('users')
     .select('id', { count: 'exact', head: true })
-    .eq('type', 'human')
-    .eq('availability', 'available');
+    .eq('type', 'human');
 
   // Sanitize search params: escape LIKE wildcards (% and _) to prevent injection
   const escapeLike = (s) => s.replace(/[%_\\]/g, '\\$&');
@@ -6890,8 +6891,7 @@ app.get('/api/humans/directory', async (req, res) => {
   let query = supabase
     .from('users')
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url, subscription_tier')
-    .eq('type', 'human')
-    .eq('availability', 'available');
+    .eq('type', 'human');
 
   // Sorting
   switch (sort) {
@@ -6938,9 +6938,12 @@ app.get('/api/humans/directory', async (req, res) => {
     languages: safeParseJsonArray(h.languages)
   })) || [];
 
-  // Apply tier-based priority sorting (Pro > Builder > Free) as a secondary sort
+  // Sort: available first, then tier-based priority (Pro > Builder > Free) as a secondary sort
   if (sort === 'rating' || !sort) {
     parsed.sort((a, b) => {
+      const aAvail = a.availability === 'available' ? 1 : 0;
+      const bAvail = b.availability === 'available' ? 1 : 0;
+      if (bAvail !== aAvail) return bAvail - aAvail;
       const aPriority = getTierConfig(a.subscription_tier || 'free').worker_priority;
       const bPriority = getTierConfig(b.subscription_tier || 'free').worker_priority;
       if (bPriority !== aPriority) return bPriority - aPriority;
