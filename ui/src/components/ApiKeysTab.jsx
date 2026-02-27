@@ -1,12 +1,20 @@
 // ApiKeysTab - Extracted from App.jsx
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, AlertTriangle } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { supabase } from '../App'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
+// Get a fresh Supabase JWT for API calls
+async function getFreshToken(fallbackToken) {
+  if (supabase) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) return session.access_token
+  }
+  return fallbackToken || ''
+}
+
 export default function ApiKeysTab({ user }) {
-  const { authenticatedFetch } = useAuth()
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -20,7 +28,10 @@ export default function ApiKeysTab({ user }) {
 
   const fetchKeys = async () => {
     try {
-      const response = await authenticatedFetch(`${API_URL}/keys`)
+      const token = await getFreshToken(user?.token)
+      const response = await fetch(`${API_URL}/keys`, {
+        headers: { Authorization: token }
+      })
       if (response.ok) {
         const data = await response.json()
         setKeys(data)
@@ -40,9 +51,10 @@ export default function ApiKeysTab({ user }) {
     setGenerating(true)
     setError(null)
     try {
-      const response = await authenticatedFetch(`${API_URL}/keys/generate`, {
+      const token = await getFreshToken(user?.token)
+      const response = await fetch(`${API_URL}/keys/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: token },
         body: JSON.stringify({ name: newKeyName || 'API Key' })
       })
       if (response.ok) {
@@ -64,8 +76,10 @@ export default function ApiKeysTab({ user }) {
 
   const revokeKey = async (keyId) => {
     try {
-      const response = await authenticatedFetch(`${API_URL}/keys/${keyId}`, {
-        method: 'DELETE'
+      const token = await getFreshToken(user?.token)
+      const response = await fetch(`${API_URL}/keys/${keyId}`, {
+        method: 'DELETE',
+        headers: { Authorization: token }
       })
       if (response.ok) {
         setConfirmRevoke(null)
@@ -78,8 +92,10 @@ export default function ApiKeysTab({ user }) {
 
   const rotateKey = async (keyId) => {
     try {
-      const response = await authenticatedFetch(`${API_URL}/keys/${keyId}/rotate`, {
-        method: 'POST'
+      const token = await getFreshToken(user?.token)
+      const response = await fetch(`${API_URL}/keys/${keyId}/rotate`, {
+        method: 'POST',
+        headers: { Authorization: token }
       })
       if (response.ok) {
         const data = await response.json()
