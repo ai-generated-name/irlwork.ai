@@ -672,7 +672,7 @@ const USER_OPTIONAL_COLUMNS = [
   'total_tasks_completed', 'total_tasks_posted', 'total_tasks_accepted',
   'total_disputes_filed', 'total_paid', 'last_active_at',
   'onboarding_completed_at', 'role', 'agent_name', 'webhook_url',
-  'stripe_customer_id', 'stripe_onboarding_complete', 'webhook_secret',
+  'stripe_customer_id', 'stripe_onboarding_complete',
   'avatar_data', 'avatar_r2_key', 'phone',
   'email_verified_at', 'deposit_address', 'notification_preferences',
   'subscription_tier', 'subscription_status',
@@ -1464,8 +1464,10 @@ app.post('/api/auth/onboard', async (req, res) => {
     }
 
     // Parse skills and languages back to arrays for response
+    // Strip sensitive fields that should never reach the client
+    const { password_hash, webhook_secret, ...safeData } = data;
     const userData = {
-      ...data,
+      ...safeData,
       skills: safeParseJsonArray(data.skills),
       languages: safeParseJsonArray(data.languages),
       needs_onboarding: false
