@@ -8302,13 +8302,17 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
 
   const { id } = req.params;
 
-  const { data: task } = await supabase
+  const { data: task, error: fetchError } = await supabase
     .from('tasks')
     .select('agent_id, human_id, title, status, escrow_status')
     .eq('id', id)
     .single();
 
-  if (!task || task.agent_id !== user.id) {
+  if (fetchError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
 
@@ -8320,14 +8324,24 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     });
   }
 
-  await supabase
+  const { data: updated, error: updateError } = await supabase
     .from('tasks')
     .update({
       status: 'cancelled',
       updated_at: new Date().toISOString()
     })
     .eq('id', id)
-    .in('status', cancellableStatuses);
+    .in('status', cancellableStatuses)
+    .select();
+
+  if (updateError) {
+    console.error(`[Cancel] DB error for task ${id}:`, updateError.message);
+    return res.status(500).json({ error: 'Failed to cancel task' });
+  }
+
+  if (!updated || updated.length === 0) {
+    return res.status(409).json({ error: 'Task status changed before cancellation could complete. Please refresh and try again.' });
+  }
 
   // Notify the assigned human if one exists
   if (task.human_id) {
@@ -8339,6 +8353,13 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
       `/tasks/${id}`
     );
   }
+
+  // Dispatch webhook to agent
+  dispatchWebhook(task.agent_id, {
+    type: 'task_cancelled',
+    task_id: id,
+    data: { task_id: id, title: task.title, previous_status: task.status }
+  });
 
   res.json({ success: true });
 });
