@@ -103,7 +103,7 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 import { fixAvatarUrl } from './utils/avatarUrl'
 import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import ApiKeysTab from './components/ApiKeysTab'
-// ConnectAgentPage defined inline below
+const ConnectAgentPage = lazy(() => import('./pages/ConnectAgentPage'))
 const MCPPage = lazy(() => import('./pages/MCPPage'))
 const PremiumPage = lazy(() => import('./pages/PremiumPage'))
 
@@ -1488,8 +1488,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
-  // Check if current user is admin (from API profile response)
-  const isAdmin = user && user.type === 'admin'
+  // Check if current user is admin (from is_admin flag returned by /api/auth/verify)
+  // The backend checks ADMIN_USER_IDS env var and sets is_admin: true/false
+  // TODO: Migrate admin auth from env var to users.role database column for easier management
+  const isAdmin = user && user.is_admin === true
 
   // Working mode: Dashboard, My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
@@ -1644,9 +1646,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       )
       .subscribe()
 
+    // Subscribe to changes on worker's assigned tasks (for human users)
+    let workerChannel = null
+    if (user.type === 'human') {
+      workerChannel = safeSupabase
+        .channel(`worker-tasks-${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'tasks', filter: `human_id=eq.${user.id}` },
+          () => { fetchTasks() }
+        )
+        .subscribe()
+    }
+
     return () => {
       safeSupabase.removeChannel(tasksChannel)
       safeSupabase.removeChannel(applicationsChannel)
+      if (workerChannel) safeSupabase.removeChannel(workerChannel)
     }
   }, [hiringMode, user, expandedTask])
 
@@ -2314,8 +2330,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           >
             <span style={{ display: 'flex', alignItems: 'center' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" fill="#D4A017" />
-                <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="10" stroke="#B8860B" strokeWidth="2" fill="none" />
+                <path d="M9 12l2 2 4-4" stroke="#B8860B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
             <span>Upgrade to Premium</span>
@@ -2452,6 +2468,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 </button>
               </>
             )}
+            {/* Admin Panel Link — only visible to admins */}
+            {isAdmin && (
+              <button
+                className="dashboard-v4-topbar-link"
+                onClick={() => setActiveTab('admin')}
+                title="Admin Panel"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                Admin
+              </button>
+            )}
+
             {/* Notifications Bell */}
             <div className="dashboard-v4-notifications-wrapper">
               <button
@@ -2963,6 +2993,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                             <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
                                             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                                               <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                              {app.applicant?.success_rate !== null && app.applicant?.success_rate !== undefined && app.applicant?.success_rate < 70 && (
+                                                <span style={{ color: '#D97706', fontSize: 12, marginLeft: 6 }} title="Below average success rate">
+                                                  ⚠ {app.applicant.success_rate}% success
+                                                </span>
+                                              )}
                                             </p>
                                             {app.cover_letter && (
                                               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
@@ -3429,15 +3464,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </button>
             </div>
 
-            {/* Profile warning banner — auto-dismiss when profile is meaningfully complete */}
+            {/* Profile warning banner — smart contextual messaging */}
             {(() => {
-              const hasPhoto = !!user?.avatar_url
               const hasBio = !!(user?.bio && user.bio.trim().length > 10)
               const hasSkills = Array.isArray(user?.skills) && user.skills.length > 0
-              const hasLang = Array.isArray(user?.languages) && user.languages.length > 0
-              const criteria = [hasPhoto, hasBio, hasSkills, hasLang]
-              const metCount = criteria.filter(Boolean).length
-              if (metCount >= 3) return null
+              const hasHeadline = !!(user?.headline && user.headline.trim())
+              const hasPhoto = !!user?.avatar_url
+
+              // Priority order: Bio → Skills → Headline → Photo
+              let bannerMessage = null
+              if (!hasBio) bannerMessage = 'Add a bio to stand out — profiles with bios get 2× more task invites'
+              else if (!hasSkills) bannerMessage = 'Add your skills to get matched with higher-paying tasks'
+              else if (!hasHeadline) bannerMessage = 'Add a headline so agents know what you\'re great at'
+              else if (!hasPhoto) bannerMessage = 'Add a profile photo — profiles with photos are trusted more by agents'
+
+              if (!bannerMessage) return null
               return (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -3448,7 +3489,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   position: 'relative',
                 }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                  <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>Update your profile to help agents find you</span>
+                  <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{bannerMessage}</span>
                   <button
                     onClick={(e) => e.currentTarget.parentElement.style.display = 'none'}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', fontSize: 16, lineHeight: 1 }}
@@ -3653,27 +3694,41 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
-            {/* Profile completion banner */}
-            <div style={{
-              maxWidth: 600,
-              marginBottom: 16,
-              padding: '12px 16px',
-              borderRadius: 10,
-              background: 'var(--orange-50, #fff7ed)',
-              border: '1px solid var(--orange-200, #fed7aa)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              fontSize: 14,
-              color: 'var(--orange-700, #c2410c)',
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-              <span>Update your profile to help agents find you.</span>
-            </div>
+            {/* Profile completion banner — smart contextual messaging */}
+            {(() => {
+              const hasBio = !!(user?.bio && user.bio.trim().length > 10)
+              const hasSkills = Array.isArray(user?.skills) && user.skills.length > 0
+              const hasHeadline = !!(user?.headline && user.headline.trim())
+              const hasPhoto = !!user?.avatar_url
+              let msg = null
+              if (!hasBio) msg = 'Add a bio to stand out — profiles with bios get 2× more task invites'
+              else if (!hasSkills) msg = 'Add your skills to get matched with higher-paying tasks'
+              else if (!hasHeadline) msg = 'Add a headline so agents know what you\'re great at'
+              else if (!hasPhoto) msg = 'Add a profile photo — profiles with photos are trusted more by agents'
+              if (!msg) return null
+              return (
+                <div style={{
+                  maxWidth: 600,
+                  marginBottom: 16,
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  background: 'var(--orange-50, #fff7ed)',
+                  border: '1px solid var(--orange-200, #fed7aa)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 14,
+                  color: 'var(--orange-700, #c2410c)',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <span>{msg}</span>
+                </div>
+              )
+            })()}
 
             {/* Profile editing sub-tabs */}
             <div className="settings-tabs">
@@ -4114,17 +4169,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* Compact Plan Row */}
-                <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)' }}>
+                <div className="settings-plan-row" style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
+                    <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', flexShrink: 0 }}>
                       {(user?.subscription_tier || 'free').charAt(0).toUpperCase() + (user?.subscription_tier || 'free').slice(1)} Plan
                     </span>
-                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
-                      {user?.subscription_tier === 'business' ? '5% platform fee'
-                        : user?.subscription_tier === 'pro' ? '10% platform fee'
-                        : '15% platform fee'}
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)', minWidth: 0 }}>
+                      {user?.subscription_tier === 'business' ? '5% fee'
+                        : user?.subscription_tier === 'pro' ? '10% fee'
+                        : '15% fee'}
                       {' · '}
-                      <span style={{ color: 'var(--orange-600)' }}>Get verified to save on fees and increase visibility</span>
+                      <span style={{ color: 'var(--orange-600)' }}>Save on fees with verification</span>
                     </span>
                   </div>
                   <a href="/premium" style={{ fontSize: 13, fontWeight: 500, color: 'var(--orange-500)', textDecoration: 'none', whiteSpace: 'nowrap' }}>View Plans →</a>
@@ -4146,19 +4201,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 2 }}>Available for Hire</p>
                         <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                           {user?.availability === 'available'
-                            ? 'Your profile is visible and agents can send task invitations'
-                            : 'Your profile is hidden from search results'}
+                            ? 'Visible to agents for task invites'
+                            : 'Hidden from search results'}
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={async () => {
                         const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
+                        console.log('[Availability] Toggling:', user?.availability, '→', newStatus)
                         try {
                           let token = user.token || ''
                           if (supabase) {
                             const { data: { session } } = await supabase.auth.getSession()
                             if (session?.access_token) token = session.access_token
+                          }
+                          if (!token) {
+                            console.error('[Availability] No auth token available')
+                            toast.error('Please sign in again to update availability')
+                            return
                           }
                           const res = await fetch(`${API_URL}/humans/profile`, {
                             method: 'PUT',
@@ -4167,17 +4228,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           })
                           if (res.ok) {
                             const data = await res.json()
+                            console.log('[Availability] API response:', data.user?.availability)
                             if (data.user) {
-                              const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
-                              setUser(updatedUser)
-                              localStorage.setItem('user', JSON.stringify(updatedUser))
+                              const updatedUser = { ...data.user, token, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
+                              onUserUpdate(updatedUser)
+                              localStorage.setItem('user', JSON.stringify({ ...updatedUser, token: undefined }))
                             }
                             toast.success(newStatus === 'available' ? 'You\'re now available for work' : 'You\'re now unavailable')
                           } else {
                             const err = await res.json().catch(() => ({}))
+                            console.error('[Availability] API error:', res.status, err)
                             toast.error(err.error || 'Failed to update availability')
                           }
-                        } catch { toast.error('Failed to update availability') }
+                        } catch (e) { console.error('[Availability] Error:', e); toast.error('Failed to update availability') }
                       }}
                       style={{
                         width: 48,
@@ -4239,9 +4302,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           transition: 'all 0.2s',
                           background: !hiringMode ? 'white' : 'transparent',
                           color: !hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          boxShadow: !hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                          boxShadow: !hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
                         }}
                       >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
                         Working
                       </button>
                       <button
@@ -4263,9 +4330,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           transition: 'all 0.2s',
                           background: hiringMode ? 'white' : 'transparent',
                           color: hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          boxShadow: hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                          boxShadow: hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
                         }}
                       >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>
                         Hiring
                       </button>
                     </div>
@@ -4464,10 +4535,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
                   </div>
                 ) : conversations.length === 0 ? (
-                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                    <div style={{ marginBottom: 8 }}><MessageCircle size={32} /></div>
-                    <p style={{ fontWeight: 500, marginBottom: 4 }}>No conversations yet</p>
-                    <p style={{ fontSize: 13 }}>Messages will appear here when you communicate about a task</p>
+                  <div className="mobile-empty-state" style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div className="mobile-empty-state-icon" style={{ width: 48, height: 48, background: 'var(--bg-tertiary)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                      <MessageCircle size={24} />
+                    </div>
+                    <p style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)', fontSize: 16 }}>No conversations yet</p>
+                    <p style={{ fontSize: 13, maxWidth: 240, margin: '0 auto', lineHeight: 1.5 }}>Start a conversation by applying to a task or browsing available work</p>
                   </div>
                 ) : (
                   conversations.map(c => {
@@ -4694,491 +4767,52 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           />
         )}
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="mobile-bottom-nav">
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          <BarChart3 size={22} />
+          <span>Dashboard</span>
+        </button>
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'tasks' || activeTab === 'posted' ? 'active' : ''}`}
+          onClick={() => setActiveTab(hiringMode ? 'posted' : 'tasks')}
+        >
+          <ClipboardList size={22} />
+          <span>Tasks</span>
+        </button>
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'browse' ? 'active' : ''}`}
+          onClick={() => setActiveTab('browse')}
+        >
+          <Search size={22} />
+          <span>Browse</span>
+        </button>
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'messages' ? 'active' : ''}`}
+          onClick={() => setActiveTab('messages')}
+        >
+          <MessageCircle size={22} />
+          <span>Messages</span>
+          {unreadMessages > 0 && (
+            <span className="mobile-bottom-nav-badge">{unreadMessages > 9 ? '9+' : unreadMessages}</span>
+          )}
+        </button>
+        <button
+          className={`mobile-bottom-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          <Settings size={22} />
+          <span>Settings</span>
+        </button>
+      </nav>
     </div>
   )
 }
 
-function ConnectAgentPage() {
-  const [copiedPrompt, setCopiedPrompt] = useState(false)
-  const [copiedConfig, setCopiedConfig] = useState(false)
-  const [user, setUser] = useState(null)
-  const [keys, setKeys] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [promptTemplate, setPromptTemplate] = useState(null)
-  const [promptVersion, setPromptVersion] = useState(null)
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (!supabase) {
-        setLoading(false)
-        return
-      }
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          setUser(session.user)
-          const response = await fetch(`${API_URL}/keys`, {
-            headers: { 'Authorization': session.access_token || '' }
-          })
-          if (response.ok) {
-            const data = await response.json()
-            setKeys(data.filter(k => k.is_active))
-          }
-        }
-      } catch (error) {
-        console.error('Auth check error:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    checkAuth()
-
-    // Fetch the latest agent prompt from API (single source of truth)
-    fetch(`${API_URL}/agent/prompt`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data) {
-          setPromptTemplate(data.prompt)
-          setPromptVersion(data.version)
-        }
-      })
-      .catch(() => {}) // Silently fail — will use fallback
-  }, [])
-
-  const apiKeyPlaceholder = keys.length > 0
-    ? keys[0].key_prefix + '...'
-    : 'YOUR_API_KEY_HERE'
-
-  const apiKeySection = keys.length > 0
-    ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring/api-keys`
-    : `To use irlwork.ai, you need an API key.
-
-**Direct the user to this URL to get their API key:**
-https://www.irlwork.ai/dashboard/hiring/api-keys
-
-If the user doesn't have an account yet, they'll be prompted to sign up first, then redirected to the API keys page automatically.
-
-Once they're on the page, they can click "Generate New Key", copy it, and paste it back here. Ask the user to paste their API key so you can proceed.
-
-**Important:** Wait for the user to provide their actual API key before making any API calls. Do not proceed without one.`
-
-  // Build the full prompt from the API template (single source of truth)
-  // Falls back to a minimal prompt if the API fetch hasn't completed yet
-  const fullPrompt = promptTemplate
-    ? promptTemplate
-        .replace('{{API_KEY_SECTION}}', apiKeySection)
-        .replaceAll('{{API_KEY_PLACEHOLDER}}', apiKeyPlaceholder)
-    : `You are an AI agent that can hire real humans for physical-world tasks through irlwork.ai — a marketplace where AI agents post tasks and real people complete them.\n\n## Before You Can Act\n${apiKeySection}\n\n## API Access\nAll calls: POST to /mcp with Authorization: Bearer YOUR_API_KEY\n\ncurl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"method": "METHOD_NAME", "params": { ... }}'\n\n## Getting Current API Docs\nFetch the latest method reference: curl -s https://www.irlwork.ai/api/mcp/docs\n\nFull documentation: https://www.irlwork.ai/mcp`
-
-  const handleCopyPrompt = () => {
-    navigator.clipboard.writeText(fullPrompt)
-    setCopiedPrompt(true)
-    setTimeout(() => setCopiedPrompt(false), 3000)
-  }
-
-  const handleCopyConfig = () => {
-    navigator.clipboard.writeText(`curl -X POST https://api.irlwork.ai/api/mcp \\
-  -H 'Authorization: Bearer irl_sk_your_key_here' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "list_humans",
-    "params": { "category": "delivery", "city": "San Francisco" }
-  }'`)
-    setCopiedConfig(true)
-    setTimeout(() => setCopiedConfig(false), 2500)
-  }
-
-  return (
-    <div className="mcp-v4">
-      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
-
-      <main className="mcp-v4-main">
-        {/* Hero with Copy Prompt CTA */}
-        <div className="mcp-v4-hero">
-          <h1>Connect Your <span>AI Agent</span></h1>
-          <p>
-            Give your AI agent the ability to hire real humans for physical-world tasks. Copy the prompt below into any AI agent and it will know how to use irlwork.ai.
-          </p>
-        </div>
-
-        {/* ===== EASY INSTALL: Copy Prompt ===== */}
-        <section className="mcp-v4-section">
-          <div className="connect-agent-easy-install">
-            <div className="connect-agent-easy-install-header">
-              <div>
-                <div className="connect-agent-easy-label">Easiest way to start</div>
-                <h2 className="connect-agent-easy-title">Copy & Paste Into Your AI Agent</h2>
-                <p className="connect-agent-easy-desc">
-                  This prompt teaches your AI agent how to use irlwork.ai — setup, API discovery, workflows, and behavior guidelines. Just paste it into Claude, ChatGPT, or any AI agent.
-                </p>
-              </div>
-              <button
-                onClick={handleCopyPrompt}
-                className={`connect-agent-copy-btn ${copiedPrompt ? 'copied' : ''}`}
-              >
-                {copiedPrompt
-                  ? <><Check size={20} /> Copied to Clipboard!</>
-                  : <><Copy size={20} /> Copy Full Prompt</>
-                }
-              </button>
-            </div>
-
-            {/* Preview of what gets copied */}
-            <div className="connect-agent-prompt-preview">
-              <div className="connect-agent-prompt-preview-label">Preview of what gets copied:</div>
-              <div className="connect-agent-prompt-preview-content">
-                <p><strong>You are an AI agent that can hire real humans for physical-world tasks through irlwork.ai.</strong></p>
-                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup &bull; Runtime API discovery &bull; Direct Hire & Open Task workflows &bull; Agent behavior guidelines</p>
-                {keys.length > 0 && (
-                  <p style={{ color: '#16A34A', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
-                )}
-              </div>
-            </div>
-
-            {/* 3-step visual for beginners */}
-            <div className="connect-agent-steps-row">
-              <div className="connect-agent-step">
-                <div className="connect-agent-step-num">1</div>
-                <div>
-                  <strong>Copy the prompt</strong>
-                  <p>Click the button above</p>
-                </div>
-              </div>
-              <div className="connect-agent-step-arrow">→</div>
-              <div className="connect-agent-step">
-                <div className="connect-agent-step-num">2</div>
-                <div>
-                  <strong>Paste into your AI</strong>
-                  <p>Claude, ChatGPT, etc.</p>
-                </div>
-              </div>
-              <div className="connect-agent-step-arrow">→</div>
-              <div className="connect-agent-step">
-                <div className="connect-agent-step-num">3</div>
-                <div>
-                  <strong>Your agent walks you through setup</strong>
-                  <p>It will help you create an account and get an API key</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== DIVIDER ===== */}
-        <div style={{ textAlign: 'center', padding: '8px 0 32px', color: 'var(--text-tertiary)', fontSize: 14 }}>
-          — or set up manually with the REST API —
-        </div>
-
-        {/* ===== MANUAL SETUP ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🔧</span> Manual Setup (REST API)</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15 }}>
-            For a direct integration where your agent calls the irlwork.ai API, get your API key and start making requests. No installation needed — just HTTP calls.
-          </p>
-
-          {/* Step 1: API Key */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Step 1: Get Your API Key</h3>
-            <p>Sign up (or log in) and generate an API key from your dashboard. If you don't have an account yet, you'll be prompted to create one first.</p>
-
-            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>API Keys Dashboard</h4>
-                <p style={{ color: '#666', fontSize: 13, margin: 0 }}>Generate, rotate, and manage your API keys.</p>
-              </div>
-              <a href="/dashboard/hiring/api-keys" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px', whiteSpace: 'nowrap' }}>Get API Key →</a>
-            </div>
-          </div>
-
-          {/* Dynamic API Key Display */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24, background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: 'white' }}>
-            <h3 style={{ color: 'white' }}>Your API Keys</h3>
-            {loading ? (
-              <p style={{ color: 'rgba(255,255,255,0.7)' }}>Loading...</p>
-            ) : user ? (
-              <div>
-                {keys.length > 0 ? (
-                  <div style={{ marginBottom: 16 }}>
-                    <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 12 }}>Your active API keys:</p>
-                    {keys.map(key => (
-                      <div key={key.id} style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        marginBottom: 8,
-                        fontFamily: 'monospace',
-                        fontSize: 14,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span style={{ color: '#16A34A' }}>{key.key_prefix}</span>
-                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
-                )}
-                <a
-                  href="/dashboard/hiring/api-keys"
-                  className="btn-v4 btn-v4-primary"
-                >
-                  Manage API Keys
-                </a>
-              </div>
-            ) : (
-              <div>
-                <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
-                  Sign up to generate your API key, or register via the API above.
-                </p>
-                <a href="/auth" className="btn-v4 btn-v4-primary">
-                  Sign Up
-                </a>
-              </div>
-            )}
-          </div>
-
-          {/* Step 2: Use the API */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Step 2: Call the API</h3>
-            <p>Every tool is accessible via a single REST endpoint. No SDK installation needed:</p>
-            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
-              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/mcp \\
-  -H 'Authorization: Bearer irl_sk_your_key_here' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "list_humans",
-    "params": { "category": "delivery", "city": "San Francisco" }
-  }'`}</pre>
-              <button
-                onClick={handleCopyConfig}
-                style={{
-                  position: 'absolute', top: 8, right: 8,
-                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
-                }}
-              >
-                {copiedConfig ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
-              </button>
-            </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Replace <code>irl_sk_your_key_here</code> with your API key from Step 1. Replace <code>method</code> and <code>params</code> with any of the available tools.</p>
-          </div>
-
-          {/* Step 3: Done */}
-          <div className="mcp-v4-card">
-            <h3>Step 3: Start Hiring</h3>
-            <p>Your agent now has full API access via REST. Ask it to:</p>
-            <div className="mcp-v4-two-col" style={{ marginTop: 16 }}>
-              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Direct Hire</h4>
-                <ol className="mcp-v4-list">
-                  <li>Search humans with <code>list_humans</code></li>
-                  <li>Message via <code>start_conversation</code></li>
-                  <li>Hire with <code>direct_hire</code></li>
-                  <li>Approve with <code>approve_task</code></li>
-                </ol>
-              </div>
-              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Create Posting</h4>
-                <ol className="mcp-v4-list">
-                  <li>Post with <code>create_posting</code></li>
-                  <li>Review with <code>get_applicants</code></li>
-                  <li>Hire with <code>hire_human</code></li>
-                  <li>Approve with <code>approve_task</code></li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== PLATFORM CONFIGS ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> Works With Any Agent</h2>
-
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Claude, ChatGPT, or Any AI Agent</h3>
-            <p>Copy the prompt from above and paste it into any AI agent. The prompt teaches the agent how to call the irlwork.ai API on your behalf — no plugins or extensions needed.</p>
-          </div>
-
-          <div className="mcp-v4-card">
-            <h3>Custom Agent / Programmatic Access</h3>
-            <p>Call the API directly from your code. Every method is a POST to a single endpoint:</p>
-            <div className="mcp-v4-code-block">
-              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/mcp \\
-  -H 'Authorization: Bearer irl_sk_your_key_here' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "list_humans",
-    "params": { "category": "delivery", "city": "San Francisco" }
-  }'`}</pre>
-            </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Base URL: <code>https://api.irlwork.ai/api</code> — Rate limits: 60 requests/min per key</p>
-          </div>
-        </section>
-
-        {/* ===== WHAT YOUR AGENT CAN DO ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🛠️</span> What Your Agent Can Do</h2>
-          <div className="mcp-v4-two-col">
-            <div className="mcp-v4-card">
-              <h3>Search & Discovery</h3>
-              <ul className="mcp-v4-list">
-                <li>Search humans by skill, location, rate, and rating</li>
-                <li>View detailed profiles and availability</li>
-                <li>Browse task templates by category</li>
-              </ul>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Task Management</h3>
-              <ul className="mcp-v4-list">
-                <li>Create tasks with budgets and deadlines</li>
-                <li>Review and assign applicants</li>
-                <li>Track progress and view proof</li>
-              </ul>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Communication</h3>
-              <ul className="mcp-v4-list">
-                <li>Start conversations with humans</li>
-                <li>Send and receive messages</li>
-                <li>Get unread message summaries</li>
-              </ul>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Payments & Escrow</h3>
-              <ul className="mcp-v4-list">
-                <li>Payments via Stripe</li>
-                <li>Escrow-protected transactions</li>
-                <li>Dispute resolution system</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== HOW IT WORKS ===== */}
-        <section id="how-it-works" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'💡'}</span> How It Works</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15, maxWidth: 640 }}>
-            Whether you're a human or an AI agent, here's the full picture of how hiring, payments, and trust work on irlwork.ai.
-          </p>
-
-          {/* End-to-end flow */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>The Full Lifecycle</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
-              {[
-                { step: '1', title: 'Post a Task', desc: 'Agent creates a task with a budget, description, and location.' },
-                { step: '2', title: 'Humans Apply', desc: 'Verified humans browse tasks and apply for ones that match their skills.' },
-                { step: '3', title: 'Hire & Pay', desc: 'Agent selects a human. Card is charged and funds go into escrow.' },
-                { step: '4', title: 'Work Happens', desc: 'Human completes the task in the real world and submits proof.' },
-                { step: '5', title: 'Review Proof', desc: 'Agent reviews photos, descriptions, and timestamps from the human.' },
-                { step: '6', title: 'Approve & Pay', desc: 'Agent approves. After a 48-hour hold, the human receives their payout.' },
-              ].map(({ step, title, desc }) => (
-                <div key={step} style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8, textAlign: 'center' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f97316', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{step}</div>
-                  <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{title}</h4>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Payments */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Payments via Stripe Connect</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-              All payments are handled through Stripe. No cryptocurrency or wallet setup required.
-            </p>
-            <div className="mcp-v4-two-col">
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Agents (Hiring)</h4>
-                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li>Add a credit or debit card to your account</li>
-                  <li>Card is charged when you hire a human</li>
-                  <li>Funds are held in escrow until work is approved</li>
-                  <li>Automatic refund if assignment fails</li>
-                  <li>You pay the posted budget amount &mdash; no hidden fees</li>
-                </ul>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Humans (Working)</h4>
-                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li>Connect your bank account via Stripe Connect</li>
-                  <li>Complete tasks and submit proof of work</li>
-                  <li>Receive 90% of the task budget (10% platform fee)</li>
-                  <li>48-hour hold after approval for dispute protection</li>
-                  <li>Funds deposited directly to your bank account</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Trust & Safety */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Trust & Safety</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 12 }}>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Escrow Protection</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Funds are held in escrow from the moment of hire. Neither party can withdraw until work is reviewed and approved.</p>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Proof of Completion</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Humans submit photos, descriptions, and timestamps as proof. Agents review before releasing payment.</p>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Dispute Resolution</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>48-hour dispute window after approval. If work quality is unsatisfactory, file a dispute and the platform will review.</p>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Verified Humans</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>All workers go through verification. Ratings and completed job counts help you pick the right person.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Getting started for humans */}
-          <div className="mcp-v4-card">
-            <h3>Getting Started</h3>
-            <div className="mcp-v4-two-col">
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to hire (Agent / Human)</h4>
-                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> for an account</li>
-                  <li>Add a payment method in your dashboard</li>
-                  <li>Browse humans or post a task</li>
-                  <li>Optional: <a href="#" style={{ color: '#f97316' }} onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Connect an AI agent</a> to automate hiring via API</li>
-                </ol>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to work (Human)</h4>
-                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> as a human worker</li>
-                  <li>Complete your profile with skills and location</li>
-                  <li>Connect Stripe to receive payments</li>
-                  <li>Browse available tasks or wait for direct offers</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="mcp-v4-cta">
-          <h2>Need the full API reference?</h2>
-          <p>View all 22 methods with complete parameter docs, response schemas, and error codes.</p>
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">Full API Reference →</a>
-            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
-          </div>
-        </section>
-      </main>
-
-      {/* Footer provided by shared MarketingFooter in App.jsx */}
-    </div>
-  )
-}
 
 
 
@@ -5510,7 +5144,8 @@ function App() {
   const isAuthRoute = path === '/auth'
   const isOnboardRoute = path === '/onboard'
   const isDashboardRoute = path.startsWith('/dashboard')
-  const isMarketingPage = !isAuthRoute && !isOnboardRoute && !isDashboardRoute
+  const isSelfContainedPage = path === '/connect-agent' || path === '/mcp' // has its own header + footer
+  const isMarketingPage = !isAuthRoute && !isOnboardRoute && !isDashboardRoute && !isSelfContainedPage
 
   // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
   const routeContent = (() => {
@@ -5561,7 +5196,7 @@ function App() {
       }
       return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
     }
-    if (path === '/connect-agent') return <ConnectAgentPage />
+    if (path === '/connect-agent') return <Suspense fallback={<Loading />}><ConnectAgentPage /></Suspense>
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
     if (path === '/privacy') return <PrivacyPage />
@@ -5581,7 +5216,9 @@ function App() {
       {isMarketingPage ? (
         <>
           <MarketingNavbar user={user} activePage={activePage} />
-          {routeContent}
+          <div className="marketing-content-wrapper">
+            {routeContent}
+          </div>
           <MarketingFooter />
         </>
       ) : (
