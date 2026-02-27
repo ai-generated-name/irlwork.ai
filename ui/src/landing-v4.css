@@ -10855,6 +10855,31 @@ select.select-v4-dark option:checked,
 
 /* ─── ROUND 2: MOBILE FIXES ─── */
 
+/* Hide footer on mobile — saves viewport space on task detail / public pages */
+@media (max-width: 768px) {
+  .footer-v4 {
+    display: none;
+  }
+}
+
+/* Task detail message input — sticky + touch targets */
+@media (max-width: 768px) {
+  .task-detail-message-form {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+
+  .task-detail-message-form button[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .task-detail-message-form textarea {
+    min-height: 44px;
+  }
+}
+
 /* Map FAB above bottom tab bar */
 @media (max-width: 900px) {
   .browse-tasks-v2-map-fab {

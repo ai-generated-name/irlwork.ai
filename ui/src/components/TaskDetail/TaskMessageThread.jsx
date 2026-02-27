@@ -149,14 +149,14 @@ export default function TaskMessageThread({
         )}
       </div>
 
-      {/* Message Input */}
-      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(0,0,0,0.08)] flex gap-2 sm:gap-3 items-end bg-white rounded-b-2xl">
+      {/* Message Input — sticky within container */}
+      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(0,0,0,0.08)] flex gap-2 sm:gap-3 items-end bg-white rounded-b-2xl sticky bottom-0 z-10">
         <textarea
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message..."
           className={`${styles.input} flex-1 !py-2.5 sm:!py-3 text-sm`}
-          style={{ resize: 'none', minHeight: 40, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
+          style={{ resize: 'none', minHeight: 44, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
           rows={1}
           disabled={sending}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) } }}
@@ -165,7 +165,8 @@ export default function TaskMessageThread({
         <button
           type="submit"
           disabled={sending || !newMessage.trim()}
-          className="bg-[#E8853D] hover:bg-[#D4703A] disabled:bg-[#F5F3F0] disabled:text-[#888888] disabled:cursor-not-allowed text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
+          className="bg-[#E8853D] hover:bg-[#D4703A] disabled:bg-[#F5F3F0] disabled:text-[#888888] disabled:cursor-not-allowed text-white font-bold px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
+          style={{ minHeight: 44, minWidth: 44 }}
         >
           {sending ? '...' : 'Send'}
         </button>
