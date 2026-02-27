@@ -15,6 +15,8 @@ import QuickApplyModal from '../components/QuickApplyModal';
 import { v4 } from '../components/V4Layout';
 import { trackView } from '../utils/trackView';
 import ReportTaskModal from '../components/ReportTaskModal';
+import DisputeModal from '../components/DisputeModal';
+import WithdrawModal from '../components/WithdrawModal';
 import ShareOnXButton from '../components/ShareOnXButton';
 import API_URL from '../config/api';
 
@@ -32,8 +34,13 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   const isParticipant = user && task && (task.agent_id === user.id || task.human_id === user.id);
+  const isWorker = user && task && task.human_id === user.id;
+  const canDispute = isWorker && ['in_progress', 'pending_review'].includes(task?.status);
+  const canWithdraw = isWorker && ['assigned', 'in_progress'].includes(task?.status);
 
   // Fetch initial data
   useEffect(() => {
@@ -280,6 +287,39 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     }
   };
 
+  const handleDispute = async (reason) => {
+    const res = await fetch(`${API_URL}/tasks/${taskId}/dispute`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: user.token || ''
+      },
+      body: JSON.stringify({ reason })
+    });
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to file dispute');
+    }
+  };
+
+  const handleWithdraw = async () => {
+    const res = await fetch(`${API_URL}/tasks/${taskId}/cancel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: user.token || ''
+      }
+    });
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to withdraw from task');
+    }
+  };
+
   // Update countdown timer
   useEffect(() => {
     if (!taskStatus?.dispute_window_info?.dispute_window_closes_at) {
@@ -440,6 +480,29 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               <ProofSection task={task} user={user} onSubmit={handleSubmitProof} />
             )}
 
+            {/* Worker Actions: Dispute + Withdraw */}
+            {(canDispute || canWithdraw) && (
+              <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm space-y-3">
+                <h4 className="text-xs font-bold text-[#888888] uppercase tracking-wider">Actions</h4>
+                {canWithdraw && (
+                  <button
+                    onClick={() => setShowWithdrawModal(true)}
+                    className="w-full py-2.5 border-2 border-[#E5E5E5] text-[#333333] font-semibold rounded-xl hover:bg-[#F5F3F0] transition-colors text-sm"
+                  >
+                    Withdraw from Task
+                  </button>
+                )}
+                {canDispute && (
+                  <button
+                    onClick={() => setShowDisputeModal(true)}
+                    className="w-full py-2.5 border-2 border-[#E8853D] text-[#E8853D] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm"
+                  >
+                    File a Dispute
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Messages - in left column beneath task info (participants only) */}
             {isParticipant && (
               <TaskMessageThread
@@ -486,6 +549,23 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         onClose={() => setShowApplyModal(false)}
         onSuccess={() => setHasApplied(true)}
         userToken={user?.token || user?.id}
+      />
+
+      {/* Dispute Modal */}
+      <DisputeModal
+        isOpen={showDisputeModal}
+        onClose={() => setShowDisputeModal(false)}
+        onSubmit={handleDispute}
+        taskTitle={task?.title}
+      />
+
+      {/* Withdraw Modal */}
+      <WithdrawModal
+        isOpen={showWithdrawModal}
+        onClose={() => setShowWithdrawModal(false)}
+        onConfirm={handleWithdraw}
+        taskTitle={task?.title}
+        hasEscrow={task?.escrow_status === 'deposited'}
       />
 
       {/* Mobile Sticky Apply Bar */}
