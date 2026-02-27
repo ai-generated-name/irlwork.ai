@@ -1044,8 +1044,8 @@ export default function MCPPage() {
       "price_monthly": 0,
       "price_annual": null,
       "worker_fee_percent": 15,
-      "poster_fee_percent": 15,
-      "task_limit_monthly": 3,
+      "poster_fee_percent": 5,
+      "task_limit_monthly": 5,
       "badge": null,
       "worker_priority": 0
     },
@@ -1054,8 +1054,8 @@ export default function MCPPage() {
       "name": "Builder",
       "price_monthly": 10,
       "price_annual": 90,
-      "worker_fee_percent": 10,
-      "poster_fee_percent": 10,
+      "worker_fee_percent": 12.5,
+      "poster_fee_percent": 2.5,
       "task_limit_monthly": "unlimited",
       "badge": "builder",
       "worker_priority": 1
@@ -1065,8 +1065,8 @@ export default function MCPPage() {
       "name": "Pro",
       "price_monthly": 30,
       "price_annual": 270,
-      "worker_fee_percent": 5,
-      "poster_fee_percent": 5,
+      "worker_fee_percent": 10,
+      "poster_fee_percent": 0,
       "task_limit_monthly": "unlimited",
       "badge": "pro",
       "worker_priority": 2
