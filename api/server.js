@@ -2999,60 +2999,6 @@ app.post('/api/tasks/:id/applications/:appId/decline', async (req, res) => {
   res.json({ success: true });
 });
 
-// Decline an application
-app.post('/api/tasks/:id/applications/:appId/decline', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { id: taskId, appId } = req.params;
-
-  // Verify user is the task creator
-  const { data: task } = await supabase
-    .from('tasks')
-    .select('agent_id, title')
-    .eq('id', taskId)
-    .single();
-
-  if (!task || task.agent_id !== user.id) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-
-  // Get the application
-  const { data: application } = await supabase
-    .from('task_applications')
-    .select('id, human_id, status')
-    .eq('id', appId)
-    .eq('task_id', taskId)
-    .single();
-
-  if (!application) {
-    return res.status(404).json({ error: 'Application not found' });
-  }
-
-  if (application.status === 'rejected') {
-    return res.status(400).json({ error: 'Application already declined' });
-  }
-
-  const { error } = await supabase
-    .from('task_applications')
-    .update({ status: 'rejected' })
-    .eq('id', appId);
-
-  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-
-  // Notify the applicant
-  await createNotification(
-    application.human_id,
-    'application_declined',
-    'Application Declined',
-    `Your application for "${task.title}" was not selected.`,
-    `/tasks/${taskId}`
-  );
-
-  res.json({ success: true });
-});
 
 // Agent assigns a human to a task
 // Stripe path: charges agent immediately, task goes to in_progress
@@ -3271,23 +3217,6 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
         last_active_at: new Date().toISOString()
       })
       .eq('id', human_id);
-
-    // Send optional note as a message to the worker
-    if (note && note.trim()) {
-      try {
-        const { data: conv } = await supabase
-          .from('conversations')
-          .upsert({ human_id, agent_id: user.id, task_id: taskId }, { onConflict: 'human_id,agent_id,task_id', ignoreDuplicates: false })
-          .select('id')
-          .single();
-        if (conv) {
-          await supabase.from('messages').insert({ id: uuidv4(), conversation_id: conv.id, sender_id: user.id, content: note.trim() });
-          await supabase.from('conversations').update({ last_message: note.trim(), updated_at: new Date().toISOString() }).eq('id', conv.id);
-        }
-      } catch (noteErr) {
-        console.error('[Assign] Failed to send note:', noteErr.message);
-      }
-    }
 
     // Send optional note as a message to the worker
     if (note && note.trim()) {
