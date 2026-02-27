@@ -5128,7 +5128,7 @@ function App() {
   const isAuthRoute = path === '/auth'
   const isOnboardRoute = path === '/onboard'
   const isDashboardRoute = path.startsWith('/dashboard')
-  const isSelfContainedPage = path === '/connect-agent' // has its own header + footer
+  const isSelfContainedPage = path === '/connect-agent' || path === '/mcp' // has its own header + footer
   const isMarketingPage = !isAuthRoute && !isOnboardRoute && !isDashboardRoute && !isSelfContainedPage
 
   // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
