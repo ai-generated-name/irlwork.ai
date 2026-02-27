@@ -1422,13 +1422,8 @@ app.get('/api/auth/verify', async (req, res) => {
 
   // Check admin status via ADMIN_USER_IDS env var
   // TODO: Migrate admin auth from env var to users.role database column for easier management
-  const rawAdminEnv = process.env.ADMIN_USER_IDS || '';
-  const adminUserIds = rawAdminEnv.split(',').map(id => id.trim()).filter(Boolean);
+  const adminUserIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
   const userIsAdmin = adminUserIds.includes(user.id);
-  // Debug admin check (remove after confirming it works)
-  if (user.id === 'b49dc7ef-38b5-40ce-936b-e5fddebc4cb7') {
-    console.log('[AdminDebug] raw env:', JSON.stringify(rawAdminEnv), 'parsed ids:', JSON.stringify(adminUserIds), 'user.id:', JSON.stringify(user.id), 'match:', userIsAdmin);
-  }
 
   res.json({
     user: {

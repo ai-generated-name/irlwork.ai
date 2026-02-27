@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense, Fragment } from 'react'
-import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer, TrendingUp, Filter } from 'lucide-react'
+import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer, TrendingUp, Filter, Activity } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import API_URL from '../config/api'
 
@@ -7,6 +7,7 @@ import API_URL from '../config/api'
 const OverviewTab = lazy(() => import('../components/admin/OverviewTab'))
 const FunnelTab = lazy(() => import('../components/admin/FunnelTab'))
 const FinancialTab = lazy(() => import('../components/admin/FinancialTab'))
+const LiveFeedTab = lazy(() => import('../components/admin/LiveFeedTab'))
 
 /**
  * Admin Dashboard - Phase 1 Manual Operations
@@ -299,6 +300,7 @@ export default function AdminDashboard({ user }) {
     { id: 'bi-overview', label: 'Overview', icon: <TrendingUp size={16} />, isBi: true },
     { id: 'bi-funnel', label: 'Funnel', icon: <Filter size={16} />, isBi: true },
     { id: 'bi-financial', label: 'Financial', icon: <DollarSign size={16} />, isBi: true },
+    { id: 'bi-live-feed', label: 'Live Feed', icon: <Activity size={16} />, isBi: true },
   ]
 
   const opsQueues = [
@@ -375,6 +377,10 @@ export default function AdminDashboard({ user }) {
       ) : activeQueue === 'bi-financial' ? (
         <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading financials...</div></div>}>
           <FinancialTab user={user} />
+        </Suspense>
+      ) : activeQueue === 'bi-live-feed' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading live feed...</div></div>}>
+          <LiveFeedTab user={user} />
         </Suspense>
       ) : loading && activeQueue === 'dashboard' ? (
         <div className="flex items-center justify-center py-12">
