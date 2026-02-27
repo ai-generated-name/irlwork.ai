@@ -2140,8 +2140,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 md:hidden"
-          style={{ zIndex: 9989 }}
+          className="dashboard-v4-sidebar-overlay"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -2176,6 +2175,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </button>
           ))}
         </nav>
+
+        {/* Connect Agent - Hiring mode only, mobile sidebar */}
+        {hiringMode && (
+          <div style={{ padding: '8px var(--space-4)' }}>
+            <a
+              href="/connect-agent"
+              className="dashboard-v4-connect-agent-btn"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
+              </svg>
+              Connect Agent
+            </a>
+          </div>
+        )}
 
         {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
@@ -3457,7 +3472,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               {/* Avatar Upload */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+              <div className="profile-avatar-section" style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
                 <div
                   style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
                   onClick={() => avatarInputRef.current?.click()}
@@ -3636,15 +3651,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name}</h2>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{user?.email}</p>
-                  <button
-                    onClick={() => avatarInputRef.current?.click()}
-                    style={{ fontSize: 13, color: 'var(--orange-500)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4, fontWeight: 500 }}
-                  >
-                    {user?.avatar_url ? 'Change photo' : 'Add photo'}
-                  </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name || 'Your Name'}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>{user?.email}</div>
+                  {!user?.verified && (
+                    <a href="/premium" className="profile-get-verified-btn" style={{ marginTop: 8 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                      Get Verified
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -4162,6 +4179,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       </div>
                     </div>
                     <button
+                      className="settings-availability-toggle"
                       onClick={async () => {
                         const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
                         console.log('[Availability] Toggling:', user?.availability, '→', newStatus)
@@ -4209,7 +4227,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         flexShrink: 0
                       }}
                     >
-                      <div style={{
+                      <div className="settings-availability-toggle-knob" style={{
                         width: 22,
                         height: 22,
                         borderRadius: '50%',
