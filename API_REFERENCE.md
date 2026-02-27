@@ -1202,7 +1202,8 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 | `mark_notification_read` | Mark notification read. Params: `notification_id` |
 | `set_webhook` | Register webhook URL |
 | `task_templates` | Get task category templates. Params: `category` |
-| `submit_feedback` | Submit feedback. Params: `message`, `type`, `urgency`, `subject` |
+| `submit_feedback` | Submit platform feedback (bug reports, feature requests). NOT for task reviews — use `rate_task` instead. Params: `message`, `type` (feedback/bug/feature_request/other), `urgency`, `subject` |
+| `rate_task` | Rate a worker after task completion. Inserts into blind rating system. Params: `task_id` (required), `rating_score` (1-5, required), `comment` (optional) |
 | `report_error` | Report agent error. Params: `action`, `error_message`, `error_code`, `error_log` |
 
 ### MCP Method Documentation: `GET /api/mcp/docs`
@@ -1321,7 +1322,7 @@ Separate Node.js process (`api/mcp-server.js`) on port 3004 (configurable via `M
 >
 > Use the **in-process MCP** (`POST /api/mcp`) instead, which accesses the database directly and works correctly.
 
-Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `complete_task`, `complete_booking`, `view_proof`, `approve_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `report_error`.
+Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `complete_task`, `complete_booking`, `view_proof`, `approve_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `rate_task`, `report_error`, `get_instructions`.
 
 Backward-compatible aliases: `post_task`, `create_adhoc_task` -> `create_posting`; `create_booking` -> `direct_hire`; `get_tasks`, `my_postings`, `my_adhoc_tasks`, `my_bookings` -> `my_tasks`; `release_escrow`, `release_payment` -> `approve_task`.
 
@@ -1428,7 +1429,7 @@ Full method catalog with parameters available at `GET /api/mcp/docs`.
 | `get_task` (listed in ARCHITECTURE.md) | Does not exist by this exact name. Use `get_task_status` or `get_task_details` |
 | `approve_work` (listed in ARCHITECTURE.md) | Does not exist by this name. Use `approve_task` |
 | `reject_work` (listed in ARCHITECTURE.md) | Does not exist in MCP. Use REST `POST /api/tasks/:id/reject` |
-| Not in ARCHITECTURE.md | `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `get_applicants`, `view_proof`, `dispute_task`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `task_templates`, `submit_feedback`, `report_error`, `get_instructions` |
+| Not in ARCHITECTURE.md | `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `get_applicants`, `view_proof`, `dispute_task`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `task_templates`, `submit_feedback`, `rate_task`, `report_error`, `get_instructions` |
 
 ### Other Differences
 

@@ -6181,10 +6181,16 @@ app.post('/api/mcp', async (req, res) => {
       }
 
       case 'submit_feedback': {
-        const { message: feedbackMsg, comment, type: feedbackType, urgency, subject, image_urls, page_url, rating, task_id } = params;
+        const { message: feedbackMsg, comment, type: feedbackType, urgency, subject, image_urls, page_url } = params;
         const feedbackText = feedbackMsg || comment;
         if (!feedbackText) {
           return res.status(400).json({ error: 'message or comment is required' });
+        }
+
+        const validFeedbackTypes = ['feedback', 'bug', 'feature_request', 'other'];
+        const resolvedType = feedbackType || 'feedback';
+        if (!validFeedbackTypes.includes(resolvedType)) {
+          return res.status(400).json({ error: `Type must be one of: ${validFeedbackTypes.join(', ')}. To rate a worker on a task, use the rate_task method instead.` });
         }
 
         const feedbackId = uuidv4();
@@ -6193,20 +6199,139 @@ app.post('/api/mcp', async (req, res) => {
           .insert({
             id: feedbackId,
             user_id: user.id,
-            type: feedbackType || 'feedback',
+            user_email: user.email || null,
+            user_name: user.name || null,
+            user_type: user.type || null,
+            type: resolvedType,
             urgency: urgency || 'normal',
             subject: subject || null,
             message: feedbackText,
             image_urls: image_urls || [],
             page_url: page_url || 'mcp-client',
             status: 'new',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           })
           .select()
           .single();
 
         if (error) throw error;
         res.json({ success: true, id: feedback.id, message: 'Feedback submitted' });
+        break;
+      }
+
+      case 'rate_task': {
+        const { task_id, rating_score, comment } = params;
+        if (!task_id) {
+          return res.status(400).json({ error: 'task_id is required' });
+        }
+        if (!rating_score || rating_score < 1 || rating_score > 5) {
+          return res.status(400).json({ error: 'rating_score must be between 1 and 5' });
+        }
+
+        // Get task details
+        const { data: rateTask, error: rateTaskError } = await supabase
+          .from('tasks')
+          .select('*, human_id, agent_id, status, proof_submitted_at')
+          .eq('id', task_id)
+          .single();
+
+        if (rateTaskError || !rateTask) {
+          return res.status(404).json({ error: 'Task not found' });
+        }
+
+        // Check if agent is part of this task
+        if (user.id !== rateTask.human_id && user.id !== rateTask.agent_id) {
+          return res.status(403).json({ error: 'You are not part of this task' });
+        }
+
+        // Check if task is finalized
+        const isRateTaskFinalized = rateTask.status === 'paid' ||
+          (rateTask.status === 'disputed' && rateTask.dispute_resolved_at);
+
+        if (!isRateTaskFinalized) {
+          return res.status(400).json({
+            error: 'Task must be finalized before rating',
+            details: 'You can rate after the task is paid or a dispute is resolved'
+          });
+        }
+
+        // Determine who is being rated
+        const rateRateeId = user.id === rateTask.human_id ? rateTask.agent_id : rateTask.human_id;
+
+        if (!rateRateeId) {
+          return res.status(400).json({ error: 'Cannot determine who to rate — task may be incomplete' });
+        }
+        if (rateRateeId === user.id) {
+          return res.status(403).json({ error: 'You cannot rate yourself' });
+        }
+
+        // Check if already rated
+        const { data: existingMcpRating } = await supabase
+          .from('ratings')
+          .select('id')
+          .eq('task_id', task_id)
+          .eq('rater_id', user.id)
+          .single();
+
+        if (existingMcpRating) {
+          return res.status(400).json({ error: 'You have already rated this task' });
+        }
+
+        // Create rating
+        const { data: newMcpRating, error: mcpRatingError } = await supabase
+          .from('ratings')
+          .insert({
+            task_id,
+            rater_id: user.id,
+            ratee_id: rateRateeId,
+            rating_score,
+            comment: comment || null,
+            visible_at: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (mcpRatingError) {
+          console.error('Error creating rating via MCP:', mcpRatingError);
+          return res.status(500).json({ error: 'Failed to create rating' });
+        }
+
+        // Check if both parties have rated
+        const { data: allMcpRatings } = await supabase
+          .from('ratings')
+          .select('id, visible_at')
+          .eq('task_id', task_id);
+
+        const mcpBothRated = allMcpRatings && allMcpRatings.length === 2;
+        const mcpIsVisible = mcpBothRated && allMcpRatings[0].visible_at !== null;
+
+        // Update aggregate rating
+        await updateUserRating(rateRateeId);
+
+        // Send notification
+        const mcpRaterType = user.id === rateTask.human_id ? 'human' : 'agent';
+        await createNotification(
+          rateRateeId,
+          'rating_received',
+          mcpBothRated ? 'Ratings Now Visible' : 'Rating Received',
+          mcpBothRated
+            ? `Both parties have rated task #${task_id.substring(0, 8)}. Ratings are now visible!`
+            : `You have received a rating for task #${task_id.substring(0, 8)}. Rate the ${mcpRaterType} to see both ratings.`,
+          `/tasks/${task_id}`
+        );
+
+        res.json({
+          success: true,
+          rating: newMcpRating,
+          bothRated: mcpBothRated,
+          isVisible: mcpIsVisible,
+          message: mcpBothRated
+            ? 'Both parties have rated. Ratings are now visible!'
+            : 'Rating submitted. It will be visible once both parties rate, or after 72 hours.'
+        });
         break;
       }
 
