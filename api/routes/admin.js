@@ -549,7 +549,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       let query = supabase
         .from('tasks')
-        .select('id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, human_ids, task_type, quantity')
+        .select('id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, duration_hours, duration, moderation_status, escrow_status, human_ids, task_type, quantity')
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -590,6 +590,161 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
     } catch (error) {
       logger.error({ err: error }, 'Recent tasks endpoint error');
       captureException(error, { tags: { admin_action: 'tasks_recent' } });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================
+  // GET /tasks/search — Searchable, filterable, paginated task list
+  // ============================================================
+  router.get('/tasks/search', async (req, res) => {
+    try {
+      const page = Math.max(parseInt(req.query.page) || 1, 1);
+      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+      const offset = (page - 1) * limit;
+      const q = (req.query.q || '').trim();
+      const status = req.query.status || null;
+      const category = req.query.category || null;
+      const moderation = req.query.moderation || null;
+      const sort = req.query.sort || 'newest';
+
+      const selectCols = 'id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, duration_hours, duration, moderation_status, escrow_status, human_ids, task_type, quantity';
+
+      let query = supabase
+        .from('tasks')
+        .select(selectCols, { count: 'exact' });
+
+      // Text search
+      if (q) {
+        const sanitized = q.replace(/[%_]/g, '');
+        query = query.or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`);
+      }
+
+      // Filters
+      if (status && status !== 'all') query = query.eq('status', status);
+      if (category && category !== 'all') query = query.eq('category', category);
+      if (moderation && moderation !== 'all') query = query.eq('moderation_status', moderation);
+
+      // Sort
+      if (sort === 'oldest') query = query.order('created_at', { ascending: true });
+      else if (sort === 'budget_high') query = query.order('budget', { ascending: false });
+      else if (sort === 'budget_low') query = query.order('budget', { ascending: true });
+      else query = query.order('created_at', { ascending: false }); // newest (default)
+
+      // Pagination
+      query = query.range(offset, offset + limit - 1);
+
+      const { data: tasks, error: tasksError, count: total } = await query;
+      if (tasksError) throw tasksError;
+      if (!tasks || tasks.length === 0) return res.json({ tasks: [], total: 0, page, limit });
+
+      const taskIds = tasks.map(t => t.id);
+
+      // Enrich with counts + agent names
+      const [appResult, viewResult, agentResult] = await Promise.all([
+        supabase.from('task_applications').select('task_id').in('task_id', taskIds),
+        supabase.from('page_views').select('target_id').eq('page_type', 'task').in('target_id', taskIds),
+        supabase.from('users').select('id, name, email').in('id', [...new Set(tasks.map(t => t.agent_id).filter(Boolean))]),
+      ]);
+
+      const appCounts = {};
+      (appResult.data || []).forEach(a => { appCounts[a.task_id] = (appCounts[a.task_id] || 0) + 1; });
+
+      const viewCounts = {};
+      (viewResult.data || []).forEach(v => { viewCounts[v.target_id] = (viewCounts[v.target_id] || 0) + 1; });
+
+      const agentMap = {};
+      (agentResult.data || []).forEach(a => { agentMap[a.id] = { name: a.name, email: a.email }; });
+
+      const enriched = tasks.map(t => ({
+        ...t,
+        applicant_count: appCounts[t.id] || 0,
+        view_count: viewCounts[t.id] || 0,
+        agent_name: agentMap[t.agent_id]?.name || 'Unknown',
+        agent_email: agentMap[t.agent_id]?.email || '',
+        spots_filled: Array.isArray(t.human_ids) ? t.human_ids.length : 0,
+      }));
+
+      res.json({ tasks: enriched, total: total || 0, page, limit });
+    } catch (error) {
+      logger.error({ err: error }, 'Task search endpoint error');
+      captureException(error, { tags: { admin_action: 'tasks_search' } });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================
+  // POST /tasks/:id/moderate — Admin moderation action
+  // ============================================================
+  router.post('/tasks/:id/moderate', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { action, notes } = req.body;
+
+      const VALID_ACTIONS = ['hide', 'remove', 'unflag'];
+      if (!VALID_ACTIONS.includes(action)) {
+        return res.status(400).json({ error: `Invalid action. Must be one of: ${VALID_ACTIONS.join(', ')}` });
+      }
+
+      // Fetch the task
+      const { data: task, error: taskError } = await supabase
+        .from('tasks')
+        .select('id, title, status, agent_id, human_id, escrow_status, moderation_status')
+        .eq('id', id)
+        .single();
+
+      if (taskError || !task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+
+      const now = new Date().toISOString();
+      let updateData = {};
+      let notifTitle = '';
+      let notifMessage = '';
+
+      if (action === 'hide') {
+        updateData = { moderation_status: 'hidden', hidden_at: now, hidden_reason: notes || 'Hidden by admin' };
+        notifTitle = 'Task Hidden';
+        notifMessage = `Your task "${task.title}" has been hidden by a moderator.`;
+      } else if (action === 'remove') {
+        updateData = { moderation_status: 'removed', hidden_at: now, hidden_reason: notes || 'Removed by admin' };
+        // Only cancel if the task status allows it
+        const cancellableStatuses = ['open', 'pending_acceptance', 'assigned', 'in_progress', 'pending_review', 'rejected'];
+        if (cancellableStatuses.includes(task.status)) {
+          updateData.status = 'cancelled';
+        }
+        notifTitle = 'Task Removed';
+        notifMessage = `Your task "${task.title}" has been removed by a moderator.`;
+      } else if (action === 'unflag') {
+        updateData = { moderation_status: 'clean', hidden_at: null, hidden_reason: null };
+        notifTitle = 'Task Restored';
+        notifMessage = `Your task "${task.title}" has been restored by a moderator.`;
+      }
+
+      // Update task
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update(updateData)
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Notify task creator
+      if (task.agent_id) {
+        try {
+          await createNotification(task.agent_id, 'task_moderated', notifTitle, notifMessage, id);
+        } catch (notifErr) {
+          logger.error({ err: notifErr }, 'Failed to create moderation notification');
+        }
+      }
+
+      // Audit log
+      await logAdminAction(req.user.id, `moderate_task_${action}`, id, null, { action, notes });
+
+      res.json({ success: true, task_id: id, action, moderation_status: updateData.moderation_status });
+    } catch (error) {
+      logger.error({ err: error }, 'Task moderation endpoint error');
+      captureException(error, { tags: { admin_action: 'moderate_task' } });
       res.status(500).json({ error: error.message });
     }
   });
