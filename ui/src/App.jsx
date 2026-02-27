@@ -1282,6 +1282,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
   const [assigningHuman, setAssigningHuman] = useState(null) // loading state
   const [expandedHumanId, setExpandedHumanId] = useState(null) // expanded profile modal
+  const [editingTaskId, setEditingTaskId] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [cancelConfirmId, setCancelConfirmId] = useState(null)
+  const [cancellingTaskId, setCancellingTaskId] = useState(null)
+  const [decliningAppId, setDecliningAppId] = useState(null)
+  const [negotiateAppId, setNegotiateAppId] = useState(null)
+  const [negotiateMsg, setNegotiateMsg] = useState('')
+  const [assignNotes, setAssignNotes] = useState({})
 
   // Task creation form state
   const [taskForm, setTaskForm] = useState({
@@ -1668,6 +1676,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const body = { human_id: humanId }
       if (preferredPaymentMethod) body.preferred_payment_method = preferredPaymentMethod
+      const noteText = assignNotes[humanId]
+      if (noteText && noteText.trim()) body.note = noteText.trim()
       const res = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
         headers: {
@@ -1681,6 +1691,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         fetchPostedTasks()
         setExpandedTask(null)
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
+        setAssignNotes(prev => { const next = { ...prev }; delete next[humanId]; return next })
 
         // Show appropriate toast based on payment method
         if (data.payment_method === 'usdc') {
@@ -1702,6 +1713,90 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       toast.error('Network error. Please try again.')
     } finally {
       setAssigningHuman(null)
+    }
+  }
+
+  const handleCancelTask = async (taskId) => {
+    setCancellingTaskId(taskId)
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}/cancel`, {
+        method: 'POST',
+        headers: { Authorization: user.token || '' }
+      })
+      if (res.ok) {
+        toast.success('Task cancelled')
+        fetchPostedTasks()
+        setCancelConfirmId(null)
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to cancel task')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    } finally {
+      setCancellingTaskId(null)
+    }
+  }
+
+  const handleEditTask = async (taskId) => {
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
+        body: JSON.stringify(editForm)
+      })
+      if (res.ok) {
+        toast.success('Task updated')
+        setEditingTaskId(null)
+        setEditForm({})
+        fetchPostedTasks()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to update task')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    }
+  }
+
+  const handleDeclineApplication = async (taskId, appId) => {
+    setDecliningAppId(appId)
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}/applications/${appId}/decline`, {
+        method: 'POST',
+        headers: { Authorization: user.token || '' }
+      })
+      if (res.ok) {
+        toast.success('Application declined')
+        fetchApplicationsForTask(taskId)
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to decline')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    } finally {
+      setDecliningAppId(null)
+    }
+  }
+
+  const handleNegotiate = async (taskId, humanId) => {
+    if (!negotiateMsg.trim()) return
+    try {
+      const msgRes = await fetch(`${API_URL}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
+        body: JSON.stringify({ recipient_id: humanId, task_id: taskId, content: negotiateMsg.trim() })
+      })
+      if (msgRes.ok) {
+        toast.success('Message sent')
+        setNegotiateAppId(null)
+        setNegotiateMsg('')
+      } else {
+        toast.error('Failed to send message')
+      }
+    } catch (e) {
+      toast.error('Network error')
     }
   }
 
@@ -2887,14 +2982,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       const pendingCount = isExpanded
                         ? applications.filter(a => a.status === 'pending').length
                         : (task.pending_applicant_count || 0)
+                      const cancellable = ['open', 'pending_acceptance', 'assigned', 'in_progress'].includes(task.status)
+                      const isEditing = editingTaskId === task.id
 
                       return (
-                        <div key={task.id} className="dashboard-v4-task-card">
+                        <div key={task.id} className="dashboard-v4-task-card" style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/tasks/${task.id}`}>
                           <div className="dashboard-v4-task-header">
                             <div>
-                              <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
-                                {getStatusLabel(task.status)}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
+                                  {getStatusLabel(task.status)}
+                                </span>
+                                {pendingCount > 0 && (
+                                  <span style={{ background: 'var(--orange-600)', color: 'white', fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 12 }}>
+                                    {pendingCount} applicant{pendingCount !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
                               <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
                             </div>
                             <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
@@ -2903,14 +3007,100 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           <div className="dashboard-v4-task-meta">
                             <span className="dashboard-v4-task-meta-item"><FolderOpen size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.category || 'General'}</span>
                             <span className="dashboard-v4-task-meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
+                            <span className="dashboard-v4-task-meta-item"><CalendarDays size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
                             {task.assignee && (
                               <span className="dashboard-v4-task-meta-item"><User size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.assignee.name}</span>
                             )}
                           </div>
 
+                          {/* Action buttons row */}
+                          <div style={{ display: 'flex', gap: 8, marginTop: 12 }} onClick={e => e.stopPropagation()}>
+                            {isOpen && (
+                              <button
+                                className="v4-btn v4-btn-secondary"
+                                style={{ fontSize: 13, padding: '6px 12px' }}
+                                onClick={() => {
+                                  setEditingTaskId(isEditing ? null : task.id)
+                                  if (!isEditing) setEditForm({ title: task.title, description: task.description || '', budget: task.budget, category: task.category || '', location: task.city || '', is_remote: task.is_remote || false, deadline: task.deadline || '' })
+                                }}
+                              >
+                                <FileText size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                                {isEditing ? 'Cancel Edit' : 'Edit'}
+                              </button>
+                            )}
+                            {cancellable && (
+                              <button
+                                className="v4-btn"
+                                style={{ fontSize: 13, padding: '6px 12px', color: '#dc2626', border: '1px solid #fecaca', background: '#fef2f2' }}
+                                onClick={() => setCancelConfirmId(cancelConfirmId === task.id ? null : task.id)}
+                              >
+                                <Ban size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                                Cancel Task
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Cancel confirmation */}
+                          {cancelConfirmId === task.id && (
+                            <div style={{ marginTop: 12, padding: 16, background: '#fef2f2', borderRadius: 'var(--radius-md)', border: '1px solid #fecaca' }} onClick={e => e.stopPropagation()}>
+                              <p style={{ fontSize: 14, color: '#dc2626', fontWeight: 500, marginBottom: 12 }}>Are you sure you want to cancel this task?</p>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                  className="v4-btn"
+                                  style={{ fontSize: 13, padding: '6px 16px', color: 'white', background: '#dc2626', border: 'none' }}
+                                  disabled={cancellingTaskId === task.id}
+                                  onClick={() => handleCancelTask(task.id)}
+                                >
+                                  {cancellingTaskId === task.id ? 'Cancelling...' : 'Yes, Cancel'}
+                                </button>
+                                <button className="v4-btn v4-btn-secondary" style={{ fontSize: 13, padding: '6px 16px' }} onClick={() => setCancelConfirmId(null)}>No, Keep</button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Inline edit form */}
+                          {isEditing && (
+                            <div style={{ marginTop: 12, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }} onClick={e => e.stopPropagation()}>
+                              <div style={{ display: 'grid', gap: 12 }}>
+                                <div>
+                                  <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Title</label>
+                                  <input type="text" value={editForm.title || ''} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Description</label>
+                                  <textarea value={editForm.description || ''} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} rows={3} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14, resize: 'vertical' }} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                  <div>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Budget ($)</label>
+                                    <input type="number" value={editForm.budget || ''} onChange={e => setEditForm(f => ({ ...f, budget: parseFloat(e.target.value) || '' }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Category</label>
+                                    <input type="text" value={editForm.category || ''} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                  </div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                  <div>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Location</label>
+                                    <input type="text" value={editForm.location || ''} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Deadline</label>
+                                    <input type="datetime-local" value={editForm.deadline ? editForm.deadline.slice(0, 16) : ''} onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                  <button className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }} onClick={() => { setEditingTaskId(null); setEditForm({}) }}>Cancel</button>
+                                  <button className="v4-btn v4-btn-primary" style={{ fontSize: 13 }} onClick={() => handleEditTask(task.id)}>Save Changes</button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* View Applicants Button for open tasks */}
                           {isOpen && (
-                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)' }} onClick={e => e.stopPropagation()}>
                               <button
                                 onClick={() => {
                                   if (isExpanded) {
@@ -2932,52 +3122,111 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                     <p style={{ color: 'var(--text-tertiary)', fontSize: 14, textAlign: 'center', padding: 16 }}>No applicants yet</p>
                                   ) : (
                                     applications.map(app => (
-                                      <div key={app.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                                            {app.applicant?.name?.[0]?.toUpperCase() || '?'}
-                                          </div>
-                                          <div>
-                                            <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
-                                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                              <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
-                                              {app.applicant?.success_rate !== null && app.applicant?.success_rate !== undefined && app.applicant?.success_rate < 70 && (
-                                                <span style={{ color: '#D97706', fontSize: 12, marginLeft: 6 }} title="Below average success rate">
-                                                  ⚠ {app.applicant.success_rate}% success
-                                                </span>
+                                      <div key={app.id} style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, flexShrink: 0 }}>
+                                              {app.applicant?.name?.[0]?.toUpperCase() || '?'}
+                                            </div>
+                                            <div>
+                                              <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                                <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                                {app.applicant?.success_rate !== null && app.applicant?.success_rate !== undefined && app.applicant?.success_rate < 70 && (
+                                                  <span style={{ color: '#D97706', fontSize: 12, marginLeft: 6 }} title="Below average success rate">
+                                                    ⚠ {app.applicant.success_rate}% success
+                                                  </span>
+                                                )}
+                                              </p>
+                                              {app.cover_letter && (
+                                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
                                               )}
-                                            </p>
-                                            {app.cover_letter && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
-                                            )}
-                                            {app.availability && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
-                                            )}
-                                            {app.questions && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
-                                            )}
-                                            {app.proposed_rate != null && (
-                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate}</p>
-                                            )}
+                                              {app.availability && (
+                                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
+                                              )}
+                                              {app.questions && (
+                                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
+                                              )}
+                                              {app.proposed_rate != null && (
+                                                <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate}</p>
+                                              )}
+                                            </div>
                                           </div>
+                                          {app.status === 'rejected' ? (
+                                            <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 500 }}>Declined</span>
+                                          ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                                              <button
+                                                onClick={() => handleAssignHuman(task.id, app.human_id)}
+                                                disabled={assigningHuman === app.human_id}
+                                                className="v4-btn v4-btn-primary"
+                                                style={{ fontSize: 13 }}
+                                              >
+                                                {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (Card)'}
+                                              </button>
+                                              <button
+                                                onClick={() => handleAssignHuman(task.id, app.human_id, 'usdc')}
+                                                disabled={assigningHuman === app.human_id}
+                                                className="v4-btn"
+                                                style={{ fontSize: 12, padding: '6px 12px', color: '#2563eb', border: '1px solid #2563eb', background: '#eff6ff' }}
+                                              >
+                                                {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (USDC)'}
+                                              </button>
+                                              <button
+                                                onClick={() => handleDeclineApplication(task.id, app.id)}
+                                                disabled={decliningAppId === app.id}
+                                                className="v4-btn"
+                                                style={{ fontSize: 12, padding: '6px 12px', color: '#dc2626', border: '1px solid #fecaca', background: '#fef2f2' }}
+                                              >
+                                                {decliningAppId === app.id ? 'Declining...' : 'Decline'}
+                                              </button>
+                                              <button
+                                                onClick={() => { setNegotiateAppId(negotiateAppId === app.id ? null : app.id); setNegotiateMsg('') }}
+                                                className="v4-btn"
+                                                style={{ fontSize: 12, padding: '6px 12px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                                              >
+                                                <MessageCircle size={13} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                                                Negotiate
+                                              </button>
+                                            </div>
+                                          )}
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-                                          <button
-                                            onClick={() => handleAssignHuman(task.id, app.human_id)}
-                                            disabled={assigningHuman === app.human_id}
-                                            className="v4-btn v4-btn-primary"
-                                          >
-                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (Card)'}
-                                          </button>
-                                          <button
-                                            onClick={() => handleAssignHuman(task.id, app.human_id, 'usdc')}
-                                            disabled={assigningHuman === app.human_id}
-                                            className="v4-btn"
-                                            style={{ fontSize: 12, padding: '6px 12px', color: '#2563eb', border: '1px solid #2563eb', background: '#eff6ff' }}
-                                          >
-                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (USDC)'}
-                                          </button>
-                                        </div>
+
+                                        {/* Note for accept */}
+                                        {app.status !== 'rejected' && (
+                                          <div style={{ marginTop: 10 }}>
+                                            <input
+                                              type="text"
+                                              placeholder="Add a note for the worker (optional)..."
+                                              value={assignNotes[app.human_id] || ''}
+                                              onClick={e => e.stopPropagation()}
+                                              onChange={e => setAssignNotes(prev => ({ ...prev, [app.human_id]: e.target.value }))}
+                                              style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                                            />
+                                          </div>
+                                        )}
+
+                                        {/* Negotiate message input */}
+                                        {negotiateAppId === app.id && (
+                                          <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                                            <input
+                                              type="text"
+                                              placeholder="Send a message to negotiate..."
+                                              value={negotiateMsg}
+                                              onChange={e => setNegotiateMsg(e.target.value)}
+                                              onKeyDown={e => { if (e.key === 'Enter') handleNegotiate(task.id, app.human_id) }}
+                                              style={{ flex: 1, padding: '6px 10px', fontSize: 13, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                                            />
+                                            <button
+                                              className="v4-btn v4-btn-primary"
+                                              style={{ fontSize: 13, padding: '6px 12px' }}
+                                              onClick={() => handleNegotiate(task.id, app.human_id)}
+                                              disabled={!negotiateMsg.trim()}
+                                            >
+                                              Send
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     ))
                                   )}
@@ -2987,7 +3236,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           )}
 
                           {needsAction && (
-                            <div className="dashboard-v4-task-actions">
+                            <div className="dashboard-v4-task-actions" onClick={e => e.stopPropagation()}>
                               <button className="v4-btn v4-btn-primary" onClick={() => setShowProofReview(task.id)}>
                                 Review Proof
                               </button>
