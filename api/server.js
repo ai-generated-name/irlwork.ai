@@ -2901,10 +2901,6 @@ app.get('/api/agent/tasks', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
-  if (user.type !== 'agent') {
-    return res.status(403).json({ error: 'Only agents can access this endpoint' });
-  }
-  
   const { status, limit = 50 } = req.query;
   
   let query = supabase
