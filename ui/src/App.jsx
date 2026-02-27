@@ -203,18 +203,10 @@ function Onboarding({ onComplete, user }) {
   const [nearbyTasks, setNearbyTasks] = useState([])
   const [loadingTasks, setLoadingTasks] = useState(false)
 
-  // Email verification state
-  const [verificationCode, setVerificationCode] = useState('')
-  const [verificationSent, setVerificationSent] = useState(false)
-  const [verificationSending, setVerificationSending] = useState(false)
-  const [verificationError, setVerificationError] = useState('')
-  const [verificationSuccess, setVerificationSuccess] = useState(false)
-  const [verifying, setVerifying] = useState(false)
-
   const userName = user?.name?.split(' ')[0] || 'there'
   const userAvatar = user?.avatar_url
 
-  const totalSteps = 5
+  const totalSteps = 4
   const progress = (step / totalSteps) * 100
 
   // Fetch nearby tasks after city selection
@@ -248,57 +240,6 @@ function Onboarding({ onComplete, user }) {
         ? prev.selectedCategories.filter(c => c !== value)
         : [...prev.selectedCategories, value]
     }))
-  }
-
-  const sendVerificationCode = async () => {
-    setVerificationSending(true)
-    setVerificationError('')
-    try {
-      const res = await fetch(`${API_URL}/auth/send-verification`, {
-        method: 'POST',
-        headers: { Authorization: user?.token || '' }
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        if (data.message === 'Email already verified') {
-          setVerificationSuccess(true)
-        } else {
-          setVerificationSent(true)
-        }
-      } else {
-        setVerificationError(data.error || 'Failed to send verification code')
-      }
-    } catch (e) {
-      setVerificationError('Network error. Please try again.')
-    } finally {
-      setVerificationSending(false)
-    }
-  }
-
-  const verifyCode = async () => {
-    if (!verificationCode.trim()) return
-    setVerifying(true)
-    setVerificationError('')
-    try {
-      const res = await fetch(`${API_URL}/auth/verify-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: user?.token || ''
-        },
-        body: JSON.stringify({ code: verificationCode.trim() })
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        setVerificationSuccess(true)
-      } else {
-        setVerificationError(data.error || 'Invalid code')
-      }
-    } catch (e) {
-      setVerificationError('Network error. Please try again.')
-    } finally {
-      setVerifying(false)
-    }
   }
 
   const handleSubmit = async () => {
@@ -567,103 +508,12 @@ function Onboarding({ onComplete, user }) {
 
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={() => setStep(5)} disabled={!form.hourly_rate}>
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Email Verification */}
-        {step === 5 && (
-          <div>
-            <h1 className="onboarding-v4-title">Verify your email</h1>
-            <p className="onboarding-v4-subtitle">
-              Verified accounts get more task offers and build trust with agents
-            </p>
-
-            {verificationSuccess ? (
-              <div style={{
-                padding: '20px', borderRadius: 12,
-                background: 'rgba(22, 163, 74, 0.08)', border: '1px solid rgba(22, 163, 74, 0.2)',
-                textAlign: 'center', marginBottom: 20
-              }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>&#10003;</div>
-                <p style={{ color: '#16A34A', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
-                  {user?.email} is now verified
-                </p>
-              </div>
-            ) : !verificationSent ? (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-                  We'll send a 6-digit code to <strong>{user?.email}</strong>
-                </p>
-                <button
-                  className="onboarding-v4-btn-next"
-                  style={{ width: '100%' }}
-                  onClick={sendVerificationCode}
-                  disabled={verificationSending}
-                >
-                  {verificationSending ? 'Sending...' : 'Send Verification Code'}
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
-                  Enter the 6-digit code sent to <strong>{user?.email}</strong>
-                </p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={verificationCode}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
-                    setVerificationCode(val)
-                  }}
-                  className="onboarding-v4-input"
-                  style={{
-                    textAlign: 'center', fontSize: 24, fontWeight: 600,
-                    letterSpacing: 8, fontFamily: 'monospace'
-                  }}
-                  autoFocus
-                />
-                <button
-                  className="onboarding-v4-btn-next"
-                  style={{ width: '100%', marginTop: 12 }}
-                  onClick={verifyCode}
-                  disabled={verifying || verificationCode.length < 6}
-                >
-                  {verifying ? 'Verifying...' : 'Verify'}
-                </button>
-                <button
-                  onClick={sendVerificationCode}
-                  disabled={verificationSending}
-                  style={{
-                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
-                    fontSize: 13, cursor: 'pointer', marginTop: 8, width: '100%',
-                    textAlign: 'center'
-                  }}
-                >
-                  {verificationSending ? 'Sending...' : 'Resend code'}
-                </button>
-              </div>
-            )}
-
-            {verificationError && (
-              <div className="auth-v4-error" style={{ marginTop: 12 }}>{verificationError}</div>
-            )}
-
-            <div className="onboarding-v4-buttons" style={{ marginTop: 20 }}>
-              <button className="onboarding-v4-btn-back" onClick={() => setStep(4)}>Back</button>
               <button
                 className="onboarding-v4-btn-next"
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || !form.hourly_rate}
               >
-                {loading ? 'Setting up...' : verificationSuccess ? 'Complete Setup' : 'Skip for Now'}
+                {loading ? 'Setting up...' : 'Complete Setup'}
               </button>
             </div>
           </div>
@@ -1313,6 +1163,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
   const [settingsPageTab, setSettingsPageTab] = useState('general')
+
+  // Email verification state (in Settings > Account)
+  const [emailVerifCode, setEmailVerifCode] = useState('')
+  const [emailVerifSent, setEmailVerifSent] = useState(false)
+  const [emailVerifSending, setEmailVerifSending] = useState(false)
+  const [emailVerifError, setEmailVerifError] = useState('')
+  const [emailVerifSuccess, setEmailVerifSuccess] = useState(!!user?.email_verified)
+  const [emailVerifying, setEmailVerifying] = useState(false)
 
   // Helper to update URL path without page reload
   const updateTabUrl = (tabId, mode) => {
@@ -4432,8 +4290,161 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ marginBottom: 14 }}>
                     <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14 }}>Email</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{user?.email}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{user?.email}</p>
+                      {(emailVerifSuccess || user?.email_verified) ? (
+                        <span style={{ padding: '2px 8px', background: 'rgba(22, 163, 74, 0.1)', color: '#16A34A', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Verified</span>
+                      ) : (
+                        <span style={{ padding: '2px 8px', background: 'rgba(251, 191, 36, 0.1)', color: '#D97706', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Unverified</span>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Email verification section */}
+                  {!(emailVerifSuccess || user?.email_verified) && (
+                    <div style={{ padding: '12px 14px', background: 'rgba(251, 191, 36, 0.06)', border: '1px solid rgba(251, 191, 36, 0.15)', borderRadius: 'var(--radius-md)', marginBottom: 14 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Verify your email</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10 }}>Verified accounts get more task offers and build trust with agents</p>
+
+                      {emailVerifError && (
+                        <div style={{ padding: '8px 10px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 'var(--radius-sm)', marginBottom: 8, fontSize: 12, color: '#EF4444' }}>{emailVerifError}</div>
+                      )}
+
+                      {!emailVerifSent ? (
+                        <button
+                          className="v4-btn v4-btn-primary"
+                          style={{ width: '100%', fontSize: 13, padding: '8px 16px' }}
+                          disabled={emailVerifSending}
+                          onClick={async () => {
+                            setEmailVerifSending(true)
+                            setEmailVerifError('')
+                            try {
+                              let token = user.token || ''
+                              if (supabase) {
+                                const { data: { session } } = await supabase.auth.getSession()
+                                if (session?.access_token) token = session.access_token
+                              }
+                              const res = await fetch(`${API_URL}/auth/send-verification`, {
+                                method: 'POST',
+                                headers: { Authorization: token }
+                              })
+                              const data = await res.json().catch(() => ({}))
+                              if (res.ok) {
+                                if (data.message === 'Email already verified') {
+                                  setEmailVerifSuccess(true)
+                                  toast.success('Email already verified!')
+                                } else {
+                                  setEmailVerifSent(true)
+                                  toast.success('Verification code sent!')
+                                }
+                              } else {
+                                setEmailVerifError(data.error || 'Failed to send verification code')
+                              }
+                            } catch (e) {
+                              setEmailVerifError('Network error. Please try again.')
+                            } finally {
+                              setEmailVerifSending(false)
+                            }
+                          }}
+                        >
+                          {emailVerifSending ? 'Sending...' : 'Send Verification Code'}
+                        </button>
+                      ) : (
+                        <div>
+                          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, textAlign: 'center' }}>
+                            Enter the 6-digit code sent to <strong>{user?.email}</strong>
+                          </p>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={emailVerifCode}
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                              setEmailVerifCode(val)
+                            }}
+                            style={{
+                              width: '100%', textAlign: 'center', fontSize: 20, fontWeight: 600,
+                              letterSpacing: 8, fontFamily: 'monospace', padding: '10px 12px',
+                              background: 'var(--bg-secondary)', border: '1px solid rgba(0,0,0,0.1)',
+                              borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                              outline: 'none', boxSizing: 'border-box'
+                            }}
+                          />
+                          <button
+                            className="v4-btn v4-btn-primary"
+                            style={{ width: '100%', fontSize: 13, padding: '8px 16px', marginTop: 8 }}
+                            disabled={emailVerifying || emailVerifCode.length < 6}
+                            onClick={async () => {
+                              if (!emailVerifCode.trim()) return
+                              setEmailVerifying(true)
+                              setEmailVerifError('')
+                              try {
+                                let token = user.token || ''
+                                if (supabase) {
+                                  const { data: { session } } = await supabase.auth.getSession()
+                                  if (session?.access_token) token = session.access_token
+                                }
+                                const res = await fetch(`${API_URL}/auth/verify-email`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', Authorization: token },
+                                  body: JSON.stringify({ code: emailVerifCode.trim() })
+                                })
+                                const data = await res.json().catch(() => ({}))
+                                if (res.ok) {
+                                  setEmailVerifSuccess(true)
+                                  toast.success('Email verified successfully!')
+                                } else {
+                                  setEmailVerifError(data.error || 'Invalid code')
+                                }
+                              } catch (e) {
+                                setEmailVerifError('Network error. Please try again.')
+                              } finally {
+                                setEmailVerifying(false)
+                              }
+                            }}
+                          >
+                            {emailVerifying ? 'Verifying...' : 'Verify'}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setEmailVerifSending(true)
+                              setEmailVerifError('')
+                              try {
+                                let token = user.token || ''
+                                if (supabase) {
+                                  const { data: { session } } = await supabase.auth.getSession()
+                                  if (session?.access_token) token = session.access_token
+                                }
+                                const res = await fetch(`${API_URL}/auth/send-verification`, {
+                                  method: 'POST',
+                                  headers: { Authorization: token }
+                                })
+                                if (res.ok) toast.success('Code resent!')
+                                else {
+                                  const data = await res.json().catch(() => ({}))
+                                  setEmailVerifError(data.error || 'Failed to resend')
+                                }
+                              } catch (e) {
+                                setEmailVerifError('Network error.')
+                              } finally {
+                                setEmailVerifSending(false)
+                              }
+                            }}
+                            disabled={emailVerifSending}
+                            style={{
+                              background: 'none', border: 'none', color: 'var(--text-tertiary)',
+                              fontSize: 12, cursor: 'pointer', marginTop: 6, width: '100%',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {emailVerifSending ? 'Sending...' : 'Resend code'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: 14, marginBottom: 14, opacity: 0.5 }} />
 
