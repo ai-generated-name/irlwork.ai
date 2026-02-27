@@ -48,7 +48,7 @@
   .navbar-v4-links.open {
     display: flex !important;
     position: fixed;
-    top: 0;
+    top: 60px;
     left: 0;
     right: 0;
     bottom: 0;
@@ -57,25 +57,23 @@
     align-items: stretch;
     gap: 0 !important;
     background: var(--bg-secondary);
-    padding: 80px var(--space-6) var(--space-6);
-    animation: nav-slide-down 0.25s ease-out;
-  }
-
-  .navbar-v4-links.open::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
-    z-index: -1;
+    padding: var(--space-4) var(--space-6);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .navbar-v4-links.open .nav-link-v4 {
     padding: 16px 0;
-    font-size: 18px;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text-primary);
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    display: block;
+    text-decoration: none;
+  }
+
+  .navbar-v4-links.open .nav-link-v4:active {
+    color: var(--accent-orange);
   }
 
   .navbar-v4-links.open .lang-selector {

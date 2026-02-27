@@ -203,18 +203,10 @@ function Onboarding({ onComplete, user }) {
   const [nearbyTasks, setNearbyTasks] = useState([])
   const [loadingTasks, setLoadingTasks] = useState(false)
 
-  // Email verification state
-  const [verificationCode, setVerificationCode] = useState('')
-  const [verificationSent, setVerificationSent] = useState(false)
-  const [verificationSending, setVerificationSending] = useState(false)
-  const [verificationError, setVerificationError] = useState('')
-  const [verificationSuccess, setVerificationSuccess] = useState(false)
-  const [verifying, setVerifying] = useState(false)
-
   const userName = user?.name?.split(' ')[0] || 'there'
   const userAvatar = user?.avatar_url
 
-  const totalSteps = 5
+  const totalSteps = 4
   const progress = (step / totalSteps) * 100
 
   // Fetch nearby tasks after city selection
@@ -248,57 +240,6 @@ function Onboarding({ onComplete, user }) {
         ? prev.selectedCategories.filter(c => c !== value)
         : [...prev.selectedCategories, value]
     }))
-  }
-
-  const sendVerificationCode = async () => {
-    setVerificationSending(true)
-    setVerificationError('')
-    try {
-      const res = await fetch(`${API_URL}/auth/send-verification`, {
-        method: 'POST',
-        headers: { Authorization: user?.token || '' }
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        if (data.message === 'Email already verified') {
-          setVerificationSuccess(true)
-        } else {
-          setVerificationSent(true)
-        }
-      } else {
-        setVerificationError(data.error || 'Failed to send verification code')
-      }
-    } catch (e) {
-      setVerificationError('Network error. Please try again.')
-    } finally {
-      setVerificationSending(false)
-    }
-  }
-
-  const verifyCode = async () => {
-    if (!verificationCode.trim()) return
-    setVerifying(true)
-    setVerificationError('')
-    try {
-      const res = await fetch(`${API_URL}/auth/verify-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: user?.token || ''
-        },
-        body: JSON.stringify({ code: verificationCode.trim() })
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        setVerificationSuccess(true)
-      } else {
-        setVerificationError(data.error || 'Invalid code')
-      }
-    } catch (e) {
-      setVerificationError('Network error. Please try again.')
-    } finally {
-      setVerifying(false)
-    }
   }
 
   const handleSubmit = async () => {
@@ -567,103 +508,12 @@ function Onboarding({ onComplete, user }) {
 
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={() => setStep(5)} disabled={!form.hourly_rate}>
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Email Verification */}
-        {step === 5 && (
-          <div>
-            <h1 className="onboarding-v4-title">Verify your email</h1>
-            <p className="onboarding-v4-subtitle">
-              Verified accounts get more task offers and build trust with agents
-            </p>
-
-            {verificationSuccess ? (
-              <div style={{
-                padding: '20px', borderRadius: 12,
-                background: 'rgba(22, 163, 74, 0.08)', border: '1px solid rgba(22, 163, 74, 0.2)',
-                textAlign: 'center', marginBottom: 20
-              }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>&#10003;</div>
-                <p style={{ color: '#16A34A', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
-                  {user?.email} is now verified
-                </p>
-              </div>
-            ) : !verificationSent ? (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-                  We'll send a 6-digit code to <strong>{user?.email}</strong>
-                </p>
-                <button
-                  className="onboarding-v4-btn-next"
-                  style={{ width: '100%' }}
-                  onClick={sendVerificationCode}
-                  disabled={verificationSending}
-                >
-                  {verificationSending ? 'Sending...' : 'Send Verification Code'}
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
-                  Enter the 6-digit code sent to <strong>{user?.email}</strong>
-                </p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={verificationCode}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
-                    setVerificationCode(val)
-                  }}
-                  className="onboarding-v4-input"
-                  style={{
-                    textAlign: 'center', fontSize: 24, fontWeight: 600,
-                    letterSpacing: 8, fontFamily: 'monospace'
-                  }}
-                  autoFocus
-                />
-                <button
-                  className="onboarding-v4-btn-next"
-                  style={{ width: '100%', marginTop: 12 }}
-                  onClick={verifyCode}
-                  disabled={verifying || verificationCode.length < 6}
-                >
-                  {verifying ? 'Verifying...' : 'Verify'}
-                </button>
-                <button
-                  onClick={sendVerificationCode}
-                  disabled={verificationSending}
-                  style={{
-                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
-                    fontSize: 13, cursor: 'pointer', marginTop: 8, width: '100%',
-                    textAlign: 'center'
-                  }}
-                >
-                  {verificationSending ? 'Sending...' : 'Resend code'}
-                </button>
-              </div>
-            )}
-
-            {verificationError && (
-              <div className="auth-v4-error" style={{ marginTop: 12 }}>{verificationError}</div>
-            )}
-
-            <div className="onboarding-v4-buttons" style={{ marginTop: 20 }}>
-              <button className="onboarding-v4-btn-back" onClick={() => setStep(4)}>Back</button>
               <button
                 className="onboarding-v4-btn-next"
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || !form.hourly_rate}
               >
-                {loading ? 'Setting up...' : verificationSuccess ? 'Complete Setup' : 'Skip for Now'}
+                {loading ? 'Setting up...' : 'Complete Setup'}
               </button>
             </div>
           </div>
@@ -1269,6 +1119,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     if (tabSegment === 'create' || params.get('tab') === 'create-task') return 'create'
     return 'tasks'
   })
+  const [hireTarget, setHireTarget] = useState(null) // Human selected via "Hire" button for direct hire
+
+  // Restore hireTarget from URL ?hire=<id> on mount (e.g. page refresh or direct link)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const hireId = params.get('hire')
+    if (hireId && !hireTarget) {
+      fetch(`${API_URL}/humans/${hireId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(human => { if (human) setHireTarget(human) })
+        .catch(() => {}) // silently ignore — user can still create open task
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Read initial tab from URL path: /dashboard/working/browse → 'browse'
   const getInitialTab = () => {
@@ -1313,6 +1176,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
   const [settingsPageTab, setSettingsPageTab] = useState('general')
+
+  // Email verification state (in Settings > Account)
+  const [emailVerifCode, setEmailVerifCode] = useState('')
+  const [emailVerifSent, setEmailVerifSent] = useState(false)
+  const [emailVerifSending, setEmailVerifSending] = useState(false)
+  const [emailVerifError, setEmailVerifError] = useState('')
+  const [emailVerifSuccess, setEmailVerifSuccess] = useState(!!user?.email_verified)
+  const [emailVerifying, setEmailVerifying] = useState(false)
 
   // Helper to update URL path without page reload
   const updateTabUrl = (tabId, mode) => {
@@ -1411,6 +1282,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [expandedTask, setExpandedTask] = useState(null) // taskId for viewing applicants
   const [assigningHuman, setAssigningHuman] = useState(null) // loading state
   const [expandedHumanId, setExpandedHumanId] = useState(null) // expanded profile modal
+  const [editingTaskId, setEditingTaskId] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [cancelConfirmId, setCancelConfirmId] = useState(null)
+  const [cancellingTaskId, setCancellingTaskId] = useState(null)
+  const [decliningAppId, setDecliningAppId] = useState(null)
+  const [negotiateAppId, setNegotiateAppId] = useState(null)
+  const [negotiateMsg, setNegotiateMsg] = useState('')
+  const [assignNotes, setAssignNotes] = useState({})
 
   // Task creation form state
   const [taskForm, setTaskForm] = useState({
@@ -1797,6 +1676,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     try {
       const body = { human_id: humanId }
       if (preferredPaymentMethod) body.preferred_payment_method = preferredPaymentMethod
+      const noteText = assignNotes[humanId]
+      if (noteText && noteText.trim()) body.note = noteText.trim()
       const res = await fetch(`${API_URL}/tasks/${taskId}/assign`, {
         method: 'POST',
         headers: {
@@ -1810,6 +1691,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         fetchPostedTasks()
         setExpandedTask(null)
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
+        setAssignNotes(prev => { const next = { ...prev }; delete next[humanId]; return next })
 
         // Show appropriate toast based on payment method
         if (data.payment_method === 'usdc') {
@@ -1831,6 +1713,90 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       toast.error('Network error. Please try again.')
     } finally {
       setAssigningHuman(null)
+    }
+  }
+
+  const handleCancelTask = async (taskId) => {
+    setCancellingTaskId(taskId)
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}/cancel`, {
+        method: 'POST',
+        headers: { Authorization: user.token || '' }
+      })
+      if (res.ok) {
+        toast.success('Task cancelled')
+        fetchPostedTasks()
+        setCancelConfirmId(null)
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to cancel task')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    } finally {
+      setCancellingTaskId(null)
+    }
+  }
+
+  const handleEditTask = async (taskId) => {
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
+        body: JSON.stringify(editForm)
+      })
+      if (res.ok) {
+        toast.success('Task updated')
+        setEditingTaskId(null)
+        setEditForm({})
+        fetchPostedTasks()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to update task')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    }
+  }
+
+  const handleDeclineApplication = async (taskId, appId) => {
+    setDecliningAppId(appId)
+    try {
+      const res = await fetch(`${API_URL}/tasks/${taskId}/applications/${appId}/decline`, {
+        method: 'POST',
+        headers: { Authorization: user.token || '' }
+      })
+      if (res.ok) {
+        toast.success('Application declined')
+        fetchApplicationsForTask(taskId)
+      } else {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to decline')
+      }
+    } catch (e) {
+      toast.error('Network error')
+    } finally {
+      setDecliningAppId(null)
+    }
+  }
+
+  const handleNegotiate = async (taskId, humanId) => {
+    if (!negotiateMsg.trim()) return
+    try {
+      const msgRes = await fetch(`${API_URL}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
+        body: JSON.stringify({ recipient_id: humanId, task_id: taskId, content: negotiateMsg.trim() })
+      })
+      if (msgRes.ok) {
+        toast.success('Message sent')
+        setNegotiateAppId(null)
+        setNegotiateMsg('')
+      } else {
+        toast.error('Failed to send message')
+      }
+    } catch (e) {
+      toast.error('Network error')
     }
   }
 
@@ -2005,44 +1971,58 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setCreateTaskError('City is required for in-person tasks')
       return
     }
+    if (!taskForm.duration_hours || parseFloat(taskForm.duration_hours) <= 0) {
+      setCreateTaskError('Duration is required (estimated hours to complete)')
+      return
+    }
 
     setCreatingTask(true)
     try {
-      const res = await fetch(`${API_URL}/tasks`, {
+      // Direct hire: use /api/tasks/create with assign_to (task goes to pending_acceptance for that worker)
+      // Open task: use /api/tasks (task goes to open for anyone to apply)
+      const isDirectHire = !!hireTarget
+      const endpoint = isDirectHire ? `${API_URL}/tasks/create` : `${API_URL}/tasks`
+      const payload = {
+        title: taskForm.title,
+        description: taskForm.description,
+        category: taskForm.category,
+        budget: parseFloat(taskForm.budget),
+        location: taskForm.city,
+        latitude: taskForm.latitude,
+        longitude: taskForm.longitude,
+        country: taskForm.country,
+        country_code: taskForm.country_code,
+        is_remote: taskForm.is_remote,
+        duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
+        deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
+        requirements: taskForm.requirements.trim() || null,
+        required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
+        task_type: isDirectHire ? 'direct' : 'open',
+        quantity: 1,
+        is_anonymous: taskForm.is_anonymous
+      }
+      if (isDirectHire) {
+        payload.assign_to = hireTarget.id
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: user.token || ''
         },
-        body: JSON.stringify({
-          title: taskForm.title,
-          description: taskForm.description,
-          category: taskForm.category,
-          budget: parseFloat(taskForm.budget),
-          location: taskForm.city,
-          latitude: taskForm.latitude,
-          longitude: taskForm.longitude,
-          country: taskForm.country,
-          country_code: taskForm.country_code,
-          is_remote: taskForm.is_remote,
-          duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
-          deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
-          requirements: taskForm.requirements.trim() || null,
-          required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
-          task_type: 'open',
-          quantity: 1,
-          is_anonymous: taskForm.is_anonymous
-        })
+        body: JSON.stringify(payload)
       })
 
       if (res.ok) {
         const newTask = await res.json()
-        trackEvent('task_created', { category: taskForm.category, budget: parseFloat(taskForm.budget), is_remote: taskForm.is_remote, task_type: taskForm.task_type })
+        trackEvent('task_created', { category: taskForm.category, budget: parseFloat(taskForm.budget), is_remote: taskForm.is_remote, task_type: isDirectHire ? 'direct' : 'open', direct_hire: isDirectHire })
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
-        // Reset form
+        // Reset form and clear hire target
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'open', quantity: 1, is_anonymous: false })
         setTaskFormTouched({})
+        setHireTarget(null)
         // Close create form and show posted tasks list
         setTasksSubTab('tasks')
         setActiveTab('posted')
@@ -2255,8 +2235,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 md:hidden"
-          style={{ zIndex: 9989 }}
+          className="dashboard-v4-sidebar-overlay"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -2291,6 +2270,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             </button>
           ))}
         </nav>
+
+        {/* Connect Agent - Hiring mode only, mobile sidebar */}
+        {hiringMode && (
+          <div style={{ padding: '8px var(--space-4)' }}>
+            <a
+              href="/connect-agent"
+              className="dashboard-v4-connect-agent-btn"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
+              </svg>
+              Connect Agent
+            </a>
+          </div>
+        )}
 
         {/* Mode Switch - mobile only, pinned above social */}
         <div className="dashboard-v4-mode-switch-mobile">
@@ -2630,7 +2625,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
               <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>My Tasks</h1>
-              <button className="hiring-dash-create-btn" onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}>
+              <button className="hiring-dash-create-btn" onClick={() => { setTasksSubTab('create'); setCreateTaskError(''); setHireTarget(null); window.history.pushState({}, '', '/dashboard/hiring/create'); trackPageView('/dashboard/hiring/create'); }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
@@ -2642,7 +2637,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             <div className="dashboard-v4-sub-tabs">
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); setHireTarget(null); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
               >
                 All
               </button>
@@ -2676,9 +2671,53 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div style={{ marginTop: 16 }}>
                 <div className="create-task-container">
                   <div className="create-task-header">
-                    <h2 className="create-task-title">Create a New Task</h2>
-                    <p className="create-task-subtitle">Fill in the details below to post your task</p>
+                    <h2 className="create-task-title">{hireTarget ? `Hire ${hireTarget.name?.split(' ')[0] || 'Worker'}` : 'Create a New Task'}</h2>
+                    <p className="create-task-subtitle">{hireTarget ? 'This task will be sent directly to this worker for acceptance' : 'Fill in the details below to post your task'}</p>
                   </div>
+
+                  {/* Direct hire banner */}
+                  {hireTarget && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+                      background: 'rgba(232,133,61,0.06)', borderRadius: 12,
+                      border: '1px solid rgba(232,133,61,0.15)', marginBottom: 20
+                    }}>
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {hireTarget.avatar_url ? (
+                          <img src={hireTarget.avatar_url} alt="" style={{
+                            width: 44, height: 44, borderRadius: '50%', objectFit: 'cover',
+                            border: '2px solid rgba(232,133,61,0.25)'
+                          }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                        ) : null}
+                        <div style={{
+                          width: 44, height: 44, borderRadius: '50%', background: '#E8853D',
+                          display: hireTarget.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: 'white', fontWeight: 700, fontSize: 18,
+                          border: '2px solid rgba(232,133,61,0.25)'
+                        }}>
+                          {hireTarget.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>{hireTarget.name || 'Worker'}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 1 }}>
+                          {hireTarget.headline || hireTarget.city || 'Direct hire'}
+                          {hireTarget.hourly_rate ? ` · $${hireTarget.hourly_rate}/hr` : ''}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setHireTarget(null); window.history.pushState({}, '', '/dashboard/hiring/create'); }}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer', padding: 6,
+                          color: 'var(--text-tertiary)', borderRadius: 8, flexShrink: 0
+                        }}
+                        title="Switch to open task"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  )}
 
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
                     {/* Section 1: Basics */}
@@ -2735,7 +2774,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         </div>
                         <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Duration <span className="dashboard-v4-form-optional">(hours)</span>
+                            Duration <span style={{ color: '#DC2626' }}>*</span> <span className="dashboard-v4-form-optional">(hours)</span>
                           </label>
                           <input
                             type="number"
@@ -2745,7 +2784,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
                             min="0.5"
                             step="0.5"
+                            required
+                            onBlur={() => setTaskFormTouched(prev => ({ ...prev, duration_hours: true }))}
                           />
+                          {taskFormTouched.duration_hours && (!taskForm.duration_hours || parseFloat(taskForm.duration_hours) <= 0) && (
+                            <p style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>Duration is required</p>
+                          )}
                         </div>
                       </div>
 
@@ -2921,9 +2965,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <p className="dashboard-v4-empty-text" style={{ marginBottom: 20, color: 'var(--text-secondary)' }}>{tasksSubTab === 'tasks' ? 'Post a task and get matched with verified humans near you.' : 'Tasks matching this filter will appear here'}</p>
                     {tasksSubTab === 'tasks' && (
                       <button
-                        className="v4-btn v4-btn-primary"
                         onClick={() => { setTasksSubTab('create'); window.history.pushState({}, '', '/dashboard/hiring/my-tasks/create'); }}
-                        style={{ margin: '0 auto' }}
+                        style={{ margin: '0 auto', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
                       >
                         <Plus size={16} /> Create Task
                       </button>
@@ -2939,14 +2982,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       const pendingCount = isExpanded
                         ? applications.filter(a => a.status === 'pending').length
                         : (task.pending_applicant_count || 0)
+                      const cancellable = ['open', 'pending_acceptance', 'assigned', 'in_progress'].includes(task.status)
+                      const isEditing = editingTaskId === task.id
 
                       return (
-                        <div key={task.id} className="dashboard-v4-task-card">
+                        <div key={task.id} className="dashboard-v4-task-card" style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/tasks/${task.id}`}>
                           <div className="dashboard-v4-task-header">
                             <div>
-                              <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
-                                {getStatusLabel(task.status)}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
+                                  {getStatusLabel(task.status)}
+                                </span>
+                                {pendingCount > 0 && (
+                                  <span style={{ background: 'var(--orange-600)', color: 'white', fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 12 }}>
+                                    {pendingCount} applicant{pendingCount !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
                               <h3 className="dashboard-v4-task-title" style={{ marginTop: 8 }}>{task.title}</h3>
                             </div>
                             <span className="dashboard-v4-task-budget">${task.budget || 0}</span>
@@ -2955,14 +3007,100 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           <div className="dashboard-v4-task-meta">
                             <span className="dashboard-v4-task-meta-item"><FolderOpen size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.category || 'General'}</span>
                             <span className="dashboard-v4-task-meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
+                            <span className="dashboard-v4-task-meta-item"><CalendarDays size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
                             {task.assignee && (
                               <span className="dashboard-v4-task-meta-item"><User size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.assignee.name}</span>
                             )}
                           </div>
 
+                          {/* Action buttons row */}
+                          <div style={{ display: 'flex', gap: 8, marginTop: 12 }} onClick={e => e.stopPropagation()}>
+                            {isOpen && (
+                              <button
+                                className="v4-btn v4-btn-secondary"
+                                style={{ fontSize: 13, padding: '6px 12px' }}
+                                onClick={() => {
+                                  setEditingTaskId(isEditing ? null : task.id)
+                                  if (!isEditing) setEditForm({ title: task.title, description: task.description || '', budget: task.budget, category: task.category || '', location: task.city || '', is_remote: task.is_remote || false, deadline: task.deadline || '' })
+                                }}
+                              >
+                                <FileText size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                                {isEditing ? 'Cancel Edit' : 'Edit'}
+                              </button>
+                            )}
+                            {cancellable && (
+                              <button
+                                className="v4-btn"
+                                style={{ fontSize: 13, padding: '6px 12px', color: '#dc2626', border: '1px solid #fecaca', background: '#fef2f2' }}
+                                onClick={() => setCancelConfirmId(cancelConfirmId === task.id ? null : task.id)}
+                              >
+                                <Ban size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                                Cancel Task
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Cancel confirmation */}
+                          {cancelConfirmId === task.id && (
+                            <div style={{ marginTop: 12, padding: 16, background: '#fef2f2', borderRadius: 'var(--radius-md)', border: '1px solid #fecaca' }} onClick={e => e.stopPropagation()}>
+                              <p style={{ fontSize: 14, color: '#dc2626', fontWeight: 500, marginBottom: 12 }}>Are you sure you want to cancel this task?</p>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                  className="v4-btn"
+                                  style={{ fontSize: 13, padding: '6px 16px', color: 'white', background: '#dc2626', border: 'none' }}
+                                  disabled={cancellingTaskId === task.id}
+                                  onClick={() => handleCancelTask(task.id)}
+                                >
+                                  {cancellingTaskId === task.id ? 'Cancelling...' : 'Yes, Cancel'}
+                                </button>
+                                <button className="v4-btn v4-btn-secondary" style={{ fontSize: 13, padding: '6px 16px' }} onClick={() => setCancelConfirmId(null)}>No, Keep</button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Inline edit form */}
+                          {isEditing && (
+                            <div style={{ marginTop: 12, padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }} onClick={e => e.stopPropagation()}>
+                              <div style={{ display: 'grid', gap: 12 }}>
+                                <div>
+                                  <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Title</label>
+                                  <input type="text" value={editForm.title || ''} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Description</label>
+                                  <textarea value={editForm.description || ''} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} rows={3} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14, resize: 'vertical' }} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                  <div>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Budget ($)</label>
+                                    <input type="number" value={editForm.budget || ''} onChange={e => setEditForm(f => ({ ...f, budget: parseFloat(e.target.value) || '' }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Category</label>
+                                    <input type="text" value={editForm.category || ''} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                  </div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                  <div>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Location</label>
+                                    <input type="text" value={editForm.location || ''} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Deadline</label>
+                                    <input type="datetime-local" value={editForm.deadline ? editForm.deadline.slice(0, 16) : ''} onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: 14 }} />
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                  <button className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }} onClick={() => { setEditingTaskId(null); setEditForm({}) }}>Cancel</button>
+                                  <button className="v4-btn v4-btn-primary" style={{ fontSize: 13 }} onClick={() => handleEditTask(task.id)}>Save Changes</button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* View Applicants Button for open tasks */}
                           {isOpen && (
-                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)' }} onClick={e => e.stopPropagation()}>
                               <button
                                 onClick={() => {
                                   if (isExpanded) {
@@ -2984,52 +3122,111 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                     <p style={{ color: 'var(--text-tertiary)', fontSize: 14, textAlign: 'center', padding: 16 }}>No applicants yet</p>
                                   ) : (
                                     applications.map(app => (
-                                      <div key={app.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                                            {app.applicant?.name?.[0]?.toUpperCase() || '?'}
-                                          </div>
-                                          <div>
-                                            <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
-                                            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                              <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
-                                              {app.applicant?.success_rate !== null && app.applicant?.success_rate !== undefined && app.applicant?.success_rate < 70 && (
-                                                <span style={{ color: '#D97706', fontSize: 12, marginLeft: 6 }} title="Below average success rate">
-                                                  ⚠ {app.applicant.success_rate}% success
-                                                </span>
+                                      <div key={app.id} style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', marginBottom: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, flexShrink: 0 }}>
+                                              {app.applicant?.name?.[0]?.toUpperCase() || '?'}
+                                            </div>
+                                            <div>
+                                              <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
+                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                                <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                                {app.applicant?.success_rate !== null && app.applicant?.success_rate !== undefined && app.applicant?.success_rate < 70 && (
+                                                  <span style={{ color: '#D97706', fontSize: 12, marginLeft: 6 }} title="Below average success rate">
+                                                    ⚠ {app.applicant.success_rate}% success
+                                                  </span>
+                                                )}
+                                              </p>
+                                              {app.cover_letter && (
+                                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
                                               )}
-                                            </p>
-                                            {app.cover_letter && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
-                                            )}
-                                            {app.availability && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
-                                            )}
-                                            {app.questions && (
-                                              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
-                                            )}
-                                            {app.proposed_rate != null && (
-                                              <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate}</p>
-                                            )}
+                                              {app.availability && (
+                                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Availability:</strong> {app.availability}</p>
+                                              )}
+                                              {app.questions && (
+                                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}><strong>Questions:</strong> {app.questions}</p>
+                                              )}
+                                              {app.proposed_rate != null && (
+                                                <p style={{ fontSize: 13, color: 'var(--orange-600)', marginTop: 2, fontWeight: 600 }}>Counter offer: ${app.proposed_rate}</p>
+                                              )}
+                                            </div>
                                           </div>
+                                          {app.status === 'rejected' ? (
+                                            <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 500 }}>Declined</span>
+                                          ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                                              <button
+                                                onClick={() => handleAssignHuman(task.id, app.human_id)}
+                                                disabled={assigningHuman === app.human_id}
+                                                className="v4-btn v4-btn-primary"
+                                                style={{ fontSize: 13 }}
+                                              >
+                                                {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (Card)'}
+                                              </button>
+                                              <button
+                                                onClick={() => handleAssignHuman(task.id, app.human_id, 'usdc')}
+                                                disabled={assigningHuman === app.human_id}
+                                                className="v4-btn"
+                                                style={{ fontSize: 12, padding: '6px 12px', color: '#2563eb', border: '1px solid #2563eb', background: '#eff6ff' }}
+                                              >
+                                                {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (USDC)'}
+                                              </button>
+                                              <button
+                                                onClick={() => handleDeclineApplication(task.id, app.id)}
+                                                disabled={decliningAppId === app.id}
+                                                className="v4-btn"
+                                                style={{ fontSize: 12, padding: '6px 12px', color: '#dc2626', border: '1px solid #fecaca', background: '#fef2f2' }}
+                                              >
+                                                {decliningAppId === app.id ? 'Declining...' : 'Decline'}
+                                              </button>
+                                              <button
+                                                onClick={() => { setNegotiateAppId(negotiateAppId === app.id ? null : app.id); setNegotiateMsg('') }}
+                                                className="v4-btn"
+                                                style={{ fontSize: 12, padding: '6px 12px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                                              >
+                                                <MessageCircle size={13} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                                                Negotiate
+                                              </button>
+                                            </div>
+                                          )}
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-                                          <button
-                                            onClick={() => handleAssignHuman(task.id, app.human_id)}
-                                            disabled={assigningHuman === app.human_id}
-                                            className="v4-btn v4-btn-primary"
-                                          >
-                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (Card)'}
-                                          </button>
-                                          <button
-                                            onClick={() => handleAssignHuman(task.id, app.human_id, 'usdc')}
-                                            disabled={assigningHuman === app.human_id}
-                                            className="v4-btn"
-                                            style={{ fontSize: 12, padding: '6px 12px', color: '#2563eb', border: '1px solid #2563eb', background: '#eff6ff' }}
-                                          >
-                                            {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (USDC)'}
-                                          </button>
-                                        </div>
+
+                                        {/* Note for accept */}
+                                        {app.status !== 'rejected' && (
+                                          <div style={{ marginTop: 10 }}>
+                                            <input
+                                              type="text"
+                                              placeholder="Add a note for the worker (optional)..."
+                                              value={assignNotes[app.human_id] || ''}
+                                              onClick={e => e.stopPropagation()}
+                                              onChange={e => setAssignNotes(prev => ({ ...prev, [app.human_id]: e.target.value }))}
+                                              style={{ width: '100%', padding: '6px 10px', fontSize: 13, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                                            />
+                                          </div>
+                                        )}
+
+                                        {/* Negotiate message input */}
+                                        {negotiateAppId === app.id && (
+                                          <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                                            <input
+                                              type="text"
+                                              placeholder="Send a message to negotiate..."
+                                              value={negotiateMsg}
+                                              onChange={e => setNegotiateMsg(e.target.value)}
+                                              onKeyDown={e => { if (e.key === 'Enter') handleNegotiate(task.id, app.human_id) }}
+                                              style={{ flex: 1, padding: '6px 10px', fontSize: 13, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                                            />
+                                            <button
+                                              className="v4-btn v4-btn-primary"
+                                              style={{ fontSize: 13, padding: '6px 12px' }}
+                                              onClick={() => handleNegotiate(task.id, app.human_id)}
+                                              disabled={!negotiateMsg.trim()}
+                                            >
+                                              Send
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     ))
                                   )}
@@ -3039,7 +3236,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           )}
 
                           {needsAction && (
-                            <div className="dashboard-v4-task-actions">
+                            <div className="dashboard-v4-task-actions" onClick={e => e.stopPropagation()}>
                               <button className="v4-btn v4-btn-primary" onClick={() => setShowProofReview(task.id)}>
                                 Review Proof
                               </button>
@@ -3136,54 +3333,67 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <SkillAutocomplete
-                      value={filterCategory}
-                      onChange={setFilterCategory}
-                      placeholder="Search skills..."
-                      allLabel="All Skills"
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <CityAutocomplete
-                      value={browseCityFilter}
-                      onChange={(cityData) => setBrowseCityFilter(cityData.city || '')}
-                      placeholder="Search city..."
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <CountryAutocomplete
-                      value={browseCountryFilter}
-                      onChange={(name, code) => {
-                        setBrowseCountryFilter(name)
-                        setBrowseCountryCodeFilter(code || '')
-                      }}
-                      placeholder="Search country..."
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 120px' }}>
-                    <input
-                      type="number"
-                      placeholder="Max $/hr"
-                      min="1"
-                      className="dashboard-v4-form-input"
-                      value={browseMaxRate}
-                      onChange={(e) => setBrowseMaxRate(e.target.value)}
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 160px' }}>
-                    <CustomDropdown
-                      value={browseSort}
-                      onChange={setBrowseSort}
-                      options={[
-                        { value: 'rating', label: 'Top Rated' },
-                        { value: 'most_reviewed', label: 'Most Reviewed' },
-                        { value: 'price_low', label: 'Price: Low to High' },
-                        { value: 'price_high', label: 'Price: High to Low' },
-                        { value: 'newest', label: 'Newest' },
-                      ]}
-                      placeholder="Top Rated"
-                    />
+                  {/* Mobile: Filters toggle button */}
+                  <button
+                    className="browse-filters-toggle-btn"
+                    onClick={() => {
+                      const el = document.querySelector('.browse-extra-filters')
+                      if (el) el.classList.toggle('browse-extra-filters-hidden')
+                    }}
+                    style={{ display: 'none', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    <ChevronDown size={16} /> Filters
+                  </button>
+                  <div className="browse-extra-filters browse-extra-filters-hidden" style={{ display: 'contents' }}>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <SkillAutocomplete
+                        value={filterCategory}
+                        onChange={setFilterCategory}
+                        placeholder="Search skills..."
+                        allLabel="All Skills"
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <CityAutocomplete
+                        value={browseCityFilter}
+                        onChange={(cityData) => setBrowseCityFilter(cityData.city || '')}
+                        placeholder="Search city..."
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <CountryAutocomplete
+                        value={browseCountryFilter}
+                        onChange={(name, code) => {
+                          setBrowseCountryFilter(name)
+                          setBrowseCountryCodeFilter(code || '')
+                        }}
+                        placeholder="Search country..."
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 120px' }}>
+                      <input
+                        type="number"
+                        placeholder="Max $/hr"
+                        min="1"
+                        className="dashboard-v4-form-input"
+                        value={browseMaxRate}
+                        onChange={(e) => setBrowseMaxRate(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 160px' }}>
+                      <CustomDropdown
+                        value={browseSort}
+                        onChange={setBrowseSort}
+                        options={[
+                          { value: 'rating', label: 'Top Rated' },
+                          { value: 'most_reviewed', label: 'Most Reviewed' },
+                          { value: 'price_low', label: 'Price: Low to High' },
+                          { value: 'price_high', label: 'Price: High to Low' },
+                          { value: 'newest', label: 'Newest' },
+                        ]}
+                        placeholder="Top Rated"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -3205,10 +3415,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       }
                     })
                   return filtered.length === 0 ? (
-                    <div className="dashboard-v4-empty">
-                      <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-                      <p className="dashboard-v4-empty-title">No humans found</p>
-                      <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
+                    <div className="dashboard-v4-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><Users size={48} style={{ color: 'var(--text-muted, #AAAAAA)' }} /></div>
+                      <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>No humans match your search</p>
+                      <p style={{ fontSize: 14, maxWidth: 300, margin: '0 auto 16px', color: 'var(--text-secondary)' }}>
+                        Humans are joining daily. Try broadening your filters or post a task and let humans come to you.
+                      </p>
+                      <button
+                        onClick={() => { setTasksSubTab('create'); setActiveTab('posted') }}
+                        style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                      >
+                        <Plus size={16} /> Post a Task
+                      </button>
                     </div>
                   ) : (
                     <div className="browse-humans-grid">
@@ -3218,7 +3436,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           human={human}
                           variant="dashboard"
                           onExpand={(h) => window.location.href = `/humans/${h.id}`}
-                          onHire={() => { setTasksSubTab('create'); setActiveTab('posted') }}
+                          onHire={(human) => { setHireTarget(human); setTasksSubTab('create'); setActiveTabState('posted'); window.history.pushState({}, '', `/dashboard/hiring/create?hire=${human.id}`); trackPageView('/dashboard/hiring/create'); }}
                           onBookmark={toggleBookmark}
                           isBookmarked={bookmarkedHumans.includes(human.id)}
                         />
@@ -3439,7 +3657,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Profile Tab - Edit Profile with Avatar Upload */}
         {activeTab === 'profile' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0, gap: 8, flexWrap: 'wrap' }}>
               <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>Profile</h1>
               <button
                 onClick={() => {
@@ -3457,10 +3675,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   color: profileLinkCopied ? 'var(--orange-600)' : 'var(--text-secondary)',
                   fontSize: 13, fontWeight: 500, cursor: 'pointer',
                   transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {profileLinkCopied ? <Check size={14} /> : <Copy size={14} />}
-                {profileLinkCopied ? 'Copied!' : 'Copy Profile Link'}
+                {profileLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
             </div>
 
@@ -3502,7 +3721,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
             <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               {/* Avatar Upload */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+              <div className="profile-avatar-section" style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
                 <div
                   style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
                   onClick={() => avatarInputRef.current?.click()}
@@ -3681,15 +3900,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name}</h2>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{user?.email}</p>
-                  <button
-                    onClick={() => avatarInputRef.current?.click()}
-                    style={{ fontSize: 13, color: 'var(--orange-500)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4, fontWeight: 500 }}
-                  >
-                    {user?.avatar_url ? 'Change photo' : 'Add photo'}
-                  </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name || 'Your Name'}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>{user?.email}</div>
+                  {!user?.verified && (
+                    <a href="/premium" className="profile-get-verified-btn" style={{ marginTop: 8 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                      Get Verified
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -4169,7 +4390,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* Compact Plan Row */}
-                <div className="settings-plan-row" style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div className="settings-plan-row" style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                     <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', flexShrink: 0 }}>
                       {(user?.subscription_tier || 'free').charAt(0).toUpperCase() + (user?.subscription_tier || 'free').slice(1)} Plan
@@ -4207,6 +4428,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       </div>
                     </div>
                     <button
+                      className="settings-availability-toggle"
                       onClick={async () => {
                         const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
                         console.log('[Availability] Toggling:', user?.availability, '→', newStatus)
@@ -4254,7 +4476,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         flexShrink: 0
                       }}
                     >
-                      <div style={{
+                      <div className="settings-availability-toggle-knob" style={{
                         width: 22,
                         height: 22,
                         borderRadius: '50%',
@@ -4423,8 +4645,161 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ marginBottom: 14 }}>
                     <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14 }}>Email</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{user?.email}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{user?.email}</p>
+                      {(emailVerifSuccess || user?.email_verified) ? (
+                        <span style={{ padding: '2px 8px', background: 'rgba(22, 163, 74, 0.1)', color: '#16A34A', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Verified</span>
+                      ) : (
+                        <span style={{ padding: '2px 8px', background: 'rgba(251, 191, 36, 0.1)', color: '#D97706', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Unverified</span>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Email verification section */}
+                  {!(emailVerifSuccess || user?.email_verified) && (
+                    <div style={{ padding: '12px 14px', background: 'rgba(251, 191, 36, 0.06)', border: '1px solid rgba(251, 191, 36, 0.15)', borderRadius: 'var(--radius-md)', marginBottom: 14 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Verify your email</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10 }}>Verified accounts get more task offers and build trust with agents</p>
+
+                      {emailVerifError && (
+                        <div style={{ padding: '8px 10px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 'var(--radius-sm)', marginBottom: 8, fontSize: 12, color: '#EF4444' }}>{emailVerifError}</div>
+                      )}
+
+                      {!emailVerifSent ? (
+                        <button
+                          className="v4-btn v4-btn-primary"
+                          style={{ width: '100%', fontSize: 13, padding: '8px 16px' }}
+                          disabled={emailVerifSending}
+                          onClick={async () => {
+                            setEmailVerifSending(true)
+                            setEmailVerifError('')
+                            try {
+                              let token = user.token || ''
+                              if (supabase) {
+                                const { data: { session } } = await supabase.auth.getSession()
+                                if (session?.access_token) token = session.access_token
+                              }
+                              const res = await fetch(`${API_URL}/auth/send-verification`, {
+                                method: 'POST',
+                                headers: { Authorization: token }
+                              })
+                              const data = await res.json().catch(() => ({}))
+                              if (res.ok) {
+                                if (data.message === 'Email already verified') {
+                                  setEmailVerifSuccess(true)
+                                  toast.success('Email already verified!')
+                                } else {
+                                  setEmailVerifSent(true)
+                                  toast.success('Verification code sent!')
+                                }
+                              } else {
+                                setEmailVerifError(data.error || 'Failed to send verification code')
+                              }
+                            } catch (e) {
+                              setEmailVerifError('Network error. Please try again.')
+                            } finally {
+                              setEmailVerifSending(false)
+                            }
+                          }}
+                        >
+                          {emailVerifSending ? 'Sending...' : 'Send Verification Code'}
+                        </button>
+                      ) : (
+                        <div>
+                          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, textAlign: 'center' }}>
+                            Enter the 6-digit code sent to <strong>{user?.email}</strong>
+                          </p>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={emailVerifCode}
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                              setEmailVerifCode(val)
+                            }}
+                            style={{
+                              width: '100%', textAlign: 'center', fontSize: 20, fontWeight: 600,
+                              letterSpacing: 8, fontFamily: 'monospace', padding: '10px 12px',
+                              background: 'var(--bg-secondary)', border: '1px solid rgba(0,0,0,0.1)',
+                              borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                              outline: 'none', boxSizing: 'border-box'
+                            }}
+                          />
+                          <button
+                            className="v4-btn v4-btn-primary"
+                            style={{ width: '100%', fontSize: 13, padding: '8px 16px', marginTop: 8 }}
+                            disabled={emailVerifying || emailVerifCode.length < 6}
+                            onClick={async () => {
+                              if (!emailVerifCode.trim()) return
+                              setEmailVerifying(true)
+                              setEmailVerifError('')
+                              try {
+                                let token = user.token || ''
+                                if (supabase) {
+                                  const { data: { session } } = await supabase.auth.getSession()
+                                  if (session?.access_token) token = session.access_token
+                                }
+                                const res = await fetch(`${API_URL}/auth/verify-email`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', Authorization: token },
+                                  body: JSON.stringify({ code: emailVerifCode.trim() })
+                                })
+                                const data = await res.json().catch(() => ({}))
+                                if (res.ok) {
+                                  setEmailVerifSuccess(true)
+                                  toast.success('Email verified successfully!')
+                                } else {
+                                  setEmailVerifError(data.error || 'Invalid code')
+                                }
+                              } catch (e) {
+                                setEmailVerifError('Network error. Please try again.')
+                              } finally {
+                                setEmailVerifying(false)
+                              }
+                            }}
+                          >
+                            {emailVerifying ? 'Verifying...' : 'Verify'}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setEmailVerifSending(true)
+                              setEmailVerifError('')
+                              try {
+                                let token = user.token || ''
+                                if (supabase) {
+                                  const { data: { session } } = await supabase.auth.getSession()
+                                  if (session?.access_token) token = session.access_token
+                                }
+                                const res = await fetch(`${API_URL}/auth/send-verification`, {
+                                  method: 'POST',
+                                  headers: { Authorization: token }
+                                })
+                                if (res.ok) toast.success('Code resent!')
+                                else {
+                                  const data = await res.json().catch(() => ({}))
+                                  setEmailVerifError(data.error || 'Failed to resend')
+                                }
+                              } catch (e) {
+                                setEmailVerifError('Network error.')
+                              } finally {
+                                setEmailVerifSending(false)
+                              }
+                            }}
+                            disabled={emailVerifSending}
+                            style={{
+                              background: 'none', border: 'none', color: 'var(--text-tertiary)',
+                              fontSize: 12, cursor: 'pointer', marginTop: 6, width: '100%',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {emailVerifSending ? 'Sending...' : 'Resend code'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: 14, marginBottom: 14, opacity: 0.5 }} />
 
@@ -4535,12 +4910,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
                   </div>
                 ) : conversations.length === 0 ? (
-                  <div className="mobile-empty-state" style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                  <div className="mobile-empty-state" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                     <div className="mobile-empty-state-icon" style={{ width: 48, height: 48, background: 'var(--bg-tertiary)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
                       <MessageCircle size={24} />
                     </div>
-                    <p style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)', fontSize: 16 }}>No conversations yet</p>
-                    <p style={{ fontSize: 13, maxWidth: 240, margin: '0 auto', lineHeight: 1.5 }}>Start a conversation by applying to a task or browsing available work</p>
+                    <p style={{ fontWeight: 600, marginBottom: 6, fontSize: 18, color: 'var(--text-primary)' }}>No conversations yet</p>
+                    <p style={{ fontSize: 14, maxWidth: 280, margin: '0 auto', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {hiringMode
+                        ? 'Messages will appear here once you hire a human for a task.'
+                        : 'Messages will appear here when you apply for or start working on a task.'}
+                    </p>
                   </div>
                 ) : (
                   conversations.map(c => {
@@ -4760,54 +5139,47 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             onClose={() => setExpandedHumanId(null)}
             onHire={(human) => {
               setExpandedHumanId(null)
+              setHireTarget(human)
               setTasksSubTab('create')
-              setActiveTab('posted')
+              setActiveTabState('posted')
+              window.history.pushState({}, '', `/dashboard/hiring/create?hire=${human.id}`)
+              trackPageView('/dashboard/hiring/create')
             }}
             user={user}
           />
         )}
       </main>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="mobile-bottom-nav">
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          <BarChart3 size={22} />
-          <span>Dashboard</span>
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'tasks' || activeTab === 'posted' ? 'active' : ''}`}
-          onClick={() => setActiveTab(hiringMode ? 'posted' : 'tasks')}
-        >
-          <ClipboardList size={22} />
-          <span>Tasks</span>
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'browse' ? 'active' : ''}`}
-          onClick={() => setActiveTab('browse')}
-        >
-          <Search size={22} />
-          <span>Browse</span>
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'messages' ? 'active' : ''}`}
-          onClick={() => setActiveTab('messages')}
-        >
-          <MessageCircle size={22} />
-          <span>Messages</span>
-          {unreadMessages > 0 && (
-            <span className="mobile-bottom-nav-badge">{unreadMessages > 9 ? '9+' : unreadMessages}</span>
-          )}
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          <Settings size={22} />
-          <span>Settings</span>
-        </button>
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="dashboard-v4-bottom-tabs">
+        {(() => {
+          const bottomTabs = hiringMode
+            ? [
+                { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={22} /> },
+                { id: 'posted', label: 'Tasks', icon: <ClipboardList size={22} /> },
+                { id: 'browse', label: 'Humans', icon: <Users size={22} /> },
+                { id: 'messages', label: 'Messages', icon: <MessageCircle size={22} />, badge: unreadMessages },
+                { id: 'settings', label: 'Settings', icon: <Settings size={22} /> },
+              ]
+            : [
+                { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={22} /> },
+                { id: 'tasks', label: 'Tasks', icon: <ClipboardList size={22} /> },
+                { id: 'browse', label: 'Browse', icon: <Search size={22} /> },
+                { id: 'messages', label: 'Messages', icon: <MessageCircle size={22} />, badge: unreadMessages },
+                { id: 'settings', label: 'Settings', icon: <Settings size={22} /> },
+              ]
+          return bottomTabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`dashboard-v4-bottom-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(tab.id); setSidebarOpen(false) }}
+            >
+              <span className="dashboard-v4-bottom-tab-icon">{tab.icon}</span>
+              <span className="dashboard-v4-bottom-tab-label">{tab.label}</span>
+              {tab.badge > 0 && <span className="dashboard-v4-bottom-tab-badge">{tab.badge > 9 ? '9+' : tab.badge}</span>}
+            </button>
+          ))
+        })()}
       </nav>
     </div>
   )

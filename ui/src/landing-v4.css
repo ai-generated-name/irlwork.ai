@@ -5222,6 +5222,16 @@
   line-height: 1.5;
 }
 
+/* Tab content panels */
+.ca-tab-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+.ca-tab-one-click { width: 100%; }
+.ca-tab-terminal { width: 100%; }
+
 /* Copy & Paste tab */
 .ca-tab-copy-paste {
   display: flex;
@@ -7038,37 +7048,39 @@
 .mytasks-filter-pill {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border-radius: 9999px;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
   font-family: var(--font-display);
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--bg-secondary);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
   cursor: pointer;
   white-space: nowrap;
   transition: all var(--duration-normal) var(--ease-smooth);
 }
 
 .mytasks-filter-pill:hover {
-  border-color: rgba(0, 0, 0, 0.15);
+  color: var(--text-secondary);
   background: var(--bg-tertiary);
 }
 
 .mytasks-filter-pill.active {
   background: var(--text-primary);
   color: white;
-  border-color: var(--text-primary);
 }
 
 .mytasks-filter-count {
   font-size: 11px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+  padding: 0px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  min-width: 18px;
+  text-align: center;
+  line-height: 18px;
 }
 
 .mytasks-filter-pill.active .mytasks-filter-count {
@@ -7743,6 +7755,71 @@
     right: var(--space-4);
     width: 240px;
     max-width: calc(100vw - var(--space-8));
+  }
+
+  /* Sidebar mobile overrides */
+  .dashboard-v4-sidebar {
+    width: 280px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .dashboard-v4-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9989;
+  }
+
+  .dashboard-v4-nav-item {
+    padding: 10px 16px;
+    font-size: 15px;
+    gap: 10px;
+  }
+
+  .dashboard-v4-nav-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .dashboard-v4-nav-label {
+    font-size: 15px;
+  }
+
+  .dashboard-v4-sidebar-social-link .dashboard-v4-nav-label {
+    font-size: 13px;
+    color: var(--text-tertiary);
+  }
+
+  .dashboard-v4-mode-switch-btn {
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+
+  .dashboard-v4-upgrade-premium-btn {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .dashboard-v4-connect-agent-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    margin: 0 var(--space-4);
+    border: 1px solid var(--orange-500);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--orange-600);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+
+  .dashboard-v4-connect-agent-btn:hover {
+    background: rgba(232, 133, 61, 0.06);
   }
 }
 
@@ -8481,34 +8558,39 @@ select.select-v4-dark option:checked,
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10000;
   }
   .navbar-v4-links {
     display: none !important;
-    position: absolute;
-    top: 100%;
+    position: fixed;
+    top: 60px;
     left: 0;
     right: 0;
+    bottom: 0;
+    z-index: 9998;
     background: rgba(250, 250, 248, 0.98);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     flex-direction: column;
-    padding: 8px 16px 16px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 16px;
     gap: 4px !important;
-    box-shadow: var(--shadow-md);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .navbar-v4-links.open {
     display: flex !important;
   }
   .navbar-v4-links a,
   .navbar-v4-links button {
-    padding: 12px 16px !important;
-    min-height: 44px;
+    padding: 14px 16px !important;
+    min-height: 48px;
     display: flex !important;
     align-items: center;
-    border-radius: 8px;
+    border-radius: 10px;
     width: 100%;
     text-align: left;
     box-sizing: border-box;
+    font-size: 15px !important;
   }
   .navbar-v4-links a:hover,
   .navbar-v4-links button:hover {
@@ -10679,6 +10761,864 @@ select.select-v4-dark option:checked,
 .ticker-wrapper {
   margin-top: 0;
   margin-bottom: 0;
+}
+
+/* ─── MOBILE BOTTOM TAB BAR ─── */
+.dashboard-v4-bottom-tabs {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9980;
+  background: var(--bg-secondary);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom, 0px));
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: stretch;
+}
+
+.dashboard-v4-bottom-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: color var(--duration-fast) var(--ease-smooth);
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+
+.dashboard-v4-bottom-tab.active {
+  color: var(--accent-orange);
+}
+
+.dashboard-v4-bottom-tab-icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-v4-bottom-tab-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.dashboard-v4-bottom-tab-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.dashboard-v4-bottom-tab.active .dashboard-v4-bottom-tab-label {
+  font-weight: 600;
+}
+
+.dashboard-v4-bottom-tab-badge {
+  position: absolute;
+  top: 2px;
+  right: calc(50% - 16px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent-orange);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .dashboard-v4-bottom-tabs {
+    display: flex;
+  }
+
+  /* Add bottom padding to dashboard content so nothing hides behind bottom tabs */
+  .dashboard-v4-content {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ─── ROUND 2: MOBILE FIXES ─── */
+
+/* Map FAB above bottom tab bar */
+@media (max-width: 900px) {
+  .browse-tasks-v2-map-fab {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 16px) !important;
+  }
+}
+
+/* Browse Tasks location bar — collapsible on mobile */
+@media (max-width: 768px) {
+  .browse-tasks-v2-location-bar.collapsed {
+    display: none !important;
+  }
+
+  .browse-tasks-v2-location-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .browse-tasks-v2-location-toggle svg {
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+  }
+
+  .browse-tasks-v2-location-toggle .location-summary {
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 769px) {
+  .browse-tasks-v2-location-toggle {
+    display: none;
+  }
+}
+
+/* My Tasks section headers */
+@media (max-width: 640px) {
+  .mytasks-section__title {
+    font-size: 12px !important;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    letter-spacing: 0.05em;
+    margin-top: 16px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .mytasks-section__count {
+    font-size: 12px !important;
+  }
+
+  /* Task card title sizing on mobile */
+  .task-card-v2-title {
+    font-size: 17px !important;
+  }
+
+  /* Accept/action button sizing */
+  .mytasks-card .v4-btn,
+  .mytasks-card .task-card-v2-apply-btn {
+    height: 44px;
+    max-height: 44px;
+    padding: 10px 20px;
+    font-size: 15px;
+  }
+}
+
+/* Earnings summary stats */
+.earnings-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.earnings-stat {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+}
+
+.earnings-stat-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+
+.earnings-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+}
+
+.earnings-stat--available .earnings-stat-value {
+  color: var(--success);
+}
+
+.earnings-flow-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.earnings-flow-toggle svg {
+  transition: transform 0.2s;
+}
+
+.earnings-flow-toggle.expanded svg {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 640px) {
+  .earnings-summary-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .earnings-stat {
+    padding: 12px 8px;
+  }
+
+  .earnings-stat-value {
+    font-size: 18px;
+  }
+
+  .earnings-stat-label {
+    font-size: 11px;
+  }
+}
+
+/* Profile mobile fixes */
+@media (max-width: 640px) {
+  .profile-avatar-section {
+    gap: 12px !important;
+  }
+
+  .profile-avatar-section img,
+  .profile-avatar-section .profile-avatar-fallback {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  .profile-avatar-section .profile-avatar-camera {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .profile-get-verified-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--orange-500);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--orange-600);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    height: 36px;
+  }
+}
+
+@media (min-width: 641px) {
+  .profile-get-verified-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--orange-500);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--orange-600);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    height: 36px;
+  }
+}
+
+/* Premium billing toggle - pill style */
+.premium-billing-toggle {
+  display: inline-flex;
+  background: rgba(26, 26, 26, 0.06);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.premium-billing-toggle button {
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: var(--font-display);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.premium-billing-toggle button.active {
+  background: var(--text-primary);
+  color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.premium-save-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--orange-600);
+  background: rgba(244, 132, 95, 0.1);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.premium-billing-toggle button.active .premium-save-badge {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Premium plan quick tabs (mobile only) */
+.premium-plan-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.premium-plan-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.premium-plan-tab {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: var(--font-display);
+}
+
+.premium-plan-tab.active {
+  background: var(--text-primary);
+  color: white;
+  border-color: var(--text-primary);
+}
+
+/* Settings toggle sizing on mobile */
+@media (max-width: 640px) {
+  .settings-availability-toggle {
+    width: 44px !important;
+    height: 26px !important;
+    border-radius: 13px !important;
+  }
+
+  .settings-availability-toggle-knob {
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 10px !important;
+  }
+
+  .settings-plan-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+}
+
+/* ─── NAVBAR V4 MOBILE DROPDOWN FIX ─── */
+@media (max-width: 768px) {
+  .navbar-v4 {
+    position: fixed;
+    z-index: 9999;
+  }
+
+  .navbar-v4-links {
+    z-index: 9998;
+    position: fixed !important;
+    top: 60px !important;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(250, 250, 248, 0.98) !important;
+    backdrop-filter: blur(16px) !important;
+    flex-direction: column;
+    padding: 16px !important;
+    gap: 4px !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: none !important;
+    box-shadow: none !important;
+  }
+
+  .navbar-v4-links.open {
+    display: flex !important;
+  }
+
+  /* Prevent body scroll when mobile nav is open */
+  body.mobile-nav-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+}
+
+/* ─── MOBILE TYPOGRAPHY & SPACING OVERRIDES ─── */
+@media (max-width: 640px) {
+  /* Dashboard page titles */
+  .dashboard-v4-page-title,
+  .hiring-dash-greeting,
+  .working-dash-greeting {
+    font-size: 22px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Section headings */
+  .dashboard-v4-section-heading,
+  .hiring-dash-section-title,
+  .working-dash-section-title {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Stat values */
+  .hiring-dash-stat-value,
+  .working-dash-stat-value {
+    font-size: 20px !important;
+  }
+
+  /* Stat labels */
+  .hiring-dash-stat-label,
+  .working-dash-stat-label {
+    font-size: 12px !important;
+  }
+
+  /* Stat icons - smaller on mobile */
+  .hiring-dash-stat-icon,
+  .working-dash-stat-icon {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .hiring-dash-stat-icon svg,
+  .working-dash-stat-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Stat cards - tighter padding */
+  .hiring-dash-stat,
+  .working-dash-stat {
+    padding: 12px !important;
+    gap: 10px !important;
+  }
+
+  /* Stats grid - 2x2 compact */
+  .hiring-dash-stats,
+  .working-dash-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Dashboard content area - tighter padding */
+  .dashboard-v4-content {
+    padding: 12px 16px !important;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Card padding */
+  .dashboard-v4-card,
+  .hiring-dash-empty,
+  .working-dash-empty,
+  .mytasks-empty-state {
+    padding: 16px !important;
+  }
+
+  /* Section gaps */
+  .hiring-dash,
+  .working-dash {
+    gap: 16px !important;
+  }
+
+  /* Sub-tabs / filter rows - scrollable */
+  .dashboard-v4-sub-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    gap: 0 !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 2px;
+  }
+
+  .dashboard-v4-sub-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dashboard-v4-sub-tab {
+    font-size: 13px !important;
+    padding: 8px 12px !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Empty state sizing */
+  .hiring-dash-empty-icon svg,
+  .working-dash-empty-icon svg,
+  .mytasks-empty-state-icon svg {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .hiring-dash-empty-title,
+  .working-dash-empty-title,
+  .mytasks-empty-state-title {
+    font-size: 18px !important;
+  }
+
+  .hiring-dash-empty-text,
+  .working-dash-empty-text,
+  .mytasks-empty-state-text {
+    font-size: 14px !important;
+  }
+
+  /* Hiring dashboard header - keep row layout */
+  .hiring-dash-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: var(--space-3) !important;
+  }
+
+  /* Create Task button - auto-width, not full */
+  .hiring-dash-create-btn {
+    width: auto !important;
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+  }
+
+  /* Getting Started checklist */
+  .hiring-dash-checklist-item,
+  .working-dash-checklist-item {
+    padding: 12px 16px !important;
+  }
+
+  .hiring-dash-checklist-title,
+  .working-dash-checklist-title {
+    font-size: 14px !important;
+  }
+
+  .hiring-dash-checklist-desc,
+  .working-dash-checklist-desc {
+    font-size: 13px !important;
+  }
+
+  /* Form inputs */
+  .create-task-container input,
+  .create-task-container textarea,
+  .create-task-container select,
+  .dashboard-v4-content input,
+  .dashboard-v4-content textarea,
+  .dashboard-v4-content select {
+    font-size: 14px !important;
+    min-height: 44px;
+  }
+
+  /* Create Task form */
+  .create-task-container {
+    border-radius: var(--radius-lg) !important;
+  }
+
+  .create-task-header {
+    padding: 16px !important;
+  }
+
+  .create-task-title {
+    font-size: 20px !important;
+  }
+
+  .create-task-body {
+    padding: 16px !important;
+  }
+
+  .create-task-section-label {
+    font-size: 11px !important;
+    margin-top: 16px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Messages */
+  .dashboard-v4-messages-empty-icon svg {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .dashboard-v4-messages-empty-title {
+    font-size: 18px !important;
+  }
+
+  .dashboard-v4-messages-empty-text {
+    font-size: 14px !important;
+    max-width: 280px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* API Keys cards - stacked layout */
+  .api-key-card {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  .api-key-card-actions {
+    align-self: flex-end !important;
+  }
+
+  .api-key-value {
+    word-break: break-all;
+    font-size: 12px !important;
+  }
+
+  .api-key-meta {
+    font-size: 12px !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  /* Payments */
+  .payments-stats {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .payments-stat {
+    padding: 12px !important;
+  }
+
+  .payments-stat-value {
+    font-size: 18px !important;
+  }
+
+  .payments-stat-label {
+    font-size: 11px !important;
+  }
+
+  /* Settings tabs */
+  .settings-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+
+  .settings-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-tab {
+    font-size: 13px !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Quick actions grid - 2 columns on mobile */
+  .hiring-dash-quick-actions {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .hiring-dash-quick-actions button {
+    padding: 12px !important;
+  }
+
+  .hiring-dash-quick-actions p:first-of-type {
+    font-size: 13px !important;
+  }
+
+  .hiring-dash-quick-actions p:last-of-type {
+    font-size: 11px !important;
+  }
+
+  /* Getting started checklist on mobile */
+  .hiring-dash-checklist {
+    padding: 16px !important;
+  }
+
+  /* Browse humans - collapsible filters on mobile */
+  .browse-filters-toggle-btn {
+    display: flex !important;
+  }
+
+  .browse-extra-filters.browse-extra-filters-hidden {
+    display: none !important;
+  }
+
+  .browse-extra-filters {
+    display: contents !important;
+  }
+
+  .browse-humans-filters {
+    gap: 8px !important;
+  }
+}
+
+/* Premium / Pricing mobile fixes */
+@media (max-width: 768px) {
+  .premium-plans-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .premium-plan-card {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .premium-toggle {
+    width: 200px !important;
+    margin: 0 auto 24px !important;
+  }
+
+  .premium-hero-title {
+    font-size: 28px !important;
+  }
+
+  .premium-hero-subtitle {
+    font-size: 14px !important;
+  }
+}
+
+/* ─── BROWSE TASKS V2 MOBILE ─── */
+@media (max-width: 640px) {
+  .browse-tasks-v2-header {
+    padding: 12px 16px !important;
+  }
+
+  .browse-tasks-v2-title {
+    font-size: 22px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .browse-tasks-v2-search-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .browse-tasks-v2-search {
+    max-width: none !important;
+    width: 100%;
+  }
+
+  .browse-tasks-v2-filters {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  .browse-tasks-v2-filters > * {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+
+  .browse-tasks-v2-category-dropdown {
+    min-width: 0 !important;
+  }
+}
+
+/* ─── WORKING DASHBOARD MOBILE ─── */
+@media (max-width: 640px) {
+  .working-dash-header {
+    gap: 4px !important;
+  }
+
+  .working-dash-greeting {
+    font-size: 22px !important;
+    font-weight: 600 !important;
+  }
+
+  .working-dash-subtitle {
+    font-size: 14px !important;
+  }
+
+  .wd-card {
+    padding: 16px !important;
+  }
+
+  .wd-checklist-card {
+    padding: 16px !important;
+  }
+
+  .wd-checklist-title {
+    font-size: 15px !important;
+  }
+
+  .wd-checklist-subtitle {
+    font-size: 13px !important;
+  }
+
+  .wd-availability-banner {
+    padding: 12px 16px !important;
+    flex-wrap: wrap;
+    gap: 10px !important;
+  }
+
+  .wd-availability-title {
+    font-size: 14px !important;
+  }
+
+  .wd-availability-subtitle {
+    font-size: 12px !important;
+  }
+
+  .working-dash-chart {
+    padding: 16px !important;
+  }
+
+  .working-dash-chart-title {
+    font-size: 15px !important;
+  }
+
+  .working-dash-chart-total {
+    font-size: 20px !important;
+  }
 }
 
 /* ─── REDUCED MOTION ─── */

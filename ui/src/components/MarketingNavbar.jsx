@@ -2,7 +2,7 @@
 // Used via MarketingLayout in App.jsx for all public pages
 // Uses brand-v2 Logo component and globe-icon LanguageSelector
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Logo } from './Logo'
 import LanguageSelector from './LanguageSelector'
 import { useLanguage } from '../context/LanguageContext'
@@ -11,6 +11,16 @@ export default function MarketingNavbar({ user, activePage }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { t } = useLanguage()
   const navigate = (path) => { window.location.href = path }
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.classList.add('mobile-nav-open')
+    } else {
+      document.body.classList.remove('mobile-nav-open')
+    }
+    return () => document.body.classList.remove('mobile-nav-open')
+  }, [mobileMenuOpen])
 
   return (
     <nav className="navbar-v4">
@@ -42,6 +52,7 @@ export default function MarketingNavbar({ user, activePage }) {
         <a
           href="/connect-agent"
           className="nav-link-v4"
+          onClick={() => setMobileMenuOpen(false)}
           style={activePage === 'connect-agent' ? { color: 'var(--accent-orange)' } : undefined}
         >
           {t('nav.forAgents')}
@@ -49,18 +60,27 @@ export default function MarketingNavbar({ user, activePage }) {
         <a
           href="/browse/tasks"
           className="nav-link-v4"
+          onClick={() => setMobileMenuOpen(false)}
           style={activePage === 'browse' ? { color: 'var(--accent-orange)' } : undefined}
         >
           {t('nav.browseTasks')}
+        </a>
+        <a
+          href="/browse/humans"
+          className="nav-link-v4"
+          onClick={() => setMobileMenuOpen(false)}
+          style={activePage === 'browse-humans' ? { color: 'var(--accent-orange)' } : undefined}
+        >
+          {t('nav.forWorkers') || 'For Workers'}
         </a>
         {/* Language selector shown inline on desktop, hidden on mobile (shown in header bar instead) */}
         <span className="navbar-v4-lang-desktop">
           <LanguageSelector variant="compact" />
         </span>
         {user ? (
-          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/dashboard')}>{t('nav.dashboard')}</button>
+          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => { setMobileMenuOpen(false); navigate('/dashboard') }}>{t('nav.dashboard')}</button>
         ) : (
-          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>{t('nav.joinNow')}</button>
+          <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => { setMobileMenuOpen(false); navigate('/auth') }}>{t('nav.joinNow')}</button>
         )}
       </div>
     </nav>

@@ -274,61 +274,31 @@ export default function PremiumPage({ user }) {
       )}
 
       {/* Billing period toggle */}
-      <div style={{ maxWidth: 1100, margin: isMobile ? '20px auto 0' : '40px auto 0', padding: isMobile ? '0 16px' : '0 24px' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 10 : 12,
-        }}>
-          <span style={{
-            fontSize: isMobile ? 13 : 14, fontWeight: billingPeriod === 'monthly' ? 600 : 400,
-            color: billingPeriod === 'monthly' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-          }}>
-            Monthly
-          </span>
+      <div style={{ maxWidth: 1100, margin: isMobile ? '20px auto 0' : '40px auto 0', padding: isMobile ? '0 16px' : '0 24px', textAlign: 'center' }}>
+        <div className="premium-billing-toggle">
           <button
-            onClick={() => setBillingPeriod(p => p === 'monthly' ? 'annual' : 'monthly')}
-            style={{
-              width: 48, height: 26, borderRadius: 13, border: 'none', padding: 0,
-              background: billingPeriod === 'annual' ? 'var(--orange-600)' : '#d1d5db',
-              position: 'relative', cursor: 'pointer', transition: 'background 0.2s',
-            }}
+            className={billingPeriod === 'monthly' ? 'active' : ''}
+            onClick={() => setBillingPeriod('monthly')}
           >
-            <div style={{
-              width: 22, height: 22, borderRadius: 11, background: '#fff',
-              position: 'absolute', top: 2,
-              left: billingPeriod === 'annual' ? 24 : 2,
-              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-            }} />
+            Monthly
           </button>
-          <span style={{
-            fontSize: isMobile ? 13 : 14, fontWeight: billingPeriod === 'annual' ? 600 : 400,
-            color: billingPeriod === 'annual' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-          }}>
+          <button
+            className={billingPeriod === 'annual' ? 'active' : ''}
+            onClick={() => setBillingPeriod('annual')}
+          >
             Annual
-          </span>
-          {billingPeriod === 'annual' && (
-            <span style={{
-              background: 'rgba(244,132,95,0.1)', color: 'var(--orange-700)', fontSize: isMobile ? 11 : 12, fontWeight: 600,
-              padding: '3px 10px', borderRadius: 999, marginLeft: 4,
-            }}>
-              Save 25%
-            </span>
-          )}
+            <span className="premium-save-badge">-25%</span>
+          </button>
         </div>
       </div>
 
       {/* Pricing cards */}
-      <div style={{ maxWidth: 1100, margin: isMobile ? '16px auto 24px' : '24px auto 40px', padding: isMobile ? 0 : '0 24px' }}>
+      <div style={{ maxWidth: 1100, margin: isMobile ? '16px auto 24px' : '24px auto 40px', padding: isMobile ? '0 16px' : '0 24px' }}>
         <div
-          className={isMobile ? 'premium-scroll-row' : undefined}
           style={isMobile ? {
             display: 'flex',
-            overflowX: 'auto',
-            gap: 12,
-            padding: '14px 16px 4px',
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch',
-            msOverflowStyle: 'none',
-            scrollbarWidth: 'none',
+            flexDirection: 'column',
+            gap: 16,
           } : {
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -336,6 +306,23 @@ export default function PremiumPage({ user }) {
             alignItems: 'start',
           }}
         >
+          {isMobile && (
+            <div className="premium-plan-tabs">
+              {TIERS.map(t => (
+                <button
+                  key={t.id}
+                  className={`premium-plan-tab ${expandedTier === t.id || (!expandedTier && t.id === currentTier) ? 'active' : ''}`}
+                  onClick={() => {
+                    setExpandedTier(t.id)
+                    const el = document.getElementById(`plan-${t.id}`)
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+                  }}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          )}
           {TIERS.map(tier => {
             const isCurrent = currentTier === tier.id
             const isPopular = tier.popular
@@ -343,7 +330,7 @@ export default function PremiumPage({ user }) {
             const isExpanded = expandedTier === tier.id
 
             return (
-              <div key={tier.id} style={{
+              <div key={tier.id} id={`plan-${tier.id}`} style={{
                 background: 'var(--bg-secondary)',
                 borderRadius: 'var(--radius-lg)',
                 border: isCurrent ? '2px solid var(--orange-600)' : isPopular ? '2px solid var(--orange-400)' : '1px solid rgba(26,26,26,0.06)',
@@ -352,10 +339,7 @@ export default function PremiumPage({ user }) {
                 boxShadow: isPopular ? '0 4px 24px rgba(224,122,95,0.1)' : 'var(--shadow-sm)',
                 transition: 'box-shadow 0.2s, transform 0.2s',
                 ...(isMobile ? {
-                  minWidth: 200,
-                  maxWidth: 220,
-                  flex: '0 0 auto',
-                  scrollSnapAlign: 'start',
+                  width: '100%',
                 } : {}),
               }}>
                 {/* Popular badge */}
@@ -416,59 +400,31 @@ export default function PremiumPage({ user }) {
                   </div>
                 </div>
 
-                {/* Features */}
-                {isMobile && !isExpanded ? (
-                  <button
-                    onClick={() => setExpandedTier(tier.id)}
-                    style={{
-                      width: '100%', border: 'none', background: 'none',
-                      borderTop: '1px solid rgba(26,26,26,0.04)',
-                      padding: '10px 0', marginBottom: 10, cursor: 'pointer',
-                      fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                    }}
-                  >
-                    View {tier.features.length} benefits <ChevronDown size={12} />
-                  </button>
-                ) : (
-                  <div style={{ borderTop: '1px solid rgba(26,26,26,0.04)', paddingTop: isMobile ? 10 : 20, marginBottom: isMobile ? 10 : 24 }}>
-                    {tier.features.map((f, i) => (
-                      <div key={i} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: isMobile ? '6px 0' : '10px 0',
-                        borderBottom: i < tier.features.length - 1 ? '1px solid rgba(26,26,26,0.03)' : 'none',
+                {/* Features — always shown */}
+                <div style={{ borderTop: '1px solid rgba(26,26,26,0.04)', paddingTop: isMobile ? 10 : 20, marginBottom: isMobile ? 10 : 24 }}>
+                  {tier.features.map((f, i) => (
+                    <div key={i} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: isMobile ? '6px 0' : '10px 0',
+                      borderBottom: i < tier.features.length - 1 ? '1px solid rgba(26,26,26,0.03)' : 'none',
+                    }}>
+                      <span style={{ fontSize: isMobile ? 12 : 14, color: 'var(--text-secondary)' }}>{f.label}</span>
+                      <span style={{
+                        fontSize: isMobile ? 12 : 14, fontWeight: 600,
+                        color: f.highlight ? 'var(--orange-700)' : 'var(--text-primary)',
                       }}>
-                        <span style={{ fontSize: isMobile ? 11 : 14, color: 'var(--text-secondary)' }}>{f.label}</span>
-                        <span style={{
-                          fontSize: isMobile ? 11 : 14, fontWeight: 600,
-                          color: f.highlight ? 'var(--orange-700)' : 'var(--text-primary)',
-                        }}>
-                          {f.value}
-                        </span>
-                      </div>
-                    ))}
-                    {isMobile && (
-                      <button
-                        onClick={() => setExpandedTier(null)}
-                        style={{
-                          width: '100%', border: 'none', background: 'none',
-                          padding: '6px 0 0', cursor: 'pointer',
-                          fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                        }}
-                      >
-                        Hide <ChevronUp size={12} />
-                      </button>
-                    )}
-                  </div>
-                )}
+                        {f.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
 
                 {/* CTA */}
                 {isCurrent ? (
                   <button
                     disabled
                     style={{
-                      width: '100%', padding: isMobile ? '10px 0' : '12px 0', borderRadius: 'var(--radius-md)',
+                      width: '100%', padding: isMobile ? '12px 0' : '12px 0', borderRadius: 'var(--radius-md)',
                       background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', border: 'none',
                       fontSize: isMobile ? 13 : 14, fontWeight: 600, cursor: 'default',
                     }}
@@ -481,7 +437,7 @@ export default function PremiumPage({ user }) {
                       onClick={handleManageSubscription}
                       disabled={loading === 'manage'}
                       style={{
-                        width: '100%', padding: isMobile ? '10px 0' : '12px 0', borderRadius: 'var(--radius-md)',
+                        width: '100%', padding: isMobile ? '12px 0' : '12px 0', borderRadius: 'var(--radius-md)',
                         background: 'var(--bg-secondary)', color: 'var(--text-primary)',
                         border: '1px solid rgba(26,26,26,0.1)',
                         fontSize: isMobile ? 13 : 14, fontWeight: 600, cursor: 'pointer',
@@ -496,7 +452,7 @@ export default function PremiumPage({ user }) {
                     onClick={() => handleCheckout(tier.id)}
                     disabled={!!loading}
                     style={{
-                      width: '100%', padding: isMobile ? '10px 0' : '12px 0', borderRadius: 'var(--radius-md)',
+                      width: '100%', padding: isMobile ? '12px 0' : '12px 0', borderRadius: 'var(--radius-md)',
                       background: tier.id === 'pro'
                         ? 'linear-gradient(135deg, var(--orange-600), var(--orange-500))'
                         : 'var(--bg-dark)',
