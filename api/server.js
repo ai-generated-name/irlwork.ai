@@ -9312,7 +9312,7 @@ app.post('/api/tasks/:id/start', async (req, res) => {
       `${user.name || 'The worker'} has started work on "${task.title}".`,
       `/tasks/${id}`
     );
-    await deliverWebhook(task.agent_id, { event: 'task_started', task_id: id });
+    dispatchWebhook(task.agent_id, { type: 'task_started', task_id: id, data: {} });
   }
 
   res.json({ success: true, status: 'in_progress' });
@@ -9326,9 +9326,11 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
 
   const { id } = req.params;
 
+  const selectCols = ['agent_id', 'human_id', 'title', 'status', 'escrow_status', 'stripe_payment_intent_id'];
+  if (taskColumnFlags.escrow_captured) selectCols.push('escrow_captured');
   const { data: task, error: fetchError } = await supabase
     .from('tasks')
-    .select('agent_id, human_id, title, status, escrow_status, stripe_payment_intent_id, escrow_captured')
+    .select(selectCols.join(', '))
     .eq('id', id)
     .single();
 
@@ -9393,7 +9395,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     }
 
     // Fire webhook to agent
-    await deliverWebhook(user.id, { event: 'task_cancelled', task_id: id, tier: 'pre_work' });
+    dispatchWebhook(user.id, { type: 'task_cancelled', task_id: id, data: { tier: 'pre_work' } });
 
     return res.json({ success: true, tier: 'pre_work' });
   }
