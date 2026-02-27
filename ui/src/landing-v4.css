@@ -7557,34 +7557,39 @@ select.select-v4-dark option:checked,
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10000;
   }
   .navbar-v4-links {
     display: none !important;
-    position: absolute;
-    top: 100%;
+    position: fixed;
+    top: 60px;
     left: 0;
     right: 0;
+    bottom: 0;
+    z-index: 9998;
     background: rgba(250, 250, 248, 0.98);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     flex-direction: column;
-    padding: 8px 16px 16px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 16px;
     gap: 4px !important;
-    box-shadow: var(--shadow-md);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .navbar-v4-links.open {
     display: flex !important;
   }
   .navbar-v4-links a,
   .navbar-v4-links button {
-    padding: 12px 16px !important;
-    min-height: 44px;
+    padding: 14px 16px !important;
+    min-height: 48px;
     display: flex !important;
     align-items: center;
-    border-radius: 8px;
+    border-radius: 10px;
     width: 100%;
     text-align: left;
     box-sizing: border-box;
+    font-size: 15px !important;
   }
   .navbar-v4-links a:hover,
   .navbar-v4-links button:hover {
@@ -9757,6 +9762,553 @@ select.select-v4-dark option:checked,
 .ticker-wrapper {
   margin-top: var(--space-3);
   margin-bottom: var(--space-2);
+}
+
+/* ─── MOBILE BOTTOM TAB BAR ─── */
+.dashboard-v4-bottom-tabs {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9980;
+  background: var(--bg-secondary);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom, 0px));
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: stretch;
+}
+
+.dashboard-v4-bottom-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: color var(--duration-fast) var(--ease-smooth);
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+
+.dashboard-v4-bottom-tab.active {
+  color: var(--accent-orange);
+}
+
+.dashboard-v4-bottom-tab-icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-v4-bottom-tab-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.dashboard-v4-bottom-tab-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.dashboard-v4-bottom-tab.active .dashboard-v4-bottom-tab-label {
+  font-weight: 600;
+}
+
+.dashboard-v4-bottom-tab-badge {
+  position: absolute;
+  top: 2px;
+  right: calc(50% - 16px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent-orange);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .dashboard-v4-bottom-tabs {
+    display: flex;
+  }
+
+  /* Add bottom padding to dashboard content so nothing hides behind bottom tabs */
+  .dashboard-v4-content {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ─── NAVBAR V4 MOBILE DROPDOWN FIX ─── */
+@media (max-width: 768px) {
+  .navbar-v4 {
+    position: fixed;
+    z-index: 9999;
+  }
+
+  .navbar-v4-links {
+    z-index: 9998;
+    position: fixed !important;
+    top: 60px !important;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(250, 250, 248, 0.98) !important;
+    backdrop-filter: blur(16px) !important;
+    flex-direction: column;
+    padding: 16px !important;
+    gap: 4px !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: none !important;
+    box-shadow: none !important;
+  }
+
+  .navbar-v4-links.open {
+    display: flex !important;
+  }
+
+  /* Prevent body scroll when mobile nav is open */
+  body.mobile-nav-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+}
+
+/* ─── MOBILE TYPOGRAPHY & SPACING OVERRIDES ─── */
+@media (max-width: 640px) {
+  /* Dashboard page titles */
+  .dashboard-v4-page-title,
+  .hiring-dash-greeting,
+  .working-dash-greeting {
+    font-size: 22px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Section headings */
+  .dashboard-v4-section-heading,
+  .hiring-dash-section-title,
+  .working-dash-section-title {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Stat values */
+  .hiring-dash-stat-value,
+  .working-dash-stat-value {
+    font-size: 20px !important;
+  }
+
+  /* Stat labels */
+  .hiring-dash-stat-label,
+  .working-dash-stat-label {
+    font-size: 12px !important;
+  }
+
+  /* Stat icons - smaller on mobile */
+  .hiring-dash-stat-icon,
+  .working-dash-stat-icon {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .hiring-dash-stat-icon svg,
+  .working-dash-stat-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Stat cards - tighter padding */
+  .hiring-dash-stat,
+  .working-dash-stat {
+    padding: 12px !important;
+    gap: 10px !important;
+  }
+
+  /* Stats grid - 2x2 compact */
+  .hiring-dash-stats,
+  .working-dash-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Dashboard content area - tighter padding */
+  .dashboard-v4-content {
+    padding: 12px 16px !important;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Card padding */
+  .dashboard-v4-card,
+  .hiring-dash-empty,
+  .working-dash-empty,
+  .mytasks-empty-state {
+    padding: 16px !important;
+  }
+
+  /* Section gaps */
+  .hiring-dash,
+  .working-dash {
+    gap: 16px !important;
+  }
+
+  /* Sub-tabs / filter rows - scrollable */
+  .dashboard-v4-sub-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    gap: 0 !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 2px;
+  }
+
+  .dashboard-v4-sub-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dashboard-v4-sub-tab {
+    font-size: 13px !important;
+    padding: 8px 12px !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Empty state sizing */
+  .hiring-dash-empty-icon svg,
+  .working-dash-empty-icon svg,
+  .mytasks-empty-state-icon svg {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .hiring-dash-empty-title,
+  .working-dash-empty-title,
+  .mytasks-empty-state-title {
+    font-size: 18px !important;
+  }
+
+  .hiring-dash-empty-text,
+  .working-dash-empty-text,
+  .mytasks-empty-state-text {
+    font-size: 14px !important;
+  }
+
+  /* Hiring dashboard header - keep row layout */
+  .hiring-dash-header {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: var(--space-3) !important;
+  }
+
+  /* Create Task button - auto-width, not full */
+  .hiring-dash-create-btn {
+    width: auto !important;
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+  }
+
+  /* Getting Started checklist */
+  .hiring-dash-checklist-item,
+  .working-dash-checklist-item {
+    padding: 12px 16px !important;
+  }
+
+  .hiring-dash-checklist-title,
+  .working-dash-checklist-title {
+    font-size: 14px !important;
+  }
+
+  .hiring-dash-checklist-desc,
+  .working-dash-checklist-desc {
+    font-size: 13px !important;
+  }
+
+  /* Form inputs */
+  .create-task-container input,
+  .create-task-container textarea,
+  .create-task-container select,
+  .dashboard-v4-content input,
+  .dashboard-v4-content textarea,
+  .dashboard-v4-content select {
+    font-size: 14px !important;
+    min-height: 44px;
+  }
+
+  /* Create Task form */
+  .create-task-container {
+    border-radius: var(--radius-lg) !important;
+  }
+
+  .create-task-header {
+    padding: 16px !important;
+  }
+
+  .create-task-title {
+    font-size: 20px !important;
+  }
+
+  .create-task-body {
+    padding: 16px !important;
+  }
+
+  .create-task-section-label {
+    font-size: 11px !important;
+    margin-top: 16px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Messages */
+  .dashboard-v4-messages-empty-icon svg {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .dashboard-v4-messages-empty-title {
+    font-size: 18px !important;
+  }
+
+  .dashboard-v4-messages-empty-text {
+    font-size: 14px !important;
+    max-width: 280px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* API Keys cards - stacked layout */
+  .api-key-card {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  .api-key-card-actions {
+    align-self: flex-end !important;
+  }
+
+  .api-key-value {
+    word-break: break-all;
+    font-size: 12px !important;
+  }
+
+  .api-key-meta {
+    font-size: 12px !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  /* Payments */
+  .payments-stats {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .payments-stat {
+    padding: 12px !important;
+  }
+
+  .payments-stat-value {
+    font-size: 18px !important;
+  }
+
+  .payments-stat-label {
+    font-size: 11px !important;
+  }
+
+  /* Settings tabs */
+  .settings-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+
+  .settings-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-tab {
+    font-size: 13px !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Quick actions grid - 2 columns on mobile */
+  .hiring-dash-quick-actions {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .hiring-dash-quick-actions button {
+    padding: 12px !important;
+  }
+
+  .hiring-dash-quick-actions p:first-of-type {
+    font-size: 13px !important;
+  }
+
+  .hiring-dash-quick-actions p:last-of-type {
+    font-size: 11px !important;
+  }
+
+  /* Getting started checklist on mobile */
+  .hiring-dash-checklist {
+    padding: 16px !important;
+  }
+
+  /* Browse humans - collapsible filters on mobile */
+  .browse-filters-toggle-btn {
+    display: flex !important;
+  }
+
+  .browse-extra-filters.browse-extra-filters-hidden {
+    display: none !important;
+  }
+
+  .browse-extra-filters {
+    display: contents !important;
+  }
+
+  .browse-humans-filters {
+    gap: 8px !important;
+  }
+}
+
+/* Premium / Pricing mobile fixes */
+@media (max-width: 768px) {
+  .premium-plans-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .premium-plan-card {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .premium-toggle {
+    width: 200px !important;
+    margin: 0 auto 24px !important;
+  }
+
+  .premium-hero-title {
+    font-size: 28px !important;
+  }
+
+  .premium-hero-subtitle {
+    font-size: 14px !important;
+  }
+}
+
+/* ─── BROWSE TASKS V2 MOBILE ─── */
+@media (max-width: 640px) {
+  .browse-tasks-v2-header {
+    padding: 12px 16px !important;
+  }
+
+  .browse-tasks-v2-title {
+    font-size: 22px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .browse-tasks-v2-search-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .browse-tasks-v2-search {
+    max-width: none !important;
+    width: 100%;
+  }
+
+  .browse-tasks-v2-filters {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  .browse-tasks-v2-filters > * {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+
+  .browse-tasks-v2-category-dropdown {
+    min-width: 0 !important;
+  }
+}
+
+/* ─── WORKING DASHBOARD MOBILE ─── */
+@media (max-width: 640px) {
+  .working-dash-header {
+    gap: 4px !important;
+  }
+
+  .working-dash-greeting {
+    font-size: 22px !important;
+    font-weight: 600 !important;
+  }
+
+  .working-dash-subtitle {
+    font-size: 14px !important;
+  }
+
+  .wd-card {
+    padding: 16px !important;
+  }
+
+  .wd-checklist-card {
+    padding: 16px !important;
+  }
+
+  .wd-checklist-title {
+    font-size: 15px !important;
+  }
+
+  .wd-checklist-subtitle {
+    font-size: 13px !important;
+  }
+
+  .wd-availability-banner {
+    padding: 12px 16px !important;
+    flex-wrap: wrap;
+    gap: 10px !important;
+  }
+
+  .wd-availability-title {
+    font-size: 14px !important;
+  }
+
+  .wd-availability-subtitle {
+    font-size: 12px !important;
+  }
+
+  .working-dash-chart {
+    padding: 16px !important;
+  }
+
+  .working-dash-chart-title {
+    font-size: 15px !important;
+  }
+
+  .working-dash-chart-total {
+    font-size: 20px !important;
+  }
 }
 
 /* ─── REDUCED MOTION ─── */

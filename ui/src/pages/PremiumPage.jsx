@@ -317,18 +317,12 @@ export default function PremiumPage({ user }) {
       </div>
 
       {/* Pricing cards */}
-      <div style={{ maxWidth: 1100, margin: isMobile ? '16px auto 24px' : '24px auto 40px', padding: isMobile ? 0 : '0 24px' }}>
+      <div style={{ maxWidth: 1100, margin: isMobile ? '16px auto 24px' : '24px auto 40px', padding: isMobile ? '0 16px' : '0 24px' }}>
         <div
-          className={isMobile ? 'premium-scroll-row' : undefined}
           style={isMobile ? {
             display: 'flex',
-            overflowX: 'auto',
-            gap: 12,
-            padding: '14px 16px 4px',
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch',
-            msOverflowStyle: 'none',
-            scrollbarWidth: 'none',
+            flexDirection: 'column',
+            gap: 16,
           } : {
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -352,10 +346,7 @@ export default function PremiumPage({ user }) {
                 boxShadow: isPopular ? '0 4px 24px rgba(224,122,95,0.1)' : 'var(--shadow-sm)',
                 transition: 'box-shadow 0.2s, transform 0.2s',
                 ...(isMobile ? {
-                  minWidth: 200,
-                  maxWidth: 220,
-                  flex: '0 0 auto',
-                  scrollSnapAlign: 'start',
+                  width: '100%',
                 } : {}),
               }}>
                 {/* Popular badge */}
