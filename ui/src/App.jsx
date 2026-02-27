@@ -1933,7 +1933,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         setActiveTab('posted')
       } else {
         const err = await res.json()
-        setCreateTaskError(err.error || 'Failed to create task')
+        if (err.code === 'payment_required' || err.code === 'card_required' || res.status === 402) {
+          setCreateTaskError('You need to add a payment method before creating a task.')
+          // Switch to payments tab so user can add a card
+          setTimeout(() => setActiveTab('payments'), 1500)
+        } else {
+          setCreateTaskError(err.error || 'Failed to create task')
+        }
       }
     } catch (e) {
       setCreateTaskError('Network error. Please try again.')
