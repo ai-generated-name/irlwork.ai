@@ -6112,7 +6112,8 @@ app.post('/api/mcp', async (req, res) => {
         res.status(400).json({ error: `Unknown method: ${method}` });
     }
   } catch (e) {
-    res.status(500).json({ error: 'Internal server error' });
+    console.error(`[MCP] Error in method '${method}':`, e.message, e.stack);
+    res.status(500).json({ error: 'Internal server error', detail: e.message });
   }
 });
 
