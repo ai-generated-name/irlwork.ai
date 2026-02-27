@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import API_URL from '../config/api'
 import HowPaymentsWork from '../components/HowPaymentsWork'
 import { useToast } from '../context/ToastContext'
+import { supabase } from '../App'
 
 const ACTIVE_STATUSES = ['open', 'accepted', 'assigned', 'in_progress']
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed']
@@ -209,19 +210,32 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
   const handleGoAvailable = useCallback(async () => {
     setTogglingAvailability(true)
     try {
+      let token = user?.token || ''
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) token = session.access_token
+      }
+      if (!token) {
+        toast.error('Please sign in again to update availability')
+        setTogglingAvailability(false)
+        return
+      }
       const res = await fetch(`${API_URL}/humans/profile`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: user?.token || '' },
+        headers: { 'Content-Type': 'application/json', Authorization: token },
         body: JSON.stringify({ availability: 'available' })
       })
       if (res.ok) {
         const data = await res.json()
         if (data.user) {
-          const updatedUser = { ...data.user, token: user?.token, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
+          const updatedUser = { ...data.user, token, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
           onUserUpdate?.(updatedUser)
           localStorage.setItem('user', JSON.stringify({ ...updatedUser, token: undefined }))
         }
         toast.success("You're now available for work")
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error || 'Failed to update availability')
       }
     } catch {
       toast.error('Failed to update availability')

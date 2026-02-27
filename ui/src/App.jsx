@@ -103,7 +103,7 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 import { fixAvatarUrl } from './utils/avatarUrl'
 import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import ApiKeysTab from './components/ApiKeysTab'
-// ConnectAgentPage defined inline below
+const ConnectAgentPage = lazy(() => import('./pages/ConnectAgentPage'))
 const MCPPage = lazy(() => import('./pages/MCPPage'))
 const PremiumPage = lazy(() => import('./pages/PremiumPage'))
 
@@ -203,18 +203,10 @@ function Onboarding({ onComplete, user }) {
   const [nearbyTasks, setNearbyTasks] = useState([])
   const [loadingTasks, setLoadingTasks] = useState(false)
 
-  // Email verification state
-  const [verificationCode, setVerificationCode] = useState('')
-  const [verificationSent, setVerificationSent] = useState(false)
-  const [verificationSending, setVerificationSending] = useState(false)
-  const [verificationError, setVerificationError] = useState('')
-  const [verificationSuccess, setVerificationSuccess] = useState(false)
-  const [verifying, setVerifying] = useState(false)
-
   const userName = user?.name?.split(' ')[0] || 'there'
   const userAvatar = user?.avatar_url
 
-  const totalSteps = 5
+  const totalSteps = 4
   const progress = (step / totalSteps) * 100
 
   // Fetch nearby tasks after city selection
@@ -248,57 +240,6 @@ function Onboarding({ onComplete, user }) {
         ? prev.selectedCategories.filter(c => c !== value)
         : [...prev.selectedCategories, value]
     }))
-  }
-
-  const sendVerificationCode = async () => {
-    setVerificationSending(true)
-    setVerificationError('')
-    try {
-      const res = await fetch(`${API_URL}/auth/send-verification`, {
-        method: 'POST',
-        headers: { Authorization: user?.token || '' }
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        if (data.message === 'Email already verified') {
-          setVerificationSuccess(true)
-        } else {
-          setVerificationSent(true)
-        }
-      } else {
-        setVerificationError(data.error || 'Failed to send verification code')
-      }
-    } catch (e) {
-      setVerificationError('Network error. Please try again.')
-    } finally {
-      setVerificationSending(false)
-    }
-  }
-
-  const verifyCode = async () => {
-    if (!verificationCode.trim()) return
-    setVerifying(true)
-    setVerificationError('')
-    try {
-      const res = await fetch(`${API_URL}/auth/verify-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: user?.token || ''
-        },
-        body: JSON.stringify({ code: verificationCode.trim() })
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        setVerificationSuccess(true)
-      } else {
-        setVerificationError(data.error || 'Invalid code')
-      }
-    } catch (e) {
-      setVerificationError('Network error. Please try again.')
-    } finally {
-      setVerifying(false)
-    }
   }
 
   const handleSubmit = async () => {
@@ -567,103 +508,12 @@ function Onboarding({ onComplete, user }) {
 
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={() => setStep(5)} disabled={!form.hourly_rate}>
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Email Verification */}
-        {step === 5 && (
-          <div>
-            <h1 className="onboarding-v4-title">Verify your email</h1>
-            <p className="onboarding-v4-subtitle">
-              Verified accounts get more task offers and build trust with agents
-            </p>
-
-            {verificationSuccess ? (
-              <div style={{
-                padding: '20px', borderRadius: 12,
-                background: 'rgba(22, 163, 74, 0.08)', border: '1px solid rgba(22, 163, 74, 0.2)',
-                textAlign: 'center', marginBottom: 20
-              }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>&#10003;</div>
-                <p style={{ color: '#16A34A', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
-                  {user?.email} is now verified
-                </p>
-              </div>
-            ) : !verificationSent ? (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-                  We'll send a 6-digit code to <strong>{user?.email}</strong>
-                </p>
-                <button
-                  className="onboarding-v4-btn-next"
-                  style={{ width: '100%' }}
-                  onClick={sendVerificationCode}
-                  disabled={verificationSending}
-                >
-                  {verificationSending ? 'Sending...' : 'Send Verification Code'}
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
-                  Enter the 6-digit code sent to <strong>{user?.email}</strong>
-                </p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={verificationCode}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
-                    setVerificationCode(val)
-                  }}
-                  className="onboarding-v4-input"
-                  style={{
-                    textAlign: 'center', fontSize: 24, fontWeight: 600,
-                    letterSpacing: 8, fontFamily: 'monospace'
-                  }}
-                  autoFocus
-                />
-                <button
-                  className="onboarding-v4-btn-next"
-                  style={{ width: '100%', marginTop: 12 }}
-                  onClick={verifyCode}
-                  disabled={verifying || verificationCode.length < 6}
-                >
-                  {verifying ? 'Verifying...' : 'Verify'}
-                </button>
-                <button
-                  onClick={sendVerificationCode}
-                  disabled={verificationSending}
-                  style={{
-                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
-                    fontSize: 13, cursor: 'pointer', marginTop: 8, width: '100%',
-                    textAlign: 'center'
-                  }}
-                >
-                  {verificationSending ? 'Sending...' : 'Resend code'}
-                </button>
-              </div>
-            )}
-
-            {verificationError && (
-              <div className="auth-v4-error" style={{ marginTop: 12 }}>{verificationError}</div>
-            )}
-
-            <div className="onboarding-v4-buttons" style={{ marginTop: 20 }}>
-              <button className="onboarding-v4-btn-back" onClick={() => setStep(4)}>Back</button>
               <button
                 className="onboarding-v4-btn-next"
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || !form.hourly_rate}
               >
-                {loading ? 'Setting up...' : verificationSuccess ? 'Complete Setup' : 'Skip for Now'}
+                {loading ? 'Setting up...' : 'Complete Setup'}
               </button>
             </div>
           </div>
@@ -1269,6 +1119,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     if (tabSegment === 'create' || params.get('tab') === 'create-task') return 'create'
     return 'tasks'
   })
+  const [hireTarget, setHireTarget] = useState(null) // Human selected via "Hire" button for direct hire
 
   // Read initial tab from URL path: /dashboard/working/browse → 'browse'
   const getInitialTab = () => {
@@ -1313,6 +1164,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [activeTab, setActiveTabState] = useState(getInitialTab)
   const [settingsTab, setSettingsTab] = useState('profile')
   const [settingsPageTab, setSettingsPageTab] = useState('general')
+
+  // Email verification state (in Settings > Account)
+  const [emailVerifCode, setEmailVerifCode] = useState('')
+  const [emailVerifSent, setEmailVerifSent] = useState(false)
+  const [emailVerifSending, setEmailVerifSending] = useState(false)
+  const [emailVerifError, setEmailVerifError] = useState('')
+  const [emailVerifSuccess, setEmailVerifSuccess] = useState(!!user?.email_verified)
+  const [emailVerifying, setEmailVerifying] = useState(false)
 
   // Helper to update URL path without page reload
   const updateTabUrl = (tabId, mode) => {
@@ -1488,8 +1347,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
-  // Check if current user is admin (from API profile response)
-  const isAdmin = user && user.type === 'admin'
+  // Check if current user is admin (from is_admin flag returned by /api/auth/verify)
+  // The backend checks ADMIN_USER_IDS env var and sets is_admin: true/false
+  // TODO: Migrate admin auth from env var to users.role database column for easier management
+  const isAdmin = user && user.is_admin === true
 
   // Working mode: Dashboard, My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
@@ -1644,9 +1505,23 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       )
       .subscribe()
 
+    // Subscribe to changes on worker's assigned tasks (for human users)
+    let workerChannel = null
+    if (user.type === 'human') {
+      workerChannel = safeSupabase
+        .channel(`worker-tasks-${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'tasks', filter: `human_id=eq.${user.id}` },
+          () => { fetchTasks() }
+        )
+        .subscribe()
+    }
+
     return () => {
       safeSupabase.removeChannel(tasksChannel)
       safeSupabase.removeChannel(applicationsChannel)
+      if (workerChannel) safeSupabase.removeChannel(workerChannel)
     }
   }, [hiringMode, user, expandedTask])
 
@@ -1989,44 +1864,58 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setCreateTaskError('City is required for in-person tasks')
       return
     }
+    if (!taskForm.duration_hours || parseFloat(taskForm.duration_hours) <= 0) {
+      setCreateTaskError('Duration is required (estimated hours to complete)')
+      return
+    }
 
     setCreatingTask(true)
     try {
-      const res = await fetch(`${API_URL}/tasks`, {
+      // Direct hire: use /api/tasks/create with assign_to (task goes to pending_acceptance for that worker)
+      // Open task: use /api/tasks (task goes to open for anyone to apply)
+      const isDirectHire = !!hireTarget
+      const endpoint = isDirectHire ? `${API_URL}/tasks/create` : `${API_URL}/tasks`
+      const payload = {
+        title: taskForm.title,
+        description: taskForm.description,
+        category: taskForm.category,
+        budget: parseFloat(taskForm.budget),
+        location: taskForm.city,
+        latitude: taskForm.latitude,
+        longitude: taskForm.longitude,
+        country: taskForm.country,
+        country_code: taskForm.country_code,
+        is_remote: taskForm.is_remote,
+        duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
+        deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
+        requirements: taskForm.requirements.trim() || null,
+        required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
+        task_type: isDirectHire ? 'direct' : 'open',
+        quantity: 1,
+        is_anonymous: taskForm.is_anonymous
+      }
+      if (isDirectHire) {
+        payload.assign_to = hireTarget.id
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: user.token || ''
         },
-        body: JSON.stringify({
-          title: taskForm.title,
-          description: taskForm.description,
-          category: taskForm.category,
-          budget: parseFloat(taskForm.budget),
-          location: taskForm.city,
-          latitude: taskForm.latitude,
-          longitude: taskForm.longitude,
-          country: taskForm.country,
-          country_code: taskForm.country_code,
-          is_remote: taskForm.is_remote,
-          duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
-          deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
-          requirements: taskForm.requirements.trim() || null,
-          required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
-          task_type: 'open',
-          quantity: 1,
-          is_anonymous: taskForm.is_anonymous
-        })
+        body: JSON.stringify(payload)
       })
 
       if (res.ok) {
         const newTask = await res.json()
-        trackEvent('task_created', { category: taskForm.category, budget: parseFloat(taskForm.budget), is_remote: taskForm.is_remote, task_type: taskForm.task_type })
+        trackEvent('task_created', { category: taskForm.category, budget: parseFloat(taskForm.budget), is_remote: taskForm.is_remote, task_type: isDirectHire ? 'direct' : 'open', direct_hire: isDirectHire })
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
-        // Reset form
+        // Reset form and clear hire target
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'open', quantity: 1, is_anonymous: false })
         setTaskFormTouched({})
+        setHireTarget(null)
         // Close create form and show posted tasks list
         setTasksSubTab('tasks')
         setActiveTab('posted')
@@ -2314,8 +2203,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           >
             <span style={{ display: 'flex', alignItems: 'center' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" fill="#D4A017" />
-                <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="10" stroke="#B8860B" strokeWidth="2" fill="none" />
+                <path d="M9 12l2 2 4-4" stroke="#B8860B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
             <span>Upgrade to Premium</span>
@@ -2452,6 +2341,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 </button>
               </>
             )}
+            {/* Admin Panel Link — only visible to admins */}
+            {isAdmin && (
+              <button
+                className="dashboard-v4-topbar-link"
+                onClick={() => setActiveTab('admin')}
+                title="Admin Panel"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                Admin
+              </button>
+            )}
+
             {/* Notifications Bell */}
             <div className="dashboard-v4-notifications-wrapper">
               <button
@@ -2612,7 +2515,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             <div className="dashboard-v4-sub-tabs">
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); setHireTarget(null); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
               >
                 All
               </button>
@@ -2646,9 +2549,53 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div style={{ marginTop: 16 }}>
                 <div className="create-task-container">
                   <div className="create-task-header">
-                    <h2 className="create-task-title">Create a New Task</h2>
-                    <p className="create-task-subtitle">Fill in the details below to post your task</p>
+                    <h2 className="create-task-title">{hireTarget ? `Hire ${hireTarget.name?.split(' ')[0] || 'Worker'}` : 'Create a New Task'}</h2>
+                    <p className="create-task-subtitle">{hireTarget ? 'This task will be sent directly to this worker for acceptance' : 'Fill in the details below to post your task'}</p>
                   </div>
+
+                  {/* Direct hire banner */}
+                  {hireTarget && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+                      background: 'rgba(232,133,61,0.06)', borderRadius: 12,
+                      border: '1px solid rgba(232,133,61,0.15)', marginBottom: 20
+                    }}>
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {hireTarget.avatar_url ? (
+                          <img src={hireTarget.avatar_url} alt="" style={{
+                            width: 44, height: 44, borderRadius: '50%', objectFit: 'cover',
+                            border: '2px solid rgba(232,133,61,0.25)'
+                          }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                        ) : null}
+                        <div style={{
+                          width: 44, height: 44, borderRadius: '50%', background: '#E8853D',
+                          display: hireTarget.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: 'white', fontWeight: 700, fontSize: 18,
+                          border: '2px solid rgba(232,133,61,0.25)'
+                        }}>
+                          {hireTarget.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>{hireTarget.name || 'Worker'}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 1 }}>
+                          {hireTarget.headline || hireTarget.city || 'Direct hire'}
+                          {hireTarget.hourly_rate ? ` · $${hireTarget.hourly_rate}/hr` : ''}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setHireTarget(null)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer', padding: 6,
+                          color: 'var(--text-tertiary)', borderRadius: 8, flexShrink: 0
+                        }}
+                        title="Switch to open task"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  )}
 
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
                     {/* Section 1: Basics */}
@@ -2705,7 +2652,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         </div>
                         <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Duration <span className="dashboard-v4-form-optional">(hours)</span>
+                            Duration <span style={{ color: '#DC2626' }}>*</span> <span className="dashboard-v4-form-optional">(hours)</span>
                           </label>
                           <input
                             type="number"
@@ -2715,7 +2662,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
                             min="0.5"
                             step="0.5"
+                            required
+                            onBlur={() => setTaskFormTouched(prev => ({ ...prev, duration_hours: true }))}
                           />
+                          {taskFormTouched.duration_hours && (!taskForm.duration_hours || parseFloat(taskForm.duration_hours) <= 0) && (
+                            <p style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>Duration is required</p>
+                          )}
                         </div>
                       </div>
 
@@ -2891,9 +2843,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <p className="dashboard-v4-empty-text" style={{ marginBottom: 20, color: 'var(--text-secondary)' }}>{tasksSubTab === 'tasks' ? 'Post a task and get matched with verified humans near you.' : 'Tasks matching this filter will appear here'}</p>
                     {tasksSubTab === 'tasks' && (
                       <button
-                        className="v4-btn v4-btn-primary"
                         onClick={() => { setTasksSubTab('create'); window.history.pushState({}, '', '/dashboard/hiring/my-tasks/create'); }}
-                        style={{ margin: '0 auto' }}
+                        style={{ margin: '0 auto', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
                       >
                         <Plus size={16} /> Create Task
                       </button>
@@ -2963,6 +2914,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                                             <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{app.applicant?.name || 'Anonymous'}</p>
                                             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                                               <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
+                                              {app.applicant?.success_rate !== null && app.applicant?.success_rate !== undefined && app.applicant?.success_rate < 70 && (
+                                                <span style={{ color: '#D97706', fontSize: 12, marginLeft: 6 }} title="Below average success rate">
+                                                  ⚠ {app.applicant.success_rate}% success
+                                                </span>
+                                              )}
                                             </p>
                                             {app.cover_letter && (
                                               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}><strong>Why a good fit:</strong> {app.cover_letter}</p>
@@ -3101,54 +3057,67 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <SkillAutocomplete
-                      value={filterCategory}
-                      onChange={setFilterCategory}
-                      placeholder="Search skills..."
-                      allLabel="All Skills"
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <CityAutocomplete
-                      value={browseCityFilter}
-                      onChange={(cityData) => setBrowseCityFilter(cityData.city || '')}
-                      placeholder="Search city..."
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <CountryAutocomplete
-                      value={browseCountryFilter}
-                      onChange={(name, code) => {
-                        setBrowseCountryFilter(name)
-                        setBrowseCountryCodeFilter(code || '')
-                      }}
-                      placeholder="Search country..."
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 120px' }}>
-                    <input
-                      type="number"
-                      placeholder="Max $/hr"
-                      min="1"
-                      className="dashboard-v4-form-input"
-                      value={browseMaxRate}
-                      onChange={(e) => setBrowseMaxRate(e.target.value)}
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 160px' }}>
-                    <CustomDropdown
-                      value={browseSort}
-                      onChange={setBrowseSort}
-                      options={[
-                        { value: 'rating', label: 'Top Rated' },
-                        { value: 'most_reviewed', label: 'Most Reviewed' },
-                        { value: 'price_low', label: 'Price: Low to High' },
-                        { value: 'price_high', label: 'Price: High to Low' },
-                        { value: 'newest', label: 'Newest' },
-                      ]}
-                      placeholder="Top Rated"
-                    />
+                  {/* Mobile: Filters toggle button */}
+                  <button
+                    className="browse-filters-toggle-btn"
+                    onClick={() => {
+                      const el = document.querySelector('.browse-extra-filters')
+                      if (el) el.classList.toggle('browse-extra-filters-hidden')
+                    }}
+                    style={{ display: 'none', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    <ChevronDown size={16} /> Filters
+                  </button>
+                  <div className="browse-extra-filters browse-extra-filters-hidden" style={{ display: 'contents' }}>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <SkillAutocomplete
+                        value={filterCategory}
+                        onChange={setFilterCategory}
+                        placeholder="Search skills..."
+                        allLabel="All Skills"
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <CityAutocomplete
+                        value={browseCityFilter}
+                        onChange={(cityData) => setBrowseCityFilter(cityData.city || '')}
+                        placeholder="Search city..."
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <CountryAutocomplete
+                        value={browseCountryFilter}
+                        onChange={(name, code) => {
+                          setBrowseCountryFilter(name)
+                          setBrowseCountryCodeFilter(code || '')
+                        }}
+                        placeholder="Search country..."
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 120px' }}>
+                      <input
+                        type="number"
+                        placeholder="Max $/hr"
+                        min="1"
+                        className="dashboard-v4-form-input"
+                        value={browseMaxRate}
+                        onChange={(e) => setBrowseMaxRate(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 160px' }}>
+                      <CustomDropdown
+                        value={browseSort}
+                        onChange={setBrowseSort}
+                        options={[
+                          { value: 'rating', label: 'Top Rated' },
+                          { value: 'most_reviewed', label: 'Most Reviewed' },
+                          { value: 'price_low', label: 'Price: Low to High' },
+                          { value: 'price_high', label: 'Price: High to Low' },
+                          { value: 'newest', label: 'Newest' },
+                        ]}
+                        placeholder="Top Rated"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -3170,10 +3139,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       }
                     })
                   return filtered.length === 0 ? (
-                    <div className="dashboard-v4-empty">
-                      <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-                      <p className="dashboard-v4-empty-title">No humans found</p>
-                      <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
+                    <div className="dashboard-v4-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><Users size={48} style={{ color: 'var(--text-muted, #AAAAAA)' }} /></div>
+                      <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>No humans match your search</p>
+                      <p style={{ fontSize: 14, maxWidth: 300, margin: '0 auto 16px', color: 'var(--text-secondary)' }}>
+                        Humans are joining daily. Try broadening your filters or post a task and let humans come to you.
+                      </p>
+                      <button
+                        onClick={() => { setTasksSubTab('create'); setActiveTab('posted') }}
+                        style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                      >
+                        <Plus size={16} /> Post a Task
+                      </button>
                     </div>
                   ) : (
                     <div className="browse-humans-grid">
@@ -3183,7 +3160,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           human={human}
                           variant="dashboard"
                           onExpand={(h) => window.location.href = `/humans/${h.id}`}
-                          onHire={() => { setTasksSubTab('create'); setActiveTab('posted') }}
+                          onHire={(human) => { setHireTarget(human); setTasksSubTab('create'); setActiveTab('posted') }}
                           onBookmark={toggleBookmark}
                           isBookmarked={bookmarkedHumans.includes(human.id)}
                         />
@@ -3404,7 +3381,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Profile Tab - Edit Profile with Avatar Upload */}
         {activeTab === 'profile' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0, gap: 8, flexWrap: 'wrap' }}>
               <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>Profile</h1>
               <button
                 onClick={() => {
@@ -3422,22 +3399,29 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   color: profileLinkCopied ? 'var(--orange-600)' : 'var(--text-secondary)',
                   fontSize: 13, fontWeight: 500, cursor: 'pointer',
                   transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {profileLinkCopied ? <Check size={14} /> : <Copy size={14} />}
-                {profileLinkCopied ? 'Copied!' : 'Copy Profile Link'}
+                {profileLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
             </div>
 
-            {/* Profile warning banner — auto-dismiss when profile is meaningfully complete */}
+            {/* Profile warning banner — smart contextual messaging */}
             {(() => {
-              const hasPhoto = !!user?.avatar_url
               const hasBio = !!(user?.bio && user.bio.trim().length > 10)
               const hasSkills = Array.isArray(user?.skills) && user.skills.length > 0
-              const hasLang = Array.isArray(user?.languages) && user.languages.length > 0
-              const criteria = [hasPhoto, hasBio, hasSkills, hasLang]
-              const metCount = criteria.filter(Boolean).length
-              if (metCount >= 3) return null
+              const hasHeadline = !!(user?.headline && user.headline.trim())
+              const hasPhoto = !!user?.avatar_url
+
+              // Priority order: Bio → Skills → Headline → Photo
+              let bannerMessage = null
+              if (!hasBio) bannerMessage = 'Add a bio to stand out — profiles with bios get 2× more task invites'
+              else if (!hasSkills) bannerMessage = 'Add your skills to get matched with higher-paying tasks'
+              else if (!hasHeadline) bannerMessage = 'Add a headline so agents know what you\'re great at'
+              else if (!hasPhoto) bannerMessage = 'Add a profile photo — profiles with photos are trusted more by agents'
+
+              if (!bannerMessage) return null
               return (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -3448,7 +3432,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   position: 'relative',
                 }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                  <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>Update your profile to help agents find you</span>
+                  <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{bannerMessage}</span>
                   <button
                     onClick={(e) => e.currentTarget.parentElement.style.display = 'none'}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', fontSize: 16, lineHeight: 1 }}
@@ -3653,27 +3637,41 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </div>
             </div>
 
-            {/* Profile completion banner */}
-            <div style={{
-              maxWidth: 600,
-              marginBottom: 16,
-              padding: '12px 16px',
-              borderRadius: 10,
-              background: 'var(--orange-50, #fff7ed)',
-              border: '1px solid var(--orange-200, #fed7aa)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              fontSize: 14,
-              color: 'var(--orange-700, #c2410c)',
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-              <span>Update your profile to help agents find you.</span>
-            </div>
+            {/* Profile completion banner — smart contextual messaging */}
+            {(() => {
+              const hasBio = !!(user?.bio && user.bio.trim().length > 10)
+              const hasSkills = Array.isArray(user?.skills) && user.skills.length > 0
+              const hasHeadline = !!(user?.headline && user.headline.trim())
+              const hasPhoto = !!user?.avatar_url
+              let msg = null
+              if (!hasBio) msg = 'Add a bio to stand out — profiles with bios get 2× more task invites'
+              else if (!hasSkills) msg = 'Add your skills to get matched with higher-paying tasks'
+              else if (!hasHeadline) msg = 'Add a headline so agents know what you\'re great at'
+              else if (!hasPhoto) msg = 'Add a profile photo — profiles with photos are trusted more by agents'
+              if (!msg) return null
+              return (
+                <div style={{
+                  maxWidth: 600,
+                  marginBottom: 16,
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  background: 'var(--orange-50, #fff7ed)',
+                  border: '1px solid var(--orange-200, #fed7aa)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 14,
+                  color: 'var(--orange-700, #c2410c)',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <span>{msg}</span>
+                </div>
+              )
+            })()}
 
             {/* Profile editing sub-tabs */}
             <div className="settings-tabs">
@@ -4114,17 +4112,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* Compact Plan Row */}
-                <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)' }}>
+                <div className="settings-plan-row" style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
+                    <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', flexShrink: 0 }}>
                       {(user?.subscription_tier || 'free').charAt(0).toUpperCase() + (user?.subscription_tier || 'free').slice(1)} Plan
                     </span>
-                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
-                      {user?.subscription_tier === 'business' ? '5% platform fee'
-                        : user?.subscription_tier === 'pro' ? '10% platform fee'
-                        : '15% platform fee'}
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)', minWidth: 0 }}>
+                      {user?.subscription_tier === 'business' ? '5% fee'
+                        : user?.subscription_tier === 'pro' ? '10% fee'
+                        : '15% fee'}
                       {' · '}
-                      <span style={{ color: 'var(--orange-600)' }}>Get verified to save on fees and increase visibility</span>
+                      <span style={{ color: 'var(--orange-600)' }}>Save on fees with verification</span>
                     </span>
                   </div>
                   <a href="/premium" style={{ fontSize: 13, fontWeight: 500, color: 'var(--orange-500)', textDecoration: 'none', whiteSpace: 'nowrap' }}>View Plans →</a>
@@ -4146,19 +4144,25 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 2 }}>Available for Hire</p>
                         <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                           {user?.availability === 'available'
-                            ? 'Your profile is visible and agents can send task invitations'
-                            : 'Your profile is hidden from search results'}
+                            ? 'Visible to agents for task invites'
+                            : 'Hidden from search results'}
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={async () => {
                         const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
+                        console.log('[Availability] Toggling:', user?.availability, '→', newStatus)
                         try {
                           let token = user.token || ''
                           if (supabase) {
                             const { data: { session } } = await supabase.auth.getSession()
                             if (session?.access_token) token = session.access_token
+                          }
+                          if (!token) {
+                            console.error('[Availability] No auth token available')
+                            toast.error('Please sign in again to update availability')
+                            return
                           }
                           const res = await fetch(`${API_URL}/humans/profile`, {
                             method: 'PUT',
@@ -4167,17 +4171,19 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           })
                           if (res.ok) {
                             const data = await res.json()
+                            console.log('[Availability] API response:', data.user?.availability)
                             if (data.user) {
-                              const updatedUser = { ...data.user, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
-                              setUser(updatedUser)
-                              localStorage.setItem('user', JSON.stringify(updatedUser))
+                              const updatedUser = { ...data.user, token, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
+                              onUserUpdate(updatedUser)
+                              localStorage.setItem('user', JSON.stringify({ ...updatedUser, token: undefined }))
                             }
                             toast.success(newStatus === 'available' ? 'You\'re now available for work' : 'You\'re now unavailable')
                           } else {
                             const err = await res.json().catch(() => ({}))
+                            console.error('[Availability] API error:', res.status, err)
                             toast.error(err.error || 'Failed to update availability')
                           }
-                        } catch { toast.error('Failed to update availability') }
+                        } catch (e) { console.error('[Availability] Error:', e); toast.error('Failed to update availability') }
                       }}
                       style={{
                         width: 48,
@@ -4239,9 +4245,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           transition: 'all 0.2s',
                           background: !hiringMode ? 'white' : 'transparent',
                           color: !hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          boxShadow: !hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                          boxShadow: !hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
                         }}
                       >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
                         Working
                       </button>
                       <button
@@ -4263,9 +4273,13 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           transition: 'all 0.2s',
                           background: hiringMode ? 'white' : 'transparent',
                           color: hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          boxShadow: hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                          boxShadow: hiringMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
                         }}
                       >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>
                         Hiring
                       </button>
                     </div>
@@ -4352,8 +4366,161 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ marginBottom: 14 }}>
                     <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14 }}>Email</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{user?.email}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{user?.email}</p>
+                      {(emailVerifSuccess || user?.email_verified) ? (
+                        <span style={{ padding: '2px 8px', background: 'rgba(22, 163, 74, 0.1)', color: '#16A34A', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Verified</span>
+                      ) : (
+                        <span style={{ padding: '2px 8px', background: 'rgba(251, 191, 36, 0.1)', color: '#D97706', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Unverified</span>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Email verification section */}
+                  {!(emailVerifSuccess || user?.email_verified) && (
+                    <div style={{ padding: '12px 14px', background: 'rgba(251, 191, 36, 0.06)', border: '1px solid rgba(251, 191, 36, 0.15)', borderRadius: 'var(--radius-md)', marginBottom: 14 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Verify your email</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10 }}>Verified accounts get more task offers and build trust with agents</p>
+
+                      {emailVerifError && (
+                        <div style={{ padding: '8px 10px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 'var(--radius-sm)', marginBottom: 8, fontSize: 12, color: '#EF4444' }}>{emailVerifError}</div>
+                      )}
+
+                      {!emailVerifSent ? (
+                        <button
+                          className="v4-btn v4-btn-primary"
+                          style={{ width: '100%', fontSize: 13, padding: '8px 16px' }}
+                          disabled={emailVerifSending}
+                          onClick={async () => {
+                            setEmailVerifSending(true)
+                            setEmailVerifError('')
+                            try {
+                              let token = user.token || ''
+                              if (supabase) {
+                                const { data: { session } } = await supabase.auth.getSession()
+                                if (session?.access_token) token = session.access_token
+                              }
+                              const res = await fetch(`${API_URL}/auth/send-verification`, {
+                                method: 'POST',
+                                headers: { Authorization: token }
+                              })
+                              const data = await res.json().catch(() => ({}))
+                              if (res.ok) {
+                                if (data.message === 'Email already verified') {
+                                  setEmailVerifSuccess(true)
+                                  toast.success('Email already verified!')
+                                } else {
+                                  setEmailVerifSent(true)
+                                  toast.success('Verification code sent!')
+                                }
+                              } else {
+                                setEmailVerifError(data.error || 'Failed to send verification code')
+                              }
+                            } catch (e) {
+                              setEmailVerifError('Network error. Please try again.')
+                            } finally {
+                              setEmailVerifSending(false)
+                            }
+                          }}
+                        >
+                          {emailVerifSending ? 'Sending...' : 'Send Verification Code'}
+                        </button>
+                      ) : (
+                        <div>
+                          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, textAlign: 'center' }}>
+                            Enter the 6-digit code sent to <strong>{user?.email}</strong>
+                          </p>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={emailVerifCode}
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                              setEmailVerifCode(val)
+                            }}
+                            style={{
+                              width: '100%', textAlign: 'center', fontSize: 20, fontWeight: 600,
+                              letterSpacing: 8, fontFamily: 'monospace', padding: '10px 12px',
+                              background: 'var(--bg-secondary)', border: '1px solid rgba(0,0,0,0.1)',
+                              borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                              outline: 'none', boxSizing: 'border-box'
+                            }}
+                          />
+                          <button
+                            className="v4-btn v4-btn-primary"
+                            style={{ width: '100%', fontSize: 13, padding: '8px 16px', marginTop: 8 }}
+                            disabled={emailVerifying || emailVerifCode.length < 6}
+                            onClick={async () => {
+                              if (!emailVerifCode.trim()) return
+                              setEmailVerifying(true)
+                              setEmailVerifError('')
+                              try {
+                                let token = user.token || ''
+                                if (supabase) {
+                                  const { data: { session } } = await supabase.auth.getSession()
+                                  if (session?.access_token) token = session.access_token
+                                }
+                                const res = await fetch(`${API_URL}/auth/verify-email`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', Authorization: token },
+                                  body: JSON.stringify({ code: emailVerifCode.trim() })
+                                })
+                                const data = await res.json().catch(() => ({}))
+                                if (res.ok) {
+                                  setEmailVerifSuccess(true)
+                                  toast.success('Email verified successfully!')
+                                } else {
+                                  setEmailVerifError(data.error || 'Invalid code')
+                                }
+                              } catch (e) {
+                                setEmailVerifError('Network error. Please try again.')
+                              } finally {
+                                setEmailVerifying(false)
+                              }
+                            }}
+                          >
+                            {emailVerifying ? 'Verifying...' : 'Verify'}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setEmailVerifSending(true)
+                              setEmailVerifError('')
+                              try {
+                                let token = user.token || ''
+                                if (supabase) {
+                                  const { data: { session } } = await supabase.auth.getSession()
+                                  if (session?.access_token) token = session.access_token
+                                }
+                                const res = await fetch(`${API_URL}/auth/send-verification`, {
+                                  method: 'POST',
+                                  headers: { Authorization: token }
+                                })
+                                if (res.ok) toast.success('Code resent!')
+                                else {
+                                  const data = await res.json().catch(() => ({}))
+                                  setEmailVerifError(data.error || 'Failed to resend')
+                                }
+                              } catch (e) {
+                                setEmailVerifError('Network error.')
+                              } finally {
+                                setEmailVerifSending(false)
+                              }
+                            }}
+                            disabled={emailVerifSending}
+                            style={{
+                              background: 'none', border: 'none', color: 'var(--text-tertiary)',
+                              fontSize: 12, cursor: 'pointer', marginTop: 6, width: '100%',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {emailVerifSending ? 'Sending...' : 'Resend code'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: 14, marginBottom: 14, opacity: 0.5 }} />
 
@@ -4464,10 +4631,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
                   </div>
                 ) : conversations.length === 0 ? (
-                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                    <div style={{ marginBottom: 8 }}><MessageCircle size={32} /></div>
-                    <p style={{ fontWeight: 500, marginBottom: 4 }}>No conversations yet</p>
-                    <p style={{ fontSize: 13 }}>Messages will appear here when you communicate about a task</p>
+                  <div className="mobile-empty-state" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <div className="mobile-empty-state-icon" style={{ width: 48, height: 48, background: 'var(--bg-tertiary)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                      <MessageCircle size={24} />
+                    </div>
+                    <p style={{ fontWeight: 600, marginBottom: 6, fontSize: 18, color: 'var(--text-primary)' }}>No conversations yet</p>
+                    <p style={{ fontSize: 14, maxWidth: 280, margin: '0 auto', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {hiringMode
+                        ? 'Messages will appear here once you hire a human for a task.'
+                        : 'Messages will appear here when you apply for or start working on a task.'}
+                    </p>
                   </div>
                 ) : (
                   conversations.map(c => {
@@ -4687,6 +4860,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             onClose={() => setExpandedHumanId(null)}
             onHire={(human) => {
               setExpandedHumanId(null)
+              setHireTarget(human)
               setTasksSubTab('create')
               setActiveTab('posted')
             }}
@@ -4694,491 +4868,42 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           />
         )}
       </main>
+
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="dashboard-v4-bottom-tabs">
+        {(() => {
+          const bottomTabs = hiringMode
+            ? [
+                { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={22} /> },
+                { id: 'posted', label: 'Tasks', icon: <ClipboardList size={22} /> },
+                { id: 'browse', label: 'Humans', icon: <Users size={22} /> },
+                { id: 'messages', label: 'Messages', icon: <MessageCircle size={22} />, badge: unreadMessages },
+                { id: 'settings', label: 'Settings', icon: <Settings size={22} /> },
+              ]
+            : [
+                { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={22} /> },
+                { id: 'tasks', label: 'Tasks', icon: <ClipboardList size={22} /> },
+                { id: 'browse', label: 'Browse', icon: <Search size={22} /> },
+                { id: 'messages', label: 'Messages', icon: <MessageCircle size={22} />, badge: unreadMessages },
+                { id: 'settings', label: 'Settings', icon: <Settings size={22} /> },
+              ]
+          return bottomTabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`dashboard-v4-bottom-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(tab.id); setSidebarOpen(false) }}
+            >
+              <span className="dashboard-v4-bottom-tab-icon">{tab.icon}</span>
+              <span className="dashboard-v4-bottom-tab-label">{tab.label}</span>
+              {tab.badge > 0 && <span className="dashboard-v4-bottom-tab-badge">{tab.badge > 9 ? '9+' : tab.badge}</span>}
+            </button>
+          ))
+        })()}
+      </nav>
     </div>
   )
 }
 
-function ConnectAgentPage() {
-  const [copiedPrompt, setCopiedPrompt] = useState(false)
-  const [copiedConfig, setCopiedConfig] = useState(false)
-  const [user, setUser] = useState(null)
-  const [keys, setKeys] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [promptTemplate, setPromptTemplate] = useState(null)
-  const [promptVersion, setPromptVersion] = useState(null)
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (!supabase) {
-        setLoading(false)
-        return
-      }
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          setUser(session.user)
-          const response = await fetch(`${API_URL}/keys`, {
-            headers: { 'Authorization': session.access_token || '' }
-          })
-          if (response.ok) {
-            const data = await response.json()
-            setKeys(data.filter(k => k.is_active))
-          }
-        }
-      } catch (error) {
-        console.error('Auth check error:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    checkAuth()
-
-    // Fetch the latest agent prompt from API (single source of truth)
-    fetch(`${API_URL}/agent/prompt`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data) {
-          setPromptTemplate(data.prompt)
-          setPromptVersion(data.version)
-        }
-      })
-      .catch(() => {}) // Silently fail — will use fallback
-  }, [])
-
-  const apiKeyPlaceholder = keys.length > 0
-    ? keys[0].key_prefix + '...'
-    : 'YOUR_API_KEY_HERE'
-
-  const apiKeySection = keys.length > 0
-    ? `You already have an API key (starts with ${keys[0].key_prefix}). Find the full key in your dashboard at https://www.irlwork.ai/dashboard/hiring/api-keys`
-    : `To use irlwork.ai, you need an API key.
-
-**Direct the user to this URL to get their API key:**
-https://www.irlwork.ai/dashboard/hiring/api-keys
-
-If the user doesn't have an account yet, they'll be prompted to sign up first, then redirected to the API keys page automatically.
-
-Once they're on the page, they can click "Generate New Key", copy it, and paste it back here. Ask the user to paste their API key so you can proceed.
-
-**Important:** Wait for the user to provide their actual API key before making any API calls. Do not proceed without one.`
-
-  // Build the full prompt from the API template (single source of truth)
-  // Falls back to a minimal prompt if the API fetch hasn't completed yet
-  const fullPrompt = promptTemplate
-    ? promptTemplate
-        .replace('{{API_KEY_SECTION}}', apiKeySection)
-        .replace('{{API_KEY_PLACEHOLDER}}', apiKeyPlaceholder)
-    : `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.\n\n## Setup\n\n### 1. Get an API Key\n${apiKeySection}\n\n### 2. Use the API\nCall the irlwork.ai REST API directly — no SDK or MCP server needed:\n\ncurl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"method": "METHOD_NAME", "params": { ... }}'\n\nFull documentation: https://www.irlwork.ai/mcp`
-
-  const handleCopyPrompt = () => {
-    navigator.clipboard.writeText(fullPrompt)
-    setCopiedPrompt(true)
-    setTimeout(() => setCopiedPrompt(false), 3000)
-  }
-
-  const handleCopyConfig = () => {
-    navigator.clipboard.writeText(`curl -X POST https://api.irlwork.ai/api/mcp \\
-  -H 'Authorization: Bearer irl_sk_your_key_here' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "list_humans",
-    "params": { "category": "delivery", "city": "San Francisco" }
-  }'`)
-    setCopiedConfig(true)
-    setTimeout(() => setCopiedConfig(false), 2500)
-  }
-
-  return (
-    <div className="mcp-v4">
-      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
-
-      <main className="mcp-v4-main">
-        {/* Hero with Copy Prompt CTA */}
-        <div className="mcp-v4-hero">
-          <h1>Connect Your <span>AI Agent</span></h1>
-          <p>
-            Give your AI agent the ability to hire real humans for physical-world tasks. Copy the prompt below into any AI agent and it will know how to use irlwork.ai.
-          </p>
-        </div>
-
-        {/* ===== EASY INSTALL: Copy Prompt ===== */}
-        <section className="mcp-v4-section">
-          <div className="connect-agent-easy-install">
-            <div className="connect-agent-easy-install-header">
-              <div>
-                <div className="connect-agent-easy-label">Easiest way to start</div>
-                <h2 className="connect-agent-easy-title">Copy & Paste Into Your AI Agent</h2>
-                <p className="connect-agent-easy-desc">
-                  This prompt contains everything your AI agent needs — setup instructions, all 22 available tools, workflows, and best practices. Just paste it into Claude, ChatGPT, or any AI agent.
-                </p>
-              </div>
-              <button
-                onClick={handleCopyPrompt}
-                className={`connect-agent-copy-btn ${copiedPrompt ? 'copied' : ''}`}
-              >
-                {copiedPrompt
-                  ? <><Check size={20} /> Copied to Clipboard!</>
-                  : <><Copy size={20} /> Copy Full Prompt</>
-                }
-              </button>
-            </div>
-
-            {/* Preview of what gets copied */}
-            <div className="connect-agent-prompt-preview">
-              <div className="connect-agent-prompt-preview-label">Preview of what gets copied:</div>
-              <div className="connect-agent-prompt-preview-content">
-                <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
-                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Open workflows &bull; Best practices &bull; Rate limits</p>
-                {keys.length > 0 && (
-                  <p style={{ color: '#16A34A', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
-                )}
-              </div>
-            </div>
-
-            {/* 3-step visual for beginners */}
-            <div className="connect-agent-steps-row">
-              <div className="connect-agent-step">
-                <div className="connect-agent-step-num">1</div>
-                <div>
-                  <strong>Copy the prompt</strong>
-                  <p>Click the button above</p>
-                </div>
-              </div>
-              <div className="connect-agent-step-arrow">→</div>
-              <div className="connect-agent-step">
-                <div className="connect-agent-step-num">2</div>
-                <div>
-                  <strong>Paste into your AI</strong>
-                  <p>Claude, ChatGPT, etc.</p>
-                </div>
-              </div>
-              <div className="connect-agent-step-arrow">→</div>
-              <div className="connect-agent-step">
-                <div className="connect-agent-step-num">3</div>
-                <div>
-                  <strong>Your agent walks you through setup</strong>
-                  <p>It will help you create an account and get an API key</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== DIVIDER ===== */}
-        <div style={{ textAlign: 'center', padding: '8px 0 32px', color: 'var(--text-tertiary)', fontSize: 14 }}>
-          — or set up manually with the REST API —
-        </div>
-
-        {/* ===== MANUAL SETUP ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🔧</span> Manual Setup (REST API)</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15 }}>
-            For a direct integration where your agent calls the irlwork.ai API, get your API key and start making requests. No installation needed — just HTTP calls.
-          </p>
-
-          {/* Step 1: API Key */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Step 1: Get Your API Key</h3>
-            <p>Sign up (or log in) and generate an API key from your dashboard. If you don't have an account yet, you'll be prompted to create one first.</p>
-
-            <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>API Keys Dashboard</h4>
-                <p style={{ color: '#666', fontSize: 13, margin: 0 }}>Generate, rotate, and manage your API keys.</p>
-              </div>
-              <a href="/dashboard/hiring/api-keys" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px', whiteSpace: 'nowrap' }}>Get API Key →</a>
-            </div>
-          </div>
-
-          {/* Dynamic API Key Display */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24, background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: 'white' }}>
-            <h3 style={{ color: 'white' }}>Your API Keys</h3>
-            {loading ? (
-              <p style={{ color: 'rgba(255,255,255,0.7)' }}>Loading...</p>
-            ) : user ? (
-              <div>
-                {keys.length > 0 ? (
-                  <div style={{ marginBottom: 16 }}>
-                    <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 12 }}>Your active API keys:</p>
-                    {keys.map(key => (
-                      <div key={key.id} style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        marginBottom: 8,
-                        fontFamily: 'monospace',
-                        fontSize: 14,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span style={{ color: '#16A34A' }}>{key.key_prefix}</span>
-                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
-                )}
-                <a
-                  href="/dashboard/hiring/api-keys"
-                  className="btn-v4 btn-v4-primary"
-                >
-                  Manage API Keys
-                </a>
-              </div>
-            ) : (
-              <div>
-                <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
-                  Sign up to generate your API key, or register via the API above.
-                </p>
-                <a href="/auth" className="btn-v4 btn-v4-primary">
-                  Sign Up
-                </a>
-              </div>
-            )}
-          </div>
-
-          {/* Step 2: Use the API */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Step 2: Call the API</h3>
-            <p>Every tool is accessible via a single REST endpoint. No SDK installation needed:</p>
-            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
-              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/mcp \\
-  -H 'Authorization: Bearer irl_sk_your_key_here' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "list_humans",
-    "params": { "category": "delivery", "city": "San Francisco" }
-  }'`}</pre>
-              <button
-                onClick={handleCopyConfig}
-                style={{
-                  position: 'absolute', top: 8, right: 8,
-                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: 6, padding: '4px 10px', color: '#fff', fontSize: 12,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
-                }}
-              >
-                {copiedConfig ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
-              </button>
-            </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Replace <code>irl_sk_your_key_here</code> with your API key from Step 1. Replace <code>method</code> and <code>params</code> with any of the 22+ available tools below.</p>
-          </div>
-
-          {/* Step 3: Done */}
-          <div className="mcp-v4-card">
-            <h3>Step 3: Start Hiring</h3>
-            <p>Your agent now has access to 22+ tools via the REST API. Ask it to:</p>
-            <div className="mcp-v4-two-col" style={{ marginTop: 16 }}>
-              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Direct Hire</h4>
-                <ol className="mcp-v4-list">
-                  <li>Search humans with <code>list_humans</code></li>
-                  <li>Message via <code>start_conversation</code></li>
-                  <li>Hire with <code>direct_hire</code></li>
-                  <li>Approve with <code>approve_task</code></li>
-                </ol>
-              </div>
-              <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Create Posting</h4>
-                <ol className="mcp-v4-list">
-                  <li>Post with <code>create_posting</code></li>
-                  <li>Review with <code>get_applicants</code></li>
-                  <li>Hire with <code>hire_human</code></li>
-                  <li>Approve with <code>approve_task</code></li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== PLATFORM CONFIGS ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span><Monitor size={18} /></span> Works With Any Agent</h2>
-
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Claude, ChatGPT, or Any AI Agent</h3>
-            <p>Copy the prompt from above and paste it into any AI agent. The prompt teaches the agent how to call the irlwork.ai API on your behalf — no plugins or extensions needed.</p>
-          </div>
-
-          <div className="mcp-v4-card">
-            <h3>Custom Agent / Programmatic Access</h3>
-            <p>Call the API directly from your code. Every method is a POST to a single endpoint:</p>
-            <div className="mcp-v4-code-block">
-              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/mcp \\
-  -H 'Authorization: Bearer irl_sk_your_key_here' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "list_humans",
-    "params": { "category": "delivery", "city": "San Francisco" }
-  }'`}</pre>
-            </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Base URL: <code>https://api.irlwork.ai/api</code> — Rate limits: 60 requests/min per key</p>
-          </div>
-        </section>
-
-        {/* ===== WHAT YOUR AGENT CAN DO ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>🛠️</span> What Your Agent Can Do</h2>
-          <div className="mcp-v4-two-col">
-            <div className="mcp-v4-card">
-              <h3>Search & Discovery</h3>
-              <ul className="mcp-v4-list">
-                <li>Search humans by skill, location, rate, and rating</li>
-                <li>View detailed profiles and availability</li>
-                <li>Browse task templates by category</li>
-              </ul>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Task Management</h3>
-              <ul className="mcp-v4-list">
-                <li>Create tasks with budgets and deadlines</li>
-                <li>Review and assign applicants</li>
-                <li>Track progress and view proof</li>
-              </ul>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Communication</h3>
-              <ul className="mcp-v4-list">
-                <li>Start conversations with humans</li>
-                <li>Send and receive messages</li>
-                <li>Get unread message summaries</li>
-              </ul>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Payments & Escrow</h3>
-              <ul className="mcp-v4-list">
-                <li>Payments via Stripe</li>
-                <li>Escrow-protected transactions</li>
-                <li>Dispute resolution system</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== HOW IT WORKS ===== */}
-        <section id="how-it-works" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'💡'}</span> How It Works</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 15, maxWidth: 640 }}>
-            Whether you're a human or an AI agent, here's the full picture of how hiring, payments, and trust work on irlwork.ai.
-          </p>
-
-          {/* End-to-end flow */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>The Full Lifecycle</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
-              {[
-                { step: '1', title: 'Post a Task', desc: 'Agent creates a task with a budget, description, and location.' },
-                { step: '2', title: 'Humans Apply', desc: 'Verified humans browse tasks and apply for ones that match their skills.' },
-                { step: '3', title: 'Hire & Pay', desc: 'Agent selects a human. Card is charged and funds go into escrow.' },
-                { step: '4', title: 'Work Happens', desc: 'Human completes the task in the real world and submits proof.' },
-                { step: '5', title: 'Review Proof', desc: 'Agent reviews photos, descriptions, and timestamps from the human.' },
-                { step: '6', title: 'Approve & Pay', desc: 'Agent approves. After a 48-hour hold, the human receives their payout.' },
-              ].map(({ step, title, desc }) => (
-                <div key={step} style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8, textAlign: 'center' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f97316', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{step}</div>
-                  <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{title}</h4>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Payments */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Payments via Stripe Connect</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-              All payments are handled through Stripe. No cryptocurrency or wallet setup required.
-            </p>
-            <div className="mcp-v4-two-col">
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Agents (Hiring)</h4>
-                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li>Add a credit or debit card to your account</li>
-                  <li>Card is charged when you hire a human</li>
-                  <li>Funds are held in escrow until work is approved</li>
-                  <li>Automatic refund if assignment fails</li>
-                  <li>You pay the posted budget amount &mdash; no hidden fees</li>
-                </ul>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>For Humans (Working)</h4>
-                <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li>Connect your bank account via Stripe Connect</li>
-                  <li>Complete tasks and submit proof of work</li>
-                  <li>Receive 90% of the task budget (10% platform fee)</li>
-                  <li>48-hour hold after approval for dispute protection</li>
-                  <li>Funds deposited directly to your bank account</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Trust & Safety */}
-          <div className="mcp-v4-card" style={{ marginBottom: 24 }}>
-            <h3>Trust & Safety</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 12 }}>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Escrow Protection</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Funds are held in escrow from the moment of hire. Neither party can withdraw until work is reviewed and approved.</p>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Proof of Completion</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Humans submit photos, descriptions, and timestamps as proof. Agents review before releasing payment.</p>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Dispute Resolution</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>48-hour dispute window after approval. If work quality is unsatisfactory, file a dispute and the platform will review.</p>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Verified Humans</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>All workers go through verification. Ratings and completed job counts help you pick the right person.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Getting started for humans */}
-          <div className="mcp-v4-card">
-            <h3>Getting Started</h3>
-            <div className="mcp-v4-two-col">
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to hire (Agent / Human)</h4>
-                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> for an account</li>
-                  <li>Add a payment method in your dashboard</li>
-                  <li>Browse humans or post a task</li>
-                  <li>Optional: <a href="#" style={{ color: '#f97316' }} onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Connect an AI agent</a> to automate hiring via API</li>
-                </ol>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>I want to work (Human)</h4>
-                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li><a href="/auth" style={{ color: '#f97316' }}>Sign up</a> as a human worker</li>
-                  <li>Complete your profile with skills and location</li>
-                  <li>Connect Stripe to receive payments</li>
-                  <li>Browse available tasks or wait for direct offers</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="mcp-v4-cta">
-          <h2>Need the full API reference?</h2>
-          <p>View all 22 methods with complete parameter docs, response schemas, and error codes.</p>
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/mcp" className="btn-v4 btn-v4-primary btn-v4-lg">Full API Reference →</a>
-            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
-          </div>
-        </section>
-      </main>
-
-      {/* Footer provided by shared MarketingFooter in App.jsx */}
-    </div>
-  )
-}
 
 
 
@@ -5510,7 +5235,8 @@ function App() {
   const isAuthRoute = path === '/auth'
   const isOnboardRoute = path === '/onboard'
   const isDashboardRoute = path.startsWith('/dashboard')
-  const isMarketingPage = !isAuthRoute && !isOnboardRoute && !isDashboardRoute
+  const isSelfContainedPage = path === '/connect-agent' || path === '/mcp' // has its own header + footer
+  const isMarketingPage = !isAuthRoute && !isOnboardRoute && !isDashboardRoute && !isSelfContainedPage
 
   // Route content (wrapped in IIFE so FeedbackButton renders on all pages)
   const routeContent = (() => {
@@ -5561,7 +5287,7 @@ function App() {
       }
       return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
     }
-    if (path === '/connect-agent') return <ConnectAgentPage />
+    if (path === '/connect-agent') return <Suspense fallback={<Loading />}><ConnectAgentPage /></Suspense>
     if (path === '/contact') return <ContactPage />
     if (path === '/about') return <AboutPage />
     if (path === '/privacy') return <PrivacyPage />
@@ -5581,7 +5307,9 @@ function App() {
       {isMarketingPage ? (
         <>
           <MarketingNavbar user={user} activePage={activePage} />
-          {routeContent}
+          <div className="marketing-content-wrapper">
+            {routeContent}
+          </div>
           <MarketingFooter />
         </>
       ) : (
