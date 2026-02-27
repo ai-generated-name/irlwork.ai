@@ -539,6 +539,61 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
     }
   });
 
+  // ============================================================
+  // GET /tasks/recent — Live feed: recent tasks with counts
+  // ============================================================
+  router.get('/tasks/recent', async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+      const status = req.query.status || null;
+
+      let query = supabase
+        .from('tasks')
+        .select('id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, human_ids, task_type, quantity')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status);
+      }
+
+      const { data: tasks, error: tasksError } = await query;
+      if (tasksError) throw tasksError;
+      if (!tasks || tasks.length === 0) return res.json([]);
+
+      const taskIds = tasks.map(t => t.id);
+
+      const [appResult, viewResult, agentResult] = await Promise.all([
+        supabase.from('task_applications').select('task_id').in('task_id', taskIds),
+        supabase.from('page_views').select('target_id').eq('page_type', 'task').in('target_id', taskIds),
+        supabase.from('users').select('id, name').in('id', [...new Set(tasks.map(t => t.agent_id).filter(Boolean))]),
+      ]);
+
+      const appCounts = {};
+      (appResult.data || []).forEach(a => { appCounts[a.task_id] = (appCounts[a.task_id] || 0) + 1; });
+
+      const viewCounts = {};
+      (viewResult.data || []).forEach(v => { viewCounts[v.target_id] = (viewCounts[v.target_id] || 0) + 1; });
+
+      const agentNames = {};
+      (agentResult.data || []).forEach(a => { agentNames[a.id] = a.name; });
+
+      const enriched = tasks.map(t => ({
+        ...t,
+        applicant_count: appCounts[t.id] || 0,
+        view_count: viewCounts[t.id] || 0,
+        agent_name: agentNames[t.agent_id] || 'Unknown',
+        spots_filled: Array.isArray(t.human_ids) ? t.human_ids.length : 0,
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      logger.error({ err: error }, 'Recent tasks endpoint error');
+      captureException(error, { tags: { admin_action: 'tasks_recent' } });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============================================================================
   // GET /api/admin/tasks/:id - Full task detail with payment history
   // NOTE: This route MUST come after all /tasks/specific-path routes
@@ -1593,81 +1648,6 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
     } catch (error) {
       logger.error({ err: error }, 'Funnel endpoint error');
       captureException(error, { tags: { admin_action: 'funnel' } });
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ============================================================
-  // GET /tasks/recent — Live feed: recent tasks with counts
-  // ============================================================
-  router.get('/tasks/recent', async (req, res) => {
-    try {
-      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
-      const status = req.query.status || null;
-
-      // Fetch recent tasks
-      let query = supabase
-        .from('tasks')
-        .select('id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, human_ids, task_type, quantity')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (status && status !== 'all') {
-        query = query.eq('status', status);
-      }
-
-      const { data: tasks, error: tasksError } = await query;
-      if (tasksError) throw tasksError;
-      if (!tasks || tasks.length === 0) return res.json([]);
-
-      const taskIds = tasks.map(t => t.id);
-
-      // Fetch applicant counts and view counts in parallel
-      const [appResult, viewResult, agentResult] = await Promise.all([
-        supabase
-          .from('task_applications')
-          .select('task_id')
-          .in('task_id', taskIds),
-        supabase
-          .from('page_views')
-          .select('target_id')
-          .eq('page_type', 'task')
-          .in('target_id', taskIds),
-        supabase
-          .from('users')
-          .select('id, name')
-          .in('id', [...new Set(tasks.map(t => t.agent_id).filter(Boolean))]),
-      ]);
-
-      // Build count maps
-      const appCounts = {};
-      (appResult.data || []).forEach(a => {
-        appCounts[a.task_id] = (appCounts[a.task_id] || 0) + 1;
-      });
-
-      const viewCounts = {};
-      (viewResult.data || []).forEach(v => {
-        viewCounts[v.target_id] = (viewCounts[v.target_id] || 0) + 1;
-      });
-
-      const agentNames = {};
-      (agentResult.data || []).forEach(a => {
-        agentNames[a.id] = a.name;
-      });
-
-      // Enrich tasks
-      const enriched = tasks.map(t => ({
-        ...t,
-        applicant_count: appCounts[t.id] || 0,
-        view_count: viewCounts[t.id] || 0,
-        agent_name: agentNames[t.agent_id] || 'Unknown',
-        spots_filled: Array.isArray(t.human_ids) ? t.human_ids.length : 0,
-      }));
-
-      res.json(enriched);
-    } catch (error) {
-      logger.error({ err: error }, 'Recent tasks endpoint error');
-      captureException(error, { tags: { admin_action: 'tasks_recent' } });
       res.status(500).json({ error: error.message });
     }
   });
