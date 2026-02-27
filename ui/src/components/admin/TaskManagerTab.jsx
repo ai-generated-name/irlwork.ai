@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, ChevronDown, X, AlertTriangle } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import API_URL from '../../config/api'
 import AdminTaskRow, { STATUS_LABELS, CATEGORY_LABELS } from './AdminTaskRow'
 
@@ -20,6 +21,7 @@ const SORT_OPTIONS = [
 const PAGE_SIZE = 25
 
 export default function TaskManagerTab({ user }) {
+  const { authenticatedFetch } = useAuth()
   const [tasks, setTasks] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -67,9 +69,7 @@ export default function TaskManagerTab({ user }) {
       if (categoryFilter !== 'all') params.set('category', categoryFilter)
       if (moderationFilter !== 'all') params.set('moderation', moderationFilter)
 
-      const res = await fetch(`${API_URL}/admin/tasks/search?${params}`, {
-        headers: { Authorization: user.token || '' }
-      })
+      const res = await authenticatedFetch(`${API_URL}/admin/tasks/search?${params}`)
       if (!res.ok) throw new Error('Failed to fetch tasks')
       const data = await res.json()
       setTasks(data.tasks || [])
@@ -79,7 +79,7 @@ export default function TaskManagerTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [page, sort, debouncedSearch, statusFilter, categoryFilter, moderationFilter, user.token])
+  }, [page, sort, debouncedSearch, statusFilter, categoryFilter, moderationFilter, authenticatedFetch])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
@@ -93,12 +93,9 @@ export default function TaskManagerTab({ user }) {
     const { task, action, notes } = modal
     setActionLoading(task.id)
     try {
-      const res = await fetch(`${API_URL}/admin/tasks/${task.id}/moderate`, {
+      const res = await authenticatedFetch(`${API_URL}/admin/tasks/${task.id}/moderate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: user.token || ''
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, notes })
       })
       if (!res.ok) {

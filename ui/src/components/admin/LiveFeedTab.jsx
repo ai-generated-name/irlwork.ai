@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { supabase } from '../../App'
+import { useAuth } from '../../context/AuthContext'
 import API_URL from '../../config/api'
 import AdminTaskRow from './AdminTaskRow'
 
 export default function LiveFeedTab({ user }) {
+  const { authenticatedFetch } = useAuth()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -23,9 +25,7 @@ export default function LiveFeedTab({ user }) {
     try {
       const params = new URLSearchParams({ limit: '50' })
       if (filter !== 'all') params.set('status', filter)
-      const res = await fetch(`${API_URL}/admin/tasks/recent?${params}`, {
-        headers: { Authorization: user.token || '' }
-      })
+      const res = await authenticatedFetch(`${API_URL}/admin/tasks/recent?${params}`)
       if (!res.ok) throw new Error('Failed to fetch tasks')
       const data = await res.json()
       setTasks(data)
@@ -37,7 +37,7 @@ export default function LiveFeedTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [filter, user.token])
+  }, [filter, authenticatedFetch])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
