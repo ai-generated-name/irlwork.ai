@@ -3,6 +3,8 @@
 
 import React from 'react';
 import { CalendarDays, Timer, MapPin, Users } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 
 const CATEGORY_ICONS = {
   delivery: '📦',
@@ -41,11 +43,6 @@ export default function TaskHeader({ task }) {
         <span className={`inline-block px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium ${statusConfig.color}`}>
           {statusConfig.label}
         </span>
-        {task.id && (
-          <span className="inline-block px-2 py-0.5 rounded text-[10px] sm:text-xs font-mono text-[#888888] bg-[rgba(0,0,0,0.04)] tracking-wider">
-            {task.id.substring(0, 8).toUpperCase()}
-          </span>
-        )}
         {isBounty && (
           <span className="inline-block px-3 py-1 rounded-[6px] text-xs sm:text-sm font-semibold" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED' }}>
             Bounty
@@ -108,8 +105,49 @@ export default function TaskHeader({ task }) {
       {task.instructions && (
         <div className="mb-3 sm:mb-6">
           <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Instructions</h3>
-          <p className="text-[#333333] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
-            {task.instructions}
+          <div className="text-[#525252] text-xs sm:text-sm leading-relaxed prose prose-sm max-w-none">
+            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{task.instructions}</ReactMarkdown>
+          </div>
+        </div>
+      )}
+
+      {/* Instructions Attachments — reference files for the task */}
+      {task.instructions_attachments && task.instructions_attachments.length > 0 && (
+        <div className="mb-3 sm:mb-6">
+          <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Reference Files</h3>
+          <div className="flex flex-wrap gap-2">
+            {task.instructions_attachments.map((att, i) => {
+              const isImage = att.type?.startsWith('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(att.filename);
+              return isImage ? (
+                <a key={i} href={att.url} target="_blank" rel="noopener noreferrer" className="block">
+                  <img src={att.url} alt={att.filename} className="max-w-[200px] max-h-[150px] rounded-lg border border-[rgba(26,26,26,0.08)] hover:opacity-80 transition-opacity" />
+                </a>
+              ) : (
+                <a
+                  key={i}
+                  href={att.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#F5F2ED] text-[#0F4C5C] hover:bg-[#EDE9E3] transition-colors text-xs sm:text-sm"
+                >
+                  <span>📎</span>
+                  <span className="truncate max-w-[200px]">{att.filename}</span>
+                  {att.size > 0 && <span className="text-[#8A8A8A]">({(att.size / 1024).toFixed(0)}KB)</span>}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Feedback — shown alongside instructions when agent requests revision */}
+      {task.rejection_feedback && (
+        <div className="mb-3 sm:mb-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <h3 className="text-xs sm:text-sm font-semibold text-amber-700 mb-1 sm:mb-2">
+            Revision Requested
+          </h3>
+          <p className="text-amber-700 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+            {task.rejection_feedback}
           </p>
         </div>
       )}

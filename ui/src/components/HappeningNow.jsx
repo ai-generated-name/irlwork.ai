@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useCallback } from 'react'
 
+function escapeHtml(str) {
+  const div = document.createElement('div')
+  div.textContent = str
+  return div.innerHTML
+}
+
 const TASKS = [
   { agent:"dan.h's agent",    task:"Real Estate Showing",   icon:"🏠", city:"San Francisco", country:"US", price:125,  worker:"Anya R.",   xPct:16.0, yPct:32.1, avatar:"#0EA5E9",  region:"NAm" },
   { agent:"jess.f's agent",   task:"Package Pickup",        icon:"📦", city:"Nairobi",       country:"KE", price:25,   worker:"Tyler B.",  xPct:60.2, yPct:59.2, avatar:"#2D8C4E",  region:"Afr" },
@@ -219,7 +225,7 @@ export default function HappeningNow() {
 
     const popup = document.createElement('div')
     popup.className = 'hn-task-popup'
-    popup.innerHTML = `<div class="hn-popup-header"><span class="hn-popup-agent-badge"><span class="hn-bot-icon">🤖</span> ${task.agent}</span><span class="hn-popup-needs">needs</span></div><div class="hn-popup-task"><span class="hn-task-icon">${task.icon}</span><div class="hn-popup-task-info"><h4>${task.task}</h4><span>${task.city}, ${task.country}</span></div></div>`
+    popup.innerHTML = `<div class="hn-popup-header"><span class="hn-popup-agent-badge"><span class="hn-bot-icon">🤖</span> ${escapeHtml(task.agent)}</span><span class="hn-popup-needs">needs</span></div><div class="hn-popup-task"><span class="hn-task-icon">${escapeHtml(task.icon)}</span><div class="hn-popup-task-info"><h4>${escapeHtml(task.task)}</h4><span>${escapeHtml(task.city)}, ${escapeHtml(task.country)}</span></div></div>`
     mapSide.appendChild(popup)
     s.currentPopup = popup
 
@@ -228,19 +234,19 @@ export default function HappeningNow() {
       drawConnector(pts)
     }) })
 
-    addTermLine(`<span class="hn-arrow">▸</span> <span class="hn-agent">${task.agent}</span><span class="hn-method">.hire</span>(<span class="hn-str">"${task.task}"</span>, <span class="hn-str">"${task.city}"</span>, <span class="hn-price">$${task.price}</span>)`)
+    addTermLine(`<span class="hn-arrow">▸</span> <span class="hn-agent">${escapeHtml(task.agent)}</span><span class="hn-method">.hire</span>(<span class="hn-str">"${escapeHtml(task.task)}"</span>, <span class="hn-str">"${escapeHtml(task.city)}"</span>, <span class="hn-price">$${escapeHtml(String(task.price))}</span>)`)
 
     setTimeout(() => {
       if (!popup.parentNode) return
-      popup.innerHTML += `<div class="hn-popup-divider"></div><div class="hn-popup-worker"><div class="hn-popup-worker-info"><div class="hn-popup-avatar" style="background:${task.avatar}">${task.worker.charAt(0)}</div><div><div class="hn-popup-worker-name">${task.worker}</div><div class="hn-popup-worker-status">Task completed</div></div></div><div class="hn-popup-paid-badge">+$${task.price} <span class="hn-paid-label">PAID</span></div></div>`
+      popup.innerHTML += `<div class="hn-popup-divider"></div><div class="hn-popup-worker"><div class="hn-popup-worker-info"><div class="hn-popup-avatar" style="background:${escapeHtml(task.avatar)}">${escapeHtml(task.worker.charAt(0))}</div><div><div class="hn-popup-worker-name">${escapeHtml(task.worker)}</div><div class="hn-popup-worker-status">Task completed</div></div></div><div class="hn-popup-paid-badge">+$${escapeHtml(String(task.price))} <span class="hn-paid-label">PAID</span></div></div>`
       requestAnimationFrame(() => { requestAnimationFrame(() => {
         const pts = positionPopup(popup, task.xPct, task.yPct)
         drawConnector(pts)
       }) })
       pin.className = 'hn-map-pin hn-completed'
-      addTermLine(`<span class="hn-worker-prefix">  ↳ worker</span> <span class="hn-worker-name">${task.worker}</span><span class="hn-term-completed">, completed</span>`, true)
+      addTermLine(`<span class="hn-worker-prefix">  ↳ worker</span> <span class="hn-worker-name">${escapeHtml(task.worker)}</span><span class="hn-term-completed">, completed</span>`, true)
       setTimeout(() => {
-        addTermLine(`<span class="hn-check">  ✓</span> <span class="hn-paid">$${task.price} paid</span> <span class="hn-muted">→ ${task.worker}</span>`, true)
+        addTermLine(`<span class="hn-check">  ✓</span> <span class="hn-paid">$${escapeHtml(String(task.price))} paid</span> <span class="hn-muted">→ ${escapeHtml(task.worker)}</span>`, true)
       }, 400)
     }, 2200)
   }, [addTermLine, positionPopup, drawConnector, removeConnector])

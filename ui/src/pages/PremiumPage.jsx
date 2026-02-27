@@ -233,7 +233,7 @@ export default function PremiumPage({ user }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingTop: 56 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       {/* Header */}
       <div style={{
         background: 'var(--bg-secondary)', borderBottom: '1px solid rgba(26,26,26,0.06)',

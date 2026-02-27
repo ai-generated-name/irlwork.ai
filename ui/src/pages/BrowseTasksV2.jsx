@@ -103,6 +103,7 @@ export default function BrowseTasksV2({
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
+  const [popupTaskId, setPopupTaskId] = useState(null);
 
   // Apply modal state
   const [applyModalTask, setApplyModalTask] = useState(null);
@@ -242,6 +243,24 @@ export default function BrowseTasksV2({
   const handleTaskSelect = (taskId) => {
     window.location.href = `/tasks/${taskId}`;
   };
+
+  // Popup open/close handlers for map pins
+  const handlePopupOpen = useCallback((taskId) => {
+    setPopupTaskId(taskId);
+    setSelectedTaskId(taskId);
+    // Scroll the corresponding card into view in the list
+    if (taskListRef.current) {
+      const cardEl = taskListRef.current.querySelector(`[data-task-id="${taskId}"]`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, []);
+
+  const handlePopupClose = useCallback(() => {
+    setPopupTaskId(null);
+    setSelectedTaskId(null);
+  }, []);
 
   // Handle apply success
   const handleApplySuccess = (taskId) => {
@@ -613,6 +632,10 @@ export default function BrowseTasksV2({
                 onTaskHover={setHoveredTaskId}
                 onBoundsChange={handleMapBoundsChange}
                 disableFitBounds={mapDrivenSearch}
+                isMobile={false}
+                popupTaskId={popupTaskId}
+                onPopupOpen={handlePopupOpen}
+                onPopupClose={handlePopupClose}
               />
             </Suspense>
           </div>
@@ -639,7 +662,7 @@ export default function BrowseTasksV2({
         <div className="browse-tasks-v2-mobile-map-overlay">
           <button
             className="browse-tasks-v2-mobile-map-close"
-            onClick={() => setShowMobileMap(false)}
+            onClick={() => { setShowMobileMap(false); handlePopupClose(); }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -654,13 +677,14 @@ export default function BrowseTasksV2({
               radius={radius !== 'anywhere' ? parseFloat(radius) : null}
               selectedTaskId={selectedTaskId}
               hoveredTaskId={hoveredTaskId}
-              onTaskSelect={(id) => {
-                handleTaskSelect(id);
-                setShowMobileMap(false);
-              }}
+              onTaskSelect={handleTaskSelect}
               onTaskHover={setHoveredTaskId}
               onBoundsChange={handleMapBoundsChange}
               disableFitBounds={mapDrivenSearch}
+              isMobile={true}
+              popupTaskId={popupTaskId}
+              onPopupOpen={handlePopupOpen}
+              onPopupClose={handlePopupClose}
             />
           </Suspense>
         </div>
