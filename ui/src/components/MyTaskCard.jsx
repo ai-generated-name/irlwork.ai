@@ -109,7 +109,6 @@ export default function MyTaskCard({
             <h3 className="mytasks-card__title mytasks-card__title--compact">{task.title}</h3>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="mytasks-card__task-id">{formatTaskId(task.id)}</span>
             <span className="mytasks-card__budget">${task.budget || 0}</span>
           </div>
         </div>
@@ -134,7 +133,6 @@ export default function MyTaskCard({
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span className={`mytasks-status ${status.className}`}>{status.label}</span>
-            <span className="mytasks-card__task-id">{formatTaskId(task.id)}</span>
           </div>
           <h3 className="mytasks-card__title">{task.title}</h3>
         </div>
