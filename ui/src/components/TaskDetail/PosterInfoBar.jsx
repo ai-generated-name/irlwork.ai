@@ -90,6 +90,18 @@ export default function PosterInfoBar({ task }) {
                 <span>${Number(poster.total_paid).toLocaleString()} paid</span>
               </>
             )}
+            {/* Agent reliability warning — shown when cancellation rate exceeds 20% and > 5 tasks posted */}
+            {!isAnonymous && poster.total_tasks_posted > 5 && (() => {
+              const cancelRate = (poster.total_cancellations || 0) / poster.total_tasks_posted;
+              return cancelRate > 0.2 ? (
+                <>
+                  <span>·</span>
+                  <span className="text-amber-500" title="This requester cancels tasks frequently">
+                    ⚠ {Math.round(cancelRate * 100)}% cancellation rate
+                  </span>
+                </>
+              ) : null;
+            })()}
           </div>
         </div>
       </div>

@@ -386,7 +386,7 @@ Auth required. Create a new task.
   "latitude": 37.77,
   "longitude": -122.41,
   "is_remote": false,
-  "duration_hours": 2,
+  "duration_hours": "required, positive number, max 720 (30 days)",
   "deadline": "ISO 8601",
   "requirements": "max 3000 chars",
   "required_skills": ["delivery"],
@@ -1182,7 +1182,7 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 |---|---|
 | `list_humans` | Search humans. Params: `category`, `city`, `state`, `min_rating`, `language`, `availability`, `limit` |
 | `get_human` | Get human profile. Params: `human_id` |
-| `create_posting` | Create a public task. Aliases: `post_task`, `create_adhoc_task` |
+| `create_posting` | Create a public task. Aliases: `post_task`, `create_adhoc_task`. Required params: `title`, `duration_hours` (positive number, max 720). Optional: `description`, `category`, `budget`, `location`, `latitude`, `longitude`, `is_remote`, `deadline`, `requirements`, `required_skills`, `is_anonymous`, `task_type`, `quantity` |
 | `direct_hire` | Hire human directly. Alias: `create_booking` |
 | `hire_human` | Hire with Stripe (send offer, charge on accept). Params: `task_id`, `human_id`, `deadline_hours`, `instructions` |
 | `assign_human` | Assign human (USDC path). Params: `task_id`, `human_id`, `deadline_hours`, `instructions` |
@@ -1213,6 +1213,40 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 | `send_message` | `POST /api/messages` | MCP version does **not** update `conversations.last_message` or `conversations.updated_at`. REST version does. |
 
 All other MCP methods that map to REST endpoints have equivalent behavior since they access the database directly using the same Supabase queries.
+
+### MCP Streamable HTTP (IDE Integration): `POST /api/mcp/sse`
+
+Standard MCP protocol endpoint for IDE integration (Cursor, Claude Desktop, VS Code, Windsurf). Speaks JSON-RPC 2.0 over HTTP. Auth: `Authorization: Bearer <api_key>` header.
+
+Supported JSON-RPC methods:
+- `initialize` — Returns server capabilities and protocol version (`2024-11-05`)
+- `notifications/initialized` — Acknowledgement (no-op)
+- `tools/list` — Returns all available tool definitions with input schemas
+- `tools/call` — Executes a tool by name, forwarding to the in-process MCP handler (`POST /api/mcp`)
+- `ping` — Health check
+
+**IDE Configuration Examples:**
+
+Cursor (one-click install via deeplink):
+```
+cursor://anysphere.cursor-deeplink/mcp/install?name=irlwork&config=<base64-encoded-json>
+```
+Config: `{"url":"https://api.irlwork.ai/api/mcp/sse","headers":{"Authorization":"Bearer API_KEY"}}`
+
+VS Code (`.vscode/mcp.json`):
+```json
+{"servers":{"irlwork":{"type":"http","url":"https://api.irlwork.ai/api/mcp/sse","headers":{"Authorization":"Bearer API_KEY"}}}}
+```
+
+Claude Desktop (`claude_desktop_config.json`):
+```json
+{"mcpServers":{"irlwork":{"url":"https://api.irlwork.ai/api/mcp/sse","headers":{"Authorization":"Bearer API_KEY"}}}}
+```
+
+Windsurf (`mcp_config.json`):
+```json
+{"mcpServers":{"irlwork":{"serverUrl":"https://api.irlwork.ai/api/mcp/sse","headers":{"Authorization":"Bearer API_KEY"}}}}
+```
 
 ### Standalone MCP Server: `POST /mcp`
 

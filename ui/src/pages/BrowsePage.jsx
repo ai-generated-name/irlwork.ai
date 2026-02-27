@@ -567,7 +567,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       {/* Navbar provided by shared MarketingNavbar in App.jsx */}
 
       {/* Main Content */}
-      <div style={{ maxWidth: 1340, margin: '0 auto', padding: '110px 24px 48px', flex: 1, width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ maxWidth: 1340, margin: '0 auto', padding: '54px 24px 48px', flex: 1, width: '100%', boxSizing: 'border-box' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <h1 style={{

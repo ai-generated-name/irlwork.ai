@@ -1,207 +1,390 @@
-# Humanwork.ai - System Architecture & Escrow Flow
+# irlwork Platform Architecture Reference
 
-## Database Schema (SQLite)
+This is a living document. Any changes to the platform's architecture, payment flows, status transitions, cancellation policies, or core business logic MUST be reflected here. Before implementing changes, read this file. After implementing changes, update this file.
 
-```
-users
-├── id, email, password_hash, name, type (human/agent)
-├── api_key (agents), stripe_account_id, stripe_customer_id
-├── hourly_rate, location_city, timezone, availability
-├── rating, review_count, jobs_completed, verified
-└── created_at, updated_at
+**Last updated:** 2026-02-26
 
-human_skills
-├── id, user_id, skill, category
+## Table of Contents
 
-categories (14 total)
-├── id, name, icon, description
-
-task_templates
-├── id, category_id, name, description, estimated_hours
-└── base_price_range_min, base_price_range_max
-
-ad_hoc_tasks
-├── id, user_id, category, title, description
-├── location, urgency, budget_min, budget_max
-└── status (open/in_progress/completed), created_at
-
-conversations
-├── id, agent_id, human_id, subject
-├── last_message, created_at, updated_at
-
-messages
-├── id, conversation_id, sender_id, content
-├── type (text/booking_request/system), metadata (JSON)
-├── read (0/1), created_at
-
-bookings
-├── id, conversation_id, agent_id, human_id, title
-├── description, location, scheduled_at, duration_hours
-├── hourly_rate, total_amount, status (pending/accepted/rejected/cancelled/completed/disputed)
-├── created_at, updated_at
-
-transactions (ESCROW SYSTEM)
-├── id, booking_id, agent_id, human_id, amount
-├── status (pending/held/released/refunded)
-├── stripe_payment_id, stripe_transfer_id
-├── created_at, updated_at
-
-reviews
-├── id, booking_id, reviewer_id, reviewee_id
-├── rating (1-5), comment, type (agent_to_human / human_to_agent)
-└── created_at
-
-verifications
-├── id, booking_id, human_id, type (completion_review/video)
-├── status (pending/approved/rejected), proof_data (JSON)
-├── verified_at, created_at
-
-notifications
-├── id, user_id, type, title, message
-├── read (0/1), link, created_at
-
-availability_slots
-├── id, user_id, day_of_week, start_time, end_time, recurring
-```
+1. [Task Lifecycle & Status Machine](#task-lifecycle--status-machine)
+2. [Payment & Escrow Flow](#payment--escrow-flow)
+3. [Cancellation Policy](#cancellation-policy)
+4. [Task Content: Description vs Instructions](#task-content-description-vs-instructions)
+5. [Revision System](#revision-system)
+6. [Worker & Agent Reputation](#worker--agent-reputation)
+7. [Communication Flow (Agent <-> Human)](#communication-flow-agent--human)
+8. [Notification Matrix](#notification-matrix)
+9. [Webhook System](#webhook-system)
+10. [Dispute Resolution](#dispute-resolution)
+11. [Platform Fees](#platform-fees)
+12. [Background Jobs](#background-jobs)
+13. [API Endpoint Reference](#api-endpoint-reference)
+14. [Changelog](#changelog)
 
 ---
 
-## Escrow Payment Flow
+## Task Lifecycle & Status Machine
+
+### Statuses
+
+| Status | Meaning | Who triggers |
+|--------|---------|-------------|
+| `open` | Task posted, accepting applications | Agent (creates task) |
+| `pending_acceptance` | Agent selected a human, waiting for human to accept (Stripe path) | Agent (assigns) |
+| `assigned` | Human accepted the offer. Auth hold placed on agent's card. Work not yet started. | Human (accepts) |
+| `in_progress` | Human started work. Escrow captured (funds charged). | Human (calls /start) |
+| `pending_review` | Human submitted proof. Waiting for agent review. | Human (submits proof) |
+| `approved` | Agent approved the work. Payment releasing. | Agent (approves) |
+| `disputed` | Either party opened a dispute. Platform mediating. | Agent or Human |
+| `paid` | Payment fully processed and delivered to human. Terminal. | System (auto) |
+| `expired` | Deadline passed with no applicants, or 30-day stale. Terminal. | System (background job) |
+| `cancelled` | Task cancelled. Terminal. | Agent or System |
+
+### Valid Transitions
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    ESCROW FLOW                              │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  1. AGENT CREATES BOOKING                                   │
-│     POST /api/bookings                                      │
-│     → Status: "pending"                                      │
-│     → Transaction created with status: "pending"             │
-│                                                             │
-│  2. HUMAN ACCEPTS BOOKING                                   │
-│     PATCH /api/bookings/:id (status: "accepted")            │
-│     → Transaction status: "held" (escrow secured)          │
-│                                                             │
-│  3. WORK COMPLETED                                          │
-│     POST /api/bookings/:id/complete                         │
-│     → Booking status: "completed"                           │
-│     → Verification record created                           │
-│                                                             │
-│  4. AGENT RELEASES ESCROW                                   │
-│     POST /api/bookings/:id/release-escrow                   │
-│     → Transaction status: "released"                        │
-│     → Human's jobs_completed++                              │
-│     → Stripe transfer initiated (mock mode)                 │
-│                                                             │
-│  ─────────────────────────────────────────────────────────  │
-│                                                             │
-│  ALTERNATIVE FLOWS:                                          │
-│                                                             │
-│  • REJECTED: Transaction refunded                           │
-│  • CANCELLED: Transaction refunded                          │
-│  • DISPUTED: Manual review required                         │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+open -> pending_acceptance  (agent selects human, Stripe path)
+open -> assigned            (agent selects human, USDC path / direct)
+open -> expired             (deadline passed / stale)
+open -> cancelled           (agent cancels -- no charge)
+
+pending_acceptance -> assigned   (human accepts offer)
+pending_acceptance -> open       (human declines offer)
+pending_acceptance -> cancelled  (agent cancels -- no charge)
+
+assigned -> in_progress  (human calls /start -- ESCROW CAPTURED HERE)
+assigned -> cancelled    (agent cancels -- auth hold released, no fee)
+
+in_progress -> pending_review  (human submits proof)
+in_progress -> disputed        (either party opens dispute)
+
+pending_review -> approved     (agent approves)
+pending_review -> in_progress  (agent rejects / requests revision -- max 2 times)
+pending_review -> disputed     (agent disputes)
+
+approved -> paid  (system processes payout)
+
+disputed -> approved   (resolved in human's favor)
+disputed -> cancelled  (resolved in agent's favor -- refund)
+disputed -> paid       (resolved with modified payout)
 ```
+
+### Rules
+
+- No status can be skipped. `open` cannot go directly to `completed`.
+- Terminal statuses (`paid`, `expired`, `cancelled`) cannot transition to anything.
+- All transitions must go through `validateStatusTransition()` — never update status with raw SQL without validation.
+- Atomic updates only. Always use `.eq('status', currentStatus)` in the UPDATE to prevent TOCTOU races.
 
 ---
 
-## MCP Server Integration
+## Payment & Escrow Flow
+
+### Core Principle
+
+No money moves until a human is committed to the work.
+
+### Timeline
 
 ```
-MCP Server: http://localhost:3004
-Endpoint: POST /mcp
-
-Available Methods:
-• list_humans(params)        → Search humans
-• get_human(human_id)         → Profile details
-• start_conversation(...)    → Begin outreach
-• send_message(...)           → Send message
-• create_booking(...)         → Request booking
-• complete_booking(booking_id)→ Mark complete
-• release_escrow(booking_id)  → Release payment
-• my_bookings()               → List bookings
-• notifications()             → Get alerts
+Task Created       -> Verify agent has payment method (no charge)
+Human Assigned     -> Stripe PaymentIntent created with capture_method: 'manual'
+                      (authorization hold -- funds reserved but NOT charged)
+Human Starts Work  -> PaymentIntent CAPTURED (escrow funded -- money moves)
+Agent Approves     -> releasePaymentToPending() (48-hour hold begins)
+48h Dispute Window -> balancePromoter promotes pending -> available
+                      (ONLY after dispute window closes AND no active dispute)
+Payout             -> Auto-transfer to Stripe Connect if onboarded
+                      OR available in wallet for manual withdrawal
 ```
+
+### Key Rules
+
+- Never charge at task creation. Only verify payment method exists.
+- Authorization holds expire after 7 days. Background job must re-authorize holds on tasks still in `assigned` status after 6 days.
+- Escrow capture happens at `/start`, not at assignment. The `escrow_captured` flag on the task tracks this.
+- 48-hour dispute window starts when payment is released to pending. `dispute_window_closes_at` MUST be set on the payout record.
+- `balancePromoter` must check both `dispute_window_closes_at > now` AND no active dispute before promoting.
+- Idempotency keys on all Stripe transfers: `payout-${payoutId}` to prevent double-sends.
 
 ---
 
-## API Endpoints Quick Reference
+## Cancellation Policy
 
-```
-AUTH
-POST /api/auth/register/human
-POST /api/auth/register-agent
-POST /api/auth/login
-GET  /api/auth/verify
+Two tiers based on whether work has started:
 
-HUMANS
-GET  /api/humans (filters: category, city, rate, rating, skills)
-GET  /api/humans/:id
-PATCH /api/humans/:id (update profile)
-GET  /api/humans/:id/portfolio
-GET  /api/humans/:id/certifications
-GET  /api/humans/:id/availability
+| Tier | Status | Agent can cancel? | What happens | Human receives |
+|------|--------|------------------|--------------|----------------|
+| Pre-work | `open`, `pending_acceptance`, `assigned` | Yes, unilateral | Auth hold cancelled (or no hold yet). No fee. | Nothing |
+| In-progress+ | `in_progress`, `pending_review`, `approved`, `disputed` | No | Must open a dispute. Platform mediates. | Platform-determined |
 
-MESSAGING
-GET  /api/conversations
-POST /api/conversations
-POST /api/messages
-GET  /api/conversations/:id/messages
+### Rules
 
-BOOKINGS
-POST /api/bookings
-PATCH /api/bookings/:id (accept/reject/cancel)
-POST /api/bookings/:id/complete
-POST /api/bookings/:id/release-escrow
-GET  /api/bookings
-
-AD HOC TASKS
-GET  /api/ad-hoc
-POST /api/ad-hoc
-
-TASK TEMPLATES
-GET  /api/task-templates
-
-NOTIFICATIONS
-GET  /api/notifications
-PATCH /api/notifications/:id/read
-
-VERIFICATION
-POST /api/verification/video
-GET  /api/verifications/:booking_id
-
-STRIPE (MOCK)
-POST /api/stripe/connect
-POST /api/stripe/payment-intent
-```
+- **Before work starts**: Agent can freely cancel. Auth hold is released. No charges, no fees, no friction.
+- **After work starts**: Agent cannot unilaterally cancel. They must open a dispute — platform reviews evidence and decides: full payment to human, partial payment, or full refund.
+- **Proof submitted** (`pending_review`): Agent must approve, request a revision (up to 2), or open a dispute. Cannot cancel.
+- **After max revisions** (2): Agent must either approve or open a dispute. No more rejections allowed.
 
 ---
 
-## Missing Items for Full Functionality
+## Task Content: Description vs Instructions
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Stripe (real mode) | ❌ | Need real Stripe API keys |
-| Email notifications | ❌ | Need SendGrid/SES integration |
-| Push notifications | ❌ | Need service worker setup |
-| Video verification UI | ❌ | Frontend for uploading proof |
-| Google Analytics | ❌ | Not added yet |
-| Stripe Connect onboarding | ❌ | Need OAuth flow |
-| SMS notifications | ❌ | Twilio integration |
-| Admin dashboard | ❌ | For platform management |
-| Analytics dashboard | ❌ | Metrics, charts |
+| Field | Visibility | Purpose | When set |
+|-------|-----------|---------|----------|
+| `description` | PUBLIC — visible to all humans browsing tasks | Marketing copy to attract applicants. General overview of what's needed. | Task creation |
+| `instructions` | PRIVATE — visible ONLY to the assigned human | Detailed work brief. Step-by-step instructions, addresses, access codes, reference materials. | Task creation (optional) or at assignment |
+
+### Rules
+
+- `instructions` MUST be stripped from all API responses to non-participants
+- `instructions` MUST NOT be overwritten by rejection feedback (use `rejection_feedback` column instead)
+- `instructions` can be provided at task creation OR at assignment, but once set should not be casually overwritten
+- Support rich text (Markdown) and attachments (`instructions_attachments` JSONB)
 
 ---
 
-## Configuration Required
+## Revision System
 
-```bash
-# Environment variables
-HUMANWORK_API_KEY=hw_xxx           # Your API key
-STRIPE_SECRET_KEY=sk_live_xxx      # Stripe secret
-STRIPE_WEBHOOK_SECRET=whsec_xxx    # Webhooks
-SENDGRID_API_KEY=SG.xxx            # Email
-TWILIO_ACCOUNT_SID=ACxxx            # SMS
-GA_TRACKING_ID=G-XXXXXXXXXX         # Google Analytics
+Maximum **2 revisions** per task, tracked via the `revision_count` field on the task row.
+
+### Flow
+
+1. Human submits proof -> status becomes `pending_review`
+2. Agent reviews and either approves, requests revision, or disputes
+3. On rejection: `revision_count` is atomically incremented, `rejection_feedback` is stored (NOT overwriting `instructions`), old proof is preserved with `status: 'rejected'`, status returns to `in_progress`
+4. Human sees BOTH original `instructions` AND the `rejection_feedback` — they are separate fields, separate UI blocks
+5. After 2 rejections, the reject endpoint blocks and returns 409: "Maximum revisions reached. Please approve the work or open a dispute."
+
+### Rules
+
+- `revision_count` on the task row is the **single source of truth** for the max-2 check. Do not query `task_proofs` to count rejections for the gate.
+- Proof records (`task_proofs`) serve as evidence history only. All previous proofs are preserved with `status: 'rejected'`, not deleted.
+- `rejection_feedback` is a separate column from `instructions`. Each rejection overwrites the previous `rejection_feedback` (only the latest revision notes are active).
+- Each rejection increments `total_rejections` on the human's user record.
+- Business rule: `pending_review -> in_progress` (via reject) is a revision, not a status loop. It can only happen `MAX_REVISIONS` times.
+
+---
+
+## Worker & Agent Reputation
+
+### Tracked Metrics
+
+| Metric | Who | Description | When incremented |
+|--------|-----|-------------|-----------------|
+| `total_tasks_completed` | Human | Tasks paid successfully | In `releasePaymentToPending` (via `increment_user_stat` RPC) |
+| `total_tasks_accepted` | Human | Tasks accepted by human | At accept endpoint |
+| `total_rejections` | Human | Count of proof rejections across all tasks | At reject endpoint |
+| `total_disputes_lost` | Both | Disputes resolved against this party | At dispute resolution |
+| `total_disputes_filed` | Both | Disputes filed by this user | In `openDispute` helper |
+| `total_cancellations` | Agent | Tasks cancelled by agent after assignment | At cancel endpoint (pre-work with human assigned) |
+| `total_tasks_posted` | Agent | Tasks created by agent | At task creation endpoints |
+
+### Computed Rates
+
+- **Worker success rate**: `total_tasks_completed / (total_tasks_completed + total_disputes_lost)`. Returns `null` if no history. `total_rejections` is intentionally excluded — revision requests are normal workflow, not failures.
+- **Agent reliability**: `1 - (total_cancellations / total_tasks_posted)`. Only computed when `total_tasks_posted > 5`.
+
+### Display Rules
+
+- Workers with < 70% success rate show a warning indicator on applicant cards
+- Agents with > 20% cancellation rate (and > 5 tasks posted) show a reliability indicator on task detail pages
+
+---
+
+## Communication Flow (Agent <-> Human)
+
+### Message Lifecycle
+
 ```
+Human sends message on irlwork
+  -> Message stored in DB (messages table, linked to conversation + task)
+  -> In-app notification created for agent
+  -> Email sent to agent (via Resend)
+  -> Webhook fired to agent's configured URL (event: new_message)
+
+Agent receives webhook
+  -> Agent processes message (AI drafts response)
+  -> Agent calls POST /api/tasks/:id/messages OR POST /api/messages
+
+Agent sends message via API
+  -> Message stored in DB
+  -> In-app notification created for human
+  -> Email sent to human (via Resend)
+  -> Real-time delivery via Supabase Realtime
+```
+
+### Rules
+
+- A conversation MUST be auto-created when a human is assigned to a task
+- Messages are scoped to tasks — no messaging outside of active task context
+- Messaging is disabled for terminal statuses (`paid`, `cancelled`, `expired`)
+- Messaging remains open during `disputed` status
+- ALL notification channels (in-app, email, webhook) must fire regardless of whether the message was sent via REST or MCP — no channel should be skipped
+
+---
+
+## Notification Matrix
+
+| Event | To Agent | To Human | Channels |
+|-------|----------|----------|----------|
+| New application | Yes | — | In-app, Email, Webhook |
+| Assigned to task | — | Yes | In-app, Email |
+| Not selected | — | Yes | In-app, Email |
+| Instructions delivered | — | Yes | In-app, Email |
+| New message (human->agent) | Yes | — | In-app, Email, Webhook |
+| New message (agent->human) | — | Yes | In-app, Email |
+| Task cancelled | Yes | Yes | In-app, Email, Webhook |
+| Proof submitted | Yes | — | In-app, Webhook |
+| Task approved | — | Yes | In-app, Email |
+| Payment received | — | Yes | In-app, Email |
+| Dispute opened | Yes | Yes | In-app, Email, Webhook |
+| Auto-approve warning (24h) | Yes | — | Webhook |
+| Auto-approved (48h) | Yes | Yes | In-app, Webhook |
+| Deadline passed | Yes | Yes | In-app, Webhook |
+
+---
+
+## Webhook System
+
+### Delivery
+
+- HMAC-signed HTTPS POST to agent's configured callback URL
+- Retry with exponential backoff: 1min -> 5min -> 30min -> 2hr -> 12hr (5 attempts max)
+- Failed deliveries stored in `webhook_deliveries` table
+- Agents can check delivery status via `GET /api/webhooks/deliveries`
+
+### Events
+
+`new_application`, `task_accepted`, `task_declined`, `task_started`, `new_message`, `proof_submitted`, `proof_approved`, `task_cancelled`, `dispute_opened`, `auto_approve_warning`, `task_auto_approved`, `task_paid`, `deadline_passed`
+
+---
+
+## Dispute Resolution
+
+### Single System
+
+One dispute flow (via `openDispute` helper), not two parallel systems.
+
+### Flow
+
+1. Party opens dispute within 48-hour window -> task status -> `disputed`, payout frozen
+2. Both parties can submit evidence (messages, photos, additional proof)
+3. Platform reviews and resolves:
+   - In human's favor -> release full escrow to human -> status -> `paid`
+   - In agent's favor -> refund escrow to agent -> status -> `cancelled`
+   - Split decision -> partial release + partial refund -> status -> `paid`
+4. If no resolution within 7 days, platform auto-resolves (default: in human's favor if proof was submitted)
+5. On resolution, `total_disputes_lost` is incremented on the losing party
+
+---
+
+## Platform Fees
+
+| Fee | Amount | Source of truth |
+|-----|--------|----------------|
+| Platform fee | 15% | `api/config/constants.js` |
+| Stripe processing | ~2.9% + $0.30 | Stripe (not configurable by us) |
+
+Human receives: `budget - platform_fee`
+Agent pays: `budget` (platform fee is deducted from the human's side)
+
+---
+
+## Background Jobs
+
+| Job | Frequency | What it does |
+|-----|-----------|-------------|
+| Task expiry | Hourly | Expires tasks past deadline with no applicants, or 30-day stale tasks |
+| Balance promoter | Every 15 min | Promotes `pending -> available` after dispute window closes. Auto-transfers to Stripe Connect if ready. |
+| Auth hold renewal | Every 6 hours | Re-authorizes Stripe holds on assigned tasks older than 6 days. Notifies agent on failure, auto-cancels after 24h grace. |
+| Auto-approve | Hourly | Auto-approves `pending_review` tasks older than 48 hours. Sends 24h warning first. |
+| Deadline timeout | Hourly | Warns then auto-disputes `in_progress` tasks past deadline + 24h grace. Falls back to 7-day timeout for tasks without deadlines. |
+| Webhook retry | Every 60 seconds | Retries failed webhook deliveries with exponential backoff (batch of 10) |
+
+---
+
+## API Endpoint Reference
+
+### Task Lifecycle
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/tasks` | Create task (public) |
+| `POST` | `/api/tasks/create` | Create task (agent-only) |
+| `GET` | `/api/tasks/:id` | Get task details |
+| `PATCH` | `/api/tasks/:id` | Update task (open status only) |
+| `POST` | `/api/tasks/:id/apply` | Human applies |
+| `DELETE` | `/api/tasks/:id/apply` | Human withdraws application |
+| `POST` | `/api/tasks/:id/assign` | Agent assigns human |
+| `POST` | `/api/tasks/:id/accept` | Human accepts assignment |
+| `POST` | `/api/tasks/:id/decline` | Human declines assignment |
+| `POST` | `/api/tasks/:id/start` | Human starts work (ESCROW CAPTURED) |
+| `POST` | `/api/tasks/:id/submit-proof` | Human submits proof |
+| `POST` | `/api/tasks/:id/approve` | Agent approves |
+| `POST` | `/api/tasks/:id/reject` | Agent rejects (requests revision) |
+| `POST` | `/api/tasks/:id/cancel` | Cancel task (tiered policy) |
+| `POST` | `/api/tasks/:id/confirm-payment` | Agent confirms 3DS payment verification |
+| `GET` | `/api/tasks/:id/applications/check` | Check if current user has applied |
+
+### Messaging
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/messages` | Send message |
+| `GET` | `/api/messages/:conversation_id` | Get message history |
+| `POST` | `/api/tasks/:id/messages` | Send message (task-scoped) |
+| `GET` | `/api/tasks/:id/messages` | Get messages for task |
+
+### Disputes
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/disputes` | Open dispute |
+| `POST` | `/api/disputes/:id/resolve` | Resolve dispute (admin) |
+
+### Webhooks
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/webhooks/register` | Register webhook URL |
+| `GET` | `/api/webhooks/deliveries` | Check delivery status |
+
+### Payments
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/wallet/balance` | Get wallet balance |
+| `GET` | `/api/payouts` | Get payout history |
+
+### Admin Business Intelligence
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/admin/financials?period=30d` | GMV, fees, payouts, escrow, disputes, premium MRR |
+| `GET` | `/api/admin/growth?period=30d` | Users/tasks by day, DAU/WAU/MAU |
+| `GET` | `/api/admin/funnel?period=30d` | Conversion rates, avg lifecycle times |
+
+### Admin Auth
+
+Backend uses `ADMIN_USER_IDS` env var (comma-separated UUIDs). Frontend receives `is_admin: true/false` in the `/api/auth/verify` response. The `users.role` column exists but is currently unused — admin auth should eventually migrate from env var to this database column.
+
+---
+
+## Changelog
+
+| Date | Change | Section affected |
+|------|--------|-----------------|
+| 2026-02-26 | Initial architecture document created | All |
+| 2026-02-26 | Simplified cancellation to 2-tier model (pre-work free, in-progress+ dispute only). Removed `cancellation_requested` status. Added revision system (max 2). Added worker & agent reputation tracking. Added auth hold renewal, auto-approve, deadline timeout background jobs. Updated payment flow to auth-hold/manual-capture model. | All |
+| 2026-02-27 | Added admin BI endpoints (financials, growth, funnel). Fixed admin panel access. Added Sentry error tracking and Pino structured logging. | Admin, Observability |
+
+---
+
+## Instructions for updating this file
+
+1. Before making architecture changes, read the relevant section
+2. After implementing changes, update the relevant section AND add a changelog entry
+3. If adding a new status, update BOTH the status table AND the valid transitions diagram
+4. If changing payment timing, update the Payment & Escrow Flow section
+5. If adding/removing a notification, update the Notification Matrix
+6. If adding/removing an API endpoint, update the API Endpoint Reference
