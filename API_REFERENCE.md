@@ -1205,6 +1205,33 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 | `submit_feedback` | Submit feedback. Params: `message`, `type`, `urgency`, `subject` |
 | `report_error` | Report agent error. Params: `action`, `error_message`, `error_code`, `error_log` |
 
+### GET /api/mcp/docs
+
+Returns the full MCP method catalog as structured JSON. Publicly accessible (no authentication required). Agents should fetch this before their first API call to get the latest method signatures and parameters.
+
+**Query Parameters:**
+- `method` (optional) — Return a single method by name or alias: `?method=list_humans`
+- `category` (optional) — Filter by category: `?category=tasks`
+
+**Response:**
+Returns JSON with `methods` array, `categories` map, `auth` details, `base_url`, `rate_limits`, and `total_methods` count. Each method entry includes `name`, `aliases`, `category`, `description`, `params` (with types, required flags, and descriptions), and `returns`.
+
+**Examples:**
+```bash
+# Full catalog
+curl https://api.irlwork.ai/api/mcp/docs
+
+# Single method lookup
+curl https://api.irlwork.ai/api/mcp/docs?method=create_adhoc_task
+
+# Category filter
+curl https://api.irlwork.ai/api/mcp/docs?category=messaging
+```
+
+**Categories:** `search`, `messaging`, `tasks`, `proofs`, `bookings`, `notifications`, `feedback`, `subscriptions`
+
+---
+
 ### MCP vs REST Behavioral Differences
 
 | Method | REST Equivalent | Difference |
