@@ -2331,6 +2331,12 @@ app.post('/api/tasks', async (req, res) => {
   if (parseFloat(budget || budget_usd) > 100000) {
     return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
   }
+  if (!duration_hours || isNaN(parseFloat(duration_hours)) || parseFloat(duration_hours) <= 0) {
+    return res.status(400).json({ error: 'duration_hours is required and must be a positive number' });
+  }
+  if (parseFloat(duration_hours) > 720) {
+    return res.status(400).json({ error: 'duration_hours cannot exceed 720 (30 days)' });
+  }
 
   const id = uuidv4();
   const budgetAmount = parseFloat(budget || budget_usd) || 50;
@@ -2370,7 +2376,7 @@ app.post('/api/tasks', async (req, res) => {
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
       deadline: deadline || datetime_start || null,
-      duration_hours: duration_hours || null,
+      duration_hours: parseFloat(duration_hours),
       requirements: requirements || null,
       required_skills: skillsArray,
       max_humans: max_humans ? parseInt(max_humans) : 1,
@@ -2382,7 +2388,7 @@ app.post('/api/tasks', async (req, res) => {
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,
-      duration_hours: duration_hours || null,
+      duration_hours: parseFloat(duration_hours),
     });
 
   const { data: task, error } = await supabase
@@ -5449,6 +5455,12 @@ app.post('/api/mcp', async (req, res) => {
       case 'create_adhoc_task': {
         // Create a public posting for humans to apply to
         if (!params.title) return res.status(400).json({ error: 'title is required' });
+        if (!params.duration_hours || isNaN(parseFloat(params.duration_hours)) || parseFloat(params.duration_hours) <= 0) {
+          return res.status(400).json({ error: 'duration_hours is required and must be a positive number (estimated hours to complete the task)' });
+        }
+        if (parseFloat(params.duration_hours) > 720) {
+          return res.status(400).json({ error: 'duration_hours cannot exceed 720 (30 days)' });
+        }
 
         // Run validation pipeline if task_type_id is provided
         const { proceed: mcpProceed, flagged: mcpTaskFlagged, errorResponse: mcpErrorResponse } = await runTaskValidation(supabase, params, user.id);
@@ -5495,7 +5507,7 @@ app.post('/api/mcp', async (req, res) => {
             created_at: new Date().toISOString()
           }, {
             is_anonymous: !!params.is_anonymous,
-            duration_hours: params.duration_hours || null,
+            duration_hours: parseFloat(params.duration_hours),
           }))
           .select()
           .single();
@@ -7027,6 +7039,14 @@ app.post('/api/tasks/create', async (req, res) => {
   const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(quantity) || 1) : 1;
   const skillsArray = Array.isArray(required_skills || skillsRequiredInput) ? (required_skills || skillsRequiredInput) : [];
 
+  // Duration is required
+  if (!duration_hours || isNaN(parseFloat(duration_hours)) || parseFloat(duration_hours) <= 0) {
+    return res.status(400).json({ error: 'duration_hours is required and must be a positive number' });
+  }
+  if (parseFloat(duration_hours) > 720) {
+    return res.status(400).json({ error: 'duration_hours cannot exceed 720 (30 days)' });
+  }
+
   // Non-remote tasks must have coordinates for location-based filtering
   const isRemote = !!req.body.is_remote;
   if (!isRemote && (latitude == null || longitude == null)) {
@@ -7064,6 +7084,7 @@ app.post('/api/tasks/create', async (req, res) => {
       escrow_amount: budgetAmount,
       is_remote: isRemote,
       deadline: deadline || datetime_start || null,
+      duration_hours: parseFloat(duration_hours),
       requirements: requirements || null,
       required_skills: skillsArray,
       task_type_id: task_type_id || null,
@@ -7074,7 +7095,7 @@ app.post('/api/tasks/create', async (req, res) => {
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,
-      duration_hours: duration_hours || null,
+      duration_hours: parseFloat(duration_hours),
     }))
     .select()
     .single();
