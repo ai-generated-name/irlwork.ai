@@ -220,7 +220,7 @@ Replaces the `bookings` and `ad_hoc_tasks` tables from ARCHITECTURE.md.
 | `budget` | NUMERIC | | | Budget in dollars |
 | `deposit_amount_cents` | INTEGER | | | Unique deposit for matching |
 | `unique_deposit_amount` | DECIMAL(12,2) | | | Unique deposit variant |
-| `duration_hours` | DECIMAL(5,2) | | | Estimated hours |
+| `duration_hours` | DECIMAL(5,2) | | | Estimated hours (required on creation, max 720) |
 | `duration` | TEXT | | | Human-readable duration |
 | `urgency` | VARCHAR(50) | | | Urgency level |
 | `insurance_option` | VARCHAR(100) | | | |

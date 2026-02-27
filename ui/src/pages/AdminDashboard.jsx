@@ -1,7 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
-import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer } from 'lucide-react'
+import { useState, useEffect, useCallback, lazy, Suspense, Fragment } from 'react'
+import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer, TrendingUp, Filter, Activity } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import API_URL from '../config/api'
+
+// Lazy-load BI tabs so they only fetch data when selected
+const OverviewTab = lazy(() => import('../components/admin/OverviewTab'))
+const FunnelTab = lazy(() => import('../components/admin/FunnelTab'))
+const FinancialTab = lazy(() => import('../components/admin/FinancialTab'))
+const LiveFeedTab = lazy(() => import('../components/admin/LiveFeedTab'))
 
 /**
  * Admin Dashboard - Phase 1 Manual Operations
@@ -11,7 +17,7 @@ export default function AdminDashboard({ user }) {
   const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [activeQueue, setActiveQueue] = useState('dashboard')
+  const [activeQueue, setActiveQueue] = useState('bi-overview')
   const [dashboard, setDashboard] = useState(null)
   const [queueData, setQueueData] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
@@ -289,8 +295,16 @@ export default function AdminDashboard({ user }) {
     )
   }
 
-  const queues = [
-    { id: 'dashboard', label: 'Overview', icon: <BarChart3 size={16} /> },
+  // BI tabs (lazy-loaded) appear first, followed by operational queues
+  const biTabs = [
+    { id: 'bi-overview', label: 'Overview', icon: <TrendingUp size={16} />, isBi: true },
+    { id: 'bi-funnel', label: 'Funnel', icon: <Filter size={16} />, isBi: true },
+    { id: 'bi-financial', label: 'Financial', icon: <DollarSign size={16} />, isBi: true },
+    { id: 'bi-live-feed', label: 'Live Feed', icon: <Activity size={16} />, isBi: true },
+  ]
+
+  const opsQueues = [
+    { id: 'dashboard', label: 'Operations', icon: <BarChart3 size={16} /> },
     { id: 'reports', label: 'Reports', icon: <Flag size={16} />, count: dashboard?.pending_reports?.count, alert: dashboard?.pending_reports?.count > 0 },
     { id: 'pending-deposits', label: 'Pending Deposits', icon: <DollarSign size={16} />, count: dashboard?.pending_deposits?.count },
     { id: 'stale-deposits', label: 'Stale (>48h)', icon: <AlertTriangle size={16} />, count: dashboard?.stale_deposits_48h?.count, alert: dashboard?.stale_deposits_48h?.alert },
@@ -299,6 +313,8 @@ export default function AdminDashboard({ user }) {
     { id: 'pending-withdrawals', label: 'Pending Withdrawals', icon: <ArrowDownLeft size={16} />, count: dashboard?.pending_withdrawals?.count },
     { id: 'feedback', label: 'Feedback', icon: <FileText size={16} />, count: dashboard?.feedback?.count },
   ]
+
+  const queues = [...biTabs, ...opsQueues]
 
   return (
     <div className="space-y-6">
@@ -317,34 +333,56 @@ export default function AdminDashboard({ user }) {
       </div>
 
       {/* Queue Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {queues.map(queue => (
-          <button
-            key={queue.id}
-            onClick={() => setActiveQueue(queue.id)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-              activeQueue === queue.id
-                ? 'bg-teal text-white'
-                : queue.alert
-                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            <span>{queue.icon}</span>
-            <span>{queue.label}</span>
-            {queue.count > 0 && (
-              <span className={`px-2 py-0.5 rounded-[6px] text-xs ${
-                activeQueue === queue.id ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                {queue.count}
-              </span>
+      <div className="flex flex-wrap gap-2 items-center">
+        {queues.map((queue, i) => (
+          <Fragment key={queue.id}>
+            {/* Visual separator between BI tabs and operational queues */}
+            {i === biTabs.length && (
+              <div className="w-px h-6 bg-gray-300 mx-1" />
             )}
-          </button>
+            <button
+              onClick={() => setActiveQueue(queue.id)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 text-sm ${
+                activeQueue === queue.id
+                  ? queue.isBi ? 'bg-orange-500 text-white' : 'bg-teal text-white'
+                  : queue.alert
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <span>{queue.icon}</span>
+              <span>{queue.label}</span>
+              {queue.count > 0 && (
+                <span className={`px-2 py-0.5 rounded-[6px] text-xs ${
+                  activeQueue === queue.id ? 'bg-white/20' : 'bg-gray-200'
+                }`}>
+                  {queue.count}
+                </span>
+              )}
+            </button>
+          </Fragment>
         ))}
       </div>
 
       {/* Content */}
-      {loading && activeQueue === 'dashboard' ? (
+      {/* BI Tabs — lazy loaded, each manages its own data fetching */}
+      {activeQueue === 'bi-overview' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading overview...</div></div>}>
+          <OverviewTab user={user} />
+        </Suspense>
+      ) : activeQueue === 'bi-funnel' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading funnel...</div></div>}>
+          <FunnelTab user={user} />
+        </Suspense>
+      ) : activeQueue === 'bi-financial' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading financials...</div></div>}>
+          <FinancialTab user={user} />
+        </Suspense>
+      ) : activeQueue === 'bi-live-feed' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading live feed...</div></div>}>
+          <LiveFeedTab user={user} />
+        </Suspense>
+      ) : loading && activeQueue === 'dashboard' ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-gray-500">Loading dashboard...</div>
         </div>

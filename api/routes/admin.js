@@ -11,6 +11,8 @@ const router = express.Router();
 
 const { PLATFORM_FEE_PERCENT } = require('../config/constants');
 const { getTierConfig } = require('../config/tiers');
+const logger = require('../lib/logger').child({ service: 'admin' });
+const { captureException } = require('../lib/sentry');
 
 // Cents-based fee calculation to avoid floating-point rounding errors
 // Accepts optional workerTier for tier-based fee calculation
@@ -76,7 +78,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         created_at: new Date().toISOString()
       });
     } catch (error) {
-      console.error('[Admin] Failed to log action:', error.message);
+      logger.error({ err: error, action, task_id: taskId }, 'Failed to log admin action');
     }
   };
 
@@ -373,7 +375,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
           : 'Deposit confirmed with mismatch noted. Human has been notified to begin work.'
       });
     } catch (error) {
-      console.error('[Admin] Confirm deposit error:', error);
+      logger.error({ err: error }, 'Confirm deposit error');
+      captureException(error, { tags: { admin_action: 'confirm_deposit' } });
       res.status(500).json({ error: error.message });
     }
   });
@@ -536,6 +539,61 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
     }
   });
 
+  // ============================================================
+  // GET /tasks/recent — Live feed: recent tasks with counts
+  // ============================================================
+  router.get('/tasks/recent', async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+      const status = req.query.status || null;
+
+      let query = supabase
+        .from('tasks')
+        .select('id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, human_ids, task_type, quantity')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status);
+      }
+
+      const { data: tasks, error: tasksError } = await query;
+      if (tasksError) throw tasksError;
+      if (!tasks || tasks.length === 0) return res.json([]);
+
+      const taskIds = tasks.map(t => t.id);
+
+      const [appResult, viewResult, agentResult] = await Promise.all([
+        supabase.from('task_applications').select('task_id').in('task_id', taskIds),
+        supabase.from('page_views').select('target_id').eq('page_type', 'task').in('target_id', taskIds),
+        supabase.from('users').select('id, name').in('id', [...new Set(tasks.map(t => t.agent_id).filter(Boolean))]),
+      ]);
+
+      const appCounts = {};
+      (appResult.data || []).forEach(a => { appCounts[a.task_id] = (appCounts[a.task_id] || 0) + 1; });
+
+      const viewCounts = {};
+      (viewResult.data || []).forEach(v => { viewCounts[v.target_id] = (viewCounts[v.target_id] || 0) + 1; });
+
+      const agentNames = {};
+      (agentResult.data || []).forEach(a => { agentNames[a.id] = a.name; });
+
+      const enriched = tasks.map(t => ({
+        ...t,
+        applicant_count: appCounts[t.id] || 0,
+        view_count: viewCounts[t.id] || 0,
+        agent_name: agentNames[t.agent_id] || 'Unknown',
+        spots_filled: Array.isArray(t.human_ids) ? t.human_ids.length : 0,
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      logger.error({ err: error }, 'Recent tasks endpoint error');
+      captureException(error, { tags: { admin_action: 'tasks_recent' } });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============================================================================
   // GET /api/admin/tasks/:id - Full task detail with payment history
   // NOTE: This route MUST come after all /tasks/specific-path routes
@@ -681,7 +739,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         message: 'Payment released. Ready for withdrawal confirmation.'
       });
     } catch (error) {
-      console.error('[Admin] Release payment error:', error);
+      logger.error({ err: error }, 'Release payment error');
+      captureException(error, { tags: { admin_action: 'release_payment' } });
       res.status(500).json({ error: error.message });
     }
   });
@@ -791,7 +850,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         message: 'Refund processed via Stripe. Agent has been notified.'
       });
     } catch (error) {
-      console.error('[Admin] Refund error:', error);
+      logger.error({ err: error }, 'Refund error');
+      captureException(error, { tags: { admin_action: 'refund' } });
       res.status(500).json({ error: error.message });
     }
   });
@@ -1118,7 +1178,8 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       res.json(response);
     } catch (error) {
-      console.error('[Admin] Resolve report error:', error);
+      logger.error({ err: error }, 'Resolve report error');
+      captureException(error, { tags: { admin_action: 'resolve_report' } });
       res.status(500).json({ error: error.message });
     }
   });
@@ -1281,6 +1342,387 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       res.json({ success: true, message: 'Task type cache flushed' });
     } catch (error) {
       console.error('[Admin] Cache flush error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // BUSINESS INTELLIGENCE ENDPOINTS
+  // ============================================================================
+
+  /**
+   * Helper: parse period query param into a Date cutoff
+   * Supports: 7d, 30d, 90d, all (default: 30d)
+   */
+  function getPeriodCutoff(period) {
+    const days = { '7d': 7, '30d': 30, '90d': 90 };
+    if (period === 'all' || !days[period]) return null;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - (days[period] || 30));
+    return cutoff.toISOString();
+  }
+
+  // ============================================================================
+  // GET /api/admin/financials — Financial overview with period filtering
+  // ============================================================================
+  router.get('/financials', async (req, res) => {
+    try {
+      const period = req.query.period || '30d';
+      const cutoff = getPeriodCutoff(period);
+
+      // --- GMV: sum of budget_cents for tasks that reached assigned or beyond ---
+      let gmvQuery = supabase
+        .from('tasks')
+        .select('budget_cents')
+        .not('status', 'in', '("open","cancelled")');
+      if (cutoff) gmvQuery = gmvQuery.gte('created_at', cutoff);
+      const { data: gmvTasks } = await gmvQuery;
+      const gmvTotalCents = (gmvTasks || []).reduce((sum, t) => sum + (t.budget_cents || 0), 0);
+
+      // --- Platform fees: sum of platform_fee_cents on completed/paid tasks ---
+      let feesQuery = supabase
+        .from('tasks')
+        .select('platform_fee_cents')
+        .in('status', ['completed', 'paid']);
+      if (cutoff) feesQuery = feesQuery.gte('created_at', cutoff);
+      const { data: feeTasks } = await feesQuery;
+      const feesTotalCents = (feeTasks || []).reduce((sum, t) => sum + (t.platform_fee_cents || 0), 0);
+
+      // --- Payouts: sum of amount_cents ---
+      let payoutsQuery = supabase.from('payouts').select('amount_cents');
+      if (cutoff) payoutsQuery = payoutsQuery.gte('created_at', cutoff);
+      const { data: payoutRows } = await payoutsQuery;
+      const payoutsTotalCents = (payoutRows || []).reduce((sum, p) => sum + (p.amount_cents || 0), 0);
+
+      // --- Outstanding escrow: pending_transactions with status 'pending' ---
+      let escrowQuery = supabase
+        .from('pending_transactions')
+        .select('amount_cents')
+        .eq('status', 'pending');
+      const { data: escrowRows } = await escrowQuery;
+      const escrowTotalCents = (escrowRows || []).reduce((sum, e) => sum + (e.amount_cents || 0), 0);
+
+      // --- Refunds: manual_payments with refund status ---
+      let refundsQuery = supabase
+        .from('manual_payments')
+        .select('deposit_amount')
+        .eq('status', 'refunded');
+      if (cutoff) refundsQuery = refundsQuery.gte('refunded_at', cutoff);
+      const { data: refundRows } = await refundsQuery;
+      const refundsTotalCents = (refundRows || []).reduce((sum, r) => sum + Math.round((parseFloat(r.deposit_amount) || 0) * 100), 0);
+
+      // --- Disputes ---
+      let disputesOpenQuery = supabase.from('disputes').select('id', { count: 'exact' }).eq('status', 'open');
+      let disputesResolvedQuery = supabase.from('disputes').select('id', { count: 'exact' }).eq('status', 'resolved');
+      if (cutoff) {
+        disputesOpenQuery = disputesOpenQuery.gte('created_at', cutoff);
+        disputesResolvedQuery = disputesResolvedQuery.gte('created_at', cutoff);
+      }
+      const [{ count: openDisputes }, { count: resolvedDisputes }] = await Promise.all([
+        disputesOpenQuery,
+        disputesResolvedQuery,
+      ]);
+
+      // --- Premium / subscriptions ---
+      const { data: activeSubs } = await supabase
+        .from('subscriptions')
+        .select('tier')
+        .eq('status', 'active');
+
+      const byTier = {};
+      let mrrCents = 0;
+      const tierPrices = { builder: 1000, pro: 3000 }; // monthly prices in cents
+      for (const sub of (activeSubs || [])) {
+        byTier[sub.tier] = (byTier[sub.tier] || 0) + 1;
+        mrrCents += tierPrices[sub.tier] || 0;
+      }
+
+      res.json({
+        period,
+        gmv: { total_cents: gmvTotalCents, count: (gmvTasks || []).length },
+        platform_fees: { total_cents: feesTotalCents, count: (feeTasks || []).length },
+        payouts: { total_cents: payoutsTotalCents, count: (payoutRows || []).length },
+        outstanding_escrow: { total_cents: escrowTotalCents, count: (escrowRows || []).length },
+        refunds: { total_cents: refundsTotalCents, count: (refundRows || []).length },
+        disputes: {
+          open: openDisputes || 0,
+          resolved: resolvedDisputes || 0,
+          total_amount_cents: 0, // Not tracked at dispute level
+        },
+        premium_revenue: {
+          mrr_cents: mrrCents,
+          active_subscribers: (activeSubs || []).length,
+          by_tier: byTier,
+        },
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'Financials endpoint error');
+      captureException(error, { tags: { admin_action: 'financials' } });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // GET /api/admin/growth — User and task growth metrics
+  // ============================================================================
+  router.get('/growth', async (req, res) => {
+    try {
+      const period = req.query.period || '30d';
+      const cutoff = getPeriodCutoff(period);
+
+      // --- Total users by type ---
+      const { data: allUsers } = await supabase
+        .from('users')
+        .select('id, type, created_at, last_active_at');
+
+      const totalUsers = (allUsers || []).length;
+      const humans = (allUsers || []).filter(u => u.type === 'human').length;
+      const agents = (allUsers || []).filter(u => u.type === 'agent').length;
+
+      // New users this period
+      const periodUsers = cutoff
+        ? (allUsers || []).filter(u => u.created_at >= cutoff)
+        : allUsers || [];
+
+      // Signups by day
+      const signupsByDay = {};
+      for (const u of periodUsers) {
+        const day = u.created_at?.substring(0, 10);
+        if (!day) continue;
+        if (!signupsByDay[day]) signupsByDay[day] = { date: day, humans: 0, agents: 0 };
+        if (u.type === 'human') signupsByDay[day].humans++;
+        else if (u.type === 'agent') signupsByDay[day].agents++;
+      }
+
+      // Active users (based on last_active_at)
+      const now = Date.now();
+      const dayMs = 24 * 60 * 60 * 1000;
+      const dailyActive = (allUsers || []).filter(u => u.last_active_at && (now - new Date(u.last_active_at).getTime()) < dayMs).length;
+      const weeklyActive = (allUsers || []).filter(u => u.last_active_at && (now - new Date(u.last_active_at).getTime()) < 7 * dayMs).length;
+      const monthlyActive = (allUsers || []).filter(u => u.last_active_at && (now - new Date(u.last_active_at).getTime()) < 30 * dayMs).length;
+
+      // --- Tasks ---
+      const { data: allTasks } = await supabase
+        .from('tasks')
+        .select('id, status, created_at');
+
+      const totalTasks = (allTasks || []).length;
+      const byStatus = {};
+      for (const t of (allTasks || [])) {
+        byStatus[t.status] = (byStatus[t.status] || 0) + 1;
+      }
+
+      const periodTasks = cutoff
+        ? (allTasks || []).filter(t => t.created_at >= cutoff)
+        : allTasks || [];
+      const completedThisPeriod = periodTasks.filter(t => ['completed', 'paid'].includes(t.status)).length;
+
+      // Tasks created by day
+      const createdByDay = {};
+      for (const t of periodTasks) {
+        const day = t.created_at?.substring(0, 10);
+        if (!day) continue;
+        createdByDay[day] = (createdByDay[day] || 0) + 1;
+      }
+
+      res.json({
+        period,
+        users: {
+          total: totalUsers,
+          humans,
+          agents,
+          new_this_period: periodUsers.length,
+          signups_by_day: Object.values(signupsByDay).sort((a, b) => a.date.localeCompare(b.date)),
+        },
+        tasks: {
+          total: totalTasks,
+          by_status: byStatus,
+          created_this_period: periodTasks.length,
+          completed_this_period: completedThisPeriod,
+          created_by_day: Object.entries(createdByDay)
+            .map(([date, count]) => ({ date, count }))
+            .sort((a, b) => a.date.localeCompare(b.date)),
+        },
+        active_users: {
+          daily: dailyActive,
+          weekly: weeklyActive,
+          monthly: monthlyActive,
+        },
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'Growth endpoint error');
+      captureException(error, { tags: { admin_action: 'growth' } });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // GET /api/admin/funnel — Conversion funnel metrics
+  // ============================================================================
+  router.get('/funnel', async (req, res) => {
+    try {
+      const period = req.query.period || '30d';
+      const cutoff = getPeriodCutoff(period);
+
+      // Fetch all tasks with lifecycle timestamps
+      let tasksQuery = supabase
+        .from('tasks')
+        .select('id, status, created_at, assigned_at, work_started_at, proof_submitted_at');
+      if (cutoff) tasksQuery = tasksQuery.gte('created_at', cutoff);
+      const { data: tasks } = await tasksQuery;
+      const allTasks = tasks || [];
+
+      // Fetch applications to know which tasks got applications
+      let appsQuery = supabase.from('task_applications').select('task_id');
+      if (cutoff) appsQuery = appsQuery.gte('created_at', cutoff);
+      const { data: apps } = await appsQuery;
+      const tasksWithApps = new Set((apps || []).map(a => a.task_id));
+
+      // Funnel counts
+      const tasksCreated = allTasks.length;
+      const tasksWithApplications = allTasks.filter(t => tasksWithApps.has(t.id)).length;
+      const tasksAssigned = allTasks.filter(t => t.assigned_at || ['assigned', 'in_progress', 'pending_review', 'completed', 'paid', 'rejected', 'disputed'].includes(t.status)).length;
+      const tasksStarted = allTasks.filter(t => t.work_started_at || ['in_progress', 'pending_review', 'completed', 'paid', 'rejected', 'disputed'].includes(t.status)).length;
+      const tasksCompleted = allTasks.filter(t => ['pending_review', 'completed', 'paid'].includes(t.status)).length;
+      const tasksApproved = allTasks.filter(t => ['completed', 'paid'].includes(t.status)).length;
+      const tasksPaid = allTasks.filter(t => t.status === 'paid').length;
+
+      // Conversion rates
+      const pct = (num, den) => den > 0 ? `${((num / den) * 100).toFixed(1)}%` : '0%';
+
+      // Average times (hours)
+      const avgHours = (field, tasks) => {
+        const diffs = tasks
+          .filter(t => t[field] && t.created_at)
+          .map(t => (new Date(t[field]).getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60));
+        return diffs.length > 0 ? Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length) : 0;
+      };
+
+      // Time to first application (use assigned_at - created_at as proxy since we don't have first_application_at)
+      const timeToAssigned = (() => {
+        const diffs = allTasks
+          .filter(t => t.assigned_at)
+          .map(t => (new Date(t.assigned_at).getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60));
+        return diffs.length > 0 ? Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length) : 0;
+      })();
+
+      const timeAssignedToStarted = (() => {
+        const diffs = allTasks
+          .filter(t => t.assigned_at && t.work_started_at)
+          .map(t => (new Date(t.work_started_at).getTime() - new Date(t.assigned_at).getTime()) / (1000 * 60 * 60));
+        return diffs.length > 0 ? Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length) : 0;
+      })();
+
+      const timeStartedToCompleted = (() => {
+        const diffs = allTasks
+          .filter(t => t.work_started_at && t.proof_submitted_at)
+          .map(t => (new Date(t.proof_submitted_at).getTime() - new Date(t.work_started_at).getTime()) / (1000 * 60 * 60));
+        return diffs.length > 0 ? Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length) : 0;
+      })();
+
+      res.json({
+        period,
+        funnel: {
+          tasks_created: tasksCreated,
+          tasks_with_applications: tasksWithApplications,
+          tasks_assigned: tasksAssigned,
+          tasks_started: tasksStarted,
+          tasks_completed: tasksCompleted,
+          tasks_approved: tasksApproved,
+          tasks_paid: tasksPaid,
+        },
+        conversion_rates: {
+          created_to_applied: pct(tasksWithApplications, tasksCreated),
+          applied_to_assigned: pct(tasksAssigned, tasksWithApplications),
+          assigned_to_started: pct(tasksStarted, tasksAssigned),
+          started_to_completed: pct(tasksCompleted, tasksStarted),
+          completed_to_paid: pct(tasksPaid, tasksCompleted),
+          overall: pct(tasksPaid, tasksCreated),
+        },
+        avg_times: {
+          created_to_first_application_hours: timeToAssigned, // proxy: uses assigned_at
+          assigned_to_started_hours: timeAssignedToStarted,
+          started_to_completed_hours: timeStartedToCompleted,
+        },
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'Funnel endpoint error');
+      captureException(error, { tags: { admin_action: 'funnel' } });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================
+  // GET /tasks/recent — Live feed: recent tasks with counts
+  // ============================================================
+  router.get('/tasks/recent', async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+      const status = req.query.status || null;
+
+      // Fetch recent tasks
+      let query = supabase
+        .from('tasks')
+        .select('id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, human_ids, task_type, quantity')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status);
+      }
+
+      const { data: tasks, error: tasksError } = await query;
+      if (tasksError) throw tasksError;
+      if (!tasks || tasks.length === 0) return res.json([]);
+
+      const taskIds = tasks.map(t => t.id);
+
+      // Fetch applicant counts and view counts in parallel
+      const [appResult, viewResult, agentResult] = await Promise.all([
+        supabase
+          .from('task_applications')
+          .select('task_id')
+          .in('task_id', taskIds),
+        supabase
+          .from('page_views')
+          .select('target_id')
+          .eq('page_type', 'task')
+          .in('target_id', taskIds),
+        supabase
+          .from('users')
+          .select('id, name')
+          .in('id', [...new Set(tasks.map(t => t.agent_id).filter(Boolean))]),
+      ]);
+
+      // Build count maps
+      const appCounts = {};
+      (appResult.data || []).forEach(a => {
+        appCounts[a.task_id] = (appCounts[a.task_id] || 0) + 1;
+      });
+
+      const viewCounts = {};
+      (viewResult.data || []).forEach(v => {
+        viewCounts[v.target_id] = (viewCounts[v.target_id] || 0) + 1;
+      });
+
+      const agentNames = {};
+      (agentResult.data || []).forEach(a => {
+        agentNames[a.id] = a.name;
+      });
+
+      // Enrich tasks
+      const enriched = tasks.map(t => ({
+        ...t,
+        applicant_count: appCounts[t.id] || 0,
+        view_count: viewCounts[t.id] || 0,
+        agent_name: agentNames[t.agent_id] || 'Unknown',
+        spots_filled: Array.isArray(t.human_ids) ? t.human_ids.length : 0,
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      logger.error({ err: error }, 'Recent tasks endpoint error');
+      captureException(error, { tags: { admin_action: 'tasks_recent' } });
       res.status(500).json({ error: error.message });
     }
   });

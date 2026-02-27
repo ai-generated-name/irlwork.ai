@@ -186,6 +186,21 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
               {human.name || 'Anonymous'}
             </h3>
             <TierBadge tier={human.subscription_tier} size="xs" />
+            {human.availability === 'available' && (
+              <span style={{
+                padding: '2px 8px',
+                background: 'rgba(22, 163, 74, 0.1)',
+                color: '#16A34A',
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: 999,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                letterSpacing: '0.02em'
+              }}>
+                Available
+              </span>
+            )}
           </div>
           {human.headline && (
             <p style={{
