@@ -3008,6 +3008,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             <span className="dashboard-v4-task-meta-item"><FolderOpen size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.category || 'General'}</span>
                             <span className="dashboard-v4-task-meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
                             <span className="dashboard-v4-task-meta-item"><CalendarDays size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+                            {task.deadline && (
+                              <span className="dashboard-v4-task-meta-item" style={new Date(task.deadline) < new Date(Date.now() + 86400000) ? { color: '#dc2626', fontWeight: 500 } : {}}>
+                                <Timer size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Due {new Date(task.deadline).toLocaleDateString()}
+                              </span>
+                            )}
                             {task.assignee && (
                               <span className="dashboard-v4-task-meta-item"><User size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.assignee.name}</span>
                             )}
