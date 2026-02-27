@@ -189,8 +189,10 @@ POST /api/stripe/payment-intent
 | Google Analytics | ❌ | Not added yet |
 | Stripe Connect onboarding | ❌ | Need OAuth flow |
 | SMS notifications | ❌ | Twilio integration |
-| Admin dashboard | ❌ | For platform management |
-| Analytics dashboard | ❌ | Metrics, charts |
+| Admin dashboard | ✅ | Phase 1 manual ops + BI tabs |
+| Analytics dashboard | ✅ | Overview, Funnel, Financial tabs |
+| Error tracking (Sentry) | ✅ | Backend + frontend integration |
+| Structured logging (Pino) | ✅ | JSON logs in production, pretty in dev |
 
 ---
 
@@ -204,4 +206,27 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx    # Webhooks
 SENDGRID_API_KEY=SG.xxx            # Email
 TWILIO_ACCOUNT_SID=ACxxx            # SMS
 GA_TRACKING_ID=G-XXXXXXXXXX         # Google Analytics
+SENTRY_DSN=https://xxx@sentry.io/xxx # Error tracking
+LOG_LEVEL=info                       # Pino log level
 ```
+
+---
+
+## Admin Business Intelligence Endpoints
+
+All BI endpoints require admin authentication (`ADMIN_USER_IDS` env var).
+
+### GET /api/admin/financials
+Financial overview with period filtering (`?period=7d|30d|90d|all`, default `30d`).
+Returns: GMV, platform fees, payouts, outstanding escrow, refunds, disputes, premium revenue (MRR + subscriber counts by tier).
+
+### GET /api/admin/growth
+User and task growth metrics with period filtering.
+Returns: total users (by type), signups by day, active users (DAU/WAU/MAU), total tasks, tasks by status, created/completed counts by period, created by day.
+
+### GET /api/admin/funnel
+Conversion funnel analysis with period filtering.
+Returns: funnel counts (created → applied → assigned → started → completed → approved → paid), conversion rates between each stage, average lifecycle times (created-to-assigned, assigned-to-started, started-to-completed).
+
+### Admin Auth
+Backend uses `ADMIN_USER_IDS` env var (comma-separated UUIDs). Frontend receives `is_admin: true/false` in the `/api/auth/verify` response. The `users.role` column exists but is currently unused — admin auth should eventually migrate from env var to this database column.
