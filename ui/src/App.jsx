@@ -1119,6 +1119,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     if (tabSegment === 'create' || params.get('tab') === 'create-task') return 'create'
     return 'tasks'
   })
+  const [hireTarget, setHireTarget] = useState(null) // Human selected via "Hire" button for direct hire
 
   // Read initial tab from URL path: /dashboard/working/browse → 'browse'
   const getInitialTab = () => {
@@ -1870,41 +1871,51 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
     setCreatingTask(true)
     try {
-      const res = await fetch(`${API_URL}/tasks`, {
+      // Direct hire: use /api/tasks/create with assign_to (task goes to pending_acceptance for that worker)
+      // Open task: use /api/tasks (task goes to open for anyone to apply)
+      const isDirectHire = !!hireTarget
+      const endpoint = isDirectHire ? `${API_URL}/tasks/create` : `${API_URL}/tasks`
+      const payload = {
+        title: taskForm.title,
+        description: taskForm.description,
+        category: taskForm.category,
+        budget: parseFloat(taskForm.budget),
+        location: taskForm.city,
+        latitude: taskForm.latitude,
+        longitude: taskForm.longitude,
+        country: taskForm.country,
+        country_code: taskForm.country_code,
+        is_remote: taskForm.is_remote,
+        duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
+        deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
+        requirements: taskForm.requirements.trim() || null,
+        required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
+        task_type: isDirectHire ? 'direct' : 'open',
+        quantity: 1,
+        is_anonymous: taskForm.is_anonymous
+      }
+      if (isDirectHire) {
+        payload.assign_to = hireTarget.id
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: user.token || ''
         },
-        body: JSON.stringify({
-          title: taskForm.title,
-          description: taskForm.description,
-          category: taskForm.category,
-          budget: parseFloat(taskForm.budget),
-          location: taskForm.city,
-          latitude: taskForm.latitude,
-          longitude: taskForm.longitude,
-          country: taskForm.country,
-          country_code: taskForm.country_code,
-          is_remote: taskForm.is_remote,
-          duration_hours: taskForm.duration_hours ? parseFloat(taskForm.duration_hours) : null,
-          deadline: taskForm.deadline ? new Date(taskForm.deadline).toISOString() : null,
-          requirements: taskForm.requirements.trim() || null,
-          required_skills: taskForm.required_skills.length > 0 ? taskForm.required_skills : [],
-          task_type: 'open',
-          quantity: 1,
-          is_anonymous: taskForm.is_anonymous
-        })
+        body: JSON.stringify(payload)
       })
 
       if (res.ok) {
         const newTask = await res.json()
-        trackEvent('task_created', { category: taskForm.category, budget: parseFloat(taskForm.budget), is_remote: taskForm.is_remote, task_type: taskForm.task_type })
+        trackEvent('task_created', { category: taskForm.category, budget: parseFloat(taskForm.budget), is_remote: taskForm.is_remote, task_type: isDirectHire ? 'direct' : 'open', direct_hire: isDirectHire })
         // Optimistic update - add to list immediately
         setPostedTasks(prev => [newTask, ...prev])
-        // Reset form
+        // Reset form and clear hire target
         setTaskForm({ title: '', description: '', category: '', budget: '', city: '', latitude: null, longitude: null, country: '', country_code: '', is_remote: false, duration_hours: '', deadline: '', requirements: '', required_skills: [], skillInput: '', task_type: 'open', quantity: 1, is_anonymous: false })
         setTaskFormTouched({})
+        setHireTarget(null)
         // Close create form and show posted tasks list
         setTasksSubTab('tasks')
         setActiveTab('posted')
@@ -2504,7 +2515,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             <div className="dashboard-v4-sub-tabs">
               <button
                 className={`dashboard-v4-sub-tab ${tasksSubTab === 'tasks' ? 'active' : ''}`}
-                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
+                onClick={() => { setTasksSubTab('tasks'); setCreateTaskError(''); setHireTarget(null); window.history.pushState({}, '', '/dashboard/hiring/my-tasks'); trackPageView('/dashboard/hiring/my-tasks'); }}
               >
                 All
               </button>
@@ -2538,9 +2549,53 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div style={{ marginTop: 16 }}>
                 <div className="create-task-container">
                   <div className="create-task-header">
-                    <h2 className="create-task-title">Create a New Task</h2>
-                    <p className="create-task-subtitle">Fill in the details below to post your task</p>
+                    <h2 className="create-task-title">{hireTarget ? `Hire ${hireTarget.name?.split(' ')[0] || 'Worker'}` : 'Create a New Task'}</h2>
+                    <p className="create-task-subtitle">{hireTarget ? 'This task will be sent directly to this worker for acceptance' : 'Fill in the details below to post your task'}</p>
                   </div>
+
+                  {/* Direct hire banner */}
+                  {hireTarget && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+                      background: 'rgba(232,133,61,0.06)', borderRadius: 12,
+                      border: '1px solid rgba(232,133,61,0.15)', marginBottom: 20
+                    }}>
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {hireTarget.avatar_url ? (
+                          <img src={hireTarget.avatar_url} alt="" style={{
+                            width: 44, height: 44, borderRadius: '50%', objectFit: 'cover',
+                            border: '2px solid rgba(232,133,61,0.25)'
+                          }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
+                        ) : null}
+                        <div style={{
+                          width: 44, height: 44, borderRadius: '50%', background: '#E8853D',
+                          display: hireTarget.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: 'white', fontWeight: 700, fontSize: 18,
+                          border: '2px solid rgba(232,133,61,0.25)'
+                        }}>
+                          {hireTarget.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>{hireTarget.name || 'Worker'}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 1 }}>
+                          {hireTarget.headline || hireTarget.city || 'Direct hire'}
+                          {hireTarget.hourly_rate ? ` · $${hireTarget.hourly_rate}/hr` : ''}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setHireTarget(null)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer', padding: 6,
+                          color: 'var(--text-tertiary)', borderRadius: 8, flexShrink: 0
+                        }}
+                        title="Switch to open task"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  )}
 
                   <form onSubmit={(e) => { handleCreateTask(e); }}>
                     {/* Section 1: Basics */}
@@ -3105,7 +3160,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           human={human}
                           variant="dashboard"
                           onExpand={(h) => window.location.href = `/humans/${h.id}`}
-                          onHire={() => { setTasksSubTab('create'); setActiveTab('posted') }}
+                          onHire={(human) => { setHireTarget(human); setTasksSubTab('create'); setActiveTab('posted') }}
                           onBookmark={toggleBookmark}
                           isBookmarked={bookmarkedHumans.includes(human.id)}
                         />
@@ -4805,6 +4860,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             onClose={() => setExpandedHumanId(null)}
             onHire={(human) => {
               setExpandedHumanId(null)
+              setHireTarget(human)
               setTasksSubTab('create')
               setActiveTab('posted')
             }}
