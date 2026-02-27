@@ -402,9 +402,6 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 Report
               </button>
             )}
-            <span className="text-[#888888] text-xs hidden sm:inline">
-              Task ID: {taskId.slice(0, 8)}...
-            </span>
           </div>
         </div>
       </header>
