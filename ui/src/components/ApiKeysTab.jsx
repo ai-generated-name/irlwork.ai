@@ -127,9 +127,8 @@ export default function ApiKeysTab({ user }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h1 className="dashboard-v4-page-title" style={{ marginBottom: 4 }}>API Keys</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 200px' }}>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
             Manage API keys for programmatic access to irlwork.ai
           </p>
@@ -138,6 +137,7 @@ export default function ApiKeysTab({ user }) {
           <button
             className="v4-btn v4-btn-primary"
             onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
+            style={{ whiteSpace: 'nowrap' }}
           >
             + Generate New Key
           </button>
@@ -367,21 +367,21 @@ export default function ApiKeysTab({ user }) {
           {keys.filter(key => showRevoked || key.is_active).map(key => (
             <div
               key={key.id}
+              className="api-key-card"
               style={{
                 background: 'white',
                 borderRadius: 12,
-                padding: 20,
+                padding: 16,
                 border: '1px solid var(--border)',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 20,
+                flexDirection: 'column',
+                gap: 12,
                 opacity: key.is_active ? 1 : 0.6
               }}
             >
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 600 }}>{key.name}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 600 }}>{key.name}</h3>
                   <span style={{
                     padding: '2px 8px',
                     borderRadius: 6,
@@ -393,51 +393,50 @@ export default function ApiKeysTab({ user }) {
                     {key.is_active ? 'Active' : 'Revoked'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', gap: 24, fontSize: 13, color: 'var(--text-secondary)' }}>
-                  <span>
-                    <code style={{ background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>
-                      {key.key_prefix}
-                    </code>
-                  </span>
-                  <span>Created: {formatDate(key.created_at)}</span>
-                  <span>Last used: {formatDate(key.last_used_at)}</span>
-                </div>
+                {key.is_active && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => rotateKey(key.id)}
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '8px 14px',
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: 'var(--text-primary)'
+                      }}
+                    >
+                      Rotate
+                    </button>
+                    <button
+                      onClick={() => setConfirmRevoke(key)}
+                      style={{
+                        background: 'rgba(255, 95, 87, 0.1)',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '8px 14px',
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: '#FF5F57'
+                      }}
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                )}
               </div>
-
-              {key.is_active && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => rotateKey(key.id)}
-                    style={{
-                      background: 'var(--bg-tertiary)',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: 'var(--text-primary)'
-                    }}
-                  >
-                    Rotate
-                  </button>
-                  <button
-                    onClick={() => setConfirmRevoke(key)}
-                    style={{
-                      background: 'rgba(255, 95, 87, 0.1)',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: '#FF5F57'
-                    }}
-                  >
-                    Revoke
-                  </button>
-                </div>
-              )}
+              <div>
+                <code style={{ background: 'var(--bg-tertiary)', padding: '4px 8px', borderRadius: 4, fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all', display: 'inline-block' }}>
+                  {key.key_prefix}
+                </code>
+              </div>
+              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                <span>Created: {formatDate(key.created_at)}</span>
+                <span>Last used: {formatDate(key.last_used_at)}</span>
+              </div>
             </div>
           ))}
         </div>
@@ -460,7 +459,9 @@ export default function ApiKeysTab({ user }) {
           borderRadius: 8,
           padding: 16,
           fontFamily: 'monospace',
-          fontSize: 13
+          fontSize: 12,
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch'
         }}>
           <div style={{ color: '#8B8B8B', marginBottom: 4 }}># Post a task</div>
           <div>

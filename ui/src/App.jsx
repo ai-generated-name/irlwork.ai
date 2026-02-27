@@ -2788,9 +2788,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <p className="dashboard-v4-empty-text" style={{ marginBottom: 20, color: 'var(--text-secondary)' }}>{tasksSubTab === 'tasks' ? 'Post a task and get matched with verified humans near you.' : 'Tasks matching this filter will appear here'}</p>
                     {tasksSubTab === 'tasks' && (
                       <button
-                        className="v4-btn v4-btn-primary"
                         onClick={() => { setTasksSubTab('create'); window.history.pushState({}, '', '/dashboard/hiring/my-tasks/create'); }}
-                        style={{ margin: '0 auto' }}
+                        style={{ margin: '0 auto', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
                       >
                         <Plus size={16} /> Create Task
                       </button>
@@ -3003,54 +3002,67 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <SkillAutocomplete
-                      value={filterCategory}
-                      onChange={setFilterCategory}
-                      placeholder="Search skills..."
-                      allLabel="All Skills"
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <CityAutocomplete
-                      value={browseCityFilter}
-                      onChange={(cityData) => setBrowseCityFilter(cityData.city || '')}
-                      placeholder="Search city..."
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <CountryAutocomplete
-                      value={browseCountryFilter}
-                      onChange={(name, code) => {
-                        setBrowseCountryFilter(name)
-                        setBrowseCountryCodeFilter(code || '')
-                      }}
-                      placeholder="Search country..."
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 120px' }}>
-                    <input
-                      type="number"
-                      placeholder="Max $/hr"
-                      min="1"
-                      className="dashboard-v4-form-input"
-                      value={browseMaxRate}
-                      onChange={(e) => setBrowseMaxRate(e.target.value)}
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 160px' }}>
-                    <CustomDropdown
-                      value={browseSort}
-                      onChange={setBrowseSort}
-                      options={[
-                        { value: 'rating', label: 'Top Rated' },
-                        { value: 'most_reviewed', label: 'Most Reviewed' },
-                        { value: 'price_low', label: 'Price: Low to High' },
-                        { value: 'price_high', label: 'Price: High to Low' },
-                        { value: 'newest', label: 'Newest' },
-                      ]}
-                      placeholder="Top Rated"
-                    />
+                  {/* Mobile: Filters toggle button */}
+                  <button
+                    className="browse-filters-toggle-btn"
+                    onClick={() => {
+                      const el = document.querySelector('.browse-extra-filters')
+                      if (el) el.classList.toggle('browse-extra-filters-hidden')
+                    }}
+                    style={{ display: 'none', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    <ChevronDown size={16} /> Filters
+                  </button>
+                  <div className="browse-extra-filters browse-extra-filters-hidden" style={{ display: 'contents' }}>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <SkillAutocomplete
+                        value={filterCategory}
+                        onChange={setFilterCategory}
+                        placeholder="Search skills..."
+                        allLabel="All Skills"
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <CityAutocomplete
+                        value={browseCityFilter}
+                        onChange={(cityData) => setBrowseCityFilter(cityData.city || '')}
+                        placeholder="Search city..."
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <CountryAutocomplete
+                        value={browseCountryFilter}
+                        onChange={(name, code) => {
+                          setBrowseCountryFilter(name)
+                          setBrowseCountryCodeFilter(code || '')
+                        }}
+                        placeholder="Search country..."
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 120px' }}>
+                      <input
+                        type="number"
+                        placeholder="Max $/hr"
+                        min="1"
+                        className="dashboard-v4-form-input"
+                        value={browseMaxRate}
+                        onChange={(e) => setBrowseMaxRate(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 160px' }}>
+                      <CustomDropdown
+                        value={browseSort}
+                        onChange={setBrowseSort}
+                        options={[
+                          { value: 'rating', label: 'Top Rated' },
+                          { value: 'most_reviewed', label: 'Most Reviewed' },
+                          { value: 'price_low', label: 'Price: Low to High' },
+                          { value: 'price_high', label: 'Price: High to Low' },
+                          { value: 'newest', label: 'Newest' },
+                        ]}
+                        placeholder="Top Rated"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -3072,10 +3084,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       }
                     })
                   return filtered.length === 0 ? (
-                    <div className="dashboard-v4-empty">
-                      <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-                      <p className="dashboard-v4-empty-title">No humans found</p>
-                      <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
+                    <div className="dashboard-v4-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><Users size={48} style={{ color: 'var(--text-muted, #AAAAAA)' }} /></div>
+                      <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>No humans match your search</p>
+                      <p style={{ fontSize: 14, maxWidth: 300, margin: '0 auto 16px', color: 'var(--text-secondary)' }}>
+                        Humans are joining daily. Try broadening your filters or post a task and let humans come to you.
+                      </p>
+                      <button
+                        onClick={() => { setTasksSubTab('create'); setActiveTab('posted') }}
+                        style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                      >
+                        <Plus size={16} /> Post a Task
+                      </button>
                     </div>
                   ) : (
                     <div className="browse-humans-grid">
@@ -3306,7 +3326,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Profile Tab - Edit Profile with Avatar Upload */}
         {activeTab === 'profile' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0, gap: 8, flexWrap: 'wrap' }}>
               <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>Profile</h1>
               <button
                 onClick={() => {
@@ -3324,10 +3344,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   color: profileLinkCopied ? 'var(--orange-600)' : 'var(--text-secondary)',
                   fontSize: 13, fontWeight: 500, cursor: 'pointer',
                   transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {profileLinkCopied ? <Check size={14} /> : <Copy size={14} />}
-                {profileLinkCopied ? 'Copied!' : 'Copy Profile Link'}
+                {profileLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
             </div>
 
@@ -4036,7 +4057,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* Compact Plan Row */}
-                <div className="settings-plan-row" style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div className="settings-plan-row" style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                     <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', flexShrink: 0 }}>
                       {(user?.subscription_tier || 'free').charAt(0).toUpperCase() + (user?.subscription_tier || 'free').slice(1)} Plan
@@ -4555,12 +4576,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
                   </div>
                 ) : conversations.length === 0 ? (
-                  <div className="mobile-empty-state" style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                  <div className="mobile-empty-state" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                     <div className="mobile-empty-state-icon" style={{ width: 48, height: 48, background: 'var(--bg-tertiary)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
                       <MessageCircle size={24} />
                     </div>
-                    <p style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)', fontSize: 16 }}>No conversations yet</p>
-                    <p style={{ fontSize: 13, maxWidth: 240, margin: '0 auto', lineHeight: 1.5 }}>Start a conversation by applying to a task or browsing available work</p>
+                    <p style={{ fontWeight: 600, marginBottom: 6, fontSize: 18, color: 'var(--text-primary)' }}>No conversations yet</p>
+                    <p style={{ fontSize: 14, maxWidth: 280, margin: '0 auto', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {hiringMode
+                        ? 'Messages will appear here once you hire a human for a task.'
+                        : 'Messages will appear here when you apply for or start working on a task.'}
+                    </p>
                   </div>
                 ) : (
                   conversations.map(c => {
@@ -4788,46 +4813,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         )}
       </main>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="mobile-bottom-nav">
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          <BarChart3 size={22} />
-          <span>Dashboard</span>
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'tasks' || activeTab === 'posted' ? 'active' : ''}`}
-          onClick={() => setActiveTab(hiringMode ? 'posted' : 'tasks')}
-        >
-          <ClipboardList size={22} />
-          <span>Tasks</span>
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'browse' ? 'active' : ''}`}
-          onClick={() => setActiveTab('browse')}
-        >
-          <Search size={22} />
-          <span>Browse</span>
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'messages' ? 'active' : ''}`}
-          onClick={() => setActiveTab('messages')}
-        >
-          <MessageCircle size={22} />
-          <span>Messages</span>
-          {unreadMessages > 0 && (
-            <span className="mobile-bottom-nav-badge">{unreadMessages > 9 ? '9+' : unreadMessages}</span>
-          )}
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          <Settings size={22} />
-          <span>Settings</span>
-        </button>
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="dashboard-v4-bottom-tabs">
+        {(() => {
+          const bottomTabs = hiringMode
+            ? [
+                { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={22} /> },
+                { id: 'posted', label: 'Tasks', icon: <ClipboardList size={22} /> },
+                { id: 'browse', label: 'Humans', icon: <Users size={22} /> },
+                { id: 'messages', label: 'Messages', icon: <MessageCircle size={22} />, badge: unreadMessages },
+                { id: 'settings', label: 'Settings', icon: <Settings size={22} /> },
+              ]
+            : [
+                { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={22} /> },
+                { id: 'tasks', label: 'Tasks', icon: <ClipboardList size={22} /> },
+                { id: 'browse', label: 'Browse', icon: <Search size={22} /> },
+                { id: 'messages', label: 'Messages', icon: <MessageCircle size={22} />, badge: unreadMessages },
+                { id: 'settings', label: 'Settings', icon: <Settings size={22} /> },
+              ]
+          return bottomTabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`dashboard-v4-bottom-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(tab.id); setSidebarOpen(false) }}
+            >
+              <span className="dashboard-v4-bottom-tab-icon">{tab.icon}</span>
+              <span className="dashboard-v4-bottom-tab-label">{tab.label}</span>
+              {tab.badge > 0 && <span className="dashboard-v4-bottom-tab-badge">{tab.badge > 9 ? '9+' : tab.badge}</span>}
+            </button>
+          ))
+        })()}
       </nav>
     </div>
   )
