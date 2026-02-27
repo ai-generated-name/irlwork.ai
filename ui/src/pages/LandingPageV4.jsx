@@ -4,7 +4,7 @@ import {
   Check, BarChart3, Package, Camera, Wrench, Sparkles, Dog, FileSignature,
   Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight, ChevronDown,
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter,
-  Search, Briefcase, Scale, Stamp
+  Search, Briefcase, Scale, Stamp, Plug
 } from 'lucide-react'
 import HappeningNow from '../components/HappeningNow'
 import { useLanguage } from '../context/LanguageContext'
@@ -88,7 +88,8 @@ function MCPGenericIcon({ size = 20 }) {
   )
 }
 
-function AgentCompatibilityBanner() {
+// Full-width "Works With" divider strip between hero and Happening Right Now
+function AgentCompatibilityStrip() {
   const { t } = useLanguage()
   const agents = [
     { name: 'Claude Code', icon: ClaudeCodeIcon },
@@ -97,21 +98,24 @@ function AgentCompatibilityBanner() {
   ]
 
   return (
-    <div className="agent-compat-banner">
-      <span className="agent-compat-label">{t('agents.worksWith')}</span>
-      <div className="agent-compat-logos">
-        {agents.map(({ name, icon: Icon }) => (
-          <div key={name} className="agent-compat-item">
-            <Icon size={18} />
-            <span>{name}</span>
+    <section className="agent-strip">
+      <div className="agent-strip-inner">
+        <span className="agent-strip-label">WORKS WITH</span>
+        <div className="agent-strip-pill">
+          {agents.map(({ name, icon: Icon }) => (
+            <div key={name} className="agent-strip-item">
+              <Icon size={24} />
+              <span>{name}</span>
+            </div>
+          ))}
+          <div className="agent-strip-item agent-strip-mcp">
+            <Plug size={24} />
+            <span>{t('agents.anyMCP')}</span>
           </div>
-        ))}
-        <div className="agent-compat-item agent-compat-more">
-          <MCPGenericIcon size={18} />
-          <span>{t('agents.anyMCP')}</span>
         </div>
+        <HeroStats />
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -473,6 +477,7 @@ export default function LandingPageV4() {
           <div className="hero-v4-badge">
             <span className="badge-dot"></span>
             <span className="badge-text-desktop">{t('hero.badge')}</span>
+            <span className="badge-text-mobile">Verified Tasks &bull; Secure Payments</span>
           </div>
 
           <h1 className="hero-v4-title">
@@ -502,10 +507,6 @@ export default function LandingPageV4() {
           <a href="/connect-agent" className="hero-api-link-mobile">
             {t('hero.apiLinkMobile')} <ArrowRight size={14} />
           </a>
-
-          <AgentCompatibilityBanner />
-
-          <HeroStats />
         </div>
 
         <div className="hero-v4-visual">
@@ -513,20 +514,16 @@ export default function LandingPageV4() {
         </div>
       </section>
 
-      {/* Stats for Mobile - appears below hero as separate section */}
-      <section className="hero-animation-mobile-section">
-        <div className="hero-stats-mobile">
-          <HeroStats />
-        </div>
-      </section>
-
-      {/* Live Transaction Ticker — between stats and Happening Right Now */}
-      <div className="ticker-wrapper">
-        <TransactionTicker />
-      </div>
+      {/* Full-width "Works With" Agent Compatibility Strip */}
+      <AgentCompatibilityStrip />
 
       {/* Happening Right Now */}
       <HappeningNow />
+
+      {/* Scrolling Transaction Ticker — between Happening Right Now and How It Works */}
+      <div className="ticker-wrapper">
+        <TransactionTicker />
+      </div>
 
       {/* How It Works - Four Steps */}
       <HowItWorksSection />

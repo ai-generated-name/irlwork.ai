@@ -103,6 +103,7 @@ export default function BrowseTasksV2({
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
+  const [popupTaskId, setPopupTaskId] = useState(null);
 
   // Apply modal state
   const [applyModalTask, setApplyModalTask] = useState(null);
@@ -243,6 +244,24 @@ export default function BrowseTasksV2({
     window.location.href = `/tasks/${taskId}`;
   };
 
+  // Popup open/close handlers for map pins
+  const handlePopupOpen = useCallback((taskId) => {
+    setPopupTaskId(taskId);
+    setSelectedTaskId(taskId);
+    // Scroll the corresponding card into view in the list
+    if (taskListRef.current) {
+      const cardEl = taskListRef.current.querySelector(`[data-task-id="${taskId}"]`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, []);
+
+  const handlePopupClose = useCallback(() => {
+    setPopupTaskId(null);
+    setSelectedTaskId(null);
+  }, []);
+
   // Handle apply success
   const handleApplySuccess = (taskId) => {
     setAppliedTaskIds(prev => new Set([...prev, taskId]));
@@ -300,6 +319,7 @@ export default function BrowseTasksV2({
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' && window.innerWidth < 768
   );
+  const [locationExpanded, setLocationExpanded] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -399,8 +419,26 @@ export default function BrowseTasksV2({
           </div>
         </div>
 
-        {/* Location bar */}
-        <div className="browse-tasks-v2-location-bar">
+        {/* Location bar — collapsible on mobile */}
+        {isMobile && (
+          <button
+            className="browse-tasks-v2-location-toggle"
+            onClick={() => setLocationExpanded(!locationExpanded)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span className="location-summary">
+              {radius === 'anywhere' ? 'Anywhere' : `Within ${radius} km of ${location.city || 'your location'}`}
+              {includeRemote ? ' · Remote' : ''}
+            </span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: locationExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        )}
+        <div className={`browse-tasks-v2-location-bar ${isMobile && !locationExpanded ? 'collapsed' : ''}`}>
           <span className="browse-tasks-v2-location-icon"><MapPin size={16} /></span>
           <span className="browse-tasks-v2-location-label">Within</span>
           <CustomDropdown
@@ -613,6 +651,10 @@ export default function BrowseTasksV2({
                 onTaskHover={setHoveredTaskId}
                 onBoundsChange={handleMapBoundsChange}
                 disableFitBounds={mapDrivenSearch}
+                isMobile={false}
+                popupTaskId={popupTaskId}
+                onPopupOpen={handlePopupOpen}
+                onPopupClose={handlePopupClose}
               />
             </Suspense>
           </div>
@@ -639,7 +681,7 @@ export default function BrowseTasksV2({
         <div className="browse-tasks-v2-mobile-map-overlay">
           <button
             className="browse-tasks-v2-mobile-map-close"
-            onClick={() => setShowMobileMap(false)}
+            onClick={() => { setShowMobileMap(false); handlePopupClose(); }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -654,13 +696,14 @@ export default function BrowseTasksV2({
               radius={radius !== 'anywhere' ? parseFloat(radius) : null}
               selectedTaskId={selectedTaskId}
               hoveredTaskId={hoveredTaskId}
-              onTaskSelect={(id) => {
-                handleTaskSelect(id);
-                setShowMobileMap(false);
-              }}
+              onTaskSelect={handleTaskSelect}
               onTaskHover={setHoveredTaskId}
               onBoundsChange={handleMapBoundsChange}
               disableFitBounds={mapDrivenSearch}
+              isMobile={true}
+              popupTaskId={popupTaskId}
+              onPopupOpen={handlePopupOpen}
+              onPopupClose={handlePopupClose}
             />
           </Suspense>
         </div>

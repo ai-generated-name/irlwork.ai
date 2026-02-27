@@ -43,20 +43,23 @@ function parseJsonFields(row, jsonFields = ['skills']) {
 
 // ================== USER OPERATIONS ==================
 
+// Safe columns for user queries — excludes password_hash, webhook_secret
+const USER_SAFE_COLUMNS = 'id, email, name, type, api_key, avatar_url, bio, hourly_rate, account_type, city, state, service_radius, skills, social_links, profile_completeness, availability, rating, jobs_completed, verified, wallet_address, stripe_account_id, created_at, updated_at';
+
 async function getUserById(id) {
-  const { data, error } = await supabase.from('users').select('*').eq('id', id).single();
+  const { data, error } = await supabase.from('users').select(USER_SAFE_COLUMNS).eq('id', id).single();
   if (error) return null;
   return parseJsonFields(data);
 }
 
 async function getUserByEmail(email) {
-  const { data, error } = await supabase.from('users').select('*').eq('email', email).single();
+  const { data, error } = await supabase.from('users').select(USER_SAFE_COLUMNS).eq('email', email).single();
   if (error) return null;
   return parseJsonFields(data);
 }
 
 async function getUserByApiKey(apiKey) {
-  const { data, error } = await supabase.from('users').select('*').eq('api_key', apiKey).single();
+  const { data, error } = await supabase.from('users').select(USER_SAFE_COLUMNS).eq('api_key', apiKey).single();
   if (error) return null;
   return parseJsonFields(data);
 }
@@ -76,7 +79,7 @@ async function updateUser(id, updates) {
 // ================== HUMAN OPERATIONS ==================
 
 async function listHumans(filters = {}) {
-  let query = supabase.from('users').select('*').eq('type', 'human').eq('verified', true);
+  let query = supabase.from('users').select(USER_SAFE_COLUMNS).eq('type', 'human').eq('verified', true);
   
   if (filters.category) {
     query = query.contains('skills', [filters.category]);

@@ -59,6 +59,7 @@ function EarningsDashboard({ user }) {
   const [withdrawResult, setWithdrawResult] = useState(null)
   const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false)
   const [showAltPayments, setShowAltPayments] = useState(false)
+  const [showFlowDiagram, setShowFlowDiagram] = useState(false)
 
   useEffect(() => {
     if (!user?.id || !user?.token) {
@@ -211,8 +212,37 @@ function EarningsDashboard({ user }) {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Payment Flow Diagram */}
-      <PaymentFlowDiagram />
+      {/* Earnings Summary Stats — always visible */}
+      <div className="earnings-summary-stats">
+        <div className="earnings-stat">
+          <span className="earnings-stat-label">Total Earned</span>
+          <span className="earnings-stat-value">
+            ${((balanceData?.pending || 0) + (balanceData?.available || 0)).toFixed(2)}
+          </span>
+        </div>
+        <div className="earnings-stat">
+          <span className="earnings-stat-label">In Escrow</span>
+          <span className="earnings-stat-value">
+            ${(balanceData?.pending || 0).toFixed(2)}
+          </span>
+        </div>
+        <div className="earnings-stat earnings-stat--available">
+          <span className="earnings-stat-label">Available</span>
+          <span className="earnings-stat-value">
+            ${(balanceData?.available || 0).toFixed(2)}
+          </span>
+        </div>
+      </div>
+
+      {/* Payment Flow Diagram — collapsible */}
+      <button
+        className={`earnings-flow-toggle ${showFlowDiagram ? 'expanded' : ''}`}
+        onClick={() => setShowFlowDiagram(!showFlowDiagram)}
+      >
+        How earnings work
+        <ChevronDown size={14} />
+      </button>
+      {showFlowDiagram && <PaymentFlowDiagram />}
 
       {/* Primary: Bank Account Setup */}
       <ConnectBankButton user={user} />
@@ -261,8 +291,8 @@ function EarningsDashboard({ user }) {
         </div>
       )}
 
-      {/* Balance Cards Grid - only show when user has balance or transactions */}
-      {hasAnyBalance && (
+      {/* Balance Cards Grid */}
+      {(
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Pending Balance Card */}
           <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 md:p-6">

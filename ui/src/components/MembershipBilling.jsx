@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Crown, Check, CreditCard, ExternalLink, Loader2, ArrowRight, Shield, Zap, BarChart3, Users, Key, Sparkles, Receipt, X } from 'lucide-react'
+import { Crown, Check, CreditCard, ExternalLink, Loader2, ArrowRight, Shield, Zap, Sparkles, Receipt, X } from 'lucide-react'
 import { supabase } from '../context/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
@@ -23,62 +23,61 @@ const PLANS = [
     monthlyPrice: 0,
     yearlyPrice: 0,
     platformFee: 15,
-    description: 'Get started with the essentials',
+    posterFee: 5,
+    description: 'Get started with the basics',
     features: [
-      { text: 'Up to 3 active tasks', included: true },
+      { text: '5 task posts/month', included: true },
       { text: 'Standard support', included: true },
-      { text: '15% platform fee', included: true },
-      { text: 'Priority support', included: false },
-      { text: 'Featured profile', included: false },
-      { text: 'Advanced analytics', included: false },
-      { text: 'API access', included: false },
+      { text: '15% worker fee', included: true },
+      { text: '5% poster fee', included: true },
+      { text: 'Priority listing', included: false },
+      { text: 'Unlimited task posting', included: false },
+    ],
+  },
+  {
+    id: 'builder',
+    name: 'Builder',
+    monthlyPrice: 1000,
+    yearlyPrice: 9000,
+    platformFee: 12.5,
+    posterFee: 2.5,
+    description: 'Enhanced visibility and lower fees',
+    features: [
+      { text: 'Unlimited task posting', included: true },
+      { text: '12.5% worker fee', included: true },
+      { text: '2.5% poster fee', included: true },
+      { text: 'Priority listing', included: true },
+      { text: 'Blue badge', included: true },
+      { text: 'Top of list priority', included: false },
     ],
   },
   {
     id: 'pro',
     name: 'Pro',
-    monthlyPrice: 1999,
-    yearlyPrice: 19188,
+    monthlyPrice: 3000,
+    yearlyPrice: 27000,
     platformFee: 10,
+    posterFee: 0,
     popular: true,
-    description: 'For professionals who want to grow',
+    description: 'Max visibility and lowest fees',
     features: [
-      { text: 'Up to 15 active tasks', included: true },
-      { text: 'Reduced 10% platform fee', included: true },
+      { text: 'Unlimited task posting', included: true },
+      { text: '10% worker fee', included: true },
+      { text: '0% poster fee', included: true },
+      { text: 'Top of list priority', included: true },
+      { text: 'Gold badge', included: true },
       { text: 'Priority support', included: true },
-      { text: 'Featured profile badge', included: true },
-      { text: 'Advanced analytics', included: true },
-      { text: 'API access', included: true },
-      { text: 'Custom branding', included: false },
-    ],
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    monthlyPrice: 4999,
-    yearlyPrice: 47988,
-    platformFee: 5,
-    description: 'For teams and power users',
-    features: [
-      { text: 'Unlimited active tasks', included: true },
-      { text: 'Lowest 5% platform fee', included: true },
-      { text: 'Priority support', included: true },
-      { text: 'Featured profile badge', included: true },
-      { text: 'Advanced analytics', included: true },
-      { text: 'Full API access', included: true },
-      { text: 'Custom branding', included: true },
     ],
   },
 ]
 
 const FEATURE_ICONS = {
   'priority support': Shield,
-  'featured profile': Sparkles,
-  'advanced analytics': BarChart3,
-  'api access': Key,
-  'custom branding': Users,
-  'reduced': Zap,
-  'lowest': Zap,
+  'priority listing': Sparkles,
+  'top of list': Sparkles,
+  'badge': Sparkles,
+  'poster fee': Zap,
+  'worker fee': Zap,
   'unlimited': Zap,
 }
 
@@ -99,12 +98,12 @@ function formatCents(cents) {
 // ============================================================================
 
 export default function MembershipBilling({ user, toast, onUserUpdate }) {
-  const [billingInterval, setBillingInterval] = useState('month')
+  const [billingInterval, setBillingInterval] = useState('monthly')
   const [subscription, setSubscription] = useState(null)
   const [billingHistory, setBillingHistory] = useState([])
   const [loadingSubscription, setLoadingSubscription] = useState(true)
   const [loadingBilling, setLoadingBilling] = useState(false)
-  const [actionLoading, setActionLoading] = useState(null) // 'checkout-pro', 'checkout-business', 'cancel', 'resume', 'portal'
+  const [actionLoading, setActionLoading] = useState(null) // 'checkout-builder', 'checkout-pro', 'cancel', 'resume', 'portal'
   const [showBillingHistory, setShowBillingHistory] = useState(false)
 
   const currentTier = user?.subscription_tier || 'free'
@@ -185,7 +184,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
           'Content-Type': 'application/json',
           Authorization: token
         },
-        body: JSON.stringify({ tier, interval: billingInterval })
+        body: JSON.stringify({ tier, billing_period: billingInterval })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to create checkout session')
@@ -208,7 +207,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
           'Content-Type': 'application/json',
           Authorization: token
         },
-        body: JSON.stringify({ tier, interval: billingInterval })
+        body: JSON.stringify({ tier, billing_period: billingInterval })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to change plan')
@@ -379,7 +378,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
           </h2>
 
           {/* Billing interval toggle */}
-          <div style={{
+          <div className="membership-billing-toggle" style={{
             display: 'inline-flex',
             background: 'var(--bg-tertiary)',
             borderRadius: 'var(--radius-lg)',
@@ -387,7 +386,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
             border: '1px solid var(--border-primary)',
           }}>
             <button
-              onClick={() => setBillingInterval('month')}
+              onClick={() => setBillingInterval('monthly')}
               style={{
                 padding: '6px 14px',
                 fontSize: 13,
@@ -396,15 +395,15 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 borderRadius: 'calc(var(--radius-lg) - 2px)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
-                background: billingInterval === 'month' ? 'var(--bg-primary)' : 'transparent',
-                color: billingInterval === 'month' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                boxShadow: billingInterval === 'month' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                background: billingInterval === 'monthly' ? 'var(--bg-primary)' : 'transparent',
+                color: billingInterval === 'monthly' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                boxShadow: billingInterval === 'monthly' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
               }}
             >
               Monthly
             </button>
             <button
-              onClick={() => setBillingInterval('year')}
+              onClick={() => setBillingInterval('annual')}
               style={{
                 padding: '6px 14px',
                 fontSize: 13,
@@ -413,12 +412,12 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 borderRadius: 'calc(var(--radius-lg) - 2px)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
-                background: billingInterval === 'year' ? 'var(--bg-primary)' : 'transparent',
-                color: billingInterval === 'year' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                boxShadow: billingInterval === 'year' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                background: billingInterval === 'annual' ? 'var(--bg-primary)' : 'transparent',
+                color: billingInterval === 'annual' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                boxShadow: billingInterval === 'annual' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
               }}
             >
-              Yearly
+              Annual
               <span style={{
                 marginLeft: 6,
                 fontSize: 11,
@@ -428,22 +427,22 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 padding: '2px 6px',
                 borderRadius: 4,
               }}>
-                Save 20%
+                Save 25%
               </span>
             </button>
           </div>
         </div>
 
         {/* Plan cards */}
-        <div style={{
+        <div className="membership-plan-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 16,
         }}>
           {PLANS.map((plan) => {
             const isCurrent = plan.id === currentTier
-            const price = billingInterval === 'year' ? plan.yearlyPrice : plan.monthlyPrice
-            const monthlyEquivalent = billingInterval === 'year' ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice
+            const price = billingInterval === 'annual' ? plan.yearlyPrice : plan.monthlyPrice
+            const monthlyEquivalent = billingInterval === 'annual' ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice
 
             return (
               <div
@@ -522,7 +521,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                         ${formatCents(monthlyEquivalent)}
                       </span>
                       <span style={{ fontSize: 14, color: 'var(--text-tertiary)', marginLeft: 4 }}>/mo</span>
-                      {billingInterval === 'year' && (
+                      {billingInterval === 'annual' && (
                         <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
                           ${formatCents(price)}/year
                         </p>

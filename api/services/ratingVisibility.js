@@ -11,6 +11,8 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const logger = require('../lib/logger').child({ service: 'rating_visibility' });
+const { captureException } = require('../lib/sentry');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -146,7 +148,8 @@ async function checkAndUpdateVisibility() {
       }))
     };
   } catch (error) {
-    console.error('[RATING_VISIBILITY] Unexpected error:', error);
+    logger.error({ err: error }, 'Rating visibility check failed');
+    captureException(error, { tags: { service: 'rating_visibility' } });
     return { updated: 0, error: error.message };
   }
 }
