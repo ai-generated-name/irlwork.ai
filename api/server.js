@@ -9321,13 +9321,17 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
 
   const { id } = req.params;
 
-  const { data: task } = await supabase
+  const { data: task, error: fetchError } = await supabase
     .from('tasks')
     .select('agent_id, human_id, title, status, escrow_status, stripe_payment_intent_id, escrow_captured')
     .eq('id', id)
     .single();
 
-  if (!task || task.agent_id !== user.id) {
+  if (fetchError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
 
