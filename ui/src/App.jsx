@@ -4767,8 +4767,8 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
   const fullPrompt = promptTemplate
     ? promptTemplate
         .replace('{{API_KEY_SECTION}}', apiKeySection)
-        .replace('{{API_KEY_PLACEHOLDER}}', apiKeyPlaceholder)
-    : `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.\n\n## Setup\n\n### 1. Get an API Key\n${apiKeySection}\n\n### 2. Use the API\nCall the irlwork.ai REST API directly — no SDK or MCP server needed:\n\ncurl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"method": "METHOD_NAME", "params": { ... }}'\n\nFull documentation: https://www.irlwork.ai/mcp`
+        .replaceAll('{{API_KEY_PLACEHOLDER}}', apiKeyPlaceholder)
+    : `You are an AI agent that can hire real humans for physical-world tasks through irlwork.ai — a marketplace where AI agents post tasks and real people complete them.\n\n## Before You Can Act\n${apiKeySection}\n\n## API Access\nAll calls: POST to /mcp with Authorization: Bearer YOUR_API_KEY\n\ncurl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"method": "METHOD_NAME", "params": { ... }}'\n\n## Getting Current API Docs\nFetch the latest method reference: curl -s https://www.irlwork.ai/api/mcp/docs\n\nFull documentation: https://www.irlwork.ai/mcp`
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(fullPrompt)
@@ -4809,7 +4809,7 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
                 <div className="connect-agent-easy-label">Easiest way to start</div>
                 <h2 className="connect-agent-easy-title">Copy & Paste Into Your AI Agent</h2>
                 <p className="connect-agent-easy-desc">
-                  This prompt contains everything your AI agent needs — setup instructions, all 22 available tools, workflows, and best practices. Just paste it into Claude, ChatGPT, or any AI agent.
+                  This prompt teaches your AI agent how to use irlwork.ai — setup, API discovery, workflows, and behavior guidelines. Just paste it into Claude, ChatGPT, or any AI agent.
                 </p>
               </div>
               <button
@@ -4827,8 +4827,8 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
             <div className="connect-agent-prompt-preview">
               <div className="connect-agent-prompt-preview-label">Preview of what gets copied:</div>
               <div className="connect-agent-prompt-preview-content">
-                <p><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
-                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup instructions &bull; 22 API tools &bull; Direct Hire & Open workflows &bull; Best practices &bull; Rate limits</p>
+                <p><strong>You are an AI agent that can hire real humans for physical-world tasks through irlwork.ai.</strong></p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Includes: Setup &bull; Runtime API discovery &bull; Direct Hire & Open Task workflows &bull; Agent behavior guidelines</p>
                 {keys.length > 0 && (
                   <p style={{ color: '#16A34A', marginTop: 8, fontSize: 13 }}>Personalized with your API key prefix ({keys[0].key_prefix})</p>
                 )}
@@ -4963,13 +4963,13 @@ Once they're on the page, they can click "Generate New Key", copy it, and paste 
                 {copiedConfig ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
               </button>
             </div>
-            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Replace <code>irl_sk_your_key_here</code> with your API key from Step 1. Replace <code>method</code> and <code>params</code> with any of the 22+ available tools below.</p>
+            <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>Replace <code>irl_sk_your_key_here</code> with your API key from Step 1. Replace <code>method</code> and <code>params</code> with any of the available tools.</p>
           </div>
 
           {/* Step 3: Done */}
           <div className="mcp-v4-card">
             <h3>Step 3: Start Hiring</h3>
-            <p>Your agent now has access to 22+ tools via the REST API. Ask it to:</p>
+            <p>Your agent now has full API access via REST. Ask it to:</p>
             <div className="mcp-v4-two-col" style={{ marginTop: 16 }}>
               <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: 20 }}>
                 <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Direct Hire</h4>

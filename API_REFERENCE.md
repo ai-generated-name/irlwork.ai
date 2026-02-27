@@ -1205,6 +1205,61 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 | `submit_feedback` | Submit feedback. Params: `message`, `type`, `urgency`, `subject` |
 | `report_error` | Report agent error. Params: `action`, `error_message`, `error_code`, `error_log` |
 
+### MCP Method Documentation: `GET /api/mcp/docs`
+
+Public endpoint (no authentication required). Returns the full MCP method catalog as structured JSON. Agents fetch this at runtime to discover available methods and parameters.
+
+**Query Parameters:**
+- `method` (optional) — Return a single method by name: `?method=list_humans`
+- `category` (optional) — Filter by category: `?category=tasks`
+
+**Response:**
+```json
+{
+  "methods": [
+    {
+      "name": "list_humans",
+      "aliases": [],
+      "category": "search",
+      "description": "Search for available humans by category, city, rating, skills, and more",
+      "params": {
+        "category": { "type": "string", "required": false, "description": "Filter by skill category" }
+      },
+      "returns": "Array of human profiles matching filters"
+    }
+  ],
+  "categories": { "search": "Search & Discovery", "tasks": "Tasks", ... },
+  "auth": { "type": "bearer", "header": "Authorization", "format": "Bearer YOUR_API_KEY" },
+  "base_url": "https://api.irlwork.ai/api",
+  "endpoint": "POST /api/mcp",
+  "rate_limits": { "requests": "60/min per API key" },
+  "total_methods": 25
+}
+```
+
+**Examples:**
+```bash
+curl https://api.irlwork.ai/api/mcp/docs
+curl https://api.irlwork.ai/api/mcp/docs?method=create_posting
+curl https://api.irlwork.ai/api/mcp/docs?category=messaging
+```
+
+### Agent Prompt: `GET /api/agent/prompt`
+
+Returns the agent system prompt. Supports `?verbose=true` to get the full v2 prompt with all method signatures inline (for agents that cannot make HTTP calls).
+
+**Response:**
+```json
+{
+  "version": 3,
+  "prompt": "...",
+  "template": "...",
+  "docs_url": "https://www.irlwork.ai/api/mcp/docs",
+  "verbose": false,
+  "updated_at": "2026-02-27T..."
+}
+```
+
 ### MCP vs REST Behavioral Differences
 
 | Method | REST Equivalent | Difference |
@@ -1232,9 +1287,11 @@ Separate Node.js process (`api/mcp-server.js`) on port 3004 (configurable via `M
 >
 > Use the **in-process MCP** (`POST /api/mcp`) instead, which accesses the database directly and works correctly.
 
-Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `view_proof`, `approve_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `get_instructions`.
+Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `complete_task`, `complete_booking`, `view_proof`, `approve_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `report_error`.
 
-Backward-compatible aliases: `post_task`, `create_adhoc_task`, `create_task` -> `create_posting`; `create_booking` -> `direct_hire`; `get_tasks`, `my_postings`, `my_adhoc_tasks`, `my_bookings` -> `my_tasks`; `release_escrow`, `release_payment` -> `approve_task`.
+Backward-compatible aliases: `post_task`, `create_adhoc_task` -> `create_posting`; `create_booking` -> `direct_hire`; `get_tasks`, `my_postings`, `my_adhoc_tasks`, `my_bookings` -> `my_tasks`; `release_escrow`, `release_payment` -> `approve_task`.
+
+Full method catalog with parameters available at `GET /api/mcp/docs`.
 
 ---
 
