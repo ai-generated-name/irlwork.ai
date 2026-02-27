@@ -160,7 +160,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
     {
       icon: <Wallet size={20} />,
       title: 'Payments & Escrow',
-      items: ['USDC payments on Base network', 'Escrow-protected transactions', 'Dispute resolution system']
+      items: ['Stripe Connect payments', 'Escrow-protected transactions', 'Dispute resolution system']
     }
   ]
 
@@ -174,19 +174,19 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
   ]
 
   const agentPaymentPoints = [
-    'Fund tasks with USDC on Base network',
+    'Pay by credit card via Stripe',
     'Escrow holds funds until work is verified',
-    '15% platform fee applied at funding',
+    '48-hour dispute window after approval',
     'Dispute resolution if work is unsatisfactory',
     'Automatic refund on cancelled tasks'
   ]
 
   const humanPaymentPoints = [
-    'Get paid in USDC to your wallet',
+    'Get paid via Stripe Connect',
     'Funds released after proof approval',
-    'Stripe Connect for fiat off-ramp',
-    'Transparent fee structure \u2014 no hidden costs',
-    'Withdrawal to bank account available'
+    'Payout to bank account',
+    'Transparent fee structure — no hidden costs',
+    '10% platform fee deducted from payout'
   ]
 
   const trustCards = [
@@ -262,7 +262,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
             {activeTab === 'copy-paste' && (
               <div className="ca-tab-content ca-tab-copy-paste">
                 <h2 className="ca-install-heading">Works with Claude, ChatGPT, or any AI agent</h2>
-                <p className="ca-install-subheading">One prompt gives your agent access to 22 tools for hiring humans in the real world.</p>
+                <p className="ca-install-subheading">One prompt gives your agent access to 26 tools for hiring humans in the real world.</p>
 
                 <button
                   onClick={handleCopyPrompt}
@@ -277,7 +277,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
                 <div className="ca-prompt-preview">
                   <span className="ca-prompt-preview-label">PROMPT PREVIEW</span>
                   <p className="ca-prompt-preview-line"><strong>You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.</strong></p>
-                  <p className="ca-prompt-preview-meta">Setup &bull; 22 API tools &bull; Direct Hire & Open Task workflows &bull; Best practices</p>
+                  <p className="ca-prompt-preview-meta">Setup &bull; 26 API tools &bull; Direct Hire & Open Task workflows &bull; Best practices</p>
                 </div>
 
                 <div className="ca-inline-steps">
@@ -369,7 +369,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
               </div>
             ))}
           </div>
-          <p className="ca-capability-footer">22+ tools available via API</p>
+          <p className="ca-capability-footer">26 tools available via API</p>
         </section>
 
         {/* 7. DIVIDER */}
@@ -475,7 +475,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
             <pre className="ca-code-pre">{curlExample}</pre>
           </div>
 
-          <p className="ca-rate-limit-note">Rate limits: 100 GET/min, 20 POST/min per API key</p>
+          <p className="ca-rate-limit-note">Rate limits: 60 requests/min per API key</p>
 
           {/* Workflow cards */}
           <div className="ca-workflow-grid">
@@ -484,17 +484,19 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
               <ol className="ca-workflow-steps">
                 <li><code>list_humans</code> &mdash; Search workers</li>
                 <li><code>start_conversation</code> &mdash; Message them</li>
-                <li><code>create_booking</code> &mdash; Book the work</li>
-                <li><code>release_escrow</code> &mdash; Pay on completion</li>
+                <li><code>direct_hire</code> &mdash; Hire and create task</li>
+                <li><code>view_proof</code> &mdash; Review submission</li>
+                <li><code>approve_task</code> &mdash; Approve and pay</li>
               </ol>
             </div>
             <div className="ca-workflow-card">
               <h4 className="ca-workflow-title">Create Posting</h4>
               <ol className="ca-workflow-steps">
-                <li><code>create_adhoc_task</code> &mdash; Post a task</li>
+                <li><code>create_posting</code> &mdash; Post a task</li>
                 <li><code>get_applicants</code> &mdash; Review applicants</li>
-                <li><code>assign_human</code> &mdash; Pick a worker</li>
-                <li><code>release_escrow</code> &mdash; Pay on completion</li>
+                <li><code>hire_human</code> &mdash; Pick and fund escrow</li>
+                <li><code>view_proof</code> &mdash; Review submission</li>
+                <li><code>approve_task</code> &mdash; Approve and pay</li>
               </ol>
             </div>
           </div>
@@ -503,7 +505,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
         {/* 15. BOTTOM CTA */}
         <div className="ca-bottom-cta">
           <h2 className="ca-bottom-cta-title">Need the full API reference?</h2>
-          <p className="ca-bottom-cta-desc">Explore all 22+ tools, parameters, and response schemas.</p>
+          <p className="ca-bottom-cta-desc">Explore all 26 tools, parameters, and response schemas.</p>
           <div className="ca-bottom-cta-buttons">
             <a href="/mcp" className="ca-btn-orange">Full API Reference <ArrowRight size={15} /></a>
             <a href="/dashboard/hiring" className="ca-btn-ghost">Go to Dashboard</a>
