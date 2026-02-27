@@ -2751,10 +2751,10 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
     `${user.name || 'A worker'} applied to "${taskForApply.title}"`,
     `/tasks/${taskId}`
   );
-  await deliverWebhook(taskForApply.agent_id, {
-    event: 'new_application',
+  dispatchWebhook(taskForApply.agent_id, {
+    type: 'new_application',
     task_id: taskId,
-    applicant: { id: user.id, name: user.name, proposed_rate }
+    data: { applicant: { id: user.id, name: user.name, proposed_rate } }
   });
 
   // Email notification for new application
@@ -4110,15 +4110,16 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   );
 
   // Deliver webhook
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_rejected',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_rejected',
     task_id: taskId,
-    proof_id: latestProof.id,
-    feedback,
-    revision_count: currentRevisionCount + 1,
-    revisions_remaining: MAX_REVISIONS - (currentRevisionCount + 1),
-    new_deadline: newDeadline.toISOString(),
-    timestamp: new Date().toISOString()
+    data: {
+      proof_id: latestProof.id,
+      feedback,
+      revision_count: currentRevisionCount + 1,
+      revisions_remaining: MAX_REVISIONS - (currentRevisionCount + 1),
+      new_deadline: newDeadline.toISOString()
+    }
   });
 
   res.json({
@@ -4226,12 +4227,13 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   ).catch(() => {});
 
   // Deliver webhook to agent
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_approved',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_approved',
     task_id: taskId,
-    proof_id: latestProof.id,
-    message: 'Proof approved. Payment will be processed.',
-    timestamp: new Date().toISOString()
+    data: {
+      proof_id: latestProof.id,
+      message: 'Proof approved. Payment will be processed.'
+    }
   });
 
   // Stripe-paid tasks: auto-release to pending balance (no admin step needed)
@@ -4543,13 +4545,14 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
   sendEmailNotification(task.agent_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
 
   // Deliver webhook
-  await deliverWebhook(task.agent_id, {
-    event: 'dispute_opened',
+  dispatchWebhook(task.agent_id, {
+    type: 'dispute_opened',
     task_id: taskId,
-    dispute_id: disputeId,
-    disputed_by: user.id,
-    reason,
-    timestamp: new Date().toISOString()
+    data: {
+      dispute_id: disputeId,
+      disputed_by: user.id,
+      reason
+    }
   });
 
   res.json({ success: true, status: 'disputed', dispute_id: disputeId });
