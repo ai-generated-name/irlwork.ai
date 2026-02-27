@@ -5560,13 +5560,17 @@ app.post('/api/mcp', async (req, res) => {
 
         if (fetchError || !taskData) throw new Error('Task not found');
 
-        // Agent must have a pre-linked card before hiring
+        // Agent must have a payment method before hiring
         const { listPaymentMethods } = require('./backend/services/stripeService');
         if (!user.stripe_customer_id) {
           return res.status(402).json({
             error: 'No payment method on file',
-            code: 'card_required',
-            message: 'You must link a payment card before hiring. Add a card in your payment settings.'
+            code: 'payment_required',
+            message: 'Use the setup_payment tool to add a credit card or configure USDC.',
+            actions: [
+              { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
+              { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
+            ]
           });
         }
         let agentCards = [];
@@ -5575,11 +5579,15 @@ app.post('/api/mcp', async (req, res) => {
         } catch (e) {
           console.error('[MCP Hire] Failed to list payment methods:', e.message);
         }
-        if (agentCards.length === 0) {
+        if (agentCards.length === 0 && !user.wallet_address) {
           return res.status(402).json({
             error: 'No payment method on file',
-            code: 'card_required',
-            message: 'You must link a payment card before hiring. Add a card in your payment settings.'
+            code: 'payment_required',
+            message: 'Use the setup_payment tool to add a credit card or configure USDC.',
+            actions: [
+              { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
+              { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
+            ]
           });
         }
 
@@ -5982,7 +5990,11 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(402).json({
             error: 'No payment method on file',
             code: 'payment_required',
-            message: 'You must link a payment card or crypto wallet before posting a task.'
+            message: 'Use the setup_payment tool to add a credit card or configure USDC.',
+            actions: [
+              { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
+              { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
+            ]
           });
         }
 
@@ -6652,8 +6664,51 @@ app.post('/api/mcp', async (req, res) => {
       case 'direct_hire':
       case 'create_booking': {
         // Hire a specific human directly (from conversation or by human_id)
-        const { conversation_id, human_id: directHumanId, title, description, location, scheduled_at, duration_hours, hourly_rate, budget, category } = params;
+        const { conversation_id, human_id: directHumanId, title, description, location, scheduled_at, duration_hours, hourly_rate, budget, category, payment_currency } = params;
         if (!title) return res.status(400).json({ error: 'title is required' });
+
+        // Payment method check (currency-aware)
+        const { listPaymentMethods: listDirectHirePMs } = require('./backend/services/stripeService');
+        if (payment_currency === 'usdc') {
+          // USDC task — check USDC available balance covers the task amount
+          const directBudget = budget || (hourly_rate && duration_hours ? Math.round(hourly_rate * duration_hours * 100) / 100 : 50);
+          const directBudgetCents = Math.round(directBudget * 100);
+          const directBalance = await getWalletBalance(supabase, user.id);
+          const directTxs = directBalance.transactions || [];
+          const directUsdcAvail = directTxs.filter(tx => tx.payout_method === 'usdc' && tx.status === 'available').reduce((s, tx) => s + tx.amount_cents, 0);
+          if (directUsdcAvail < directBudgetCents) {
+            return res.status(402).json({
+              error: 'Insufficient USDC balance',
+              code: 'payment_required',
+              message: `This task requires ${directBudget} USDC but your available USDC balance is ${(directUsdcAvail / 100).toFixed(2)}. Deposit more USDC to proceed.`,
+              actions: [
+                { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Deposit USDC' },
+                { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card instead' }
+              ]
+            });
+          }
+        } else {
+          // Stripe (default) — require at least one card on file
+          let directHireCards = [];
+          if (user.stripe_customer_id && stripe) {
+            try {
+              directHireCards = await listDirectHirePMs(user.stripe_customer_id);
+            } catch (e) {
+              console.error('[MCP/direct_hire] Failed to check payment methods:', e.message);
+            }
+          }
+          if (directHireCards.length === 0 && !user.wallet_address) {
+            return res.status(402).json({
+              error: 'No payment method on file',
+              code: 'payment_required',
+              message: 'Use the setup_payment tool to add a credit card or configure USDC.',
+              actions: [
+                { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
+                { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
+              ]
+            });
+          }
+        }
 
         let humanId = directHumanId || null;
         if (!humanId && conversation_id) {
@@ -6828,6 +6883,171 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
 
+      // ===== Payment setup tools =====
+      case 'setup_payment': {
+        const { method: payMethod } = params;
+
+        // Gather current payment status
+        const { listPaymentMethods: listPMs, getOrCreateStripeCustomer: getOrCreateCust, createCheckoutSetupSession: createCheckoutSetup } = require('./backend/services/stripeService');
+        let cardDetails = [];
+        if (user.stripe_customer_id) {
+          try {
+            cardDetails = await listPMs(user.stripe_customer_id);
+          } catch (e) {
+            console.error('[MCP/setup_payment] Failed to list PMs:', e.message);
+          }
+        }
+        const hasCard = cardDetails.length > 0;
+        const hasWallet = !!user.wallet_address;
+
+        // No method specified — return status + all options
+        if (!payMethod) {
+          return res.json({
+            payment_status: {
+              stripe: {
+                configured: hasCard,
+                cards: cardDetails.map(c => ({ brand: c.brand, last4: c.last4, exp: `${c.exp_month}/${c.exp_year}`, is_default: c.is_default }))
+              },
+              usdc: {
+                configured: hasWallet,
+                wallet_address: user.wallet_address || null
+              }
+            },
+            options: [
+              { method: 'stripe', label: 'Add credit card', description: 'Set up a credit card via Stripe. You will receive a URL to open in a browser.', action: 'Call setup_payment with method="stripe"' },
+              { method: 'usdc', label: 'Deposit USDC', description: 'Send USDC on Base network to fund your account.', action: 'Call setup_payment with method="usdc"' }
+            ],
+            ready_to_hire: hasCard || hasWallet,
+            message: hasCard || hasWallet
+              ? 'You have a payment method configured and can post tasks and hire humans.'
+              : 'No payment method configured. Set one up to post tasks and hire humans.'
+          });
+        }
+
+        // Stripe card setup via hosted Checkout
+        if (payMethod === 'stripe') {
+          try {
+            const customerId = await getOrCreateCust(supabase, user);
+            const { url, session_id } = await createCheckoutSetup(customerId, user.id);
+
+            return res.json({
+              method: 'stripe',
+              setup_url: url,
+              session_id,
+              instructions: 'Open this URL in a browser to securely add your credit card. The link expires in 24 hours.',
+              existing_cards: cardDetails.map(c => ({ brand: c.brand, last4: c.last4, is_default: c.is_default })),
+              note: hasCard
+                ? 'You already have a card on file. Opening this URL will let you add another.'
+                : 'Once you complete card setup, you can post tasks and hire humans.'
+            });
+          } catch (e) {
+            console.error('[MCP/setup_payment] Stripe setup error:', e.message);
+            return res.status(500).json({ error: `Failed to create card setup session: ${e.message}` });
+          }
+        }
+
+        // USDC deposit instructions
+        if (payMethod === 'usdc') {
+          const platformWallet = process.env.PLATFORM_WALLET_ADDRESS;
+          if (!platformWallet) {
+            return res.status(503).json({
+              error: 'USDC payments are not yet available on this platform.'
+            });
+          }
+
+          return res.json({
+            method: 'usdc',
+            platform_wallet_address: platformWallet,
+            network: 'Base (Ethereum L2)',
+            token: 'USDC',
+            token_contract: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+            instructions: [
+              `Send USDC on the Base network to: ${platformWallet}`,
+              'Only send USDC on Base — other tokens or networks will be lost.',
+              'Deposits are credited after on-chain confirmation (typically 1-2 minutes).'
+            ],
+            your_wallet_address: user.wallet_address || null,
+            note: !user.wallet_address
+              ? 'You have not set a wallet address for receiving USDC payouts. Use the platform dashboard to set one.'
+              : `Your USDC payout address is: ${user.wallet_address}`
+          });
+        }
+
+        return res.status(400).json({ error: `Invalid method: "${payMethod}". Use "stripe" or "usdc".` });
+      }
+
+      case 'account_status': {
+        // Gather payment method info
+        const { listPaymentMethods: listAcctPMs } = require('./backend/services/stripeService');
+        let acctCardDetails = [];
+        if (user.stripe_customer_id) {
+          try {
+            acctCardDetails = await listAcctPMs(user.stripe_customer_id);
+          } catch (e) {
+            console.error('[MCP/account_status] Failed to list PMs:', e.message);
+          }
+        }
+
+        const acctHasCard = acctCardDetails.length > 0;
+        const acctHasWallet = !!user.wallet_address;
+
+        // Get USDC available balance
+        const acctBalance = await getWalletBalance(supabase, user.id);
+        const acctTxs = acctBalance.transactions || [];
+        const usdcAvailCents = acctTxs.filter(tx => tx.payout_method === 'usdc' && tx.status === 'available').reduce((s, tx) => s + tx.amount_cents, 0);
+
+        // ready_to_hire = has at least one payment rail configured (general signal, not amount-specific)
+        const acctReadyToHire = acctHasCard || acctHasWallet;
+
+        // Build setup_needed array
+        const setupNeeded = [];
+        if (!acctReadyToHire) {
+          setupNeeded.push({
+            action: 'setup_payment',
+            priority: 'required',
+            message: 'Add a payment method to post tasks and hire humans.',
+            hint: 'Call setup_payment to get started.'
+          });
+        }
+
+        const acctTier = user.subscription_tier || 'free';
+        const acctTierConfig = getTierConfig(acctTier);
+
+        res.json({
+          account: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            type: user.type,
+            created_at: user.created_at
+          },
+          subscription: {
+            tier: acctTier,
+            tier_name: acctTierConfig.name,
+            poster_fee_percent: acctTierConfig.poster_fee_percent,
+            task_limit_monthly: acctTierConfig.task_limit_monthly === Infinity ? 'unlimited' : acctTierConfig.task_limit_monthly
+          },
+          payment_methods: {
+            stripe: {
+              configured: acctHasCard,
+              cards: acctCardDetails.map(c => ({ brand: c.brand, last4: c.last4, exp: `${c.exp_month}/${c.exp_year}`, is_default: c.is_default }))
+            },
+            usdc: {
+              configured: acctHasWallet,
+              wallet_address: user.wallet_address || null,
+              available_balance_cents: usdcAvailCents,
+              available_balance: usdcAvailCents / 100
+            }
+          },
+          ready_to_hire: acctReadyToHire,
+          setup_needed: setupNeeded,
+          message: setupNeeded.length > 0
+            ? `${setupNeeded.length} action(s) needed before you can fully use the platform.`
+            : 'Your account is fully set up and ready to go.'
+        });
+        break;
+      }
+
       default:
         res.status(400).json({ error: `Unknown method: ${method}` });
     }
@@ -6863,6 +7083,8 @@ const MCP_TOOL_DEFINITIONS = [
   { name: 'notifications', description: 'Get your notifications', inputSchema: { type: 'object', properties: {} } },
   { name: 'mark_notification_read', description: 'Mark a notification as read', inputSchema: { type: 'object', properties: { notification_id: { type: 'string', description: 'Notification ID' } }, required: ['notification_id'] } },
   { name: 'submit_feedback', description: 'Submit feedback or bug reports about the platform', inputSchema: { type: 'object', properties: { message: { type: 'string', description: 'Feedback message' }, type: { type: 'string', description: 'Feedback type' }, urgency: { type: 'string', description: 'Urgency level' }, subject: { type: 'string', description: 'Subject line' } }, required: ['message'] } },
+  { name: 'setup_payment', description: 'Set up a payment method for your account. Returns a URL to add a credit card via Stripe, or USDC deposit instructions. Call with no arguments to see current payment status and all options.', inputSchema: { type: 'object', properties: { method: { type: 'string', enum: ['stripe', 'usdc'], description: 'Payment method to set up: "stripe" for credit card, "usdc" for crypto deposit. Omit to see current status and all options.' } } } },
+  { name: 'account_status', description: 'Get your account status including payment methods, subscription tier, and any setup actions needed before you can post tasks or hire humans.', inputSchema: { type: 'object', properties: {} } },
 ];
 
 app.post('/api/mcp/sse', async (req, res) => {

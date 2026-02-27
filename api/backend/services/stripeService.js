@@ -58,6 +58,32 @@ async function createSetupIntent(stripeCustomerId) {
 }
 
 /**
+ * Create a Stripe Checkout Session in 'setup' mode.
+ * Returns a hosted URL where the user can add a card — no frontend JS required.
+ * Used by MCP agents who cannot render Stripe Elements.
+ */
+async function createCheckoutSetupSession(stripeCustomerId, userId) {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  const baseUrl = process.env.FRONTEND_URL || 'https://www.irlwork.ai';
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'setup',
+    customer: stripeCustomerId,
+    payment_method_types: ['card'],
+    success_url: `${baseUrl}?payment_setup=success`,
+    cancel_url: `${baseUrl}?payment_setup=cancelled`,
+    metadata: {
+      user_id: userId,
+      source: 'mcp_setup_payment',
+      platform: 'irlwork'
+    },
+  });
+
+  return { url: session.url, session_id: session.id };
+}
+
+/**
  * List saved payment methods for a Stripe customer.
  */
 async function listPaymentMethods(stripeCustomerId) {
@@ -648,7 +674,11 @@ async function handleWebhookEvent(event, supabase, createNotification) {
       break;
 
     case 'checkout.session.completed':
-      await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
+      if (event.data.object.mode === 'setup') {
+        await handleSetupCheckoutCompleted(event.data.object, supabase, createNotification);
+      } else {
+        await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
+      }
       break;
 
     case 'invoice.paid':
@@ -965,6 +995,57 @@ async function handleChargeRefunded(charge, supabase) {
 }
 
 /**
+ * Handle checkout.session.completed for mode: 'setup'.
+ * Sets the card as default if no existing default, and notifies the user.
+ */
+async function handleSetupCheckoutCompleted(session, supabase, createNotification) {
+  const setupIntentId = session.setup_intent;
+  if (!setupIntentId) return;
+
+  const userId = session.metadata?.user_id;
+  if (!userId) return;
+
+  console.log(`[Stripe Webhook] Setup checkout completed for user ${userId}`);
+
+  // Retrieve the SetupIntent to get the payment method
+  const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+  const paymentMethodId = setupIntent.payment_method;
+
+  if (paymentMethodId && session.customer) {
+    // Only set as default if user has no existing default PM
+    const customer = await stripe.customers.retrieve(session.customer);
+    if (!customer.invoice_settings?.default_payment_method) {
+      await stripe.customers.update(session.customer, {
+        invoice_settings: { default_payment_method: paymentMethodId }
+      });
+      console.log(`[Stripe Webhook] Set default PM ${paymentMethodId} for customer ${session.customer}`);
+    }
+
+    // Get card details for notification
+    let cardBrand = 'card';
+    let cardLast4 = '';
+    try {
+      const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+      cardBrand = pm.card?.brand || 'card';
+      cardLast4 = pm.card?.last4 || '';
+    } catch (e) {
+      console.error('[Stripe Webhook] Failed to retrieve PM details:', e.message);
+    }
+
+    // Send notification so MCP agents know setup is complete
+    if (createNotification) {
+      await createNotification(
+        userId,
+        'payment_method_added',
+        'Payment Method Added',
+        `Your ${cardBrand} card ending in ${cardLast4} has been added. You can now post tasks and hire humans.`,
+        null
+      );
+    }
+  }
+}
+
+/**
  * Handle payout.failed — worker's bank rejected the transfer
  * @param {object} payout - Stripe payout object
  * @param {string} connectedAccountId - The Connect account ID (event.account, e.g. acct_xxx)
@@ -1021,6 +1102,7 @@ async function handlePayoutPaid(payout, connectedAccountId, supabase, createNoti
 module.exports = {
   getOrCreateStripeCustomer,
   createSetupIntent,
+  createCheckoutSetupSession,
   listPaymentMethods,
   deletePaymentMethod,
   setDefaultPaymentMethod,
