@@ -1040,6 +1040,12 @@ if (supabase) {
   console.log('[Startup] Task validation routes mounted at /api/tasks');
 }
 
+// ============ MCP DOCS ROUTE ============
+// Public endpoint — no auth required. Agents fetch method docs at runtime.
+const mcpDocsRoutes = require('./routes/mcp-docs');
+app.use('/api/mcp', mcpDocsRoutes);
+console.log('[Startup] MCP docs route mounted at /api/mcp/docs');
+
 // ============ CITY SEARCH ============
 // Public endpoint — no auth required, no Supabase needed
 app.get('/api/cities/search', (req, res) => {
@@ -3128,15 +3134,20 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
 
 // ============ AGENT PROMPT (dynamic, single source of truth) ============
 app.get('/api/agent/prompt', (req, res) => {
-  const { AGENT_PROMPT, PROMPT_VERSION, DEFAULT_API_KEY_SECTION } = require('./agent-prompt');
+  const { AGENT_PROMPT, VERBOSE_AGENT_PROMPT, PROMPT_VERSION, DEFAULT_API_KEY_SECTION } = require('./agent-prompt');
+  // Support ?verbose=true to get the full v2 prompt for agents that can't make HTTP calls
+  const useVerbose = req.query.verbose === 'true';
+  const basePrompt = useVerbose ? VERBOSE_AGENT_PROMPT : AGENT_PROMPT;
   // Replace placeholders with defaults so the prompt is ready to use out of the box
-  const prompt = AGENT_PROMPT
+  const prompt = basePrompt
     .replace('{{API_KEY_SECTION}}', DEFAULT_API_KEY_SECTION)
-    .replace('{{API_KEY_PLACEHOLDER}}', 'YOUR_API_KEY');
+    .replaceAll('{{API_KEY_PLACEHOLDER}}', 'YOUR_API_KEY');
   res.json({
     version: PROMPT_VERSION,
     prompt,
-    template: AGENT_PROMPT,
+    template: basePrompt,
+    docs_url: 'https://www.irlwork.ai/api/mcp/docs',
+    verbose: useVerbose,
     updated_at: new Date().toISOString()
   });
 });
