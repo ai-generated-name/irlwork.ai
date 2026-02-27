@@ -1214,6 +1214,40 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 
 All other MCP methods that map to REST endpoints have equivalent behavior since they access the database directly using the same Supabase queries.
 
+### MCP Streamable HTTP (IDE Integration): `POST /api/mcp/sse`
+
+Standard MCP protocol endpoint for IDE integration (Cursor, Claude Desktop, VS Code, Windsurf). Speaks JSON-RPC 2.0 over HTTP. Auth: `Authorization: Bearer <api_key>` header.
+
+Supported JSON-RPC methods:
+- `initialize` — Returns server capabilities and protocol version (`2024-11-05`)
+- `notifications/initialized` — Acknowledgement (no-op)
+- `tools/list` — Returns all available tool definitions with input schemas
+- `tools/call` — Executes a tool by name, forwarding to the in-process MCP handler (`POST /api/mcp`)
+- `ping` — Health check
+
+**IDE Configuration Examples:**
+
+Cursor (one-click install via deeplink):
+```
+cursor://anysphere.cursor-deeplink/mcp/install?name=irlwork&config=<base64-encoded-json>
+```
+Config: `{"url":"https://api.irlwork.ai/api/mcp/sse","headers":{"Authorization":"Bearer API_KEY"}}`
+
+VS Code (`.vscode/mcp.json`):
+```json
+{"servers":{"irlwork":{"type":"http","url":"https://api.irlwork.ai/api/mcp/sse","headers":{"Authorization":"Bearer API_KEY"}}}}
+```
+
+Claude Desktop (`claude_desktop_config.json`):
+```json
+{"mcpServers":{"irlwork":{"url":"https://api.irlwork.ai/api/mcp/sse","headers":{"Authorization":"Bearer API_KEY"}}}}
+```
+
+Windsurf (`mcp_config.json`):
+```json
+{"mcpServers":{"irlwork":{"serverUrl":"https://api.irlwork.ai/api/mcp/sse","headers":{"Authorization":"Bearer API_KEY"}}}}
+```
+
 ### Standalone MCP Server: `POST /mcp`
 
 Separate Node.js process (`api/mcp-server.js`) on port 3004 (configurable via `MCP_PORT`). Proxies to the main API. Auth: `IRLWORK_API_KEY` env var.
