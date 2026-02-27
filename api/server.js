@@ -9329,11 +9329,9 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
 
   const { id } = req.params;
 
-  const selectCols = ['agent_id', 'human_id', 'title', 'status', 'escrow_status', 'stripe_payment_intent_id'];
-  if (taskColumnFlags.escrow_captured) selectCols.push('escrow_captured');
   const { data: task, error: fetchError } = await supabase
     .from('tasks')
-    .select(selectCols.join(', '))
+    .select('*')
     .eq('id', id)
     .single();
 
