@@ -1,60 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Radio, Eye, Users, Clock, MapPin, Globe, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { supabase } from '../../App'
+import { useAuth } from '../../context/AuthContext'
 import API_URL from '../../config/api'
-
-const STATUS_COLORS = {
-  open: 'bg-green-100 text-green-700',
-  pending_acceptance: 'bg-blue-100 text-blue-700',
-  assigned: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  pending_review: 'bg-purple-100 text-purple-700',
-  approved: 'bg-emerald-100 text-emerald-700',
-  disputed: 'bg-red-100 text-red-700',
-  paid: 'bg-gray-100 text-gray-500',
-  cancelled: 'bg-gray-100 text-gray-400',
-  expired: 'bg-gray-100 text-gray-400',
-}
-
-const STATUS_LABELS = {
-  open: 'Open',
-  pending_acceptance: 'Pending Accept',
-  assigned: 'Assigned',
-  in_progress: 'In Progress',
-  pending_review: 'Pending Review',
-  approved: 'Approved',
-  disputed: 'Disputed',
-  paid: 'Paid',
-  cancelled: 'Cancelled',
-  expired: 'Expired',
-}
-
-const CATEGORY_LABELS = {
-  general: 'General',
-  delivery: 'Delivery',
-  photography: 'Photography',
-  data_collection: 'Data Collection',
-  mystery_shopping: 'Mystery Shopping',
-  event_support: 'Event Support',
-  research: 'Research',
-  cleaning: 'Cleaning',
-  moving: 'Moving',
-  handyman: 'Handyman',
-  other: 'Other',
-}
-
-function timeAgo(dateStr) {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-  if (seconds < 60) return 'just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}
+import AdminTaskRow from './AdminTaskRow'
 
 export default function LiveFeedTab({ user }) {
+  const { authenticatedFetch } = useAuth()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -73,9 +25,7 @@ export default function LiveFeedTab({ user }) {
     try {
       const params = new URLSearchParams({ limit: '50' })
       if (filter !== 'all') params.set('status', filter)
-      const res = await fetch(`${API_URL}/admin/tasks/recent?${params}`, {
-        headers: { Authorization: user.token || '' }
-      })
+      const res = await authenticatedFetch(`${API_URL}/admin/tasks/recent?${params}`)
       if (!res.ok) throw new Error('Failed to fetch tasks')
       const data = await res.json()
       setTasks(data)
@@ -87,7 +37,7 @@ export default function LiveFeedTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [filter, user.token])
+  }, [filter, authenticatedFetch])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
@@ -242,7 +192,7 @@ export default function LiveFeedTab({ user }) {
           </div>
         ) : (
           tasks.map(task => (
-            <FeedItem
+            <AdminTaskRow
               key={task.id}
               task={task}
               isNew={newTaskIds.has(task.id)}
@@ -254,66 +204,6 @@ export default function LiveFeedTab({ user }) {
       <p className="text-xs text-gray-400 text-center">
         Showing {tasks.length} most recent tasks. New tasks appear automatically.
       </p>
-    </div>
-  )
-}
-
-function FeedItem({ task, isNew }) {
-  const statusColor = STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-600'
-  const statusLabel = STATUS_LABELS[task.status] || task.status
-
-  return (
-    <div className={`px-5 py-4 transition-colors duration-1000 ${isNew ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
-      <div className="flex items-start justify-between gap-4">
-        {/* Left: task info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold uppercase ${statusColor}`}>
-              {statusLabel}
-            </span>
-            <span className="text-[11px] font-medium text-gray-400 uppercase">
-              {CATEGORY_LABELS[task.category] || task.category || 'General'}
-            </span>
-            {task.is_remote ? (
-              <span className="flex items-center gap-0.5 text-[11px] text-blue-500">
-                <Globe size={10} /> Remote
-              </span>
-            ) : task.location ? (
-              <span className="flex items-center gap-0.5 text-[11px] text-gray-400">
-                <MapPin size={10} /> {task.location}
-              </span>
-            ) : null}
-          </div>
-          <p className="text-sm font-semibold text-gray-900 truncate">{task.title}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            by {task.agent_name || 'Unknown'}
-            {task.task_type === 'open' && task.quantity > 1 && (
-              <span className="ml-2 text-gray-400">
-                {task.spots_filled}/{task.quantity} filled
-              </span>
-            )}
-          </p>
-        </div>
-
-        {/* Right: metrics */}
-        <div className="flex items-center gap-5 shrink-0">
-          <div className="text-right">
-            <p className="text-sm font-bold text-gray-900">${task.budget}</p>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-gray-400" title="Applicants">
-            <Users size={13} />
-            <span>{task.applicant_count}</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-gray-400" title="Views">
-            <Eye size={13} />
-            <span>{task.view_count}</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-gray-400 w-16 justify-end" title={new Date(task.created_at).toLocaleString()}>
-            <Clock size={13} />
-            <span>{timeAgo(task.created_at)}</span>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

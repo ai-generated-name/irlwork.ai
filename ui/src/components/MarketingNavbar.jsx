@@ -65,6 +65,14 @@ export default function MarketingNavbar({ user, activePage }) {
         >
           {t('nav.browseTasks')}
         </a>
+        <a
+          href="/browse/humans"
+          className="nav-link-v4"
+          onClick={() => setMobileMenuOpen(false)}
+          style={activePage === 'browse-humans' ? { color: 'var(--accent-orange)' } : undefined}
+        >
+          {t('nav.forWorkers') || 'For Workers'}
+        </a>
         {/* Language selector shown inline on desktop, hidden on mobile (shown in header bar instead) */}
         <span className="navbar-v4-lang-desktop">
           <LanguageSelector variant="compact" />
