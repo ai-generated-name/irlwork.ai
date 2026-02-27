@@ -1428,13 +1428,8 @@ app.get('/api/auth/verify', async (req, res) => {
 
   // Check admin status via ADMIN_USER_IDS env var
   // TODO: Migrate admin auth from env var to users.role database column for easier management
-  const rawAdminEnv = process.env.ADMIN_USER_IDS || '';
-  const adminUserIds = rawAdminEnv.split(',').map(id => id.trim()).filter(Boolean);
+  const adminUserIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
   const userIsAdmin = adminUserIds.includes(user.id);
-  // Debug admin check (remove after confirming it works)
-  if (user.id === 'b49dc7ef-38b5-40ce-936b-e5fddebc4cb7') {
-    console.log('[AdminDebug] raw env:', JSON.stringify(rawAdminEnv), 'parsed ids:', JSON.stringify(adminUserIds), 'user.id:', JSON.stringify(user.id), 'match:', userIsAdmin);
-  }
 
   res.json({
     user: {
@@ -3160,10 +3155,6 @@ app.get('/api/agent/tasks', async (req, res) => {
   
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
-  if (user.type !== 'agent') {
-    return res.status(403).json({ error: 'Only agents can access this endpoint' });
-  }
   
   const { status, limit = 50 } = req.query;
   
@@ -9326,13 +9317,17 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
 
   const { id } = req.params;
 
-  const { data: task } = await supabase
+  const { data: task, error: fetchError } = await supabase
     .from('tasks')
     .select('agent_id, human_id, title, status, escrow_status, stripe_payment_intent_id, escrow_captured')
     .eq('id', id)
     .single();
 
-  if (!task || task.agent_id !== user.id) {
+  if (fetchError || !task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  if (task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
   }
 
