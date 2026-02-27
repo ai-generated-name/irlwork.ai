@@ -393,8 +393,8 @@ function validateUploadFile(filename, mimeType, fileBuffer) {
 const VALID_STATUS_TRANSITIONS = {
   open: ['pending_acceptance', 'assigned', 'in_progress', 'cancelled'],
   pending_acceptance: ['in_progress', 'open', 'cancelled'],
-  assigned: ['in_progress', 'cancelled'],
-  in_progress: ['pending_review', 'disputed', 'cancelled'],
+  assigned: ['in_progress', 'cancelled', 'open'],
+  in_progress: ['pending_review', 'disputed', 'cancelled', 'open'],
   pending_review: ['approved', 'completed', 'rejected', 'disputed'],
   rejected: ['pending_review', 'disputed', 'cancelled'],
   approved: ['paid', 'disputed'],
@@ -2303,6 +2303,23 @@ app.post('/api/tasks', async (req, res) => {
     });
   }
 
+  // Payment method check: agent must have a card or wallet before creating a task
+  let createPaymentMethods = [];
+  if (user.stripe_customer_id && stripe) {
+    try {
+      createPaymentMethods = await listPaymentMethods(user.stripe_customer_id);
+    } catch (e) {
+      console.error('[TaskCreate] Failed to list Stripe payment methods:', e.message);
+    }
+  }
+  if (createPaymentMethods.length === 0 && !user.wallet_address) {
+    return res.status(402).json({
+      error: 'No payment method on file',
+      code: 'payment_required',
+      message: 'You must link a payment card or crypto wallet before posting a task.'
+    });
+  }
+
   const { title, description, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code, task_type_id, location_zone, private_address, private_notes, private_contact, budget_usd, datetime_start, skills_required: skillsRequiredInput } = req.body;
 
   // Run validation pipeline if task_type_id is provided
@@ -2548,10 +2565,29 @@ app.get('/api/tasks/:id/stats', async (req, res) => {
 
 app.post('/api/tasks/:id/apply', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
+  // Fetch task to verify it exists, check ownership, and check status
+  const { data: taskForApply, error: taskApplyErr } = await supabase
+    .from('tasks')
+    .select('id, agent_id, status, title')
+    .eq('id', req.params.id)
+    .single();
+
+  if (taskApplyErr || !taskForApply) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  if (taskForApply.agent_id === user.id) {
+    return res.status(403).json({ error: 'You cannot apply to your own task' });
+  }
+
+  if (taskForApply.status !== 'open') {
+    return res.status(400).json({ error: 'This task is no longer accepting applications' });
+  }
+
   const { cover_letter, availability, questions, proposed_rate } = req.body;
 
   const { data: existing } = await supabase
@@ -2581,8 +2617,31 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
     })
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  // Notify the task creator about the new application
+  await createNotification(
+    taskForApply.agent_id,
+    'new_application',
+    'New Application',
+    `${user.name || 'A worker'} has applied to your task "${taskForApply.title}".`,
+    `/tasks/${req.params.id}`
+  );
+
+  // Dispatch webhook to agent
+  dispatchWebhook(taskForApply.agent_id, {
+    type: 'new_application',
+    task_id: req.params.id,
+    data: {
+      application_id: application.id,
+      human_id: user.id,
+      human_name: user.name,
+      title: taskForApply.title,
+      proposed_rate: proposed_rate || null
+    }
+  }).catch(() => {});
+
   res.json({ id: application.id, status: 'pending' });
 });
 
@@ -2626,6 +2685,71 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   res.json(applications || []);
+});
+
+// Agent rejects (or reverts) an applicant
+app.patch('/api/tasks/:id/applications/:applicationId', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: taskId, applicationId } = req.params;
+  const { status: newStatus } = req.body;
+
+  if (!['rejected', 'pending'].includes(newStatus)) {
+    return res.status(400).json({ error: 'Status must be "rejected" or "pending"' });
+  }
+
+  // Verify user is the task creator
+  const { data: patchTask } = await supabase
+    .from('tasks')
+    .select('agent_id, title, status')
+    .eq('id', taskId)
+    .single();
+
+  if (!patchTask || patchTask.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Only the task creator can manage applications' });
+  }
+
+  if (patchTask.status !== 'open') {
+    return res.status(400).json({ error: 'Can only manage applications for open tasks' });
+  }
+
+  // Update the application status
+  const { data: patchedApp, error: patchErr } = await supabase
+    .from('task_applications')
+    .update({ status: newStatus })
+    .eq('id', applicationId)
+    .eq('task_id', taskId)
+    .select('id, human_id, status')
+    .single();
+
+  if (patchErr || !patchedApp) {
+    return res.status(404).json({ error: 'Application not found' });
+  }
+
+  // Notify the applicant if rejected
+  if (newStatus === 'rejected') {
+    await createNotification(
+      patchedApp.human_id,
+      'application_rejected',
+      'Application Update',
+      `Your application for "${patchTask.title}" was not selected. Keep applying to other tasks!`,
+      `/tasks/${taskId}`
+    );
+
+    dispatchWebhook(patchedApp.human_id, {
+      type: 'application_rejected',
+      task_id: taskId,
+      data: {
+        application_id: applicationId,
+        title: patchTask.title
+      }
+    }).catch(() => {});
+  }
+
+  res.json({ id: patchedApp.id, status: newStatus });
 });
 
 // Agent assigns a human to a task
@@ -2758,23 +2882,56 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     }).catch(() => {});
   };
 
-  // ============ STRIPE PATH: Send offer, charge on acceptance ============
+  // ============ STRIPE PATH: Charge immediately and assign ============
   if (!useUsdc && agentPaymentMethods.length > 0) {
-    // 24-hour review window for the human to accept/decline
-    const reviewDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const budgetCents = Math.round(budgetAmount * 100);
 
-    // Set task to pending_acceptance — NO charge yet
+    // Calculate fees based on poster's tier
+    const posterTier = user.subscription_tier || 'free';
+    const posterFeeCents = calculatePosterFee(budgetCents, posterTier);
+    const totalChargeCents = budgetCents + posterFeeCents;
+
+    // Lock worker fee at assignment time
+    const { data: workerUser } = await supabase
+      .from('users')
+      .select('subscription_tier')
+      .eq('id', human_id)
+      .single();
+    const workerFeePercent = getTierConfig(workerUser?.subscription_tier || 'free').worker_fee_percent;
+
+    // Charge agent's card immediately
+    let chargeResult;
+    try {
+      chargeResult = await chargeAgentForTask(supabase, user.id, taskId, totalChargeCents);
+    } catch (stripeError) {
+      console.error(`[Assign] Payment failed for task ${taskId}:`, stripeError.message);
+      return res.status(402).json({
+        error: 'Payment failed',
+        code: 'payment_error',
+        message: 'Your payment could not be processed. Please update your payment method and try again.'
+      });
+    }
+
+    // Atomic update: move to in_progress with escrow deposited
+    const assignStatus = nextStatus || 'in_progress';
     const { data: updatedTask, error } = await supabase
       .from('tasks')
       .update(cleanTaskData({
         human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
         human_ids: updatedHumanIds,
         spots_filled: newSpotsFilled,
-        status: 'pending_acceptance',
-        escrow_status: 'unfunded',
+        status: assignStatus,
+        escrow_status: 'deposited',
+        escrow_deposited_at: new Date().toISOString(),
         escrow_amount: budgetAmount,
+        stripe_payment_intent_id: chargeResult.payment_intent_id,
         payment_method: 'stripe',
-        review_deadline: reviewDeadline,
+        poster_fee_percent: getTierConfig(posterTier).poster_fee_percent,
+        poster_fee_cents: posterFeeCents,
+        worker_fee_percent: workerFeePercent,
+        total_charge_cents: totalChargeCents,
+        assigned_at: new Date().toISOString(),
+        work_started_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
       .eq('id', taskId)
@@ -2783,46 +2940,49 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       .single();
 
     if (error || !updatedTask) {
+      // Race condition: refund the charge
+      try {
+        const { refundPaymentIntent } = require('./backend/services/stripeService');
+        await refundPaymentIntent(chargeResult.payment_intent_id, 'duplicate');
+        console.log(`[Assign] Refunded charge for task ${taskId} (concurrent assign)`);
+      } catch (refundErr) {
+        console.error(`[Assign] CRITICAL: Failed to refund charge for task ${taskId}:`, refundErr);
+      }
       return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
     }
 
-    await supabase
-      .from('task_applications')
-      .update({ status: 'accepted' })
-      .eq('id', application.id);
-
-    await createNotification(
-      human_id,
-      'task_offered',
-      'New Task Offer!',
-      `You've been offered "${task.title}" ($${budgetAmount}). You have 24 hours to accept or decline.`,
-      `/tasks/${taskId}`
+    // Finalize: accept application, reject others, notify worker
+    await finalizeAssignment(
+      `You've been assigned to "${task.title}" ($${budgetAmount}). Payment is secured in escrow — you can start working now!`
     );
 
-    // Dispatch webhook to human about the offer
-    dispatchWebhook(human_id, {
-      type: 'task_offered',
-      task_id: taskId,
-      data: {
-        title: task.title,
-        budget: budgetAmount,
-        review_deadline: reviewDeadline,
-        agent_id: user.id
-      }
-    }).catch(() => {});
+    // Increment total_tasks_accepted for the worker
+    const { data: acceptWorker } = await supabase
+      .from('users')
+      .select('total_tasks_accepted')
+      .eq('id', human_id)
+      .single();
+    await supabase
+      .from('users')
+      .update({
+        total_tasks_accepted: (acceptWorker?.total_tasks_accepted || 0) + 1,
+        last_active_at: new Date().toISOString()
+      })
+      .eq('id', human_id);
 
     return res.json({
       success: true,
       task_id: taskId,
       worker: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
       human: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
-      status: 'pending_acceptance',
-      escrow_status: 'unfunded',
+      status: assignStatus,
+      escrow_status: 'deposited',
       payment_method: 'stripe',
-      review_deadline: reviewDeadline,
+      total_charge_cents: totalChargeCents,
+      poster_fee_cents: posterFeeCents,
       spots_filled: newSpotsFilled,
       spots_remaining: Math.max(0, maxQuantity - newSpotsFilled),
-      message: 'Offer sent to the worker. They have 24 hours to accept or decline. Your card will only be charged if they accept.'
+      message: 'Worker assigned and payment charged. Escrow deposited — work can begin.'
     });
   }
 
@@ -5449,6 +5609,23 @@ app.post('/api/mcp', async (req, res) => {
       case 'create_adhoc_task': {
         // Create a public posting for humans to apply to
         if (!params.title) return res.status(400).json({ error: 'title is required' });
+
+        // Payment method check: agent must have a card or wallet before creating a task
+        let mcpCreatePMs = [];
+        if (user.stripe_customer_id && stripe) {
+          try {
+            mcpCreatePMs = await listPaymentMethods(user.stripe_customer_id);
+          } catch (e) {
+            console.error('[MCP/create_posting] Failed to check payment methods:', e.message);
+          }
+        }
+        if (mcpCreatePMs.length === 0 && !user.wallet_address) {
+          return res.status(402).json({
+            error: 'No payment method on file',
+            code: 'payment_required',
+            message: 'You must link a payment card or crypto wallet before posting a task.'
+          });
+        }
 
         // Run validation pipeline if task_type_id is provided
         const { proceed: mcpProceed, flagged: mcpTaskFlagged, errorResponse: mcpErrorResponse } = await runTaskValidation(supabase, params, user.id);
@@ -8304,22 +8481,90 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
 
   const { data: task } = await supabase
     .from('tasks')
-    .select('agent_id, human_id, title, status, escrow_status')
+    .select('agent_id, human_id, title, status, escrow_status, stripe_payment_intent_id')
     .eq('id', id)
     .single();
 
-  if (!task || task.agent_id !== user.id) {
+  const isAgent = task && task.agent_id === user.id;
+  const isWorker = task && task.human_id === user.id;
+
+  if (!task || (!isAgent && !isWorker)) {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  // Only allow cancellation of tasks that haven't been paid or completed
-  const cancellableStatuses = ['open', 'pending_acceptance', 'assigned', 'in_progress'];
-  if (!cancellableStatuses.includes(task.status)) {
+  // Agent can cancel: open, pending_acceptance, assigned, in_progress
+  // Worker can withdraw: assigned, in_progress
+  const agentCancellable = ['open', 'pending_acceptance', 'assigned', 'in_progress'];
+  const workerCancellable = ['assigned', 'in_progress'];
+  const allowedStatuses = isAgent ? agentCancellable : workerCancellable;
+
+  if (!allowedStatuses.includes(task.status)) {
     return res.status(400).json({
-      error: `Cannot cancel a task with status "${task.status}". Only open, pending, assigned, or in-progress tasks can be cancelled.`
+      error: `Cannot ${isWorker ? 'withdraw from' : 'cancel'} a task with status "${task.status}".${isWorker ? ' You can only withdraw from assigned or in-progress tasks.' : ''}`
     });
   }
 
+  if (isWorker) {
+    // Worker withdraws: refund escrow if funded, revert task to open
+    if (task.escrow_status === 'deposited' && task.stripe_payment_intent_id) {
+      try {
+        const { refundPaymentIntent } = require('./backend/services/stripeService');
+        await refundPaymentIntent(task.stripe_payment_intent_id, 'requested_by_customer');
+        console.log(`[Cancel] Refunded escrow for task ${id} (worker withdrawal)`);
+      } catch (refundErr) {
+        console.error(`[Cancel] Refund failed for task ${id}:`, refundErr.message);
+        return res.status(500).json({ error: 'Failed to process refund. Please contact support.' });
+      }
+    }
+
+    await supabase
+      .from('tasks')
+      .update(cleanTaskData({
+        status: 'open',
+        human_id: null,
+        human_ids: [],
+        spots_filled: 0,
+        escrow_status: task.escrow_status === 'deposited' ? 'refunded' : task.escrow_status,
+        assigned_at: null,
+        work_started_at: null,
+        updated_at: new Date().toISOString()
+      }))
+      .eq('id', id)
+      .in('status', workerCancellable);
+
+    // Mark worker's application as withdrawn
+    await supabase
+      .from('task_applications')
+      .update({ status: 'withdrawn' })
+      .eq('task_id', id)
+      .eq('human_id', user.id);
+
+    // Notify the agent
+    if (task.agent_id) {
+      await createNotification(
+        task.agent_id,
+        'worker_cancelled',
+        'Worker Withdrew',
+        `${user.name || 'The assigned worker'} has withdrawn from "${task.title}". The task has been reopened.`,
+        `/tasks/${id}`
+      );
+
+      dispatchWebhook(task.agent_id, {
+        type: 'worker_cancelled',
+        task_id: id,
+        data: {
+          human_id: user.id,
+          human_name: user.name,
+          title: task.title,
+          refunded: task.escrow_status === 'deposited'
+        }
+      }).catch(() => {});
+    }
+
+    return res.json({ success: true, action: 'withdrawn' });
+  }
+
+  // Agent cancels (existing behavior)
   await supabase
     .from('tasks')
     .update({
@@ -8327,7 +8572,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
       updated_at: new Date().toISOString()
     })
     .eq('id', id)
-    .in('status', cancellableStatuses);
+    .in('status', agentCancellable);
 
   // Notify the assigned human if one exists
   if (task.human_id) {
@@ -8340,7 +8585,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     );
   }
 
-  res.json({ success: true });
+  res.json({ success: true, action: 'cancelled' });
 });
 
 // ============================================
