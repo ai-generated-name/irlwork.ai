@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DollarSign, TrendingUp, ArrowDownRight, AlertTriangle, Shield, RefreshCw } from 'lucide-react'
 import PeriodSelector from './PeriodSelector'
+import { useAuth } from '../../context/AuthContext'
 import API_URL from '../../config/api'
 
 /**
@@ -8,6 +9,7 @@ import API_URL from '../../config/api'
  * GMV, fees, payouts, refunds, disputes, premium breakdown
  */
 export default function FinancialTab({ user }) {
+  const { authenticatedFetch } = useAuth()
   const [period, setPeriod] = useState('30d')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -17,9 +19,7 @@ export default function FinancialTab({ user }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API_URL}/admin/financials?period=${period}`, {
-        headers: { Authorization: user.token || '' }
-      })
+      const res = await authenticatedFetch(`${API_URL}/admin/financials?period=${period}`)
       if (!res.ok) throw new Error('Failed to fetch financial data')
       setData(await res.json())
     } catch (err) {
@@ -27,7 +27,7 @@ export default function FinancialTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [period, user.token])
+  }, [period, authenticatedFetch])
 
   useEffect(() => { fetchData() }, [fetchData])
 
