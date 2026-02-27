@@ -8926,8 +8926,8 @@ app.get('/api/my-tasks', async (req, res) => {
     .order('created_at', { ascending: false });
 
   if (user.type === 'human') {
-    // Humans see tasks assigned to them OR tasks they're involved in
-    query = query.or(`agent_id.eq.${user.id},human_id.eq.${user.id}`);
+    // Humans see only tasks they are assigned to work on (not tasks they posted)
+    query = query.eq('human_id', user.id);
   } else {
     // Agents see tasks they created
     query = query.eq('agent_id', user.id);
