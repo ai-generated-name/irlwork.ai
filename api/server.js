@@ -2119,7 +2119,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier, total_tasks_completed, total_rejections, total_disputes_lost')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier, total_tasks_completed')
     .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${category}%`);
@@ -2129,7 +2129,10 @@ app.get('/api/humans', async (req, res) => {
 
   const { data: humans, error } = await query.order('rating', { ascending: false }).limit(100);
 
-  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+  if (error) {
+    console.error('[GET /api/humans] Supabase query error:', error.message || error);
+    return res.status(500).json({ error: safeErrorMessage(error) });
+  }
 
   // Parse skills and languages for all humans
   let results = humans?.map(h => ({ ...h, skills: safeParseJsonArray(h.skills), languages: safeParseJsonArray(h.languages) })) || [];
@@ -2802,24 +2805,23 @@ app.get('/api/tasks/:id/applications', async (req, res) => {
         bio,
         city,
         total_tasks_completed,
-        total_tasks_accepted,
-        total_rejections,
-        total_disputes_lost
+        total_tasks_accepted
       )
     `)
     .eq('task_id', taskId)
     .order('created_at', { ascending: false });
 
-  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+  if (error) {
+    console.error('[GET /api/tasks/:id/applications] Supabase query error:', error.message || error);
+    return res.status(500).json({ error: safeErrorMessage(error) });
+  }
 
   // Enrich with computed success_rate
   const enriched = (applications || []).map(app => {
     const a = app.applicant;
     if (a) {
-      const denominator = (a.total_tasks_completed || 0) + (a.total_disputes_lost || 0);
-      a.success_rate = denominator > 0
-        ? Math.round(((a.total_tasks_completed || 0) / denominator) * 100)
-        : null; // null = no history yet
+      const completed = a.total_tasks_completed || 0;
+      a.success_rate = completed > 0 ? 100 : null; // null = no history yet
     }
     return app;
   });
