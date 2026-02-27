@@ -14,16 +14,26 @@
 console.log('[Startup] Loading environment...');
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
+// Structured logging (Pino) — import early so all modules can use it
+const logger = require('./lib/logger');
+
+// Sentry error tracking — import before Express for instrumentation
+const { initSentry, sentryErrorHandler, captureException } = require('./lib/sentry');
+
 // Global error handlers
 process.on('uncaughtException', (err) => {
-  console.error('[FATAL] Uncaught Exception:', err.message, err.stack);
+  logger.fatal({ err }, 'Uncaught Exception');
+  captureException(err, { tags: { type: 'uncaughtException' } });
   process.exit(1);
 });
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('[FATAL] Unhandled Rejection:', reason);
+  logger.error({ reason }, 'Unhandled Rejection');
+  captureException(reason instanceof Error ? reason : new Error(String(reason)), {
+    tags: { type: 'unhandledRejection' },
+  });
 });
 
-console.log('[Startup] Loading modules...');
+logger.info('Loading modules...');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -156,8 +166,45 @@ console.log('[Startup] All modules loaded');
 
 // Configuration
 const app = express();
+
+// Initialize Sentry BEFORE all other middleware (required for request instrumentation)
+initSentry(app);
+
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3002;
+
+// Request logging middleware — assigns request ID and logs request/response
+app.use((req, res, next) => {
+  req.id = crypto.randomUUID();
+  const start = Date.now();
+
+  // Skip noisy health check logs
+  if (req.path === '/health' || req.path === '/ready') {
+    return next();
+  }
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const logData = {
+      req_id: req.id,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration_ms: duration,
+      user_id: req.user?.id || null,
+    };
+
+    if (res.statusCode >= 500) {
+      logger.error(logData, `${req.method} ${req.path} ${res.statusCode}`);
+    } else if (res.statusCode >= 400) {
+      logger.warn(logData, `${req.method} ${req.path} ${res.statusCode}`);
+    } else {
+      logger.info(logData, `${req.method} ${req.path} ${res.statusCode}`);
+    }
+  });
+
+  next();
+});
 
 // Security headers
 app.use(helmet({
@@ -254,7 +301,11 @@ app.post('/api/stripe/webhooks',
       await handleWebhookEvent(event, supabase, createNotification);
       res.json({ received: true });
     } catch (err) {
-      console.error('[Stripe Webhook] Processing error:', err.message);
+      logger.error({ err, event_type: event.type, event_id: event.id }, 'Stripe webhook processing error');
+      captureException(err, {
+        tags: { service: 'stripe', webhook_event: event.type },
+        extra: { event_id: event.id },
+      });
       res.status(500).json({ error: 'Webhook processing failed' });
     }
   }
@@ -680,7 +731,7 @@ const USER_OPTIONAL_COLUMNS = [
   'total_tasks_completed', 'total_tasks_posted', 'total_tasks_accepted',
   'total_disputes_filed', 'total_paid', 'last_active_at',
   'onboarding_completed_at', 'role', 'agent_name', 'webhook_url',
-  'stripe_customer_id', 'stripe_onboarding_complete', 'webhook_secret',
+  'stripe_customer_id', 'stripe_onboarding_complete',
   'avatar_data', 'avatar_r2_key', 'phone',
   'email_verified_at', 'deposit_address', 'notification_preferences',
   'subscription_tier', 'subscription_status',
@@ -988,6 +1039,12 @@ if (supabase) {
   app.use('/api/tasks', taskValidationRoutes);
   console.log('[Startup] Task validation routes mounted at /api/tasks');
 }
+
+// ============ MCP DOCS ROUTE ============
+// Public endpoint — no auth required. Agents fetch method docs at runtime.
+const mcpDocsRoutes = require('./routes/mcp-docs');
+app.use('/api/mcp', mcpDocsRoutes);
+console.log('[Startup] MCP docs route mounted at /api/mcp/docs');
 
 // ============ CITY SEARCH ============
 // Public endpoint — no auth required, no Supabase needed
@@ -1369,9 +1426,20 @@ app.get('/api/auth/verify', async (req, res) => {
   // Use onboarding_completed_at as definitive check - if timestamp exists, onboarding is complete
   const needsOnboarding = !user.onboarding_completed_at;
 
+  // Check admin status via ADMIN_USER_IDS env var
+  // TODO: Migrate admin auth from env var to users.role database column for easier management
+  const rawAdminEnv = process.env.ADMIN_USER_IDS || '';
+  const adminUserIds = rawAdminEnv.split(',').map(id => id.trim()).filter(Boolean);
+  const userIsAdmin = adminUserIds.includes(user.id);
+  // Debug admin check (remove after confirming it works)
+  if (user.id === 'b49dc7ef-38b5-40ce-936b-e5fddebc4cb7') {
+    console.log('[AdminDebug] raw env:', JSON.stringify(rawAdminEnv), 'parsed ids:', JSON.stringify(adminUserIds), 'user.id:', JSON.stringify(user.id), 'match:', userIsAdmin);
+  }
+
   res.json({
     user: {
       id: user.id, email: user.email, name: user.name, type: user.type,
+      is_admin: userIsAdmin,
       city: user.city, hourly_rate: user.hourly_rate,
       bio: user.bio || '',
       avatar_url: getAvatarUrl(user, req),
@@ -1502,8 +1570,10 @@ app.post('/api/auth/onboard', async (req, res) => {
     }
 
     // Parse skills and languages back to arrays for response
+    // Strip sensitive fields that should never reach the client
+    const { password_hash, webhook_secret, ...safeData } = data;
     const userData = {
-      ...data,
+      ...safeData,
       skills: safeParseJsonArray(data.skills),
       languages: safeParseJsonArray(data.languages),
       needs_onboarding: false
@@ -2050,8 +2120,7 @@ app.get('/api/humans', async (req, res) => {
   let query = supabase
     .from('users')
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier, total_tasks_completed, total_rejections, total_disputes_lost')
-    .eq('type', 'human')
-    .eq('availability', 'available');
+    .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${category}%`);
   if (city) query = query.like('city', `%${city}%`);
@@ -2074,8 +2143,11 @@ app.get('/api/humans', async (req, res) => {
     results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
   }
 
-  // Sort by subscription tier priority (Pro > Builder > Free), then by rating
+  // Sort: available first, then by subscription tier priority (Pro > Builder > Free), then by rating
   results.sort((a, b) => {
+    const aAvail = a.availability === 'available' ? 1 : 0;
+    const bAvail = b.availability === 'available' ? 1 : 0;
+    if (bAvail !== aAvail) return bAvail - aAvail;
     const aPriority = getTierConfig(a.subscription_tier || 'free').worker_priority;
     const bPriority = getTierConfig(b.subscription_tier || 'free').worker_priority;
     if (bPriority !== aPriority) return bPriority - aPriority;
@@ -2387,6 +2459,12 @@ app.post('/api/tasks', async (req, res) => {
   if (parseFloat(budget || budget_usd) > 100000) {
     return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
   }
+  if (!duration_hours || isNaN(parseFloat(duration_hours)) || parseFloat(duration_hours) <= 0) {
+    return res.status(400).json({ error: 'duration_hours is required and must be a positive number' });
+  }
+  if (parseFloat(duration_hours) > 720) {
+    return res.status(400).json({ error: 'duration_hours cannot exceed 720 (30 days)' });
+  }
 
   const id = uuidv4();
   const budgetAmount = parseFloat(budget || budget_usd) || 50;
@@ -2428,7 +2506,7 @@ app.post('/api/tasks', async (req, res) => {
       escrow_amount: budgetAmount,
       is_remote: !!is_remote,
       deadline: deadline || datetime_start || null,
-      duration_hours: duration_hours || null,
+      duration_hours: parseFloat(duration_hours),
       requirements: requirements || null,
       required_skills: skillsArray,
       max_humans: max_humans ? parseInt(max_humans) : 1,
@@ -2440,7 +2518,7 @@ app.post('/api/tasks', async (req, res) => {
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,
-      duration_hours: duration_hours || null,
+      duration_hours: parseFloat(duration_hours),
     });
 
   const { data: task, error } = await supabase
@@ -3056,15 +3134,20 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
 
 // ============ AGENT PROMPT (dynamic, single source of truth) ============
 app.get('/api/agent/prompt', (req, res) => {
-  const { AGENT_PROMPT, PROMPT_VERSION, DEFAULT_API_KEY_SECTION } = require('./agent-prompt');
+  const { AGENT_PROMPT, VERBOSE_AGENT_PROMPT, PROMPT_VERSION, DEFAULT_API_KEY_SECTION } = require('./agent-prompt');
+  // Support ?verbose=true to get the full v2 prompt for agents that can't make HTTP calls
+  const useVerbose = req.query.verbose === 'true';
+  const basePrompt = useVerbose ? VERBOSE_AGENT_PROMPT : AGENT_PROMPT;
   // Replace placeholders with defaults so the prompt is ready to use out of the box
-  const prompt = AGENT_PROMPT
+  const prompt = basePrompt
     .replace('{{API_KEY_SECTION}}', DEFAULT_API_KEY_SECTION)
-    .replace('{{API_KEY_PLACEHOLDER}}', 'YOUR_API_KEY');
+    .replaceAll('{{API_KEY_PLACEHOLDER}}', 'YOUR_API_KEY');
   res.json({
     version: PROMPT_VERSION,
     prompt,
-    template: AGENT_PROMPT,
+    template: basePrompt,
+    docs_url: 'https://www.irlwork.ai/api/mcp/docs',
+    verbose: useVerbose,
     updated_at: new Date().toISOString()
   });
 });
@@ -5226,7 +5309,7 @@ app.post('/api/mcp', async (req, res) => {
   const apiKey = req.headers.authorization || req.headers['x-api-key'];
   const user = await getUserByToken(apiKey);
 
-  if (!user || user.type !== 'agent') {
+  if (!user) {
     return res.status(401).json({ error: 'Invalid API key' });
   }
 
@@ -5691,6 +5774,12 @@ app.post('/api/mcp', async (req, res) => {
       case 'create_adhoc_task': {
         // Create a public posting for humans to apply to
         if (!params.title) return res.status(400).json({ error: 'title is required' });
+        if (!params.duration_hours || isNaN(parseFloat(params.duration_hours)) || parseFloat(params.duration_hours) <= 0) {
+          return res.status(400).json({ error: 'duration_hours is required and must be a positive number (estimated hours to complete the task)' });
+        }
+        if (parseFloat(params.duration_hours) > 720) {
+          return res.status(400).json({ error: 'duration_hours cannot exceed 720 (30 days)' });
+        }
 
         // Run validation pipeline if task_type_id is provided
         const { proceed: mcpProceed, flagged: mcpTaskFlagged, errorResponse: mcpErrorResponse } = await runTaskValidation(supabase, params, user.id);
@@ -5737,7 +5826,7 @@ app.post('/api/mcp', async (req, res) => {
             created_at: new Date().toISOString()
           }, {
             is_anonymous: !!params.is_anonymous,
-            duration_hours: params.duration_hours || null,
+            duration_hours: parseFloat(params.duration_hours),
           }))
           .select()
           .single();
@@ -6413,7 +6502,107 @@ app.post('/api/mcp', async (req, res) => {
         res.status(400).json({ error: `Unknown method: ${method}` });
     }
   } catch (e) {
-    res.status(500).json({ error: 'Internal server error' });
+    console.error(`[MCP] Error in method '${method}':`, e.message, e.stack);
+    res.status(500).json({ error: 'Internal server error', detail: e.message });
+  }
+});
+
+// ============ MCP STREAMABLE HTTP (Standard MCP Protocol for IDE Integration) ============
+// JSON-RPC 2.0 endpoint for Cursor, Claude Desktop, Windsurf, VS Code, etc.
+
+const MCP_TOOL_DEFINITIONS = [
+  { name: 'list_humans', description: 'Search for available humans by category, city, rating, skills, and availability', inputSchema: { type: 'object', properties: { category: { type: 'string', description: 'Skill category (delivery, photography, cleaning, etc.)' }, city: { type: 'string', description: 'City to search in' }, state: { type: 'string', description: 'State/province to filter by' }, min_rating: { type: 'number', description: 'Minimum rating (1-5)' }, language: { type: 'string', description: 'Required language' }, availability: { type: 'string', description: 'Filter by availability status (available, busy, offline). Defaults to available' }, limit: { type: 'number', description: 'Max results to return (default 100)' } } } },
+  { name: 'get_human', description: 'Get detailed profile of a specific human by their ID', inputSchema: { type: 'object', properties: { human_id: { type: 'string', description: 'The human user ID' } }, required: ['human_id'] } },
+  { name: 'create_posting', description: 'Create a new task posting for humans to apply to', inputSchema: { type: 'object', properties: { category: { type: 'string', description: 'Task category (delivery, photography, cleaning, etc.)' }, title: { type: 'string', description: 'Task title' }, description: { type: 'string', description: 'Detailed task description' }, location: { type: 'string', description: 'Task location (address or area)' }, city: { type: 'string', description: 'City where task is located' }, urgency: { type: 'string', description: 'Urgency level: low, medium, high, urgent' }, budget: { type: 'number', description: 'Budget in USD' }, budget_min: { type: 'number', description: 'Min budget in USD' }, budget_max: { type: 'number', description: 'Max budget in USD' }, deadline: { type: 'string', description: 'Task deadline (ISO 8601)' } }, required: ['title', 'description'] } },
+  { name: 'direct_hire', description: 'Directly hire a specific human for a task (creates task and assigns immediately)', inputSchema: { type: 'object', properties: { human_id: { type: 'string', description: 'Human to hire (or provide conversation_id)' }, conversation_id: { type: 'string', description: 'Conversation ID to look up the human from' }, title: { type: 'string', description: 'Task title' }, description: { type: 'string', description: 'Task description' }, location: { type: 'string', description: 'Task location' }, scheduled_at: { type: 'string', description: 'When the task should happen (ISO 8601)' }, duration_hours: { type: 'number', description: 'Expected duration in hours' }, hourly_rate: { type: 'number', description: 'Hourly rate in USD' }, budget: { type: 'number', description: 'Fixed budget in USD (overrides hourly rate)' } }, required: ['title', 'description'] } },
+  { name: 'hire_human', description: 'Send a hire offer to a human for an existing task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID to hire for' }, human_id: { type: 'string', description: 'Human to hire' }, deadline_hours: { type: 'number', description: 'Hours until offer expires (default 24)' }, instructions: { type: 'string', description: 'Additional instructions for the human' } }, required: ['task_id', 'human_id'] } },
+  { name: 'my_tasks', description: 'List all your posted tasks', inputSchema: { type: 'object', properties: {} } },
+  { name: 'get_task_status', description: 'Get the current status of a task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
+  { name: 'get_task_details', description: 'Get full details of a task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
+  { name: 'get_applicants', description: 'Get humans who applied to your task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
+  { name: 'assign_human', description: 'Assign a specific human to your task from the applicants', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' }, human_id: { type: 'string', description: 'Human ID to assign' } }, required: ['task_id', 'human_id'] } },
+  { name: 'approve_task', description: 'Approve completed work and release payment to the human', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID to approve' } }, required: ['task_id'] } },
+  { name: 'view_proof', description: 'View proof of completion submitted by the human', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
+  { name: 'dispute_task', description: 'File a dispute for a task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' }, reason: { type: 'string', description: 'Reason for dispute' }, category: { type: 'string', description: 'Dispute category' }, evidence_urls: { type: 'array', items: { type: 'string' }, description: 'URLs to supporting evidence' } }, required: ['task_id', 'reason'] } },
+  { name: 'start_conversation', description: 'Start a conversation with a human', inputSchema: { type: 'object', properties: { human_id: { type: 'string', description: 'Human to message' }, message: { type: 'string', description: 'Initial message' } }, required: ['human_id'] } },
+  { name: 'send_message', description: 'Send a message in an existing conversation', inputSchema: { type: 'object', properties: { conversation_id: { type: 'string', description: 'Conversation ID' }, content: { type: 'string', description: 'Message content' }, type: { type: 'string', description: 'Message type (text, system)' } }, required: ['conversation_id', 'content'] } },
+  { name: 'get_messages', description: 'Get messages in a conversation', inputSchema: { type: 'object', properties: { conversation_id: { type: 'string', description: 'Conversation ID' }, since: { type: 'string', description: 'Only messages after this ISO 8601 timestamp' } }, required: ['conversation_id'] } },
+  { name: 'get_unread_summary', description: 'Get unread message count across all conversations', inputSchema: { type: 'object', properties: {} } },
+  { name: 'set_webhook', description: 'Register a webhook URL for push notifications', inputSchema: { type: 'object', properties: { url: { type: 'string', description: 'Webhook URL' }, secret: { type: 'string', description: 'Webhook signing secret' } }, required: ['url'] } },
+  { name: 'task_templates', description: 'Browse available task templates by category', inputSchema: { type: 'object', properties: { category: { type: 'string', description: 'Category to filter by' } } } },
+  { name: 'notifications', description: 'Get your notifications', inputSchema: { type: 'object', properties: {} } },
+  { name: 'mark_notification_read', description: 'Mark a notification as read', inputSchema: { type: 'object', properties: { notification_id: { type: 'string', description: 'Notification ID' } }, required: ['notification_id'] } },
+  { name: 'submit_feedback', description: 'Submit feedback or bug reports about the platform', inputSchema: { type: 'object', properties: { message: { type: 'string', description: 'Feedback message' }, type: { type: 'string', description: 'Feedback type' }, urgency: { type: 'string', description: 'Urgency level' }, subject: { type: 'string', description: 'Subject line' } }, required: ['message'] } },
+];
+
+app.post('/api/mcp/sse', async (req, res) => {
+  if (!supabase) return res.status(500).json({ jsonrpc: '2.0', id: null, error: { code: -32603, message: 'Database not configured' } });
+
+  const { jsonrpc, id, method, params } = req.body;
+
+  // Handle JSON-RPC 2.0 notifications (no id, no response expected)
+  if (method === 'notifications/initialized') {
+    return res.status(200).json({ jsonrpc: '2.0' });
+  }
+
+  if (jsonrpc !== '2.0') {
+    return res.status(400).json({ jsonrpc: '2.0', id: id || null, error: { code: -32600, message: 'Invalid Request — expected JSON-RPC 2.0' } });
+  }
+
+  switch (method) {
+    case 'initialize':
+      return res.json({
+        jsonrpc: '2.0', id,
+        result: {
+          protocolVersion: '2024-11-05',
+          capabilities: { tools: {} },
+          serverInfo: { name: 'irlwork', version: '1.0.0' }
+        }
+      });
+
+    case 'tools/list':
+      return res.json({ jsonrpc: '2.0', id, result: { tools: MCP_TOOL_DEFINITIONS } });
+
+    case 'tools/call': {
+      const toolName = params?.name;
+      const toolArgs = params?.arguments || {};
+
+      if (!toolName) {
+        return res.json({ jsonrpc: '2.0', id, error: { code: -32602, message: 'Missing tool name in params.name' } });
+      }
+
+      try {
+        // Forward to the existing /api/mcp handler via internal HTTP call
+        const authHeader = req.headers.authorization || req.headers['x-api-key'] || '';
+        const internalRes = await fetch(`http://localhost:${PORT}/api/mcp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+          body: JSON.stringify({ method: toolName, params: toolArgs })
+        });
+
+        const data = await internalRes.json();
+
+        if (internalRes.ok) {
+          return res.json({
+            jsonrpc: '2.0', id,
+            result: { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] }
+          });
+        } else {
+          return res.json({
+            jsonrpc: '2.0', id,
+            result: { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }], isError: true }
+          });
+        }
+      } catch (e) {
+        return res.json({ jsonrpc: '2.0', id, error: { code: -32000, message: e.message } });
+      }
+    }
+
+    case 'ping':
+      return res.json({ jsonrpc: '2.0', id, result: {} });
+
+    default:
+      return res.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${method}` } });
   }
 });
 
@@ -7203,8 +7392,7 @@ app.get('/api/humans/directory', async (req, res) => {
   let countQuery = supabase
     .from('users')
     .select('id', { count: 'exact', head: true })
-    .eq('type', 'human')
-    .eq('availability', 'available');
+    .eq('type', 'human');
 
   // Sanitize search params: escape LIKE wildcards (% and _) to prevent injection
   const escapeLike = (s) => s.replace(/[%_\\]/g, '\\$&');
@@ -7223,8 +7411,7 @@ app.get('/api/humans/directory', async (req, res) => {
   let query = supabase
     .from('users')
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, avatar_url, subscription_tier')
-    .eq('type', 'human')
-    .eq('availability', 'available');
+    .eq('type', 'human');
 
   // Sorting
   switch (sort) {
@@ -7271,9 +7458,12 @@ app.get('/api/humans/directory', async (req, res) => {
     languages: safeParseJsonArray(h.languages)
   })) || [];
 
-  // Apply tier-based priority sorting (Pro > Builder > Free) as a secondary sort
+  // Sort: available first, then tier-based priority (Pro > Builder > Free) as a secondary sort
   if (sort === 'rating' || !sort) {
     parsed.sort((a, b) => {
+      const aAvail = a.availability === 'available' ? 1 : 0;
+      const bAvail = b.availability === 'available' ? 1 : 0;
+      if (bAvail !== aAvail) return bAvail - aAvail;
       const aPriority = getTierConfig(a.subscription_tier || 'free').worker_priority;
       const bPriority = getTierConfig(b.subscription_tier || 'free').worker_priority;
       if (bPriority !== aPriority) return bPriority - aPriority;
@@ -7378,6 +7568,14 @@ app.post('/api/tasks/create', async (req, res) => {
   const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(quantity) || 1) : 1;
   const skillsArray = Array.isArray(required_skills || skillsRequiredInput) ? (required_skills || skillsRequiredInput) : [];
 
+  // Duration is required
+  if (!duration_hours || isNaN(parseFloat(duration_hours)) || parseFloat(duration_hours) <= 0) {
+    return res.status(400).json({ error: 'duration_hours is required and must be a positive number' });
+  }
+  if (parseFloat(duration_hours) > 720) {
+    return res.status(400).json({ error: 'duration_hours cannot exceed 720 (30 days)' });
+  }
+
   // Non-remote tasks must have coordinates for location-based filtering
   const isRemote = !!req.body.is_remote;
   if (!isRemote && (latitude == null || longitude == null)) {
@@ -7417,6 +7615,7 @@ app.post('/api/tasks/create', async (req, res) => {
       escrow_amount: budgetAmount,
       is_remote: isRemote,
       deadline: deadline || datetime_start || null,
+      duration_hours: parseFloat(duration_hours),
       requirements: requirements || null,
       required_skills: skillsArray,
       task_type_id: task_type_id || null,
@@ -7427,7 +7626,7 @@ app.post('/api/tasks/create', async (req, res) => {
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,
-      duration_hours: duration_hours || null,
+      duration_hours: parseFloat(duration_hours),
     }))
     .select()
     .single();
@@ -8151,7 +8350,8 @@ async function start() {
           }
         }
       } catch (err) {
-        console.error('[TaskExpiry] Error:', err.message);
+        logger.error({ err }, 'Task expiry error');
+        captureException(err, { tags: { service: 'task_expiry' } });
       }
     }
     // Run once on startup, then on interval
@@ -8354,7 +8554,17 @@ async function start() {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
 
+  // Sentry error handler — MUST be after all routes but before final error handler
+  app.use(sentryErrorHandler());
+
+  // Final error handler — catch-all for unhandled errors
+  app.use((err, req, res, next) => {
+    logger.error({ err, req_id: req.id, method: req.method, path: req.path }, 'Unhandled error');
+    res.status(err.status || 500).json({ error: 'Internal server error' });
+  });
+
   server.listen(PORT, '0.0.0.0', () => {
+    logger.info({ port: PORT }, `Server running on port ${PORT}`);
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`   API: http://localhost:${PORT}/api`);
     console.log(`   MCP: POST http://localhost:${PORT}/api/mcp`);

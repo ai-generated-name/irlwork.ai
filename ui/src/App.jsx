@@ -203,18 +203,10 @@ function Onboarding({ onComplete, user }) {
   const [nearbyTasks, setNearbyTasks] = useState([])
   const [loadingTasks, setLoadingTasks] = useState(false)
 
-  // Email verification state
-  const [verificationCode, setVerificationCode] = useState('')
-  const [verificationSent, setVerificationSent] = useState(false)
-  const [verificationSending, setVerificationSending] = useState(false)
-  const [verificationError, setVerificationError] = useState('')
-  const [verificationSuccess, setVerificationSuccess] = useState(false)
-  const [verifying, setVerifying] = useState(false)
-
   const userName = user?.name?.split(' ')[0] || 'there'
   const userAvatar = user?.avatar_url
 
-  const totalSteps = 5
+  const totalSteps = 4
   const progress = (step / totalSteps) * 100
 
   // Fetch nearby tasks after city selection
@@ -248,57 +240,6 @@ function Onboarding({ onComplete, user }) {
         ? prev.selectedCategories.filter(c => c !== value)
         : [...prev.selectedCategories, value]
     }))
-  }
-
-  const sendVerificationCode = async () => {
-    setVerificationSending(true)
-    setVerificationError('')
-    try {
-      const res = await fetch(`${API_URL}/auth/send-verification`, {
-        method: 'POST',
-        headers: { Authorization: user?.token || '' }
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        if (data.message === 'Email already verified') {
-          setVerificationSuccess(true)
-        } else {
-          setVerificationSent(true)
-        }
-      } else {
-        setVerificationError(data.error || 'Failed to send verification code')
-      }
-    } catch (e) {
-      setVerificationError('Network error. Please try again.')
-    } finally {
-      setVerificationSending(false)
-    }
-  }
-
-  const verifyCode = async () => {
-    if (!verificationCode.trim()) return
-    setVerifying(true)
-    setVerificationError('')
-    try {
-      const res = await fetch(`${API_URL}/auth/verify-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: user?.token || ''
-        },
-        body: JSON.stringify({ code: verificationCode.trim() })
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        setVerificationSuccess(true)
-      } else {
-        setVerificationError(data.error || 'Invalid code')
-      }
-    } catch (e) {
-      setVerificationError('Network error. Please try again.')
-    } finally {
-      setVerifying(false)
-    }
   }
 
   const handleSubmit = async () => {
@@ -567,103 +508,12 @@ function Onboarding({ onComplete, user }) {
 
             <div className="onboarding-v4-buttons">
               <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={() => setStep(5)} disabled={!form.hourly_rate}>
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Email Verification */}
-        {step === 5 && (
-          <div>
-            <h1 className="onboarding-v4-title">Verify your email</h1>
-            <p className="onboarding-v4-subtitle">
-              Verified accounts get more task offers and build trust with agents
-            </p>
-
-            {verificationSuccess ? (
-              <div style={{
-                padding: '20px', borderRadius: 12,
-                background: 'rgba(22, 163, 74, 0.08)', border: '1px solid rgba(22, 163, 74, 0.2)',
-                textAlign: 'center', marginBottom: 20
-              }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>&#10003;</div>
-                <p style={{ color: '#16A34A', fontWeight: 600, fontSize: 15 }}>Email verified!</p>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
-                  {user?.email} is now verified
-                </p>
-              </div>
-            ) : !verificationSent ? (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-                  We'll send a 6-digit code to <strong>{user?.email}</strong>
-                </p>
-                <button
-                  className="onboarding-v4-btn-next"
-                  style={{ width: '100%' }}
-                  onClick={sendVerificationCode}
-                  disabled={verificationSending}
-                >
-                  {verificationSending ? 'Sending...' : 'Send Verification Code'}
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
-                  Enter the 6-digit code sent to <strong>{user?.email}</strong>
-                </p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={verificationCode}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
-                    setVerificationCode(val)
-                  }}
-                  className="onboarding-v4-input"
-                  style={{
-                    textAlign: 'center', fontSize: 24, fontWeight: 600,
-                    letterSpacing: 8, fontFamily: 'monospace'
-                  }}
-                  autoFocus
-                />
-                <button
-                  className="onboarding-v4-btn-next"
-                  style={{ width: '100%', marginTop: 12 }}
-                  onClick={verifyCode}
-                  disabled={verifying || verificationCode.length < 6}
-                >
-                  {verifying ? 'Verifying...' : 'Verify'}
-                </button>
-                <button
-                  onClick={sendVerificationCode}
-                  disabled={verificationSending}
-                  style={{
-                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
-                    fontSize: 13, cursor: 'pointer', marginTop: 8, width: '100%',
-                    textAlign: 'center'
-                  }}
-                >
-                  {verificationSending ? 'Sending...' : 'Resend code'}
-                </button>
-              </div>
-            )}
-
-            {verificationError && (
-              <div className="auth-v4-error" style={{ marginTop: 12 }}>{verificationError}</div>
-            )}
-
-            <div className="onboarding-v4-buttons" style={{ marginTop: 20 }}>
-              <button className="onboarding-v4-btn-back" onClick={() => setStep(4)}>Back</button>
               <button
                 className="onboarding-v4-btn-next"
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || !form.hourly_rate}
               >
-                {loading ? 'Setting up...' : verificationSuccess ? 'Complete Setup' : 'Skip for Now'}
+                {loading ? 'Setting up...' : 'Complete Setup'}
               </button>
             </div>
           </div>
@@ -1314,6 +1164,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [settingsTab, setSettingsTab] = useState('profile')
   const [settingsPageTab, setSettingsPageTab] = useState('general')
 
+  // Email verification state (in Settings > Account)
+  const [emailVerifCode, setEmailVerifCode] = useState('')
+  const [emailVerifSent, setEmailVerifSent] = useState(false)
+  const [emailVerifSending, setEmailVerifSending] = useState(false)
+  const [emailVerifError, setEmailVerifError] = useState('')
+  const [emailVerifSuccess, setEmailVerifSuccess] = useState(!!user?.email_verified)
+  const [emailVerifying, setEmailVerifying] = useState(false)
+
   // Helper to update URL path without page reload
   const updateTabUrl = (tabId, mode) => {
     // Map internal tab IDs to URL-friendly names
@@ -1488,8 +1346,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
-  // Check if current user is admin (from API profile response)
-  const isAdmin = user && user.type === 'admin'
+  // Check if current user is admin (from is_admin flag returned by /api/auth/verify)
+  // The backend checks ADMIN_USER_IDS env var and sets is_admin: true/false
+  // TODO: Migrate admin auth from env var to users.role database column for easier management
+  const isAdmin = user && user.is_admin === true
 
   // Working mode: Dashboard, My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
@@ -2003,6 +1863,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setCreateTaskError('City is required for in-person tasks')
       return
     }
+    if (!taskForm.duration_hours || parseFloat(taskForm.duration_hours) <= 0) {
+      setCreateTaskError('Duration is required (estimated hours to complete)')
+      return
+    }
 
     setCreatingTask(true)
     try {
@@ -2466,6 +2330,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 </button>
               </>
             )}
+            {/* Admin Panel Link — only visible to admins */}
+            {isAdmin && (
+              <button
+                className="dashboard-v4-topbar-link"
+                onClick={() => setActiveTab('admin')}
+                title="Admin Panel"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                Admin
+              </button>
+            )}
+
             {/* Notifications Bell */}
             <div className="dashboard-v4-notifications-wrapper">
               <button
@@ -2719,7 +2597,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         </div>
                         <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Duration <span className="dashboard-v4-form-optional">(hours)</span>
+                            Duration <span style={{ color: '#DC2626' }}>*</span> <span className="dashboard-v4-form-optional">(hours)</span>
                           </label>
                           <input
                             type="number"
@@ -2729,7 +2607,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
                             min="0.5"
                             step="0.5"
+                            required
+                            onBlur={() => setTaskFormTouched(prev => ({ ...prev, duration_hours: true }))}
                           />
+                          {taskFormTouched.duration_hours && (!taskForm.duration_hours || parseFloat(taskForm.duration_hours) <= 0) && (
+                            <p style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>Duration is required</p>
+                          )}
                         </div>
                       </div>
 
@@ -2905,9 +2788,8 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <p className="dashboard-v4-empty-text" style={{ marginBottom: 20, color: 'var(--text-secondary)' }}>{tasksSubTab === 'tasks' ? 'Post a task and get matched with verified humans near you.' : 'Tasks matching this filter will appear here'}</p>
                     {tasksSubTab === 'tasks' && (
                       <button
-                        className="v4-btn v4-btn-primary"
                         onClick={() => { setTasksSubTab('create'); window.history.pushState({}, '', '/dashboard/hiring/my-tasks/create'); }}
-                        style={{ margin: '0 auto' }}
+                        style={{ margin: '0 auto', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
                       >
                         <Plus size={16} /> Create Task
                       </button>
@@ -3120,54 +3002,67 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <SkillAutocomplete
-                      value={filterCategory}
-                      onChange={setFilterCategory}
-                      placeholder="Search skills..."
-                      allLabel="All Skills"
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <CityAutocomplete
-                      value={browseCityFilter}
-                      onChange={(cityData) => setBrowseCityFilter(cityData.city || '')}
-                      placeholder="Search city..."
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 180px' }}>
-                    <CountryAutocomplete
-                      value={browseCountryFilter}
-                      onChange={(name, code) => {
-                        setBrowseCountryFilter(name)
-                        setBrowseCountryCodeFilter(code || '')
-                      }}
-                      placeholder="Search country..."
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 120px' }}>
-                    <input
-                      type="number"
-                      placeholder="Max $/hr"
-                      min="1"
-                      className="dashboard-v4-form-input"
-                      value={browseMaxRate}
-                      onChange={(e) => setBrowseMaxRate(e.target.value)}
-                    />
-                  </div>
-                  <div style={{ flex: '0 1 160px' }}>
-                    <CustomDropdown
-                      value={browseSort}
-                      onChange={setBrowseSort}
-                      options={[
-                        { value: 'rating', label: 'Top Rated' },
-                        { value: 'most_reviewed', label: 'Most Reviewed' },
-                        { value: 'price_low', label: 'Price: Low to High' },
-                        { value: 'price_high', label: 'Price: High to Low' },
-                        { value: 'newest', label: 'Newest' },
-                      ]}
-                      placeholder="Top Rated"
-                    />
+                  {/* Mobile: Filters toggle button */}
+                  <button
+                    className="browse-filters-toggle-btn"
+                    onClick={() => {
+                      const el = document.querySelector('.browse-extra-filters')
+                      if (el) el.classList.toggle('browse-extra-filters-hidden')
+                    }}
+                    style={{ display: 'none', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    <ChevronDown size={16} /> Filters
+                  </button>
+                  <div className="browse-extra-filters browse-extra-filters-hidden" style={{ display: 'contents' }}>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <SkillAutocomplete
+                        value={filterCategory}
+                        onChange={setFilterCategory}
+                        placeholder="Search skills..."
+                        allLabel="All Skills"
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <CityAutocomplete
+                        value={browseCityFilter}
+                        onChange={(cityData) => setBrowseCityFilter(cityData.city || '')}
+                        placeholder="Search city..."
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 180px' }}>
+                      <CountryAutocomplete
+                        value={browseCountryFilter}
+                        onChange={(name, code) => {
+                          setBrowseCountryFilter(name)
+                          setBrowseCountryCodeFilter(code || '')
+                        }}
+                        placeholder="Search country..."
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 120px' }}>
+                      <input
+                        type="number"
+                        placeholder="Max $/hr"
+                        min="1"
+                        className="dashboard-v4-form-input"
+                        value={browseMaxRate}
+                        onChange={(e) => setBrowseMaxRate(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ flex: '0 1 160px' }}>
+                      <CustomDropdown
+                        value={browseSort}
+                        onChange={setBrowseSort}
+                        options={[
+                          { value: 'rating', label: 'Top Rated' },
+                          { value: 'most_reviewed', label: 'Most Reviewed' },
+                          { value: 'price_low', label: 'Price: Low to High' },
+                          { value: 'price_high', label: 'Price: High to Low' },
+                          { value: 'newest', label: 'Newest' },
+                        ]}
+                        placeholder="Top Rated"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -3189,10 +3084,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       }
                     })
                   return filtered.length === 0 ? (
-                    <div className="dashboard-v4-empty">
-                      <div className="dashboard-v4-empty-icon">{Icons.humans}</div>
-                      <p className="dashboard-v4-empty-title">No humans found</p>
-                      <p className="dashboard-v4-empty-text">Try adjusting your filters or check back later</p>
+                    <div className="dashboard-v4-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><Users size={48} style={{ color: 'var(--text-muted, #AAAAAA)' }} /></div>
+                      <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>No humans match your search</p>
+                      <p style={{ fontSize: 14, maxWidth: 300, margin: '0 auto 16px', color: 'var(--text-secondary)' }}>
+                        Humans are joining daily. Try broadening your filters or post a task and let humans come to you.
+                      </p>
+                      <button
+                        onClick={() => { setTasksSubTab('create'); setActiveTab('posted') }}
+                        style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                      >
+                        <Plus size={16} /> Post a Task
+                      </button>
                     </div>
                   ) : (
                     <div className="browse-humans-grid">
@@ -3423,7 +3326,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {/* Profile Tab - Edit Profile with Avatar Upload */}
         {activeTab === 'profile' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0, gap: 8, flexWrap: 'wrap' }}>
               <h1 className="dashboard-v4-page-title" style={{ marginBottom: 0 }}>Profile</h1>
               <button
                 onClick={() => {
@@ -3441,10 +3344,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   color: profileLinkCopied ? 'var(--orange-600)' : 'var(--text-secondary)',
                   fontSize: 13, fontWeight: 500, cursor: 'pointer',
                   transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {profileLinkCopied ? <Check size={14} /> : <Copy size={14} />}
-                {profileLinkCopied ? 'Copied!' : 'Copy Profile Link'}
+                {profileLinkCopied ? 'Copied!' : 'Copy Link'}
               </button>
             </div>
 
@@ -4153,7 +4057,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* Compact Plan Row */}
-                <div className="settings-plan-row" style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div className="settings-plan-row" style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                     <span style={{ padding: '3px 10px', background: 'rgba(244,132,95,0.1)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: 'var(--orange-600)', flexShrink: 0 }}>
                       {(user?.subscription_tier || 'free').charAt(0).toUpperCase() + (user?.subscription_tier || 'free').slice(1)} Plan
@@ -4407,8 +4311,161 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 <div style={{ padding: '14px 16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)' }}>
                   <div style={{ marginBottom: 14 }}>
                     <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14 }}>Email</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{user?.email}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{user?.email}</p>
+                      {(emailVerifSuccess || user?.email_verified) ? (
+                        <span style={{ padding: '2px 8px', background: 'rgba(22, 163, 74, 0.1)', color: '#16A34A', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Verified</span>
+                      ) : (
+                        <span style={{ padding: '2px 8px', background: 'rgba(251, 191, 36, 0.1)', color: '#D97706', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Unverified</span>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Email verification section */}
+                  {!(emailVerifSuccess || user?.email_verified) && (
+                    <div style={{ padding: '12px 14px', background: 'rgba(251, 191, 36, 0.06)', border: '1px solid rgba(251, 191, 36, 0.15)', borderRadius: 'var(--radius-md)', marginBottom: 14 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Verify your email</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10 }}>Verified accounts get more task offers and build trust with agents</p>
+
+                      {emailVerifError && (
+                        <div style={{ padding: '8px 10px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 'var(--radius-sm)', marginBottom: 8, fontSize: 12, color: '#EF4444' }}>{emailVerifError}</div>
+                      )}
+
+                      {!emailVerifSent ? (
+                        <button
+                          className="v4-btn v4-btn-primary"
+                          style={{ width: '100%', fontSize: 13, padding: '8px 16px' }}
+                          disabled={emailVerifSending}
+                          onClick={async () => {
+                            setEmailVerifSending(true)
+                            setEmailVerifError('')
+                            try {
+                              let token = user.token || ''
+                              if (supabase) {
+                                const { data: { session } } = await supabase.auth.getSession()
+                                if (session?.access_token) token = session.access_token
+                              }
+                              const res = await fetch(`${API_URL}/auth/send-verification`, {
+                                method: 'POST',
+                                headers: { Authorization: token }
+                              })
+                              const data = await res.json().catch(() => ({}))
+                              if (res.ok) {
+                                if (data.message === 'Email already verified') {
+                                  setEmailVerifSuccess(true)
+                                  toast.success('Email already verified!')
+                                } else {
+                                  setEmailVerifSent(true)
+                                  toast.success('Verification code sent!')
+                                }
+                              } else {
+                                setEmailVerifError(data.error || 'Failed to send verification code')
+                              }
+                            } catch (e) {
+                              setEmailVerifError('Network error. Please try again.')
+                            } finally {
+                              setEmailVerifSending(false)
+                            }
+                          }}
+                        >
+                          {emailVerifSending ? 'Sending...' : 'Send Verification Code'}
+                        </button>
+                      ) : (
+                        <div>
+                          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, textAlign: 'center' }}>
+                            Enter the 6-digit code sent to <strong>{user?.email}</strong>
+                          </p>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={emailVerifCode}
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                              setEmailVerifCode(val)
+                            }}
+                            style={{
+                              width: '100%', textAlign: 'center', fontSize: 20, fontWeight: 600,
+                              letterSpacing: 8, fontFamily: 'monospace', padding: '10px 12px',
+                              background: 'var(--bg-secondary)', border: '1px solid rgba(0,0,0,0.1)',
+                              borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
+                              outline: 'none', boxSizing: 'border-box'
+                            }}
+                          />
+                          <button
+                            className="v4-btn v4-btn-primary"
+                            style={{ width: '100%', fontSize: 13, padding: '8px 16px', marginTop: 8 }}
+                            disabled={emailVerifying || emailVerifCode.length < 6}
+                            onClick={async () => {
+                              if (!emailVerifCode.trim()) return
+                              setEmailVerifying(true)
+                              setEmailVerifError('')
+                              try {
+                                let token = user.token || ''
+                                if (supabase) {
+                                  const { data: { session } } = await supabase.auth.getSession()
+                                  if (session?.access_token) token = session.access_token
+                                }
+                                const res = await fetch(`${API_URL}/auth/verify-email`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', Authorization: token },
+                                  body: JSON.stringify({ code: emailVerifCode.trim() })
+                                })
+                                const data = await res.json().catch(() => ({}))
+                                if (res.ok) {
+                                  setEmailVerifSuccess(true)
+                                  toast.success('Email verified successfully!')
+                                } else {
+                                  setEmailVerifError(data.error || 'Invalid code')
+                                }
+                              } catch (e) {
+                                setEmailVerifError('Network error. Please try again.')
+                              } finally {
+                                setEmailVerifying(false)
+                              }
+                            }}
+                          >
+                            {emailVerifying ? 'Verifying...' : 'Verify'}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setEmailVerifSending(true)
+                              setEmailVerifError('')
+                              try {
+                                let token = user.token || ''
+                                if (supabase) {
+                                  const { data: { session } } = await supabase.auth.getSession()
+                                  if (session?.access_token) token = session.access_token
+                                }
+                                const res = await fetch(`${API_URL}/auth/send-verification`, {
+                                  method: 'POST',
+                                  headers: { Authorization: token }
+                                })
+                                if (res.ok) toast.success('Code resent!')
+                                else {
+                                  const data = await res.json().catch(() => ({}))
+                                  setEmailVerifError(data.error || 'Failed to resend')
+                                }
+                              } catch (e) {
+                                setEmailVerifError('Network error.')
+                              } finally {
+                                setEmailVerifSending(false)
+                              }
+                            }}
+                            disabled={emailVerifSending}
+                            style={{
+                              background: 'none', border: 'none', color: 'var(--text-tertiary)',
+                              fontSize: 12, cursor: 'pointer', marginTop: 6, width: '100%',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {emailVerifSending ? 'Sending...' : 'Resend code'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: 14, marginBottom: 14, opacity: 0.5 }} />
 
@@ -4519,12 +4576,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                     <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
                   </div>
                 ) : conversations.length === 0 ? (
-                  <div className="mobile-empty-state" style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                  <div className="mobile-empty-state" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                     <div className="mobile-empty-state-icon" style={{ width: 48, height: 48, background: 'var(--bg-tertiary)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
                       <MessageCircle size={24} />
                     </div>
-                    <p style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)', fontSize: 16 }}>No conversations yet</p>
-                    <p style={{ fontSize: 13, maxWidth: 240, margin: '0 auto', lineHeight: 1.5 }}>Start a conversation by applying to a task or browsing available work</p>
+                    <p style={{ fontWeight: 600, marginBottom: 6, fontSize: 18, color: 'var(--text-primary)' }}>No conversations yet</p>
+                    <p style={{ fontSize: 14, maxWidth: 280, margin: '0 auto', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {hiringMode
+                        ? 'Messages will appear here once you hire a human for a task.'
+                        : 'Messages will appear here when you apply for or start working on a task.'}
+                    </p>
                   </div>
                 ) : (
                   conversations.map(c => {
@@ -4752,46 +4813,36 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         )}
       </main>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="mobile-bottom-nav">
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          <BarChart3 size={22} />
-          <span>Dashboard</span>
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'tasks' || activeTab === 'posted' ? 'active' : ''}`}
-          onClick={() => setActiveTab(hiringMode ? 'posted' : 'tasks')}
-        >
-          <ClipboardList size={22} />
-          <span>Tasks</span>
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'browse' ? 'active' : ''}`}
-          onClick={() => setActiveTab('browse')}
-        >
-          <Search size={22} />
-          <span>Browse</span>
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'messages' ? 'active' : ''}`}
-          onClick={() => setActiveTab('messages')}
-        >
-          <MessageCircle size={22} />
-          <span>Messages</span>
-          {unreadMessages > 0 && (
-            <span className="mobile-bottom-nav-badge">{unreadMessages > 9 ? '9+' : unreadMessages}</span>
-          )}
-        </button>
-        <button
-          className={`mobile-bottom-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          <Settings size={22} />
-          <span>Settings</span>
-        </button>
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="dashboard-v4-bottom-tabs">
+        {(() => {
+          const bottomTabs = hiringMode
+            ? [
+                { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={22} /> },
+                { id: 'posted', label: 'Tasks', icon: <ClipboardList size={22} /> },
+                { id: 'browse', label: 'Humans', icon: <Users size={22} /> },
+                { id: 'messages', label: 'Messages', icon: <MessageCircle size={22} />, badge: unreadMessages },
+                { id: 'settings', label: 'Settings', icon: <Settings size={22} /> },
+              ]
+            : [
+                { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={22} /> },
+                { id: 'tasks', label: 'Tasks', icon: <ClipboardList size={22} /> },
+                { id: 'browse', label: 'Browse', icon: <Search size={22} /> },
+                { id: 'messages', label: 'Messages', icon: <MessageCircle size={22} />, badge: unreadMessages },
+                { id: 'settings', label: 'Settings', icon: <Settings size={22} /> },
+              ]
+          return bottomTabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`dashboard-v4-bottom-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(tab.id); setSidebarOpen(false) }}
+            >
+              <span className="dashboard-v4-bottom-tab-icon">{tab.icon}</span>
+              <span className="dashboard-v4-bottom-tab-label">{tab.label}</span>
+              {tab.badge > 0 && <span className="dashboard-v4-bottom-tab-badge">{tab.badge > 9 ? '9+' : tab.badge}</span>}
+            </button>
+          ))
+        })()}
       </nav>
     </div>
   )

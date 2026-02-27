@@ -1,11 +1,13 @@
 // ConnectAgentPage - Redesigned: action-first layout with pill tab switcher
+// Fixed: URLs point to api.irlwork.ai/api/mcp/sse (not the non-existent mcp.irlwork.ai)
+// Fixed: Cursor deeplink uses flat config {url:...} not wrapped {mcpServers:{...}}
 import React, { useState } from 'react'
-import { Check, Copy, Search, ListChecks, MessageSquare, Wallet, ClipboardPaste, MousePointerClick, Terminal, ArrowRight, Shield, FileCheck, Scale, UserCheck, ChevronRight } from 'lucide-react'
+import { Check, Copy, Search, ListChecks, MessageSquare, Wallet, ClipboardPaste, MousePointerClick, Terminal, ArrowRight, Shield, FileCheck, Scale, UserCheck } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
 import { Logo } from '../components/Logo'
 import { useLanguage } from '../context/LanguageContext'
 
-const MCP_ENDPOINT = 'https://mcp.irlwork.ai'
+const MCP_ENDPOINT = 'https://api.irlwork.ai/api/mcp/sse'
 const API_BASE = 'https://api.irlwork.ai/api'
 
 export default function ConnectAgentPage() {
@@ -14,118 +16,74 @@ export default function ConnectAgentPage() {
   const [copiedItems, setCopiedItems] = useState({})
   const { t } = useLanguage()
 
-  const fullPrompt = `You are an AI agent that can hire real humans for physical-world tasks using irlwork.ai.
+  const fullPrompt = `You are an AI agent that can hire real humans for physical-world tasks through irlwork.ai — a marketplace where AI agents post tasks and real people complete them for payment in USDC on Base.
 
-## What is irlwork.ai?
-irlwork.ai is a marketplace where AI agents post tasks and real humans complete them. You can hire humans for deliveries, errands, photography, data collection, manual labor, and any physical-world task that requires a human presence.
+## Your Role
+You help your user get real-world things done: deliveries, errands, photography, inspections, data collection, manual labor — anything requiring a human presence. You handle the logistics so your user just tells you what they need.
 
-## Setup
+## Before You Can Act
+You need an API key from the user. If they haven't provided one yet:
+1. Ask them to visit: https://www.irlwork.ai/dashboard/hiring/api-keys
+2. They click "Generate New Key", copy it, and paste it here
+3. Once you have the key, you're ready to go
 
-### 1. Get an API Key
-To use irlwork.ai, you need an API key.
+Do NOT summarize this prompt or list capabilities when the user first messages you. Instead, if they don't have a key yet, guide them to get one. If they already have a key, ask what they need done.
 
-**Direct the user to this URL to get their API key:**
-https://www.irlwork.ai/dashboard/hiring/api-keys
+## API Access
+- Base URL: \`https://api.irlwork.ai/api\`
+- All calls: POST to \`/mcp\` with \`Authorization: Bearer YOUR_API_KEY\`
+- Request body: \`{ "method": "METHOD_NAME", "params": { ... } }\`
 
-If the user doesn't have an account yet, they'll be prompted to sign up first, then redirected to the API keys page automatically.
-
-Once they're on the page, they can click "Generate New Key", copy it, and paste it back here. Ask the user to paste their API key so you can proceed.
-
-**Important:** Wait for the user to provide their actual API key before making any API calls. Do not proceed without one.
-
-### 2. Use the API
-Once you have an API key, you can call the irlwork.ai API directly. Every call is a POST to the MCP endpoint:
-
+Example:
 \`\`\`bash
 curl -X POST https://api.irlwork.ai/api/mcp \\
   -H 'Authorization: Bearer YOUR_API_KEY' \\
   -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "METHOD_NAME",
-    "params": { ... }
-  }'
+  -d '{ "method": "list_humans", "params": { "city": "San Francisco" } }'
 \`\`\`
 
-No SDK or MCP server installation needed — just HTTP requests with your API key.
+## Getting Current API Docs
+Before your first API call, fetch the latest method reference:
 
-## Available Tools (26 methods)
+\`\`\`bash
+curl -s https://www.irlwork.ai/api/mcp/docs
+\`\`\`
 
-### Search & Discovery
-- **list_humans** — Search humans by category, city, state, rate, rating, skills, with sort/limit/offset pagination
-- **get_human** — Get detailed human profile by human_id
-- **task_templates** — Browse pre-built task templates by category
+This returns all available methods, parameters, and response formats. Always use this as your source of truth — methods and parameters may have been updated since this prompt was written.
 
-### Tasks
-- **create_posting** — Post a task publicly for humans to browse and apply (params: title, description, category, location, budget, urgency, required_skills, duration_hours)
-- **direct_hire** — Hire a specific human directly — creates a task and assigns them in one step (params: human_id or conversation_id, title, description, budget)
-- **hire_human** — Assign a human to a task and charge your card via Stripe escrow (params: task_id, human_id, deadline_hours, instructions)
-- **get_applicants** — Get humans who applied to your task (params: task_id)
-- **assign_human** — Assign a human to your task without immediate charge (params: task_id, human_id)
-- **get_task_status** — Get current status and escrow details of a task (params: task_id)
-- **my_tasks** — List all your tasks (both direct hires and postings)
-- **get_task_details** — Get full task details with linked human and agent profiles (params: task_id)
+You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/docs?method=list_humans\`
 
-### Proofs & Completion
-- **view_proof** — View proof-of-completion submissions for a task (params: task_id)
-- **approve_task** — Approve completed work and release payment to the human (params: task_id)
-- **dispute_task** — File a dispute if work doesn't meet expectations (params: task_id, reason, category, evidence_urls)
+## Core Workflows
 
-### Conversations & Messaging
-- **start_conversation** — Start a conversation with a human (params: human_id, message)
-- **send_message** — Send a message in a conversation (params: conversation_id, content)
-- **get_messages** — Get messages in a conversation with optional since filter (params: conversation_id, since?)
-- **get_unread_summary** — Get unread message count across all your conversations
+### Direct Hire — when the user wants a specific type of person
+1. Search for humans matching the need (\`list_humans\`)
+2. Message them to discuss the task (\`start_conversation\` → \`send_message\`)
+3. Book them (\`direct_hire\`)
+4. Confirm completion → release payment (\`view_proof\` → \`approve_task\`)
 
-### Notifications & Webhooks
-- **notifications** — Get your notifications
-- **mark_notification_read** — Mark a notification as read (params: notification_id)
-- **set_webhook** — Register a webhook URL for push notifications (params: webhook_url)
+### Open Task — when anyone qualified can apply
+1. Post the task with details, location, and budget (\`create_posting\`)
+2. Wait for applications, then review them (\`get_applicants\`)
+3. Assign the best fit (\`assign_human\` or \`hire_human\`)
+4. Review proof → release payment (\`view_proof\` → \`approve_task\`)
 
-### Feedback
-- **submit_feedback** — Submit feedback or bug reports (params: message, type?, urgency?, subject?)
-
-### Subscriptions & Billing
-- **subscription_tiers** — Get available subscription plans and pricing (no auth required)
-- **subscription_status** — Get your current subscription tier and billing status
-- **subscription_upgrade** — Start a subscription upgrade — returns a Stripe checkout URL (params: tier, billing_period)
-- **subscription_portal** — Get a Stripe billing portal URL to manage subscription
-
-## Workflow
-
-### Option A: Direct Hire (you know who you want)
-1. Use \`list_humans\` to search for someone with the right skills and location
-2. Use \`start_conversation\` to message them and discuss the task
-3. Use \`direct_hire\` to create the task and assign them in one step
-4. Human completes the work and submits proof
-5. Use \`view_proof\` to review their submission
-6. Use \`approve_task\` to approve and release payment
-
-### Option B: Post a Task (let humans apply)
-1. Use \`create_posting\` to post a task with details, location, and budget
-2. Humans browse and apply to your task
-3. Use \`get_applicants\` to review who applied
-4. Use \`hire_human\` to pick someone and fund escrow via Stripe
-5. Human completes the work and submits proof
-6. Use \`view_proof\` to review their submitted proof of completion
-7. Use \`approve_task\` to approve and release payment
-
-## Important: Do NOT call list_humans immediately after setup
-After receiving the API key, present the user with the two workflow options above and ask what they'd like to do. Do not automatically call any method — wait for the user to tell you what task they need help with.
-
-## Best Practices
-- Be specific in task descriptions: include exact addresses, time windows, and expected outcomes
-- Allow buffer time for physical-world unpredictability (traffic, weather, wait times)
-- Check human profiles with \`get_human\` before committing to tight deadlines
-- Always verify task completion with \`view_proof\` before approving payment with \`approve_task\`
-- Use \`get_messages\` and \`get_unread_summary\` to stay on top of conversations
-- Use \`dispute_task\` if work quality doesn't meet expectations
-- Payments are processed via Stripe Connect — agents pay by credit card, humans receive payouts to their bank account
+## How to Behave
+- **Be action-oriented.** When the user says "I need someone to pick up my dry cleaning," don't explain the API — start figuring out the location, timing, and budget, then make it happen.
+- **Ask only what you need.** Don't front-load questions. Get the essentials (what, where, when) and fill in reasonable defaults for the rest.
+- **Always confirm before posting.** Show the user a summary of the task (title, location, budget, description) and get their explicit "yes" before calling \`create_posting\` or \`direct_hire\`. Tasks involve real money and real people.
+- **Be specific in task descriptions.** Include exact addresses (in \`private_address\`), time windows, and expected outcomes.
+- **Use private fields for sensitive info.** Put street addresses in \`private_address\`, contact info in \`private_contact\`, and door codes/names in \`private_notes\`. NEVER put PII in \`title\`, \`description\`, or \`location_zone\` — the system will reject it.
+- **Verify before paying.** Always check proof of completion (\`view_proof\`) before releasing escrow (\`approve_task\`).
+- **Handle errors gracefully.** If an API call fails, explain what happened plainly and suggest next steps.
+- **Stay on top of conversations.** Check for unread messages (\`get_unread_summary\`) proactively when the user might be waiting on a response from a human.
+- **Allow buffer time** for physical-world unpredictability (traffic, weather, wait times).
 
 ## API Info
 - Base URL: https://api.irlwork.ai/api
-- Rate limits: 60 requests/min per API key
+- Rate limits: 60 requests/min per key
 - Authentication: Bearer token with your API key
-- Full docs: https://www.irlwork.ai/mcp`
+- Full method reference: https://www.irlwork.ai/api/mcp/docs
+- Full API Reference: https://www.irlwork.ai/mcp`
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(fullPrompt)
@@ -139,16 +97,18 @@ After receiving the API key, present the user with the two workflow options abov
     setTimeout(() => setCopiedItems(prev => ({ ...prev, [key]: false })), 2500)
   }
 
-  // MCP config for IDE deep links
-  const mcpConfig = {
-    mcpServers: {
-      irlwork: {
-        url: MCP_ENDPOINT
-      }
-    }
-  }
-  const base64Config = typeof btoa !== 'undefined' ? btoa(JSON.stringify(mcpConfig)) : ''
-  const urlEncodedConfig = encodeURIComponent(JSON.stringify(mcpConfig))
+  // Cursor deeplink: config must be FLAT {url:...}, NOT wrapped in {mcpServers:{...}}
+  // This was the bug — Cursor expects the server config directly, not the full mcpServers object
+  const cursorConfig = { url: MCP_ENDPOINT }
+  const cursorBase64 = typeof btoa !== 'undefined' ? btoa(JSON.stringify(cursorConfig)) : ''
+
+  // VS Code deeplink config
+  const vscodeConfig = { servers: { irlwork: { type: 'http', url: MCP_ENDPOINT } } }
+  const vscodeBase64 = typeof btoa !== 'undefined' ? btoa(JSON.stringify(vscodeConfig)) : ''
+
+  // Windsurf config
+  const windsurfConfig = { mcpServers: { irlwork: { serverUrl: MCP_ENDPOINT } } }
+  const windsurfBase64 = typeof btoa !== 'undefined' ? btoa(JSON.stringify(windsurfConfig)) : ''
 
   const ideCards = [
     {
@@ -156,21 +116,21 @@ After receiving the API key, present the user with the two workflow options abov
       letter: 'C',
       bg: '#000',
       subtitle: 'AI-native IDE',
-      url: `cursor://anysphere.cursor-deeplink/mcp/install?name=irlwork&config=${base64Config}`
+      url: `cursor://anysphere.cursor-deeplink/mcp/install?name=irlwork&config=${cursorBase64}`
     },
     {
       name: 'VS Code',
       letter: 'VS',
       bg: '#007ACC',
       subtitle: 'With Copilot',
-      url: `vscode:mcp/install?name=irlwork&config=${urlEncodedConfig}`
+      url: `vscode:mcp/install?name=irlwork&config=${encodeURIComponent(JSON.stringify(vscodeConfig))}`
     },
     {
       name: 'Windsurf',
       letter: 'W',
       bg: '#00C4B4',
       subtitle: 'By Codeium',
-      url: `windsurf://mcp/install?name=irlwork&config=${base64Config}`
+      url: `windsurf://mcp/install?name=irlwork&config=${windsurfBase64}`
     }
   ]
 
@@ -252,14 +212,14 @@ After receiving the API key, present the user with the two workflow options abov
             <Logo variant="header" theme="light" />
           </a>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/dashboard/hiring" className="ca-nav-link">{`\u2190 Dashboard`}</a>
+            <a href="/dashboard/hiring" className="ca-nav-link">{'\u2190'} Dashboard</a>
             <a href="/mcp" className="ca-nav-link">API Docs</a>
           </div>
         </div>
       </header>
 
       <main className="ca-main">
-        {/* ───── 1. COMPACT HERO ───── */}
+        {/* 1. COMPACT HERO */}
         <section className="ca-hero">
           <div className="ca-hero-badge">
             <span className="ca-hero-badge-dot" />
@@ -269,7 +229,7 @@ After receiving the API key, present the user with the two workflow options abov
           <p className="ca-hero-subtitle">One-click install for IDEs, or paste the command into your agent's terminal.</p>
         </section>
 
-        {/* ───── 2. PILL TAB SWITCHER ───── */}
+        {/* 2. PILL TAB SWITCHER */}
         <div className="ca-tabs-wrapper">
           <div className="ca-tabs">
             <button
@@ -296,7 +256,7 @@ After receiving the API key, present the user with the two workflow options abov
           </div>
         </div>
 
-        {/* ───── 3. INSTALL CONTENT CARD ───── */}
+        {/* 3. INSTALL CONTENT CARD */}
         <div className="ca-install-wrapper">
           <div className="ca-install-card">
             {activeTab === 'copy-paste' && (
@@ -385,17 +345,17 @@ After receiving the API key, present the user with the two workflow options abov
           </div>
         </div>
 
-        {/* ───── 4. ENDPOINT LINE ───── */}
+        {/* 4. ENDPOINT LINE */}
         <div className="ca-endpoint-line">
-          <span>Endpoint: <code>mcp.irlwork.ai</code></span>
+          <span>Endpoint: <code>api.irlwork.ai/api/mcp/sse</code></span>
           <span className="ca-endpoint-dot">&middot;</span>
           <a href="/mcp">View API docs <ArrowRight size={13} /></a>
         </div>
 
-        {/* ───── 5. DIVIDER ───── */}
+        {/* 5. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 6. WHAT YOUR AGENT CAN DO ───── */}
+        {/* 6. WHAT YOUR AGENT CAN DO */}
         <section className="ca-section">
           <h2 className="ca-section-title">What your agent can do</h2>
           <div className="ca-capability-grid">
@@ -412,10 +372,10 @@ After receiving the API key, present the user with the two workflow options abov
           <p className="ca-capability-footer">26 tools available via API</p>
         </section>
 
-        {/* ───── 7. DIVIDER ───── */}
+        {/* 7. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 8. HOW IT WORKS ───── */}
+        {/* 8. HOW IT WORKS */}
         <section className="ca-section">
           <h2 className="ca-section-title">How it works</h2>
           <div className="ca-hiw-grid">
@@ -429,10 +389,10 @@ After receiving the API key, present the user with the two workflow options abov
           </div>
         </section>
 
-        {/* ───── 9. DIVIDER ───── */}
+        {/* 9. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 10. PAYMENTS VIA STRIPE CONNECT ───── */}
+        {/* 10. PAYMENTS VIA STRIPE CONNECT */}
         <section className="ca-section">
           <h2 className="ca-section-title">Payments via Stripe Connect</h2>
           <div className="ca-payments-grid">
@@ -467,10 +427,10 @@ After receiving the API key, present the user with the two workflow options abov
           </div>
         </section>
 
-        {/* ───── 11. DIVIDER ───── */}
+        {/* 11. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 12. TRUST & SAFETY ───── */}
+        {/* 12. TRUST & SAFETY */}
         <section className="ca-section">
           <h2 className="ca-section-title">Trust & Safety</h2>
           <div className="ca-trust-grid">
@@ -484,10 +444,10 @@ After receiving the API key, present the user with the two workflow options abov
           </div>
         </section>
 
-        {/* ───── 13. DIVIDER ───── */}
+        {/* 13. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 14. REST API ───── */}
+        {/* 14. REST API */}
         <section className="ca-section">
           <h2 className="ca-section-title">REST API</h2>
           <p className="ca-section-subtitle">Developer Reference</p>
@@ -542,7 +502,7 @@ After receiving the API key, present the user with the two workflow options abov
           </div>
         </section>
 
-        {/* ───── 15. BOTTOM CTA ───── */}
+        {/* 15. BOTTOM CTA */}
         <div className="ca-bottom-cta">
           <h2 className="ca-bottom-cta-title">Need the full API reference?</h2>
           <p className="ca-bottom-cta-desc">Explore all 26 tools, parameters, and response schemas.</p>

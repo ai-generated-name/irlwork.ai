@@ -356,6 +356,18 @@ Agent pays: `budget` (platform fee is deducted from the human's side)
 | `GET` | `/api/wallet/balance` | Get wallet balance |
 | `GET` | `/api/payouts` | Get payout history |
 
+### Admin Business Intelligence
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/admin/financials?period=30d` | GMV, fees, payouts, escrow, disputes, premium MRR |
+| `GET` | `/api/admin/growth?period=30d` | Users/tasks by day, DAU/WAU/MAU |
+| `GET` | `/api/admin/funnel?period=30d` | Conversion rates, avg lifecycle times |
+
+### Admin Auth
+
+Backend uses `ADMIN_USER_IDS` env var (comma-separated UUIDs). Frontend receives `is_admin: true/false` in the `/api/auth/verify` response. The `users.role` column exists but is currently unused — admin auth should eventually migrate from env var to this database column.
+
 ---
 
 ## Changelog
@@ -364,6 +376,7 @@ Agent pays: `budget` (platform fee is deducted from the human's side)
 |------|--------|-----------------|
 | 2026-02-26 | Initial architecture document created | All |
 | 2026-02-26 | Simplified cancellation to 2-tier model (pre-work free, in-progress+ dispute only). Removed `cancellation_requested` status. Added revision system (max 2). Added worker & agent reputation tracking. Added auth hold renewal, auto-approve, deadline timeout background jobs. Updated payment flow to auth-hold/manual-capture model. | All |
+| 2026-02-27 | Added admin BI endpoints (financials, growth, funnel). Fixed admin panel access. Added Sentry error tracking and Pino structured logging. | Admin, Observability |
 
 ---
 
