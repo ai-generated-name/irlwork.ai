@@ -14,16 +14,26 @@
 console.log('[Startup] Loading environment...');
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
+// Structured logging (Pino) — import early so all modules can use it
+const logger = require('./lib/logger');
+
+// Sentry error tracking — import before Express for instrumentation
+const { initSentry, sentryErrorHandler, captureException } = require('./lib/sentry');
+
 // Global error handlers
 process.on('uncaughtException', (err) => {
-  console.error('[FATAL] Uncaught Exception:', err.message, err.stack);
+  logger.fatal({ err }, 'Uncaught Exception');
+  captureException(err, { tags: { type: 'uncaughtException' } });
   process.exit(1);
 });
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('[FATAL] Unhandled Rejection:', reason);
+  logger.error({ reason }, 'Unhandled Rejection');
+  captureException(reason instanceof Error ? reason : new Error(String(reason)), {
+    tags: { type: 'unhandledRejection' },
+  });
 });
 
-console.log('[Startup] Loading modules...');
+logger.info('Loading modules...');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -156,8 +166,45 @@ console.log('[Startup] All modules loaded');
 
 // Configuration
 const app = express();
+
+// Initialize Sentry BEFORE all other middleware (required for request instrumentation)
+initSentry(app);
+
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3002;
+
+// Request logging middleware — assigns request ID and logs request/response
+app.use((req, res, next) => {
+  req.id = crypto.randomUUID();
+  const start = Date.now();
+
+  // Skip noisy health check logs
+  if (req.path === '/health' || req.path === '/ready') {
+    return next();
+  }
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const logData = {
+      req_id: req.id,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration_ms: duration,
+      user_id: req.user?.id || null,
+    };
+
+    if (res.statusCode >= 500) {
+      logger.error(logData, `${req.method} ${req.path} ${res.statusCode}`);
+    } else if (res.statusCode >= 400) {
+      logger.warn(logData, `${req.method} ${req.path} ${res.statusCode}`);
+    } else {
+      logger.info(logData, `${req.method} ${req.path} ${res.statusCode}`);
+    }
+  });
+
+  next();
+});
 
 // Security headers
 app.use(helmet({
@@ -254,7 +301,11 @@ app.post('/api/stripe/webhooks',
       await handleWebhookEvent(event, supabase, createNotification);
       res.json({ received: true });
     } catch (err) {
-      console.error('[Stripe Webhook] Processing error:', err.message);
+      logger.error({ err, event_type: event.type, event_id: event.id }, 'Stripe webhook processing error');
+      captureException(err, {
+        tags: { service: 'stripe', webhook_event: event.type },
+        extra: { event_id: event.id },
+      });
       res.status(500).json({ error: 'Webhook processing failed' });
     }
   }
@@ -1369,9 +1420,15 @@ app.get('/api/auth/verify', async (req, res) => {
   // Use onboarding_completed_at as definitive check - if timestamp exists, onboarding is complete
   const needsOnboarding = !user.onboarding_completed_at;
 
+  // Check admin status via ADMIN_USER_IDS env var
+  // TODO: Migrate admin auth from env var to users.role database column for easier management
+  const adminUserIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
+  const userIsAdmin = adminUserIds.includes(user.id);
+
   res.json({
     user: {
       id: user.id, email: user.email, name: user.name, type: user.type,
+      is_admin: userIsAdmin,
       city: user.city, hourly_rate: user.hourly_rate,
       bio: user.bio || '',
       avatar_url: getAvatarUrl(user, req),
@@ -8153,7 +8210,8 @@ async function start() {
           }
         }
       } catch (err) {
-        console.error('[TaskExpiry] Error:', err.message);
+        logger.error({ err }, 'Task expiry error');
+        captureException(err, { tags: { service: 'task_expiry' } });
       }
     }
     // Run once on startup, then on interval
@@ -8356,7 +8414,17 @@ async function start() {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
 
+  // Sentry error handler — MUST be after all routes but before final error handler
+  app.use(sentryErrorHandler());
+
+  // Final error handler — catch-all for unhandled errors
+  app.use((err, req, res, next) => {
+    logger.error({ err, req_id: req.id, method: req.method, path: req.path }, 'Unhandled error');
+    res.status(err.status || 500).json({ error: 'Internal server error' });
+  });
+
   server.listen(PORT, '0.0.0.0', () => {
+    logger.info({ port: PORT }, `Server running on port ${PORT}`);
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`   API: http://localhost:${PORT}/api`);
     console.log(`   MCP: POST http://localhost:${PORT}/api/mcp`);

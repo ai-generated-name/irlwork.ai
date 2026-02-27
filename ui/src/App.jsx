@@ -1488,8 +1488,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
-  // Check if current user is admin (from API profile response)
-  const isAdmin = user && user.type === 'admin'
+  // Check if current user is admin (from is_admin flag returned by /api/auth/verify)
+  // The backend checks ADMIN_USER_IDS env var and sets is_admin: true/false
+  // TODO: Migrate admin auth from env var to users.role database column for easier management
+  const isAdmin = user && user.is_admin === true
 
   // Working mode: Dashboard, My Tasks, Browse Tasks, Messages, Payments
   const humanNav = [
