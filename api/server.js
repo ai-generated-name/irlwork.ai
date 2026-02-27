@@ -2745,10 +2745,10 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
     `${user.name || 'A worker'} applied to "${taskForApply.title}"`,
     `/tasks/${taskId}`
   );
-  await deliverWebhook(taskForApply.agent_id, {
-    event: 'new_application',
+  dispatchWebhook(taskForApply.agent_id, {
+    type: 'new_application',
     task_id: taskId,
-    applicant: { id: user.id, name: user.name, proposed_rate }
+    data: { applicant: { id: user.id, name: user.name, proposed_rate } }
   });
 
   // Email notification for new application
@@ -4201,15 +4201,16 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   );
 
   // Deliver webhook
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_rejected',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_rejected',
     task_id: taskId,
-    proof_id: latestProof.id,
-    feedback,
-    revision_count: currentRevisionCount + 1,
-    revisions_remaining: MAX_REVISIONS - (currentRevisionCount + 1),
-    new_deadline: newDeadline.toISOString(),
-    timestamp: new Date().toISOString()
+    data: {
+      proof_id: latestProof.id,
+      feedback,
+      revision_count: currentRevisionCount + 1,
+      revisions_remaining: MAX_REVISIONS - (currentRevisionCount + 1),
+      new_deadline: newDeadline.toISOString()
+    }
   });
 
   res.json({
@@ -4317,12 +4318,13 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   ).catch(() => {});
 
   // Deliver webhook to agent
-  await deliverWebhook(task.agent_id, {
-    event: 'proof_approved',
+  dispatchWebhook(task.agent_id, {
+    type: 'proof_approved',
     task_id: taskId,
-    proof_id: latestProof.id,
-    message: 'Proof approved. Payment will be processed.',
-    timestamp: new Date().toISOString()
+    data: {
+      proof_id: latestProof.id,
+      message: 'Proof approved. Payment will be processed.'
+    }
   });
 
   // Stripe-paid tasks: auto-release to pending balance (no admin step needed)
@@ -4634,13 +4636,14 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
   sendEmailNotification(task.agent_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
 
   // Deliver webhook
-  await deliverWebhook(task.agent_id, {
-    event: 'dispute_opened',
+  dispatchWebhook(task.agent_id, {
+    type: 'dispute_opened',
     task_id: taskId,
-    dispute_id: disputeId,
-    disputed_by: user.id,
-    reason,
-    timestamp: new Date().toISOString()
+    data: {
+      dispute_id: disputeId,
+      disputed_by: user.id,
+      reason
+    }
   });
 
   res.json({ success: true, status: 'disputed', dispute_id: disputeId });
@@ -8477,7 +8480,7 @@ async function start() {
         const cutoff = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         const { data: expiringTasks } = await supabase
           .from('tasks')
-          .select('id, stripe_payment_intent_id, escrow_amount, budget, agent_id, title, escrow_captured')
+          .select('*')
           .eq('status', 'assigned')
           .eq('escrow_captured', false)
           .not('auth_hold_expires_at', 'is', null)
@@ -9420,7 +9423,7 @@ app.post('/api/tasks/:id/start', async (req, res) => {
       `${user.name || 'The worker'} has started work on "${task.title}".`,
       `/tasks/${id}`
     );
-    await deliverWebhook(task.agent_id, { event: 'task_started', task_id: id });
+    dispatchWebhook(task.agent_id, { type: 'task_started', task_id: id, data: {} });
   }
 
   res.json({ success: true, status: 'in_progress' });
@@ -9436,7 +9439,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
 
   const { data: task, error: fetchError } = await supabase
     .from('tasks')
-    .select('agent_id, human_id, title, status, escrow_status, stripe_payment_intent_id, escrow_captured')
+    .select('*')
     .eq('id', id)
     .single();
 
@@ -9581,7 +9584,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     }
 
     // Fire webhook to agent
-    await deliverWebhook(user.id, { event: 'task_cancelled', task_id: id, tier: 'pre_work' });
+    dispatchWebhook(user.id, { type: 'task_cancelled', task_id: id, data: { tier: 'pre_work' } });
 
     return res.json({ success: true, tier: 'pre_work' });
   }
