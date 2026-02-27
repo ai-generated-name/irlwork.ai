@@ -2005,6 +2005,10 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setCreateTaskError('City is required for in-person tasks')
       return
     }
+    if (!taskForm.duration_hours || parseFloat(taskForm.duration_hours) <= 0) {
+      setCreateTaskError('Duration is required (estimated hours to complete)')
+      return
+    }
 
     setCreatingTask(true)
     try {
@@ -2735,7 +2739,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                         </div>
                         <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
                           <label className="dashboard-v4-form-label">
-                            Duration <span className="dashboard-v4-form-optional">(hours)</span>
+                            Duration <span style={{ color: '#DC2626' }}>*</span> <span className="dashboard-v4-form-optional">(hours)</span>
                           </label>
                           <input
                             type="number"
@@ -2745,7 +2749,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             onChange={(e) => setTaskForm(prev => ({ ...prev, duration_hours: e.target.value }))}
                             min="0.5"
                             step="0.5"
+                            required
+                            onBlur={() => setTaskFormTouched(prev => ({ ...prev, duration_hours: true }))}
                           />
+                          {taskFormTouched.duration_hours && (!taskForm.duration_hours || parseFloat(taskForm.duration_hours) <= 0) && (
+                            <p style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>Duration is required</p>
+                          )}
                         </div>
                       </div>
 
