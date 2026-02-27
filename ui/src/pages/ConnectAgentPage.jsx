@@ -1,11 +1,13 @@
 // ConnectAgentPage - Redesigned: action-first layout with pill tab switcher
+// Fixed: URLs point to api.irlwork.ai/api/mcp/sse (not the non-existent mcp.irlwork.ai)
+// Fixed: Cursor deeplink uses flat config {url:...} not wrapped {mcpServers:{...}}
 import React, { useState } from 'react'
-import { Check, Copy, Search, ListChecks, MessageSquare, Wallet, ClipboardPaste, MousePointerClick, Terminal, ArrowRight, Shield, FileCheck, Scale, UserCheck, ChevronRight } from 'lucide-react'
+import { Check, Copy, Search, ListChecks, MessageSquare, Wallet, ClipboardPaste, MousePointerClick, Terminal, ArrowRight, Shield, FileCheck, Scale, UserCheck } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
 import { Logo } from '../components/Logo'
 import { useLanguage } from '../context/LanguageContext'
 
-const MCP_ENDPOINT = 'https://mcp.irlwork.ai'
+const MCP_ENDPOINT = 'https://api.irlwork.ai/api/mcp/sse'
 const API_BASE = 'https://api.irlwork.ai/api'
 
 export default function ConnectAgentPage() {
@@ -130,16 +132,18 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
     setTimeout(() => setCopiedItems(prev => ({ ...prev, [key]: false })), 2500)
   }
 
-  // MCP config for IDE deep links
-  const mcpConfig = {
-    mcpServers: {
-      irlwork: {
-        url: MCP_ENDPOINT
-      }
-    }
-  }
-  const base64Config = typeof btoa !== 'undefined' ? btoa(JSON.stringify(mcpConfig)) : ''
-  const urlEncodedConfig = encodeURIComponent(JSON.stringify(mcpConfig))
+  // Cursor deeplink: config must be FLAT {url:...}, NOT wrapped in {mcpServers:{...}}
+  // This was the bug — Cursor expects the server config directly, not the full mcpServers object
+  const cursorConfig = { url: MCP_ENDPOINT }
+  const cursorBase64 = typeof btoa !== 'undefined' ? btoa(JSON.stringify(cursorConfig)) : ''
+
+  // VS Code deeplink config
+  const vscodeConfig = { servers: { irlwork: { type: 'http', url: MCP_ENDPOINT } } }
+  const vscodeBase64 = typeof btoa !== 'undefined' ? btoa(JSON.stringify(vscodeConfig)) : ''
+
+  // Windsurf config
+  const windsurfConfig = { mcpServers: { irlwork: { serverUrl: MCP_ENDPOINT } } }
+  const windsurfBase64 = typeof btoa !== 'undefined' ? btoa(JSON.stringify(windsurfConfig)) : ''
 
   const ideCards = [
     {
@@ -147,21 +151,21 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
       letter: 'C',
       bg: '#000',
       subtitle: 'AI-native IDE',
-      url: `cursor://anysphere.cursor-deeplink/mcp/install?name=irlwork&config=${base64Config}`
+      url: `cursor://anysphere.cursor-deeplink/mcp/install?name=irlwork&config=${cursorBase64}`
     },
     {
       name: 'VS Code',
       letter: 'VS',
       bg: '#007ACC',
       subtitle: 'With Copilot',
-      url: `vscode:mcp/install?name=irlwork&config=${urlEncodedConfig}`
+      url: `vscode:mcp/install?name=irlwork&config=${encodeURIComponent(JSON.stringify(vscodeConfig))}`
     },
     {
       name: 'Windsurf',
       letter: 'W',
       bg: '#00C4B4',
       subtitle: 'By Codeium',
-      url: `windsurf://mcp/install?name=irlwork&config=${base64Config}`
+      url: `windsurf://mcp/install?name=irlwork&config=${windsurfBase64}`
     }
   ]
 
@@ -216,7 +220,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
     'Get paid in USDC to your wallet',
     'Funds released after proof approval',
     'Stripe Connect for fiat off-ramp',
-    'Transparent fee structure — no hidden costs',
+    'Transparent fee structure \u2014 no hidden costs',
     'Withdrawal to bank account available'
   ]
 
@@ -243,14 +247,14 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
             <Logo variant="header" theme="light" />
           </a>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/dashboard/hiring" className="ca-nav-link">{`\u2190 Dashboard`}</a>
+            <a href="/dashboard/hiring" className="ca-nav-link">{'\u2190'} Dashboard</a>
             <a href="/mcp" className="ca-nav-link">API Docs</a>
           </div>
         </div>
       </header>
 
       <main className="ca-main">
-        {/* ───── 1. COMPACT HERO ───── */}
+        {/* 1. COMPACT HERO */}
         <section className="ca-hero">
           <div className="ca-hero-badge">
             <span className="ca-hero-badge-dot" />
@@ -260,7 +264,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           <p className="ca-hero-subtitle">One-click install for IDEs, or paste the command into your agent's terminal.</p>
         </section>
 
-        {/* ───── 2. PILL TAB SWITCHER ───── */}
+        {/* 2. PILL TAB SWITCHER */}
         <div className="ca-tabs-wrapper">
           <div className="ca-tabs">
             <button
@@ -287,7 +291,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           </div>
         </div>
 
-        {/* ───── 3. INSTALL CONTENT CARD ───── */}
+        {/* 3. INSTALL CONTENT CARD */}
         <div className="ca-install-wrapper">
           <div className="ca-install-card">
             {activeTab === 'copy-paste' && (
@@ -376,17 +380,17 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           </div>
         </div>
 
-        {/* ───── 4. ENDPOINT LINE ───── */}
+        {/* 4. ENDPOINT LINE */}
         <div className="ca-endpoint-line">
-          <span>Endpoint: <code>mcp.irlwork.ai</code></span>
+          <span>Endpoint: <code>api.irlwork.ai/api/mcp/sse</code></span>
           <span className="ca-endpoint-dot">&middot;</span>
           <a href="/mcp">View API docs <ArrowRight size={13} /></a>
         </div>
 
-        {/* ───── 5. DIVIDER ───── */}
+        {/* 5. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 6. WHAT YOUR AGENT CAN DO ───── */}
+        {/* 6. WHAT YOUR AGENT CAN DO */}
         <section className="ca-section">
           <h2 className="ca-section-title">What your agent can do</h2>
           <div className="ca-capability-grid">
@@ -403,10 +407,10 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           <p className="ca-capability-footer">22+ tools available via API</p>
         </section>
 
-        {/* ───── 7. DIVIDER ───── */}
+        {/* 7. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 8. HOW IT WORKS ───── */}
+        {/* 8. HOW IT WORKS */}
         <section className="ca-section">
           <h2 className="ca-section-title">How it works</h2>
           <div className="ca-hiw-grid">
@@ -420,10 +424,10 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           </div>
         </section>
 
-        {/* ───── 9. DIVIDER ───── */}
+        {/* 9. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 10. PAYMENTS VIA STRIPE CONNECT ───── */}
+        {/* 10. PAYMENTS VIA STRIPE CONNECT */}
         <section className="ca-section">
           <h2 className="ca-section-title">Payments via Stripe Connect</h2>
           <div className="ca-payments-grid">
@@ -458,10 +462,10 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           </div>
         </section>
 
-        {/* ───── 11. DIVIDER ───── */}
+        {/* 11. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 12. TRUST & SAFETY ───── */}
+        {/* 12. TRUST & SAFETY */}
         <section className="ca-section">
           <h2 className="ca-section-title">Trust & Safety</h2>
           <div className="ca-trust-grid">
@@ -475,10 +479,10 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           </div>
         </section>
 
-        {/* ───── 13. DIVIDER ───── */}
+        {/* 13. DIVIDER */}
         <div className="ca-divider" />
 
-        {/* ───── 14. REST API ───── */}
+        {/* 14. REST API */}
         <section className="ca-section">
           <h2 className="ca-section-title">REST API</h2>
           <p className="ca-section-subtitle">Developer Reference</p>
@@ -531,7 +535,7 @@ No SDK or MCP server installation needed — just HTTP requests with your API ke
           </div>
         </section>
 
-        {/* ───── 15. BOTTOM CTA ───── */}
+        {/* 15. BOTTOM CTA */}
         <div className="ca-bottom-cta">
           <h2 className="ca-bottom-cta-title">Need the full API reference?</h2>
           <p className="ca-bottom-cta-desc">Explore all 22+ tools, parameters, and response schemas.</p>
