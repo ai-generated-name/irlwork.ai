@@ -3689,41 +3689,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               </button>
             </div>
 
-            {/* Profile warning banner — smart contextual messaging */}
-            {(() => {
-              const hasBio = !!(user?.bio && user.bio.trim().length > 10)
-              const hasSkills = Array.isArray(user?.skills) && user.skills.length > 0
-              const hasHeadline = !!(user?.headline && user.headline.trim())
-              const hasPhoto = !!user?.avatar_url
-
-              // Priority order: Bio → Skills → Headline → Photo
-              let bannerMessage = null
-              if (!hasBio) bannerMessage = 'Add a bio to stand out — profiles with bios get 2× more task invites'
-              else if (!hasSkills) bannerMessage = 'Add your skills to get matched with higher-paying tasks'
-              else if (!hasHeadline) bannerMessage = 'Add a headline so agents know what you\'re great at'
-              else if (!hasPhoto) bannerMessage = 'Add a profile photo — profiles with photos are trusted more by agents'
-
-              if (!bannerMessage) return null
-              return (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '12px 16px', marginBottom: 20,
-                  background: 'rgba(245, 166, 35, 0.06)',
-                  border: '1px solid rgba(245, 166, 35, 0.3)',
-                  borderRadius: 'var(--radius-md)',
-                  position: 'relative',
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                  <span style={{ flex: 1, fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{bannerMessage}</span>
-                  <button
-                    onClick={(e) => e.currentTarget.parentElement.style.display = 'none'}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', fontSize: 16, lineHeight: 1 }}
-                  >
-                    &times;
-                  </button>
-                </div>
-              )
-            })()}
+            {/* Profile warning banner removed — single contextual banner kept below profile card */}
 
             <div className="dashboard-v4-form" style={{ maxWidth: 720, marginBottom: 24 }}>
               {/* Avatar Upload */}
