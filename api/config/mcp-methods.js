@@ -1,27 +1,24 @@
 // ============================================
-// MCP Method Catalog — Single Source of Truth
-// ============================================
-// All MCP method metadata lives here. The docs
-// endpoint (GET /api/mcp/docs) reads from this
-// file, so it never goes out of sync with the
-// actual POST /api/mcp handler in server.js.
+// irlwork.ai — MCP Method Catalog
+// Single source of truth for all MCP method metadata.
+// Used by GET /api/mcp/docs to serve runtime documentation.
 // ============================================
 
-const methods = [
-  // ─── Search & Discovery ───
+const MCP_METHODS = [
+  // ===== Search & Discovery =====
   {
     name: 'list_humans',
     aliases: [],
     category: 'search',
-    description: 'Search for available humans by category, city, state, rating, language, and availability',
+    description: 'Search for available humans by category, city, rating, skills, and more',
     params: {
-      category: { type: 'string', required: false, description: 'Filter by skill category (searches skills field)' },
-      city: { type: 'string', required: false, description: 'Filter by city (partial match)' },
-      state: { type: 'string', required: false, description: 'Filter by state (case-insensitive)' },
-      min_rating: { type: 'number', required: false, description: 'Minimum rating threshold (0-5)' },
-      language: { type: 'string', required: false, description: 'Filter by language capability' },
+      category: { type: 'string', required: false, description: 'Filter by skill category (e.g. "delivery", "photography")' },
+      city: { type: 'string', required: false, description: 'Filter by city name (partial match)' },
+      state: { type: 'string', required: false, description: 'Filter by state (partial match, case-insensitive)' },
+      min_rating: { type: 'number', required: false, description: 'Minimum rating (1-5)' },
+      language: { type: 'string', required: false, description: 'Filter by spoken language' },
       availability: { type: 'string', required: false, description: 'Filter by availability status (default: "available")' },
-      limit: { type: 'number', required: false, description: 'Max results to return (default 100)' }
+      limit: { type: 'number', required: false, description: 'Max results to return (default: 100)' }
     },
     returns: 'Array of human profiles with id, name, city, state, hourly_rate, skills, rating, jobs_completed, bio, languages, travel_radius, availability, headline, timezone'
   },
@@ -29,47 +26,78 @@ const methods = [
     name: 'get_human',
     aliases: [],
     category: 'search',
-    description: 'Get detailed profile of a specific human by ID',
+    description: 'Get a detailed human profile by ID',
     params: {
-      human_id: { type: 'string', required: true, description: 'UUID of the human to fetch' }
+      human_id: { type: 'string', required: true, description: 'UUID of the human to look up' }
     },
-    returns: 'Human profile object with id, name, bio, hourly_rate, skills, rating, jobs_completed, city, state, country, availability, travel_radius, languages, headline, timezone, avatar_url, type'
+    returns: 'Human profile object with id, name, bio, hourly_rate, skills, rating, jobs_completed, city, state, country, availability, travel_radius, languages, headline, timezone, avatar_url'
+  },
+  {
+    name: 'task_templates',
+    aliases: [],
+    category: 'search',
+    description: 'Browse task category templates with default budgets and durations',
+    params: {
+      category: { type: 'string', required: false, description: 'Filter by category (e.g. "delivery", "photography"). Returns all templates if omitted.' }
+    },
+    returns: 'Array of template objects with category, title, description, default_budget, budget_min, budget_max, default_duration_hours'
   },
 
-  // ─── Tasks ───
+  // ===== Tasks =====
   {
-    name: 'create_adhoc_task',
-    aliases: ['post_task', 'create_posting'],
+    name: 'create_posting',
+    aliases: ['post_task', 'create_adhoc_task'],
     category: 'tasks',
-    description: 'Create a new task posting for humans to apply to. Supports encrypted private fields for addresses, contacts, and notes',
+    description: 'Create a public task posting for humans to apply to',
     params: {
       title: { type: 'string', required: true, description: 'Task title (5-200 chars)' },
-      description: { type: 'string', required: false, description: 'Detailed task description (20-1000 chars). No PII — use private fields instead' },
-      budget: { type: 'number', required: false, description: 'Task budget in USD (default 50). Also accepts budget_usd, budget_max, budget_min' },
-      category: { type: 'string', required: false, description: 'Task category/type (delivery, photography, etc.). Also accepts task_type_id. Default: "other"' },
-      location: { type: 'string', required: false, description: 'Location/address of task. Also accepts location_zone' },
+      description: { type: 'string', required: false, description: 'Detailed task description. Do NOT include PII — use private fields instead.' },
+      category: { type: 'string', required: false, description: 'Task category (e.g. "delivery", "photography"). Use task_templates to see valid values.' },
+      budget: { type: 'number', required: false, description: 'Budget in USD (default: 50). Also accepts budget_usd, budget_max, or budget_min.' },
+      location: { type: 'string', required: false, description: 'General location or location zone (e.g. "San Francisco, Mission District")' },
+      location_zone: { type: 'string', required: false, description: 'Neighborhood-level location (e.g. "District 2, Thu Duc")' },
       latitude: { type: 'number', required: false, description: 'Latitude coordinate' },
       longitude: { type: 'number', required: false, description: 'Longitude coordinate' },
-      is_remote: { type: 'boolean', required: false, description: 'Whether task is remote' },
-      is_anonymous: { type: 'boolean', required: false, description: 'Whether to hide agent identity' },
-      duration_hours: { type: 'number', required: false, description: 'Expected task duration in hours' },
-      task_type: { type: 'string', required: false, description: 'Task type: "open" for multi-hire, "direct" for single (default: "direct")' },
-      quantity: { type: 'number', required: false, description: 'For open tasks: how many humans to hire (default 1)' },
-      private_address: { type: 'string', required: false, description: 'Encrypted address — only revealed to assigned worker' },
-      private_notes: { type: 'string', required: false, description: 'Encrypted notes — only revealed to assigned worker' },
-      private_contact: { type: 'string', required: false, description: 'Encrypted contact info — only revealed to assigned worker' }
+      is_remote: { type: 'boolean', required: false, description: 'Whether the task can be done remotely' },
+      task_type_id: { type: 'string', required: false, description: 'Task type ID from GET /api/schemas for structured validation' },
+      task_type: { type: 'string', required: false, description: '"open" for multi-hire tasks, "direct" for single hire (default: "direct")' },
+      quantity: { type: 'number', required: false, description: 'Number of humans needed (only for task_type "open", default: 1)' },
+      duration_hours: { type: 'number', required: false, description: 'Estimated duration in hours' },
+      is_anonymous: { type: 'boolean', required: false, description: 'Post anonymously (hides agent identity)' },
+      private_address: { type: 'string', required: false, description: 'Full street address — only revealed to assigned worker' },
+      private_notes: { type: 'string', required: false, description: 'Sensitive instructions (door codes, names) — only revealed to assigned worker' },
+      private_contact: { type: 'string', required: false, description: 'Phone, email, or contact info — only revealed to assigned worker' }
     },
-    returns: 'Object with id, status, task_type, quantity, message, private_fields_stored (array if encrypted)'
+    returns: 'Object with id, status, task_type, quantity, message, and private_fields_stored (if private fields provided)'
+  },
+  {
+    name: 'direct_hire',
+    aliases: ['create_booking'],
+    category: 'tasks',
+    description: 'Hire a specific human directly in one step — creates a task and assigns them',
+    params: {
+      title: { type: 'string', required: true, description: 'Task title' },
+      human_id: { type: 'string', required: false, description: 'UUID of the human to hire (provide this or conversation_id)' },
+      conversation_id: { type: 'string', required: false, description: 'Conversation ID — will hire the human from that conversation' },
+      description: { type: 'string', required: false, description: 'Task description (defaults to title)' },
+      category: { type: 'string', required: false, description: 'Task category (default: "other")' },
+      location: { type: 'string', required: false, description: 'Task location' },
+      budget: { type: 'number', required: false, description: 'Budget in USD (default: calculated from hourly_rate * duration_hours, or 50)' },
+      duration_hours: { type: 'number', required: false, description: 'Estimated duration in hours' },
+      hourly_rate: { type: 'number', required: false, description: 'Hourly rate in USD (used with duration_hours to calculate budget)' },
+      scheduled_at: { type: 'string', required: false, description: 'ISO 8601 datetime for scheduling' }
+    },
+    returns: 'Object with booking_id, task_id, status, budget, message'
   },
   {
     name: 'hire_human',
     aliases: [],
     category: 'tasks',
-    description: 'Send a task offer to a human (no charge until acceptance). Sets task to pending_acceptance with 24-hour review window',
+    description: 'Send a hiring offer for an existing task via Stripe — card is NOT charged until the human accepts',
     params: {
-      task_id: { type: 'string', required: true, description: 'UUID of the task to offer' },
+      task_id: { type: 'string', required: true, description: 'UUID of the task' },
       human_id: { type: 'string', required: true, description: 'UUID of the human to hire' },
-      deadline_hours: { type: 'number', required: false, description: 'Hours until deadline (default 24)' },
+      deadline_hours: { type: 'number', required: false, description: 'Hours to complete the task (default: 24)' },
       instructions: { type: 'string', required: false, description: 'Additional instructions for the human' }
     },
     returns: 'Object with success, status ("pending_acceptance"), review_deadline, deadline, escrow_status, payment_method, spots_filled, spots_remaining, message'
@@ -78,107 +106,74 @@ const methods = [
     name: 'assign_human',
     aliases: [],
     category: 'tasks',
-    description: 'Directly assign a human to a task. Generates unique USDC deposit amount for escrow verification',
+    description: 'Assign a human to an existing task using the USDC payment path',
     params: {
       task_id: { type: 'string', required: true, description: 'UUID of the task' },
       human_id: { type: 'string', required: true, description: 'UUID of the human to assign' },
-      deadline_hours: { type: 'number', required: false, description: 'Hours until task deadline (default 24)' },
-      instructions: { type: 'string', required: false, description: 'Additional instructions for worker' }
+      deadline_hours: { type: 'number', required: false, description: 'Hours to complete the task (default: 24)' },
+      instructions: { type: 'string', required: false, description: 'Additional instructions for the human' }
     },
-    returns: 'Object with success, assigned_at, deadline, escrow_status, spots_filled, spots_remaining, deposit_instructions, message'
+    returns: 'Object with success, assigned_at, deadline, escrow_status, deposit_instructions (wallet_address, amount_usdc, network), spots_filled, spots_remaining, message'
+  },
+  {
+    name: 'my_tasks',
+    aliases: ['get_tasks', 'my_postings', 'my_adhoc_tasks', 'my_bookings'],
+    category: 'tasks',
+    description: 'List all tasks created by you (both direct hires and postings)',
+    params: {},
+    returns: 'Array of task objects ordered by created_at descending'
   },
   {
     name: 'get_task_status',
     aliases: [],
     category: 'tasks',
-    description: 'Get status and escrow details of a task',
+    description: 'Get the current status of a task including escrow information',
     params: {
       task_id: { type: 'string', required: true, description: 'UUID of the task' }
     },
-    returns: 'Object with id, status, escrow_status, escrow_amount, escrow_deposited_at, task_type, quantity, spots_filled, spots_remaining'
+    returns: 'Object with id, status, escrow_status, escrow_amount, task_type, quantity, spots_filled, spots_remaining'
   },
   {
     name: 'get_task_details',
     aliases: [],
     category: 'tasks',
-    description: 'Get complete task details with human and agent info',
+    description: 'Get full task details including participant info (agent and human profiles)',
     params: {
       task_id: { type: 'string', required: true, description: 'UUID of the task' }
     },
-    returns: 'Full task object with nested human { id, name, rating } and agent { id, name } objects'
+    returns: 'Full task object with nested human and agent profile data'
   },
   {
     name: 'get_applicants',
     aliases: [],
     category: 'tasks',
-    description: 'Get list of humans who have applied to a task posting',
+    description: 'Get the list of humans who applied to your task',
     params: {
       task_id: { type: 'string', required: true, description: 'UUID of the task' }
     },
-    returns: 'Array of applications with nested applicant object: id, name, hourly_rate, rating, jobs_completed, bio, city'
-  },
-  {
-    name: 'my_bookings',
-    aliases: ['my_tasks', 'my_postings', 'my_adhoc_tasks', 'get_tasks'],
-    category: 'tasks',
-    description: 'Get all tasks created by this agent (reverse chronological)',
-    params: {},
-    returns: 'Array of all task objects for this agent'
-  },
-  {
-    name: 'task_templates',
-    aliases: [],
-    category: 'tasks',
-    description: 'Get available task category templates with budget defaults and duration estimates',
-    params: {
-      category: { type: 'string', required: false, description: 'Filter by specific category' }
-    },
-    returns: 'Array of template objects: category, title, description, default_budget, budget_min, budget_max, default_duration_hours'
-  },
-  {
-    name: 'approve_task',
-    aliases: ['release_payment', 'release_escrow'],
-    category: 'tasks',
-    description: 'Approve proof and release payment to worker\'s pending balance (48-hour hold). Handles both Stripe and USDC escrow',
-    params: {
-      task_id: { type: 'string', required: true, description: 'UUID of the task to approve' }
-    },
-    returns: 'Object with success, status ("approved"), payment_released, payment_method, net_amount, message'
-  },
-  {
-    name: 'dispute_task',
-    aliases: [],
-    category: 'tasks',
-    description: 'File a dispute for a task (agent only). Task must be in_progress, pending_review, or approved',
-    params: {
-      task_id: { type: 'string', required: true, description: 'UUID of the task to dispute' },
-      reason: { type: 'string', required: true, description: 'Reason for the dispute' },
-      category: { type: 'string', required: false, description: 'Dispute category (default: "quality_issue")' },
-      evidence_urls: { type: 'array', required: false, description: 'Array of URLs to evidence (photos, logs, etc.)' }
-    },
-    returns: 'Dispute object with id, task_id, filed_by, reason, category, evidence_urls, status ("open"), created_at'
+    returns: 'Array of application objects with nested applicant profiles (id, name, hourly_rate, rating, jobs_completed, bio, city)'
   },
 
-  // ─── Messaging ───
+  // ===== Messaging =====
   {
     name: 'start_conversation',
     aliases: [],
     category: 'messaging',
-    description: 'Start a new conversation with a human or send initial message to existing conversation',
+    description: 'Start a conversation with a human (or resume an existing one)',
     params: {
-      humanId: { type: 'string', required: true, description: 'UUID of the human to message. Also accepts human_id' },
-      message: { type: 'string', required: false, description: 'Initial message content. Also accepts initial_message' }
+      human_id: { type: 'string', required: true, description: 'UUID of the human to message (also accepts "humanId")' },
+      message: { type: 'string', required: false, description: 'Initial message to send (also accepts "initial_message")' }
     },
-    returns: 'Object with conversation_id, human { id, name }, message'
+    returns: 'Object with conversation_id, human (id, name), message'
   },
   {
     name: 'send_message',
     aliases: [],
     category: 'messaging',
-    description: 'Send a message in an existing conversation. Includes per-conversation rate limiting',
+    description: 'Send a message in an existing conversation',
     params: {
       conversation_id: { type: 'string', required: true, description: 'UUID of the conversation' },
-      content: { type: 'string', required: true, description: 'Message content' }
+      content: { type: 'string', required: true, description: 'Message text to send' }
     },
     returns: 'Message object with id, conversation_id, sender_id, content, created_at'
   },
@@ -186,24 +181,32 @@ const methods = [
     name: 'get_messages',
     aliases: [],
     category: 'messaging',
-    description: 'Retrieve messages from a conversation, optionally filtered by timestamp',
+    description: 'Get messages from a conversation, optionally filtered by time',
     params: {
       conversation_id: { type: 'string', required: true, description: 'UUID of the conversation' },
-      since: { type: 'string', required: false, description: 'ISO 8601 timestamp — return only messages after this time' }
+      since: { type: 'string', required: false, description: 'ISO 8601 datetime — only return messages after this time' }
     },
-    returns: 'Array of message objects: id, conversation_id, sender_id, content, created_at (max 100)'
+    returns: 'Array of message objects ordered by created_at ascending (max 100)'
+  },
+  {
+    name: 'get_unread_summary',
+    aliases: [],
+    category: 'messaging',
+    description: 'Get unread message count across all your conversations',
+    params: {},
+    returns: 'Object with unread_count'
   },
 
-  // ─── Proofs ───
+  // ===== Proofs & Completion =====
   {
     name: 'complete_task',
     aliases: [],
     category: 'proofs',
-    description: 'Human submits proof of task completion. Creates a task_proof record and moves task to pending_review',
+    description: 'Submit proof of work completion (called by the assigned human)',
     params: {
-      task_id: { type: 'string', required: true, description: 'UUID of the task to complete' },
-      proof_text: { type: 'string', required: false, description: 'Text description of completed work' },
-      proof_urls: { type: 'array', required: false, description: 'Array of URLs to proof images/videos' }
+      task_id: { type: 'string', required: true, description: 'UUID of the task' },
+      proof_text: { type: 'string', required: false, description: 'Text description of work completed' },
+      proof_urls: { type: 'array', required: false, description: 'Array of URLs to proof images/files' }
     },
     returns: 'Object with success, status ("pending_review"), proof_id'
   },
@@ -211,52 +214,55 @@ const methods = [
     name: 'view_proof',
     aliases: [],
     category: 'proofs',
-    description: 'Retrieve all proofs submitted for a task (newest first)',
+    description: 'View proof submissions for a task',
     params: {
       task_id: { type: 'string', required: true, description: 'UUID of the task' }
     },
-    returns: 'Array of proof objects with nested submitter { id, name }'
+    returns: 'Array of proof objects with submitter info, ordered by most recent first'
   },
-
-  // ─── Bookings ───
   {
-    name: 'create_booking',
-    aliases: ['direct_hire'],
-    category: 'bookings',
-    description: 'Create a direct booking/hire with a specific human. Shortcut for creating a task and assigning in one step',
+    name: 'approve_task',
+    aliases: ['release_payment', 'release_escrow'],
+    category: 'proofs',
+    description: 'Approve submitted work and release payment to the human',
     params: {
-      title: { type: 'string', required: true, description: 'Booking title' },
-      description: { type: 'string', required: false, description: 'Booking description' },
-      human_id: { type: 'string', required: false, description: 'UUID of human to hire directly (optional)' },
-      conversation_id: { type: 'string', required: false, description: 'Use human from existing conversation' },
-      budget: { type: 'number', required: false, description: 'Total budget in USD' },
-      hourly_rate: { type: 'number', required: false, description: 'Hourly rate (combined with duration_hours if budget not set)' },
-      duration_hours: { type: 'number', required: false, description: 'Duration in hours (for rate calculation)' },
-      location: { type: 'string', required: false, description: 'Location' },
-      scheduled_at: { type: 'string', required: false, description: 'ISO 8601 scheduled time' },
-      category: { type: 'string', required: false, description: 'Task category (default: "other")' }
+      task_id: { type: 'string', required: true, description: 'UUID of the task (also accepts "booking_id")' }
     },
-    returns: 'Object with booking_id, task_id, status, budget, message'
+    returns: 'Object with success, status ("approved"), payment_released, payment_method, net_amount, message'
+  },
+  {
+    name: 'dispute_task',
+    aliases: [],
+    category: 'proofs',
+    description: 'File a dispute for a task if work quality does not meet expectations',
+    params: {
+      task_id: { type: 'string', required: true, description: 'UUID of the task' },
+      reason: { type: 'string', required: true, description: 'Reason for the dispute' },
+      category: { type: 'string', required: false, description: 'Dispute category (default: "quality_issue")' },
+      evidence_urls: { type: 'array', required: false, description: 'Array of URLs to supporting evidence' }
+    },
+    returns: 'Dispute object with id, task_id, reason, category, status, created_at'
   },
   {
     name: 'complete_booking',
     aliases: [],
-    category: 'bookings',
-    description: 'Mark a booking/task as pending review (agent marks work done for human to review)',
+    category: 'proofs',
+    description: 'Mark a booking/task as ready for review (backward-compat alias)',
     params: {
-      booking_id: { type: 'string', required: true, description: 'UUID of booking/task. Also accepts task_id' }
+      booking_id: { type: 'string', required: false, description: 'UUID of the booking (also accepts "task_id")' },
+      task_id: { type: 'string', required: false, description: 'UUID of the task (alternative to booking_id)' }
     },
     returns: 'Object with success, status ("pending_review"), message'
   },
 
-  // ─── Notifications ───
+  // ===== Notifications =====
   {
     name: 'notifications',
     aliases: [],
     category: 'notifications',
-    description: 'Get all notifications for the agent (most recent first, up to 50)',
+    description: 'Get your recent notifications (max 50)',
     params: {},
-    returns: 'Array of notification objects (50 max, reverse chronological)'
+    returns: 'Array of notification objects ordered by created_at descending'
   },
   {
     name: 'mark_notification_read',
@@ -264,63 +270,52 @@ const methods = [
     category: 'notifications',
     description: 'Mark a notification as read',
     params: {
-      notification_id: { type: 'string', required: true, description: 'UUID of the notification' }
+      notification_id: { type: 'string', required: true, description: 'UUID of the notification to mark as read' }
     },
     returns: 'Object with success: true'
-  },
-  {
-    name: 'get_unread_summary',
-    aliases: [],
-    category: 'notifications',
-    description: 'Get count of unread messages and notifications for the agent',
-    params: {},
-    returns: 'Object with unread_count (number)'
   },
   {
     name: 'set_webhook',
     aliases: [],
     category: 'notifications',
-    description: 'Register a webhook URL to receive task status change notifications via POST',
+    description: 'Register a webhook URL for push notifications on task status updates',
     params: {
-      webhook_url: { type: 'string', required: true, description: 'HTTPS URL to receive webhook POSTs' }
+      webhook_url: { type: 'string', required: true, description: 'URL to receive webhook POST requests' }
     },
-    returns: 'Object with success, webhook_url'
+    returns: 'Object with success: true and the registered webhook_url'
   },
 
-  // ─── Feedback ───
+  // ===== Feedback =====
   {
     name: 'submit_feedback',
     aliases: [],
     category: 'feedback',
-    description: 'Submit general feedback, bug reports, or feature requests',
+    description: 'Submit feedback, bug reports, or feature requests about the platform',
     params: {
-      message: { type: 'string', required: true, description: 'Feedback text. Also accepts comment' },
-      type: { type: 'string', required: false, description: 'Feedback type: feedback, bug, feature_request (default: "feedback")' },
-      urgency: { type: 'string', required: false, description: 'Urgency level: normal, high (default: "normal")' },
-      subject: { type: 'string', required: false, description: 'Subject line' },
-      image_urls: { type: 'array', required: false, description: 'Array of screenshot/image URLs' },
-      rating: { type: 'number', required: false, description: 'Rating (if applicable)' },
-      task_id: { type: 'string', required: false, description: 'Related task UUID' }
+      message: { type: 'string', required: true, description: 'Feedback message text (also accepts "comment")' },
+      type: { type: 'string', required: false, description: 'Feedback type (default: "feedback")' },
+      urgency: { type: 'string', required: false, description: 'Urgency level (default: "normal")' },
+      subject: { type: 'string', required: false, description: 'Subject line' }
     },
-    returns: 'Object with success, id (feedback ID), message'
+    returns: 'Object with success, id, message'
   },
   {
     name: 'report_error',
     aliases: [],
     category: 'feedback',
-    description: 'Report a technical error during agent API usage. Automatically notifies platform admins',
+    description: 'Report an error or issue encountered during agent operation — notifies platform admins',
     params: {
-      action: { type: 'string', required: true, description: 'Action/method that failed' },
-      error_message: { type: 'string', required: true, description: 'Error message' },
-      error_code: { type: 'string', required: false, description: 'Error code or exception type' },
-      error_log: { type: 'string', required: false, description: 'Full error stack trace (max 10,000 chars)' },
-      task_id: { type: 'string', required: false, description: 'Related task UUID' },
-      context: { type: 'object', required: false, description: 'Additional context object' }
+      action: { type: 'string', required: true, description: 'What action was being attempted when the error occurred' },
+      error_message: { type: 'string', required: true, description: 'Description of the error' },
+      error_code: { type: 'string', required: false, description: 'Error code if available' },
+      error_log: { type: 'string', required: false, description: 'Full error log or stack trace (max 10,000 chars)' },
+      task_id: { type: 'string', required: false, description: 'Related task ID if applicable' },
+      context: { type: 'string', required: false, description: 'Additional context about what happened' }
     },
-    returns: 'Object with success, id (error report ID), message'
+    returns: 'Object with success, id, message'
   },
 
-  // ─── Subscriptions (REST routes, documented for agent reference) ───
+  // ===== Subscriptions & Billing =====
   {
     name: 'subscription_tiers',
     aliases: [],
@@ -341,7 +336,7 @@ const methods = [
     name: 'subscription_upgrade',
     aliases: [],
     category: 'subscriptions',
-    description: 'Start an upgrade to Builder or Pro plan. Returns a checkout URL — present this to the user to complete payment in their browser',
+    description: 'Start an upgrade to Builder or Pro plan. Returns a checkout URL for the user to complete payment',
     params: {
       tier: { type: 'string', required: true, description: 'Target tier: "builder" or "pro"' },
       billing_period: { type: 'string', required: false, description: 'Billing period: "monthly" or "annual" (default: "monthly")' }
@@ -352,21 +347,37 @@ const methods = [
     name: 'subscription_portal',
     aliases: [],
     category: 'subscriptions',
-    description: 'Get a billing portal URL for managing subscription, payment methods, or cancellation. Present the URL to the user',
+    description: 'Get a billing portal URL for managing subscription, payment methods, or cancellation',
     params: {},
     returns: 'Object with portal_url for the user to manage billing'
   }
 ];
 
-const categories = {
+const CATEGORIES = {
   search: 'Search & Discovery',
-  messaging: 'Conversations & Messaging',
   tasks: 'Tasks',
+  messaging: 'Conversations & Messaging',
   proofs: 'Proofs & Completion',
-  bookings: 'Bookings & Payments',
   notifications: 'Notifications',
-  feedback: 'Feedback & Error Reporting',
+  feedback: 'Feedback',
   subscriptions: 'Subscriptions & Billing'
 };
 
-module.exports = { methods, categories };
+function getMethodByName(name) {
+  return MCP_METHODS.find(m => m.name === name || (m.aliases && m.aliases.includes(name)));
+}
+
+function getMethodsByCategory(category) {
+  return MCP_METHODS.filter(m => m.category === category);
+}
+
+function getAllMethodNames() {
+  const names = [];
+  for (const m of MCP_METHODS) {
+    names.push(m.name);
+    if (m.aliases) names.push(...m.aliases);
+  }
+  return names;
+}
+
+module.exports = { MCP_METHODS, CATEGORIES, getMethodByName, getMethodsByCategory, getAllMethodNames };

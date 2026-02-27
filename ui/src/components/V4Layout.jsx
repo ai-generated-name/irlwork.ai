@@ -1,7 +1,7 @@
 // V4 Design System - Shared Layout Components
 // Provides consistent navbar, footer, and styling across all pages
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import MarketingFooter from './Footer'
 import { Logo } from './Logo'
 import LanguageSelector from './LanguageSelector'
@@ -51,6 +51,16 @@ export const v4 = {
 export function NavbarV4({ user, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { t } = useLanguage()
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.classList.add('mobile-nav-open')
+    } else {
+      document.body.classList.remove('mobile-nav-open')
+    }
+    return () => document.body.classList.remove('mobile-nav-open')
+  }, [mobileMenuOpen])
 
   return (
     <nav className="navbar-v4" style={{

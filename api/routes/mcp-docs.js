@@ -1,29 +1,33 @@
+// ============================================
+// GET /api/mcp/docs — Public MCP method documentation
+// No authentication required. Agents fetch this at runtime
+// to discover available methods and parameters.
+// ============================================
+
 const express = require('express');
 const router = express.Router();
-const { methods, categories } = require('../config/mcp-methods');
+const { MCP_METHODS, CATEGORIES } = require('../config/mcp-methods');
 
 // GET /api/mcp/docs — Full method catalog
-// Publicly accessible — no auth required (agents need docs before they have a key)
 router.get('/docs', (req, res) => {
   const { method, category } = req.query;
 
-  let filtered = methods;
-
   // Single method lookup: ?method=list_humans
   if (method) {
-    const found = methods.find(m => m.name === method || (m.aliases && m.aliases.includes(method)));
+    const found = MCP_METHODS.find(m => m.name === method || (m.aliases && m.aliases.includes(method)));
     if (!found) return res.status(404).json({ error: `Method '${method}' not found` });
     return res.json({ method: found });
   }
 
   // Category filter: ?category=tasks
+  let filtered = MCP_METHODS;
   if (category) {
-    filtered = methods.filter(m => m.category === category);
+    filtered = MCP_METHODS.filter(m => m.category === category);
   }
 
   res.json({
     methods: filtered,
-    categories,
+    categories: CATEGORIES,
     auth: {
       type: 'bearer',
       header: 'Authorization',
@@ -37,8 +41,7 @@ router.get('/docs', (req, res) => {
       params: {}
     },
     rate_limits: {
-      get: '100/min',
-      post: '20/min'
+      requests: '60/min per API key'
     },
     total_methods: filtered.length
   });
