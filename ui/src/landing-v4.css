@@ -4819,37 +4819,6 @@
 /* Mode Switch - mobile only */
 .dashboard-v4-mode-switch-mobile {
   display: none;
-  margin: var(--space-4) var(--space-4) var(--space-2);
-}
-
-.dashboard-v4-mode-switch-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid #1a1a1a;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s var(--ease-smooth);
-}
-
-.dashboard-v4-mode-switch-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.dashboard-v4-mode-switch-btn.hiring {
-  color: var(--orange-600);
-  border-color: #1a1a1a;
-}
-
-.dashboard-v4-mode-switch-btn.hiring:hover {
-  background: rgba(232, 133, 61, 0.08);
 }
 
 /* Navigation */
@@ -4993,16 +4962,51 @@
   min-width: 0;
 }
 
-/* Upgrade to Premium sidebar link - subtle highlight */
+/* Sidebar bottom section */
+.dashboard-v4-sidebar-bottom {
+  margin-top: auto;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 8px 0;
+}
+
+.dashboard-v4-sidebar-bottom-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dashboard-v4-sidebar-bottom-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.dashboard-v4-sidebar-bottom-item svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.dashboard-v4-sidebar-bottom-item:hover svg {
+  opacity: 0.85;
+}
+
+/* Upgrade to Premium - subtle highlight */
 .dashboard-v4-sidebar-upgrade-link {
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: var(--radius-md);
-  margin: 4px 8px !important;
-  width: calc(100% - 16px) !important;
+  background: rgba(0, 0, 0, 0.025);
 }
 
 .dashboard-v4-sidebar-upgrade-link:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .dashboard-v4-user-name {
@@ -7792,11 +7796,6 @@
   .dashboard-v4-sidebar-social-link .dashboard-v4-nav-label {
     font-size: 13px;
     color: var(--text-tertiary);
-  }
-
-  .dashboard-v4-mode-switch-btn {
-    font-size: 14px;
-    padding: 10px 16px;
   }
 
 }

@@ -87,11 +87,9 @@ class TabErrorBoundary extends React.Component {
   }
 }
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('[App] Supabase not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env')
-}
+// Anon key is public by design — security is enforced via Supabase RLS policies, not key secrecy
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
 export const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null
 
 // Safe no-op channel for when supabase is null
@@ -2293,92 +2291,77 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           ))}
         </nav>
 
-        {/* Connect Agent - Hiring mode only, before API key is created */}
-        {hiringMode && !agentConnected && (
-          <a
-            href="/connect-agent"
-            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
-            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
-            onClick={() => setSidebarOpen(false)}
-          >
-            <div className="dashboard-v4-nav-item-content">
-              <span className="dashboard-v4-nav-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
-                </svg>
-              </span>
-              <span className="dashboard-v4-nav-label">Connect Agent</span>
-            </div>
-          </a>
-        )}
-
-        {/* Mode Switch - mobile only, pinned above social */}
-        <div className="dashboard-v4-mode-switch-mobile">
-          {hiringMode ? (
-            <button
-              className="dashboard-v4-mode-switch-btn"
-              onClick={() => { setHiringMode(false); setActiveTabState('dashboard'); updateTabUrl('dashboard', false); setSidebarOpen(false) }}
+        {/* Sidebar bottom section */}
+        <div className="dashboard-v4-sidebar-bottom">
+          {/* Connect Agent - Hiring mode only, before API key is created */}
+          {hiringMode && !agentConnected && (
+            <a
+              href="/connect-agent"
+              className="dashboard-v4-sidebar-bottom-item"
+              onClick={() => setSidebarOpen(false)}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" />
-                <path d="M8 21h8" />
-                <path d="M12 17v4" />
+                <path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
               </svg>
-              Switch to Working
-            </button>
-          ) : (
-            <button
-              className="dashboard-v4-mode-switch-btn hiring"
-              onClick={() => { setHiringMode(true); setActiveTabState('dashboard'); updateTabUrl('dashboard', true); setSidebarOpen(false) }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 00-3-3.87" />
-                <path d="M16 3.13a4 4 0 010 7.75" />
-              </svg>
-              Hire Humans
-            </button>
+              <span>Connect Agent</span>
+            </a>
           )}
-        </div>
 
-        {/* Upgrade to Premium - hide if already on a paid plan */}
-        {(!user?.subscription_tier || user.subscription_tier === 'free') && (
-          <a
-            href="/premium"
-            className="dashboard-v4-nav-item dashboard-v4-sidebar-upgrade-link"
-            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
-          >
-            <div className="dashboard-v4-nav-item-content">
-              <span className="dashboard-v4-nav-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                  <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Mode Switch - mobile only */}
+          <div className="dashboard-v4-mode-switch-mobile">
+            {hiringMode ? (
+              <button
+                className="dashboard-v4-sidebar-bottom-item"
+                onClick={() => { setHiringMode(false); setActiveTabState('dashboard'); updateTabUrl('dashboard', false); setSidebarOpen(false) }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <path d="M8 21h8" />
+                  <path d="M12 17v4" />
                 </svg>
-              </span>
-              <span className="dashboard-v4-nav-label">Upgrade to Premium</span>
-            </div>
-          </a>
-        )}
+                <span>Switch to Working</span>
+              </button>
+            ) : (
+              <button
+                className="dashboard-v4-sidebar-bottom-item"
+                onClick={() => { setHiringMode(true); setActiveTabState('dashboard'); updateTabUrl('dashboard', true); setSidebarOpen(false) }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                  <path d="M16 3.13a4 4 0 010 7.75" />
+                </svg>
+                <span>Hire Humans</span>
+              </button>
+            )}
+          </div>
 
-        {/* Social & Feedback - pinned to bottom */}
-        <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
+          {/* Upgrade to Premium - hide if already on a paid plan */}
+          {(!user?.subscription_tier || user.subscription_tier === 'free') && (
+            <a
+              href="/premium"
+              className="dashboard-v4-sidebar-bottom-item dashboard-v4-sidebar-upgrade-link"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Upgrade to Premium</span>
+            </a>
+          )}
+
           {/* X / Twitter */}
           <a
             href="https://x.com/irlworkai"
             target="_blank"
             rel="noopener noreferrer"
-            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
-            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
+            className="dashboard-v4-sidebar-bottom-item"
           >
-            <div className="dashboard-v4-nav-item-content">
-              <span className="dashboard-v4-nav-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-              </span>
-              <span className="dashboard-v4-nav-label">Follow us on X</span>
-            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            <span>Follow us on X</span>
           </a>
         </div>
 
