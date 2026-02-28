@@ -4,6 +4,7 @@ import { ClipboardList, Shield } from 'lucide-react';
 
 import API_URL from '../config/api';
 import { trackEvent } from '../utils/analytics';
+import ConfirmationModal from './ConfirmationModal';
 
 const PLATFORM_FEE_PERCENT = 15;
 const PREMIUM_FEE_PERCENT = 10;
@@ -41,6 +42,7 @@ export default function QuickApplyModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [showCounterConfirm, setShowCounterConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -72,9 +74,24 @@ export default function QuickApplyModal({
   const currencyLabel = task.payment_method === 'stripe' ? 'USD' : 'USDC';
   const canSubmit = whyFit.trim().length > 0 && availability.trim().length > 0;
 
+  // Check if counter offer differs significantly from budget
+  const counterOfferDiffPercent = useMemo(() => {
+    if (!counterOffer || !task) return 0;
+    const budget = Number(task.budget) || 0;
+    if (budget === 0) return 0;
+    return Math.abs((parseFloat(counterOffer) - budget) / budget) * 100;
+  }, [counterOffer, task]);
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!canSubmit) return;
+
+    // If counter offer differs by >20%, ask for confirmation first
+    if (counterOffer && counterOfferDiffPercent > 20 && !showCounterConfirm) {
+      setShowCounterConfirm(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -100,6 +117,7 @@ export default function QuickApplyModal({
       }
 
       trackEvent('task_applied', { task_id: task.id, source: 'quick_apply' });
+      setShowCounterConfirm(false);
       setSuccess(true);
       setTimeout(() => {
         onSuccess?.(task.id);
@@ -119,6 +137,7 @@ export default function QuickApplyModal({
     setCounterOffer('');
     setError(null);
     setSuccess(false);
+    setShowCounterConfirm(false);
     onClose();
   };
 
@@ -323,6 +342,29 @@ export default function QuickApplyModal({
           </>
         )}
       </div>
+      {/* Counter offer confirmation */}
+      <ConfirmationModal
+        isOpen={showCounterConfirm}
+        onConfirm={handleSubmit}
+        onCancel={() => setShowCounterConfirm(false)}
+        title="Confirm counter offer"
+        description={(() => {
+          const budget = Number(task?.budget) || 0;
+          const offer = parseFloat(counterOffer) || 0;
+          const direction = offer > budget ? 'higher' : 'lower';
+          const pct = Math.round(counterOfferDiffPercent);
+          return (
+            <p>
+              You're offering to complete this task for <strong>${offer.toFixed(2)}</strong>, which is {pct}% {direction} than
+              the posted budget of ${budget.toFixed(2)}. The task creator will see this amount.
+            </p>
+          );
+        })()}
+        confirmLabel="Submit Application"
+        variant="info"
+        isLoading={loading}
+        error={error}
+      />
     </div>,
     document.body
   );
