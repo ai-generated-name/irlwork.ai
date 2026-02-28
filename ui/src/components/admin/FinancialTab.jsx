@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DollarSign, TrendingUp, ArrowDownRight, AlertTriangle, Shield, RefreshCw } from 'lucide-react'
 import PeriodSelector from './PeriodSelector'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 
 /**
@@ -17,9 +18,7 @@ export default function FinancialTab({ user }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API_URL}/admin/financials?period=${period}`, {
-        headers: { Authorization: user.token || '' }
-      })
+      const res = await adminFetch(`${API_URL}/admin/financials?period=${period}`)
       if (!res.ok) throw new Error('Failed to fetch financial data')
       setData(await res.json())
     } catch (err) {
@@ -27,7 +26,7 @@ export default function FinancialTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [period, user.token])
+  }, [period])
 
   useEffect(() => { fetchData() }, [fetchData])
 

@@ -73,8 +73,9 @@ disputed -> paid       (resolved with modified payout)
 
 - No status can be skipped. `open` cannot go directly to `completed`.
 - Terminal statuses (`paid`, `expired`, `cancelled`) cannot transition to anything.
-- All transitions must go through `validateStatusTransition()` — never update status with raw SQL without validation.
+- **Status transitions are enforced at the database level** by the `check_task_status_transition` trigger (see `db/enforce_status_transitions.sql`). Invalid transitions raise a PostgreSQL exception.
 - Atomic updates only. Always use `.eq('status', currentStatus)` in the UPDATE to prevent TOCTOU races.
+- The old `validateStatusTransition()` function has been removed — the DB trigger is the single enforcement point.
 
 ---
 
@@ -305,7 +306,7 @@ Agent pays: `budget` (platform fee is deducted from the human's side)
 | Task expiry | Hourly | Expires tasks past deadline with no applicants, or 30-day stale tasks |
 | Balance promoter | Every 15 min | Promotes `pending -> available` after dispute window closes. Auto-transfers to Stripe Connect if ready. |
 | Auth hold renewal | Every 6 hours | Re-authorizes Stripe holds on assigned tasks older than 6 days. Notifies agent on failure, auto-cancels after 24h grace. |
-| Auto-approve | Hourly | Auto-approves `pending_review` tasks older than 48 hours. Sends 24h warning first. |
+| Auto-approve | Hourly | Auto-approves `pending_review` tasks older than 72 hours. Captures escrow if uncaptured. Notifies both parties. |
 | Deadline timeout | Hourly | Warns then auto-disputes `in_progress` tasks past deadline + 24h grace. Falls back to 7-day timeout for tasks without deadlines. |
 | Webhook retry | Every 60 seconds | Retries failed webhook deliveries with exponential backoff (batch of 10) |
 

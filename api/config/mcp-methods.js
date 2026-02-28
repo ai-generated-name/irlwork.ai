@@ -313,6 +313,43 @@ const MCP_METHODS = [
       context: { type: 'string', required: false, description: 'Additional context about what happened' }
     },
     returns: 'Object with success, id, message'
+  },
+
+  // ===== Subscriptions & Billing =====
+  {
+    name: 'subscription_tiers',
+    aliases: [],
+    category: 'subscriptions',
+    description: 'View available subscription plans with pricing, fees, and benefits',
+    params: {},
+    returns: 'Array of tier objects with name, price, fees, and feature lists'
+  },
+  {
+    name: 'subscription_status',
+    aliases: [],
+    category: 'subscriptions',
+    description: 'Check your current subscription tier and billing status',
+    params: {},
+    returns: 'Object with current tier, status, billing period, and usage info'
+  },
+  {
+    name: 'subscription_upgrade',
+    aliases: [],
+    category: 'subscriptions',
+    description: 'Start an upgrade to Builder or Pro plan. Returns a checkout URL for the user to complete payment',
+    params: {
+      tier: { type: 'string', required: true, description: 'Target tier: "builder" or "pro"' },
+      billing_period: { type: 'string', required: false, description: 'Billing period: "monthly" or "annual" (default: "monthly")' }
+    },
+    returns: 'Object with checkout_url for the user to complete payment'
+  },
+  {
+    name: 'subscription_portal',
+    aliases: [],
+    category: 'subscriptions',
+    description: 'Get a billing portal URL for managing subscription, payment methods, or cancellation',
+    params: {},
+    returns: 'Object with portal_url for the user to manage billing'
   }
 ];
 
@@ -322,7 +359,8 @@ const CATEGORIES = {
   messaging: 'Conversations & Messaging',
   proofs: 'Proofs & Completion',
   notifications: 'Notifications',
-  feedback: 'Feedback'
+  feedback: 'Feedback',
+  subscriptions: 'Subscriptions & Billing'
 };
 
 function getMethodByName(name) {

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { DollarSign, Users, TrendingUp, CreditCard } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend } from 'recharts'
 import PeriodSelector from './PeriodSelector'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 
 /**
@@ -20,12 +21,8 @@ export default function OverviewTab({ user }) {
     setError(null)
     try {
       const [finRes, growthRes] = await Promise.all([
-        fetch(`${API_URL}/admin/financials?period=${period}`, {
-          headers: { Authorization: user.token || '' }
-        }),
-        fetch(`${API_URL}/admin/growth?period=${period}`, {
-          headers: { Authorization: user.token || '' }
-        }),
+        adminFetch(`${API_URL}/admin/financials?period=${period}`),
+        adminFetch(`${API_URL}/admin/growth?period=${period}`),
       ])
 
       if (!finRes.ok || !growthRes.ok) throw new Error('Failed to fetch data')
@@ -38,7 +35,7 @@ export default function OverviewTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [period, user.token])
+  }, [period])
 
   useEffect(() => { fetchData() }, [fetchData])
 

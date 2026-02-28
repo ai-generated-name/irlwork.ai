@@ -38,13 +38,14 @@ Before modifying code, read the relevant reference doc. These are the source of 
 
 These are non-negotiable constraints enforced by the codebase:
 
-1. **Status transitions** — Every task status change MUST go through `validateStatusTransition()` (server.js line 373). No direct `.update({status: '...'})` writes. Valid transitions are defined in `VALID_STATUS_TRANSITIONS` (server.js line 362):
+1. **Status transitions** — Task status transitions are enforced at the **database level** by the `check_task_status_transition` trigger (see `db/enforce_status_transitions.sql`). Invalid transitions raise a PostgreSQL exception. The old `validateStatusTransition()` function has been removed. Always use atomic `.eq('status', currentStatus)` on UPDATEs to prevent TOCTOU races. Valid transitions:
    ```
    open → pending_acceptance | assigned | in_progress | cancelled
    pending_acceptance → in_progress | open | cancelled
    assigned → in_progress | cancelled
    in_progress → pending_review | disputed | cancelled
-   pending_review → completed | rejected | disputed
+   pending_review → completed | approved | rejected | disputed
+   approved → paid
    rejected → pending_review | disputed | cancelled
    disputed → paid | refunded | cancelled
    completed → paid

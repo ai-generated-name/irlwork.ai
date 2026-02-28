@@ -4819,37 +4819,6 @@
 /* Mode Switch - mobile only */
 .dashboard-v4-mode-switch-mobile {
   display: none;
-  margin: var(--space-4) var(--space-4) var(--space-2);
-}
-
-.dashboard-v4-mode-switch-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid #1a1a1a;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s var(--ease-smooth);
-}
-
-.dashboard-v4-mode-switch-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.dashboard-v4-mode-switch-btn.hiring {
-  color: var(--orange-600);
-  border-color: #1a1a1a;
-}
-
-.dashboard-v4-mode-switch-btn.hiring:hover {
-  background: rgba(232, 133, 61, 0.08);
 }
 
 /* Navigation */
@@ -4993,6 +4962,53 @@
   min-width: 0;
 }
 
+/* Sidebar bottom section */
+.dashboard-v4-sidebar-bottom {
+  margin-top: auto;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 8px 0;
+}
+
+.dashboard-v4-sidebar-bottom-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dashboard-v4-sidebar-bottom-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.dashboard-v4-sidebar-bottom-item svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.dashboard-v4-sidebar-bottom-item:hover svg {
+  opacity: 0.85;
+}
+
+/* Upgrade to Premium - subtle highlight */
+.dashboard-v4-sidebar-upgrade-link {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.dashboard-v4-sidebar-upgrade-link:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
 .dashboard-v4-user-name {
   font-size: 14px;
   font-weight: 600;
@@ -5010,31 +5026,6 @@
   text-overflow: ellipsis;
 }
 
-/* Upgrade to Premium Button */
-.dashboard-v4-upgrade-premium-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid #333;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: #333;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.2s var(--ease-smooth);
-}
-
-.dashboard-v4-upgrade-premium-btn:hover {
-  background: #f5f5f5;
-  border-color: #333;
-  transform: none;
-  box-shadow: none;
-}
 
 /* ═══════════════════════════════════════════
  *  CONNECT AGENT PAGE (ca-*) — Redesigned
@@ -6139,6 +6130,40 @@
   transform: translateY(-1px);
 }
 
+/* Mode indicator pill */
+.dashboard-v4-mode-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.dashboard-v4-mode-indicator:hover {
+  background: var(--bg-secondary);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-v4-mode-indicator-label {
+  display: inline;
+}
+
+@media (max-width: 375px) {
+  .dashboard-v4-mode-indicator-label {
+    display: none;
+  }
+}
+
 .dashboard-v4-topbar-center {
   display: flex;
   align-items: center;
@@ -6203,19 +6228,21 @@
 }
 
 .dashboard-v4-topbar-cta-teal {
-  background: var(--accent-orange);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(0, 0, 0, 0);
-  animation: cta-pulse-teal 2.5s ease-in-out infinite;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  box-shadow: none;
+  animation: none;
 }
 
-@keyframes cta-pulse-teal {
-  0%, 100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(0, 0, 0, 0.15); }
-  50% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 0 4px rgba(0, 0, 0, 0.08); }
+.dashboard-v4-topbar-cta-teal svg {
+  stroke: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .dashboard-v4-topbar-cta-teal:hover {
-  background: var(--accent-orange-hover);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 0 0 rgba(0, 0, 0, 0);
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-primary);
+  box-shadow: none;
   animation: none;
 }
 
@@ -7344,27 +7371,6 @@
   box-shadow: var(--shadow-md) !important;
 }
 
-/* Upgrade to Premium sidebar button */
-.dashboard-v4-upgrade-premium-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 16px;
-  background: transparent;
-  color: #333;
-  border: 1px solid #333;
-  border-radius: var(--radius-md);
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-smooth);
-}
-
-.dashboard-v4-upgrade-premium-btn:hover {
-  background: #f5f5f5;
-}
 
 /* Required/Optional field indicators */
 .dashboard-v4-form-required {
@@ -7792,35 +7798,6 @@
     color: var(--text-tertiary);
   }
 
-  .dashboard-v4-mode-switch-btn {
-    font-size: 14px;
-    padding: 10px 16px;
-  }
-
-  .dashboard-v4-upgrade-premium-btn {
-    font-size: 13px;
-    padding: 10px 14px;
-  }
-
-  .dashboard-v4-connect-agent-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    margin: 0 var(--space-4);
-    border: 1px solid var(--orange-500);
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--orange-600);
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-    transition: background 0.2s;
-  }
-
-  .dashboard-v4-connect-agent-btn:hover {
-    background: rgba(232, 133, 61, 0.06);
-  }
 }
 
 @media (max-width: 600px) {
@@ -10854,6 +10831,31 @@ select.select-v4-dark option:checked,
 }
 
 /* ─── ROUND 2: MOBILE FIXES ─── */
+
+/* Hide footer on mobile — saves viewport space on task detail / public pages */
+@media (max-width: 768px) {
+  .footer-v4 {
+    display: none;
+  }
+}
+
+/* Task detail message input — sticky + touch targets */
+@media (max-width: 768px) {
+  .task-detail-message-form {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+
+  .task-detail-message-form button[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .task-detail-message-form textarea {
+    min-height: 44px;
+  }
+}
 
 /* Map FAB above bottom tab bar */
 @media (max-width: 900px) {
