@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { DollarSign, Users, TrendingUp, CreditCard } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend } from 'recharts'
 import PeriodSelector from './PeriodSelector'
-import { useAuth } from '../../context/AuthContext'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 
 /**
@@ -10,7 +10,6 @@ import API_URL from '../../config/api'
  * Shows GMV, fees, escrow, subscribers, plus charts for tasks/signups per day
  */
 export default function OverviewTab({ user }) {
-  const { authenticatedFetch } = useAuth()
   const [period, setPeriod] = useState('30d')
   const [financials, setFinancials] = useState(null)
   const [growth, setGrowth] = useState(null)
@@ -22,8 +21,8 @@ export default function OverviewTab({ user }) {
     setError(null)
     try {
       const [finRes, growthRes] = await Promise.all([
-        authenticatedFetch(`${API_URL}/admin/financials?period=${period}`),
-        authenticatedFetch(`${API_URL}/admin/growth?period=${period}`),
+        adminFetch(`${API_URL}/admin/financials?period=${period}`),
+        adminFetch(`${API_URL}/admin/growth?period=${period}`),
       ])
 
       if (!finRes.ok || !growthRes.ok) throw new Error('Failed to fetch data')
@@ -36,7 +35,7 @@ export default function OverviewTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [period, authenticatedFetch])
+  }, [period])
 
   useEffect(() => { fetchData() }, [fetchData])
 
