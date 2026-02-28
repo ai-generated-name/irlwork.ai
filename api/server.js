@@ -2785,10 +2785,13 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
 
   // Verify task exists, is open, and user is not the agent
   const { data: taskForApply } = await supabase
-    .from('tasks').select('status, agent_id, title').eq('id', taskId).single();
+    .from('tasks').select('status, agent_id, title, deadline').eq('id', taskId).single();
   if (!taskForApply) return res.status(404).json({ error: 'Task not found' });
   if (taskForApply.status !== 'open') {
     return res.status(409).json({ error: 'task_not_open', message: 'This task is no longer accepting applications.' });
+  }
+  if (taskForApply.deadline && new Date(taskForApply.deadline) < new Date()) {
+    return res.status(409).json({ error: 'deadline_passed', message: "This task's deadline has passed and is no longer accepting applications." });
   }
   if (taskForApply.agent_id === user.id) {
     return res.status(400).json({ error: 'Cannot apply to your own task.' });
@@ -4211,7 +4214,7 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   // Verify task exists and user is assigned
   const { data: task, error: taskError } = await supabase
     .from('tasks')
-    .select('id, human_id, agent_id, status, title')
+    .select('id, human_id, agent_id, status, title, deadline')
     .eq('id', taskId)
     .single();
 
@@ -4222,11 +4225,12 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   if (task.human_id !== user.id) {
     return res.status(403).json({ error: 'Not assigned to this task' });
   }
-  
+
   if (task.status !== 'in_progress') {
     return res.status(400).json({ error: 'Task must be in_progress to submit proof' });
   }
-  
+
+  const isLate = task.deadline && new Date(task.deadline) < new Date();
   const proofId = uuidv4();
   const { data: proof, error } = await supabase
     .from('task_proofs')
@@ -4237,13 +4241,14 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
       proof_text,
       proof_urls: Array.isArray(proof_urls) ? proof_urls.slice(0, 20).filter(u => typeof u === 'string') : [],
       status: 'pending',
+      submitted_late: !!isLate,
       submitted_at: new Date().toISOString()
     })
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-  
+
   // Update task status to pending_review (atomic — prevents TOCTOU race)
   const { data: updatedTask, error: updateError } = await supabase
     .from('tasks')
@@ -4269,7 +4274,7 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
     `${user.name} has submitted proof for "${task.title}". Review it now.`,
     `/tasks/${taskId}`
   );
-  
+
   // Deliver webhook to agent
   dispatchWebhook(task.agent_id, {
     type: 'proof_submitted',
@@ -4278,10 +4283,34 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
       proof_id: proofId,
       human_id: user.id,
       human_name: user.name,
-      task_title: task.title
+      task_title: task.title,
+      submitted_late: !!isLate
     }
   }).catch(() => {});
-  
+
+  // If proof submitted after deadline, send extra late notification + webhook
+  if (isLate) {
+    await createNotification(
+      task.agent_id,
+      'proof_submitted_late',
+      'Late Proof Submission',
+      `${user.name} submitted proof for "${task.title}" after the deadline.`,
+      `/tasks/${taskId}`
+    );
+    dispatchWebhook(task.agent_id, {
+      type: 'proof_submitted_late',
+      task_id: taskId,
+      data: {
+        proof_id: proofId,
+        human_id: user.id,
+        human_name: user.name,
+        task_title: task.title,
+        deadline: task.deadline,
+        submitted_at: new Date().toISOString()
+      }
+    }).catch(() => {});
+  }
+
   res.json({ success: true, proof });
 });
 
@@ -4365,7 +4394,7 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
       deadline: newDeadline.toISOString(),
       rejection_feedback: feedback,
       revision_count: currentRevisionCount + 1,
-      deadline_warning_sent: false,
+      deadline_warning_sent: 0,
       updated_at: new Date().toISOString()
     }))
     .eq('id', taskId)
@@ -4413,6 +4442,349 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
     revisions_remaining: MAX_REVISIONS - (currentRevisionCount + 1),
     new_deadline: newDeadline.toISOString()
   });
+});
+
+// ---- Deadline Extension Endpoints ----
+
+// 6a. Worker requests a deadline extension
+app.post('/api/tasks/:id/request-extension', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const taskId = req.params.id;
+  const { reason, proposed_deadline } = req.body;
+
+  if (!reason || !proposed_deadline) {
+    return res.status(400).json({ error: 'reason and proposed_deadline are required' });
+  }
+
+  // Validate proposed_deadline
+  const proposedDate = new Date(proposed_deadline);
+  if (isNaN(proposedDate.getTime())) {
+    return res.status(400).json({ error: 'Invalid proposed_deadline format' });
+  }
+  if (proposedDate <= new Date()) {
+    return res.status(400).json({ error: 'proposed_deadline must be in the future' });
+  }
+  const maxDeadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  if (proposedDate > maxDeadline) {
+    return res.status(400).json({ error: 'proposed_deadline cannot be more than 30 days from now' });
+  }
+
+  // Verify task
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id, human_id, agent_id, status, title, deadline')
+    .eq('id', taskId)
+    .single();
+
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  if (task.human_id !== user.id) return res.status(403).json({ error: 'Only the assigned worker can request an extension' });
+  if (!['in_progress', 'assigned'].includes(task.status)) {
+    return res.status(400).json({ error: 'Task must be in_progress or assigned to request an extension' });
+  }
+  if (!task.deadline) {
+    return res.status(400).json({ error: 'Task has no deadline set' });
+  }
+
+  // Insert — partial unique index enforces one pending per task
+  const { data: extensionReq, error: insertErr } = await supabase
+    .from('deadline_extension_requests')
+    .insert({
+      task_id: taskId,
+      requested_by: user.id,
+      reason,
+      proposed_deadline: proposedDate.toISOString(),
+      original_deadline: task.deadline,
+      status: 'pending'
+    })
+    .select()
+    .single();
+
+  if (insertErr) {
+    if (insertErr.code === '23505') {
+      return res.status(409).json({ error: 'You already have a pending extension request for this task.' });
+    }
+    return res.status(500).json({ error: safeErrorMessage(insertErr) });
+  }
+
+  // Notify poster
+  await createNotification(
+    task.agent_id,
+    'extension_requested',
+    'Extension Requested',
+    `${user.name} is requesting a deadline extension for "${task.title}". Proposed new deadline: ${proposedDate.toLocaleDateString()}.`,
+    `/tasks/${taskId}`
+  );
+
+  dispatchWebhook(task.agent_id, {
+    type: 'extension_requested',
+    task_id: taskId,
+    data: {
+      request_id: extensionReq.id,
+      human_id: user.id,
+      human_name: user.name,
+      reason,
+      proposed_deadline: proposedDate.toISOString(),
+      original_deadline: task.deadline,
+      task_title: task.title
+    }
+  }).catch(() => {});
+
+  res.status(201).json({ success: true, extension_request: extensionReq });
+});
+
+// 6b. Poster responds to an extension request
+app.post('/api/tasks/:id/respond-extension', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const taskId = req.params.id;
+  const { request_id, action, modified_deadline, response_note } = req.body;
+
+  if (!request_id || !action) {
+    return res.status(400).json({ error: 'request_id and action are required' });
+  }
+  if (!['approve', 'decline', 'modify'].includes(action)) {
+    return res.status(400).json({ error: 'action must be approve, decline, or modify' });
+  }
+
+  // Verify task ownership
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id, agent_id, human_id, title, deadline')
+    .eq('id', taskId)
+    .single();
+
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  if (task.agent_id !== user.id) return res.status(403).json({ error: 'Only the task poster can respond to extension requests' });
+
+  // Fetch extension request
+  const { data: extReq } = await supabase
+    .from('deadline_extension_requests')
+    .select('*')
+    .eq('id', request_id)
+    .eq('task_id', taskId)
+    .single();
+
+  if (!extReq) return res.status(404).json({ error: 'Extension request not found' });
+  if (extReq.status !== 'pending') return res.status(400).json({ error: 'Extension request is no longer pending' });
+
+  // Validate modified_deadline if action is modify
+  let finalDeadline = extReq.proposed_deadline;
+  if (action === 'modify') {
+    if (!modified_deadline) {
+      return res.status(400).json({ error: 'modified_deadline is required for modify action' });
+    }
+    const modifiedDate = new Date(modified_deadline);
+    if (isNaN(modifiedDate.getTime()) || modifiedDate <= new Date()) {
+      return res.status(400).json({ error: 'modified_deadline must be a valid future date' });
+    }
+    const maxDeadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    if (modifiedDate > maxDeadline) {
+      return res.status(400).json({ error: 'modified_deadline cannot be more than 30 days from now' });
+    }
+    finalDeadline = modifiedDate.toISOString();
+  }
+
+  const responseStatus = action === 'modify' ? 'modified' : action === 'approve' ? 'approved' : 'declined';
+
+  // Update extension request
+  const { data: updatedReq, error: updateErr } = await supabase
+    .from('deadline_extension_requests')
+    .update({
+      status: responseStatus,
+      responded_by: user.id,
+      response_note: response_note || null,
+      final_deadline: action !== 'decline' ? finalDeadline : null,
+      responded_at: new Date().toISOString()
+    })
+    .eq('id', request_id)
+    .select()
+    .single();
+
+  if (updateErr) return res.status(500).json({ error: safeErrorMessage(updateErr) });
+
+  // If approved or modified, update task deadline and reset warnings
+  if (action === 'approve' || action === 'modify') {
+    await supabase
+      .from('tasks')
+      .update(cleanTaskData({
+        deadline: finalDeadline,
+        deadline_warning_sent: 0,
+        updated_at: new Date().toISOString()
+      }))
+      .eq('id', taskId);
+  }
+
+  // Notify worker
+  if (action === 'decline') {
+    await createNotification(
+      extReq.requested_by,
+      'extension_declined',
+      'Extension Declined',
+      `Your extension request for "${task.title}" was declined.${response_note ? ` Note: ${response_note}` : ''}`,
+      `/tasks/${taskId}`
+    );
+    dispatchWebhook(extReq.requested_by, {
+      type: 'extension_declined',
+      task_id: taskId,
+      data: {
+        request_id: extReq.id,
+        response_note: response_note || null,
+        task_title: task.title
+      }
+    }).catch(() => {});
+  } else {
+    await createNotification(
+      extReq.requested_by,
+      'extension_approved',
+      'Extension Approved',
+      `Your extension request for "${task.title}" was ${action === 'modify' ? 'approved with a modified deadline' : 'approved'}. New deadline: ${new Date(finalDeadline).toLocaleDateString()}.`,
+      `/tasks/${taskId}`
+    );
+    dispatchWebhook(extReq.requested_by, {
+      type: 'extension_approved',
+      task_id: taskId,
+      data: {
+        request_id: extReq.id,
+        action: responseStatus,
+        final_deadline: finalDeadline,
+        response_note: response_note || null,
+        task_title: task.title
+      }
+    }).catch(() => {});
+  }
+
+  res.json({ success: true, extension_request: updatedReq });
+});
+
+// 6c. Poster directly extends deadline
+app.post('/api/tasks/:id/extend-deadline', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const taskId = req.params.id;
+  const { new_deadline, extend_hours } = req.body;
+
+  if (!new_deadline && !extend_hours) {
+    return res.status(400).json({ error: 'Either new_deadline or extend_hours is required' });
+  }
+  if (new_deadline && extend_hours) {
+    return res.status(400).json({ error: 'Provide either new_deadline or extend_hours, not both' });
+  }
+
+  // Verify task
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id, agent_id, human_id, title, deadline, status')
+    .eq('id', taskId)
+    .single();
+
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  if (task.agent_id !== user.id) return res.status(403).json({ error: 'Only the task poster can extend the deadline' });
+  if (!['in_progress', 'assigned'].includes(task.status)) {
+    return res.status(400).json({ error: 'Task must be in_progress or assigned to extend deadline' });
+  }
+
+  // Compute new deadline
+  let computedDeadline;
+  if (new_deadline) {
+    computedDeadline = new Date(new_deadline);
+  } else {
+    const base = task.deadline ? new Date(task.deadline) : new Date();
+    computedDeadline = new Date(base.getTime() + extend_hours * 60 * 60 * 1000);
+  }
+
+  if (isNaN(computedDeadline.getTime()) || computedDeadline <= new Date()) {
+    return res.status(400).json({ error: 'New deadline must be a valid future date' });
+  }
+  const maxDeadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  if (computedDeadline > maxDeadline) {
+    return res.status(400).json({ error: 'New deadline cannot be more than 30 days from now' });
+  }
+
+  // Update task
+  await supabase
+    .from('tasks')
+    .update(cleanTaskData({
+      deadline: computedDeadline.toISOString(),
+      deadline_warning_sent: 0,
+      updated_at: new Date().toISOString()
+    }))
+    .eq('id', taskId);
+
+  // Auto-resolve pending extension requests
+  await supabase
+    .from('deadline_extension_requests')
+    .update({
+      status: 'approved',
+      responded_by: user.id,
+      final_deadline: computedDeadline.toISOString(),
+      responded_at: new Date().toISOString()
+    })
+    .eq('task_id', taskId)
+    .eq('status', 'pending');
+
+  // Notify worker
+  if (task.human_id) {
+    await createNotification(
+      task.human_id,
+      'deadline_extended',
+      'Deadline Extended',
+      `The deadline for "${task.title}" has been extended to ${computedDeadline.toLocaleDateString()}.`,
+      `/tasks/${taskId}`
+    );
+    dispatchWebhook(task.human_id, {
+      type: 'deadline_extended',
+      task_id: taskId,
+      data: {
+        new_deadline: computedDeadline.toISOString(),
+        previous_deadline: task.deadline,
+        task_title: task.title
+      }
+    }).catch(() => {});
+  }
+
+  res.json({ success: true, new_deadline: computedDeadline.toISOString() });
+});
+
+// 6d. List extension requests for a task
+app.get('/api/tasks/:id/extension-requests', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const taskId = req.params.id;
+
+  // Verify user is poster or assigned worker
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id, agent_id, human_id')
+    .eq('id', taskId)
+    .single();
+
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  if (task.agent_id !== user.id && task.human_id !== user.id) {
+    return res.status(403).json({ error: 'Not authorized to view extension requests for this task' });
+  }
+
+  const { data: requests, error } = await supabase
+    .from('deadline_extension_requests')
+    .select('*, requester:requested_by(id, name, avatar_url)')
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  res.json({ extension_requests: requests || [] });
 });
 
 // PHASE 1: Agent approves proof - task goes to 'approved' status
@@ -9130,6 +9502,125 @@ async function start() {
             }
           }
         }
+        // Rule 4: Deadline warnings for assigned/in_progress tasks
+        // Query A — Approaching deadlines (future)
+        const { data: approachingTasks } = await supabase
+          .from('tasks')
+          .select('id, agent_id, human_id, title, deadline, deadline_warning_sent')
+          .in('status', ['in_progress', 'assigned'])
+          .not('human_id', 'is', null)
+          .not('deadline', 'is', null)
+          .gt('deadline', now);
+
+        if (approachingTasks && approachingTasks.length > 0) {
+          for (const task of approachingTasks) {
+            const diffMs = new Date(task.deadline) - new Date();
+            const diffHours = diffMs / (1000 * 60 * 60);
+            const currentTier = task.deadline_warning_sent || 0;
+            let newTier = 0;
+
+            if (diffHours <= 1) newTier = 3;
+            else if (diffHours <= 6) newTier = 2;
+            else if (diffHours <= 24) newTier = 1;
+
+            if (newTier > 0 && newTier > currentTier) {
+              await supabase.from('tasks').update(cleanTaskData({ deadline_warning_sent: newTier, updated_at: now })).eq('id', task.id);
+
+              const hoursLeft = Math.max(0, Math.round(diffHours * 10) / 10);
+              const tierLabels = { 1: '24 hours', 2: '6 hours', 3: '1 hour' };
+
+              // In-app: Worker gets notified at ALL tiers (1-3)
+              if (task.human_id) {
+                await createNotification(
+                  task.human_id,
+                  'deadline_approaching',
+                  'Deadline Approaching',
+                  `Your task "${task.title}" is due in less than ${tierLabels[newTier]}. ${hoursLeft} hours remaining.`,
+                  `/tasks/${task.id}`
+                );
+              }
+
+              // In-app: Poster only at tier 3 (1 hour)
+              if (newTier >= 3 && task.agent_id) {
+                await createNotification(
+                  task.agent_id,
+                  'deadline_approaching',
+                  'Deadline Approaching',
+                  `Task "${task.title}" is due in less than 1 hour. Worker has ${hoursLeft} hours remaining.`,
+                  `/tasks/${task.id}`
+                );
+              }
+
+              // Webhooks: BOTH worker and poster at ALL tiers
+              const webhookData = {
+                type: 'deadline_approaching',
+                task_id: task.id,
+                data: {
+                  tier: newTier,
+                  deadline: task.deadline,
+                  hours_remaining: hoursLeft,
+                  task_title: task.title
+                }
+              };
+              if (task.agent_id) dispatchWebhook(task.agent_id, webhookData).catch(() => {});
+              if (task.human_id) dispatchWebhook(task.human_id, webhookData).catch(() => {});
+
+              console.log(`[TaskExpiry] Deadline warning tier ${newTier} sent for task ${task.id} (${hoursLeft}h remaining)`);
+            }
+          }
+        }
+
+        // Query B — Past deadlines (overdue)
+        const { data: overdueTasks } = await supabase
+          .from('tasks')
+          .select('id, agent_id, human_id, title, deadline, deadline_warning_sent')
+          .in('status', ['in_progress', 'assigned'])
+          .not('deadline', 'is', null)
+          .lt('deadline', now)
+          .lt('deadline_warning_sent', 4);
+
+        if (overdueTasks && overdueTasks.length > 0) {
+          for (const task of overdueTasks) {
+            await supabase.from('tasks').update(cleanTaskData({ deadline_warning_sent: 4, updated_at: now })).eq('id', task.id);
+
+            const overdueSince = Math.round((new Date() - new Date(task.deadline)) / (1000 * 60 * 60) * 10) / 10;
+
+            // In-app: Both worker and poster
+            if (task.human_id) {
+              await createNotification(
+                task.human_id,
+                'deadline_passed',
+                'Deadline Passed',
+                `The deadline for "${task.title}" has passed. Submit your proof as soon as possible.`,
+                `/tasks/${task.id}`
+              );
+            }
+            if (task.agent_id) {
+              await createNotification(
+                task.agent_id,
+                'deadline_passed',
+                'Deadline Passed',
+                `The deadline for "${task.title}" has passed. The worker has not submitted proof yet.`,
+                `/tasks/${task.id}`
+              );
+            }
+
+            // Webhooks: Both worker and poster
+            const webhookData = {
+              type: 'deadline_passed',
+              task_id: task.id,
+              data: {
+                deadline: task.deadline,
+                overdue_hours: overdueSince,
+                task_title: task.title
+              }
+            };
+            if (task.agent_id) dispatchWebhook(task.agent_id, webhookData).catch(() => {});
+            if (task.human_id) dispatchWebhook(task.human_id, webhookData).catch(() => {});
+
+            console.log(`[TaskExpiry] Deadline passed notification sent for task ${task.id} (overdue by ${overdueSince}h)`);
+          }
+        }
       } catch (err) {
         logger.error({ err }, 'Task expiry error');
         captureException(err, { tags: { service: 'task_expiry' } });
@@ -9138,7 +9629,7 @@ async function start() {
     // Run once on startup, then on interval
     expireOpenTasks();
     setInterval(expireOpenTasks, TASK_EXPIRY_INTERVAL_MS);
-    console.log(`   ✅ Task expiry service started (deadline + ${TASK_EXPIRY_DAYS}-day stale + review expiry, hourly check)`);
+    console.log(`   ✅ Task expiry service started (deadline + ${TASK_EXPIRY_DAYS}-day stale + review expiry + deadline warnings, hourly check)`);
 
     // ---- Auth Hold Renewal (every 6 hours) ----
     async function renewExpiringAuthHolds() {

@@ -191,6 +191,24 @@ export default function QuickApplyModal({
               </div>
             </div>
 
+            {/* Deadline warning — non-blocking */}
+            {task.deadline && (() => {
+              const hoursLeft = (new Date(task.deadline) - new Date()) / (1000 * 60 * 60);
+              if (hoursLeft > 0 && hoursLeft <= 4) {
+                return (
+                  <div style={{
+                    background: 'rgba(254, 188, 46, 0.15)', border: '1px solid #FEBC2E',
+                    borderRadius: 10, padding: '10px 14px', marginBottom: 4, fontSize: 13,
+                    color: '#92400E', display: 'flex', alignItems: 'center', gap: 8
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FEBC2E" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                    This task is due in {hoursLeft < 1 ? 'less than 1 hour' : `${Math.round(hoursLeft)} hour${Math.round(hoursLeft) !== 1 ? 's' : ''}`}. Make sure you can complete it in time.
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             {/* Form */}
             <form onSubmit={handleSubmit}>
               {/* 1. Why you're a good fit (required) */}
