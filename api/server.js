@@ -221,24 +221,16 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS configuration - only include localhost in development
-const isProduction = process.env.NODE_ENV === 'production';
-const corsOrigins = process.env.CORS_ORIGINS
+// CORS configuration — production origins are always included
+const PRODUCTION_ORIGINS = [
+  'https://www.irlwork.ai',
+  'https://irlwork.ai',
+  'https://api.irlwork.ai'
+];
+const envOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
-  : isProduction
-    ? [
-        'https://www.irlwork.ai',
-        'https://irlwork.ai',
-        'https://api.irlwork.ai'
-      ]
-    : [
-        'https://www.irlwork.ai',
-        'https://irlwork.ai',
-        'https://api.irlwork.ai',
-        'http://localhost:5173',
-        'http://localhost:5180',
-        'http://localhost:3002'
-      ];
+  : [];
+const corsOrigins = [...new Set([...PRODUCTION_ORIGINS, ...envOrigins])];
 
 console.log('[CORS] Configured origins:', corsOrigins);
 

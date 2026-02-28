@@ -67,12 +67,15 @@ export default function AdminDashboard({ user }) {
       }
 
       const endpoints = {
+        'pending-deposits': '/admin/tasks/pending-deposits',
         'stale-deposits': '/admin/tasks/stale-deposits',
         'pending-agent-approval': '/admin/tasks/pending-agent-approval',
         'pending-release': '/admin/tasks/pending-release',
+        'pending-withdrawals': '/admin/withdrawals?status=pending',
         'reports': '/admin/reports?status=pending'
       }
 
+      if (!endpoints[queue]) return
       const res = await adminFetch(`${API_URL}${endpoints[queue]}`)
       if (!res.ok) throw new Error('Failed to fetch queue')
       const data = await res.json()
