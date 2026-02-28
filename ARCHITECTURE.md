@@ -240,7 +240,15 @@ Agent sends message via API
 | Dispute opened | Yes | Yes | In-app, Email, Webhook |
 | Auto-approve warning (24h) | Yes | — | Webhook |
 | Auto-approved (48h) | Yes | Yes | In-app, Webhook |
-| Deadline passed | Yes | Yes | In-app, Webhook |
+| Deadline approaching (24h) | Webhook | In-app, Webhook | Background job tier 1 |
+| Deadline approaching (6h) | Webhook | In-app, Webhook | Background job tier 2 |
+| Deadline approaching (1h) | In-app, Webhook | In-app, Webhook | Background job tier 3 |
+| Deadline passed | In-app, Webhook | In-app, Webhook | Background job tier 4 |
+| Extension requested | In-app, Webhook | — | Worker requests extension |
+| Extension approved | — | In-app, Webhook | Poster approves/modifies |
+| Extension declined | — | In-app, Webhook | Poster declines |
+| Deadline extended | — | In-app, Webhook | Poster extends directly |
+| Proof submitted late | In-app, Webhook | — | Late proof submission |
 
 ---
 
@@ -255,7 +263,7 @@ Agent sends message via API
 
 ### Events
 
-`new_application`, `task_accepted`, `task_declined`, `task_started`, `new_message`, `proof_submitted`, `proof_approved`, `task_cancelled`, `dispute_opened`, `auto_approve_warning`, `task_auto_approved`, `task_paid`, `deadline_passed`
+`new_application`, `task_accepted`, `task_declined`, `task_started`, `new_message`, `proof_submitted`, `proof_approved`, `task_cancelled`, `dispute_opened`, `auto_approve_warning`, `task_auto_approved`, `task_paid`, `deadline_approaching`, `deadline_passed`, `extension_requested`, `extension_approved`, `extension_declined`, `deadline_extended`, `proof_submitted_late`
 
 ---
 
