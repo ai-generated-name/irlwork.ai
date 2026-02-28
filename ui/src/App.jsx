@@ -2280,20 +2280,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           ))}
         </nav>
 
-        {/* Connect Agent - Hiring mode only, mobile sidebar */}
-        {hiringMode && (
-          <div style={{ padding: '8px var(--space-4)' }}>
-            <a
-              href="/connect-agent"
-              className="dashboard-v4-connect-agent-btn"
-              onClick={() => setSidebarOpen(false)}
-            >
+        {/* Connect Agent - Hiring mode only, before API key is created */}
+        {hiringMode && !agentConnected && (
+          <a
+            href="/connect-agent"
+            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
+            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
+            onClick={() => setSidebarOpen(false)}
+          >
+            <div className="dashboard-v4-nav-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
               </svg>
-              Connect Agent
-            </a>
-          </div>
+            </div>
+            <span className="dashboard-v4-nav-label">Connect Agent</span>
+          </a>
         )}
 
         {/* Mode Switch - mobile only, pinned above social */}
@@ -2326,21 +2327,22 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           )}
         </div>
 
-        {/* Upgrade to Premium CTA */}
-        <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+        {/* Upgrade to Premium - hide if already on a paid plan */}
+        {(!user?.subscription_tier || user.subscription_tier === 'free') && (
           <a
             href="/premium"
-            className="dashboard-v4-upgrade-premium-btn"
+            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
+            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
           >
-            <span style={{ display: 'flex', alignItems: 'center' }}>
+            <div className="dashboard-v4-nav-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="#B8860B" strokeWidth="2" fill="none" />
-                <path d="M9 12l2 2 4-4" stroke="#B8860B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </span>
-            <span>Upgrade to Premium</span>
+            </div>
+            <span className="dashboard-v4-nav-label">Upgrade to Premium</span>
           </a>
-        </div>
+        )}
 
         {/* Social & Feedback - pinned to bottom */}
         <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
