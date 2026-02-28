@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import API_URL from '../config/api';
 import ConnectBankButton from './ConnectBankButton';
 import ConnectWalletSection from './ConnectWalletSection';
+import ConfirmationModal from './ConfirmationModal';
 
 export default function WithdrawalMethodPicker({ user, availableBalance, stripeAvailable = 0, usdcAvailable = 0, onWithdraw }) {
   const [loading, setLoading] = useState(false);
   const [connectStatus, setConnectStatus] = useState(null);
   const [walletStatus, setWalletStatus] = useState(null);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(null); // { method, amount, label }
+  const [withdrawError, setWithdrawError] = useState(null);
 
   useEffect(() => {
     fetchConnectStatus();
@@ -35,10 +38,19 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
     }
   };
 
-  const handleWithdraw = async (method) => {
+  const requestWithdraw = (method, amount, label) => {
+    setWithdrawError(null);
+    setConfirmWithdraw({ method, amount, label });
+  };
+
+  const handleConfirmedWithdraw = async () => {
     setLoading(true);
+    setWithdrawError(null);
     try {
-      await onWithdraw(method);
+      await onWithdraw(confirmWithdraw.method);
+      setConfirmWithdraw(null);
+    } catch (err) {
+      setWithdrawError(err.message || 'Withdrawal failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -87,7 +99,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
           )}
           {stripeReady && (
             <button
-              onClick={() => handleWithdraw('stripe')}
+              onClick={() => requestWithdraw('stripe', stripeAvailable, 'Bank Account')}
               disabled={loading || stripeAvailable <= 0}
               style={{
                 marginTop: '0.75rem',
@@ -140,7 +152,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
           )}
           {walletReady && (
             <button
-              onClick={() => handleWithdraw('usdc')}
+              onClick={() => requestWithdraw('usdc', usdcAvailable, 'USDC Wallet')}
               disabled={loading || usdcAvailable <= 0}
               style={{
                 marginTop: '0.75rem',
@@ -193,7 +205,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
           )}
           {stripeReady && (
             <button
-              onClick={() => handleWithdraw('stripe')}
+              onClick={() => requestWithdraw('stripe', availableBalance, 'Bank Account')}
               disabled={loading || availableBalance <= 0}
               style={{
                 marginTop: '0.75rem',
@@ -213,6 +225,31 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
           )}
         </div>
       )}
+
+      {/* Withdrawal Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!confirmWithdraw}
+        onConfirm={handleConfirmedWithdraw}
+        onCancel={() => { setConfirmWithdraw(null); setWithdrawError(null); }}
+        title="Confirm withdrawal"
+        description={confirmWithdraw ? (
+          <div>
+            <p style={{ marginBottom: 8 }}>
+              Withdraw <strong>${confirmWithdraw.amount?.toFixed(2)}</strong> to {confirmWithdraw.label}
+              {confirmWithdraw.method === 'usdc' ? ' (instant)' : ''}
+            </p>
+            <p style={{ color: '#888888', fontSize: 12 }}>
+              {confirmWithdraw.method === 'stripe'
+                ? 'Withdrawals typically take 2-3 business days and cannot be reversed.'
+                : 'USDC transfers are instant and cannot be reversed.'}
+            </p>
+          </div>
+        ) : ''}
+        confirmLabel={confirmWithdraw ? `Withdraw $${confirmWithdraw.amount?.toFixed(2)}` : 'Withdraw'}
+        variant="warning"
+        isLoading={loading}
+        error={withdrawError}
+      />
     </div>
   );
 }

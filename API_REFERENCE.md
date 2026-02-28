@@ -749,12 +749,22 @@ All Stripe routes (except `publishable-key`) require auth.
 Public. Returns the Stripe publishable key.
 
 #### `POST /api/stripe/setup-intent`
-Auth required. Create a Stripe SetupIntent for saving a card.
+Auth required. Create a Stripe SetupIntent for saving a card via Stripe Elements (frontend).
 
 **Response:**
 ```json
 { "client_secret": "seti_..._secret_...", "setup_intent_id": "seti_..." }
 ```
+
+#### `POST /api/stripe/checkout-setup`
+Auth required. Create a Stripe Checkout Session in `setup` mode. Returns a hosted URL where the user can add a credit card without requiring Stripe Elements. Used by MCP agents who cannot render frontend JavaScript.
+
+**Response:**
+```json
+{ "url": "https://checkout.stripe.com/c/pay/...", "session_id": "cs_..." }
+```
+
+The URL expires after 24 hours. On completion, a `checkout.session.completed` webhook fires with `mode: 'setup'`, which sets the card as default (if no existing default) and sends a `payment_method_added` notification to the user.
 
 #### `GET /api/stripe/payment-methods`
 Auth required. List saved payment methods (cards).
@@ -1230,6 +1240,8 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 | `set_webhook` | Register webhook URL |
 | `task_templates` | Get task category templates. Params: `category` |
 | `submit_feedback` | Submit platform feedback (bug reports, feature requests). NOT for task reviews — use `rate_task` instead. Params: `message`, `type` (feedback/bug/feature_request/other), `urgency`, `subject` |
+| `setup_payment` | Set up a payment method. Returns Stripe card setup URL or USDC deposit instructions. Params: `method` (optional, `stripe` or `usdc`). Omit `method` to see current status and all options. |
+| `account_status` | Get account status including payment methods, subscription tier, and setup actions needed. No params required. |
 | `rate_task` | Rate a worker after task completion. Inserts into blind rating system. Params: `task_id` (required), `rating_score` (1-5, required), `comment` (optional) |
 | `report_error` | Report agent error. Params: `action`, `error_message`, `error_code`, `error_log` |
 
@@ -1297,6 +1309,26 @@ Returns the agent system prompt. Supports `?verbose=true` to get the full v2 pro
 
 All other MCP methods that map to REST endpoints have equivalent behavior since they access the database directly using the same Supabase queries.
 
+### MCP Payment Setup Flow
+
+When an MCP agent has no payment method configured, `create_posting`, `hire_human`, and `direct_hire` return HTTP 402 with an `actions` array guiding the agent to the `setup_payment` tool:
+
+```json
+{
+  "error": "No payment method on file",
+  "code": "payment_required",
+  "message": "Use the setup_payment tool to add a credit card or configure USDC.",
+  "actions": [
+    { "tool": "setup_payment", "params": { "method": "stripe" }, "label": "Add credit card" },
+    { "tool": "setup_payment", "params": { "method": "usdc" }, "label": "Set up USDC" }
+  ]
+}
+```
+
+`setup_payment` returns a Stripe Checkout URL (for cards) or platform wallet address + instructions (for USDC). `account_status` returns a general readiness check without needing to attempt a specific operation.
+
+For `direct_hire` with `payment_currency: 'usdc'`, the guard checks that the agent's USDC available balance covers the task budget. For Stripe (default), it checks for at least one card on file.
+
 ### MCP Streamable HTTP (IDE Integration): `POST /api/mcp/sse`
 
 Standard MCP protocol endpoint for IDE integration (Cursor, Claude Desktop, VS Code, Windsurf). Speaks JSON-RPC 2.0 over HTTP. Auth: `Authorization: Bearer <api_key>` header.
@@ -1349,7 +1381,7 @@ Separate Node.js process (`api/mcp-server.js`) on port 3004 (configurable via `M
 >
 > Use the **in-process MCP** (`POST /api/mcp`) instead, which accesses the database directly and works correctly.
 
-Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `complete_task`, `complete_booking`, `view_proof`, `approve_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `rate_task`, `report_error`, `get_instructions`.
+Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `complete_task`, `complete_booking`, `view_proof`, `approve_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `setup_payment`, `account_status`, `rate_task`, `report_error`, `get_instructions`.
 
 Backward-compatible aliases: `post_task`, `create_adhoc_task` -> `create_posting`; `create_booking` -> `direct_hire`; `get_tasks`, `my_postings`, `my_adhoc_tasks`, `my_bookings` -> `my_tasks`; `release_escrow`, `release_payment` -> `approve_task`.
 
@@ -1440,7 +1472,7 @@ Full method catalog with parameters available at `GET /api/mcp/docs`.
 | `GET /api/activity/feed` | Activity feed |
 | `GET /api/cities/search` | City autocomplete |
 | `GET /api/countries/search` | Country search |
-| Stripe: `POST /setup-intent`, `GET/DELETE /payment-methods`, `POST /connect/onboard`, `GET /connect/dashboard`, `POST /connect/update-bank`, `GET /connect/status` | Full Stripe card + Connect management |
+| Stripe: `POST /setup-intent`, `POST /checkout-setup`, `GET/DELETE /payment-methods`, `POST /connect/onboard`, `GET /connect/dashboard`, `POST /connect/update-bank`, `GET /connect/status` | Full Stripe card + Connect management |
 | All admin routes | Comprehensive payment, report, and feedback management |
 
 ### MCP Method Differences
