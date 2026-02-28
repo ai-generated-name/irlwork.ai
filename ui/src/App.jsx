@@ -2374,22 +2374,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <span className="dashboard-v4-nav-label">Follow us on X</span>
             </div>
           </a>
-          {/* Contact */}
-          <a
-            href="/contact"
-            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
-            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
-          >
-            <div className="dashboard-v4-nav-item-content">
-              <span className="dashboard-v4-nav-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                </svg>
-              </span>
-              <span className="dashboard-v4-nav-label">Contact Us</span>
-            </div>
-          </a>
           {/* Feedback */}
           <button
             onClick={() => setFeedbackOpen(!feedbackOpen)}
@@ -2633,6 +2617,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   <button className="dashboard-v4-user-dropdown-item" onClick={() => { setActiveTab('settings'); setUserDropdownOpen(false); }}>
                     <span>{Icons.settings}</span> Settings
                   </button>
+                  <a href="/contact" className="dashboard-v4-user-dropdown-item" style={{ textDecoration: 'none', color: 'inherit' }} onClick={() => setUserDropdownOpen(false)}>
+                    <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg></span> Contact Us
+                  </a>
                   <div className="dashboard-v4-user-dropdown-divider" />
                   <button className="dashboard-v4-user-dropdown-item danger" onClick={onLogout}>
                     Sign Out
