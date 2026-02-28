@@ -12,7 +12,7 @@ export default function NotFoundPage() {
       color: 'var(--text-primary)',
       fontFamily: 'var(--font-body)',
       padding: 'var(--space-6)',
-      paddingTop: 80,
+      paddingTop: 24,
       position: 'relative',
       overflow: 'hidden',
     }}>

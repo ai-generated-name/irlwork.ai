@@ -58,6 +58,32 @@ async function createSetupIntent(stripeCustomerId) {
 }
 
 /**
+ * Create a Stripe Checkout Session in 'setup' mode.
+ * Returns a hosted URL where the user can add a card — no frontend JS required.
+ * Used by MCP agents who cannot render Stripe Elements.
+ */
+async function createCheckoutSetupSession(stripeCustomerId, userId) {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  const baseUrl = process.env.FRONTEND_URL || 'https://www.irlwork.ai';
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'setup',
+    customer: stripeCustomerId,
+    payment_method_types: ['card'],
+    success_url: `${baseUrl}?payment_setup=success`,
+    cancel_url: `${baseUrl}?payment_setup=cancelled`,
+    metadata: {
+      user_id: userId,
+      source: 'mcp_setup_payment',
+      platform: 'irlwork'
+    },
+  });
+
+  return { url: session.url, session_id: session.id };
+}
+
+/**
  * List saved payment methods for a Stripe customer.
  */
 async function listPaymentMethods(stripeCustomerId) {
@@ -175,6 +201,194 @@ async function chargeAgentForTask(supabase, agentId, taskId, amountCents, paymen
 }
 
 // ============================================================================
+// AUTH-HOLD ESCROW (New payment timing model)
+// ============================================================================
+
+/**
+ * Authorize escrow via manual-capture PaymentIntent (auth hold only — no charge).
+ * Money is reserved on the agent's card but NOT captured until the human starts work.
+ *
+ * @param {object} supabase - Supabase client
+ * @param {string} agentId - Agent user ID
+ * @param {string} taskId - Task ID
+ * @param {number} amountCents - Amount in cents
+ * @param {string} [paymentMethodId] - Specific PM to use (optional, falls back to default)
+ * @returns {object} { payment_intent_id, status, amount_cents, auth_hold_expires_at } or { requires_action, client_secret, payment_intent_id }
+ */
+async function authorizeEscrow(supabase, agentId, taskId, amountCents, paymentMethodId) {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  // Get agent's Stripe customer
+  const { data: agent, error: agentError } = await supabase
+    .from('users')
+    .select('stripe_customer_id')
+    .eq('id', agentId)
+    .single();
+
+  if (agentError || !agent?.stripe_customer_id) {
+    throw new Error('Agent has no Stripe payment method set up');
+  }
+
+  // If no specific PM provided, use the customer's default
+  let pmToUse = paymentMethodId;
+  if (!pmToUse) {
+    const customer = await stripe.customers.retrieve(agent.stripe_customer_id);
+    pmToUse = customer.invoice_settings?.default_payment_method;
+
+    if (!pmToUse) {
+      // Fall back to first available payment method
+      const methods = await stripe.paymentMethods.list({
+        customer: agent.stripe_customer_id,
+        type: 'card',
+        limit: 1
+      });
+      pmToUse = methods.data[0]?.id;
+    }
+
+    if (!pmToUse) {
+      throw new Error('No payment method available. Please add a card first.');
+    }
+  }
+
+  // Create PaymentIntent with manual capture (auth hold only)
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amountCents,
+    currency: 'usd',
+    customer: agent.stripe_customer_id,
+    payment_method: pmToUse,
+    capture_method: 'manual',
+    confirm: true,
+    off_session: true,
+    metadata: {
+      task_id: taskId,
+      agent_id: agentId,
+      platform: 'irlwork'
+    },
+    description: `irlwork.ai task escrow (auth hold) - ${taskId}`,
+  });
+
+  // Handle 3DS / SCA requirement
+  if (paymentIntent.status === 'requires_action') {
+    return {
+      requires_action: true,
+      client_secret: paymentIntent.client_secret,
+      payment_intent_id: paymentIntent.id
+    };
+  }
+
+  // Auth hold successfully placed
+  if (paymentIntent.status === 'requires_capture') {
+    // 6.5 days from now (buffer before Stripe's 7-day expiry)
+    const authHoldExpiresAt = new Date(Date.now() + 6.5 * 24 * 60 * 60 * 1000).toISOString();
+    return {
+      payment_intent_id: paymentIntent.id,
+      status: paymentIntent.status,
+      amount_cents: amountCents,
+      auth_hold_expires_at: authHoldExpiresAt
+    };
+  }
+
+  // Unexpected status
+  throw new Error(`Unexpected PaymentIntent status after authorization: ${paymentIntent.status}`);
+}
+
+/**
+ * Capture a previously authorized escrow hold (charges the agent's card).
+ * Called when the human starts work on the task.
+ *
+ * @param {string} paymentIntentId - Stripe PaymentIntent ID to capture
+ * @returns {object} { payment_intent_id, status, amount_captured }
+ */
+async function captureEscrow(paymentIntentId) {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId);
+
+  if (paymentIntent.status !== 'succeeded') {
+    throw new Error(`Escrow capture failed. Status: ${paymentIntent.status}`);
+  }
+
+  return {
+    payment_intent_id: paymentIntent.id,
+    status: paymentIntent.status,
+    amount_captured: paymentIntent.amount_received
+  };
+}
+
+/**
+ * Cancel an authorization hold (release reserved funds without charging).
+ * Used when a task is cancelled before work starts.
+ *
+ * @param {string} paymentIntentId - Stripe PaymentIntent ID to cancel
+ * @returns {object} { payment_intent_id, status }
+ */
+async function cancelEscrowHold(paymentIntentId) {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId, {
+      cancellation_reason: 'requested_by_customer'
+    });
+    return {
+      payment_intent_id: paymentIntent.id,
+      status: paymentIntent.status
+    };
+  } catch (err) {
+    // If PI is already cancelled or captured, log and continue (don't throw)
+    if (err.code === 'payment_intent_unexpected_state') {
+      console.warn(`[cancelEscrowHold] PI ${paymentIntentId} already in terminal state: ${err.message}`);
+      return { payment_intent_id: paymentIntentId, status: 'already_terminal' };
+    }
+    throw err;
+  }
+}
+
+/**
+ * Verify an agent has a valid payment method on file.
+ * Used at task creation to ensure the agent can pay before posting.
+ *
+ * @param {object} supabase - Supabase client
+ * @param {string} agentId - Agent user ID
+ * @returns {object} { valid: boolean, payment_method_id?: string, reason?: string }
+ */
+async function verifyAgentHasPaymentMethod(supabase, agentId) {
+  if (!stripe) {
+    // Graceful degradation when Stripe is not configured (dev/demo mode)
+    return { valid: true, reason: 'stripe_disabled' };
+  }
+
+  const { data: agent, error: agentError } = await supabase
+    .from('users')
+    .select('stripe_customer_id')
+    .eq('id', agentId)
+    .single();
+
+  if (agentError || !agent?.stripe_customer_id) {
+    return { valid: false, reason: 'no_payment_method' };
+  }
+
+  // Check default PM first
+  const customer = await stripe.customers.retrieve(agent.stripe_customer_id);
+  const defaultPm = customer.invoice_settings?.default_payment_method;
+  if (defaultPm) {
+    return { valid: true, payment_method_id: defaultPm };
+  }
+
+  // Fall back to listing PMs
+  const methods = await stripe.paymentMethods.list({
+    customer: agent.stripe_customer_id,
+    type: 'card',
+    limit: 1
+  });
+
+  if (methods.data.length > 0) {
+    return { valid: true, payment_method_id: methods.data[0].id };
+  }
+
+  return { valid: false, reason: 'no_payment_method' };
+}
+
+// ============================================================================
 // STRIPE CONNECT (Workers)
 // ============================================================================
 
@@ -284,6 +498,8 @@ async function transferToWorker(supabase, pendingTransactionId, workerStripeAcco
       platform: 'irlwork'
     },
     description: `irlwork.ai payout - task ${taskId}`,
+  }, {
+    idempotencyKey: `payout-${pendingTransactionId}`
   });
 
   // Update pending_transaction with transfer ID
@@ -458,7 +674,11 @@ async function handleWebhookEvent(event, supabase, createNotification) {
       break;
 
     case 'checkout.session.completed':
-      await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
+      if (event.data.object.mode === 'setup') {
+        await handleSetupCheckoutCompleted(event.data.object, supabase, createNotification);
+      } else {
+        await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
+      }
       break;
 
     case 'invoice.paid':
@@ -775,6 +995,57 @@ async function handleChargeRefunded(charge, supabase) {
 }
 
 /**
+ * Handle checkout.session.completed for mode: 'setup'.
+ * Sets the card as default if no existing default, and notifies the user.
+ */
+async function handleSetupCheckoutCompleted(session, supabase, createNotification) {
+  const setupIntentId = session.setup_intent;
+  if (!setupIntentId) return;
+
+  const userId = session.metadata?.user_id;
+  if (!userId) return;
+
+  console.log(`[Stripe Webhook] Setup checkout completed for user ${userId}`);
+
+  // Retrieve the SetupIntent to get the payment method
+  const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+  const paymentMethodId = setupIntent.payment_method;
+
+  if (paymentMethodId && session.customer) {
+    // Only set as default if user has no existing default PM
+    const customer = await stripe.customers.retrieve(session.customer);
+    if (!customer.invoice_settings?.default_payment_method) {
+      await stripe.customers.update(session.customer, {
+        invoice_settings: { default_payment_method: paymentMethodId }
+      });
+      console.log(`[Stripe Webhook] Set default PM ${paymentMethodId} for customer ${session.customer}`);
+    }
+
+    // Get card details for notification
+    let cardBrand = 'card';
+    let cardLast4 = '';
+    try {
+      const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+      cardBrand = pm.card?.brand || 'card';
+      cardLast4 = pm.card?.last4 || '';
+    } catch (e) {
+      console.error('[Stripe Webhook] Failed to retrieve PM details:', e.message);
+    }
+
+    // Send notification so MCP agents know setup is complete
+    if (createNotification) {
+      await createNotification(
+        userId,
+        'payment_method_added',
+        'Payment Method Added',
+        `Your ${cardBrand} card ending in ${cardLast4} has been added. You can now post tasks and hire humans.`,
+        null
+      );
+    }
+  }
+}
+
+/**
  * Handle payout.failed — worker's bank rejected the transfer
  * @param {object} payout - Stripe payout object
  * @param {string} connectedAccountId - The Connect account ID (event.account, e.g. acct_xxx)
@@ -831,10 +1102,15 @@ async function handlePayoutPaid(payout, connectedAccountId, supabase, createNoti
 module.exports = {
   getOrCreateStripeCustomer,
   createSetupIntent,
+  createCheckoutSetupSession,
   listPaymentMethods,
   deletePaymentMethod,
   setDefaultPaymentMethod,
   chargeAgentForTask,
+  authorizeEscrow,
+  captureEscrow,
+  cancelEscrowHold,
+  verifyAgentHasPaymentMethod,
   createConnectAccount,
   createAccountLink,
   createLoginLink,

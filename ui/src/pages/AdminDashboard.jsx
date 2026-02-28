@@ -1,7 +1,15 @@
-import { useState, useEffect, useCallback } from 'react'
-import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer } from 'lucide-react'
+import { useState, useEffect, useCallback, lazy, Suspense, Fragment } from 'react'
+import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer, TrendingUp, Filter, Activity } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
+import { adminFetch } from '../utils/adminFetch'
 import API_URL from '../config/api'
+
+// Lazy-load BI tabs so they only fetch data when selected
+const OverviewTab = lazy(() => import('../components/admin/OverviewTab'))
+const FunnelTab = lazy(() => import('../components/admin/FunnelTab'))
+const FinancialTab = lazy(() => import('../components/admin/FinancialTab'))
+const LiveFeedTab = lazy(() => import('../components/admin/LiveFeedTab'))
+const TaskManagerTab = lazy(() => import('../components/admin/TaskManagerTab'))
 
 /**
  * Admin Dashboard - Phase 1 Manual Operations
@@ -11,7 +19,7 @@ export default function AdminDashboard({ user }) {
   const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [activeQueue, setActiveQueue] = useState('dashboard')
+  const [activeQueue, setActiveQueue] = useState('bi-overview')
   const [dashboard, setDashboard] = useState(null)
   const [queueData, setQueueData] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
@@ -23,9 +31,7 @@ export default function AdminDashboard({ user }) {
   // Fetch dashboard summary
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/admin/dashboard`, {
-        headers: { Authorization: user.token || '' }
-      })
+      const res = await adminFetch(`${API_URL}/admin/dashboard`)
       if (!res.ok) {
         if (res.status === 403) {
           setError('Access denied. Admin privileges required.')
@@ -41,7 +47,7 @@ export default function AdminDashboard({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [user.id])
+  }, [])
 
   // Fetch queue data
   const fetchQueue = useCallback(async (queue) => {
@@ -51,9 +57,7 @@ export default function AdminDashboard({ user }) {
     try {
       if (queue === 'feedback') {
         const statusParam = feedbackFilter !== 'all' ? `?status=${feedbackFilter}` : ''
-        const res = await fetch(`${API_URL}/admin/feedback${statusParam}`, {
-          headers: { Authorization: user.token || '' }
-        })
+        const res = await adminFetch(`${API_URL}/admin/feedback${statusParam}`)
         if (!res.ok) throw new Error('Failed to fetch feedback')
         const data = await res.json()
         setFeedbackData(data.items || [])
@@ -69,9 +73,7 @@ export default function AdminDashboard({ user }) {
         'reports': '/admin/reports?status=pending'
       }
 
-      const res = await fetch(`${API_URL}${endpoints[queue]}`, {
-        headers: { Authorization: user.token || '' }
-      })
+      const res = await adminFetch(`${API_URL}${endpoints[queue]}`)
       if (!res.ok) throw new Error('Failed to fetch queue')
       const data = await res.json()
       // Reports endpoint returns { reports: [], total, page, limit }
@@ -82,7 +84,7 @@ export default function AdminDashboard({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [user.id, feedbackFilter])
+  }, [feedbackFilter])
 
   useEffect(() => {
     fetchDashboard()
@@ -98,11 +100,10 @@ export default function AdminDashboard({ user }) {
   const confirmDeposit = async (taskId, txHash, amount) => {
     setActionLoading(taskId)
     try {
-      const res = await fetch(`${API_URL}/admin/tasks/${taskId}/confirm-deposit`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${taskId}/confirm-deposit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || ''
         },
         body: JSON.stringify({ tx_hash: txHash, amount_received: parseFloat(amount) })
       })
@@ -124,11 +125,10 @@ export default function AdminDashboard({ user }) {
   const releasePayment = async (taskId) => {
     setActionLoading(taskId)
     try {
-      const res = await fetch(`${API_URL}/admin/tasks/${taskId}/release-payment`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${taskId}/release-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || ''
         },
         body: JSON.stringify({})
       })
@@ -148,11 +148,10 @@ export default function AdminDashboard({ user }) {
   const confirmWithdrawal = async (paymentId, txHash, amount) => {
     setActionLoading(paymentId)
     try {
-      const res = await fetch(`${API_URL}/admin/payments/${paymentId}/confirm-withdrawal`, {
+      const res = await adminFetch(`${API_URL}/admin/payments/${paymentId}/confirm-withdrawal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || ''
         },
         body: JSON.stringify({ tx_hash: txHash, amount_sent: parseFloat(amount) })
       })
@@ -182,11 +181,10 @@ export default function AdminDashboard({ user }) {
   const executeCancelAssignment = async (taskId) => {
     setActionLoading(taskId)
     try {
-      const res = await fetch(`${API_URL}/admin/tasks/${taskId}/cancel-assignment`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${taskId}/cancel-assignment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || ''
         },
         body: JSON.stringify({})
       })
@@ -206,11 +204,10 @@ export default function AdminDashboard({ user }) {
   const resolveReport = async (reportId, { action, notes, suspend_days }) => {
     setActionLoading(reportId)
     try {
-      const res = await fetch(`${API_URL}/admin/reports/${reportId}/resolve`, {
+      const res = await adminFetch(`${API_URL}/admin/reports/${reportId}/resolve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || ''
         },
         body: JSON.stringify({ action, notes, suspend_days })
       })
@@ -231,11 +228,10 @@ export default function AdminDashboard({ user }) {
   const updateFeedbackStatus = async (feedbackId, status, adminNotes) => {
     setActionLoading(feedbackId)
     try {
-      const res = await fetch(`${API_URL}/admin/feedback/${feedbackId}/status`, {
+      const res = await adminFetch(`${API_URL}/admin/feedback/${feedbackId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: user.token || ''
         },
         body: JSON.stringify({ status, admin_notes: adminNotes })
       })
@@ -289,8 +285,17 @@ export default function AdminDashboard({ user }) {
     )
   }
 
-  const queues = [
-    { id: 'dashboard', label: 'Overview', icon: <BarChart3 size={16} /> },
+  // BI tabs (lazy-loaded) appear first, followed by operational queues
+  const biTabs = [
+    { id: 'bi-overview', label: 'Overview', icon: <TrendingUp size={16} />, isBi: true },
+    { id: 'bi-funnel', label: 'Funnel', icon: <Filter size={16} />, isBi: true },
+    { id: 'bi-financial', label: 'Financial', icon: <DollarSign size={16} />, isBi: true },
+    { id: 'bi-live-feed', label: 'Live Feed', icon: <Activity size={16} />, isBi: true },
+    { id: 'bi-task-manager', label: 'Tasks', icon: <Hammer size={16} />, isBi: true },
+  ]
+
+  const opsQueues = [
+    { id: 'dashboard', label: 'Operations', icon: <BarChart3 size={16} /> },
     { id: 'reports', label: 'Reports', icon: <Flag size={16} />, count: dashboard?.pending_reports?.count, alert: dashboard?.pending_reports?.count > 0 },
     { id: 'pending-deposits', label: 'Pending Deposits', icon: <DollarSign size={16} />, count: dashboard?.pending_deposits?.count },
     { id: 'stale-deposits', label: 'Stale (>48h)', icon: <AlertTriangle size={16} />, count: dashboard?.stale_deposits_48h?.count, alert: dashboard?.stale_deposits_48h?.alert },
@@ -299,6 +304,8 @@ export default function AdminDashboard({ user }) {
     { id: 'pending-withdrawals', label: 'Pending Withdrawals', icon: <ArrowDownLeft size={16} />, count: dashboard?.pending_withdrawals?.count },
     { id: 'feedback', label: 'Feedback', icon: <FileText size={16} />, count: dashboard?.feedback?.count },
   ]
+
+  const queues = [...biTabs, ...opsQueues]
 
   return (
     <div className="space-y-6">
@@ -317,34 +324,60 @@ export default function AdminDashboard({ user }) {
       </div>
 
       {/* Queue Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {queues.map(queue => (
-          <button
-            key={queue.id}
-            onClick={() => setActiveQueue(queue.id)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-              activeQueue === queue.id
-                ? 'bg-teal text-white'
-                : queue.alert
-                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            <span>{queue.icon}</span>
-            <span>{queue.label}</span>
-            {queue.count > 0 && (
-              <span className={`px-2 py-0.5 rounded-[6px] text-xs ${
-                activeQueue === queue.id ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                {queue.count}
-              </span>
+      <div className="flex flex-wrap gap-2 items-center">
+        {queues.map((queue, i) => (
+          <Fragment key={queue.id}>
+            {/* Visual separator between BI tabs and operational queues */}
+            {i === biTabs.length && (
+              <div className="w-px h-6 bg-gray-300 mx-1" />
             )}
-          </button>
+            <button
+              onClick={() => setActiveQueue(queue.id)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 text-sm ${
+                activeQueue === queue.id
+                  ? queue.isBi ? 'bg-orange-500 text-white' : 'bg-teal text-white'
+                  : queue.alert
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <span>{queue.icon}</span>
+              <span>{queue.label}</span>
+              {queue.count > 0 && (
+                <span className={`px-2 py-0.5 rounded-[6px] text-xs ${
+                  activeQueue === queue.id ? 'bg-white/20' : 'bg-gray-200'
+                }`}>
+                  {queue.count}
+                </span>
+              )}
+            </button>
+          </Fragment>
         ))}
       </div>
 
       {/* Content */}
-      {loading && activeQueue === 'dashboard' ? (
+      {/* BI Tabs — lazy loaded, each manages its own data fetching */}
+      {activeQueue === 'bi-overview' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading overview...</div></div>}>
+          <OverviewTab user={user} />
+        </Suspense>
+      ) : activeQueue === 'bi-funnel' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading funnel...</div></div>}>
+          <FunnelTab user={user} />
+        </Suspense>
+      ) : activeQueue === 'bi-financial' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading financials...</div></div>}>
+          <FinancialTab user={user} />
+        </Suspense>
+      ) : activeQueue === 'bi-live-feed' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading live feed...</div></div>}>
+          <LiveFeedTab user={user} />
+        </Suspense>
+      ) : activeQueue === 'bi-task-manager' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading task manager...</div></div>}>
+          <TaskManagerTab user={user} />
+        </Suspense>
+      ) : loading && activeQueue === 'dashboard' ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-gray-500">Loading dashboard...</div>
         </div>
