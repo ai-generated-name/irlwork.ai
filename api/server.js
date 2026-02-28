@@ -471,6 +471,9 @@ function validateStatusTransition(currentStatus, newStatus) {
   return { valid: true };
 }
 
+// Escape SQL LIKE wildcards (% and _) to prevent wildcard injection
+function escapeLike(s) { return s.replace(/[%_\\]/g, '\\$&'); }
+
 // Data categories
 const QUICK_CATEGORIES = [
   'delivery', 'pickup', 'errands', 'dog_walking', 'pet_sitting',
@@ -598,7 +601,7 @@ function rateLimitMiddleware(req, res, next) {
   }
 
   const key = getRateLimitKey(req);
-  const isAuthenticated = req.headers.authorization?.includes('irl_sk_');
+  const isAuthenticated = req.headers.authorization?.includes('irl_sk_') || req.headers.authorization?.startsWith('Bearer ');
   const limits = isAuthenticated ? RATE_LIMITS.authenticated : RATE_LIMITS.unauthenticated;
 
   const now = Date.now();
@@ -2119,8 +2122,8 @@ app.get('/api/humans', async (req, res) => {
     .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier, total_tasks_completed')
     .eq('type', 'human');
 
-  if (category) query = query.like('skills', `%${category}%`);
-  if (city) query = query.like('city', `%${city}%`);
+  if (category) query = query.like('skills', `%${escapeLike(category)}%`);
+  if (city) query = query.like('city', `%${escapeLike(city)}%`);
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
 
@@ -2140,7 +2143,9 @@ app.get('/api/humans', async (req, res) => {
     const userLongitude = parseFloat(user_lng);
     const maxRadius = parseFloat(radius);
 
-    results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+    if (!isNaN(userLatitude) && !isNaN(userLongitude) && !isNaN(maxRadius)) {
+      results = filterByDistance(results, userLatitude, userLongitude, maxRadius);
+    }
   }
 
   // Sort: available first, then by subscription tier priority (Pro > Builder > Free), then by rating
@@ -2352,7 +2357,9 @@ app.get('/api/tasks', async (req, res) => {
     const userLongitude = parseFloat(user_lng);
     const radiusKm = parseFloat(radius_km) || 50;
 
-    if (radiusKm === 0) {
+    if (isNaN(userLatitude) || isNaN(userLongitude)) {
+      // Invalid coordinates — skip distance filtering
+    } else if (radiusKm === 0) {
       // Exact city match - filter to ~5km radius
       results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
     } else {
@@ -2452,10 +2459,11 @@ app.post('/api/tasks', async (req, res) => {
   if (location && location.length > 300) {
     return res.status(400).json({ error: 'Location must be 300 characters or less' });
   }
-  if (!budget && !budget_usd || (parseFloat(budget || budget_usd) < 5)) {
+  const parsedBudget = parseFloat(budget || budget_usd);
+  if ((!budget && !budget_usd) || isNaN(parsedBudget) || parsedBudget < 5) {
     return res.status(400).json({ error: 'Budget must be at least $5' });
   }
-  if (parseFloat(budget || budget_usd) > 100000) {
+  if (parsedBudget > 100000) {
     return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
   }
   if (!duration_hours || isNaN(parseFloat(duration_hours)) || parseFloat(duration_hours) <= 0) {
@@ -2508,7 +2516,7 @@ app.post('/api/tasks', async (req, res) => {
       duration_hours: parseFloat(duration_hours),
       requirements: requirements || null,
       required_skills: skillsArray,
-      max_humans: max_humans ? parseInt(max_humans) : 1,
+      max_humans: max_humans ? Math.max(1, Math.min(parseInt(max_humans) || 1, 100)) : 1,
       task_type_id: task_type_id || null,
       location_zone: location_zone || null,
       private_address: encryptedAddress,
@@ -2600,7 +2608,7 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   // Only return sensitive financial/escrow fields to task participants
   const user = await getUserByToken(req.headers.authorization);
-  const isParticipant = user && (task.agent_id === user.id || task.human_id === user.id);
+  const isParticipant = user && (task.agent_id === user.id || task.human_id === user.id || (Array.isArray(task.human_ids) && task.human_ids.includes(user.id)));
 
   if (!isParticipant) {
     const { escrow_amount, escrow_status, escrow_deposited_at, escrow_released_at,
@@ -3252,8 +3260,10 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   }
 
   // ============ USDC PATH: Manual deposit flow (existing) ============
-  const randomCents = (Math.random() * 99 + 1) / 100;
-  const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
+  // Work in integer cents to avoid floating-point precision loss
+  const randomCents = Math.floor(Math.random() * 99) + 1;
+  const budgetCents = Math.round(budgetAmount * 100);
+  const uniqueDepositAmount = (budgetCents + randomCents) / 100;
 
   // For open tasks with remaining spots, keep status 'open'
   const usdcStatus = nextStatus || 'assigned';
@@ -3266,7 +3276,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       status: usdcStatus,
       escrow_status: 'pending_deposit',
       unique_deposit_amount: uniqueDepositAmount,
-      deposit_amount_cents: Math.round(uniqueDepositAmount * 100),
+      deposit_amount_cents: budgetCents + randomCents,
       payment_method: 'usdc',
       updated_at: new Date().toISOString()
     }))
@@ -3451,7 +3461,8 @@ app.post('/api/tasks/:id/release', async (req, res) => {
       assignee: task.assignee
     });
   } catch (e) {
-    return res.status(409).json({ error: e.message || 'Payment release failed' });
+    console.error('Payment release error:', e);
+    return res.status(409).json({ error: safeErrorMessage(e) });
   }
 });
 
@@ -3853,9 +3864,9 @@ app.get('/api/avatar/:userId/debug', async (req, res) => {
   if (!debugUser || !isAdmin(debugUser.id)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  if (!supabase) return res.json({ error: 'No DB' });
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
   const { data: user, error: dbErr } = await supabase.from('users').select('id, avatar_url, avatar_r2_key, avatar_data, updated_at').eq('id', req.params.userId).single();
-  if (!user) return res.json({ error: 'User not found', dbErr: dbErr?.message });
+  if (!user) return res.status(404).json({ error: 'User not found' });
 
   const getEnv = (k) => { try { return require('process').env[k]; } catch { return null; } };
   const R2_ACCOUNT_ID = getEnv('R2ID') || getEnv('CLOUD_ID') || getEnv('R2_ACCOUNT_ID');
@@ -4142,7 +4153,7 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
       task_id: taskId,
       human_id: user.id,
       proof_text,
-      proof_urls: proof_urls || [],
+      proof_urls: Array.isArray(proof_urls) ? proof_urls.slice(0, 20).filter(u => typeof u === 'string') : [],
       status: 'pending',
       submitted_at: new Date().toISOString()
     })
@@ -4192,8 +4203,9 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
   const { id: taskId } = req.params;
-  const { feedback, extend_deadline_hours = 24 } = req.body;
-  
+  const { feedback, extend_deadline_hours: rawExtendHours = 24 } = req.body;
+  const extend_deadline_hours = Math.max(1, Math.min(parseInt(rawExtendHours) || 24, 720));
+
   // Get task with current deadline
   const { data: task, error: taskError } = await supabase
     .from('tasks')
@@ -5517,9 +5529,9 @@ app.post('/api/mcp', async (req, res) => {
         // Default to only showing available workers unless explicitly requesting all
         query = query.eq('availability', params.availability || 'available');
 
-        if (params.category) query = query.like('skills', `%${params.category}%`);
-        if (params.city) query = query.like('city', `%${params.city}%`);
-        if (params.state) query = query.ilike('state', `%${params.state}%`);
+        if (params.category) query = query.like('skills', `%${escapeLike(params.category)}%`);
+        if (params.city) query = query.like('city', `%${escapeLike(params.city)}%`);
+        if (params.state) query = query.ilike('state', `%${escapeLike(params.state)}%`);
         if (params.min_rating) query = query.gte('rating', parseFloat(params.min_rating));
         if (params.language) query = query.contains('languages', JSON.stringify([params.language]));
 
@@ -5535,6 +5547,9 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'get_human': {
+        if (!params.human_id) {
+          return res.status(400).json({ error: 'human_id is required' });
+        }
         const { data: human, error } = await supabase
           .from('users')
           .select('id, name, bio, hourly_rate, skills, rating, jobs_completed, city, state, country, availability, travel_radius, languages, headline, timezone, avatar_url, type')
@@ -5714,7 +5729,7 @@ app.post('/api/mcp', async (req, res) => {
           task_id,
           human_id: user.id,
           proof_text: proof_text || '',
-          proof_urls: proof_urls || [],
+          proof_urls: Array.isArray(proof_urls) ? proof_urls.slice(0, 20).filter(u => typeof u === 'string') : [],
           status: 'pending',
           submitted_at: new Date().toISOString()
         });
@@ -5737,11 +5752,23 @@ app.post('/api/mcp', async (req, res) => {
           `${user.name} has completed "${task.title}". Review and release payment.`,
           `/tasks/${task_id}`
         );
-        
+
+        // Dispatch webhook to agent (parity with REST POST /api/tasks/:id/submit-proof)
+        dispatchWebhook(task.agent_id, {
+          type: 'proof_submitted',
+          task_id: task_id,
+          data: {
+            proof_id: proofId,
+            human_id: user.id,
+            human_name: user.name,
+            task_title: task.title
+          }
+        }).catch(() => {});
+
         res.json({ success: true, status: 'pending_review', proof_id: proofId });
         break;
       }
-      
+
       // ===== Approve & release payment (canonical: approve_task) =====
       case 'release_payment':
       case 'release_escrow':
@@ -5831,6 +5858,9 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'get_task_details': {
+        if (!params.task_id) {
+          return res.status(400).json({ error: 'task_id is required' });
+        }
         const { data: task, error } = await supabase
           .from('tasks')
           .select(`
@@ -5840,8 +5870,14 @@ app.post('/api/mcp', async (req, res) => {
           `)
           .eq('id', params.task_id)
           .single();
-        
+
         if (error) throw error;
+        if (!task) return res.status(404).json({ error: 'Task not found' });
+        // Only return full details to task owner or participants
+        if (task.agent_id !== user.id && task.human_id !== user.id &&
+            !(Array.isArray(task.human_ids) && task.human_ids.includes(user.id))) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
         res.json(task);
         break;
       }
@@ -5912,8 +5948,11 @@ app.post('/api/mcp', async (req, res) => {
           if (convError) throw convError;
         }
 
-        // Send initial message if provided
-        if (messageContent) {
+        // Send initial message if provided (validate like send_message)
+        if (messageContent && typeof messageContent === 'string' && messageContent.trim()) {
+          if (messageContent.length > 10000) {
+            return res.status(400).json({ error: 'Message content is too long (max 10,000 characters)' });
+          }
           const messageId = uuidv4();
           await supabase.from('messages').insert({
             id: messageId,
@@ -6092,8 +6131,10 @@ app.post('/api/mcp', async (req, res) => {
         const allSpotsFilled = newSpotsFilled >= maxQuantity;
 
         const budgetAmount = taskData.escrow_amount || taskData.budget || 50;
-        const randomCents = (Math.random() * 99 + 1) / 100;
-        const uniqueDepositAmount = Math.round((budgetAmount + randomCents) * 100) / 100;
+        // Work in integer cents to avoid floating-point precision loss
+        const randomCents = Math.floor(Math.random() * 99) + 1;
+        const budgetCents = Math.round(budgetAmount * 100);
+        const uniqueDepositAmount = (budgetCents + randomCents) / 100;
         const deadline = new Date(Date.now() + deadline_hours * 60 * 60 * 1000).toISOString();
 
         // For open tasks with spots remaining, keep task open
@@ -6108,7 +6149,7 @@ app.post('/api/mcp', async (req, res) => {
             status: nextStatus,
             escrow_status: 'pending_deposit',
             unique_deposit_amount: uniqueDepositAmount,
-            deposit_amount_cents: Math.round(uniqueDepositAmount * 100),
+            deposit_amount_cents: budgetCents + randomCents,
             assigned_at: new Date().toISOString(),
             deadline,
             instructions,
@@ -6160,8 +6201,11 @@ app.post('/api/mcp', async (req, res) => {
       // ===== Messaging tools =====
       case 'send_message': {
         const { conversation_id, content } = params;
-        if (!conversation_id || !content) {
+        if (!conversation_id || !content || typeof content !== 'string' || !content.trim()) {
           return res.status(400).json({ error: 'conversation_id and content are required' });
+        }
+        if (content.length > 10000) {
+          return res.status(400).json({ error: 'Message content is too long (max 10,000 characters)' });
         }
 
         // Per-conversation rate limit check
@@ -6380,7 +6424,7 @@ app.post('/api/mcp', async (req, res) => {
             filed_by: user.id,
             reason,
             category: disputeCategory || 'quality_issue',
-            evidence_urls: evidence_urls || [],
+            evidence_urls: Array.isArray(evidence_urls) ? evidence_urls.slice(0, 10).filter(u => typeof u === 'string') : [],
             status: 'open',
             created_at: new Date().toISOString()
           })
@@ -6771,12 +6815,17 @@ app.post('/api/mcp', async (req, res) => {
         if (taskErr || !task) return res.status(404).json({ error: 'Booking not found' });
         if (task.agent_id !== user.id) return res.status(403).json({ error: 'Not your booking' });
 
-        const { error } = await supabase
+        const { error, data: updatedBooking } = await supabase
           .from('tasks')
           .update({ status: 'pending_review', updated_at: new Date().toISOString() })
-          .eq('id', booking_id);
+          .eq('id', booking_id)
+          .in('status', ['in_progress', 'assigned'])
+          .select('id')
+          .single();
 
-        if (error) throw error;
+        if (error || !updatedBooking) {
+          return res.status(409).json({ error: 'Booking cannot be marked for review in its current status' });
+        }
         res.json({ success: true, status: 'pending_review', message: 'Booking marked for review' });
         break;
       }
@@ -7052,8 +7101,8 @@ app.post('/api/mcp', async (req, res) => {
         res.status(400).json({ error: `Unknown method: ${method}` });
     }
   } catch (e) {
-    console.error(`[MCP] Error in method '${method}':`, e.message, e.stack);
-    res.status(500).json({ error: 'Internal server error', detail: e.message });
+    console.error('MCP error:', e);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -7146,7 +7195,7 @@ app.post('/api/mcp/sse', async (req, res) => {
           });
         }
       } catch (e) {
-        return res.json({ jsonrpc: '2.0', id, error: { code: -32000, message: e.message } });
+        return res.json({ jsonrpc: '2.0', id, error: { code: -32000, message: 'Internal server error' } });
       }
     }
 
@@ -7533,7 +7582,7 @@ app.post('/api/messages', async (req, res) => {
     // Email notification is now handled by createNotification → notificationService.notify() pipeline
 
     // Dispatch webhook if the other party has one configured
-    await dispatchWebhook(otherPartyId, {
+    dispatchWebhook(otherPartyId, {
       type: 'new_message',
       task_id: conversation.task_id,
       data: {
@@ -7544,7 +7593,7 @@ app.post('/api/messages', async (req, res) => {
         content,
         created_at: message.created_at
       }
-    });
+    }).catch(() => {});
   }
 
   res.json(message);
@@ -7753,8 +7802,9 @@ app.get('/api/tasks/available', async (req, res) => {
       .eq('is_remote', true);
     if (category) remoteQuery = remoteQuery.eq('category', category);
     if (search) {
-      const sanitizedSearch = search.replace(/[,.()"'\\%_]/g, '');
-      if (sanitizedSearch.trim()) {
+      // Strip PostgREST filter operators, then escape LIKE wildcards
+      const sanitizedSearch = escapeLike(search.replace(/[,.()"']/g, '').trim());
+      if (sanitizedSearch) {
         remoteQuery = remoteQuery.or(`title.ilike.%${sanitizedSearch}%,description.ilike.%${sanitizedSearch}%`);
       }
     }
@@ -7837,9 +7887,9 @@ app.get('/api/tasks/available', async (req, res) => {
     if (category) query = query.eq('category', category);
     if (urgency) query = query.eq('urgency', urgency);
     if (search) {
-      // Sanitize: strip PostgREST filter operators to prevent query injection
-      const sanitizedSearch = search.replace(/[,.()"'\\%_]/g, '');
-      if (sanitizedSearch.trim()) {
+      // Strip PostgREST filter operators, then escape LIKE wildcards
+      const sanitizedSearch = escapeLike(search.replace(/[,.()"']/g, '').trim());
+      if (sanitizedSearch) {
         query = query.or(`title.ilike.%${sanitizedSearch}%,description.ilike.%${sanitizedSearch}%`);
       }
     }
@@ -7872,8 +7922,9 @@ app.get('/api/tasks/available', async (req, res) => {
       const userLatitude = parseFloat(user_lat);
       const userLongitude = parseFloat(user_lng);
 
-      // Remote tasks were excluded from the initial query, so all results here are local
-      if (radius_km) {
+      if (isNaN(userLatitude) || isNaN(userLongitude)) {
+        // Invalid coordinates — skip distance filtering
+      } else if (radius_km) {
         const radiusKm = parseFloat(radius_km) || 50;
         if (radiusKm === 0) {
           results = filterByDistanceKm(results, userLatitude, userLongitude, 5);
@@ -7946,8 +7997,7 @@ app.get('/api/humans/directory', async (req, res) => {
     .select('id', { count: 'exact', head: true })
     .eq('type', 'human');
 
-  // Sanitize search params: escape LIKE wildcards (% and _) to prevent injection
-  const escapeLike = (s) => s.replace(/[%_\\]/g, '\\$&');
+  // escapeLike() defined at top of file — escapes LIKE wildcards (% and _)
   if (category) countQuery = countQuery.like('skills', `%${escapeLike(category)}%`);
   if (skill) countQuery = countQuery.like('skills', `%${escapeLike(skill)}%`);
   if (city) countQuery = countQuery.ilike('city', `%${escapeLike(city)}%`);
@@ -8487,7 +8537,7 @@ app.post('/api/wallet/withdraw', async (req, res) => {
       return res.json(result);
     } catch (error) {
       console.error('[USDC Withdraw] Error:', error.message);
-      return res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: safeErrorMessage(error) });
     }
   }
 
@@ -8506,7 +8556,7 @@ app.post('/api/wallet/withdraw', async (req, res) => {
     return res.json(result);
   } catch (error) {
     console.error('[Withdraw] Error:', error.message);
-    return res.status(400).json({ error: error.message });
+    return res.status(400).json({ error: safeErrorMessage(error) });
   }
 });
 
@@ -10137,11 +10187,12 @@ app.post('/api/disputes', async (req, res) => {
     return res.status(400).json({ error: 'A dispute already exists for this task' });
   }
 
-  // Freeze the pending funds
-  const { error: freezeError } = await supabase
+  // Freeze the pending funds (atomic: only freeze if still pending/available)
+  const { error: freezeError, count: freezeCount } = await supabase
     .from('payouts')
     .update({ status: 'frozen' })
-    .eq('id', payout.id);
+    .eq('id', payout.id)
+    .in('status', ['pending', 'available']);
 
   if (freezeError) {
     return res.status(500).json({ error: 'Failed to freeze payment' });
@@ -10159,7 +10210,7 @@ app.post('/api/disputes', async (req, res) => {
       filed_against: task.human_id,
       reason,
       category: category || 'other',
-      evidence_urls: evidence_urls || [],
+      evidence_urls: Array.isArray(evidence_urls) ? evidence_urls.slice(0, 10).filter(u => typeof u === 'string') : [],
       status: 'open',
       created_at: new Date().toISOString()
     })
@@ -10167,13 +10218,15 @@ app.post('/api/disputes', async (req, res) => {
     .single();
 
   if (disputeError) {
-    // Rollback: unfreeze the payment
+    // Rollback: unfreeze the payment (only if we froze it)
     await supabase
       .from('payouts')
       .update({ status: 'pending' })
-      .eq('id', payout.id);
+      .eq('id', payout.id)
+      .eq('status', 'frozen');
 
-    return res.status(500).json({ error: 'Failed to create dispute: ' + disputeError.message });
+    console.error('Failed to create dispute:', disputeError);
+    return res.status(500).json({ error: 'Failed to create dispute. Please try again.' });
   }
 
   // Increment total_disputes_filed for agent
