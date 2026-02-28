@@ -2299,12 +2299,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
             onClick={() => setSidebarOpen(false)}
           >
-            <div className="dashboard-v4-nav-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
-              </svg>
+            <div className="dashboard-v4-nav-item-content">
+              <span className="dashboard-v4-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
+                </svg>
+              </span>
+              <span className="dashboard-v4-nav-label">Connect Agent</span>
             </div>
-            <span className="dashboard-v4-nav-label">Connect Agent</span>
           </a>
         )}
 
@@ -2342,16 +2344,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {(!user?.subscription_tier || user.subscription_tier === 'free') && (
           <a
             href="/premium"
-            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
+            className="dashboard-v4-nav-item dashboard-v4-sidebar-upgrade-link"
             style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
           >
-            <div className="dashboard-v4-nav-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+            <div className="dashboard-v4-nav-item-content">
+              <span className="dashboard-v4-nav-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                  <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <span className="dashboard-v4-nav-label">Upgrade to Premium</span>
             </div>
-            <span className="dashboard-v4-nav-label">Upgrade to Premium</span>
           </a>
         )}
 
@@ -2374,21 +2378,6 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               <span className="dashboard-v4-nav-label">Follow us on X</span>
             </div>
           </a>
-          {/* Feedback */}
-          <button
-            onClick={() => setFeedbackOpen(!feedbackOpen)}
-            className="dashboard-v4-nav-item"
-            style={{ width: '100%', background: feedbackOpen ? 'linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.04))' : undefined }}
-          >
-            <div className="dashboard-v4-nav-item-content">
-              <span className="dashboard-v4-nav-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              </span>
-              <span className="dashboard-v4-nav-label">Feedback</span>
-            </div>
-          </button>
         </div>
 
       </aside>
@@ -2620,6 +2609,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   <a href="/contact" className="dashboard-v4-user-dropdown-item" style={{ textDecoration: 'none', color: 'inherit' }} onClick={() => setUserDropdownOpen(false)}>
                     <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg></span> Contact Us
                   </a>
+                  <button className="dashboard-v4-user-dropdown-item" onClick={() => { setFeedbackOpen(!feedbackOpen); setUserDropdownOpen(false); }}>
+                    <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg></span> Feedback
+                  </button>
                   <div className="dashboard-v4-user-dropdown-divider" />
                   <button className="dashboard-v4-user-dropdown-item danger" onClick={onLogout}>
                     Sign Out
