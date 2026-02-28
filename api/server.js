@@ -76,6 +76,9 @@ const { chargeAgentForTask, listPaymentMethods, handleWebhookEvent } = require('
 const initStripeRoutes = require('./routes/stripe');
 const initSubscriptionRoutes = require('./routes/subscription');
 
+// Sanitization utilities
+const { escapeHtml } = require('./utils/sanitize');
+
 // Notification services
 console.log('[Startup] Loading notification services...');
 const { createEmailService } = require('./lib/notifications/emailService');
@@ -325,6 +328,23 @@ app.get('/ready', (req, res) => {
   res.json({ status: 'ready', supabase: !!supabase })
 });
 
+// Fail-fast startup validation for required environment variables
+{
+  const REQUIRED_ENV_VARS = ['SUPABASE_URL', 'API_KEY_HMAC_SECRET'];
+  // Supabase service key can be either name
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.SUPABASE_SERVICE_KEY) {
+    REQUIRED_ENV_VARS.push('SUPABASE_SERVICE_ROLE_KEY');
+  }
+  if (process.env.NODE_ENV === 'production') {
+    REQUIRED_ENV_VARS.push('STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET');
+  }
+  const missing = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
+  if (missing.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 // Supabase client - prefer service role key to bypass RLS for backend operations
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -449,27 +469,9 @@ function validateUploadFile(filename, mimeType, fileBuffer) {
   return { valid: true, ext };
 }
 
-// Task status transition validation
-const VALID_STATUS_TRANSITIONS = {
-  open: ['pending_acceptance', 'assigned', 'expired', 'cancelled'],
-  pending_acceptance: ['assigned', 'open', 'cancelled'],
-  assigned: ['in_progress', 'cancelled', 'open'],
-  in_progress: ['pending_review', 'disputed', 'open'],
-  pending_review: ['approved', 'in_progress', 'disputed'],
-  approved: ['paid'],
-  disputed: ['approved', 'cancelled', 'paid'],
-  paid: [],
-  expired: [],
-  cancelled: [],
-};
-
-function validateStatusTransition(currentStatus, newStatus) {
-  const allowed = VALID_STATUS_TRANSITIONS[currentStatus];
-  if (!allowed || !allowed.includes(newStatus)) {
-    return { valid: false, error: `Cannot transition from '${currentStatus}' to '${newStatus}'` };
-  }
-  return { valid: true };
-}
+// Status transition validation is enforced by PostgreSQL trigger
+// `check_task_status_transition`. See db/enforce_status_transitions.sql
+// and ARCHITECTURE.md for the valid transitions map.
 
 // Escape SQL LIKE wildcards (% and _) to prevent wildcard injection
 function escapeLike(s) { return s.replace(/[%_\\]/g, '\\$&'); }
@@ -490,7 +492,11 @@ function generateApiKey() {
 }
 
 // Hash an API key for storage (HMAC-SHA256 with server secret)
-const API_KEY_HMAC_SECRET = process.env.API_KEY_HMAC_SECRET || crypto.randomBytes(32).toString('hex');
+const API_KEY_HMAC_SECRET = process.env.API_KEY_HMAC_SECRET;
+if (!API_KEY_HMAC_SECRET) {
+  console.error('FATAL: API_KEY_HMAC_SECRET environment variable is required');
+  process.exit(1);
+}
 function hashApiKey(apiKey) {
   return crypto.createHmac('sha256', API_KEY_HMAC_SECRET).update(apiKey).digest('hex');
 }
@@ -502,6 +508,18 @@ function hashApiKeyLegacy(apiKey) {
 // Get the prefix of an API key for display
 function getApiKeyPrefix(apiKey) {
   return apiKey.substring(0, 12) + '...';
+}
+
+// Escape LIKE/ILIKE wildcards to prevent filter bypass
+const escapeLike = (s) => (typeof s === 'string' ? s.replace(/[%_\\]/g, '\\$&') : '');
+
+// Validate evidence URLs — only allow http(s) protocols, max 10
+function validateEvidenceUrls(urls) {
+  if (!Array.isArray(urls)) return [];
+  return urls
+    .filter(url => typeof url === 'string')
+    .filter(url => /^https?:\/\//i.test(url))
+    .slice(0, 10);
 }
 
 // Safely parse a JSONB column value that may be a JS array (from JSONB) or a string (double-encoded)
@@ -652,6 +670,49 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// ============ SENSITIVE ENDPOINT RATE LIMITING ============
+// Tighter limits for auth endpoints to prevent brute-force/credential stuffing
+const sensitiveRateLimitStore = new Map();
+const SENSITIVE_RATE_LIMITS = { maxAttempts: 10, windowMs: 15 * 60 * 1000 }; // 10 per 15 min
+
+function sensitiveRateLimit(req, res, next) {
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const key = `sensitive:${ip}:${req.path}`;
+  const now = Date.now();
+  let record = sensitiveRateLimitStore.get(key);
+
+  if (record && now - record.windowStart > SENSITIVE_RATE_LIMITS.windowMs) {
+    record = null;
+  }
+
+  if (!record) {
+    record = { count: 0, windowStart: now };
+    sensitiveRateLimitStore.set(key, record);
+  }
+
+  record.count++;
+
+  if (record.count > SENSITIVE_RATE_LIMITS.maxAttempts) {
+    const resetAt = new Date(record.windowStart + SENSITIVE_RATE_LIMITS.windowMs);
+    return res.status(429).json({
+      error: 'Too many attempts. Please try again later.',
+      retry_after_seconds: Math.ceil((resetAt.getTime() - now) / 1000)
+    });
+  }
+
+  next();
+}
+
+// Clean up sensitive rate limit store periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of sensitiveRateLimitStore.entries()) {
+    if (now - record.windowStart > SENSITIVE_RATE_LIMITS.windowMs) {
+      sensitiveRateLimitStore.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
 // ============ PER-CONVERSATION MESSAGE RATE LIMITING ============
 // Prevents message spam: max 30 messages per minute per user per conversation
 const messageRateLimitStore = new Map();
@@ -746,6 +807,10 @@ const USER_OPTIONAL_COLUMNS = [
 
 // Built dynamically at startup by checkUserColumns()
 let USER_SELECT_COLUMNS = USER_CORE_COLUMNS;
+
+// Safe subset of user columns for API responses (excludes secrets).
+// Used in JOINs and any query that returns user data to clients.
+const SAFE_USER_COLUMNS = 'id, name, email, type, avatar_url, bio, hourly_rate, account_type, city, state, service_radius, skills, social_links, profile_completeness, availability, rating, jobs_completed, verified, created_at, updated_at';
 
 async function checkUserColumns() {
   if (!supabase) return;
@@ -1136,7 +1201,7 @@ app.use(async (req, res, next) => {
 });
 
 // ============ AUTH ============
-app.post('/api/auth/register/human', async (req, res) => {
+app.post('/api/auth/register/human', sensitiveRateLimit, async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
@@ -1264,7 +1329,7 @@ app.post('/api/auth/register/human', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', sensitiveRateLimit, async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const { email, password } = req.body;
@@ -1734,7 +1799,7 @@ app.post('/api/auth/verify-email', async (req, res) => {
 
 // ============ HEADLESS AGENT REGISTRATION ============
 // POST /api/auth/register-agent - Public endpoint for AI agents to register
-app.post('/api/auth/register-agent', async (req, res) => {
+app.post('/api/auth/register-agent', sensitiveRateLimit, async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
@@ -2420,22 +2485,27 @@ app.post('/api/tasks', async (req, res) => {
     });
   }
 
+  // Deprecation: prefer POST /api/tasks/create which has stricter validation
+  res.set('Deprecation', 'true');
+  res.set('Link', '</api/tasks/create>; rel="successor-version"');
+
   const { title, description, instructions, instructions_attachments, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code, task_type_id, location_zone, private_address, private_notes, private_contact, budget_usd, datetime_start, skills_required: skillsRequiredInput } = req.body;
 
-  // Verify agent has payment method before allowing task creation
-  let createPaymentMethods = [];
-  if (user.stripe_customer_id && stripe) {
-    try {
-      createPaymentMethods = await listPaymentMethods(user.stripe_customer_id);
-    } catch (e) {
-      console.error('[TaskCreate] Failed to list Stripe payment methods:', e.message);
+  // Verify agent has payment method using the stricter check
+  try {
+    const { verifyAgentHasPaymentMethod } = require('./backend/services/stripeService');
+    const pmCheck = await verifyAgentHasPaymentMethod(supabase, user.id);
+    if (!pmCheck.valid) {
+      return res.status(402).json({
+        error: 'card_required',
+        code: 'card_required',
+        message: 'Add a payment method before creating tasks.'
+      });
     }
-  }
-  if (createPaymentMethods.length === 0 && !user.wallet_address) {
-    return res.status(402).json({
-      error: 'No payment method on file',
-      code: 'payment_required',
-      message: 'You must link a payment card or crypto wallet before posting a task.'
+  } catch (pmErr) {
+    console.error('[TaskCreate] PM verification failed:', pmErr.message);
+    return res.status(502).json({
+      error: 'Unable to verify payment method. Please check your card and try again.'
     });
   }
 
@@ -2575,11 +2645,11 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  // Use SELECT * for the agent join to avoid 404s when columns from migrations
-  // haven't been applied yet (same fix as /api/humans/:id/profile in 9df2499)
+  // Use SAFE_USER_COLUMNS for the agent join to avoid exposing password_hash,
+  // stripe_customer_id, api_key, etc. in API responses.
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('*, agent:users!tasks_agent_id_fkey(*)')
+    .select(`*, agent:users!tasks_agent_id_fkey(${SAFE_USER_COLUMNS})`)
     .eq('id', req.params.id)
     .single();
 
@@ -2622,13 +2692,21 @@ app.get('/api/tasks/:id', async (req, res, next) => {
 app.get('/api/tasks/:id/status', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+
   const { data: task, error } = await supabase
     .from('tasks')
-    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at')
+    .select('id, status, escrow_status, escrow_amount, escrow_deposited_at, escrow_released_at, proof_submitted_at, agent_id, human_id')
     .eq('id', req.params.id)
     .single();
 
   if (error || !task) return res.status(404).json({ error: 'Not found' });
+
+  // Only task participants or admins can view status details
+  if (task.agent_id !== user.id && task.human_id !== user.id && !user.is_admin) {
+    return res.status(403).json({ error: 'Not authorized to view this task status' });
+  }
 
   // Get proof submissions
   const { data: proofs } = await supabase
@@ -2767,7 +2845,7 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
     `New applicant for "${taskForApply.title}"`,
     `<div style="background: #EEF2FF; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
       <p style="color: #4338CA; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">New Application</p>
-      <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${user.name || 'A worker'}</strong> applied to your task "${taskForApply.title}".</p>
+      <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${escapeHtml(user.name || 'A worker')}</strong> applied to your task "${escapeHtml(taskForApply.title)}".</p>
     </div>
     <a href="${applyTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">Review Applicants</a>`
   ).catch(() => {});
@@ -3138,7 +3216,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     }).catch(() => {});
   };
 
-  // ============ STRIPE PATH: Charge immediately and assign ============
+  // ============ STRIPE PATH: Auth hold and assign (no charge until /start) ============
   if (!useUsdc && agentPaymentMethods.length > 0) {
     const budgetCents = Math.round(budgetAmount * 100);
 
@@ -3155,21 +3233,25 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       .single();
     const workerFeePercent = getTierConfig(workerUser?.subscription_tier || 'free').worker_fee_percent;
 
-    // Charge agent's card immediately
-    let chargeResult;
+    // Place auth hold on agent's card (no charge yet — captured at /start)
+    const { authorizeEscrow } = require('./backend/services/stripeService');
+    let authResult;
     try {
-      chargeResult = await chargeAgentForTask(supabase, user.id, taskId, totalChargeCents);
+      authResult = await authorizeEscrow(supabase, user.id, taskId, totalChargeCents);
     } catch (stripeError) {
-      console.error(`[Assign] Payment failed for task ${taskId}:`, stripeError.message);
+      console.error(`[Assign] Auth hold failed for task ${taskId}:`, stripeError.message);
       return res.status(402).json({
-        error: 'Payment failed',
+        error: 'Payment authorization failed',
         code: 'payment_error',
-        message: 'Your payment could not be processed. Please update your payment method and try again.'
+        message: 'Your card could not be authorized. Please update your payment method and try again.'
       });
     }
 
-    // Atomic update: move to in_progress with escrow deposited
-    const assignStatus = nextStatus || 'in_progress';
+    // Auth hold expires in ~7 days — record the expiry for cron renewal
+    const authHoldExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Atomic update: move to assigned with escrow held (not deposited — captured at /start)
+    const assignStatus = nextStatus || 'assigned';
     const { data: updatedTask, error } = await supabase
       .from('tasks')
       .update(cleanTaskData({
@@ -3177,17 +3259,17 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
         human_ids: updatedHumanIds,
         spots_filled: newSpotsFilled,
         status: assignStatus,
-        escrow_status: 'deposited',
-        escrow_deposited_at: new Date().toISOString(),
+        escrow_status: 'held',
         escrow_amount: budgetAmount,
-        stripe_payment_intent_id: chargeResult.payment_intent_id,
+        stripe_payment_intent_id: authResult.payment_intent_id,
+        escrow_captured: false,
+        auth_hold_expires_at: authHoldExpiresAt,
         payment_method: 'stripe',
         poster_fee_percent: getTierConfig(posterTier).poster_fee_percent,
         poster_fee_cents: posterFeeCents,
         worker_fee_percent: workerFeePercent,
         total_charge_cents: totalChargeCents,
         assigned_at: new Date().toISOString(),
-        work_started_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
       .eq('id', taskId)
@@ -3196,13 +3278,13 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       .single();
 
     if (error || !updatedTask) {
-      // Race condition: refund the charge
+      // Race condition: cancel the auth hold (no charge was made)
       try {
-        const { refundPaymentIntent } = require('./backend/services/stripeService');
-        await refundPaymentIntent(chargeResult.payment_intent_id, 'duplicate');
-        console.log(`[Assign] Refunded charge for task ${taskId} (concurrent assign)`);
-      } catch (refundErr) {
-        console.error(`[Assign] CRITICAL: Failed to refund charge for task ${taskId}:`, refundErr);
+        const { cancelEscrowHold } = require('./backend/services/stripeService');
+        await cancelEscrowHold(authResult.payment_intent_id);
+        console.log(`[Assign] Cancelled auth hold for task ${taskId} (concurrent assign)`);
+      } catch (cancelErr) {
+        console.error(`[Assign] CRITICAL: Failed to cancel auth hold for task ${taskId}:`, cancelErr);
       }
       return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
     }
@@ -4162,16 +4244,23 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   
-  // Update task status to pending_review
-  await supabase
+  // Update task status to pending_review (atomic — prevents TOCTOU race)
+  const { data: updatedTask, error: updateError } = await supabase
     .from('tasks')
     .update({
       status: 'pending_review',
       proof_submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', taskId);
-  
+    .eq('id', taskId)
+    .eq('status', 'in_progress')
+    .select('id')
+    .single();
+
+  if (updateError || !updatedTask) {
+    return res.status(409).json({ error: 'Task status has changed. Please refresh and try again.' });
+  }
+
   // Notify agent
   await createNotification(
     task.agent_id,
@@ -4356,6 +4445,17 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     return res.status(400).json({ error: `Cannot approve task in '${task.status}' status` });
   }
 
+  // Check for open disputes — cannot approve while a dispute is active
+  const { data: openDisputes } = await supabase
+    .from('disputes')
+    .select('id')
+    .eq('task_id', taskId)
+    .eq('status', 'open')
+    .limit(1);
+  if (openDisputes && openDisputes.length > 0) {
+    return res.status(409).json({ error: 'Cannot approve — there is an open dispute on this task' });
+  }
+
   // Get latest proof
   const { data: latestProof } = await supabase
     .from('task_proofs')
@@ -4416,7 +4516,7 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     `Your work on "${task.title}" has been approved!`,
     `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
       <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Work Approved!</p>
-      <p style="color: #1A1A1A; font-size: 14px; margin: 0;">Your work on "${task.title}" has been approved. $${task.budget} is being processed and will be available after the 48-hour clearing period.</p>
+      <p style="color: #1A1A1A; font-size: 14px; margin: 0;">Your work on "${escapeHtml(task.title)}" has been approved. $${task.budget} is being processed and will be available after the 48-hour clearing period.</p>
     </div>
     <a href="${approveTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
   ).catch(() => {});
@@ -4666,12 +4766,23 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  // Only allow disputes on active tasks
-  const disputeableStatuses = ['in_progress', 'pending_review', 'approved'];
+  // Only allow disputes on active tasks (not approved/paid — closes free-work exploit)
+  const disputeableStatuses = ['in_progress', 'pending_review'];
   if (!disputeableStatuses.includes(task.status)) {
     return res.status(400).json({
-      error: `Cannot dispute a task with status "${task.status}". Only active tasks can be disputed.`
+      error: `Cannot dispute a task with status "${task.status}". Only in-progress or pending-review tasks can be disputed.`
     });
+  }
+
+  // Check for existing open dispute (prevent duplicates)
+  const { data: existingDispute } = await supabase
+    .from('disputes')
+    .select('id')
+    .eq('task_id', taskId)
+    .eq('status', 'open')
+    .limit(1);
+  if (existingDispute && existingDispute.length > 0) {
+    return res.status(409).json({ error: 'A dispute is already open for this task', dispute_id: existingDispute[0].id });
   }
 
   // Update task to disputed (atomic status check)
@@ -4731,8 +4842,8 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
   const disputeTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
   const disputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <p style="color: #DC2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Dispute Opened</p>
-    <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task "${task.title}".</p>
-    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${reason}</p>
+    <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task "${escapeHtml(task.title)}".</p>
+    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${escapeHtml(reason)}</p>
   </div>
   <p style="font-size: 13px; color: #525252; margin-bottom: 16px;">Our team will review the evidence and make a fair decision.</p>
   <a href="${disputeTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`;
@@ -5162,9 +5273,15 @@ async function updateUserRating(userId) {
 // Get webhook URL for an agent
 app.get('/api/agents/:id/webhook-url', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
-  
+
+  const authUser = await getUserByToken(req.headers.authorization);
+  if (!authUser) return res.status(401).json({ error: 'Authentication required' });
+  if (authUser.id !== req.params.id && !authUser.is_admin) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+
   const { id } = req.params;
-  
+
   const { data: agent, error } = await supabase
     .from('users')
     .select('id, mcp_webhook_url')
@@ -5575,6 +5692,11 @@ app.post('/api/mcp', async (req, res) => {
 
         if (fetchError || !taskData) throw new Error('Task not found');
 
+        // Ownership check: only the task creator can hire humans for it
+        if (taskData.agent_id !== user.id) {
+          return res.status(403).json({ error: 'Not authorized — you do not own this task' });
+        }
+
         // Agent must have a payment method before hiring
         const { listPaymentMethods } = require('./backend/services/stripeService');
         if (!user.stripe_customer_id) {
@@ -5676,7 +5798,7 @@ app.post('/api/mcp', async (req, res) => {
       
       case 'get_task_status': {
         if (!params.task_id) return res.status(400).json({ error: 'task_id is required' });
-        let statusSelect = 'id, status, escrow_status, escrow_amount, escrow_deposited_at, task_type, quantity, human_ids, creator_id';
+        let statusSelect = 'id, status, escrow_status, escrow_amount, escrow_deposited_at, task_type, quantity, human_ids, agent_id';
         if (taskColumnFlags.spots_filled) statusSelect += ', spots_filled';
         const { data: task, error } = await supabase
           .from('tasks')
@@ -5686,12 +5808,12 @@ app.post('/api/mcp', async (req, res) => {
 
         if (error) throw error;
         // Ownership check: only task creator or assigned humans can see status
-        if (task.creator_id !== user.id && !(Array.isArray(task.human_ids) && task.human_ids.includes(user.id))) {
+        if (task.agent_id !== user.id && !(Array.isArray(task.human_ids) && task.human_ids.includes(user.id))) {
           return res.status(403).json({ error: 'Not authorized to view this task' });
         }
         // Add computed fields, strip internal fields
         const spots = task.spots_filled || (Array.isArray(task.human_ids) ? task.human_ids.length : 0);
-        const { creator_id: _c, human_ids: _h, ...safeTask } = task;
+        const { agent_id: _a, human_ids: _h, ...safeTask } = task;
         res.json({
           ...safeTask,
           spots_filled: spots,
@@ -5734,16 +5856,23 @@ app.post('/api/mcp', async (req, res) => {
           submitted_at: new Date().toISOString()
         });
 
-        // Update task to pending_review
-        await supabase
+        // Update task to pending_review (atomic — prevents TOCTOU race)
+        const { data: updatedProofTask, error: proofUpdateErr } = await supabase
           .from('tasks')
           .update({
             status: 'pending_review',
             proof_submitted_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .eq('id', task_id);
-        
+          .eq('id', task_id)
+          .eq('status', 'in_progress')
+          .select('id')
+          .single();
+
+        if (proofUpdateErr || !updatedProofTask) {
+          return res.status(409).json({ error: 'Task status has changed. Please refresh and try again.' });
+        }
+
         // Notify agent
         await createNotification(
           task.agent_id,
@@ -5873,18 +6002,25 @@ app.post('/api/mcp', async (req, res) => {
 
         if (error) throw error;
         if (!task) return res.status(404).json({ error: 'Task not found' });
-        // Only return full details to task owner or participants
-        if (task.agent_id !== user.id && task.human_id !== user.id &&
-            !(Array.isArray(task.human_ids) && task.human_ids.includes(user.id))) {
-          return res.status(403).json({ error: 'Access denied' });
+
+        // Ownership/participant check: only agent, assigned human, or admin can view full details
+        const isParticipant = task.agent_id === user.id || task.human_id === user.id
+          || (Array.isArray(task.human_ids) && task.human_ids.includes(user.id));
+        if (!isParticipant && !user.is_admin) {
+          return res.status(403).json({ error: 'Not authorized to view this task' });
         }
-        res.json(task);
+
+        res.json(stripPrivateFields(task));
         break;
       }
       
       case 'set_webhook': {
         // Register webhook URL for task status updates
         const { webhook_url } = params;
+
+        if (webhook_url && !isValidWebhookUrl(webhook_url)) {
+          return res.status(400).json({ error: 'Invalid webhook URL — must be HTTPS and not point to internal networks' });
+        }
 
         await supabase
           .from('users')
@@ -6110,6 +6246,12 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (fetchError || !taskData) throw new Error('Task not found');
+
+        // Ownership check: only the task creator can assign humans
+        if (taskData.agent_id !== user.id) {
+          return res.status(403).json({ error: 'Not authorized — you do not own this task' });
+        }
+
         if (taskData.status !== 'open' && taskData.status !== 'assigned') {
           throw new Error('Task is not available for assignment');
         }
@@ -6140,7 +6282,7 @@ app.post('/api/mcp', async (req, res) => {
         // For open tasks with spots remaining, keep task open
         const nextStatus = isOpen && !allSpotsFilled ? 'open' : 'assigned';
 
-        const { error: taskError } = await supabase
+        const { data: assignedTask, error: taskError } = await supabase
           .from('tasks')
           .update(cleanTaskData({
             human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
@@ -6155,9 +6297,14 @@ app.post('/api/mcp', async (req, res) => {
             instructions,
             updated_at: new Date().toISOString()
           }))
-          .eq('id', task_id);
+          .eq('id', task_id)
+          .in('status', ['open', 'assigned'])
+          .select('id')
+          .single();
 
-        if (taskError) throw taskError;
+        if (taskError || !assignedTask) {
+          return res.status(409).json({ error: 'Task is no longer available for assignment — status may have changed' });
+        }
 
         await createNotification(
           human_id,
@@ -6227,6 +6374,19 @@ app.post('/api/mcp', async (req, res) => {
         if (convError || !conv) return res.status(404).json({ error: 'Conversation not found' });
         if (conv.human_id !== user.id && conv.agent_id !== user.id) {
           return res.status(403).json({ error: 'Not your conversation' });
+        }
+
+        // Check if task is in a terminal status — block messaging on closed tasks
+        if (conv.task_id) {
+          const { data: convTask } = await supabase
+            .from('tasks')
+            .select('status')
+            .eq('id', conv.task_id)
+            .single();
+          const terminalStatuses = ['cancelled', 'paid', 'expired'];
+          if (convTask && terminalStatuses.includes(convTask.status)) {
+            return res.status(400).json({ error: 'Cannot send messages — this task is closed' });
+          }
         }
 
         const messageId = uuidv4();
@@ -6396,11 +6556,11 @@ app.post('/api/mcp', async (req, res) => {
         if (taskErr || !task) return res.status(404).json({ error: 'Task not found' });
         if (task.agent_id !== user.id) return res.status(403).json({ error: 'Not your task' });
 
-        // Enforce same status restrictions as REST endpoint
-        const disputeableStatuses = ['in_progress', 'pending_review', 'approved'];
-        if (!disputeableStatuses.includes(task.status)) {
+        // Enforce same status restrictions as REST endpoint (no approved — closes free-work exploit)
+        const mcpDisputeableStatuses = ['in_progress', 'pending_review'];
+        if (!mcpDisputeableStatuses.includes(task.status)) {
           return res.status(400).json({
-            error: `Cannot dispute a task with status "${task.status}". Only active tasks can be disputed.`
+            error: `Cannot dispute a task with status "${task.status}". Only in-progress or pending-review tasks can be disputed.`
           });
         }
 
@@ -6424,7 +6584,7 @@ app.post('/api/mcp', async (req, res) => {
             filed_by: user.id,
             reason,
             category: disputeCategory || 'quality_issue',
-            evidence_urls: Array.isArray(evidence_urls) ? evidence_urls.slice(0, 10).filter(u => typeof u === 'string') : [],
+            evidence_urls: validateEvidenceUrls(evidence_urls),
             status: 'open',
             created_at: new Date().toISOString()
           })
@@ -6432,6 +6592,20 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (disputeError) throw disputeError;
+
+        // Atomically update task status to 'disputed'
+        await supabase
+          .from('tasks')
+          .update({ status: 'disputed', updated_at: new Date().toISOString() })
+          .eq('id', task_id)
+          .in('status', ['in_progress', 'pending_review']);
+
+        // Freeze any pending payouts for this task
+        await supabase
+          .from('pending_transactions')
+          .update({ status: 'frozen', updated_at: new Date().toISOString() })
+          .eq('task_id', task_id)
+          .eq('status', 'pending');
 
         // Notify human
         if (task.human_id) {
@@ -6815,7 +6989,7 @@ app.post('/api/mcp', async (req, res) => {
         if (taskErr || !task) return res.status(404).json({ error: 'Booking not found' });
         if (task.agent_id !== user.id) return res.status(403).json({ error: 'Not your booking' });
 
-        const { error, data: updatedBooking } = await supabase
+        const { data: updatedBooking, error } = await supabase
           .from('tasks')
           .update({ status: 'pending_review', updated_at: new Date().toISOString() })
           .eq('id', booking_id)
@@ -8156,7 +8330,9 @@ app.post('/api/tasks/create', async (req, res) => {
       }
     } catch (pmErr) {
       console.error(`[CreateTask] PM verification failed:`, pmErr.message);
-      // Don't block task creation if Stripe check fails
+      return res.status(502).json({
+        error: 'Unable to verify payment method. Please check your card and try again.'
+      });
     }
   }
 
@@ -8981,11 +9157,17 @@ async function start() {
 
         for (const task of (expiringTasks || [])) {
           try {
-            // Cancel old PI
-            await cancelEscrowHold(task.stripe_payment_intent_id);
-            // Create new auth hold
+            // Create new auth hold FIRST (before cancelling old — no gap if new fails)
             const amountCents = Math.round((task.escrow_amount || task.budget || 0) * 100);
+            const oldPiId = task.stripe_payment_intent_id;
             const newAuth = await authorizeEscrow(supabase, task.agent_id, task.id, amountCents);
+
+            // Only cancel old PI after new one succeeds
+            try {
+              await cancelEscrowHold(oldPiId);
+            } catch (cancelOldErr) {
+              console.warn(`[AuthRenewal] Failed to cancel old PI ${oldPiId} for task ${task.id}:`, cancelOldErr.message);
+            }
 
             if (newAuth.requires_action) {
               // 3DS required on renewal — notify agent
@@ -9049,6 +9231,76 @@ async function start() {
     renewExpiringAuthHolds();
     setInterval(renewExpiringAuthHolds, 6 * 60 * 60 * 1000);
     console.log('   ✅ Auth hold renewal service started (every 6 hours)');
+
+    // ---- Auto-Approval for Stale Reviews (every hour) ----
+    // Tasks in pending_review for 72+ hours are auto-approved and payment released.
+    const AUTO_APPROVE_THRESHOLD_MS = 72 * 60 * 60 * 1000; // 72 hours
+    async function autoApproveStaleReviews() {
+      try {
+        const cutoff = new Date(Date.now() - AUTO_APPROVE_THRESHOLD_MS).toISOString();
+        const { data: staleTasks } = await supabase
+          .from('tasks')
+          .select('id, title, agent_id, human_id, budget, escrow_amount, proof_submitted_at, stripe_payment_intent_id, escrow_captured')
+          .eq('status', 'pending_review')
+          .lt('proof_submitted_at', cutoff)
+          .not('proof_submitted_at', 'is', null);
+
+        for (const task of (staleTasks || [])) {
+          if (!task.human_id) continue;
+
+          // Atomic status update
+          const { data: updated } = await supabase.from('tasks')
+            .update(cleanTaskData({
+              status: 'completed',
+              auto_released: true,
+              completed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }))
+            .eq('id', task.id)
+            .eq('status', 'pending_review')
+            .select('id')
+            .single();
+
+          if (!updated) continue; // Already changed by someone else
+
+          // Approve latest proof
+          await supabase.from('task_proofs')
+            .update({ status: 'approved', agent_feedback: 'Auto-approved after 72 hours', updated_at: new Date().toISOString() })
+            .eq('task_id', task.id)
+            .eq('status', 'submitted');
+
+          // If escrow is held (auth hold), capture it now
+          if (task.stripe_payment_intent_id && !task.escrow_captured) {
+            try {
+              const { captureEscrow } = require('./backend/services/stripeService');
+              await captureEscrow(task.stripe_payment_intent_id);
+              await supabase.from('tasks').update({
+                escrow_status: 'deposited',
+                escrow_captured: true,
+                updated_at: new Date().toISOString()
+              }).eq('id', task.id);
+            } catch (captureErr) {
+              console.error(`[AutoApprove] Failed to capture escrow for task ${task.id}:`, captureErr.message);
+            }
+          }
+
+          // Notify both parties
+          await createNotification(task.human_id, 'payment_released', 'Task Auto-Approved',
+            `Task "${task.title}" was auto-approved after 72 hours. Payment will be released shortly.`,
+            `/tasks/${task.id}`);
+          await createNotification(task.agent_id, 'auto_released', 'Task Auto-Approved',
+            `Task "${task.title}" was automatically approved after 72 hours of no response.`,
+            `/tasks/${task.id}`);
+
+          console.log(`[AutoApprove] Auto-approved task ${task.id}: "${task.title}"`);
+        }
+      } catch (err) {
+        console.error('[AutoApprove] Error:', err.message);
+      }
+    }
+    autoApproveStaleReviews();
+    setInterval(autoApproveStaleReviews, 60 * 60 * 1000); // hourly
+    console.log('   ✅ Auto-approval service started (72h threshold, hourly check)');
 
     // ---- Webhook Retry Queue Processor (every 60 seconds) ----
     async function processWebhookQueue() {
@@ -9381,8 +9633,8 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       });
     }
 
-    // STRIPE PATH: Charge the agent's card now (budget + poster fee)
-    const { chargeAgentForTask, refundPaymentIntent } = require('./backend/services/stripeService');
+    // STRIPE PATH: Auth hold on the agent's card (captured at /start)
+    const { authorizeEscrow, cancelEscrowHold } = require('./backend/services/stripeService');
 
     // Look up poster's tier for poster fee calculation
     const { data: poster } = await supabase
@@ -9397,32 +9649,35 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     // Look up worker's tier for worker fee locking
     const workerFeePercent = getTierConfig(user.subscription_tier || 'free').worker_fee_percent;
 
-    let chargeResult;
+    let authResult;
     try {
-      chargeResult = await chargeAgentForTask(supabase, task.agent_id, id, totalChargeCents);
+      authResult = await authorizeEscrow(supabase, task.agent_id, id, totalChargeCents);
     } catch (stripeError) {
-      console.error(`[Accept] Payment failed for task ${id}:`, stripeError.message);
+      console.error(`[Accept] Auth hold failed for task ${id}:`, stripeError.message);
       return res.status(402).json({
-        error: 'Payment failed',
+        error: 'Payment authorization failed',
         code: 'payment_error',
-        message: 'The agent\'s payment could not be processed. The task cannot start until payment succeeds. Please contact the agent.'
+        message: 'The agent\'s payment could not be authorized. The task cannot start until payment succeeds. Please contact the agent.'
       });
     }
 
-    // Atomic update: move to in_progress with payment info and locked fees
+    const authHoldExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Atomic update: move to assigned with escrow held (captured at /start)
     const { data: updatedTask, error } = await supabase
       .from('tasks')
       .update(cleanTaskData({
-        status: 'in_progress',
-        escrow_status: 'deposited',
-        escrow_deposited_at: new Date().toISOString(),
-        stripe_payment_intent_id: chargeResult.payment_intent_id,
+        status: 'assigned',
+        escrow_status: 'held',
+        escrow_amount: task.escrow_amount || task.budget,
+        stripe_payment_intent_id: authResult.payment_intent_id,
+        escrow_captured: false,
+        auth_hold_expires_at: authHoldExpiresAt,
         poster_fee_percent: getTierConfig(posterTier).poster_fee_percent,
         poster_fee_cents: posterFeeCents,
         worker_fee_percent: workerFeePercent,
         total_charge_cents: totalChargeCents,
         assigned_at: new Date().toISOString(),
-        work_started_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
       .eq('id', id)
@@ -9431,12 +9686,12 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       .single();
 
     if (error || !updatedTask) {
-      // Task was already accepted or changed — refund the charge
+      // Task was already accepted or changed — cancel the auth hold
       try {
-        await refundPaymentIntent(chargeResult.payment_intent_id, 'duplicate');
-        console.log(`[Accept] Refunded charge for task ${id} (concurrent accept)`);
-      } catch (refundErr) {
-        console.error(`[Accept] CRITICAL: Failed to refund charge for task ${id}:`, refundErr);
+        await cancelEscrowHold(authResult.payment_intent_id);
+        console.log(`[Accept] Cancelled auth hold for task ${id} (concurrent accept)`);
+      } catch (cancelErr) {
+        console.error(`[Accept] CRITICAL: Failed to cancel auth hold for task ${id}:`, cancelErr);
       }
       return res.status(409).json({ error: 'Task is no longer available — it may have been accepted by someone else' });
     }
@@ -9503,7 +9758,7 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
         `"${task.title}" has been accepted`,
         `<div style="background: #ECFDF5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
           <p style="color: #065F46; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Task Accepted</p>
-          <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${user.name || 'A worker'}</strong> accepted your task "${task.title}". Payment has been charged and work can begin.</p>
+          <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${escapeHtml(user.name || 'A worker')}</strong> accepted your task "${escapeHtml(task.title)}". Payment has been authorized and work can begin.</p>
         </div>
         <a href="${acceptTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
       ).catch(() => {});
@@ -9604,7 +9859,7 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       `"${acceptedTask.title}" has been accepted`,
       `<div style="background: #ECFDF5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
         <p style="color: #065F46; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Task Accepted</p>
-        <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${user.name || 'A worker'}</strong> accepted your task "${acceptedTask.title}".</p>
+        <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${escapeHtml(user.name || 'A worker')}</strong> accepted your task "${escapeHtml(acceptedTask.title)}".</p>
       </div>
       <a href="${openAcceptTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
     ).catch(() => {});
@@ -10146,8 +10401,8 @@ app.post('/api/disputes', async (req, res) => {
     return res.status(403).json({ error: 'Only the task agent can file a dispute' });
   }
 
-  // Task must be in a disputable status (includes post-approval during 48-hour hold)
-  const disputeableStatuses = ['pending_review', 'completed', 'approved', 'paid'];
+  // Task must be in a disputable status (only active or recently-approved within hold window)
+  const disputeableStatuses = ['in_progress', 'pending_review', 'approved'];
   if (!disputeableStatuses.includes(task.status)) {
     return res.status(400).json({ error: 'Cannot dispute a task in this status' });
   }
@@ -10210,7 +10465,7 @@ app.post('/api/disputes', async (req, res) => {
       filed_against: task.human_id,
       reason,
       category: category || 'other',
-      evidence_urls: Array.isArray(evidence_urls) ? evidence_urls.slice(0, 10).filter(u => typeof u === 'string') : [],
+      evidence_urls: validateEvidenceUrls(evidence_urls),
       status: 'open',
       created_at: new Date().toISOString()
     })
@@ -10229,19 +10484,30 @@ app.post('/api/disputes', async (req, res) => {
     return res.status(500).json({ error: 'Failed to create dispute. Please try again.' });
   }
 
-  // Increment total_disputes_filed for agent
-  const { data: disputeUser } = await supabase
-    .from('users')
-    .select('total_disputes_filed')
-    .eq('id', user.id)
-    .single();
+  // Atomically update task status to 'disputed'
   await supabase
-    .from('users')
+    .from('tasks')
     .update({
-      total_disputes_filed: (disputeUser?.total_disputes_filed || 0) + 1,
-      last_active_at: new Date().toISOString()
+      status: 'disputed',
+      dispute_reason: reason,
+      disputed_by: user.id,
+      disputed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     })
-    .eq('id', user.id);
+    .eq('id', task_id)
+    .in('status', disputeableStatuses);
+
+  // Also freeze pending_transactions
+  await supabase
+    .from('pending_transactions')
+    .update({ status: 'frozen', updated_at: new Date().toISOString() })
+    .eq('task_id', task_id)
+    .eq('status', 'pending');
+
+  // Increment total_disputes_filed for agent
+  await supabase.rpc('increment_user_stat', {
+    user_id_param: user.id, stat_name: 'total_disputes_filed', increment_by: 1
+  });
 
   // Notify the human about the dispute
   const amountDollars = (payout.amount_cents / 100).toFixed(2);

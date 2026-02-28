@@ -54,6 +54,7 @@ Admin access is gated by the `ADMIN_USER_IDS` environment variable (comma-separa
 | Authenticated (global) | 300 requests | 1 minute | API key hash or IP hash |
 | Unauthenticated (global) | 100 requests | 1 minute | IP hash |
 | MCP endpoint | 60 requests | 1 minute | API key hash |
+| Sensitive endpoints (login, register) | 10 attempts | 15 minutes | IP + path (in-memory) |
 | Login attempts | 10 attempts | 15 minutes | IP hash (stored in DB) |
 | Agent registration | 5 registrations | 1 hour | IP hash (stored in DB) |
 | Task reports | 10 reports | 1 hour | IP hash (stored in DB) |
@@ -76,6 +77,13 @@ X-RateLimit-Reset: 1700000000
   "retry_after_seconds": 45
 }
 ```
+
+### Security Measures
+
+- **Error sanitization**: All Stripe route errors return generic `'Payment service error. Please try again.'` instead of leaking Stripe SDK internals. Database errors are sanitized via `safeErrorMessage()` which blocks schema-revealing patterns.
+- **SAFE_USER_COLUMNS**: User joins in API responses use `SAFE_USER_COLUMNS` (excludes `password_hash`, `api_key`, `stripe_customer_id`, `stripe_account_id`, `webhook_secret`). Defined in `server.js`.
+- **Evidence URL validation**: Dispute evidence URLs are validated via `validateEvidenceUrls()` — HTTPS only, max 10 URLs.
+- **Webhook idempotency**: Stripe events use atomic INSERT-first claim. On handler failure, the claim row is deleted so Stripe can retry.
 
 ---
 

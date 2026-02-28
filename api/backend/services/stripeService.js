@@ -353,8 +353,11 @@ async function cancelEscrowHold(paymentIntentId) {
  */
 async function verifyAgentHasPaymentMethod(supabase, agentId) {
   if (!stripe) {
+    if (process.env.NODE_ENV === 'production') {
+      return { valid: false, reason: 'payment_service_unavailable' };
+    }
     // Graceful degradation when Stripe is not configured (dev/demo mode)
-    return { valid: true, reason: 'stripe_disabled' };
+    return { valid: true, reason: 'stripe_disabled_dev' };
   }
 
   const { data: agent, error: agentError } = await supabase
@@ -525,13 +528,20 @@ async function transferToWorker(supabase, pendingTransactionId, workerStripeAcco
 async function refundPaymentIntent(paymentIntentId, reason = 'duplicate') {
   if (!stripe) throw new Error('Stripe not configured');
 
-  const refund = await stripe.refunds.create({
-    payment_intent: paymentIntentId,
-    reason,
-    metadata: { platform: 'irlwork', reason }
-  });
-
-  return { refund_id: refund.id, status: refund.status, amount: refund.amount };
+  try {
+    const refund = await stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      reason,
+      metadata: { platform: 'irlwork', reason }
+    });
+    return { refund_id: refund.id, status: refund.status, amount: refund.amount };
+  } catch (error) {
+    if (error.code === 'charge_already_refunded') {
+      console.warn(`[Stripe] PI ${paymentIntentId} already refunded, skipping`);
+      return { alreadyRefunded: true, status: 'already_refunded' };
+    }
+    throw error;
+  }
 }
 
 /**
@@ -618,85 +628,93 @@ async function handleWebhookEvent(event, supabase, createNotification) {
     throw insertError;
   }
 
-  // Process the event, then mark as processed
-  switch (event.type) {
-    case 'payment_intent.succeeded':
-      await handlePaymentIntentSucceeded(event.data.object, supabase, createNotification);
-      break;
+  // Process the event, then mark as processed.
+  // If processing fails, DELETE the claim row so Stripe can retry.
+  try {
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(event.data.object, supabase, createNotification);
+        break;
 
-    case 'payment_intent.payment_failed':
-      await handlePaymentIntentFailed(event.data.object, supabase, createNotification);
-      break;
+      case 'payment_intent.payment_failed':
+        await handlePaymentIntentFailed(event.data.object, supabase, createNotification);
+        break;
 
-    case 'account.updated':
-      await handleAccountUpdated(event.data.object, supabase);
-      break;
+      case 'account.updated':
+        await handleAccountUpdated(event.data.object, supabase);
+        break;
 
-    case 'transfer.created':
-      await handleTransferCreated(event.data.object, supabase);
-      break;
+      case 'transfer.created':
+        await handleTransferCreated(event.data.object, supabase);
+        break;
 
-    case 'transfer.reversed':
-      await handleTransferFailed(event.data.object, supabase, createNotification);
-      break;
+      case 'transfer.reversed':
+        await handleTransferFailed(event.data.object, supabase, createNotification);
+        break;
 
-    case 'charge.dispute.created':
-      await handleDisputeCreated(event.data.object, supabase, createNotification);
-      break;
+      case 'charge.dispute.created':
+        await handleDisputeCreated(event.data.object, supabase, createNotification);
+        break;
 
-    case 'charge.dispute.closed':
-      await handleDisputeClosed(event.data.object, supabase, createNotification);
-      break;
+      case 'charge.dispute.closed':
+        await handleDisputeClosed(event.data.object, supabase, createNotification);
+        break;
 
-    case 'charge.refunded':
-      await handleChargeRefunded(event.data.object, supabase);
-      break;
+      case 'charge.refunded':
+        await handleChargeRefunded(event.data.object, supabase);
+        break;
 
-    case 'payout.failed':
-      await handlePayoutFailed(event.data.object, event.account, supabase, createNotification);
-      break;
+      case 'payout.failed':
+        await handlePayoutFailed(event.data.object, event.account, supabase, createNotification);
+        break;
 
-    case 'payout.paid':
-      await handlePayoutPaid(event.data.object, event.account, supabase, createNotification);
-      break;
+      case 'payout.paid':
+        await handlePayoutPaid(event.data.object, event.account, supabase, createNotification);
+        break;
 
-    // Subscription lifecycle events
-    case 'customer.subscription.created':
-      await subscriptionService.handleSubscriptionCreated(event.data.object, supabase, createNotification);
-      break;
+      // Subscription lifecycle events
+      case 'customer.subscription.created':
+        await subscriptionService.handleSubscriptionCreated(event.data.object, supabase, createNotification);
+        break;
 
-    case 'customer.subscription.updated':
-      await subscriptionService.handleSubscriptionUpdated(event.data.object, supabase);
-      break;
+      case 'customer.subscription.updated':
+        await subscriptionService.handleSubscriptionUpdated(event.data.object, supabase);
+        break;
 
-    case 'customer.subscription.deleted':
-      await subscriptionService.handleSubscriptionDeleted(event.data.object, supabase);
-      break;
+      case 'customer.subscription.deleted':
+        await subscriptionService.handleSubscriptionDeleted(event.data.object, supabase);
+        break;
 
-    case 'checkout.session.completed':
-      if (event.data.object.mode === 'setup') {
-        await handleSetupCheckoutCompleted(event.data.object, supabase, createNotification);
-      } else {
-        await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
-      }
-      break;
+      case 'checkout.session.completed':
+        if (event.data.object.mode === 'setup') {
+          await handleSetupCheckoutCompleted(event.data.object, supabase, createNotification);
+        } else {
+          await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
+        }
+        break;
 
-    case 'invoice.paid':
-      await subscriptionService.handleInvoicePaid(event.data.object, supabase);
-      break;
+      case 'invoice.paid':
+        await subscriptionService.handleInvoicePaid(event.data.object, supabase);
+        break;
 
-    case 'invoice.payment_failed':
-      await subscriptionService.handleInvoicePaymentFailed(event.data.object, supabase, createNotification);
-      break;
+      case 'invoice.payment_failed':
+        await subscriptionService.handleInvoicePaymentFailed(event.data.object, supabase, createNotification);
+        break;
 
-    default:
-      console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
+      default:
+        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
+    }
+
+    // Mark as processed after successful handling
+    await supabase.from('stripe_events')
+      .update({ processed_at: new Date().toISOString() })
+      .eq('id', event.id);
+  } catch (handlerError) {
+    // Delete the claim row so Stripe can retry the event
+    console.error(`[Stripe Webhook] Handler failed for event ${event.id} (${event.type}):`, handlerError.message);
+    await supabase.from('stripe_events').delete().eq('id', event.id);
+    throw handlerError;
   }
-
-  // Mark as processed after successful handling
-  await supabase.from('stripe_events')
-    .update({ processed_at: new Date().toISOString() })
-    .eq('id', event.id);
 }
 
 async function handlePaymentIntentSucceeded(paymentIntent, supabase, createNotification) {
