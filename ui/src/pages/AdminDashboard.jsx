@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense, Fragment } from 'react'
 import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer, TrendingUp, Filter, Activity } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
-import { useAuth } from '../context/AuthContext'
+import { adminFetch } from '../utils/adminFetch'
 import API_URL from '../config/api'
 
 // Lazy-load BI tabs so they only fetch data when selected
@@ -17,7 +17,6 @@ const TaskManagerTab = lazy(() => import('../components/admin/TaskManagerTab'))
  */
 export default function AdminDashboard({ user }) {
   const toast = useToast()
-  const { authenticatedFetch } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeQueue, setActiveQueue] = useState('bi-overview')
@@ -32,7 +31,7 @@ export default function AdminDashboard({ user }) {
   // Fetch dashboard summary
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/dashboard`)
+      const res = await adminFetch(`${API_URL}/admin/dashboard`)
       if (!res.ok) {
         if (res.status === 403) {
           setError('Access denied. Admin privileges required.')
@@ -48,7 +47,7 @@ export default function AdminDashboard({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [authenticatedFetch])
+  }, [])
 
   // Fetch queue data
   const fetchQueue = useCallback(async (queue) => {
@@ -58,7 +57,7 @@ export default function AdminDashboard({ user }) {
     try {
       if (queue === 'feedback') {
         const statusParam = feedbackFilter !== 'all' ? `?status=${feedbackFilter}` : ''
-        const res = await authenticatedFetch(`${API_URL}/admin/feedback${statusParam}`)
+        const res = await adminFetch(`${API_URL}/admin/feedback${statusParam}`)
         if (!res.ok) throw new Error('Failed to fetch feedback')
         const data = await res.json()
         setFeedbackData(data.items || [])
@@ -74,7 +73,7 @@ export default function AdminDashboard({ user }) {
         'reports': '/admin/reports?status=pending'
       }
 
-      const res = await authenticatedFetch(`${API_URL}${endpoints[queue]}`)
+      const res = await adminFetch(`${API_URL}${endpoints[queue]}`)
       if (!res.ok) throw new Error('Failed to fetch queue')
       const data = await res.json()
       // Reports endpoint returns { reports: [], total, page, limit }
@@ -85,7 +84,7 @@ export default function AdminDashboard({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [authenticatedFetch, feedbackFilter])
+  }, [feedbackFilter])
 
   useEffect(() => {
     fetchDashboard()
@@ -101,7 +100,7 @@ export default function AdminDashboard({ user }) {
   const confirmDeposit = async (taskId, txHash, amount) => {
     setActionLoading(taskId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/${taskId}/confirm-deposit`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${taskId}/confirm-deposit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,7 +125,7 @@ export default function AdminDashboard({ user }) {
   const releasePayment = async (taskId) => {
     setActionLoading(taskId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/${taskId}/release-payment`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${taskId}/release-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +148,7 @@ export default function AdminDashboard({ user }) {
   const confirmWithdrawal = async (paymentId, txHash, amount) => {
     setActionLoading(paymentId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/payments/${paymentId}/confirm-withdrawal`, {
+      const res = await adminFetch(`${API_URL}/admin/payments/${paymentId}/confirm-withdrawal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +181,7 @@ export default function AdminDashboard({ user }) {
   const executeCancelAssignment = async (taskId) => {
     setActionLoading(taskId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/${taskId}/cancel-assignment`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${taskId}/cancel-assignment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,7 +204,7 @@ export default function AdminDashboard({ user }) {
   const resolveReport = async (reportId, { action, notes, suspend_days }) => {
     setActionLoading(reportId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/reports/${reportId}/resolve`, {
+      const res = await adminFetch(`${API_URL}/admin/reports/${reportId}/resolve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -229,7 +228,7 @@ export default function AdminDashboard({ user }) {
   const updateFeedbackStatus = async (feedbackId, status, adminNotes) => {
     setActionLoading(feedbackId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/feedback/${feedbackId}/status`, {
+      const res = await adminFetch(`${API_URL}/admin/feedback/${feedbackId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
