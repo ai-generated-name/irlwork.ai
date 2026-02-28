@@ -1266,6 +1266,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [showProofReview, setShowProofReview] = useState(null)
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
 
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [sidebarOpen]);
+
   // Dashboard tour state — show for first-time users who haven't completed the tour
   const [showTour, setShowTour] = useState(() => {
     return localStorage.getItem('irlwork_tour_completed') !== 'true'
@@ -2250,7 +2258,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       )}
 
       {/* Sidebar */}
-      <aside className={`dashboard-v4-sidebar ${sidebarOpen ? 'open' : ''}`}>
+      <aside
+        className={`dashboard-v4-sidebar ${sidebarOpen ? 'open' : ''}`}
+        role="navigation"
+        aria-label="Dashboard navigation"
+        onKeyDown={(e) => { if (e.key === 'Escape') setSidebarOpen(false); }}
+      >
         {/* Logo */}
         <a href="/" className="dashboard-v4-sidebar-logo" style={{ textDecoration: 'none' }}>
           <Logo variant="header" theme="light" />
@@ -2410,7 +2423,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       <main className="dashboard-v4-main">
         {/* Top Header Bar */}
         <div className="dashboard-v4-topbar">
-          {/* Left: Mobile menu + Logo */}
+          {/* Left: Mobile menu + Logo + Mode indicator */}
           <div className="dashboard-v4-topbar-left">
             <button className="dashboard-v4-menu-btn" onClick={() => setSidebarOpen(true)}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2420,6 +2433,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             <a href={hiringMode ? '/dashboard/hiring' : '/dashboard/working'} className="dashboard-v4-topbar-logo" style={{ textDecoration: 'none' }}>
               <Logo variant="header" theme="light" />
             </a>
+            <button
+              className="dashboard-v4-mode-indicator"
+              onClick={() => {
+                const newMode = !hiringMode;
+                setHiringMode(newMode);
+                setActiveTabState('dashboard');
+                updateTabUrl('dashboard', newMode);
+              }}
+              title={hiringMode ? 'Switch to Working mode' : 'Switch to Hiring mode'}
+            >
+              {hiringMode ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                    <path d="M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                  <span className="dashboard-v4-mode-indicator-label">Hiring</span>
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <path d="M8 21h8" />
+                    <path d="M12 17v4" />
+                  </svg>
+                  <span className="dashboard-v4-mode-indicator-label">Working</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Right: Mode switch + Notifications + User */}

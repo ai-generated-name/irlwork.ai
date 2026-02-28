@@ -6139,6 +6139,40 @@
   transform: translateY(-1px);
 }
 
+/* Mode indicator pill */
+.dashboard-v4-mode-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.dashboard-v4-mode-indicator:hover {
+  background: var(--bg-secondary);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-v4-mode-indicator-label {
+  display: inline;
+}
+
+@media (max-width: 375px) {
+  .dashboard-v4-mode-indicator-label {
+    display: none;
+  }
+}
+
 .dashboard-v4-topbar-center {
   display: flex;
   align-items: center;
