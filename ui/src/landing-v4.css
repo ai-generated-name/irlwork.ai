@@ -4993,6 +4993,18 @@
   min-width: 0;
 }
 
+/* Upgrade to Premium sidebar link - subtle highlight */
+.dashboard-v4-sidebar-upgrade-link {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-md);
+  margin: 4px 8px !important;
+  width: calc(100% - 16px) !important;
+}
+
+.dashboard-v4-sidebar-upgrade-link:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
 .dashboard-v4-user-name {
   font-size: 14px;
   font-weight: 600;
