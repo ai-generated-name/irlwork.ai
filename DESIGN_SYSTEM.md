@@ -77,11 +77,123 @@ All sizes use `base = mobile`, `sm: = 640px+`, `lg: = 1024px+`.
 - Secondary: ghost/outline for secondary actions
 - Compact: 36px height for inline/card actions
 
-### Cards
-- Padding: 16px on mobile, 20-24px on desktop
-- Border-radius: 14px
-- Background: white on off-white page
-- Minimal borders: `1px solid rgba(0, 0, 0, 0.06)`
+### Card (`ui/src/components/ui/Card.jsx`)
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `variant` | string | `'default'` | Visual style variant |
+| `interactive` | boolean | `false` | Enables hover effect and cursor pointer |
+| `hoverEffect` | string | `'shadow'` | Hover style (only applies when `interactive` is true) |
+| `padding` | string | `'md'` | Internal padding |
+| `dark` | boolean | `false` | Dark background mode |
+| `className` | string | `''` | Additional CSS classes |
+
+**Variants:**
+
+| Variant | Background | Border |
+|---------|------------|--------|
+| `default` | white | `#ECECEC` + subtle shadow |
+| `accent` | `#FFF7ED` (warm orange tint) | `#FDBA74` |
+| `success` | `#F0FDF4` (green tint) | `#BBF7D0` |
+| `info` | `#EFF6FF` (blue tint) | `#BFDBFE` |
+| `warning` | `#FEFCE8` (yellow tint) | `#FDE68A` |
+| `muted` | `#F3F4F6` (gray tint) | `#E5E7EB` |
+
+**Hover effects** (require `interactive`):
+
+| Effect | Behavior |
+|--------|----------|
+| `shadow` | Deepens box shadow on hover |
+| `lift` | Translates up 2px + shadow |
+| `glow` | Orange-tinted glow shadow |
+| `border` | Border transitions to orange |
+
+**Padding sizes:**
+
+| Size | Value |
+|------|-------|
+| `none` | 0 |
+| `sm` | 12px (p-3) |
+| `md` | 20px (p-5) |
+| `lg` | 24px (p-6) |
+
+Base styles: border-radius 14px, 1px border. Default behavior (no new props) is identical to previous Card output.
+
+### StatCard (`ui/src/components/ui/StatCard.jsx`)
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `label` | string | - | Uppercase label text |
+| `value` | string/number | - | Large display value (DM Mono) |
+| `icon` | ReactNode | - | Icon element |
+| `trend` | string or object | - | Trend indicator (see below) |
+| `dark` | boolean | `false` | Dark background mode |
+| `iconColor` | string | `'gray'` | Icon color with optional background circle |
+| `size` | string | `'md'` | Overall size variant |
+
+**Icon colors:**
+
+| Color | Text | Background circle |
+|-------|------|-------------------|
+| `gray` | `#9CA3AF` | None (flat icon) |
+| `orange` | `#E8853D` | `#FFF7ED` |
+| `green` | `#16A34A` | `#F0FDF4` |
+| `blue` | `#2563EB` | `#EFF6FF` |
+| `red` | `#DC2626` | `#FEF2F2` |
+| `gold` | `#D4A017` | `#FEF9E7` |
+
+When `iconColor` is not `gray`, the icon is wrapped in a colored circle.
+
+**Sizes:**
+
+| Size | Value text | Label text | Card padding |
+|------|------------|------------|--------------|
+| `sm` | 16px | 10px | p-3 |
+| `md` | 24px | 12px | p-5 |
+| `lg` | 32px | 14px | p-6 |
+
+**Trend prop:** Accepts a simple string (`'up'`, `'down'`, `'flat'`) or an object `{ direction: 'up'|'down'|'flat', value: string, period: string }`. The object form displays value and period text alongside the directional arrow.
+
+### StatusPill (`ui/src/components/ui/StatusPill.jsx`)
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `status` | string | - | Status key for color mapping |
+| `size` | string | `'md'` | Size variant |
+| `color` | object | - | Custom color override `{ bg, text }` |
+| `children` | ReactNode | - | Custom label (overrides `formatStatus(status)`) |
+
+**Supported statuses:**
+
+| Status | Style |
+|--------|-------|
+| `open`, `assigned`, `accepted`, `applied` | Blue |
+| `in_progress`, `pending`, `refunded` | Amber |
+| `pending_review`, `pending_acceptance`, `in_review` | Purple |
+| `approved`, `completed`, `paid`, `new`, `resolved` | Green |
+| `disputed`, `rejected`, `overdue` | Red |
+| `cancelled`, `expired`, `dismissed` | Gray |
+
+**Sizes:**
+
+| Size | Font | Padding |
+|------|------|---------|
+| `sm` | 10px | px-2 py-0.5 |
+| `md` | 12px (text-xs) | px-2.5 py-1 |
+| `lg` | 14px (text-sm) | px-3 py-1.5 |
+
+**Custom color override:**
+```jsx
+<StatusPill status="custom" color={{ bg: '#FEF9E7', text: '#D4A017' }}>Premium</StatusPill>
+```
+
+When `children` is provided, it renders instead of the auto-formatted status label.
 
 ### Empty States
 - Icon: 48px, muted color
@@ -110,6 +222,22 @@ All sizes use `base = mobile`, `sm: = 640px+`, `lg: = 1024px+`.
 - Icon: 22px, label: 10px
 - Active: orange icon + label
 - Visible at <= 900px viewport width
+
+### Dark variant
+
+All shared components in `ui/src/components/ui/` accept a `dark` boolean prop (default `false`) for use on dark backgrounds. When `dark` is not passed, components render identically to their original behavior.
+
+Dark styles use white with opacity for text and surfaces (`text-white/60`, `bg-white/5`, `border-white/10`) rather than introducing new color tokens.
+
+| Component | Dark prop | Changes |
+|-----------|----------|---------|
+| Card | `<Card dark>` | bg-white/5, border-white/10, no shadow. Interactive: hover:bg-white/10 |
+| Button | `<Button dark variant="secondary">` | secondary: white text/borders with opacity. ghost: text-white/60, hover:bg-white/10. primary/destructive: unchanged |
+| StatCard | `<StatCard dark>` | White text, label at 60% opacity, wraps dark Card |
+| PageHeader | `<PageHeader dark>` | White title, subtitle at 60% opacity |
+| EmptyState | `<EmptyState dark>` | White text, icon/description at 40-60% opacity |
+| ConfirmDialog | `<ConfirmDialog dark>` | bg-[#1A1A1A], border-white/10, white text, passes dark to inner Buttons |
+| StatusPill | No change needed | Colored backgrounds work on both light and dark |
 
 ## CSS Architecture
 

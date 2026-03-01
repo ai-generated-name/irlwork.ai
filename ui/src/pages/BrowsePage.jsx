@@ -1303,7 +1303,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 <div style={{ width: 64, height: 64, background: 'var(--success-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                   <Check size={32} style={{ color: 'var(--success)' }} />
                 </div>
-                <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Application Sent!</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Application sent</h3>
                 <p style={{ color: 'var(--text-secondary)' }}>The task creator will review your application.</p>
               </div>
             ) : (

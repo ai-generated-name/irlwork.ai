@@ -190,7 +190,7 @@ export default function TaskMessageThread({
               </svg>
             </div>
             <p className="text-[#333333] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
-            <p className="text-[#888888] text-xs">Be the first to send a message!</p>
+            <p className="text-[#888888] text-xs">Be the first to send a message</p>
           </div>
         ) : (
           <>

@@ -271,7 +271,7 @@ function Onboarding({ onComplete, user }) {
         {/* Step 4: Travel Radius + Hourly Rate */}
         {step === 4 && (
           <div>
-            <h1 className="onboarding-v4-title">Almost done!</h1>
+            <h1 className="onboarding-v4-title">Almost done</h1>
             <p className="onboarding-v4-subtitle">Set your travel distance and hourly rate</p>
 
             <div style={{ marginBottom: 20 }}>
