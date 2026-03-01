@@ -1,7 +1,9 @@
 import React from 'react'
 import { FileText } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function TermsPage() {
+  usePageTitle('Terms of Service')
   const sectionStyle = {
     background: 'white',
     border: '1px solid var(--border-primary)',

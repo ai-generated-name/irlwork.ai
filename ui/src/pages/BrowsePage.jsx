@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { MapPin, Clock, DollarSign, Star, Briefcase, Users, X, Check, Copy, Bot, User, ChevronRight, ChevronLeft, Search, Globe, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
 import { supabase } from '../App'
+import { navigate as spaNavigate } from '../utils/navigate'
 import { Logo } from '../components/Logo'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
@@ -11,6 +12,7 @@ import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { trackEvent } from '../utils/analytics'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -96,6 +98,7 @@ function SkeletonCard() {
 }
 
 export default function BrowsePage({ user, navigate: navigateProp }) {
+  usePageTitle('Browse')
   const toast = useToast()
   // Parse mode from URL path: /browse/tasks or /browse/humans (default: tasks)
   // Also support legacy ?mode= query param for backwards compat
@@ -477,7 +480,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     return date.toLocaleDateString()
   }
 
-  const navigate = navigateProp || ((path) => { window.location.href = path })
+  const navigate = navigateProp || spaNavigate
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(humansTotal / ITEMS_PER_PAGE))
@@ -884,7 +887,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       key={human.id}
                       human={human}
                       variant="browse"
-                      onExpand={(h) => window.location.href = `/humans/${h.id}`}
+                      onExpand={(h) => spaNavigate(`/humans/${h.id}`)}
                       onHire={(h) => setShowHireModal(h)}
                     />
                   ))}

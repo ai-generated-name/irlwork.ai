@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { Mail, Send, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function ContactPage() {
+  usePageTitle('Contact')
   const { t } = useLanguage()
   const [category, setCategory] = useState('support')
   const [name, setName] = useState('')

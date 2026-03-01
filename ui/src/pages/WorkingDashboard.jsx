@@ -1,8 +1,10 @@
 import { useState, useMemo, useCallback } from 'react'
 import API_URL from '../config/api'
+import { navigate } from '../utils/navigate'
 import HowPaymentsWork from '../components/HowPaymentsWork'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../App'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const ACTIVE_STATUSES = ['open', 'accepted', 'assigned', 'in_progress']
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed']
@@ -172,6 +174,7 @@ function ProgressRing({ completed, total }) {
 }
 
 export default function WorkingDashboard({ user, tasks, notifications, onNavigate, onUserUpdate }) {
+  usePageTitle('Dashboard')
   const toast = useToast()
   const safeTasks = Array.isArray(tasks) ? tasks : []
   const activeTasks = safeTasks.filter(t => ACTIVE_STATUSES.includes(t.status))
@@ -441,7 +444,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
                 <button
                   key={task.id}
                   className="working-dash-attention-item"
-                  onClick={() => window.location.href = `/tasks/${task.id}`}
+                  onClick={() => navigate(`/tasks/${task.id}`)}
                 >
                   <span className="working-dash-attention-badge working-dash-attention-badge--active">In Progress</span>
                   {deadlineBadge}
@@ -457,7 +460,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
               <button
                 key={task.id}
                 className="working-dash-attention-item"
-                onClick={() => window.location.href = `/tasks/${task.id}`}
+                onClick={() => navigate(`/tasks/${task.id}`)}
               >
                 <span className="working-dash-attention-badge working-dash-attention-badge--review">In Review</span>
                 <span className="working-dash-attention-task-title">{task.title}</span>
