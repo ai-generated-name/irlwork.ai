@@ -4242,6 +4242,28 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   }
 
   const isLate = task.deadline && new Date(task.deadline) < new Date();
+
+  // Atomic update FIRST: only transition if still in_progress AND user is the assigned worker.
+  // This prevents TOCTOU races — if another request (cancel, dispute) changes the status
+  // between our SELECT and this UPDATE, the WHERE clause will fail and no rows update.
+  const { data: updatedTask, error: statusErr } = await supabase
+    .from('tasks')
+    .update({
+      status: 'pending_review',
+      proof_submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', taskId)
+    .eq('status', 'in_progress')
+    .eq('human_id', user.id)
+    .select('id')
+    .single();
+
+  if (statusErr || !updatedTask) {
+    return res.status(409).json({ error: 'Task is no longer in progress or you are not the assigned worker.' });
+  }
+
+  // Insert proof record AFTER status update succeeds — prevents orphaned proof records
   const proofId = uuidv4();
   const { data: proof, error } = await supabase
     .from('task_proofs')
@@ -4259,23 +4281,6 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-
-  // Atomic update: only transition if still in_progress (prevents TOCTOU race)
-  const { data: updatedTask, error: statusErr } = await supabase
-    .from('tasks')
-    .update({
-      status: 'pending_review',
-      proof_submitted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', taskId)
-    .eq('status', 'in_progress')
-    .select('id')
-    .single();
-
-  if (statusErr || !updatedTask) {
-    return res.status(409).json({ error: 'Task status changed before proof could be submitted. Please refresh.' });
-  }
 
   // Notify agent
   await createNotification(
