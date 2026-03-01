@@ -6777,6 +6777,31 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Validation failed', details: taskValErrors } });
         }
 
+        // Task posting limit check — parity with REST POST /api/tasks
+        const mcpUserTier = user.subscription_tier || 'free';
+        const mcpNow = new Date();
+        const mcpMonthStart = new Date(Date.UTC(mcpNow.getUTCFullYear(), mcpNow.getUTCMonth(), 1));
+        let mcpTasksPosted = user.tasks_posted_this_month || 0;
+
+        if (!user.tasks_posted_month_reset || new Date(user.tasks_posted_month_reset) < mcpMonthStart) {
+          await supabase.from('users').update({
+            tasks_posted_this_month: 0,
+            tasks_posted_month_reset: mcpMonthStart.toISOString()
+          }).eq('id', user.id);
+          mcpTasksPosted = 0;
+        }
+
+        if (!canPostTask(mcpTasksPosted, mcpUserTier)) {
+          const mcpTierConfig = getTierConfig(mcpUserTier);
+          return res.status(403).json({
+            error: 'Monthly task posting limit reached',
+            code: 'task_limit_reached',
+            limit: mcpTierConfig.task_limit_monthly,
+            posted: mcpTasksPosted,
+            upgrade_url: '/premium'
+          });
+        }
+
         // Payment method check: agent must have a card or wallet before creating a task
         let mcpCreatePMs = [];
         if (user.stripe_customer_id && stripe) {
@@ -6849,6 +6874,13 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (error) throw error;
+
+        // Increment monthly task posting counter — parity with REST
+        await supabase.from('users').update({
+          tasks_posted_this_month: (mcpTasksPosted + 1),
+          updated_at: new Date().toISOString()
+        }).eq('id', user.id);
+
         const mcpResponse = { id: task.id, status: mcpTaskFlagged ? 'pending_review' : 'open', task_type: taskType, quantity: taskQuantity, message: 'Task posted successfully.' };
         if (mcpEncAddr || mcpEncNotes || mcpEncContact) {
           mcpResponse.private_fields_stored = [];
