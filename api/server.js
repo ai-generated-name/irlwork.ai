@@ -6267,13 +6267,13 @@ app.post('/api/mcp', async (req, res) => {
           `/tasks/${task_id}`
         );
 
-        // Email notification — same as REST
+        // Email notification — same as REST (with escapeHtml/sanitizeSubject for XSS prevention)
         const approveTaskUrl = `https://www.irlwork.ai/tasks/${task_id}`;
         sendEmailNotification(task.human_id,
-          `Your work on "${task.title}" has been approved!`,
+          sanitizeSubject(`Your work on "${task.title}" has been approved!`),
           `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
             <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Work Approved!</p>
-            <p style="color: #1A1A1A; font-size: 14px; margin: 0;">Your work on "${task.title}" has been approved. $${task.budget} is being processed and will be available after the 48-hour clearing period.</p>
+            <p style="color: #1A1A1A; font-size: 14px; margin: 0;">Your work on &ldquo;${escapeHtml(task.title)}&rdquo; has been approved. $${task.budget} is being processed and will be available after the 48-hour clearing period.</p>
           </div>
           <a href="${approveTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
         ).catch(() => {});
@@ -10304,10 +10304,10 @@ async function start() {
         for (const task of (staleTasks || [])) {
           if (!task.human_id) continue;
 
-          // Atomic status update
+          // Atomic status update — use 'approved' (not 'completed' which is not in the status machine)
           const { data: updated } = await supabase.from('tasks')
             .update(cleanTaskData({
-              status: 'completed',
+              status: 'approved',
               auto_released: true,
               completed_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -10337,6 +10337,18 @@ async function start() {
               }).eq('id', task.id);
             } catch (captureErr) {
               console.error(`[AutoApprove] Failed to capture escrow for task ${task.id}:`, captureErr.message);
+            }
+          }
+
+          // Release payment — same pipeline as manual approval and 48h auto-approve
+          const canRelease72h = (task.payment_method === 'stripe' && task.stripe_payment_intent_id) ||
+            (task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held'));
+          if (canRelease72h) {
+            try {
+              await releasePaymentToPending(supabase, task.id, task.human_id, task.agent_id, createNotification);
+              console.log(`[AutoApprove/72h] Released payment for task ${task.id}`);
+            } catch (releaseError) {
+              console.error(`[AutoApprove/72h] Payment release failed for task ${task.id}:`, releaseError.message);
             }
           }
 
