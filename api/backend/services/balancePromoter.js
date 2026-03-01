@@ -191,13 +191,22 @@ async function promotePendingBalances(supabase, createNotification) {
         }
 
         // Update task status to 'paid' AFTER transfer attempt (or confirmation funds are available)
-        // TODO: PR4 — insert status history row here
         if (transferSucceeded) {
           await supabase
             .from('tasks')
             .update({ status: 'paid', updated_at: new Date().toISOString() })
             .eq('id', tx.task_id)
             .in('status', ['approved', 'completed']);
+
+          await supabase.from('task_status_history').insert({
+            task_id: tx.task_id,
+            from_status: null,
+            to_status: 'paid',
+            changed_by: null,
+            reason: 'balance_promoted'
+          }).then(() => {}).catch(err => {
+            console.error(`[BalancePromoter] Failed to record status change for task ${tx.task_id}:`, err.message);
+          });
         }
         // Funds stay as 'available' if no matching payout method is set up — worker can manually withdraw later
 

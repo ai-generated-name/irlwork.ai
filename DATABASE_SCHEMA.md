@@ -14,7 +14,7 @@
 - **Row Level Security (RLS)**: Enabled on select tables; most access control is handled at the API layer using the service role key
 - **Primary keys**: UUID (`uuid_generate_v4()` or `gen_random_uuid()`)
 - **Timestamps**: `TIMESTAMPTZ` (`TIMESTAMP WITH TIME ZONE`), defaulting to `NOW()`
-- **Total tables**: 25
+- **Total tables**: 26
 
 ---
 
@@ -57,6 +57,7 @@ erDiagram
     tasks ||--o{ task_reports : "reported"
     tasks ||--o{ deposits : "matched"
     tasks ||--o{ deadline_extension_requests : "has"
+    tasks ||--o{ task_status_history : "tracks"
     tasks ||--o{ transactions : "legacy"
     tasks ||--o{ admin_audit_log : "audits"
     tasks ||--o{ page_views : "viewed"
@@ -346,6 +347,26 @@ unfunded -> pending_deposit -> awaiting_worker -> deposited -> released -> pendi
 **Indexes**: `idx_extension_requests_task` on `task_id`. Partial unique index `idx_one_pending_per_task` on `(task_id) WHERE status = 'pending'` — enforces one pending request per task.
 
 **Migration**: `db/migrations/004_deadline_enforcement.sql`
+
+---
+
+### 4c. `task_status_history` -- Task status transition audit trail
+
+Records every task status transition for audit trail and agent context.
+
+| Column | Type | Constraints | Default | Notes |
+|--------|------|-------------|---------|-------|
+| `id` | UUID | PK | `gen_random_uuid()` | |
+| `task_id` | UUID | FK -> tasks (CASCADE delete), NOT NULL | | |
+| `from_status` | TEXT | | | Previous status (null for task creation) |
+| `to_status` | TEXT | NOT NULL | | New status |
+| `changed_by` | UUID | FK -> users | | Null for system/cron changes |
+| `reason` | TEXT | | | Optional context (e.g., "deadline_passed", "auto_approved_72h") |
+| `created_at` | TIMESTAMPTZ | | `NOW()` | When the transition occurred |
+
+**Indexes**: `idx_task_status_history_task(task_id, created_at)`, `idx_task_status_history_task_status(task_id, to_status)`
+
+**RLS**: Enabled. Agents can read history for tasks they created. Workers can read history for tasks they are assigned to.
 
 ---
 
@@ -888,6 +909,7 @@ Increments a named stat column on the `users` table. Used to update `jobs_comple
 | `tasks` | Enabled | Public read; agent-owner write |
 | `task_applications` | Not enabled | API layer auth |
 | `task_proofs` | Not enabled | API layer auth |
+| `task_status_history` | Enabled | Read by task creator (agent) or assigned worker |
 | `pending_transactions` | Not enabled | API layer auth |
 | `payouts` | Enabled | Policies managed at API layer |
 | `withdrawals` | Not enabled | API layer auth |
