@@ -9948,6 +9948,11 @@ async function start() {
                 `Your task "${task.title}" expired because its deadline passed without anyone accepting it. You can repost it anytime.`,
                 `/tasks/${task.id}`
               );
+              dispatchWebhook(task.agent_id, {
+                type: 'task_expired',
+                task_id: task.id,
+                data: { title: task.title, reason: 'deadline_passed' }
+              }).catch(() => {});
             }
           }
         }
@@ -9978,6 +9983,11 @@ async function start() {
                 `Your task "${task.title}" expired after ${TASK_EXPIRY_DAYS} days without applicants. You can repost it anytime.`,
                 `/tasks/${task.id}`
               );
+              dispatchWebhook(task.agent_id, {
+                type: 'task_expired',
+                task_id: task.id,
+                data: { title: task.title, reason: 'stale_no_applicants' }
+              }).catch(() => {});
             }
           }
         }
@@ -10185,6 +10195,11 @@ async function start() {
               await createNotification(task.agent_id, 'auth_hold_failed', 'Payment Hold Expiring',
                 `Your payment hold for "${task.title}" could not be renewed. Please update your payment method within 24 hours or the task will be cancelled.`,
                 `/tasks/${task.id}`);
+              dispatchWebhook(task.agent_id, {
+                type: 'auth_hold_failed',
+                task_id: task.id,
+                data: { title: task.title, action_required: 'update_payment_method' }
+              }).catch(() => {});
               // Set a short expiry so next cycle auto-cancels if still unresolved
               await supabase.from('tasks').update({
                 auth_hold_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -10205,6 +10220,11 @@ async function start() {
             await createNotification(task.agent_id, 'auth_hold_failed', 'Payment Hold Failed',
               `Your payment hold for "${task.title}" could not be renewed. Update your payment method or the task may be cancelled.`,
               `/tasks/${task.id}`);
+            dispatchWebhook(task.agent_id, {
+              type: 'auth_hold_failed',
+              task_id: task.id,
+              data: { title: task.title, action_required: 'update_payment_method' }
+            }).catch(() => {});
           }
         }
 
@@ -10314,6 +10334,11 @@ async function start() {
           await createNotification(task.agent_id, 'auto_released', 'Task Auto-Approved',
             `Task "${task.title}" was automatically approved after 72 hours of no response.`,
             `/tasks/${task.id}`);
+          dispatchWebhook(task.agent_id, {
+            type: 'auto_released',
+            task_id: task.id,
+            data: { title: task.title }
+          }).catch(() => {});
 
           console.log(`[AutoApprove] Auto-approved task ${task.id}: "${task.title}"`);
         }
@@ -11109,6 +11134,11 @@ app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
     await createNotification(task.agent_id, 'payment_confirmed', 'Payment Verified',
       `Payment for "${task.title}" has been verified. Task is now assigned.`,
       `/tasks/${taskId}`);
+    dispatchWebhook(task.agent_id, {
+      type: 'payment_confirmed',
+      task_id: taskId,
+      data: { title: task.title, status: 'assigned', escrow_status: 'authorized' }
+    }).catch(() => {});
     if (task.human_id) {
       await createNotification(task.human_id, 'task_assigned', 'You\'ve Been Assigned',
         `You've been assigned to "${task.title}". Review the instructions and start when ready.`,
