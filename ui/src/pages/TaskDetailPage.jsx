@@ -19,6 +19,7 @@ import DisputeModal from '../components/DisputeModal';
 import WithdrawModal from '../components/WithdrawModal';
 import ShareOnXButton from '../components/ShareOnXButton';
 import API_URL from '../config/api';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [task, setTask] = useState(null);
@@ -36,6 +37,8 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
+  usePageTitle(task?.title || 'Task Details');
 
   const isParticipant = user && task && (task.agent_id === user.id || task.human_id === user.id);
   const isWorker = user && task && task.human_id === user.id;
