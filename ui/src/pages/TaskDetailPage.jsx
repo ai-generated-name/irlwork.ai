@@ -2,6 +2,7 @@
 // Handles both open tasks (browsing/applying) and assigned tasks (messaging/proof)
 
 import React, { useState, useEffect } from 'react';
+import { getErrorMessage } from '../utils/apiErrors';
 import { supabase } from '../App';
 import { Logo } from '../components/Logo';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
@@ -65,7 +66,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
         if (!taskRes.ok) {
           const errBody = await taskRes.json().catch(() => ({}));
-          throw new Error(errBody.error || `Task not found (${taskRes.status})`);
+          throw new Error(getErrorMessage(errBody, `Task not found (${taskRes.status})`));
         }
         const taskData = await taskRes.json();
         setTask(taskData);
@@ -284,7 +285,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         window.location.reload();
       } else {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to submit proof');
+        throw new Error(getErrorMessage(errorData, 'Failed to submit proof'));
       }
     } catch (err) {
       console.error('Error submitting proof:', err);
@@ -305,7 +306,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       window.location.reload();
     } else {
       const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to file dispute');
+      throw new Error(getErrorMessage(errorData, 'Failed to file dispute'));
     }
   };
 
@@ -321,7 +322,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       window.location.reload();
     } else {
       const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to withdraw from task');
+      throw new Error(getErrorMessage(errorData, 'Failed to withdraw from task'));
     }
   };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ClipboardList, Shield, Package, Camera, BarChart3, Footprints, Sparkles, Truck, Wrench, Search, Monitor, Languages, CheckCircle } from 'lucide-react';
 
+import { getErrorMessage } from '../utils/apiErrors';
 import API_URL from '../config/api';
 import { trackEvent } from '../utils/analytics';
 import ConfirmationModal from './ConfirmationModal';
@@ -113,7 +114,7 @@ export default function QuickApplyModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to apply');
+        throw new Error(getErrorMessage(data, 'Failed to apply'));
       }
 
       trackEvent('task_applied', { task_id: task.id, source: 'quick_apply' });
