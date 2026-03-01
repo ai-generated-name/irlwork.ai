@@ -6,7 +6,8 @@ import {
   Star, CalendarDays, Search, ChevronDown, Upload, Bell,
   FileText, CheckCircle, XCircle, Landmark, Scale, Ban, ArrowDownLeft,
   Shield, Hourglass, Bot, FolderOpen, RefreshCw,
-  Monitor, Sparkles, AlertTriangle, KeyRound, Mail
+  Monitor, Sparkles, AlertTriangle, KeyRound, Mail,
+  UserPlus, UserX, Clock, Zap, PlayCircle, Wallet, ArrowUpRight
 } from 'lucide-react'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { createClient } from '@supabase/supabase-js'
@@ -2140,6 +2141,53 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     moderation_action: <AlertTriangle size={18} />,
     report_reviewed: <Shield size={18} />,
     task_under_review: <AlertTriangle size={18} />,
+    // Applications
+    new_application: <UserPlus size={18} />,
+    application_rejected: <UserX size={18} />,
+    application_declined: <UserX size={18} />,
+    // Task lifecycle
+    task_match: <Sparkles size={18} />,
+    task_offered: <Handshake size={18} />,
+    task_offer_expired: <Hourglass size={18} />,
+    task_accepted: <Check size={18} />,
+    task_declined: <XCircle size={18} />,
+    task_started: <PlayCircle size={18} />,
+    task_cancelled: <Ban size={18} />,
+    task_expired: <Hourglass size={18} />,
+    task_auto_hidden: <AlertTriangle size={18} />,
+    task_completed: <CheckCircle size={18} />,
+    task_auto_approved: <CheckCircle size={18} />,
+    worker_cancelled: <UserX size={18} />,
+    auto_released: <Zap size={18} />,
+    // Proofs & deadlines
+    proof_submitted_late: <Clock size={18} />,
+    extension_requested: <CalendarDays size={18} />,
+    extension_approved: <CheckCircle size={18} />,
+    extension_declined: <XCircle size={18} />,
+    deadline_extended: <CalendarDays size={18} />,
+    deadline_approaching: <Clock size={18} />,
+    deadline_passed: <AlertTriangle size={18} />,
+    // Payments
+    payment_received: <DollarSign size={18} />,
+    payment_pending: <DollarSign size={18} />,
+    payment_failed: <AlertTriangle size={18} />,
+    payment_confirmed: <CheckCircle size={18} />,
+    payout_completed: <Wallet size={18} />,
+    payout_failed: <AlertTriangle size={18} />,
+    payout_paid: <Wallet size={18} />,
+    transfer_failed: <AlertTriangle size={18} />,
+    auth_hold_failed: <KeyRound size={18} />,
+    balance_available: <DollarSign size={18} />,
+    withdrawal_completed: <Wallet size={18} />,
+    payment_method_added: <CreditCard size={18} />,
+    subscription_activated: <CreditCard size={18} />,
+    // System
+    review_reminder: <Shield size={18} />,
+    report_submitted: <Shield size={18} />,
+    new_task_report: <AlertTriangle size={18} />,
+    critical_feedback: <AlertTriangle size={18} />,
+    agent_error: <Bot size={18} />,
+    manual_payment_required: <AlertTriangle size={18} />,
   }
 
   // Navigate to a notification's linked page
