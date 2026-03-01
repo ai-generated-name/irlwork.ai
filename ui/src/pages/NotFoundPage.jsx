@@ -1,5 +1,6 @@
 import React from 'react'
 import { Home, ArrowLeft, MapPin } from 'lucide-react'
+import { Button } from '../components/ui'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function NotFoundPage() {
@@ -98,29 +99,24 @@ export default function NotFoundPage() {
           justifyContent: 'center',
           flexWrap: 'wrap',
         }}>
-          <a
-            href="/"
-            className="v4-btn v4-btn-primary"
-            style={{
-              padding: 'var(--space-3) var(--space-6)',
-              fontSize: '15px',
-              textDecoration: 'none',
-            }}
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => { window.location.href = '/' }}
+            className="gap-2"
           >
             <Home size={18} />
-            Go to Homepage
-          </a>
-          <button
+            Return to homepage
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
             onClick={() => window.history.back()}
-            className="v4-btn v4-btn-secondary"
-            style={{
-              padding: 'var(--space-3) var(--space-6)',
-              fontSize: '15px',
-            }}
+            className="gap-2"
           >
             <ArrowLeft size={18} />
-            Go Back
-          </button>
+            Go back
+          </Button>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { supabase } from '../App'
+import { supabase } from '../lib/supabase'
 
 /**
  * Authenticated fetch for admin API calls.

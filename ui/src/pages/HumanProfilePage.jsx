@@ -4,6 +4,7 @@ import { StarRating } from '../components/HumanProfileCard'
 import { SocialIconsRow } from '../components/SocialIcons'
 import ForAgentsBox from '../components/ForAgentsBox'
 import { PageLayoutV4 } from '../components/V4Layout'
+import { Button } from '../components/ui'
 import API_URL from '../config/api'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { formatTimezoneShort } from '../utils/timezone'
@@ -29,7 +30,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
       })
       .then(data => {
         const fixed = fixAvatarUrl(data)
-        console.log('[HumanProfile] avatar_url:', fixed.avatar_url || 'none')
+
         setProfile(fixed)
         setLoading(false)
       })
@@ -106,44 +107,23 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
       <div style={{ maxWidth: 1060, margin: '0 auto', padding: '32px 24px 64px' }}>
         {/* Back + Share */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             onClick={() => onNavigate?.('/browse/humans') || navigate('/browse/humans')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 16px',
-              background: 'none',
-              border: '1px solid rgba(26,26,26,0.1)',
-              borderRadius: 10,
-              cursor: 'pointer',
-              fontSize: 14,
-              color: 'var(--text-secondary, #525252)',
-              transition: 'all 0.2s'
-            }}
           >
-            <ArrowLeft size={16} />
-            Back to Browse
-          </button>
-          <button
+            <ArrowLeft size={16} style={{ marginRight: 6 }} />
+            Back to browse
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
             onClick={handleShare}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 16px',
-              background: 'none',
-              border: '1px solid rgba(26,26,26,0.1)',
-              borderRadius: 10,
-              cursor: 'pointer',
-              fontSize: 14,
-              color: copied ? '#059669' : 'var(--text-secondary, #525252)',
-              transition: 'all 0.2s'
-            }}
+            style={copied ? { color: '#059669', borderColor: '#059669' } : {}}
           >
-            {copied ? <Check size={16} /> : <Share2 size={16} />}
-            {copied ? 'Copied!' : 'Share Profile'}
-          </button>
+            {copied ? <Check size={16} style={{ marginRight: 6 }} /> : <Share2 size={16} style={{ marginRight: 6 }} />}
+            {copied ? 'Link copied' : 'Share profile'}
+          </Button>
         </div>
 
         {loading ? (
@@ -155,22 +135,14 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
           <div style={{ padding: 80, textAlign: 'center' }}>
             <p style={{ color: 'var(--text-secondary, #525252)', fontSize: 18, fontWeight: 600 }}>Profile not found</p>
             <p style={{ color: 'var(--text-tertiary, #8A8A8A)', fontSize: 14, marginTop: 8 }}>{error}</p>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               onClick={() => navigate('/browse/humans')}
-              style={{
-                marginTop: 24,
-                padding: '10px 24px',
-                background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
-                color: 'white',
-                fontWeight: 600,
-                fontSize: 14,
-                borderRadius: 10,
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              style={{ marginTop: 24 }}
             >
-              Browse Humans
-            </button>
+              View other workers
+            </Button>
           </div>
         ) : profile ? (
           <>
@@ -283,7 +255,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                           >
                             <ShieldCheck size={13} />
-                            Get Verified
+                            Get verified
                           </a>
                         )}
                       </div>
@@ -406,7 +378,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                   {/* Reviews - full list on left column for profiles with reviews */}
                   {hasReviews && (
                     <div>
-                      <SectionLabel>Recent Reviews</SectionLabel>
+                      <SectionLabel>Recent reviews</SectionLabel>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {profile.reviews.slice(0, 10).map((review, idx) => (
                           <div key={idx} style={{
@@ -533,7 +505,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         e.currentTarget.style.transform = 'translateY(0)'
                       }}
                     >
-                      Hire {profile.name?.split(' ')[0] || 'This Human'}
+                      Hire {profile.name?.split(' ')[0] || 'this worker'}
                     </button>
                   )}
 
@@ -561,7 +533,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         <strong>{numRating.toFixed(1)}</strong> rating · {numCount} {numCount === 1 ? 'review' : 'reviews'}
                       </span>
                     ) : (
-                      <span style={{ color: 'var(--text-tertiary, #8A8A8A)' }}>No reviews yet — be the first!</span>
+                      <span style={{ color: 'var(--text-tertiary, #8A8A8A)' }}>No reviews yet</span>
                     )}
                   </div>
                 </div>
@@ -610,7 +582,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                     boxShadow: '0 4px 20px rgba(244,132,95,0.3)',
                   }}
                 >
-                  Hire {profile.name?.split(' ')[0] || 'This Human'}
+                  Hire {profile.name?.split(' ')[0] || 'this worker'}
                 </button>
               </div>
             )}

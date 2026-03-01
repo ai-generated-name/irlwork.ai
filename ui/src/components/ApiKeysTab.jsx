@@ -1,7 +1,8 @@
 // ApiKeysTab - Extracted from App.jsx
 import React, { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, AlertTriangle, Copy, Check, Key, Plus, RotateCw, Trash2, ExternalLink, Eye, EyeOff } from 'lucide-react'
-import { supabase } from '../App'
+import { supabase } from '../lib/supabase'
+import { EmptyState, Button, Card, ConfirmDialog } from './ui'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -136,13 +137,14 @@ export default function ApiKeysTab({ user }) {
           Manage API keys for programmatic access to irlwork.ai
         </p>
         {keys.length > 0 && (
-          <button
-            className="v4-btn v4-btn-primary"
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
           >
             <Plus size={16} />
-            Generate New Key
-          </button>
+            Generate new key
+          </Button>
         )}
       </div>
 
@@ -156,7 +158,7 @@ export default function ApiKeysTab({ user }) {
                   <div className="apikeys-modal-icon">
                     <Key size={20} />
                   </div>
-                  <h2>Generate New API Key</h2>
+                  <h2>Generate new API key</h2>
                   <p>Give your key a name to help you identify it later.</p>
                 </div>
                 <input
@@ -175,19 +177,21 @@ export default function ApiKeysTab({ user }) {
                   </div>
                 )}
                 <div className="apikeys-modal-actions">
-                  <button
-                    className="v4-btn v4-btn-secondary"
+                  <Button
+                    variant="secondary"
+                    size="md"
                     onClick={() => { setShowModal(false); setNewKey(null); }}
                   >
                     Cancel
-                  </button>
-                  <button
-                    className="v4-btn v4-btn-primary"
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="md"
                     onClick={generateKey}
                     disabled={generating}
                   >
-                    {generating ? 'Generating...' : 'Generate Key'}
-                  </button>
+                    {generating ? 'Generating...' : 'Generate key'}
+                  </Button>
                 </div>
               </>
             ) : (
@@ -196,7 +200,7 @@ export default function ApiKeysTab({ user }) {
                   <div className="apikeys-modal-icon apikeys-modal-icon--success">
                     <Check size={20} />
                   </div>
-                  <h2>API Key Generated</h2>
+                  <h2>API key generated</h2>
                   <p>Copy this key now. You won't be able to see it again.</p>
                 </div>
 
@@ -206,7 +210,7 @@ export default function ApiKeysTab({ user }) {
                     className={`apikeys-copy-btn ${copied ? 'apikeys-copy-btn--copied' : ''}`}
                     onClick={() => copyToClipboard(newKey)}
                   >
-                    {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                    {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy key</>}
                   </button>
                 </div>
 
@@ -215,13 +219,14 @@ export default function ApiKeysTab({ user }) {
                   <span>Store this key securely. It won't be shown again.</span>
                 </div>
 
-                <button
-                  className="v4-btn v4-btn-primary"
-                  style={{ width: '100%' }}
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="w-full"
                   onClick={() => { setShowModal(false); setNewKey(null); }}
                 >
-                  Done
-                </button>
+                  Close dialog
+                </Button>
               </>
             )}
           </div>
@@ -229,35 +234,16 @@ export default function ApiKeysTab({ user }) {
       )}
 
       {/* Revoke Confirmation Modal */}
-      {confirmRevoke && (
-        <div className="apikeys-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmRevoke(null); }}>
-          <div className="apikeys-modal">
-            <div className="apikeys-modal-header">
-              <div className="apikeys-modal-icon apikeys-modal-icon--danger">
-                <Trash2 size={20} />
-              </div>
-              <h2>Revoke API Key</h2>
-              <p>
-                Are you sure you want to revoke <strong>{confirmRevoke.name}</strong>? Any agents using this key will lose access immediately.
-              </p>
-            </div>
-            <div className="apikeys-modal-actions">
-              <button
-                className="v4-btn v4-btn-secondary"
-                onClick={() => setConfirmRevoke(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="v4-btn apikeys-btn-danger"
-                onClick={() => revokeKey(confirmRevoke.id)}
-              >
-                Revoke Key
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirmRevoke}
+        title="Revoke API key?"
+        description={confirmRevoke ? `Are you sure you want to revoke ${confirmRevoke.name}? Any agents using this key will lose access immediately.` : ''}
+        confirmLabel="Revoke key"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={() => revokeKey(confirmRevoke.id)}
+        onCancel={() => setConfirmRevoke(null)}
+      />
 
       {/* Filter bar */}
       {keys.length > 0 && (
@@ -284,24 +270,20 @@ export default function ApiKeysTab({ user }) {
       {loading ? (
         <div className="apikeys-loading">Loading keys...</div>
       ) : keys.length === 0 ? (
-        <div className="apikeys-empty">
-          <div className="apikeys-empty-icon">
-            <Key size={32} strokeWidth={1.5} />
-          </div>
-          <h3>No API Keys Yet</h3>
-          <p>Generate an API key to connect your agent to irlwork.ai.</p>
-          <button
-            className="v4-btn v4-btn-primary"
-            onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
-          >
-            <Plus size={16} />
-            Generate Your First Key
-          </button>
-        </div>
+        <EmptyState
+          icon={<Key size={48} />}
+          title="No API keys yet"
+          description="Generate an API key to connect your agent to irlwork.ai."
+          action={
+            <Button variant="primary" onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}>
+              <Plus size={16} /> Generate first key
+            </Button>
+          }
+        />
       ) : (
         <div className="apikeys-list">
           {keys.filter(key => showRevoked || key.is_active).map(key => (
-            <div
+            <Card
               key={key.id}
               className={`apikeys-card ${!key.is_active ? 'apikeys-card--revoked' : ''}`}
             >
@@ -316,11 +298,11 @@ export default function ApiKeysTab({ user }) {
                   <div className="apikeys-card-actions">
                     <button className="apikeys-action-btn" onClick={() => rotateKey(key.id)}>
                       <RotateCw size={14} />
-                      Rotate
+                      Rotate key
                     </button>
                     <button className="apikeys-action-btn apikeys-action-btn--danger" onClick={() => setConfirmRevoke(key)}>
                       <Trash2 size={14} />
-                      Revoke
+                      Revoke key
                     </button>
                   </div>
                 )}
@@ -330,7 +312,7 @@ export default function ApiKeysTab({ user }) {
                 <span>Created {formatDate(key.created_at)}</span>
                 <span>Last used {formatDate(key.last_used_at)}</span>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
@@ -338,7 +320,7 @@ export default function ApiKeysTab({ user }) {
       {/* Usage Instructions */}
       <div className="apikeys-usage">
         <div className="apikeys-usage-header">
-          <h3>Quick Start</h3>
+          <h3>Quick start</h3>
           <a href="/connect-agent" className="apikeys-docs-link">
             Full documentation <ExternalLink size={13} />
           </a>

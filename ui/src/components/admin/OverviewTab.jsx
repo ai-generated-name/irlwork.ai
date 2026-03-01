@@ -4,6 +4,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import PeriodSelector from './PeriodSelector'
 import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
+import Card from '../ui/Card'
+import Button from '../ui/Button'
 
 /**
  * Overview Tab — top-level BI dashboard
@@ -44,19 +46,19 @@ export default function OverviewTab({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-gray-400">Loading overview...</div>
+        <div className="text-[#9CA3AF]">Loading overview...</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-        <p className="text-red-600 font-medium mb-3">{error}</p>
-        <button onClick={fetchData} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600">
-          Retry
-        </button>
-      </div>
+      <Card padding="none" className="p-12 text-center">
+        <p className="text-[#DC2626] font-medium mb-3">{error}</p>
+        <Button variant="primary" size="sm" onClick={fetchData}>
+          Retry loading
+        </Button>
+      </Card>
     )
   }
 
@@ -65,8 +67,8 @@ export default function OverviewTab({ user }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">Platform Overview</h2>
-          <p className="text-sm text-gray-400 mt-0.5">Top-level metrics — GMV, escrow balances, signups, and daily activity trends.</p>
+          <h2 className="text-lg font-bold text-[#1A1A1A]">Platform Overview</h2>
+          <p className="text-sm text-[#9CA3AF] mt-0.5">Top-level metrics — GMV, escrow balances, signups, and daily activity trends.</p>
         </div>
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
@@ -74,14 +76,14 @@ export default function OverviewTab({ user }) {
       {/* Top cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          label="Gross Merchandise Value"
+          label="Gross merchandise value"
           value={fmt(financials?.gmv?.total_cents || 0)}
           subtitle={`${financials?.gmv?.count || 0} tasks`}
           icon={<DollarSign size={18} />}
           color="green"
         />
         <MetricCard
-          label="Platform Fees Earned"
+          label="Platform fees earned"
           value={fmt(financials?.platform_fees?.total_cents || 0)}
           subtitle={`${financials?.platform_fees?.count || 0} completed`}
           icon={<TrendingUp size={18} />}
@@ -106,8 +108,8 @@ export default function OverviewTab({ user }) {
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tasks created per day */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4 text-sm">Tasks Created Per Day</h3>
+        <Card padding="md">
+          <h3 className="font-semibold text-[#1A1A1A] mb-4 text-sm">Tasks created per day</h3>
           {(growth?.tasks?.created_by_day || []).length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={growth.tasks.created_by_day}>
@@ -119,13 +121,13 @@ export default function OverviewTab({ user }) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[220px] flex items-center justify-center text-gray-400 text-sm">No data</div>
+            <div className="h-[220px] flex items-center justify-center text-[#9CA3AF] text-sm">No data</div>
           )}
-        </div>
+        </Card>
 
         {/* Signups per day */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4 text-sm">Signups Per Day</h3>
+        <Card padding="md">
+          <h3 className="font-semibold text-[#1A1A1A] mb-4 text-sm">Signups per day</h3>
           {(growth?.users?.signups_by_day || []).length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={growth.users.signups_by_day}>
@@ -139,9 +141,9 @@ export default function OverviewTab({ user }) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[220px] flex items-center justify-center text-gray-400 text-sm">No data</div>
+            <div className="h-[220px] flex items-center justify-center text-[#9CA3AF] text-sm">No data</div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Summary stats row */}
@@ -149,40 +151,40 @@ export default function OverviewTab({ user }) {
         <StatBox label="Total Users" value={growth?.users?.total || 0} />
         <StatBox label="Humans" value={growth?.users?.humans || 0} />
         <StatBox label="Agents" value={growth?.users?.agents || 0} />
-        <StatBox label="New This Period" value={growth?.users?.new_this_period || 0} />
+        <StatBox label="New this period" value={growth?.users?.new_this_period || 0} />
         <StatBox label="Total Tasks" value={growth?.tasks?.total || 0} />
-        <StatBox label="Created This Period" value={growth?.tasks?.created_this_period || 0} />
-        <StatBox label="Completed This Period" value={growth?.tasks?.completed_this_period || 0} />
+        <StatBox label="Created this period" value={growth?.tasks?.created_this_period || 0} />
+        <StatBox label="Completed this period" value={growth?.tasks?.completed_this_period || 0} />
         <StatBox label="Open Disputes" value={financials?.disputes?.open || 0} alert={financials?.disputes?.open > 0} />
       </div>
 
       {/* Active users */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="font-semibold text-gray-900 mb-3 text-sm">Active Users</h3>
+      <Card padding="md">
+        <h3 className="font-semibold text-[#1A1A1A] mb-3 text-sm">Active Users</h3>
         <div className="flex gap-8">
           <div>
-            <p className="text-2xl font-bold text-gray-900">{growth?.active_users?.daily || 0}</p>
-            <p className="text-xs text-gray-500">Daily</p>
+            <p className="text-2xl font-bold text-[#1A1A1A]">{growth?.active_users?.daily || 0}</p>
+            <p className="text-xs text-[#6B7280]">Daily</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">{growth?.active_users?.weekly || 0}</p>
-            <p className="text-xs text-gray-500">Weekly</p>
+            <p className="text-2xl font-bold text-[#1A1A1A]">{growth?.active_users?.weekly || 0}</p>
+            <p className="text-xs text-[#6B7280]">Weekly</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">{growth?.active_users?.monthly || 0}</p>
-            <p className="text-xs text-gray-500">Monthly</p>
+            <p className="text-2xl font-bold text-[#1A1A1A]">{growth?.active_users?.monthly || 0}</p>
+            <p className="text-xs text-[#6B7280]">Monthly</p>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }
 
 function MetricCard({ label, value, subtitle, icon, color }) {
   const colors = {
-    green: 'bg-green-50 border-green-200 text-green-600',
+    green: 'bg-[#F0FDF4] border-green-200 text-[#16A34A]',
     orange: 'bg-orange-50 border-orange-200 text-orange-600',
-    blue: 'bg-blue-50 border-blue-200 text-blue-600',
+    blue: 'bg-[#EFF6FF] border-blue-200 text-[#2563EB]',
     purple: 'bg-purple-50 border-purple-200 text-purple-600',
   }
 
@@ -191,18 +193,19 @@ function MetricCard({ label, value, subtitle, icon, color }) {
       <div className="flex items-center justify-between mb-2">
         <span className="opacity-70">{icon}</span>
       </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-2xl font-bold text-[#1A1A1A]">{value}</p>
       <p className="text-xs font-medium mt-0.5">{label}</p>
-      <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
+      <p className="text-xs text-[#9CA3AF] mt-0.5">{subtitle}</p>
     </div>
   )
 }
 
 function StatBox({ label, value, alert }) {
   return (
-    <div className={`bg-white rounded-xl border p-4 ${alert ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
-      <p className={`text-xl font-bold ${alert ? 'text-red-600' : 'text-gray-900'}`}>{value}</p>
-      <p className="text-xs text-gray-500">{label}</p>
+    // eslint-disable-next-line irlwork/no-inline-card-pattern -- conditional alert styling with dynamic bg/border colors
+    <div className={`bg-white rounded-xl border p-4 ${alert ? 'border-red-200 bg-[#FEF2F2]' : 'border-[#ECECEC]'}`}>
+      <p className={`text-xl font-bold ${alert ? 'text-[#DC2626]' : 'text-[#1A1A1A]'}`}>{value}</p>
+      <p className="text-xs text-[#6B7280]">{label}</p>
     </div>
   )
 }

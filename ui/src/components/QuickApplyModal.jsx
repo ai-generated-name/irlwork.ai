@@ -1,30 +1,32 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ClipboardList, Shield } from 'lucide-react';
+import { ClipboardList, Shield, Package, Camera, BarChart3, Footprints, Sparkles, Truck, Wrench, Search, Monitor, Languages, CheckCircle } from 'lucide-react';
 
+import { getErrorMessage } from '../utils/apiErrors';
 import API_URL from '../config/api';
 import { trackEvent } from '../utils/analytics';
 import ConfirmationModal from './ConfirmationModal';
+import { Button } from './ui';
 
 const PLATFORM_FEE_PERCENT = 15;
 const PREMIUM_FEE_PERCENT = 10;
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  data_collection: '📊',
-  'data-collection': '📊',
-  errands: '🏃',
-  cleaning: '🧹',
-  moving: '🚚',
-  manual_labor: '💪',
-  inspection: '🔍',
-  tech: '💻',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  general: '📋',
-  other: '📋',
+  delivery: <Package size={16} />,
+  photography: <Camera size={16} />,
+  data_collection: <BarChart3 size={16} />,
+  'data-collection': <BarChart3 size={16} />,
+  errands: <Footprints size={16} />,
+  cleaning: <Sparkles size={16} />,
+  moving: <Truck size={16} />,
+  manual_labor: <Wrench size={16} />,
+  inspection: <Search size={16} />,
+  tech: <Monitor size={16} />,
+  'tech-setup': <Monitor size={16} />,
+  translation: <Languages size={16} />,
+  verification: <CheckCircle size={16} />,
+  general: <ClipboardList size={16} />,
+  other: <ClipboardList size={16} />,
 };
 
 export default function QuickApplyModal({
@@ -113,7 +115,7 @@ export default function QuickApplyModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to apply');
+        throw new Error(getErrorMessage(data, 'Failed to apply'));
       }
 
       trackEvent('task_applied', { task_id: task.id, source: 'quick_apply' });
@@ -162,14 +164,14 @@ export default function QuickApplyModal({
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <h3>Application Sent!</h3>
+            <h3>Application sent</h3>
             <p>The task poster will review your application.</p>
           </div>
         ) : (
           <>
             {/* Header */}
             <div className="quick-apply-modal-header">
-              <h2>Apply to Task</h2>
+              <h2>Apply to task</h2>
             </div>
 
             {/* Task Summary */}
@@ -333,28 +335,31 @@ export default function QuickApplyModal({
               )}
 
               <div className="quick-apply-modal-actions">
-                <button
+                <Button
                   type="button"
-                  className="quick-apply-modal-btn secondary"
+                  variant="secondary"
+                  size="lg"
                   onClick={handleClose}
                   disabled={loading}
                 >
-                  Cancel
-                </button>
-                <button
+                  Cancel application
+                </Button>
+                <Button
                   type="submit"
-                  className="quick-apply-modal-btn primary"
+                  variant="primary"
+                  size="lg"
                   disabled={loading || !canSubmit}
+                  className="gap-2"
                 >
                   {loading ? (
                     <>
                       <span className="quick-apply-modal-spinner" />
-                      Applying...
+                      Submitting...
                     </>
                   ) : (
-                    'Apply Now'
+                    'Submit application'
                   )}
-                </button>
+                </Button>
               </div>
             </form>
           </>

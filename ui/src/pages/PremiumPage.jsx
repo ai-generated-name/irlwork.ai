@@ -84,7 +84,7 @@ export default function PremiumPage({ user }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('subscription') === 'success') {
-      setMessage({ type: 'success', text: 'Subscription activated! Your plan has been upgraded.' })
+      setMessage({ type: 'success', text: 'Subscription activated. Your plan has been upgraded.' })
       fetchSubscription(true)
       window.history.replaceState({}, '', '/premium')
     } else if (params.get('subscription') === 'canceled') {
@@ -100,12 +100,12 @@ export default function PremiumPage({ user }) {
   async function fetchSubscription(checkStripe = false) {
     try {
       const token = await getFreshToken(user?.token)
-      console.log('[Premium] fetchSubscription token present:', !!token, 'length:', token?.length)
+
       const url = checkStripe ? `${API_URL}/subscription?check_stripe=true` : `${API_URL}/subscription`
       const res = await fetch(url, {
         headers: { Authorization: token }
       })
-      console.log('[Premium] fetchSubscription response status:', res.status)
+
       if (res.ok) {
         const data = await res.json()
         setSubscription(data.subscription)
@@ -124,7 +124,7 @@ export default function PremiumPage({ user }) {
     setMessage(null)
     try {
       const token = await getFreshToken(user?.token)
-      console.log('[Premium] handleCheckout token present:', !!token, 'length:', token?.length)
+
       if (!token) {
         setMessage({ type: 'error', text: 'Session expired. Please refresh the page and try again.' })
         setLoading(null)
@@ -138,18 +138,18 @@ export default function PremiumPage({ user }) {
         },
         body: JSON.stringify({ tier, billing_period: billingPeriod }),
       })
-      console.log('[Premium] checkout response status:', res.status)
+
       const data = await res.json()
-      console.log('[Premium] checkout response data:', JSON.stringify(data).substring(0, 200))
+
       if (!res.ok) {
-        setMessage({ type: 'error', text: data.error || 'Failed to start checkout' })
+        setMessage({ type: 'error', text: data.error || 'Could not start checkout. Please try again.' })
         setLoading(null)
         return
       }
       if (data.checkout_url) {
         window.location.href = data.checkout_url
       } else {
-        setMessage({ type: 'error', text: 'Failed to start checkout. Please try again.' })
+        setMessage({ type: 'error', text: 'Could not start checkout. Please try again.' })
         setLoading(null)
       }
     } catch (e) {
@@ -173,14 +173,14 @@ export default function PremiumPage({ user }) {
       })
       const data = await res.json()
       if (!res.ok) {
-        setMessage({ type: 'error', text: res.status === 401 ? 'Please sign in to manage billing.' : (data.error || 'Failed to open billing portal') })
+        setMessage({ type: 'error', text: res.status === 401 ? 'Please sign in to manage billing.' : (data.error || 'Could not open billing portal. Please try again.') })
         setLoading(null)
         return
       }
       if (data.portal_url) {
         window.location.href = data.portal_url
       } else {
-        setMessage({ type: 'error', text: 'Failed to open billing portal' })
+        setMessage({ type: 'error', text: 'Could not open billing portal. Please try again.' })
         setLoading(null)
       }
     } catch (e) {
@@ -247,7 +247,7 @@ export default function PremiumPage({ user }) {
             <ArrowLeft size={isMobile ? 18 : 20} />
           </a>
           <div>
-            <h1 style={{ fontSize: isMobile ? 17 : 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: 'var(--font-display)' }}>Upgrade Your Plan</h1>
+            <h1 style={{ fontSize: isMobile ? 17 : 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: 'var(--font-display)' }}>Upgrade your plan</h1>
             <p style={{ fontSize: isMobile ? 12 : 13, color: 'var(--text-secondary)', margin: 0 }}>Lower fees, higher priority, unlimited posting</p>
           </div>
         </div>
@@ -383,7 +383,7 @@ export default function PremiumPage({ user }) {
                   <p style={{ fontSize: isMobile ? 11 : 13, color: 'var(--text-secondary)', margin: isMobile ? '0 0 8px' : '0 0 16px' }}>{tier.description}</p>
                   <div style={{ minHeight: isMobile ? 50 : 70, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 2 }}>
-                      <span style={{ fontSize: isMobile ? 28 : 40, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                      <span style={{ fontSize: isMobile ? 28 : 40, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
                         ${price.main}
                       </span>
                       <span style={{ fontSize: isMobile ? 12 : 14, color: 'var(--text-tertiary)' }}>/mo</span>
@@ -432,7 +432,7 @@ export default function PremiumPage({ user }) {
                       fontSize: isMobile ? 13 : 14, fontWeight: 600, cursor: 'default',
                     }}
                   >
-                    Current Plan
+                    Current plan
                   </button>
                 ) : tier.id === 'free' ? (
                   currentTier !== 'free' ? (
@@ -447,7 +447,7 @@ export default function PremiumPage({ user }) {
                         opacity: loading === 'manage' ? 0.6 : 1,
                       }}
                     >
-                      {loading === 'manage' ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Manage Subscription'}
+                      {loading === 'manage' ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Manage subscription'}
                     </button>
                   ) : null
                 ) : (
@@ -456,9 +456,7 @@ export default function PremiumPage({ user }) {
                     disabled={!!loading}
                     style={{
                       width: '100%', padding: isMobile ? '12px 0' : '12px 0', borderRadius: 'var(--radius-md)',
-                      background: tier.id === 'pro'
-                        ? 'linear-gradient(135deg, var(--orange-600), var(--orange-500))'
-                        : 'var(--bg-dark)',
+                      background: 'var(--bg-dark)',
                       color: '#fff', border: 'none',
                       fontSize: isMobile ? 13 : 14, fontWeight: 600, cursor: loading ? 'default' : 'pointer',
                       opacity: loading ? 0.6 : 1,
@@ -491,7 +489,7 @@ export default function PremiumPage({ user }) {
                 fontSize: isMobile ? 13 : 14, fontWeight: 500, cursor: 'pointer', textDecoration: 'underline',
               }}
             >
-              Manage Billing & Cancel
+              Manage billing & cancel
             </button>
           )}
 

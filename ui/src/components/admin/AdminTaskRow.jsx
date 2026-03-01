@@ -11,9 +11,9 @@ export const STATUS_COLORS = {
   pending_review: 'bg-purple-100 text-purple-700',
   completed: 'bg-emerald-100 text-emerald-700',
   disputed: 'bg-red-100 text-red-700',
-  paid: 'bg-gray-100 text-gray-500',
-  cancelled: 'bg-gray-100 text-gray-400',
-  expired: 'bg-gray-100 text-gray-400',
+  paid: 'bg-[#F3F4F6] text-[#6B7280]',
+  cancelled: 'bg-[#F3F4F6] text-[#9CA3AF]',
+  expired: 'bg-[#F3F4F6] text-[#9CA3AF]',
 }
 
 export const STATUS_LABELS = {
@@ -71,10 +71,10 @@ function durationLabel(task) {
     const hours = Math.floor(diff / (1000 * 60 * 60))
     if (hours < 24) return { text: `Due in ${hours}h`, color: 'text-orange-500' }
     const days = Math.floor(hours / 24)
-    return { text: `Due in ${days}d`, color: 'text-gray-400' }
+    return { text: `Due in ${days}d`, color: 'text-[#9CA3AF]' }
   }
-  if (task.duration_hours) return { text: `~${task.duration_hours}h`, color: 'text-gray-400' }
-  if (task.duration) return { text: task.duration, color: 'text-gray-400' }
+  if (task.duration_hours) return { text: `~${task.duration_hours}h`, color: 'text-[#9CA3AF]' }
+  if (task.duration) return { text: task.duration, color: 'text-[#9CA3AF]' }
   return null
 }
 
@@ -97,7 +97,7 @@ export default function AdminTaskRow({
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const statusColor = STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-600'
+  const statusColor = STATUS_COLORS[task.status] || 'bg-[#F3F4F6] text-[#6B7280]'
   const statusLabel = STATUS_LABELS[task.status] || task.status
   const dur = durationLabel(task)
   const modStatus = task.moderation_status && task.moderation_status !== 'clean' ? task.moderation_status : null
@@ -109,7 +109,7 @@ export default function AdminTaskRow({
   }
 
   return (
-    <div className={`transition-colors duration-1000 ${isNew ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
+    <div className={`transition-colors duration-1000 ${isNew ? 'bg-orange-50' : 'hover:bg-[#FAFAF8]'}`}>
       {/* Main row */}
       <div className="px-5 py-3.5">
         <div className="flex items-start justify-between gap-4">
@@ -125,7 +125,7 @@ export default function AdminTaskRow({
                   {modStatus}
                 </span>
               )}
-              <span className="text-[11px] font-medium text-gray-400 uppercase">
+              <span className="text-[11px] font-medium text-[#9CA3AF] uppercase">
                 {CATEGORY_LABELS[task.category] || task.category || 'General'}
               </span>
               {task.is_remote ? (
@@ -133,22 +133,22 @@ export default function AdminTaskRow({
                   <Globe size={10} /> Remote
                 </span>
               ) : task.location ? (
-                <span className="flex items-center gap-0.5 text-[11px] text-gray-400 truncate max-w-[140px]">
+                <span className="flex items-center gap-0.5 text-[11px] text-[#9CA3AF] truncate max-w-[140px]">
                   <MapPin size={10} /> {task.location}
                 </span>
               ) : null}
             </div>
 
             {/* Title */}
-            <p className="text-sm font-semibold text-gray-900 truncate">{task.title}</p>
+            <p className="text-sm font-semibold text-[#1A1A1A] truncate">{task.title}</p>
 
             {/* Description preview */}
             {task.description && (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">{truncate(task.description, 120)}</p>
+              <p className="text-xs text-[#6B7280] mt-0.5 truncate">{truncate(task.description, 120)}</p>
             )}
 
             {/* Meta line */}
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-[#9CA3AF] mt-0.5">
               by {task.agent_name || 'Unknown'}
               {task.task_type === 'open' && task.quantity > 1 && (
                 <span className="ml-2">{task.spots_filled}/{task.quantity} filled</span>
@@ -159,7 +159,7 @@ export default function AdminTaskRow({
           {/* Right: metrics + actions */}
           <div className="flex items-center gap-4 shrink-0">
             <div className="text-right">
-              <p className="text-sm font-bold text-gray-900">${task.budget}</p>
+              <p className="text-sm font-bold text-[#1A1A1A]">${task.budget}</p>
             </div>
 
             {dur && (
@@ -169,17 +169,17 @@ export default function AdminTaskRow({
               </div>
             )}
 
-            <div className="flex items-center gap-1 text-xs text-gray-400" title="Applicants">
+            <div className="flex items-center gap-1 text-xs text-[#9CA3AF]" title="Applicants">
               <Users size={13} />
               <span>{task.applicant_count || 0}</span>
             </div>
 
-            <div className="flex items-center gap-1 text-xs text-gray-400" title="Views">
+            <div className="flex items-center gap-1 text-xs text-[#9CA3AF]" title="Views">
               <Eye size={13} />
               <span>{task.view_count || 0}</span>
             </div>
 
-            <div className="flex items-center gap-1 text-xs text-gray-400 w-16 justify-end" title={task.created_at ? new Date(task.created_at).toLocaleString() : ''}>
+            <div className="flex items-center gap-1 text-xs text-[#9CA3AF] w-16 justify-end" title={task.created_at ? new Date(task.created_at).toLocaleString() : ''}>
               <Clock size={13} />
               <span>{timeAgo(task.created_at)}</span>
             </div>
@@ -198,20 +198,22 @@ export default function AdminTaskRow({
                   </button>
                 )}
                 {modStatus === 'hidden' && onUnflag && (
+                  /* eslint-disable-next-line irlwork/no-inline-button-pattern -- icon-only admin action button */
                   <button
                     onClick={() => onUnflag(task)}
                     disabled={loading}
-                    className="p-1.5 rounded-lg text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50"
+                    className="p-1.5 rounded-lg text-[#16A34A] hover:bg-[#F0FDF4] transition-colors disabled:opacity-50"
                     title="Restore task"
                   >
                     <RotateCcw size={15} />
                   </button>
                 )}
                 {modStatus !== 'removed' && onRemove && (
+                  /* eslint-disable-next-line irlwork/no-inline-button-pattern -- icon-only admin action button */
                   <button
                     onClick={() => onRemove(task)}
                     disabled={loading}
-                    className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    className="p-1.5 rounded-lg text-red-500 hover:bg-[#FEF2F2] transition-colors disabled:opacity-50"
                     title="Remove task"
                   >
                     <Trash2 size={15} />
@@ -221,9 +223,10 @@ export default function AdminTaskRow({
             )}
 
             {/* Expand toggle */}
+            {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- icon-only toggle button */}
             <button
               onClick={() => setExpanded(!expanded)}
-              className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6] transition-colors"
             >
               {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
@@ -233,44 +236,44 @@ export default function AdminTaskRow({
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="px-5 pb-4 pt-0 border-t border-gray-100">
+        <div className="px-5 pb-4 pt-0 border-t border-[#ECECEC]">
           <div className="pt-3 space-y-3">
             {/* Full description */}
             {task.description && (
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Description</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{task.description}</p>
+                <p className="text-xs font-semibold text-[#6B7280] uppercase mb-1">Description</p>
+                <p className="text-sm text-[#1A1A1A] whitespace-pre-wrap">{task.description}</p>
               </div>
             )}
 
             {/* Detail grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div>
-                <span className="text-gray-400">Task ID</span>
+                <span className="text-[#9CA3AF]">Task ID</span>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <code className="text-gray-700 font-mono text-[11px]">{task.id?.slice(0, 8)}...</code>
-                  <button onClick={copyId} className="text-gray-400 hover:text-gray-600" title="Copy full ID">
+                  <code className="text-[#1A1A1A] font-mono text-[11px]">{task.id?.slice(0, 8)}...</code>
+                  <button onClick={copyId} className="text-[#9CA3AF] hover:text-[#6B7280]" title="Copy full ID">
                     <Copy size={11} />
                   </button>
-                  {copied && <span className="text-green-600 text-[10px]">Copied</span>}
+                  {copied && <span className="text-[#16A34A] text-[10px]">Copied</span>}
                 </div>
               </div>
               {task.agent_email && (
                 <div>
-                  <span className="text-gray-400">Agent Email</span>
-                  <p className="text-gray-700 mt-0.5">{task.agent_email}</p>
+                  <span className="text-[#9CA3AF]">Agent Email</span>
+                  <p className="text-[#1A1A1A] mt-0.5">{task.agent_email}</p>
                 </div>
               )}
               {task.escrow_status && (
                 <div>
-                  <span className="text-gray-400">Escrow</span>
-                  <p className="text-gray-700 mt-0.5 capitalize">{task.escrow_status}</p>
+                  <span className="text-[#9CA3AF]">Escrow</span>
+                  <p className="text-[#1A1A1A] mt-0.5 capitalize">{task.escrow_status}</p>
                 </div>
               )}
               {task.deadline && (
                 <div>
-                  <span className="text-gray-400">Deadline</span>
-                  <p className="text-gray-700 mt-0.5">{new Date(task.deadline).toLocaleDateString()}</p>
+                  <span className="text-[#9CA3AF]">Deadline</span>
+                  <p className="text-[#1A1A1A] mt-0.5">{new Date(task.deadline).toLocaleDateString()}</p>
                 </div>
               )}
             </div>

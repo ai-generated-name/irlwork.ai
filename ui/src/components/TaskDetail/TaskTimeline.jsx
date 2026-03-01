@@ -77,6 +77,7 @@ export default function TaskTimeline({ task, taskStatus }) {
           } else if (isActive) {
             circleClasses = isDisputed
               ? 'bg-[#FF5F57] text-white ring-4 ring-[rgba(220,38,38,0.15)]'
+              // eslint-disable-next-line irlwork/no-orange-outside-button -- active timeline step uses brand color
               : 'bg-[#E8853D] text-white ring-4 ring-[rgba(232,133,61,0.15)]';
           } else {
             circleClasses = 'bg-[#F5F3F0] text-[#888888]';
@@ -86,7 +87,7 @@ export default function TaskTimeline({ task, taskStatus }) {
           if (isCompleted) {
             labelClasses = 'text-[#16A34A]';
           } else if (isActive) {
-            labelClasses = isDisputed ? 'text-[#FF5F57]' : 'text-[#E8853D]';
+            labelClasses = isDisputed ? 'text-[#FF5F57]' : 'text-[#E8853D]'; // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
           } else {
             labelClasses = 'text-[#888888]';
           }

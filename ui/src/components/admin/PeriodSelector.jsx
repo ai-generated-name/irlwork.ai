@@ -11,15 +11,15 @@ export default function PeriodSelector({ value, onChange }) {
   ]
 
   return (
-    <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+    <div className="flex gap-1 bg-[#F3F4F6] rounded-lg p-1">
       {options.map(opt => (
         <button
           key={opt.id}
           onClick={() => onChange(opt.id)}
           className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
             value === opt.id
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white text-[#1A1A1A] shadow-sm'
+              : 'text-[#6B7280] hover:text-[#1A1A1A]'
           }`}
         >
           {opt.label}

@@ -2,6 +2,7 @@ import React from 'react'
 import { Bot, Users, Shield, Globe, Zap, DollarSign, ArrowRight, TrendingUp, MapPin, Handshake } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { Button } from '../components/ui'
 
 export default function AboutPage() {
   usePageTitle('About')
@@ -402,22 +403,24 @@ export default function AboutPage() {
             justifyContent: 'center',
             flexWrap: 'wrap',
           }}>
-            <a
-              href="/auth"
-              className="v4-btn v4-btn-primary"
-              style={{ padding: '14px 28px', fontSize: '15px', textDecoration: 'none' }}
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => { window.location.href = '/auth' }}
+              className="gap-2"
             >
               {t('hero.startEarning')}
               <ArrowRight size={18} />
-            </a>
-            <a
-              href="/connect-agent"
-              className="v4-btn v4-btn-secondary"
-              style={{ padding: '14px 28px', fontSize: '15px', textDecoration: 'none' }}
+            </Button>
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => { window.location.href = '/connect-agent' }}
+              className="gap-2"
             >
               <Bot size={18} />
               {t('about.connectAgent')}
-            </a>
+            </Button>
           </div>
         </div>
       </div>

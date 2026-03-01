@@ -1,32 +1,33 @@
 import React from 'react';
 import EscrowBadge from './EscrowBadge';
-import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, MapPin, CalendarDays, Bot } from 'lucide-react';
+import { StatusPill, Button } from './ui';
+import { Package, Camera, BarChart3, Footprints, Sparkles, Truck, Dumbbell, Search, Monitor, Globe, CheckCircle, ClipboardList, MapPin, CalendarDays, Bot } from 'lucide-react';
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  data_collection: '📊',
-  'data-collection': '📊',
-  errands: '🏃',
-  cleaning: '🧹',
-  moving: '🚚',
-  manual_labor: '💪',
-  inspection: '🔍',
-  tech: '💻',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  general: '📋',
-  other: '📋',
+  delivery: <Package size={16} />,
+  photography: <Camera size={16} />,
+  data_collection: <BarChart3 size={16} />,
+  'data-collection': <BarChart3 size={16} />,
+  errands: <Footprints size={16} />,
+  cleaning: <Sparkles size={16} />,
+  moving: <Truck size={16} />,
+  manual_labor: <Dumbbell size={16} />,
+  inspection: <Search size={16} />,
+  tech: <Monitor size={16} />,
+  'tech-setup': <Monitor size={16} />,
+  translation: <Globe size={16} />,
+  verification: <CheckCircle size={16} />,
+  general: <ClipboardList size={16} />,
+  other: <ClipboardList size={16} />,
 };
 
 const STATUS_CONFIG = {
   open: { label: 'Open', className: 'mytasks-status--open' },
-  pending_acceptance: { label: 'Pending Acceptance', className: 'mytasks-status--pending' },
+  pending_acceptance: { label: 'Pending acceptance', className: 'mytasks-status--pending' },
   accepted: { label: 'Accepted', className: 'mytasks-status--accepted' },
   assigned: { label: 'Assigned', className: 'mytasks-status--accepted' },
-  in_progress: { label: 'In Progress', className: 'mytasks-status--in-progress' },
-  pending_review: { label: 'Pending Review', className: 'mytasks-status--pending' },
+  in_progress: { label: 'In progress', className: 'mytasks-status--in-progress' },
+  pending_review: { label: 'Pending review', className: 'mytasks-status--pending' },
   approved: { label: 'Approved', className: 'mytasks-status--pending' },
   completed: { label: 'Completed', className: 'mytasks-status--completed' },
   paid: { label: 'Paid', className: 'mytasks-status--paid' },
@@ -105,7 +106,7 @@ export default function MyTaskCard({
       <div className={`mytasks-card mytasks-card--compact ${urgencyClass}`} onClick={handleClick}>
         <div className="mytasks-card__row">
           <div className="mytasks-card__row-left">
-            <span className={`mytasks-status ${status.className}`}>{status.label}</span>
+            <StatusPill status={task.status} />
             <h3 className="mytasks-card__title mytasks-card__title--compact">{task.title}</h3>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -132,7 +133,7 @@ export default function MyTaskCard({
       <div className="mytasks-card__header">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span className={`mytasks-status ${status.className}`}>{status.label}</span>
+            <StatusPill status={task.status} />
           </div>
           <h3 className="mytasks-card__title">{task.title}</h3>
         </div>
@@ -175,29 +176,29 @@ export default function MyTaskCard({
         <div className="mytasks-card__actions">
           {task.status === 'pending_acceptance' && onAccept && (
             <>
-              <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onAccept)}>Accept Task</button>
+              <Button variant="primary" size="md" onClick={(e) => handleAction(e, onAccept)}>Accept task</Button>
               {onDecline && (
-                <button className="v4-btn v4-btn-secondary" onClick={(e) => handleAction(e, onDecline)}>Decline</button>
+                <Button variant="secondary" size="md" onClick={(e) => handleAction(e, onDecline)}>Decline task</Button>
               )}
             </>
           )}
           {task.status === 'open' && onAccept && (
-            <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onAccept)}>Accept Task</button>
+            <Button variant="primary" size="md" onClick={(e) => handleAction(e, onAccept)}>Accept task</Button>
           )}
           {(task.status === 'accepted' || task.status === 'assigned') && onStartWork && (
-            <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onStartWork)}>Start Work</button>
+            <Button variant="primary" size="md" onClick={(e) => handleAction(e, onStartWork)}>Start work</Button>
           )}
           {task.status === 'in_progress' && onSubmitProof && (
-            <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onSubmitProof)}>Submit Proof</button>
+            <Button variant="primary" size="md" onClick={(e) => handleAction(e, onSubmitProof)}>Submit proof</Button>
           )}
           {task.status === 'pending_review' && (
-            <button className="v4-btn v4-btn-secondary" disabled>Waiting for approval...</button>
+            <Button variant="secondary" size="md" disabled>Waiting for approval</Button>
           )}
           {task.status === 'approved' && (
-            <span className="mytasks-card__info-label">Work approved — payment pending</span>
+            <span className="mytasks-card__info-label">Work approved, payment pending</span>
           )}
           {task.status === 'completed' && (
-            <span className="mytasks-card__info-label mytasks-card__info-label--success">Payment pending</span>
+            <span className="mytasks-card__info-label mytasks-card__info-label--success">Task completed, payment pending</span>
           )}
         </div>
 

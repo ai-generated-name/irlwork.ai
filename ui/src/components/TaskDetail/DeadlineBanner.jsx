@@ -340,7 +340,7 @@ export default function DeadlineBanner({ task, user }) {
             background: '#fff', borderRadius: 14, padding: 24, width: '90%', maxWidth: 440,
             boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
           }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1A1A' }}>Request Deadline Extension</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1A1A' }}>Request deadline extension</h3>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>
               Reason <span style={{ color: '#FF5F57' }}>*</span>
             </label>
@@ -355,7 +355,7 @@ export default function DeadlineBanner({ task, user }) {
               }}
             />
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>
-              Proposed New Deadline <span style={{ color: '#FF5F57' }}>*</span>
+              Proposed new deadline <span style={{ color: '#FF5F57' }}>*</span>
             </label>
             <input
               type="datetime-local"

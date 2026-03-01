@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { Button } from './ui'
 
 const AUTH_TIMEOUT_MS = 10000
 
@@ -18,13 +19,14 @@ export default function ProtectedRoute({ children }) {
   if (timedOut) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-gray-600">Unable to verify authentication.</p>
-        <button
+        <p className="text-[#6B7280]">Unable to verify authentication.</p>
+        <Button
+          variant="primary"
+          size="md"
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-coral text-white rounded-[14px] hover:bg-coral-dark transition-colors"
         >
           Retry
-        </button>
+        </Button>
       </div>
     )
   }

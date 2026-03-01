@@ -2,6 +2,8 @@
 // Always-visible messaging interface for task communication
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Paperclip } from 'lucide-react';
+import { Button } from '../ui';
 import { useToast } from '../../context/ToastContext';
 
 const styles = {
@@ -190,7 +192,7 @@ export default function TaskMessageThread({
               </svg>
             </div>
             <p className="text-[#333333] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
-            <p className="text-[#888888] text-xs">Be the first to send a message!</p>
+            <p className="text-[#888888] text-xs">Be the first to send a message</p>
           </div>
         ) : (
           <>
@@ -199,12 +201,16 @@ export default function TaskMessageThread({
                 {/* New messages divider */}
                 {idx === newMessagesDividerIndex && idx > 0 && (
                   <div className="flex items-center gap-2 py-1">
+                    {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
                     <div className="flex-1 h-px bg-[#E8853D] opacity-30" />
+                    {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
                     <span className="text-[10px] font-medium text-[#E8853D] px-2">New</span>
+                    {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
                     <div className="flex-1 h-px bg-[#E8853D] opacity-30" />
                   </div>
                 )}
                 <div className={`flex ${m.sender_id === user.id ? 'justify-end' : 'justify-start'}`}>
+                  {/* eslint-disable irlwork/no-orange-outside-button -- message bubble uses brand color */}
                   <div
                     className={`max-w-[80%] sm:max-w-[70%] rounded-xl p-2.5 sm:p-3 ${
                       m.sender_id === user.id
@@ -234,7 +240,7 @@ export default function TaskMessageThread({
                                   : 'bg-[#F5F2ED] text-[#0F4C5C] hover:bg-[#EDE9E3]'
                               } transition-colors`}
                             >
-                              <span>📎</span>
+                              <Paperclip size={14} />
                               <span className="truncate max-w-[150px]">{att.filename}</span>
                               {att.size > 0 && <span className="opacity-60">({(att.size / 1024).toFixed(0)}KB)</span>}
                             </a>
@@ -252,6 +258,7 @@ export default function TaskMessageThread({
                       {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
+                  {/* eslint-enable irlwork/no-orange-outside-button */}
                 </div>
               </React.Fragment>
             ))}
@@ -264,6 +271,7 @@ export default function TaskMessageThread({
       {sendStatus === 'failed' && failedMessage && (
         <div className="px-3 py-2 bg-[rgba(255,95,87,0.06)] border-t border-[rgba(255,95,87,0.12)] flex items-center justify-between">
           <span className="text-xs text-[#FF5F57]">Message failed to send</span>
+          {/* eslint-disable irlwork/no-orange-outside-button -- retry button text uses brand color */}
           <button
             onClick={retryFailedMessage}
             disabled={sending}
@@ -271,6 +279,7 @@ export default function TaskMessageThread({
           >
             Retry
           </button>
+          {/* eslint-enable irlwork/no-orange-outside-button */}
         </div>
       )}
 
@@ -280,6 +289,7 @@ export default function TaskMessageThread({
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message..."
+          aria-label="Type a message"
           className={`${styles.input} flex-1 !py-2.5 sm:!py-3 text-sm`}
           style={{ resize: 'none', minHeight: 44, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
           rows={1}
@@ -287,10 +297,12 @@ export default function TaskMessageThread({
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e) } }}
           onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
         />
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="md"
           disabled={sending || !newMessage.trim()}
-          className="bg-[#E8853D] hover:bg-[#D4703A] disabled:bg-[#F5F3F0] disabled:text-[#888888] disabled:cursor-not-allowed text-white font-bold px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base flex items-center justify-center gap-1.5"
+          className="px-4 sm:px-6 font-bold text-sm sm:text-base gap-1.5"
           style={{ minHeight: 44, minWidth: 44 }}
         >
           {sending ? (
@@ -302,7 +314,7 @@ export default function TaskMessageThread({
           ) : (
             'Send'
           )}
-        </button>
+        </Button>
       </form>
 
       {/* Pulse animation for live dot */}

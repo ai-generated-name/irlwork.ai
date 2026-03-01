@@ -6,6 +6,7 @@ import { supabase } from '../context/AuthContext'
 import WithdrawalMethodPicker from './WithdrawalMethodPicker'
 import ConnectBankButton from './ConnectBankButton'
 import ConnectWalletSection from './ConnectWalletSection'
+import { StatCard, EmptyState, ConfirmDialog, Card } from './ui'
 
 function PaymentFlowDiagram() {
   return (
@@ -17,7 +18,7 @@ function PaymentFlowDiagram() {
             <polyline points="22 4 12 14.01 9 11.01" />
           </svg>
         </div>
-        <div className="earnings-flow-label">Complete Task</div>
+        <div className="earnings-flow-label">Complete task</div>
       </div>
       <div className="earnings-flow-arrow">
         <svg width="20" height="12" viewBox="0 0 20 12" fill="none">
@@ -31,7 +32,7 @@ function PaymentFlowDiagram() {
             <polyline points="12 6 12 12 16 14" />
           </svg>
         </div>
-        <div className="earnings-flow-label">48hr Review Hold</div>
+        <div className="earnings-flow-label">48hr review hold</div>
       </div>
       <div className="earnings-flow-arrow">
         <svg width="20" height="12" viewBox="0 0 20 12" fill="none">
@@ -44,7 +45,7 @@ function PaymentFlowDiagram() {
             <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
           </svg>
         </div>
-        <div className="earnings-flow-label">Available to Withdraw</div>
+        <div className="earnings-flow-label">Available to withdraw</div>
       </div>
     </div>
   )
@@ -197,7 +198,7 @@ function EarningsDashboard({ user }) {
           onClick={fetchBalance}
           className="mt-2 text-sm text-[#FF5F57] hover:text-[#B91C1C] underline"
         >
-          Retry
+          Retry loading balance
         </button>
       </div>
     )
@@ -214,24 +215,18 @@ function EarningsDashboard({ user }) {
     <div className="space-y-4 md:space-y-6">
       {/* Earnings Summary Stats — always visible */}
       <div className="earnings-summary-stats">
-        <div className="earnings-stat">
-          <span className="earnings-stat-label">Total Earned</span>
-          <span className="earnings-stat-value">
-            ${((balanceData?.pending || 0) + (balanceData?.available || 0)).toFixed(2)}
-          </span>
-        </div>
-        <div className="earnings-stat">
-          <span className="earnings-stat-label">In Escrow</span>
-          <span className="earnings-stat-value">
-            ${(balanceData?.pending || 0).toFixed(2)}
-          </span>
-        </div>
-        <div className="earnings-stat earnings-stat--available">
-          <span className="earnings-stat-label">Available</span>
-          <span className="earnings-stat-value">
-            ${(balanceData?.available || 0).toFixed(2)}
-          </span>
-        </div>
+        <StatCard
+          label="Total earned"
+          value={`$${((balanceData?.pending || 0) + (balanceData?.available || 0)).toFixed(2)}`}
+        />
+        <StatCard
+          label="In escrow"
+          value={`$${(balanceData?.pending || 0).toFixed(2)}`}
+        />
+        <StatCard
+          label="Available"
+          value={`$${(balanceData?.available || 0).toFixed(2)}`}
+        />
       </div>
 
       {/* Payment Flow Diagram — collapsible */}
@@ -254,7 +249,7 @@ function EarningsDashboard({ user }) {
           className="earnings-alt-payments-toggle"
           onClick={() => setShowAltPayments(!showAltPayments)}
         >
-          <span>Alternative Payment Methods</span>
+          <span>Alternative payment methods</span>
           <ChevronDown
             size={16}
             style={{
@@ -274,28 +269,28 @@ function EarningsDashboard({ user }) {
 
       {/* Success Message */}
       {withdrawResult && (
-        <div className="bg-white border border-teal/20 rounded-xl p-4 flex items-start gap-3">
+        <Card padding="none" className="border-teal/20 p-4 flex items-start gap-3">
           <div className="w-8 h-8 bg-teal/8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
             <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div>
-            <p className="text-[#1A1A1A] font-semibold text-sm">Withdrawal Successful</p>
+            <p className="text-[#1A1A1A] font-semibold text-sm">Withdrawal successful</p>
             <p className="text-sm text-[#333333] mt-0.5">
               {withdrawResult.method === 'usdc'
                 ? `${withdrawResult.amount} USDC sent to your wallet`
                 : `$${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account`}
             </p>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Balance Cards Grid */}
       {(
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Pending Balance Card */}
-          <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 md:p-6">
+          <Card padding="none" className="p-4 md:p-6">
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <div>
                 <h3 className="text-[#888888] text-xs md:text-sm font-medium uppercase tracking-wider">Pending</h3>
@@ -318,7 +313,7 @@ function EarningsDashboard({ user }) {
                       <div className="flex items-center gap-1.5">
                         <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
                         {tx.payout_method === 'usdc' && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600">USDC</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]">USDC</span>
                         )}
                       </div>
                       <p className="text-xs text-[#A3A3A3]">{formatDate(tx.clears_at)}</p>
@@ -337,10 +332,10 @@ function EarningsDashboard({ user }) {
             ) : (
               <p className="text-[#A3A3A3] text-xs md:text-sm mt-3 md:mt-4">No pending transactions</p>
             )}
-          </div>
+          </Card>
 
           {/* Available Balance Card */}
-          <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 md:p-6 relative overflow-hidden">
+          <Card padding="none" className="p-4 md:p-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-teal" />
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <div>
@@ -379,7 +374,7 @@ function EarningsDashboard({ user }) {
                     <div className="flex items-center gap-1.5">
                       <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
                       {tx.payout_method === 'usdc' && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600">USDC</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]">USDC</span>
                       )}
                     </div>
                     <p className="text-[#1A1A1A] font-semibold">
@@ -389,13 +384,13 @@ function EarningsDashboard({ user }) {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Transaction History */}
       <div>
-        <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Transaction History</h3>
+        <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Transaction history</h3>
 
         {allTransactions.length > 0 ? (
           <div className="space-y-2 md:space-y-3">
@@ -406,9 +401,10 @@ function EarningsDashboard({ user }) {
               const isUsdc = tx.payout_method === 'usdc'
 
               return (
-                <div
+                <Card
                   key={tx.id}
-                  className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
+                  padding="none"
+                  className="p-3 md:p-4 hover:shadow-v4-md transition-shadow"
                 >
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
@@ -425,7 +421,7 @@ function EarningsDashboard({ user }) {
                           {tx.status}
                         </span>
                         {isUsdc && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 flex-shrink-0">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB] flex-shrink-0">
                             USDC
                           </span>
                         )}
@@ -470,44 +466,33 @@ function EarningsDashboard({ user }) {
                       </p>
                     </div>
                   </div>
-                </div>
+                </Card>
               )
             })}
           </div>
         ) : (
-          <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-8 md:p-12 text-center">
-            <div className="w-12 h-12 bg-[#F5F3F0] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
-              <ArrowDownLeft size={22} className="text-[#888888]" />
-            </div>
-            <p className="text-[#333333] font-medium text-sm md:text-base">No transactions yet</p>
-            <p className="text-xs md:text-sm text-[#A3A3A3] mt-1.5">
-              Your earnings will appear here once you complete your first task
-            </p>
-          </div>
+          <EmptyState
+            icon={<ArrowDownLeft size={22} />}
+            title="No transactions yet"
+            description="Your earnings will appear here once you complete your first task"
+          />
         )}
       </div>
 
       {/* Withdrawal Confirmation Modal */}
-      {showWithdrawConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-v4-xl">
-            <h3 className="text-lg font-bold text-[#1A1A1A] mb-1">Confirm Withdrawal</h3>
-            <p className="text-[#333333] text-sm mb-5">
-              {showWithdrawConfirm === 'usdc'
-                ? <>Withdraw <span className="font-semibold text-[#1A1A1A]">{usdcAvailable.toFixed(2)} USDC</span> to your wallet?</>
-                : <>Withdraw <span className="font-semibold text-[#1A1A1A]">${stripeAvailable > 0 ? stripeAvailable.toFixed(2) : balanceData?.available?.toFixed(2)}</span> to your bank account?</>}
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowWithdrawConfirm(false)} className="px-4 py-2.5 text-[#333333] hover:bg-[#F5F3F0] rounded-xl text-sm font-medium transition-colors">
-                Cancel
-              </button>
-              <button onClick={executeWithdraw} className="px-5 py-2.5 bg-teal text-white rounded-xl text-sm font-semibold hover:bg-teal-dark transition-colors">
-                Confirm Withdrawal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!showWithdrawConfirm}
+        title="Confirm withdrawal"
+        description={
+          showWithdrawConfirm === 'usdc'
+            ? `Withdraw ${usdcAvailable.toFixed(2)} USDC to your wallet?`
+            : `Withdraw $${stripeAvailable > 0 ? stripeAvailable.toFixed(2) : balanceData?.available?.toFixed(2)} to your bank account?`
+        }
+        confirmLabel="Confirm withdrawal"
+        cancelLabel="Cancel withdrawal"
+        onConfirm={executeWithdraw}
+        onCancel={() => setShowWithdrawConfirm(false)}
+      />
     </div>
   )
 }

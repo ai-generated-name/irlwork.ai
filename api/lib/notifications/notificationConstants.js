@@ -131,7 +131,7 @@ const EMAIL_SUBJECTS = {
   new_application:      (data) => `New applicant for: ${data.title || 'your task'}`,
   // Task Lifecycle
   task_auto_approved:   (data) => `Task auto-approved: ${data.title || 'your task'}`,
-  auto_released:        (data) => `Task auto-approved: ${data.title || 'your task'}`,
+  auto_released:        (data) => `Task auto-released: ${data.title || 'your task'}`,
   worker_cancelled:     (data) => `Worker withdrew from: ${data.title || 'your task'}`,
   proof_submitted_late: (data) => `Late proof submitted for: ${data.title || 'your task'}`,
   // Extensions & Deadlines
