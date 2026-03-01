@@ -1,5 +1,6 @@
 import React from 'react';
 import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, Sparkles, Truck, Wrench, Search, Languages } from 'lucide-react';
+import { Button } from './ui';
 
 const CATEGORY_ICONS = {
   delivery: <Package size={14} />,
@@ -118,29 +119,18 @@ export default function TaskCardV2({
             </div>
           ) : null}
           {showReport && (
-            <button
-              className="task-card-v2-report-btn"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={(e) => { e.stopPropagation(); onReport(task); }}
               title="Report this task"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px',
-                borderRadius: '6px',
-                color: '#888888',
-                transition: 'color 0.15s ease',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#FF5F57'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#888888'; }}
+              className="!p-1 !min-h-0"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                 <line x1="4" y1="22" x2="4" y2="15" />
               </svg>
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -253,14 +243,16 @@ export default function TaskCardV2({
             </span>
           )}
         </div>
-        <button
-          className={`task-card-v2-apply-btn ${hasApplied ? 'applied' : (quantity > 1 && spotsRemaining === 0) ? 'filled' : ''}`}
+        <Button
+          variant={hasApplied ? 'ghost' : (quantity > 1 && spotsRemaining === 0) ? 'ghost' : 'primary'}
+          size="sm"
           onClick={(e) => {
             e.stopPropagation();
             if (!hasApplied && !(quantity > 1 && spotsRemaining === 0)) onApply(task);
           }}
           disabled={hasApplied || (quantity > 1 && spotsRemaining === 0)}
           aria-label={hasApplied ? 'Already applied' : (quantity > 1 && spotsRemaining === 0) ? 'All spots filled' : `Apply to ${task.title}`}
+          className="gap-1.5"
         >
           {hasApplied ? (
             <>
@@ -280,7 +272,7 @@ export default function TaskCardV2({
               </svg>
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getErrorMessage } from '../utils/apiErrors';
-import { supabase } from '../App';
+import { supabase } from '../lib/supabase';
 import { Logo } from '../components/Logo';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
 import DeadlineBanner from '../components/TaskDetail/DeadlineBanner';

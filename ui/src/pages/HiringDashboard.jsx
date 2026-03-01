@@ -4,6 +4,7 @@ import AgentOnboardingWizard from '../components/AgentOnboardingWizard'
 import { navigate } from '../utils/navigate'
 import HowPaymentsWork from '../components/HowPaymentsWork'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { Button, EmptyState, PageHeader } from '../components/ui'
 
 export default function HiringDashboard({ user, postedTasks, onNavigate }) {
   usePageTitle('Dashboard')
@@ -50,15 +51,17 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
       />
 
       {/* Header */}
-      <div className="hiring-dash-header">
-        <h1 className="hiring-dash-greeting">Dashboard</h1>
-        <button className="hiring-dash-create-btn" onClick={() => onNavigate?.('create')}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Create task
-        </button>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        action={
+          <Button variant="primary" size="md" onClick={() => onNavigate?.('create')} className="gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Create task
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="hiring-dash-stats">
@@ -297,23 +300,25 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
 
       {/* Empty state */}
       {safeTasks.length === 0 && !showChecklist && (
-        <div className="hiring-dash-empty">
-          <div className="hiring-dash-empty-icon">
+        <EmptyState
+          icon={
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
               <path d="M2 17l10 5 10-5" />
               <path d="M2 12l10 5 10-5" />
             </svg>
-          </div>
-          <h3 className="hiring-dash-empty-title">No tasks posted yet</h3>
-          <p className="hiring-dash-empty-text">Your tasks will appear here when you post one.</p>
-          <button onClick={() => onNavigate?.('posted')} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Create task
-          </button>
-        </div>
+          }
+          title="No tasks posted yet"
+          description="Your tasks will appear here when you post one."
+          action={
+            <Button variant="secondary" size="md" onClick={() => onNavigate?.('posted')} className="gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Create task
+            </Button>
+          }
+        />
       )}
 
       {/* Recent Activity */}

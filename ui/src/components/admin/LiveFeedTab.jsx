@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { supabase } from '../../App'
+import { supabase } from '../../lib/supabase'
 import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 import AdminTaskRow from './AdminTaskRow'

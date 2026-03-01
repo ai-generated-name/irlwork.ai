@@ -6,6 +6,7 @@ import ForAgentsBox from './ForAgentsBox'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { formatTimezoneShort } from '../utils/timezone'
 import TierBadge from './TierBadge'
+import { Button } from './ui'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -392,48 +393,23 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             {/* Hire Button */}
             {onHire && (
               profile.availability !== 'available' ? (
-                <div style={{
-                  width: '100%',
-                  padding: '14px 24px',
-                  background: '#E5E7EB',
-                  color: '#9CA3AF',
-                  fontWeight: 600,
-                  fontSize: 16,
-                  borderRadius: 12,
-                  border: 'none',
-                  textAlign: 'center',
-                  marginTop: 16
-                }}>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  disabled
+                  className="w-full justify-center mt-4"
+                >
                   Currently unavailable for hire
-                </div>
+                </Button>
               ) : (
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
                   onClick={() => onHire(profile)}
-                  style={{
-                    width: '100%',
-                    padding: '14px 24px',
-                    background: '#E8853D',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: 16,
-                    borderRadius: 12,
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: '0 4px 16px rgba(232,133,61,0.3)',
-                    marginTop: 16
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(232,133,61,0.4)'
-                    e.currentTarget.style.transform = 'translateY(-1px)'
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,133,61,0.3)'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                  }}
+                  className="w-full justify-center mt-4"
                 >
                   Hire {profile.name?.split(' ')[0] || 'This Human'}
-                </button>
+                </Button>
               )
             )}
           </div>

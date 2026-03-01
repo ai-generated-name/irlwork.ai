@@ -7,6 +7,7 @@ import MarketingFooter from '../components/Footer'
 import { Logo } from '../components/Logo'
 import { useLanguage } from '../context/LanguageContext'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { Button } from '../components/ui'
 
 const MCP_ENDPOINT = 'https://api.irlwork.ai/api/mcp/sse'
 const API_BASE = 'https://api.irlwork.ai/api'
@@ -266,15 +267,17 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
                 <h2 className="ca-install-heading">Works with Claude, ChatGPT, or any AI agent</h2>
                 <p className="ca-install-subheading">One prompt gives your agent access to 26 tools for hiring humans in the real world.</p>
 
-                <button
+                <Button
+                  variant={copiedPrompt ? 'secondary' : 'primary'}
+                  size="lg"
                   onClick={handleCopyPrompt}
-                  className={`ca-copy-prompt-btn ${copiedPrompt ? 'copied' : ''}`}
+                  className="gap-2 w-full justify-center"
                 >
                   {copiedPrompt
                     ? <><Check size={18} /> Copied to clipboard</>
                     : <><Copy size={18} /> Copy full prompt</>
                   }
-                </button>
+                </Button>
 
                 <div className="ca-prompt-preview">
                   <span className="ca-prompt-preview-label">PROMPT PREVIEW</span>
@@ -460,7 +463,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
               <h4 className="ca-api-keys-title">API keys dashboard</h4>
               <p className="ca-api-keys-desc">Generate, rotate, and manage your API keys.</p>
             </div>
-            <a href="/dashboard/hiring/api-keys" className="ca-btn-orange ca-btn-sm">Get API key <ArrowRight size={14} /></a>
+            <Button variant="primary" size="sm" onClick={() => { window.location.href = '/dashboard/hiring/api-keys' }} className="gap-1.5">Get API key <ArrowRight size={14} /></Button>
           </div>
 
           {/* Curl example */}
@@ -509,8 +512,8 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
           <h2 className="ca-bottom-cta-title">Need the full API reference?</h2>
           <p className="ca-bottom-cta-desc">Explore all 26 tools, parameters, and response schemas.</p>
           <div className="ca-bottom-cta-buttons">
-            <a href="/mcp" className="ca-btn-orange">View API reference <ArrowRight size={15} /></a>
-            <a href="/dashboard/hiring" className="ca-btn-ghost">Go to dashboard</a>
+            <Button variant="primary" size="lg" onClick={() => { window.location.href = '/mcp' }} className="gap-2">View API reference <ArrowRight size={15} /></Button>
+            <Button variant="ghost" size="lg" onClick={() => { window.location.href = '/dashboard/hiring' }}>Go to dashboard</Button>
           </div>
         </div>
       </main>
