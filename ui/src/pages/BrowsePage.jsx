@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { MapPin, Clock, DollarSign, Star, Briefcase, Users, X, Check, Copy, Bot, User, ChevronRight, ChevronLeft, Search, Globe, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
-import { supabase } from '../App'
+import { supabase } from '../lib/supabase'
 import { navigate as spaNavigate } from '../utils/navigate'
 import { Logo } from '../components/Logo'
 import { useToast } from '../context/ToastContext'

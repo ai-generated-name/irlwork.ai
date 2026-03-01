@@ -5,6 +5,7 @@ import { ClipboardList, Shield, Package, Camera, BarChart3, Footprints, Sparkles
 import API_URL from '../config/api';
 import { trackEvent } from '../utils/analytics';
 import ConfirmationModal from './ConfirmationModal';
+import { Button } from './ui';
 
 const PLATFORM_FEE_PERCENT = 15;
 const PREMIUM_FEE_PERCENT = 10;
@@ -333,18 +334,21 @@ export default function QuickApplyModal({
               )}
 
               <div className="quick-apply-modal-actions">
-                <button
+                <Button
                   type="button"
-                  className="quick-apply-modal-btn secondary"
+                  variant="secondary"
+                  size="lg"
                   onClick={handleClose}
                   disabled={loading}
                 >
                   Cancel application
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  className="quick-apply-modal-btn primary"
+                  variant="primary"
+                  size="lg"
                   disabled={loading || !canSubmit}
+                  className="gap-2"
                 >
                   {loading ? (
                     <>
@@ -354,7 +358,7 @@ export default function QuickApplyModal({
                   ) : (
                     'Submit application'
                   )}
-                </button>
+                </Button>
               </div>
             </form>
           </>

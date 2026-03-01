@@ -3,6 +3,7 @@ import { MapPin, Star, Globe, Clock } from 'lucide-react'
 import { SocialIconsRow } from './SocialIcons'
 import { formatTimezoneShort } from '../utils/timezone'
 import TierBadge from './TierBadge'
+import { Button } from './ui'
 
 function StarRating({ rating, count, showNewBadge = false }) {
   const numRating = parseFloat(rating) || 0
@@ -365,35 +366,16 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
             Unavailable
           </span>
         ) : (
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={(e) => {
               e.stopPropagation()
               onHire?.(human)
             }}
-            style={{
-              padding: '10px 24px',
-              background: '#E8853D',
-              color: 'white',
-              fontWeight: 600,
-              fontSize: 14,
-              borderRadius: 'var(--radius-md, 10px)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 2px 8px rgba(232,133,61,0.25)',
-              letterSpacing: '0.02em'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,133,61,0.35)'
-              e.currentTarget.style.transform = 'translateY(-1px)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(232,133,61,0.25)'
-              e.currentTarget.style.transform = 'translateY(0)'
-            }}
           >
             Hire {firstName}
-          </button>
+          </Button>
         )}
       </div>
     </div>

@@ -3,8 +3,9 @@ import API_URL from '../config/api'
 import { navigate } from '../utils/navigate'
 import HowPaymentsWork from '../components/HowPaymentsWork'
 import { useToast } from '../context/ToastContext'
-import { supabase } from '../App'
+import { supabase } from '../lib/supabase'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { Button } from '../components/ui'
 
 const ACTIVE_STATUSES = ['open', 'accepted', 'assigned', 'in_progress']
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed']
@@ -291,13 +292,14 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
               <p className="wd-availability-subtitle">Turn on availability so agents can find and hire you.</p>
             </div>
           </div>
-          <button
-            className="wd-go-available-btn"
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleGoAvailable}
             disabled={togglingAvailability}
           >
             {togglingAvailability ? 'Updating...' : 'Go available'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -355,12 +357,12 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           <h3 className="wd-browse-cta-title">Apply for tasks and get paid</h3>
           <p className="wd-browse-cta-subtitle">Tasks pay $5–$200+ and take minutes to hours.</p>
         </div>
-        <button className="wd-browse-btn" onClick={() => onNavigate?.('browse')}>
+        <Button variant="primary" size="md" onClick={() => onNavigate?.('browse')} className="gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
           </svg>
           Browse tasks
-        </button>
+        </Button>
       </div>
 
       {/* Stats Row */}

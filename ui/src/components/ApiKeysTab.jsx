@@ -1,7 +1,7 @@
 // ApiKeysTab - Extracted from App.jsx
 import React, { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, AlertTriangle, Copy, Check, Key, Plus, RotateCw, Trash2, ExternalLink, Eye, EyeOff } from 'lucide-react'
-import { supabase } from '../App'
+import { supabase } from '../lib/supabase'
 import { EmptyState, Button, Card, ConfirmDialog } from './ui'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
