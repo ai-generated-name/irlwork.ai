@@ -730,7 +730,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       // Notify task creator
       if (task.agent_id) {
         try {
-          await createNotification(task.agent_id, 'task_moderated', notifTitle, notifMessage, id);
+          await createNotification(task.agent_id, 'moderation_action', notifTitle, notifMessage, `/tasks/${id}`);
         } catch (notifErr) {
           logger.error({ err: notifErr }, 'Failed to create moderation notification');
         }
@@ -2021,7 +2021,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       // Notify user
       try {
-        await createNotification(id, 'moderation_action', notifTitle, notifMessage, null);
+        await createNotification(id, 'moderation_action', notifTitle, notifMessage, '/dashboard');
       } catch (notifErr) {
         logger.error({ err: notifErr }, 'Failed to create user moderation notification');
       }

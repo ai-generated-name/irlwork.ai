@@ -31,6 +31,7 @@ const ConnectAgentPage = lazy(() => import('./pages/ConnectAgentPage'))
 const MCPPage = lazy(() => import('./pages/MCPPage'))
 const PremiumPage = lazy(() => import('./pages/PremiumPage'))
 
+
 // MCPPage loaded lazily from ./pages/MCPPage — full API reference
 
 function App() {

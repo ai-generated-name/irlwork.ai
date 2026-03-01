@@ -53,6 +53,11 @@ const EVENT_CATEGORIES = {
   report_submitted:   { category: 'system',   defaultEmail: false, defaultInApp: true },
   new_task_report:    { category: 'system',   defaultEmail: false, defaultInApp: true },
   agent_error:        { category: 'system',   defaultEmail: false, defaultInApp: true },
+
+  // Moderation
+  moderation_action:  { category: 'system',   defaultEmail: true,  defaultInApp: true },
+  report_reviewed:    { category: 'system',   defaultEmail: true,  defaultInApp: true },
+  task_under_review:  { category: 'system',   defaultEmail: true,  defaultInApp: true },
 };
 
 // Which event types map to which email template
@@ -91,6 +96,9 @@ const EMAIL_SUBJECTS = {
   dispute_opened:     (data) => `Dispute opened: ${data.title || 'a task'}`,
   dispute_filed:      (data) => `Dispute filed: ${data.title || 'a task'}`,
   dispute:            (data) => `Dispute update: ${data.title || 'a task'}`,
+  moderation_action:  (data) => data.title || 'Account Moderation Notice',
+  report_reviewed:    (data) => `Your report has been reviewed`,
+  task_under_review:  (data) => `Your task is under review`,
 };
 
 // Default preferences used for seeding new users and as fallback
