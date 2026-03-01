@@ -532,19 +532,22 @@ Auto-flags at 3+ reports, auto-hides at 5+ reports.
 Auth required. Check if the authenticated user has already reported a task.
 
 #### `POST /api/tasks/:id/dispute`
-Auth required (task participant). Create a task dispute. Only for active tasks (`in_progress`, `pending_review`, `approved`).
+Auth required (task participant — agent or assigned worker). Opens a dispute and atomically transitions task status to `disputed`. Only for disputable statuses (`in_progress`, `pending_review`). Freezes any pending payouts.
 
 **Request:**
 ```json
 { "reason": "required string" }
 ```
 
+**Response (200):** `{ "success": true, "status": "disputed", "dispute_id": "uuid" }`
+**Errors:** 409 if status transition invalid, 409 if dispute already exists.
+
 ---
 
 ### 5.7 Disputes
 
 #### `POST /api/disputes`
-Auth required (agent only). File a formal dispute with evidence. Must be within 48-hour window. Freezes pending payout.
+Auth required (agent or assigned worker). File a dispute with evidence. Atomically transitions task status to `disputed`. Freezes any pending payouts.
 
 **Request:**
 ```json
@@ -555,6 +558,11 @@ Auth required (agent only). File a formal dispute with evidence. Must be within 
   "evidence_urls": ["https://..."]
 }
 ```
+
+**Note:** Both `/api/tasks/:id/dispute` and `/api/disputes` now have the same behavior: they validate the status transition, atomically update task status to `disputed`, create a dispute record, freeze payouts, and send notifications/webhooks.
+
+#### `POST /api/admin/resolve-dispute` (DEPRECATED)
+Returns 301 redirect to `POST /api/disputes/:id/resolve`. Use the canonical endpoint instead.
 
 #### `GET /api/disputes`
 Auth required. List disputes filed by or against the authenticated user. Query: `?status=open|resolved`.

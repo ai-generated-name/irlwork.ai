@@ -4732,148 +4732,29 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
 });
 
 // ============ ADMIN DISPUTE RESOLUTION ============
-// DEPRECATED: Use POST /api/disputes/:id/resolve instead
+// DEPRECATED: Redirect to POST /api/disputes/:id/resolve
 app.post('/api/admin/resolve-dispute', async (req, res) => {
-  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  // Find the dispute by task_id and redirect to canonical endpoint
+  const { task_id } = req.body;
+  if (!task_id) return res.status(400).json({ error: 'task_id is required. Use POST /api/disputes/:id/resolve instead.' });
 
-  const user = await getUserByToken(req.headers.authorization);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  // Check if user is admin via ADMIN_USER_IDS environment variable
-  const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
-  if (!ADMIN_USER_IDS.includes(user.id)) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-
-  const { task_id, resolution, refund_to_agent = false, release_to_human = false, notes,
-          // Support legacy parameter name for backwards compatibility
-          refund_human } = req.body;
-  const shouldRefundAgent = refund_to_agent || refund_human;
-
-  // Get task
-  const { data: task, error: taskError } = await supabase
-    .from('tasks')
-    .select('*')
-    .eq('id', task_id)
+  const { data: dispute } = await supabase
+    .from('disputes')
+    .select('id')
+    .eq('task_id', task_id)
+    .eq('status', 'open')
+    .limit(1)
     .single();
 
-  if (taskError || !task) {
-    return res.status(404).json({ error: 'Task not found' });
+  if (!dispute) {
+    return res.status(404).json({ error: 'No open dispute found for this task. Use POST /api/disputes/:id/resolve instead.' });
   }
 
-  if (task.status !== 'disputed') {
-    return res.status(400).json({ error: 'Task is not disputed' });
-  }
-
-  // Resolve based on decision
-  if (release_to_human) {
-    // Release payment to human
-    const escrowAmount = task.escrow_amount || task.budget || 50;
-    const escrowCents = Math.round(escrowAmount * 100);
-    const workerFeePercent = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
-    const platformFeeCents = Math.round(escrowCents * workerFeePercent / 100);
-    const platformFee = platformFeeCents / 100;
-    const netAmount = escrowAmount - platformFee;
-    const txHash = '0x' + crypto.randomBytes(32).toString('hex');
-
-    const { data: disputeRelease, error: disputeReleaseErr } = await supabase
-      .from('tasks')
-      .update({
-        status: 'paid',
-        escrow_status: 'released',
-        escrow_released_at: new Date().toISOString(),
-        dispute_resolved_at: new Date().toISOString(),
-        dispute_resolution: resolution,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', task_id)
-      .neq('escrow_status', 'released')
-      .select('id')
-      .single();
-
-    if (disputeReleaseErr || !disputeRelease) {
-      return res.status(409).json({ error: 'Payment has already been released.' });
-    }
-
-    await supabase.from('payouts').insert({
-      id: uuidv4(),
-      task_id: task_id,
-      human_id: task.human_id,
-      agent_id: task.agent_id,
-      gross_amount: escrowAmount,
-      platform_fee: platformFee,
-      net_amount: netAmount,
-      tx_hash: txHash,
-      status: 'completed',
-      dispute_resolved: true,
-      created_at: new Date().toISOString()
-    });
-
-    await createNotification(
-      task.human_id,
-      'dispute_resolved',
-      'Dispute Resolved - Favorable',
-      `The dispute has been resolved in your favor. Payment of ${netAmount.toFixed(2)} USDC has been released.`,
-      `/tasks/${task_id}`
-    );
-  } else if (shouldRefundAgent) {
-    // Refund escrow to agent (param was misleadingly named refund_human, now refund_to_agent)
-    const { data: refundResult, error: refundError } = await supabase
-      .from('tasks')
-      .update({
-        status: 'cancelled',
-        escrow_status: 'refunded',
-        escrow_refunded_at: new Date().toISOString(),
-        dispute_resolved_at: new Date().toISOString(),
-        dispute_resolution: resolution,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', task_id)
-      .eq('status', 'disputed')
-      .select('id')
-      .single();
-
-    if (refundError || !refundResult) {
-      return res.status(409).json({ error: 'Dispute has already been resolved.' });
-    }
-
-    await createNotification(
-      task.agent_id,
-      'dispute_resolved',
-      'Dispute Resolved - Refund',
-      `The dispute has been resolved. Escrow of ${task.escrow_amount} USDC has been refunded to your wallet.`,
-      `/tasks/${task_id}`
-    );
-    await createNotification(
-      task.human_id,
-      'dispute_resolved',
-      'Dispute Resolved',
-      `The dispute has been resolved. ${notes || 'See details in your dashboard.'}`,
-      `/tasks/${task_id}`
-    );
-  } else {
-    // Partial resolution - reset 48h timer for agent review
-    const { data: partialResult, error: partialError } = await supabase
-      .from('tasks')
-      .update({
-        status: 'pending_review',
-        proof_submitted_at: new Date().toISOString(),
-        dispute_resolved_at: new Date().toISOString(),
-        dispute_resolution: resolution,
-        notes,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', task_id)
-      .eq('status', 'disputed')
-      .select('id')
-      .single();
-
-    if (partialError || !partialResult) {
-      return res.status(409).json({ error: 'Dispute has already been resolved.' });
-    }
-  }
-
-  res.json({ success: true, resolution });
+  return res.status(301).json({
+    error: 'This endpoint is deprecated. Use POST /api/disputes/:id/resolve instead.',
+    redirect: `/api/disputes/${dispute.id}/resolve`,
+    dispute_id: dispute.id
+  });
 });
 
 // DISABLED FOR PHASE 1 MANUAL OPERATIONS — see _automated_disabled/
@@ -6337,24 +6218,49 @@ app.post('/api/mcp', async (req, res) => {
         if (taskErr || !task) return res.status(404).json({ error: 'Task not found' });
         if (task.agent_id !== user.id) return res.status(403).json({ error: 'Not your task' });
 
-        // Enforce same status restrictions as REST endpoint
-        const disputeableStatuses = ['in_progress', 'pending_review', 'approved'];
-        if (!disputeableStatuses.includes(task.status)) {
-          return res.status(400).json({
-            error: `Cannot dispute a task with status "${task.status}". Only active tasks can be disputed.`
-          });
+        // Validate transition using status machine
+        const mcpDisputeCheck = validateStatusTransition(task.status, 'disputed');
+        if (!mcpDisputeCheck.valid) {
+          return res.status(409).json({ error: mcpDisputeCheck.error, allowed: VALID_STATUS_TRANSITIONS[task.status] });
         }
 
         // Check for existing open dispute
-        const { data: existingDisputes } = await supabase
+        const { data: existingMcpDispute } = await supabase
           .from('disputes')
-          .select('id, status')
+          .select('id')
           .eq('task_id', task_id)
-          .eq('filed_by', user.id);
+          .eq('status', 'open')
+          .limit(1)
+          .maybeSingle();
 
-        if (existingDisputes && existingDisputes.length > 0) {
-          return res.status(409).json({ error: 'Dispute already filed for this task', dispute_id: existingDisputes[0].id });
+        if (existingMcpDispute) {
+          return res.status(409).json({ error: 'Dispute already filed for this task', dispute_id: existingMcpDispute.id });
         }
+
+        // Atomic task status update to 'disputed'
+        const { data: mcpDisputedTask, error: mcpDisputeTaskErr } = await supabase
+          .from('tasks')
+          .update({
+            status: 'disputed',
+            dispute_reason: reason,
+            disputed_by: user.id,
+            disputed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', task_id)
+          .eq('status', task.status)
+          .select('id')
+          .single();
+
+        if (mcpDisputeTaskErr || !mcpDisputedTask) {
+          return res.status(409).json({ error: 'Task status changed before dispute could be filed.' });
+        }
+
+        // Freeze any pending payouts
+        await supabase.from('payouts')
+          .update({ status: 'frozen', updated_at: new Date().toISOString() })
+          .eq('task_id', task_id)
+          .in('status', ['pending', 'available']);
 
         const disputeId = uuidv4();
         const { data: dispute, error: disputeError } = await supabase
@@ -6363,6 +6269,7 @@ app.post('/api/mcp', async (req, res) => {
             id: disputeId,
             task_id,
             filed_by: user.id,
+            filed_against: task.human_id,
             reason,
             category: disputeCategory || 'quality_issue',
             evidence_urls: evidence_urls || [],
@@ -6373,6 +6280,11 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (disputeError) throw disputeError;
+
+        // Increment total_disputes_filed
+        await supabase.rpc('increment_user_stat', {
+          user_id_param: user.id, stat_name: 'total_disputes_filed', increment_by: 1
+        });
 
         // Notify human
         if (task.human_id) {
@@ -6385,7 +6297,14 @@ app.post('/api/mcp', async (req, res) => {
           );
         }
 
-        res.json(dispute);
+        // Dispatch webhook
+        dispatchWebhook(task.agent_id, {
+          type: 'dispute_opened',
+          task_id,
+          data: { dispute_id: disputeId, disputed_by: user.id, reason }
+        }).catch(() => {});
+
+        res.json({ ...dispute, task_status: 'disputed' });
         break;
       }
 
@@ -10019,39 +9938,15 @@ app.post('/api/disputes', async (req, res) => {
     return res.status(404).json({ error: 'Task not found' });
   }
 
-  // Only agent can file dispute
-  if (task.agent_id !== user.id) {
-    return res.status(403).json({ error: 'Only the task agent can file a dispute' });
+  // Either party can file dispute (agent or assigned worker)
+  if (task.agent_id !== user.id && task.human_id !== user.id) {
+    return res.status(403).json({ error: 'Only the task agent or assigned worker can file a dispute' });
   }
 
-  // Task must be in a disputable status (includes post-approval during 48-hour hold)
-  const disputeableStatuses = ['pending_review', 'completed', 'approved', 'paid'];
-  if (!disputeableStatuses.includes(task.status)) {
-    return res.status(400).json({ error: 'Cannot dispute a task in this status' });
-  }
-
-  // Get the pending payout for this task
-  const { data: payout, error: payoutError } = await supabase
-    .from('payouts')
-    .select('*')
-    .eq('task_id', task_id)
-    .eq('status', 'pending')
-    .single();
-
-  if (payoutError || !payout) {
-    return res.status(400).json({
-      error: 'Dispute window has closed for this task or payment has already been released'
-    });
-  }
-
-  // Check if we're still within the 48-hour dispute window
-  const now = new Date();
-  const disputeWindowCloses = new Date(payout.dispute_window_closes_at);
-
-  if (now > disputeWindowCloses) {
-    return res.status(400).json({
-      error: 'Dispute window has closed. You had 48 hours from payment release to file a dispute.'
-    });
+  // Validate transition to 'disputed' using the status machine
+  const disputeCheck = validateStatusTransition(task.status, 'disputed');
+  if (!disputeCheck.valid) {
+    return res.status(409).json({ error: disputeCheck.error, allowed: VALID_STATUS_TRANSITIONS[task.status] });
   }
 
   // Check if dispute already exists for this task
@@ -10059,32 +9954,64 @@ app.post('/api/disputes', async (req, res) => {
     .from('disputes')
     .select('id')
     .eq('task_id', task_id)
-    .single();
+    .eq('status', 'open')
+    .limit(1)
+    .maybeSingle();
 
   if (existingDispute) {
-    return res.status(400).json({ error: 'A dispute already exists for this task' });
+    return res.status(409).json({ error: 'A dispute already exists for this task', dispute_id: existingDispute.id });
   }
 
-  // Freeze the pending funds
-  const { error: freezeError } = await supabase
+  // Freeze any pending payouts for this task
+  const { data: payout } = await supabase
     .from('payouts')
-    .update({ status: 'frozen' })
-    .eq('id', payout.id);
+    .select('id, amount_cents')
+    .eq('task_id', task_id)
+    .in('status', ['pending', 'available'])
+    .limit(1)
+    .maybeSingle();
 
-  if (freezeError) {
-    return res.status(500).json({ error: 'Failed to freeze payment' });
+  if (payout) {
+    await supabase
+      .from('payouts')
+      .update({ status: 'frozen', updated_at: new Date().toISOString() })
+      .eq('id', payout.id);
+  }
+
+  // Atomic task status transition to 'disputed'
+  const { data: disputedTask, error: disputeTaskErr } = await supabase
+    .from('tasks')
+    .update({
+      status: 'disputed',
+      dispute_reason: reason,
+      disputed_by: user.id,
+      disputed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', task_id)
+    .eq('status', task.status)
+    .select('id')
+    .single();
+
+  if (disputeTaskErr || !disputedTask) {
+    // Rollback payout freeze
+    if (payout) {
+      await supabase.from('payouts').update({ status: 'pending' }).eq('id', payout.id);
+    }
+    return res.status(409).json({ error: 'Task status changed before dispute could be filed. Please refresh.' });
   }
 
   // Create dispute record
+  const filedAgainst = user.id === task.human_id ? task.agent_id : task.human_id;
   const disputeId = uuidv4();
   const { data: dispute, error: disputeError } = await supabase
     .from('disputes')
     .insert({
       id: disputeId,
       task_id,
-      payout_id: payout.id,
+      payout_id: payout?.id || null,
       filed_by: user.id,
-      filed_against: task.human_id,
+      filed_against: filedAgainst,
       reason,
       category: category || 'other',
       evidence_urls: evidence_urls || [],
@@ -10095,52 +10022,50 @@ app.post('/api/disputes', async (req, res) => {
     .single();
 
   if (disputeError) {
-    // Rollback: unfreeze the payment
-    await supabase
-      .from('payouts')
-      .update({ status: 'pending' })
-      .eq('id', payout.id);
-
     return res.status(500).json({ error: 'Failed to create dispute: ' + disputeError.message });
   }
 
-  // Increment total_disputes_filed for agent
-  const { data: disputeUser } = await supabase
-    .from('users')
-    .select('total_disputes_filed')
-    .eq('id', user.id)
-    .single();
-  await supabase
-    .from('users')
-    .update({
-      total_disputes_filed: (disputeUser?.total_disputes_filed || 0) + 1,
-      last_active_at: new Date().toISOString()
-    })
-    .eq('id', user.id);
+  // Increment total_disputes_filed
+  await supabase.rpc('increment_user_stat', {
+    user_id_param: user.id, stat_name: 'total_disputes_filed', increment_by: 1
+  });
 
-  // Notify the human about the dispute
-  const amountDollars = (payout.amount_cents / 100).toFixed(2);
+  // Notify the other party
+  const notifyTo = user.id === task.human_id ? task.agent_id : task.human_id;
+  const amountDollars = payout ? (payout.amount_cents / 100).toFixed(2) : (task.budget || 0).toFixed(2);
   await createNotification(
-    task.human_id,
+    notifyTo,
     'dispute_filed',
     'Dispute Filed',
     `Task "${task.title}" is under review. $${amountDollars} is on hold.`,
     `/tasks/${task_id}`
   );
 
-  // Notify the agent that dispute was filed successfully
-  await createNotification(
-    user.id,
-    'dispute_created',
-    'Dispute Filed Successfully',
-    `Your dispute for task "${task.title}" has been submitted for review.`,
-    `/disputes/${disputeId}`
-  );
+  // Email notification to both parties
+  const disputeTaskUrl = `https://www.irlwork.ai/tasks/${task_id}`;
+  const disputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+    <p style="color: #DC2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Dispute Opened</p>
+    <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task "${task.title}".</p>
+    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${reason}</p>
+  </div>
+  <p style="font-size: 13px; color: #525252; margin-bottom: 16px;">Our team will review the evidence and make a fair decision.</p>
+  <a href="${disputeTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`;
+  sendEmailNotification(task.human_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
+  sendEmailNotification(task.agent_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
+
+  // Deliver webhook
+  dispatchWebhook(task.agent_id, {
+    type: 'dispute_opened',
+    task_id,
+    data: { dispute_id: disputeId, disputed_by: user.id, reason }
+  }).catch(() => {});
 
   res.json({
     success: true,
+    status: 'disputed',
     dispute: dispute,
-    message: 'Dispute filed successfully. Payment has been frozen pending review.'
+    dispute_id: disputeId,
+    message: 'Dispute filed successfully. Task status changed to disputed.'
   });
 });
 
