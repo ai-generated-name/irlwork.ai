@@ -403,16 +403,7 @@ function cleanTaskData(data) {
 
 const { stripPrivateFields } = require('./lib/privacy/strip-private-fields');
 
-// HTML sanitization for email templates — prevents XSS via user-generated content
-function escapeHtml(str) {
-  if (typeof str !== 'string') return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+// escapeHtml imported from ./utils/sanitize (line 80)
 
 function sanitizeSubject(str) {
   return (str || '').replace(/[\r\n]/g, '').substring(0, 200);
