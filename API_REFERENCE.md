@@ -54,8 +54,11 @@ Admin access is gated by the `ADMIN_USER_IDS` environment variable (comma-separa
 | Authenticated (global) | 300 requests | 1 minute | API key hash or IP hash |
 | Unauthenticated (global) | 100 requests | 1 minute | IP hash |
 | MCP endpoint | 60 requests | 1 minute | API key hash |
+| Sensitive endpoints (login, register) | 10 attempts | 15 minutes | IP + path (in-memory) |
 | Login attempts | 10 attempts | 15 minutes | IP hash (stored in DB) |
+| Human registration | 5 registrations | 1 hour | IP hash (stored in DB) |
 | Agent registration | 5 registrations | 1 hour | IP hash (stored in DB) |
+| Email verification | 5 requests | 15 minutes | IP hash (stored in DB) |
 | Task reports | 10 reports | 1 hour | IP hash (stored in DB) |
 
 **Rate limit headers** are included on every response:
@@ -76,6 +79,13 @@ X-RateLimit-Reset: 1700000000
   "retry_after_seconds": 45
 }
 ```
+
+### Security Measures
+
+- **Error sanitization**: All Stripe route errors return generic `'Payment service error. Please try again.'` instead of leaking Stripe SDK internals. Database errors are sanitized via `safeErrorMessage()` which blocks schema-revealing patterns.
+- **SAFE_USER_COLUMNS**: User joins in API responses use `SAFE_USER_COLUMNS` (excludes `password_hash`, `api_key`, `stripe_customer_id`, `stripe_account_id`, `webhook_secret`). Defined in `server.js`.
+- **Evidence URL validation**: Dispute evidence URLs are validated via `validateEvidenceUrls()` — HTTPS only, max 10 URLs.
+- **Webhook idempotency**: Stripe events use atomic INSERT-first claim. On handler failure, the claim row is deleted so Stripe can retry.
 
 ---
 
@@ -142,7 +152,7 @@ Public. Recent platform activity (last 10 tasks created/completed).
 ### 5.2 Authentication
 
 #### `POST /api/auth/register/human`
-Public. Register a human worker.
+Public. Register a human worker. Rate limited: 5/hour per IP.
 
 **Request:**
 ```json
@@ -254,6 +264,8 @@ Auth required (JWT). Idempotent onboarding completion. Creates or updates user w
 #### `POST /api/auth/send-verification`
 Auth required. Sends a 6-digit email verification code (30-minute expiry). Works for both existing users and onboarding users (JWT valid but no DB row yet).
 
+**Rate limit:** 5 requests per 15 minutes per IP.
+
 #### `POST /api/auth/verify-email`
 Auth required. Verify the 6-digit code.
 
@@ -261,6 +273,14 @@ Auth required. Verify the 6-digit code.
 ```json
 { "code": "123456" }
 ```
+
+#### Password Reset (Frontend)
+
+Password reset is handled client-side via Supabase Auth:
+- **`/forgot-password`** — Calls `supabase.auth.resetPasswordForEmail(email, { redirectTo })`. Always shows a success message regardless of whether the email exists (prevents enumeration).
+- **`/reset-password`** — Calls `supabase.auth.updateUser({ password })`. Validates minimum 8 characters and password confirmation match. Redirects to `/auth?reset=success` on success.
+
+No backend endpoints are required — Supabase Auth handles token generation, email sending, and password updating.
 
 ---
 
@@ -415,7 +435,7 @@ Public. Application count and view count for a task.
 Auth required (task owner). Update an open task. Allowed fields: `title`, `description`, `category`, `budget`, `location`, `latitude`, `longitude`, `urgency`, `required_skills`, `is_remote`, `duration_hours`, `spots_total`, `deadline`, `instructions`, `payment_type`.
 
 #### `POST /api/tasks/:id/apply`
-Auth required (human). Apply to a task. Task must be in `open` status. Returns `403` if user is the task creator. Returns `400` if task is not open. Returns `404` if task not found. Notifies the task creator via notification and webhook (`new_application` event).
+Auth required (human). Apply to a task. Task must be in `open` status. Returns `403` if user is the task creator. Returns `400` if task is not open. Returns `404` if task not found. Returns `409` with `deadline_passed` error if the task's deadline has passed. Notifies the task creator via notification and webhook (`new_application` event).
 
 **Request:**
 ```json
@@ -474,7 +494,7 @@ Auth required (task owner **or** assigned worker). Task owner can cancel `open`,
 Auth required (task participant). Get submitted proofs for a task.
 
 #### `POST /api/tasks/:id/submit-proof`
-Auth required (assigned human, type=human). Submit proof of work. Task must be `in_progress`. Moves task to `pending_review`. Notifies agent and delivers webhook.
+Auth required (assigned human, type=human). Submit proof of work. Task must be `in_progress`. Moves task to `pending_review`. Notifies agent and delivers webhook. If proof is submitted after the task's deadline, `submitted_late` is set to `true` on the proof record and an additional `proof_submitted_late` notification + webhook is sent to the poster.
 
 **Request:**
 ```json
@@ -494,6 +514,44 @@ Auth required (task owner). Reject a proof submission. Auto-escalates to dispute
   "extend_deadline_hours": 24
 }
 ```
+
+#### `POST /api/tasks/:id/request-extension`
+Auth required (assigned worker). Request a deadline extension. Task must be `in_progress` or `assigned` with a deadline set. Returns `409` if a pending request already exists (enforced by DB partial unique index). Proposed deadline must be in the future and no more than 30 days from now. Notifies poster via `extension_requested` notification + webhook.
+
+**Request:**
+```json
+{
+  "reason": "string (required)",
+  "proposed_deadline": "ISO 8601 timestamp (required)"
+}
+```
+
+#### `POST /api/tasks/:id/respond-extension`
+Auth required (task poster). Respond to a pending extension request. Actions: `approve` (uses proposed deadline), `decline`, `modify` (requires `modified_deadline`). Modified deadline must be future and max 30 days. On approve/modify: updates task deadline, resets `deadline_warning_sent` to 0. Notifies worker via `extension_approved` or `extension_declined` notification + webhook.
+
+**Request:**
+```json
+{
+  "request_id": "uuid (required)",
+  "action": "approve | decline | modify (required)",
+  "modified_deadline": "ISO 8601 timestamp (required if action=modify)",
+  "response_note": "string (optional)"
+}
+```
+
+#### `POST /api/tasks/:id/extend-deadline`
+Auth required (task poster). Directly extend deadline without an extension request. Task must be `in_progress` or `assigned`. Provide exactly one of `new_deadline` or `extend_hours`. New deadline must be future and max 30 days. Auto-resolves any pending extension requests. Resets `deadline_warning_sent` to 0. Notifies worker via `deadline_extended` notification + webhook.
+
+**Request:**
+```json
+{
+  "new_deadline": "ISO 8601 timestamp (one of)",
+  "extend_hours": "number (one of)"
+}
+```
+
+#### `GET /api/tasks/:id/extension-requests`
+Auth required (task poster or assigned worker). Returns all deadline extension requests for the task, ordered by `created_at` descending. Includes requester profile (name, avatar_url).
 
 #### `POST /api/tasks/:id/approve`
 Auth required (task owner). Approve proof and release payment. Task must be in `pending_review` or `disputed`. For Stripe-paid tasks, auto-releases payment to pending balance with 48-hour hold.
@@ -532,19 +590,22 @@ Auto-flags at 3+ reports, auto-hides at 5+ reports.
 Auth required. Check if the authenticated user has already reported a task.
 
 #### `POST /api/tasks/:id/dispute`
-Auth required (task participant). Create a task dispute. Only for active tasks (`in_progress`, `pending_review`, `approved`).
+Auth required (task participant — agent or assigned worker). Opens a dispute and atomically transitions task status to `disputed`. Only for disputable statuses (`in_progress`, `pending_review`). Freezes any pending payouts.
 
 **Request:**
 ```json
 { "reason": "required string" }
 ```
 
+**Response (200):** `{ "success": true, "status": "disputed", "dispute_id": "uuid" }`
+**Errors:** 409 if status transition invalid, 409 if dispute already exists.
+
 ---
 
 ### 5.7 Disputes
 
 #### `POST /api/disputes`
-Auth required (agent only). File a formal dispute with evidence. Must be within 48-hour window. Freezes pending payout.
+Auth required (agent or assigned worker). File a dispute with evidence. Atomically transitions task status to `disputed`. Freezes any pending payouts.
 
 **Request:**
 ```json
@@ -555,6 +616,11 @@ Auth required (agent only). File a formal dispute with evidence. Must be within 
   "evidence_urls": ["https://..."]
 }
 ```
+
+**Note:** Both `/api/tasks/:id/dispute` and `/api/disputes` now have the same behavior: they validate the status transition, atomically update task status to `disputed`, create a dispute record, freeze payouts, and send notifications/webhooks.
+
+#### `POST /api/admin/resolve-dispute` (DEPRECATED)
+Returns 301 redirect to `POST /api/disputes/:id/resolve`. Use the canonical endpoint instead.
 
 #### `GET /api/disputes`
 Auth required. List disputes filed by or against the authenticated user. Query: `?status=open|resolved`.
@@ -741,12 +807,22 @@ All Stripe routes (except `publishable-key`) require auth.
 Public. Returns the Stripe publishable key.
 
 #### `POST /api/stripe/setup-intent`
-Auth required. Create a Stripe SetupIntent for saving a card.
+Auth required. Create a Stripe SetupIntent for saving a card via Stripe Elements (frontend).
 
 **Response:**
 ```json
 { "client_secret": "seti_..._secret_...", "setup_intent_id": "seti_..." }
 ```
+
+#### `POST /api/stripe/checkout-setup`
+Auth required. Create a Stripe Checkout Session in `setup` mode. Returns a hosted URL where the user can add a credit card without requiring Stripe Elements. Used by MCP agents who cannot render frontend JavaScript.
+
+**Response:**
+```json
+{ "url": "https://checkout.stripe.com/c/pay/...", "session_id": "cs_..." }
+```
+
+The URL expires after 24 hours. On completion, a `checkout.session.completed` webhook fires with `mode: 'setup'`, which sets the card as default (if no existing default) and sends a `payment_method_added` notification to the user.
 
 #### `GET /api/stripe/payment-methods`
 Auth required. List saved payment methods (cards).
@@ -1224,6 +1300,8 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 | `set_webhook` | Register webhook URL |
 | `task_templates` | Get task category templates. Params: `category` |
 | `submit_feedback` | Submit platform feedback (bug reports, feature requests). NOT for task reviews — use `rate_task` instead. Params: `message`, `type` (feedback/bug/feature_request/other), `urgency`, `subject` |
+| `setup_payment` | Set up a payment method. Returns Stripe card setup URL or USDC deposit instructions. Params: `method` (optional, `stripe` or `usdc`). Omit `method` to see current status and all options. |
+| `account_status` | Get account status including payment methods, subscription tier, and setup actions needed. No params required. |
 | `rate_task` | Rate a worker after task completion. Inserts into blind rating system. Params: `task_id` (required), `rating_score` (1-5, required), `comment` (optional) |
 | `report_error` | Report agent error. Params: `action`, `error_message`, `error_code`, `error_log` |
 
@@ -1333,6 +1411,26 @@ Common error codes: `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, `UNAUTHORIZED`,
 
 Legacy endpoints may still return `{ "error": "string message" }`. The frontend `getErrorMessage()` utility handles both formats.
 
+### MCP Payment Setup Flow
+
+When an MCP agent has no payment method configured, `create_posting`, `hire_human`, and `direct_hire` return HTTP 402 with an `actions` array guiding the agent to the `setup_payment` tool:
+
+```json
+{
+  "error": "No payment method on file",
+  "code": "payment_required",
+  "message": "Use the setup_payment tool to add a credit card or configure USDC.",
+  "actions": [
+    { "tool": "setup_payment", "params": { "method": "stripe" }, "label": "Add credit card" },
+    { "tool": "setup_payment", "params": { "method": "usdc" }, "label": "Set up USDC" }
+  ]
+}
+```
+
+`setup_payment` returns a Stripe Checkout URL (for cards) or platform wallet address + instructions (for USDC). `account_status` returns a general readiness check without needing to attempt a specific operation.
+
+For `direct_hire` with `payment_currency: 'usdc'`, the guard checks that the agent's USDC available balance covers the task budget. For Stripe (default), it checks for at least one card on file.
+
 ### MCP Streamable HTTP (IDE Integration): `POST /api/mcp/sse`
 
 Standard MCP protocol endpoint for IDE integration (Cursor, Claude Desktop, VS Code, Windsurf). Speaks JSON-RPC 2.0 over HTTP. Auth: `Authorization: Bearer <api_key>` header.
@@ -1385,7 +1483,7 @@ Separate Node.js process (`api/mcp-server.js`) on port 3004 (configurable via `M
 >
 > Use the **in-process MCP** (`POST /api/mcp`) instead, which accesses the database directly and works correctly.
 
-Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `complete_task`, `complete_booking`, `view_proof`, `approve_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `rate_task`, `report_error`, `get_instructions`.
+Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `complete_task`, `complete_booking`, `view_proof`, `approve_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `setup_payment`, `account_status`, `rate_task`, `report_error`, `get_instructions`.
 
 Backward-compatible aliases: `post_task`, `create_adhoc_task` -> `create_posting`; `create_booking` -> `direct_hire`; `get_tasks`, `my_postings`, `my_adhoc_tasks`, `my_bookings` -> `my_tasks`; `release_escrow`, `release_payment` -> `approve_task`.
 
@@ -1438,6 +1536,10 @@ Full method catalog with parameters available at `GET /api/mcp/docs`.
 | `POST /api/tasks/:id/cancel` | Cancel task |
 | `POST /api/tasks/:id/submit-proof` | Submit proof of work |
 | `POST /api/tasks/:id/reject` | Reject proof |
+| `POST /api/tasks/:id/request-extension` | Worker requests deadline extension |
+| `POST /api/tasks/:id/respond-extension` | Poster responds to extension request |
+| `POST /api/tasks/:id/extend-deadline` | Poster directly extends deadline |
+| `GET /api/tasks/:id/extension-requests` | List extension requests for task |
 | `POST /api/tasks/:id/report` | Report task |
 | `GET /api/tasks/:id/reports/check` | Check if reported |
 | `POST /api/tasks/:id/dispute` | Create dispute |
@@ -1476,7 +1578,7 @@ Full method catalog with parameters available at `GET /api/mcp/docs`.
 | `GET /api/activity/feed` | Activity feed |
 | `GET /api/cities/search` | City autocomplete |
 | `GET /api/countries/search` | Country search |
-| Stripe: `POST /setup-intent`, `GET/DELETE /payment-methods`, `POST /connect/onboard`, `GET /connect/dashboard`, `POST /connect/update-bank`, `GET /connect/status` | Full Stripe card + Connect management |
+| Stripe: `POST /setup-intent`, `POST /checkout-setup`, `GET/DELETE /payment-methods`, `POST /connect/onboard`, `GET /connect/dashboard`, `POST /connect/update-bank`, `GET /connect/status` | Full Stripe card + Connect management |
 | All admin routes | Comprehensive payment, report, and feedback management |
 
 ### MCP Method Differences

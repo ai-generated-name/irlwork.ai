@@ -117,3 +117,71 @@ All sizes use `base = mobile`, `sm: = 640px+`, `lg: = 1024px+`.
 - Tailwind config: `ui/tailwind.config.cjs`
 - Component styles: CSS classes in `ui/src/landing-v4.css`
 - Responsive breakpoints: 640px (mobile), 768px (tablet), 900px (dashboard mobile), 1024px (desktop)
+
+---
+
+## Copy & Tone
+
+### Voice
+Direct. Warm. Not corporate, not playful. Like a calm colleague who respects your time.
+
+- Write like a human, not a system
+- Be specific, not vague
+- Respect the reader's intelligence — don't over-explain
+- Never use exclamation marks in UI copy (save them for success toasts, if at all)
+
+### Reference: Anthropic's Claude UI
+Our tone benchmark. Notice how their copy:
+- Uses plain, declarative sentences
+- Avoids jargon and marketing language
+- Keeps modals/popups non-invasive — clear heading, short explanation, obvious actions
+- Never shouts — no exclamation marks, no ALL CAPS, no emoji in core UI
+
+### Rules
+
+| Rule | Do | Don't |
+|------|-----|-------|
+| Case | Sentence case for everything (headings, buttons, labels, tabs) | Title Case For Headings, ALL CAPS |
+| Person | Second person ("Your tasks", "You haven't…") | Third person ("User's tasks", "The user hasn't…") |
+| Button labels | Verb + noun ("Create task", "Browse humans", "View details") | Single vague words ("Submit", "Go", "OK") |
+| Empty states | "[Thing] will appear here when [action]" | "No data found" / "Nothing to show" / "Oops!" |
+| Error messages | Say what happened + what to do ("Payment failed. Check your card details and try again.") | Blame the user ("Invalid input") or be vague ("Something went wrong") |
+| Confirmations | State the outcome ("Task posted. Workers can now apply.") | Generic ("Success!" / "Done!") |
+| Loading states | "[Thing] loading…" or skeleton | Spinner with no context |
+| Modals/Dialogs | Clear heading (what is this?), 1-2 sentence explanation, obvious primary + secondary action | Walls of text, ambiguous buttons ("OK" / "Cancel" when it's unclear what "OK" does) |
+| Technical terms | Plain language in worker-facing pages. Technical only on agent/API pages | Mixing audiences ("Your webhook endpoint" on a worker's dashboard) |
+| Numbers | Use `DM Mono` for all prices, stats, IDs, wallet addresses | Body font for numbers |
+| Emoji | Never in core UI (buttons, headings, labels, nav). Only in empty-state illustrations or user-generated content | Emoji in headings, buttons, flag emoji for countries |
+| Product terms | "irlwork" (lowercase i), "Premium" (capitalized) | "IRLWork", "IRLWORK", "premium" |
+
+### Empty State Formula
+
+Every empty state follows this pattern — no exceptions:
+
+```
+[Centered icon or illustration]
+[Title — what's missing, in 3-6 words]
+[Description — one sentence explaining when content will appear]
+[Single primary CTA button]
+```
+
+Examples:
+- **My tasks (hiring):** Icon → "No tasks yet" → "Posted tasks will appear here once you create one." → [Create task]
+- **Messages:** Icon → "No messages yet" → "Conversations with workers will appear here." → [Browse humans]
+- **Payments:** Icon → "No transactions yet" → "Payment history will appear once you complete a task." → (no CTA, or [Browse tasks])
+- **Applications:** Icon → "No applications yet" → "Worker applications will appear when someone applies to your task." → (no CTA)
+
+### Heading Hierarchy per Page
+
+Every page should follow this structure:
+
+```
+Page title (24px, DM Sans 600)           ← What page is this?
+Optional subtitle (14px, #6B7280)        ← Brief context if needed
+─────────────────────────────────────
+Content                                   ← Cards, lists, forms, etc.
+```
+
+- Page titles are sentence case, never have a period
+- Subtitles are optional — only when the page title alone isn't clear enough
+- No greeting ("Good afternoon, Alex") on sub-pages — only on the Dashboard

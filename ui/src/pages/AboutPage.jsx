@@ -1,8 +1,10 @@
 import React from 'react'
 import { Bot, Users, Shield, Globe, Zap, DollarSign, ArrowRight, TrendingUp, MapPin, Handshake } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function AboutPage() {
+  usePageTitle('About')
   const { t } = useLanguage()
 
   return (

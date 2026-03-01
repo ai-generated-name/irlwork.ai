@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Bot } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 /* ─── Animated floating orb (pure CSS) ─── */
 function GradientOrb({ size = 400, top, left, right, bottom, color1, color2, delay = 0, duration = 20 }) {
@@ -279,6 +280,7 @@ function TimelineItem({ label, color, children, isLast = false }) {
    THESIS PAGE
    ═══════════════════════════════════════ */
 export default function ThesisPage() {
+  usePageTitle('Our Thesis')
 
   /* ─── Keyframe injection ─── */
   useEffect(() => {
@@ -431,7 +433,7 @@ export default function ThesisPage() {
               marginBottom: '28px',
               color: 'var(--text-primary)',
             }}>
-              The Physical Layer<br />of the AI Economy
+              The physical layer<br />of the AI economy
             </h1>
           </Reveal>
 
@@ -821,7 +823,7 @@ export default function ThesisPage() {
                     boxShadow: '0 0 30px rgba(244,132,95,0.3)',
                   }}
                 >
-                  Start Earning
+                  Start earning
                   <ArrowRight size={18} />
                 </a>
                 <a
@@ -837,7 +839,7 @@ export default function ThesisPage() {
                   }}
                 >
                   <Bot size={18} />
-                  Connect an Agent
+                  Connect an agent
                 </a>
               </div>
             </div>

@@ -1,7 +1,9 @@
 import React from 'react'
 import { Home, ArrowLeft, MapPin } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function NotFoundPage() {
+  usePageTitle('Page Not Found')
   return (
     <div style={{
       minHeight: '100vh',
@@ -106,7 +108,7 @@ export default function NotFoundPage() {
             }}
           >
             <Home size={18} />
-            Go to Homepage
+            Return to homepage
           </a>
           <button
             onClick={() => window.history.back()}
@@ -117,7 +119,7 @@ export default function NotFoundPage() {
             }}
           >
             <ArrowLeft size={18} />
-            Go Back
+            Go back
           </button>
         </div>
       </div>

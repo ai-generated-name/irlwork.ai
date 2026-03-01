@@ -125,14 +125,14 @@ export default function ConnectBankButton({ user, compact = false }) {
     if (status?.connected && status?.payouts_enabled) {
       return (
         <div className="flex items-center gap-2 px-3 py-2 bg-[#f0fdf4] border border-[#86efac] rounded-lg">
-          <span className="text-sm">&#9989;</span>
-          <span className="text-xs font-semibold text-[#16a34a]">Bank Connected</span>
+          <svg className="w-4 h-4 text-[#16a34a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          <span className="text-xs font-semibold text-[#16a34a]">Bank connected</span>
           <button
             onClick={handleManageBank}
             disabled={connecting}
             className="ml-auto text-xs text-[#6366f1] hover:text-[#4f46e5] font-medium disabled:opacity-50"
           >
-            Manage
+            Manage bank
           </button>
         </div>
       );
@@ -147,7 +147,7 @@ export default function ConnectBankButton({ user, compact = false }) {
             disabled={connecting}
             className="text-xs font-semibold text-[#FEBC2E] hover:text-[#FEBC2E] disabled:opacity-50"
           >
-            {connecting ? 'Loading...' : 'Complete Setup'}
+            {connecting ? 'Loading...' : 'Complete bank setup'}
           </button>
         </div>
       );
@@ -159,7 +159,7 @@ export default function ConnectBankButton({ user, compact = false }) {
         disabled={connecting}
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[#9ca3af] text-white rounded-xl text-sm font-semibold transition-colors"
       >
-        {connecting ? 'Setting up...' : 'Connect Bank Account'}
+        {connecting ? 'Setting up...' : 'Connect bank account'}
       </button>
     );
   }
@@ -177,7 +177,7 @@ export default function ConnectBankButton({ user, compact = false }) {
             </svg>
           </div>
           <div className="flex-1">
-            <h3 className="text-[#1A1A1A] font-bold text-base">Bank Account Connected</h3>
+            <h3 className="text-[#1A1A1A] font-bold text-base">Bank account connected</h3>
             <p className="text-[#333333] text-sm mt-0.5">Your earnings will be deposited directly to your bank account</p>
           </div>
         </div>
@@ -191,7 +191,7 @@ export default function ConnectBankButton({ user, compact = false }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            Manage Account
+            Manage account
           </button>
           <button
             onClick={handleUpdateBank}
@@ -201,7 +201,7 @@ export default function ConnectBankButton({ user, compact = false }) {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5M3.75 9h16.5M5.25 21V9m13.5 12V9M9 21v-6a.75.75 0 01.75-.75h4.5a.75.75 0 01.75.75v6M12 3.75l8.25 5.25H3.75L12 3.75z" />
             </svg>
-            Change Bank
+            Change bank
           </button>
           {error && <span className="text-xs text-red-500">{error}</span>}
         </div>
@@ -220,14 +220,14 @@ export default function ConnectBankButton({ user, compact = false }) {
             </svg>
           </div>
           <div className="flex-1">
-            <h3 className="text-[#1A1A1A] font-bold text-base">Finish Setting Up Your Bank</h3>
+            <h3 className="text-[#1A1A1A] font-bold text-base">Finish setting up your bank</h3>
             <p className="text-[#333333] text-sm mt-1">Your bank connection is incomplete. Complete the setup to start receiving payments.</p>
             <button
               onClick={handleConnect}
               disabled={connecting}
               className="mt-4 px-6 py-2.5 bg-[#FEBC2E] hover:bg-[#FEBC2E] disabled:bg-[#9ca3af] text-white rounded-xl text-sm font-semibold transition-colors"
             >
-              {connecting ? 'Loading...' : 'Complete Setup'}
+              {connecting ? 'Loading...' : 'Complete bank setup'}
             </button>
           </div>
         </div>
@@ -262,7 +262,7 @@ export default function ConnectBankButton({ user, compact = false }) {
         </div>
 
         <div className="flex-1">
-          <h3 className="text-[#1A1A1A] font-bold text-lg">Set Up Your Payment Account</h3>
+          <h3 className="text-[#1A1A1A] font-bold text-lg">Set up your payment account</h3>
           <p className="text-[#333333] text-sm mt-1.5 leading-relaxed">
             Connect your bank account to receive earnings directly. Takes about 2 minutes to set up through our secure partner, Stripe.
           </p>
@@ -304,7 +304,7 @@ export default function ConnectBankButton({ user, compact = false }) {
             </>
           ) : (
             <>
-              Get Started
+              Connect bank account
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
