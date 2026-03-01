@@ -80,6 +80,10 @@ disputed -> pending_review  (partial resolution -- task returned for re-review)
 - Atomic updates only. Always use `.eq('status', currentStatus)` in the UPDATE to prevent TOCTOU races.
 - The old `validateStatusTransition()` function has been removed — the DB trigger is the single enforcement point.
 
+### Task Status History
+
+Every task status transition is recorded in the `task_status_history` table. This provides a complete audit trail for the Agent Session Context endpoint (`GET /api/tasks/:id/context`). Status changes from all sources — REST, MCP, and background crons — are recorded.
+
 ---
 
 ## Payment & Escrow Flow
@@ -336,6 +340,7 @@ Agent pays: `budget` (platform fee is deducted from the human's side)
 | `POST` | `/api/tasks/:id/reject` | Agent rejects (requests revision) |
 | `POST` | `/api/tasks/:id/cancel` | Cancel task (tiered policy) |
 | `POST` | `/api/tasks/:id/confirm-payment` | Agent confirms 3DS payment verification |
+| `GET` | `/api/tasks/:id/context` | Full session context for agents (status history, applications, messages, payment, proof, disputes, deadlines) |
 | `GET` | `/api/tasks/:id/applications/check` | Check if current user has applied |
 
 ### Messaging

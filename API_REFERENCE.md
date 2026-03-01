@@ -600,6 +600,35 @@ Auth required (task participant — agent or assigned worker). Opens a dispute a
 **Response (200):** `{ "success": true, "status": "disputed", "dispute_id": "uuid" }`
 **Errors:** 409 if status transition invalid, 409 if dispute already exists.
 
+#### `GET /api/tasks/:id/context`
+
+Auth required (API key, agent type, task creator only). Returns full session context for a task in a single call — status history, applications, messages, payment state, proof, disputes, and deadlines.
+
+**Query Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| include_messages | boolean | true | Set false to skip message history |
+| message_limit | integer | 50 | Max messages returned (most recent first, max 200) |
+
+**Response (200):**
+```json
+{
+  "task": { "id", "title", "description", "instructions", "status", "budget", "deadline", "created_at", "location", "category" },
+  "status_history": [{ "from_status", "to_status", "changed_at", "changed_by", "reason" }],
+  "applications": [{ "id", "worker_id", "worker_name", "worker_rating", "status", "cover_letter", "proposed_rate", "applied_at" }],
+  "assigned_worker": { "id", "name", "rating", "completed_tasks" } | null,
+  "messages": [{ "id", "sender_id", "content", "sent_at" }],
+  "payment": { "method", "amount_authorized", "amount_captured", "escrow_status", "stripe_payment_intent_id" },
+  "proof": { "submitted", "submitted_at", "photos", "notes" } | null,
+  "dispute": { "id", "status", "reason", "opened_at", "opened_by" } | null,
+  "deadlines": { "task_deadline", "auto_approve_at", "dispute_window_closes_at" },
+  "meta": { "retrieved_at", "message_count", "unread_webhook_events" }
+}
+```
+
+**Errors:** 401 Unauthorized, 403 Not task creator, 404 Task not found
+
 ---
 
 ### 5.7 Disputes
@@ -1304,6 +1333,7 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 | `account_status` | Get account status including payment methods, subscription tier, and setup actions needed. No params required. |
 | `rate_task` | Rate a worker after task completion. Inserts into blind rating system. Params: `task_id` (required), `rating_score` (1-5, required), `comment` (optional) |
 | `report_error` | Report agent error. Params: `action`, `error_message`, `error_code`, `error_log` |
+| `get_task_context` | Full session context for a task. Same as `GET /api/tasks/:id/context`. Params: `task_id` (required), `include_messages` (optional, default true), `message_limit` (optional, default 50). Uses the shared `buildTaskContext()` helper — no behavioral differences from REST. |
 
 ### MCP Method Documentation: `GET /api/mcp/docs`
 

@@ -937,6 +937,191 @@ async function getUserByToken(token) {
   return null;
 }
 
+// Status history recording — inserts a row into task_status_history for every status transition
+async function recordStatusChange(taskId, fromStatus, toStatus, changedBy = null, reason = null) {
+  if (!supabase) return;
+  try {
+    await supabase.from('task_status_history').insert({
+      task_id: taskId,
+      from_status: fromStatus || null,
+      to_status: toStatus,
+      changed_by: changedBy || null,
+      reason: reason || null
+    });
+  } catch (err) {
+    console.error(`[StatusHistory] Failed to record ${fromStatus} → ${toStatus} for task ${taskId}:`, err.message);
+  }
+}
+
+/**
+ * Build full task context for agents — shared by REST endpoint and MCP tool.
+ * Returns everything an agent needs to reconstruct task state in one call.
+ * @param {object} supabase - Supabase client
+ * @param {string} taskId - Task UUID
+ * @param {string} agentId - Agent user UUID (for ownership check)
+ * @param {object} options - { includeMessages: boolean, messageLimit: number }
+ * @returns {object} Full task context response
+ */
+async function buildTaskContext(supabase, taskId, agentId, { includeMessages = true, messageLimit = 50 } = {}) {
+  messageLimit = Math.min(Math.max(1, parseInt(messageLimit) || 50), 200);
+
+  // Fetch all data in parallel for performance
+  const [
+    taskResult,
+    historyResult,
+    applicationsResult,
+    messagesResult,
+    proofResult,
+    disputeResult,
+    webhookCountResult
+  ] = await Promise.all([
+    supabase.from('tasks')
+      .select('*, assigned_worker:users!tasks_human_id_fkey(id, name, avatar_url, rating, total_tasks_completed)')
+      .eq('id', taskId)
+      .single(),
+    supabase.from('task_status_history')
+      .select('from_status, to_status, changed_by, reason, created_at')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: true }),
+    supabase.from('task_applications')
+      .select('id, human_id, status, cover_letter, proposed_rate, created_at, applicant:users!task_applications_human_id_fkey(id, name, avatar_url, rating)')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: false }),
+    includeMessages
+      ? supabase.from('messages')
+          .select('id, sender_id, content, created_at')
+          .eq('task_id', taskId)
+          .order('created_at', { ascending: false })
+          .limit(messageLimit)
+      : Promise.resolve({ data: [], count: 0 }),
+    supabase.from('task_proofs')
+      .select('id, status, proof_text, proof_urls, submitted_at, created_at')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: false })
+      .limit(1),
+    supabase.from('disputes')
+      .select('id, status, reason, category, filed_by, created_at')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: false })
+      .limit(1),
+    supabase.from('webhook_deliveries')
+      .select('id', { count: 'exact', head: true })
+      .eq('task_id', taskId)
+      .neq('status', 'delivered')
+  ]);
+
+  const task = taskResult.data;
+  if (!task) return { error: 'Task not found', status: 404 };
+  if (task.agent_id !== agentId) return { error: 'Not authorized — you must be the task creator', status: 403 };
+
+  // Get total message count separately if messages are included
+  let totalMessageCount = 0;
+  if (includeMessages && messagesResult.data) {
+    const { count } = await supabase.from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('task_id', taskId);
+    totalMessageCount = count || 0;
+  }
+
+  // Calculate deadlines
+  const latestProof = proofResult.data?.[0];
+  const AUTO_APPROVE_HOURS = 72;
+  const DISPUTE_WINDOW_HOURS = 48;
+  let autoApproveAt = null;
+  let disputeWindowClosesAt = null;
+
+  if (latestProof && task.status === 'pending_review') {
+    const proofTime = new Date(latestProof.submitted_at || latestProof.created_at);
+    autoApproveAt = new Date(proofTime.getTime() + AUTO_APPROVE_HOURS * 60 * 60 * 1000).toISOString();
+  }
+
+  if (task.status === 'approved' || task.status === 'completed') {
+    // Find when task was approved from status history
+    const approvalEntry = (historyResult.data || []).reverse().find(h => h.to_status === 'approved');
+    if (approvalEntry) {
+      disputeWindowClosesAt = new Date(new Date(approvalEntry.created_at).getTime() + DISPUTE_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+    }
+  }
+
+  // Build response
+  return {
+    data: {
+      task: {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        instructions: task.instructions || null,
+        status: task.status,
+        budget: task.budget,
+        deadline: task.deadline || null,
+        created_at: task.created_at,
+        location: task.location || null,
+        category: task.category || null
+      },
+      status_history: (historyResult.data || []).map(h => ({
+        from_status: h.from_status,
+        to_status: h.to_status,
+        changed_at: h.created_at,
+        changed_by: h.changed_by,
+        reason: h.reason
+      })),
+      applications: (applicationsResult.data || []).map(a => ({
+        id: a.id,
+        worker_id: a.human_id,
+        worker_name: a.applicant?.name || null,
+        worker_rating: a.applicant?.rating || null,
+        status: a.status,
+        cover_letter: a.cover_letter || null,
+        proposed_rate: a.proposed_rate || null,
+        applied_at: a.created_at
+      })),
+      assigned_worker: task.assigned_worker ? {
+        id: task.assigned_worker.id,
+        name: task.assigned_worker.name,
+        rating: task.assigned_worker.rating || null,
+        completed_tasks: task.assigned_worker.total_tasks_completed || 0
+      } : null,
+      messages: (messagesResult.data || []).map(m => ({
+        id: m.id,
+        sender_id: m.sender_id,
+        content: m.content,
+        sent_at: m.created_at
+      })),
+      payment: {
+        method: task.payment_method || null,
+        amount_authorized: task.escrow_amount || null,
+        amount_captured: task.escrow_captured ? task.escrow_amount : null,
+        escrow_status: task.escrow_status || 'none',
+        stripe_payment_intent_id: task.stripe_payment_intent_id || null
+      },
+      proof: latestProof ? {
+        submitted: true,
+        submitted_at: latestProof.submitted_at || latestProof.created_at,
+        photos: latestProof.proof_urls || [],
+        notes: latestProof.proof_text || null
+      } : null,
+      dispute: disputeResult.data?.[0] ? {
+        id: disputeResult.data[0].id,
+        status: disputeResult.data[0].status,
+        reason: disputeResult.data[0].reason,
+        opened_at: disputeResult.data[0].created_at,
+        opened_by: disputeResult.data[0].filed_by
+      } : null,
+      deadlines: {
+        task_deadline: task.deadline || null,
+        auto_approve_at: autoApproveAt,
+        dispute_window_closes_at: disputeWindowClosesAt
+      },
+      meta: {
+        retrieved_at: new Date().toISOString(),
+        message_count: totalMessageCount,
+        unread_webhook_events: webhookCountResult.count || 0
+      }
+    },
+    status: 200
+  };
+}
+
 // Notification services (initialized after supabase, used by createNotification)
 let _emailService = null;
 let _notificationService = null;
@@ -2609,6 +2794,8 @@ app.post('/api/tasks', async (req, res) => {
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
+  await recordStatusChange(task.id, null, task.status, user.id);
+
   // Increment total_tasks_posted for agent
   if (user.type === 'agent') {
     await supabase.rpc('increment_user_stat', {
@@ -2637,6 +2824,27 @@ app.post('/api/tasks', async (req, res) => {
   }
 
   res.json(response);
+});
+
+// ============ AGENT SESSION CONTEXT ============
+// Returns full task context in a single call — status history, applications, messages, payment, proof, disputes
+app.get('/api/tasks/:id/context', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+
+  const { id: taskId } = req.params;
+  const includeMessages = req.query.include_messages !== 'false';
+  const messageLimit = parseInt(req.query.message_limit) || 50;
+
+  const result = await buildTaskContext(supabase, taskId, user.id, { includeMessages, messageLimit });
+
+  if (result.error) {
+    return res.status(result.status).json({ error: result.error });
+  }
+
+  res.json(result.data);
 });
 
 app.get('/api/tasks/:id', async (req, res, next) => {
@@ -3526,6 +3734,8 @@ app.post('/api/tasks/:id/release', async (req, res) => {
       .eq('id', id)
       .in('status', ['completed', 'approved']);
 
+    await recordStatusChange(id, task.status, 'paid', user.id, 'payment_released');
+
     const budget = parseFloat(task.budget) || 0;
     const budgetCents = Math.round(budget * 100);
     // Use stored worker fee from task if available, otherwise look up
@@ -4249,6 +4459,8 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
     return res.status(409).json({ error: 'Task is no longer in progress or you are not the assigned worker.' });
   }
 
+  await recordStatusChange(taskId, 'in_progress', 'pending_review', user.id, 'proof_submitted');
+
   // Insert proof record AFTER status update succeeds — prevents orphaned proof records
   const proofId = uuidv4();
   const { data: proof, error } = await supabase
@@ -4413,6 +4625,8 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   if (rejectErr || !rejectedTask) {
     return res.status(409).json({ error: 'Task status changed before rejection could complete.' });
   }
+
+  await recordStatusChange(taskId, 'pending_review', 'in_progress', user.id, feedback || 'revision_requested');
 
   // Increment total_rejections on human's user record
   if (task.human_id) {
@@ -4882,6 +5096,8 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     return res.status(409).json({ error: 'Task has already been approved' });
   }
 
+  await recordStatusChange(taskId, task.status, 'approved', user.id);
+
   // Notify human
   await createNotification(
     task.human_id,
@@ -5190,6 +5406,8 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
   if (disputeErr || !disputedTask) {
     return res.status(409).json({ error: 'Task status changed before dispute could be filed. Please refresh.' });
   }
+
+  await recordStatusChange(taskId, task.status, 'disputed', user.id, reason);
 
   // Create disputes table record — include category and evidence_urls (parity with MCP)
   const filedAgainst = user.id === task.human_id ? task.agent_id : task.human_id;
@@ -6070,6 +6288,19 @@ app.post('/api/mcp', async (req, res) => {
         break;
       }
       
+      case 'get_task_context': {
+        if (!params.task_id) return res.status(400).json({ error: 'task_id is required' });
+        const ctxResult = await buildTaskContext(supabase, params.task_id, user.id, {
+          includeMessages: params.include_messages !== false,
+          messageLimit: params.message_limit || 50
+        });
+        if (ctxResult.error) {
+          return res.status(ctxResult.status).json({ error: ctxResult.error });
+        }
+        res.json(ctxResult.data);
+        break;
+      }
+
       case 'get_task_status': {
         if (!params.task_id) return res.status(400).json({ error: 'task_id is required' });
         let statusSelect = 'id, status, escrow_status, escrow_amount, escrow_deposited_at, task_type, quantity, human_ids, agent_id';
@@ -6148,6 +6379,8 @@ app.post('/api/mcp', async (req, res) => {
         if (mcpStatusErr || !updatedMcpTask) {
           return res.status(409).json({ error: 'Task status changed before proof could be submitted. Please refresh.' });
         }
+
+        await recordStatusChange(task_id, 'in_progress', 'pending_review', user.id, 'proof_submitted');
 
         // Notify agent
         await createNotification(
@@ -6229,6 +6462,8 @@ app.post('/api/mcp', async (req, res) => {
         if (approveErr || !approvedTask) {
           return res.status(409).json({ error: 'Task status changed — refresh and try again' });
         }
+
+        await recordStatusChange(task_id, task.status, 'approved', user.id);
 
         // Notify human — same as REST
         await createNotification(
@@ -6382,6 +6617,8 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(409).json({ error: 'Task status changed before rejection could complete.' });
         }
 
+        await recordStatusChange(task_id, 'pending_review', 'in_progress', user.id, feedback || 'revision_requested');
+
         // Increment total_rejections — same as REST
         if (rejectTask.human_id) {
           await supabase.rpc('increment_user_stat', {
@@ -6482,6 +6719,8 @@ app.post('/api/mcp', async (req, res) => {
             .eq('id', task_id)
             .in('status', workerCancellable);
 
+          await recordStatusChange(task_id, cancelTask.status, 'open', user.id, 'worker_withdrew');
+
           await supabase
             .from('task_applications')
             .update({ status: 'withdrawn' })
@@ -6534,6 +6773,8 @@ app.post('/api/mcp', async (req, res) => {
           if (cancelErr || !cancelledTask) {
             return res.status(409).json({ error: 'Task status changed before cancellation could complete.' });
           }
+
+          await recordStatusChange(task_id, cancelTask.status, 'cancelled', user.id, cancellation_reason || 'cancelled');
 
           if (['assigned', 'pending_acceptance'].includes(cancelTask.status) && cancelTask.human_id) {
             await supabase.rpc('increment_user_stat', {
@@ -6838,6 +7079,8 @@ app.post('/api/mcp', async (req, res) => {
 
         if (error) throw error;
 
+        await recordStatusChange(task.id, null, task.status, user.id);
+
         // Increment monthly task posting counter — parity with REST
         await supabase.from('users').update({
           tasks_posted_this_month: (mcpTasksPosted + 1),
@@ -7085,6 +7328,8 @@ app.post('/api/mcp', async (req, res) => {
             return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
           }
 
+          await recordStatusChange(task_id, 'open', mcpAssignStatus, user.id);
+
           await mcpFinalizeAssign(
             `You've been assigned to "${taskData.title}" ($${budgetAmount}). Payment is secured in escrow — you can start working now!`
           );
@@ -7139,6 +7384,8 @@ app.post('/api/mcp', async (req, res) => {
         if (taskError || !assignedTask) {
           return res.status(409).json({ error: 'Task is no longer available for assignment — status may have changed' });
         }
+
+        await recordStatusChange(task_id, 'open', mcpUsdcStatus, user.id);
 
         await mcpFinalizeAssign(
           `You've been selected for "${taskData.title}". Funding is in progress — you'll be notified when work can begin.`
@@ -7437,6 +7684,8 @@ app.post('/api/mcp', async (req, res) => {
         if (disputeUpdErr || !disputedTask) {
           return res.status(409).json({ error: 'Task status changed before dispute could be filed. Please refresh.' });
         }
+
+        await recordStatusChange(task_id, task.status, 'disputed', user.id, reason);
 
         // Freeze any pending payouts
         await supabase.from('payouts')
@@ -8177,6 +8426,7 @@ const MCP_TOOL_DEFINITIONS = [
   { name: 'direct_hire', description: 'Directly hire a specific human for a task (creates task and assigns immediately)', inputSchema: { type: 'object', properties: { human_id: { type: 'string', description: 'Human to hire (or provide conversation_id)' }, conversation_id: { type: 'string', description: 'Conversation ID to look up the human from' }, title: { type: 'string', description: 'Task title' }, description: { type: 'string', description: 'Task description' }, location: { type: 'string', description: 'Task location' }, scheduled_at: { type: 'string', description: 'When the task should happen (ISO 8601)' }, duration_hours: { type: 'number', description: 'Expected duration in hours' }, hourly_rate: { type: 'number', description: 'Hourly rate in USD' }, budget: { type: 'number', description: 'Fixed budget in USD (overrides hourly rate)' } }, required: ['title', 'description'] } },
   { name: 'hire_human', description: 'Send a hire offer to a human for an existing task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID to hire for' }, human_id: { type: 'string', description: 'Human to hire' }, deadline_hours: { type: 'number', description: 'Hours until offer expires (default 24)' }, instructions: { type: 'string', description: 'Additional instructions for the human' } }, required: ['task_id', 'human_id'] } },
   { name: 'my_tasks', description: 'List all your posted tasks', inputSchema: { type: 'object', properties: {} } },
+  { name: 'get_task_context', description: 'Get full session context for a task in a single call. Returns status history, applications, messages, payment state, proof, disputes, and deadlines. Use this at the start of any task interaction to reconstruct state instead of making multiple separate calls.', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'UUID of the task to get context for' }, include_messages: { type: 'boolean', default: true, description: 'Include message history. Set false to reduce payload for large conversations.' }, message_limit: { type: 'integer', default: 50, description: 'Max messages to return (most recent first). Max 200.' } }, required: ['task_id'] } },
   { name: 'get_task_status', description: 'Get the current status of a task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
   { name: 'get_task_details', description: 'Get full details of a task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
   { name: 'get_applicants', description: 'Get humans who applied to your task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
@@ -9954,6 +10204,7 @@ async function start() {
                 data: { title: task.title, reason: 'deadline_passed' }
               }).catch(() => {});
             }
+            await recordStatusChange(task.id, 'open', 'expired', null, 'deadline_passed');
           }
         }
 
@@ -9989,6 +10240,7 @@ async function start() {
                 data: { title: task.title, reason: 'stale_no_applicants' }
               }).catch(() => {});
             }
+            await recordStatusChange(task.id, 'open', 'expired', null, 'stale_no_applicants');
           }
         }
         // Rule 3: Expire pending_acceptance tasks past their 24-hour review deadline
@@ -10030,6 +10282,7 @@ async function start() {
                 `/tasks/${task.id}`
               );
             }
+            await recordStatusChange(task.id, 'pending_acceptance', 'open', null, 'offer_expired');
           }
         }
         // Rule 4: Deadline warnings for assigned/in_progress tasks
@@ -10246,6 +10499,8 @@ async function start() {
 
           if (!cancelled) continue;
 
+          await recordStatusChange(task.id, 'assigned', 'cancelled', null, 'auth_hold_expired');
+
           await createNotification(task.agent_id, 'task_cancelled', 'Task Auto-Cancelled',
             `Task "${task.title}" was cancelled because the payment hold expired.`, `/tasks/${task.id}`);
           if (task.human_id) {
@@ -10293,6 +10548,8 @@ async function start() {
             .single();
 
           if (!updated) continue; // Already changed by someone else
+
+          await recordStatusChange(task.id, 'pending_review', 'approved', null, 'auto_approved_72h');
 
           // Approve latest proof
           await supabase.from('task_proofs')
@@ -10544,6 +10801,8 @@ async function start() {
 
           if (approveErr || !approved) continue;
 
+          await recordStatusChange(task.id, 'pending_review', 'approved', null, 'auto_approved_72h');
+
           // Approve the latest proof
           await supabase
             .from('task_proofs')
@@ -10780,6 +11039,8 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
         return res.status(409).json({ error: 'Task is no longer available — it may have been accepted by someone else' });
       }
 
+      await recordStatusChange(id, 'pending_acceptance', escrowReady ? 'in_progress' : 'assigned', user.id, 'accepted_with_payment');
+
       // Increment total_tasks_accepted for human
       const { data: acceptUser } = await supabase
         .from('users')
@@ -10897,6 +11158,8 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       return res.status(409).json({ error: 'Task is no longer available — it may have been accepted by someone else' });
     }
 
+    await recordStatusChange(id, 'pending_acceptance', 'assigned', user.id, 'accepted_with_payment');
+
     // Increment total_tasks_accepted for human
     const { data: acceptUser } = await supabase
       .from('users')
@@ -10983,6 +11246,8 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
   if (error || !updatedTask) {
     return res.status(409).json({ error: 'Task is no longer available — it may have been accepted by someone else' });
   }
+
+  await recordStatusChange(id, 'open', acceptStatus, user.id);
 
   // Increment total_tasks_accepted for human
   const { data: acceptUser } = await supabase
@@ -11120,6 +11385,8 @@ app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
       return res.status(409).json({ error: 'Task status changed before payment could be confirmed' });
     }
 
+    await recordStatusChange(taskId, 'pending_acceptance', 'assigned', user.id, 'payment_confirmed');
+
     // Reject other applicants
     const { data: rejectedApps } = await supabase
       .from('task_applications')
@@ -11161,6 +11428,7 @@ app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
       .update({ status: 'open', human_id: null, updated_at: new Date().toISOString() })
       .eq('id', taskId)
       .eq('status', 'pending_acceptance');
+    await recordStatusChange(taskId, 'pending_acceptance', 'open', user.id, 'payment_reconfirmed');
     return res.status(400).json({
       error: 'payment_cancelled',
       message: 'Payment was cancelled. The task has been reopened.'
@@ -11237,6 +11505,8 @@ app.post('/api/tasks/:id/decline', async (req, res) => {
   if (error) {
     return res.status(500).json({ error: safeErrorMessage(error) });
   }
+
+  await recordStatusChange(id, 'pending_acceptance', 'open', user.id, 'worker_declined');
 
   // Notify the agent
   if (task.agent_id) {
@@ -11349,6 +11619,8 @@ app.post('/api/tasks/:id/start', async (req, res) => {
     }
   }
 
+  await recordStatusChange(id, 'assigned', 'in_progress', user.id, 'work_started');
+
   // Notify agent that work has started
   if (task.agent_id) {
     await createNotification(
@@ -11434,6 +11706,8 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
       .eq('id', id)
       .in('status', workerCancellable);
 
+    await recordStatusChange(id, task.status, 'open', user.id, 'worker_withdrew');
+
     // Mark worker's application as withdrawn
     await supabase
       .from('task_applications')
@@ -11499,6 +11773,8 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
     if (cancelErr || !cancelledTask) {
       return res.status(409).json({ error: 'Task status changed before cancellation could complete.' });
     }
+
+    await recordStatusChange(id, task.status, 'cancelled', user.id, cancellation_reason || 'pre_work_cancel');
 
     // Increment total_cancellations if a human was assigned
     if (['assigned', 'pending_acceptance'].includes(task.status) && task.human_id) {
@@ -11648,6 +11924,8 @@ app.post('/api/disputes', async (req, res) => {
     }
     return res.status(409).json({ error: 'Task status changed before dispute could be filed. Please refresh.' });
   }
+
+  await recordStatusChange(task_id, task.status, 'disputed', user.id, reason);
 
   // Create dispute record
   const filedAgainst = user.id === task.human_id ? task.agent_id : task.human_id;
@@ -11875,6 +12153,8 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       .eq('id', dispute.task_id)
       .eq('status', 'disputed');
 
+    await recordStatusChange(dispute.task_id, 'disputed', 'cancelled', user.id, 'dispute_resolved_human_wins');
+
     await createNotification(
       dispute.filed_by, 'dispute_resolved', 'Dispute Resolved - Refund Issued',
       `Your dispute for task "${taskTitle}" was approved. A refund has been issued.`,
@@ -11905,6 +12185,8 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       })
       .eq('id', dispute.task_id)
       .eq('status', 'disputed');
+
+    await recordStatusChange(dispute.task_id, 'disputed', 'paid', user.id, 'dispute_resolved_agent_wins');
 
     const escrowAmount = task.escrow_amount || task.budget;
     const escrowCents = Math.round(escrowAmount * 100);
@@ -11937,6 +12219,8 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       })
       .eq('id', dispute.task_id)
       .eq('status', 'disputed');
+
+    await recordStatusChange(dispute.task_id, 'disputed', 'pending_review', user.id, 'dispute_resolved_resubmit');
 
     await createNotification(
       dispute.filed_by, 'dispute_resolved', 'Dispute Partially Resolved',
