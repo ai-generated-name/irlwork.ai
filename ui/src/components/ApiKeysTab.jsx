@@ -1,6 +1,6 @@
 // ApiKeysTab - Extracted from App.jsx
 import React, { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, AlertTriangle } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Copy, Check, Key, Plus, RotateCw, Trash2, ExternalLink, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../App'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
@@ -125,64 +125,56 @@ export default function ApiKeysTab({ user }) {
     })
   }
 
+  const activeKeys = keys.filter(k => k.is_active)
+  const revokedKeys = keys.filter(k => !k.is_active)
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 200px' }}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-            Manage API keys for programmatic access to irlwork.ai
-          </p>
-        </div>
+    <div className="apikeys-page">
+      {/* Header */}
+      <div className="apikeys-header">
+        <p className="apikeys-description">
+          Manage API keys for programmatic access to irlwork.ai
+        </p>
         {keys.length > 0 && (
           <button
             className="v4-btn v4-btn-primary"
             onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
-            style={{ whiteSpace: 'nowrap' }}
           >
-            + Generate New Key
+            <Plus size={16} />
+            Generate New Key
           </button>
         )}
       </div>
 
       {/* Generate Key Modal */}
       {showModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 500, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <div className="apikeys-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setShowModal(false); setNewKey(null); } }}>
+          <div className="apikeys-modal">
             {!newKey ? (
               <>
-                <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Generate New API Key</h2>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
-                  Give your key a name to help you remember what it's used for.
-                </p>
+                <div className="apikeys-modal-header">
+                  <div className="apikeys-modal-icon">
+                    <Key size={20} />
+                  </div>
+                  <h2>Generate New API Key</h2>
+                  <p>Give your key a name to help you identify it later.</p>
+                </div>
                 <input
                   type="text"
+                  className="apikeys-input"
                   placeholder="e.g. Production, Development, Trading Bot"
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    fontSize: 14,
-                    marginBottom: 20
-                  }}
                   autoFocus
+                  onKeyDown={(e) => { if (e.key === 'Enter') generateKey(); }}
                 />
                 {error && (
-                  <div style={{
-                    background: 'rgba(255, 95, 87, 0.1)',
-                    border: '1px solid #FECACA',
-                    borderRadius: 8,
-                    padding: '12px 16px',
-                    marginBottom: 20,
-                    color: '#FF5F57',
-                    fontSize: 14
-                  }}>
+                  <div className="apikeys-error">
+                    <AlertTriangle size={14} />
                     {error}
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <div className="apikeys-modal-actions">
                   <button
                     className="v4-btn v4-btn-secondary"
                     onClick={() => { setShowModal(false); setNewKey(null); }}
@@ -200,71 +192,27 @@ export default function ApiKeysTab({ user }) {
               </>
             ) : (
               <>
-                <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                  <div style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #16A34A, #16A34A)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <span style={{ fontSize: 28 }}>✓</span>
+                <div className="apikeys-modal-header">
+                  <div className="apikeys-modal-icon apikeys-modal-icon--success">
+                    <Check size={20} />
                   </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>API Key Generated</h2>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-                    Copy this key now. You won't be able to see it again.
-                  </p>
+                  <h2>API Key Generated</h2>
+                  <p>Copy this key now. You won't be able to see it again.</p>
                 </div>
 
-                <div style={{
-                  background: '#F8F6F1',
-                  border: '1px solid #E5E2DC',
-                  borderRadius: 12,
-                  padding: 16,
-                  marginBottom: 20,
-                  position: 'relative'
-                }}>
-                  <code style={{
-                    color: '#1a1a1a',
-                    fontSize: 13,
-                    wordBreak: 'break-all',
-                    display: 'block',
-                    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace',
-                    paddingRight: 70,
-                    lineHeight: 1.5
-                  }}>
-                    {newKey}
-                  </code>
+                <div className="apikeys-key-display">
+                  <code>{newKey}</code>
                   <button
+                    className={`apikeys-copy-btn ${copied ? 'apikeys-copy-btn--copied' : ''}`}
                     onClick={() => copyToClipboard(newKey)}
-                    style={{
-                      position: 'absolute',
-                      top: '50%',
-                      right: 12,
-                      transform: 'translateY(-50%)',
-                      background: copied ? '#16A34A' : '#FF6B35',
-                      border: 'none',
-                      borderRadius: 6,
-                      padding: '8px 14px',
-                      cursor: 'pointer',
-                      color: 'white',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      transition: 'all 0.2s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
                   >
-                    {copied ? '✓ Copied!' : 'Copy'}
+                    {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
                   </button>
                 </div>
 
-                <div style={{
-                  background: 'rgba(254, 188, 46, 0.1)',
-                  border: '1px solid rgba(254, 188, 46, 0.3)',
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 20,
-                  display: 'flex',
-                  gap: 10
-                }}>
-                  <AlertTriangle size={16} />
-                  <p style={{ fontSize: 13, color: '#92400E' }}>
-                    Make sure to save this key securely. It won't be shown again.
-                  </p>
+                <div className="apikeys-warning">
+                  <AlertTriangle size={14} />
+                  <span>Store this key securely. It won't be shown again.</span>
                 </div>
 
                 <button
@@ -282,13 +230,18 @@ export default function ApiKeysTab({ user }) {
 
       {/* Revoke Confirmation Modal */}
       {confirmRevoke && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 400, width: '90%' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: '#FF5F57' }}>Revoke API Key?</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
-              Are you sure you want to revoke <strong>{confirmRevoke.name}</strong>? Any agents using this key will lose access immediately.
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+        <div className="apikeys-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmRevoke(null); }}>
+          <div className="apikeys-modal">
+            <div className="apikeys-modal-header">
+              <div className="apikeys-modal-icon apikeys-modal-icon--danger">
+                <Trash2 size={20} />
+              </div>
+              <h2>Revoke API Key</h2>
+              <p>
+                Are you sure you want to revoke <strong>{confirmRevoke.name}</strong>? Any agents using this key will lose access immediately.
+              </p>
+            </div>
+            <div className="apikeys-modal-actions">
               <button
                 className="v4-btn v4-btn-secondary"
                 onClick={() => setConfirmRevoke(null)}
@@ -296,15 +249,7 @@ export default function ApiKeysTab({ user }) {
                 Cancel
               </button>
               <button
-                style={{
-                  background: '#FF5F57',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '10px 20px',
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
+                className="v4-btn apikeys-btn-danger"
                 onClick={() => revokeKey(confirmRevoke.id)}
               >
                 Revoke Key
@@ -314,128 +259,76 @@ export default function ApiKeysTab({ user }) {
         </div>
       )}
 
-      {/* Filter Toggle */}
+      {/* Filter bar */}
       {keys.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            {keys.filter(k => k.is_active).length} active key{keys.filter(k => k.is_active).length !== 1 ? 's' : ''}
-            {keys.filter(k => !k.is_active).length > 0 && (
-              <span> · {keys.filter(k => !k.is_active).length} revoked</span>
+        <div className="apikeys-filter-bar">
+          <span className="apikeys-count">
+            {activeKeys.length} active key{activeKeys.length !== 1 ? 's' : ''}
+            {revokedKeys.length > 0 && (
+              <span className="apikeys-count-revoked"> · {revokedKeys.length} revoked</span>
             )}
-          </div>
-          {keys.some(k => !k.is_active) && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-              <input
-                type="checkbox"
-                checked={showRevoked}
-                onChange={(e) => setShowRevoked(e.target.checked)}
-                style={{ width: 16, height: 16, accentColor: '#FF6B35' }}
-              />
-              Show revoked keys
-            </label>
+          </span>
+          {revokedKeys.length > 0 && (
+            <button
+              className="apikeys-toggle-revoked"
+              onClick={() => setShowRevoked(!showRevoked)}
+            >
+              {showRevoked ? <EyeOff size={14} /> : <Eye size={14} />}
+              {showRevoked ? 'Hide' : 'Show'} revoked
+            </button>
           )}
         </div>
       )}
 
       {/* Keys List */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
-          Loading keys...
-        </div>
+        <div className="apikeys-loading">Loading keys...</div>
       ) : keys.length === 0 ? (
-        <div className="v4-empty-state" style={{
-          background: 'white',
-          borderRadius: 16,
-          padding: 60,
-          textAlign: 'center',
-          border: '1px solid var(--border)'
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔑</div>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No API Keys Yet</h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-            Generate an API key to access irlwork.ai programmatically.
-          </p>
+        <div className="apikeys-empty">
+          <div className="apikeys-empty-icon">
+            <Key size={32} strokeWidth={1.5} />
+          </div>
+          <h3>No API Keys Yet</h3>
+          <p>Generate an API key to connect your agent to irlwork.ai.</p>
           <button
             className="v4-btn v4-btn-primary"
-            onClick={() => setShowModal(true)}
+            onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
           >
+            <Plus size={16} />
             Generate Your First Key
           </button>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="apikeys-list">
           {keys.filter(key => showRevoked || key.is_active).map(key => (
             <div
               key={key.id}
-              className="api-key-card"
-              style={{
-                background: 'white',
-                borderRadius: 12,
-                padding: 16,
-                border: '1px solid var(--border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-                opacity: key.is_active ? 1 : 0.6
-              }}
+              className={`apikeys-card ${!key.is_active ? 'apikeys-card--revoked' : ''}`}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 600 }}>{key.name}</h3>
-                  <span style={{
-                    padding: '2px 8px',
-                    borderRadius: 6,
-                    fontSize: 11,
-                    fontWeight: 500,
-                    background: key.is_active ? 'rgba(22, 163, 74, 0.1)' : 'rgba(255, 95, 87, 0.1)',
-                    color: key.is_active ? '#16A34A' : '#FF5F57'
-                  }}>
+              <div className="apikeys-card-top">
+                <div className="apikeys-card-name">
+                  <span className="apikeys-card-title">{key.name}</span>
+                  <span className={`apikeys-badge ${key.is_active ? 'apikeys-badge--active' : 'apikeys-badge--revoked'}`}>
                     {key.is_active ? 'Active' : 'Revoked'}
                   </span>
                 </div>
                 {key.is_active && (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={() => rotateKey(key.id)}
-                      style={{
-                        background: 'var(--bg-tertiary)',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '8px 14px',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: 'var(--text-primary)'
-                      }}
-                    >
+                  <div className="apikeys-card-actions">
+                    <button className="apikeys-action-btn" onClick={() => rotateKey(key.id)}>
+                      <RotateCw size={14} />
                       Rotate
                     </button>
-                    <button
-                      onClick={() => setConfirmRevoke(key)}
-                      style={{
-                        background: 'rgba(255, 95, 87, 0.1)',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '8px 14px',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: '#FF5F57'
-                      }}
-                    >
+                    <button className="apikeys-action-btn apikeys-action-btn--danger" onClick={() => setConfirmRevoke(key)}>
+                      <Trash2 size={14} />
                       Revoke
                     </button>
                   </div>
                 )}
               </div>
-              <div>
-                <code style={{ background: 'var(--bg-tertiary)', padding: '4px 8px', borderRadius: 4, fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all', display: 'inline-block' }}>
-                  {key.key_prefix}
-                </code>
-              </div>
-              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
-                <span>Created: {formatDate(key.created_at)}</span>
-                <span>Last used: {formatDate(key.last_used_at)}</span>
+              <code className="apikeys-card-prefix">{key.key_prefix}</code>
+              <div className="apikeys-card-meta">
+                <span>Created {formatDate(key.created_at)}</span>
+                <span>Last used {formatDate(key.last_used_at)}</span>
               </div>
             </div>
           ))}
@@ -443,54 +336,29 @@ export default function ApiKeysTab({ user }) {
       )}
 
       {/* Usage Instructions */}
-      <div style={{
-        marginTop: 32,
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        borderRadius: 16,
-        padding: 24,
-        color: 'white'
-      }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Using Your API Key</h3>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
-          Include your API key in the Authorization header of your requests:
-        </p>
-        <div style={{
-          background: 'rgba(0,0,0,0.3)',
-          borderRadius: 8,
-          padding: 16,
-          fontFamily: 'monospace',
-          fontSize: 12,
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch'
-        }}>
-          <div style={{ color: '#8B8B8B', marginBottom: 4 }}># Post a task</div>
-          <div>
-            <span style={{ color: '#16A34A' }}>curl</span> -X POST https://api.irlwork.ai/api/mcp/tasks \
+      <div className="apikeys-usage">
+        <div className="apikeys-usage-header">
+          <h3>Quick Start</h3>
+          <a href="/connect-agent" className="apikeys-docs-link">
+            Full documentation <ExternalLink size={13} />
+          </a>
+        </div>
+        <p className="apikeys-usage-desc">Include your API key in the Authorization header:</p>
+        <div className="apikeys-code-block">
+          <div className="apikeys-code-comment"># Post a task</div>
+          <div className="apikeys-code-line">
+            <span className="apikeys-code-cmd">curl</span> -X POST https://api.irlwork.ai/api/mcp/tasks \
           </div>
-          <div style={{ paddingLeft: 20 }}>
-            -H <span style={{ color: '#E8853D' }}>'Authorization: Bearer irl_sk_...'</span> \
+          <div className="apikeys-code-line apikeys-code-indent">
+            -H <span className="apikeys-code-str">'Authorization: Bearer irl_sk_...'</span> \
           </div>
-          <div style={{ paddingLeft: 20 }}>
-            -H <span style={{ color: '#E8853D' }}>'Content-Type: application/json'</span> \
+          <div className="apikeys-code-line apikeys-code-indent">
+            -H <span className="apikeys-code-str">'Content-Type: application/json'</span> \
           </div>
-          <div style={{ paddingLeft: 20 }}>
-            -d <span style={{ color: '#E8853D' }}>'{`{"title": "Package Pickup", "budget": 35}`}'</span>
+          <div className="apikeys-code-line apikeys-code-indent">
+            -d <span className="apikeys-code-str">{`'{"title": "Package Pickup", "budget": 35}'`}</span>
           </div>
         </div>
-        <a
-          href="/connect-agent"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            marginTop: 16,
-            color: '#E8853D',
-            fontSize: 14,
-            textDecoration: 'none'
-          }}
-        >
-          View full API documentation →
-        </a>
       </div>
     </div>
   )
