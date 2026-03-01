@@ -576,7 +576,31 @@ function AuthPage({ onLogin, onNavigate }) {
       const returnTo = params.get('returnTo')
       if (onNavigate) onNavigate(returnTo && decodeURIComponent(returnTo).startsWith('/dashboard') ? decodeURIComponent(returnTo) : '/dashboard')
     } catch (err) {
-      setError(err.message)
+      const msg = err.message || ''
+      // Map Supabase error messages to user-friendly, non-enumerable messages
+      if (isLogin) {
+        if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
+          setError('Invalid email or password')
+        } else if (msg.includes('Email not confirmed')) {
+          setError('Please verify your email first. Check your inbox for a confirmation link.')
+        } else if (msg.includes('rate') || msg.includes('too many') || msg.includes('429')) {
+          setError('Too many attempts. Please try again in a few minutes.')
+        } else {
+          setError('Invalid email or password')
+        }
+      } else {
+        if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('duplicate')) {
+          setError('An account with this email already exists.')
+        } else if (msg.includes('password') && (msg.includes('short') || msg.includes('least'))) {
+          setError('Password must be at least 8 characters')
+        } else if (msg.includes('valid email') || (msg.includes('invalid') && msg.includes('email'))) {
+          setError('Please enter a valid email address')
+        } else if (msg.includes('rate') || msg.includes('too many') || msg.includes('429')) {
+          setError('Too many attempts. Please try again in a few minutes.')
+        } else {
+          setError(msg || 'Something went wrong. Please try again.')
+        }
+      }
     } finally {
       setLoading(false)
     }
