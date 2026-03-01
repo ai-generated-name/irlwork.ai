@@ -2437,33 +2437,20 @@ app.post('/api/tasks', async (req, res) => {
   const { proceed, flagged: taskFlagged, errorResponse } = await runTaskValidation(supabase, req.body, user.id);
   if (!proceed) return res.status(422).json(errorResponse);
 
-  // Validate required fields (legacy validation — runs for all tasks)
-  if (!title || !title.trim()) {
-    return res.status(400).json({ error: 'Title is required' });
-  }
-  if (title.trim().length > 200) {
-    return res.status(400).json({ error: 'Title must be 200 characters or less' });
-  }
-  if (description && description.length > 5000) {
-    return res.status(400).json({ error: 'Description must be 5000 characters or less' });
-  }
-  if (requirements && requirements.length > 3000) {
-    return res.status(400).json({ error: 'Requirements must be 3000 characters or less' });
-  }
-  if (location && location.length > 300) {
-    return res.status(400).json({ error: 'Location must be 300 characters or less' });
-  }
-  if (!budget && !budget_usd || (parseFloat(budget || budget_usd) < 5)) {
-    return res.status(400).json({ error: 'Budget must be at least $5' });
-  }
-  if (parseFloat(budget || budget_usd) > 100000) {
-    return res.status(400).json({ error: 'Budget cannot exceed $100,000' });
-  }
+  // Validate required fields — shared validator ensures parity with MCP
+  const { errors: restTaskValErrors } = validateTaskInput({
+    title, description, requirements, location, instructions,
+    budget: budget || budget_usd, duration_hours,
+    private_address, private_notes, private_contact
+  });
   if (!duration_hours || isNaN(parseFloat(duration_hours)) || parseFloat(duration_hours) <= 0) {
-    return res.status(400).json({ error: 'duration_hours is required and must be a positive number' });
+    restTaskValErrors.push('duration_hours is required and must be a positive number');
   }
-  if (parseFloat(duration_hours) > 720) {
-    return res.status(400).json({ error: 'duration_hours cannot exceed 720 (30 days)' });
+  if ((!budget && !budget_usd) || (parseFloat(budget || budget_usd) < 5)) {
+    restTaskValErrors.push('Budget must be at least $5');
+  }
+  if (restTaskValErrors.length > 0) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Validation failed', details: restTaskValErrors } });
   }
 
   const id = uuidv4();
@@ -4194,7 +4181,13 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
   
   const { id: taskId } = req.params;
   const { feedback, extend_deadline_hours = 24 } = req.body;
-  
+
+  // Validate rejection input — shared validator ensures parity with MCP
+  const { errors: restRejectValErrors } = validateRejectionInput({ feedback });
+  if (restRejectValErrors.length > 0) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Validation failed', details: restRejectValErrors } });
+  }
+
   // Get task with current deadline
   const { data: task, error: taskError } = await supabase
     .from('tasks')
@@ -4637,19 +4630,25 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   
   const { id: taskId } = req.params;
-  const { reason } = req.body;
-  
+  const { reason, category: disputeCategoryInput, evidence_urls: evidenceUrlsInput } = req.body;
+
+  // Validate dispute input — shared validator ensures parity with MCP
+  const { errors: restDisputeValErrors } = validateDisputeInput({ reason, category: disputeCategoryInput, evidence_urls: evidenceUrlsInput });
+  if (restDisputeValErrors.length > 0) {
+    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Validation failed', details: restDisputeValErrors } });
+  }
+
   // Get task
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .select('*')
     .eq('id', taskId)
     .single();
-  
+
   if (taskError || !task) {
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   // Only human or agent can dispute
   if (task.human_id !== user.id && task.agent_id !== user.id) {
     return res.status(403).json({ error: 'Access denied' });
