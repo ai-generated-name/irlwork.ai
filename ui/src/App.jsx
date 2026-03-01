@@ -54,6 +54,7 @@ import TimezoneDropdown from './components/TimezoneDropdown'
 import { TASK_CATEGORIES } from './components/CategoryPills'
 import { Copy } from 'lucide-react'
 import StandaloneTaskDetailPage from './pages/TaskDetailPage'
+import { navigate as spaNavigate } from './utils/navigate'
 
 // Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
 class TabErrorBoundary extends React.Component {
@@ -713,7 +714,7 @@ function AuthPage({ onLogin, onNavigate }) {
               <button className="auth-v4-error-btn-secondary" onClick={() => window.location.reload()}>
                 Try Again
               </button>
-              <button className="auth-v4-submit" onClick={() => window.location.href = '/'}>
+              <button className="auth-v4-submit" onClick={() => spaNavigate('/')}>
                 Go Home
               </button>
             </div>
@@ -728,7 +729,7 @@ function AuthPage({ onLogin, onNavigate }) {
     return (
       <div className="auth-v4">
         <div className="auth-v4-container">
-          <a href="/" className="auth-v4-logo">
+          <a href="/" className="auth-v4-logo" onClick={(e) => { e.preventDefault(); spaNavigate('/') }}>
             <div className="logo-mark-v4">irl</div>
             <span className="logo-name-v4">irlwork.ai</span>
           </a>
@@ -747,7 +748,7 @@ function AuthPage({ onLogin, onNavigate }) {
               Back to Sign In
             </button>
           </div>
-          <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+          <button onClick={() => spaNavigate('/')} className="auth-v4-back">
             ← Back to home
           </button>
         </div>
@@ -758,7 +759,7 @@ function AuthPage({ onLogin, onNavigate }) {
   return (
     <div className="auth-v4">
       <div className="auth-v4-container">
-        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); spaNavigate('/') }}>
           <Logo variant="header" theme="light" />
         </a>
 
@@ -862,7 +863,7 @@ function AuthPage({ onLogin, onNavigate }) {
           </p>
         </div>
 
-        <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+        <button onClick={() => spaNavigate('/')} className="auth-v4-back">
           ← Back to home
         </button>
       </div>
@@ -1883,7 +1884,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
     // Task detail page
     if (link.startsWith('/tasks/')) {
-      window.location.href = link
+      spaNavigate(link)
       return
     }
 
@@ -1892,7 +1893,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       const params = new URLSearchParams(link.split('?')[1] || '')
       const taskId = params.get('task')
       if (taskId) {
-        window.location.href = `/tasks/${taskId}`
+        spaNavigate(`/tasks/${taskId}`)
         return
       }
       // Parse tab from path segment: /dashboard/working/browse → 'browse'
@@ -1907,7 +1908,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
     // Browse page
     if (link.startsWith('/browse')) {
-      window.location.href = link
+      spaNavigate(link)
       return
     }
 
@@ -1918,7 +1919,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
 
     // Fallback
-    window.location.href = link
+    spaNavigate(link)
   }
 
   const fetchConversations = async () => {
@@ -2252,7 +2253,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       {/* Sidebar */}
       <aside className={`dashboard-v4-sidebar ${sidebarOpen ? 'open' : ''}`}>
         {/* Logo */}
-        <a href="/" className="dashboard-v4-sidebar-logo" style={{ textDecoration: 'none' }}>
+        <a href="/" className="dashboard-v4-sidebar-logo" style={{ textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); spaNavigate('/') }}>
           <Logo variant="header" theme="light" />
         </a>
 
@@ -2995,7 +2996,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       const isEditing = editingTaskId === task.id
 
                       return (
-                        <div key={task.id} className="dashboard-v4-task-card" style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/tasks/${task.id}`}>
+                        <div key={task.id} className="dashboard-v4-task-card" style={{ cursor: 'pointer' }} onClick={() => spaNavigate(`/tasks/${task.id}`)}>
                           <div className="dashboard-v4-task-header">
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -3444,7 +3445,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           key={human.id}
                           human={human}
                           variant="dashboard"
-                          onExpand={(h) => window.location.href = `/humans/${h.id}`}
+                          onExpand={(h) => spaNavigate(`/humans/${h.id}`)}
                           onHire={(human) => { setHireTarget(human); setTasksSubTab('create'); setActiveTabState('posted'); window.history.pushState({}, '', `/dashboard/hiring/create?hire=${human.id}`); trackPageView('/dashboard/hiring/create'); }}
                           onBookmark={toggleBookmark}
                           isBookmarked={bookmarkedHumans.includes(human.id)}
@@ -5432,8 +5433,9 @@ function App() {
       debug('[Auth] Already logged in, redirecting to dashboard')
       const params = new URLSearchParams(window.location.search)
       const returnTo = params.get('returnTo')
-      if (returnTo && decodeURIComponent(returnTo).startsWith('/dashboard')) {
-        navigate(decodeURIComponent(returnTo))
+      const decoded = returnTo ? decodeURIComponent(returnTo) : null
+      if (decoded && decoded.startsWith('/') && !decoded.startsWith('//')) {
+        navigate(decoded)
       } else {
         const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
         navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
