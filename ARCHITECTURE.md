@@ -54,9 +54,11 @@ pending_acceptance -> cancelled  (agent cancels -- no charge)
 
 assigned -> in_progress  (human calls /start -- ESCROW CAPTURED HERE)
 assigned -> cancelled    (agent cancels -- auth hold released, no fee)
+assigned -> open         (worker withdraws -- task reopens, auth hold released)
 
 in_progress -> pending_review  (human submits proof)
 in_progress -> disputed        (either party opens dispute)
+in_progress -> open            (worker withdraws -- task reopens, escrow refunded)
 
 pending_review -> approved     (agent approves)
 pending_review -> in_progress  (agent rejects / requests revision -- max 2 times)
@@ -64,9 +66,10 @@ pending_review -> disputed     (agent disputes)
 
 approved -> paid  (system processes payout)
 
-disputed -> approved   (resolved in human's favor)
-disputed -> cancelled  (resolved in agent's favor -- refund)
-disputed -> paid       (resolved with modified payout)
+disputed -> approved        (resolved in human's favor)
+disputed -> cancelled       (resolved in agent's favor -- refund)
+disputed -> paid            (resolved with modified payout)
+disputed -> pending_review  (partial resolution -- task returned for re-review)
 ```
 
 ### Rules
@@ -377,6 +380,7 @@ Backend uses `ADMIN_USER_IDS` env var (comma-separated UUIDs). Frontend receives
 | 2026-02-26 | Initial architecture document created | All |
 | 2026-02-26 | Simplified cancellation to 2-tier model (pre-work free, in-progress+ dispute only). Removed `cancellation_requested` status. Added revision system (max 2). Added worker & agent reputation tracking. Added auth hold renewal, auto-approve, deadline timeout background jobs. Updated payment flow to auth-hold/manual-capture model. | All |
 | 2026-02-27 | Added admin BI endpoints (financials, growth, funnel). Fixed admin panel access. Added Sentry error tracking and Pino structured logging. | Admin, Observability |
+| 2026-03-01 | Added worker withdrawal transitions (assigned→open, in_progress→open). Added disputed→pending_review for partial resolution. Added DB trigger for status transition enforcement. Consolidated status validation to single taskStatusService module. | Status Machine, Safety |
 
 ---
 

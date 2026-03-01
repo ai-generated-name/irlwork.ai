@@ -449,27 +449,15 @@ function validateUploadFile(filename, mimeType, fileBuffer) {
   return { valid: true, ext };
 }
 
-// Task status transition validation
-const VALID_STATUS_TRANSITIONS = {
-  open: ['pending_acceptance', 'assigned', 'expired', 'cancelled'],
-  pending_acceptance: ['assigned', 'open', 'cancelled'],
-  assigned: ['in_progress', 'cancelled', 'open'],
-  in_progress: ['pending_review', 'disputed', 'open'],
-  pending_review: ['approved', 'in_progress', 'disputed'],
-  approved: ['paid'],
-  disputed: ['approved', 'cancelled', 'paid'],
-  paid: [],
-  expired: [],
-  cancelled: [],
-};
-
-function validateStatusTransition(currentStatus, newStatus) {
-  const allowed = VALID_STATUS_TRANSITIONS[currentStatus];
-  if (!allowed || !allowed.includes(newStatus)) {
-    return { valid: false, error: `Cannot transition from '${currentStatus}' to '${newStatus}'` };
-  }
-  return { valid: true };
-}
+// Task status transition validation — single source of truth from taskStatusService
+const {
+  VALID_STATUS_TRANSITIONS,
+  validateStatusTransition,
+  TERMINAL_STATUSES,
+  isTerminalStatus,
+  isCancellable,
+  isDisputable
+} = require('./backend/services/taskStatusService');
 
 // Data categories
 const QUICK_CATEGORIES = [
@@ -4130,8 +4118,9 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
     return res.status(403).json({ error: 'Not assigned to this task' });
   }
   
-  if (task.status !== 'in_progress') {
-    return res.status(400).json({ error: 'Task must be in_progress to submit proof' });
+  const submitTransition = validateStatusTransition(task.status, 'pending_review');
+  if (!submitTransition.valid) {
+    return res.status(409).json({ error: submitTransition.error, allowed: VALID_STATUS_TRANSITIONS[task.status] });
   }
   
   const proofId = uuidv4();
@@ -4346,9 +4335,10 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     return res.status(403).json({ error: 'Not your task' });
   }
 
-  // Guard: task must be in pending_review or disputed status to approve
-  if (!['pending_review', 'disputed'].includes(task.status)) {
-    return res.status(400).json({ error: `Cannot approve task in '${task.status}' status` });
+  // Guard: validate status transition to 'approved'
+  const approveTransition = validateStatusTransition(task.status, 'approved');
+  if (!approveTransition.valid) {
+    return res.status(409).json({ error: approveTransition.error, allowed: VALID_STATUS_TRANSITIONS[task.status] });
   }
 
   // Get latest proof
@@ -4661,15 +4651,13 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  // Only allow disputes on active tasks
-  const disputeableStatuses = ['in_progress', 'pending_review', 'approved'];
-  if (!disputeableStatuses.includes(task.status)) {
-    return res.status(400).json({
-      error: `Cannot dispute a task with status "${task.status}". Only active tasks can be disputed.`
-    });
+  // Validate status transition to 'disputed'
+  const disputeTransition = validateStatusTransition(task.status, 'disputed');
+  if (!disputeTransition.valid) {
+    return res.status(409).json({ error: disputeTransition.error, allowed: VALID_STATUS_TRANSITIONS[task.status] });
   }
 
-  // Update task to disputed (atomic status check)
+  // Update task to disputed (atomic status check — only succeeds if still in same status)
   const { data: disputedTask, error: disputeErr } = await supabase
     .from('tasks')
     .update({
@@ -4680,7 +4668,7 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
       updated_at: new Date().toISOString()
     })
     .eq('id', taskId)
-    .in('status', disputeableStatuses)
+    .eq('status', task.status)
     .select('id')
     .single();
 
