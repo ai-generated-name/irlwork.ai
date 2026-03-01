@@ -99,22 +99,8 @@ const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./u
 const { validateTaskInput, validateMessageInput, validateDisputeInput, validateRejectionInput } = require('./utils/validate');
 const { find: findTimezone } = require('geo-tz');
 
-// HTML escaping for email templates — prevents XSS/injection in user-generated content
-function escapeHtml(str) {
-  if (typeof str !== 'string') return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-function sanitizeForEmail(str, maxLength = 500) {
-  return escapeHtml((str || '').substring(0, maxLength));
-}
-function sanitizeSubject(str) {
-  return (str || '').replace(/[\r\n]/g, '').substring(0, 200);
-}
+// escapeHtml imported from ./utils/sanitize (line 80)
+// sanitizeSubject defined below (line ~426)
 
 // Cities data for autocomplete search (loaded once at startup)
 console.log('[Startup] Loading cities data...');
@@ -2859,16 +2845,7 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
     data: { applicant: { id: user.id, name: user.name, proposed_rate } }
   });
 
-  // Email notification for new application
-  const applyTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
-  sendEmailNotification(taskForApply.agent_id,
-    sanitizeSubject(`New applicant for "${taskForApply.title}"`),
-    `<div style="background: #EEF2FF; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-      <p style="color: #4338CA; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">New Application</p>
-      <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${escapeHtml(user.name || 'A worker')}</strong> applied to your task &ldquo;${escapeHtml(taskForApply.title)}&rdquo;.</p>
-    </div>
-    <a href="${applyTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">Review Applicants</a>`
-  ).catch(() => {});
+  // Email handled by notification pipeline (new_application type registered with defaultEmail: true)
 
   res.json({ id: application.id, status: 'pending' });
 });
@@ -3224,16 +3201,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       `/tasks/${taskId}`
     );
 
-    // Email notification for assignment — per notification matrix
-    const assignTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
-    sendEmailNotification(human_id,
-      `You've been assigned to "${task.title}"`,
-      `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-        <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">You've been assigned!</p>
-        <p style="color: #1A1A1A; font-size: 14px; margin: 0; line-height: 1.5;">${notificationMessage}</p>
-      </div>
-      <a href="${assignTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task & Instructions</a>`
-    ).catch(() => {});
+    // Email handled by notification pipeline (task_assigned type registered with defaultEmail: true)
 
     // Dispatch webhook to human about the assignment
     dispatchWebhook(human_id, {
@@ -4923,16 +4891,7 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
     `/tasks/${taskId}`
   );
 
-  // Email notification for task approval
-  const approveTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
-  sendEmailNotification(task.human_id,
-    sanitizeSubject(`Your work on "${task.title}" has been approved!`),
-    `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-      <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Work Approved!</p>
-      <p style="color: #1A1A1A; font-size: 14px; margin: 0;">Your work on &ldquo;${escapeHtml(task.title)}&rdquo; has been approved. $${task.budget} is being processed and will be available after the 48-hour clearing period.</p>
-    </div>
-    <a href="${approveTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
-  ).catch(() => {});
+  // Email handled by notification pipeline (proof_approved type registered with defaultEmail: true)
 
   // Deliver webhook to agent
   dispatchWebhook(task.agent_id, {
@@ -5265,7 +5224,7 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     user_id_param: user.id, stat_name: 'total_disputes_filed', increment_by: 1
   });
 
-  // Notify relevant parties
+  // Notify both parties — other party + filing party
   const notifyTo = user.id === task.human_id ? task.agent_id : task.human_id;
   await createNotification(
     notifyTo,
@@ -5274,19 +5233,15 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     `A dispute has been opened for task "${task.title}". Reason: ${reason}`,
     `/tasks/${taskId}`
   );
-
-  // Email notification to both parties about the dispute
-  const disputeTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
-  const disputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-    <p style="color: #DC2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Dispute Opened</p>
-    <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task &ldquo;${escapeHtml(task.title)}&rdquo;.</p>
-    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${sanitizeForEmail(reason)}</p>
-  </div>
-  <p style="font-size: 13px; color: #525252; margin-bottom: 16px;">Our team will review the evidence and make a fair decision.</p>
-  <a href="${disputeTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`;
-  const disputeSubject = sanitizeSubject(`Dispute opened on "${task.title}"`);
-  sendEmailNotification(task.human_id, disputeSubject, disputeEmailBody).catch(() => {});
-  sendEmailNotification(task.agent_id, disputeSubject, disputeEmailBody).catch(() => {});
+  // Notify the filing party (confirmation)
+  await createNotification(
+    user.id,
+    'dispute_opened',
+    'Dispute Filed',
+    `Your dispute for "${task.title}" has been submitted. Our team will review the evidence.`,
+    `/tasks/${taskId}`
+  );
+  // Email handled by notification pipeline (dispute_opened type registered with defaultEmail: true)
 
   // Deliver webhook
   dispatchWebhook(task.agent_id, {
@@ -6284,16 +6239,7 @@ app.post('/api/mcp', async (req, res) => {
           `/tasks/${task_id}`
         );
 
-        // Email notification — same as REST (with escapeHtml/sanitizeSubject for XSS prevention)
-        const approveTaskUrl = `https://www.irlwork.ai/tasks/${task_id}`;
-        sendEmailNotification(task.human_id,
-          sanitizeSubject(`Your work on "${task.title}" has been approved!`),
-          `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-            <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Work Approved!</p>
-            <p style="color: #1A1A1A; font-size: 14px; margin: 0;">Your work on &ldquo;${escapeHtml(task.title)}&rdquo; has been approved. $${task.budget} is being processed and will be available after the 48-hour clearing period.</p>
-          </div>
-          <a href="${approveTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
-        ).catch(() => {});
+        // Email handled by notification pipeline (proof_approved type registered with defaultEmail: true)
 
         // Webhook to agent — same as REST
         dispatchWebhook(task.agent_id, {
@@ -7020,16 +6966,7 @@ app.post('/api/mcp', async (req, res) => {
             `/tasks/${task_id}`
           );
 
-          // Email notification — parity with REST
-          const mcpAssignUrl = `https://www.irlwork.ai/tasks/${task_id}`;
-          sendEmailNotification(human_id,
-            `You've been assigned to "${taskData.title}"`,
-            `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-              <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">You've been assigned!</p>
-              <p style="color: #1A1A1A; font-size: 14px; margin: 0; line-height: 1.5;">${notifMsg}</p>
-            </div>
-            <a href="${mcpAssignUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task & Instructions</a>`
-          ).catch(() => {});
+          // Email handled by notification pipeline (task_assigned type registered with defaultEmail: true)
 
           dispatchWebhook(human_id, {
             type: 'task_assigned',
@@ -7540,7 +7477,7 @@ app.post('/api/mcp', async (req, res) => {
           .eq('task_id', task_id)
           .eq('status', 'pending');
 
-        // Notify the other party
+        // Notify both parties — other party + filing party
         const notifyTo = user.id === task.human_id ? task.agent_id : task.human_id;
         if (notifyTo) {
           await createNotification(
@@ -7551,19 +7488,15 @@ app.post('/api/mcp', async (req, res) => {
             `/tasks/${task_id}`
           );
         }
-
-        // Email notifications to both parties — use escapeHtml/sanitizeSubject (parity with REST)
-        const disputeTaskUrl = `https://www.irlwork.ai/tasks/${task_id}`;
-        const mcpDisputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-          <p style="color: #DC2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Dispute Opened</p>
-          <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task &ldquo;${escapeHtml(task.title)}&rdquo;.</p>
-          <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${escapeHtml(reason)}</p>
-        </div>
-        <p style="font-size: 13px; color: #525252; margin-bottom: 16px;">Our team will review the evidence and make a fair decision.</p>
-        <a href="${disputeTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`;
-        const mcpDisputeSubject = sanitizeSubject(`Dispute opened on "${task.title}"`);
-        if (task.human_id) sendEmailNotification(task.human_id, mcpDisputeSubject, mcpDisputeEmailBody).catch(() => {});
-        if (task.agent_id) sendEmailNotification(task.agent_id, mcpDisputeSubject, mcpDisputeEmailBody).catch(() => {});
+        // Notify the filing party (confirmation)
+        await createNotification(
+          user.id,
+          'dispute_opened',
+          'Dispute Filed',
+          `Your dispute for "${task.title}" has been submitted. Our team will review the evidence.`,
+          `/tasks/${task_id}`
+        );
+        // Email handled by notification pipeline (dispute_opened type registered with defaultEmail: true)
 
         // Dispatch webhook
         dispatchWebhook(task.agent_id, {
@@ -9971,7 +9904,7 @@ async function start() {
     }
 
     // Start balance promoter (promotes pending → available after 48 hours)
-    startBalancePromoter(supabase, createNotification, sendEmailNotification);
+    startBalancePromoter(supabase, createNotification);
     console.log('   ✅ Balance promoter started (15min interval)');
 
     // Start email queue processor (processes pending notification emails)
@@ -10995,16 +10928,7 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
         }
       }).catch(() => {});
 
-      // Email notification for task assignment
-      const acceptTaskUrl = `https://www.irlwork.ai/tasks/${id}`;
-      sendEmailNotification(task.agent_id,
-        sanitizeSubject(`"${task.title}" has been accepted`),
-        `<div style="background: #ECFDF5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-          <p style="color: #065F46; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Task Accepted</p>
-          <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${escapeHtml(user.name || 'A worker')}</strong> accepted your task &ldquo;${escapeHtml(task.title)}&rdquo;. Payment has been authorized and work can begin.</p>
-        </div>
-        <a href="${acceptTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
-      ).catch(() => {});
+      // Email handled by notification pipeline (task_accepted type registered with defaultEmail: true)
     }
 
     return res.json({ success: true, status: 'in_progress', escrow_status: 'deposited' });
@@ -11096,16 +11020,7 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       }
     }).catch(() => {});
 
-    // Email notification for task assignment
-    const openAcceptTaskUrl = `https://www.irlwork.ai/tasks/${id}`;
-    sendEmailNotification(acceptedTask.agent_id,
-      sanitizeSubject(`"${acceptedTask.title}" has been accepted`),
-      `<div style="background: #ECFDF5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-        <p style="color: #065F46; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Task Accepted</p>
-        <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${escapeHtml(user.name || 'A worker')}</strong> accepted your task &ldquo;${escapeHtml(acceptedTask.title)}&rdquo;.</p>
-      </div>
-      <a href="${openAcceptTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
-    ).catch(() => {});
+    // Email handled by notification pipeline (task_accepted type registered with defaultEmail: true)
   }
 
   res.json({
@@ -11572,16 +11487,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
         `/tasks/${id}`
       );
 
-      // Email notification for cancellation — per notification matrix
-      const cancelTaskUrl = `https://www.irlwork.ai/tasks/${id}`;
-      sendEmailNotification(task.human_id,
-        `Task "${task.title}" has been cancelled`,
-        `<div style="background: #FEF3C7; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-          <p style="color: #92400E; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Task Cancelled</p>
-          <p style="color: #1A1A1A; font-size: 14px; margin: 0;">The task "${task.title}" has been cancelled by the poster.${cancellation_reason ? ` Reason: ${cancellation_reason}` : ''}</p>
-        </div>
-        <a href="${cancelTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Details</a>`
-      ).catch(() => {});
+      // Email handled by notification pipeline (task_cancelled type registered with defaultEmail: true)
     }
 
     // Fire webhook to agent
@@ -11753,7 +11659,7 @@ app.post('/api/disputes', async (req, res) => {
     user_id_param: user.id, stat_name: 'total_disputes_filed', increment_by: 1
   });
 
-  // Notify the other party
+  // Notify both parties — other party + filing party
   const notifyTo = user.id === task.human_id ? task.agent_id : task.human_id;
   const amountDollars = payout ? (payout.amount_cents / 100).toFixed(2) : (task.budget || 0).toFixed(2);
   await createNotification(
@@ -11763,18 +11669,15 @@ app.post('/api/disputes', async (req, res) => {
     `Task "${task.title}" is under review. $${amountDollars} is on hold.`,
     `/tasks/${task_id}`
   );
-
-  // Email notification to both parties
-  const disputeTaskUrl = `https://www.irlwork.ai/tasks/${task_id}`;
-  const disputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-    <p style="color: #DC2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Dispute Opened</p>
-    <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task "${task.title}".</p>
-    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${reason}</p>
-  </div>
-  <p style="font-size: 13px; color: #525252; margin-bottom: 16px;">Our team will review the evidence and make a fair decision.</p>
-  <a href="${disputeTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`;
-  sendEmailNotification(task.human_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
-  sendEmailNotification(task.agent_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
+  // Notify the filing party (confirmation)
+  await createNotification(
+    user.id,
+    'dispute_filed',
+    'Dispute Filed',
+    `Your dispute for "${task.title}" has been submitted. Our team will review the evidence.`,
+    `/tasks/${task_id}`
+  );
+  // Email handled by notification pipeline (dispute_filed type registered with defaultEmail: true)
 
   // Deliver webhook
   dispatchWebhook(task.agent_id, {
