@@ -2311,21 +2311,16 @@ app.get('/api/tasks', async (req, res) => {
 
   if (category) query = query.eq('category', category);
   if (urgency) query = query.eq('urgency', urgency);
-  if (status) {
-    // Prevent querying internal statuses via public browse
-    const INTERNAL_STATUSES = ['pending_review'];
-    if (!my_tasks && INTERNAL_STATUSES.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status filter' });
-    }
-    query = query.eq('status', status);
-  }
   if (my_tasks && user) query = query.eq('agent_id', user.id);
 
-  // Filter out moderated, expired, and pending_review tasks from browse (unless viewing own tasks)
-  if (!my_tasks) {
+  if (my_tasks) {
+    // Agent viewing own tasks: allow status filter for any status
+    if (status) query = query.eq('status', status);
+  } else {
+    // Public browse: only show open tasks (workers should only see tasks they can apply to)
+    // Ignore any status filter that would show non-open tasks
+    query = query.eq('status', 'open');
     query = query.not('moderation_status', 'in', '("hidden","removed")');
-    query = query.not('status', 'eq', 'expired');
-    query = query.not('status', 'eq', 'pending_review');
   }
 
   const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(100);
