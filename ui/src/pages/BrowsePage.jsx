@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { MapPin, Clock, DollarSign, Star, Briefcase, Users, X, Check, Copy, Bot, User, ChevronRight, ChevronLeft, Search, Globe, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
-import { supabase } from '../App'
+import { supabase } from '../lib/supabase'
+import { navigate as spaNavigate } from '../utils/navigate'
 import { Logo } from '../components/Logo'
 import { useToast } from '../context/ToastContext'
 import CustomDropdown from '../components/CustomDropdown'
@@ -11,6 +12,8 @@ import HumanProfileCard from '../components/HumanProfileCard'
 import HumanProfileModal from '../components/HumanProfileModal'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { trackEvent } from '../utils/analytics'
+import { EmptyState, Button } from '../components/ui'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -96,6 +99,7 @@ function SkeletonCard() {
 }
 
 export default function BrowsePage({ user, navigate: navigateProp }) {
+  usePageTitle('Browse')
   const toast = useToast()
   // Parse mode from URL path: /browse/tasks or /browse/humans (default: tasks)
   // Also support legacy ?mode= query param for backwards compat
@@ -477,7 +481,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
     return date.toLocaleDateString()
   }
 
-  const navigate = navigateProp || ((path) => { window.location.href = path })
+  const navigate = navigateProp || spaNavigate
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(humansTotal / ITEMS_PER_PAGE))
@@ -578,7 +582,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
             marginBottom: 12,
             lineHeight: 1.15
           }}>
-            {viewMode === 'tasks' ? 'Available Tasks' : 'Browse Humans'}
+            {viewMode === 'tasks' ? 'Available tasks' : 'Browse humans'}
           </h1>
           <p style={{
             fontSize: 17,
@@ -847,29 +851,16 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
                   <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Failed to load humans</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>{humansError}</p>
-                  <button
-                    onClick={() => fetchHumans()}
-                    style={{
-                      padding: '10px 24px', background: 'var(--coral-500)', color: 'white',
-                      fontWeight: 600, fontSize: 14, borderRadius: 'var(--radius-md)', border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
+                  <Button variant="primary" onClick={() => fetchHumans()}>
                     Try Again
-                  </button>
+                  </Button>
                 </div>
               ) : humans.length === 0 ? (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '64px 24px',
-                  background: 'white',
-                  borderRadius: 'var(--radius-lg)',
-                  border: '1px solid rgba(0,0,0,0.06)',
-                }}>
-                  <Users size={48} style={{ color: 'var(--text-tertiary)', marginBottom: 16 }} />
-                  <p style={{ color: 'var(--text-secondary)', fontSize: 16, fontWeight: 500, marginBottom: 4 }}>No humans found</p>
-                  <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Try adjusting your filters or search criteria.</p>
-                </div>
+                <EmptyState
+                  icon={<Users size={48} />}
+                  title="No humans found"
+                  description="Humans will appear here when they match your filters. Try adjusting your search criteria."
+                />
               ) : (
                 <div
                   className="browse-humans-grid"
@@ -884,7 +875,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       key={human.id}
                       human={human}
                       variant="browse"
-                      onExpand={(h) => window.location.href = `/humans/${h.id}`}
+                      onExpand={(h) => spaNavigate(`/humans/${h.id}`)}
                       onHire={(h) => setShowHireModal(h)}
                     />
                   ))}
@@ -1084,16 +1075,9 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
                 <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Failed to load tasks</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>{tasksError}</p>
-                <button
-                  onClick={() => fetchTasks()}
-                  style={{
-                    padding: '10px 24px', background: 'var(--coral-500)', color: 'white',
-                    fontWeight: 600, fontSize: 14, borderRadius: 'var(--radius-md)', border: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
+                <Button variant="primary" onClick={() => fetchTasks()}>
                   Try Again
-                </button>
+                </Button>
               </div>
             )}
 
@@ -1112,17 +1096,12 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 gap: 24
               }}>
                 {tasks.length === 0 ? (
-                  <div style={{
-                    gridColumn: '1 / -1',
-                    textAlign: 'center',
-                    padding: 48,
-                    background: 'white',
-                    borderRadius: 'var(--radius-lg)',
-                    border: '1px solid rgba(0,0,0,0.06)'
-                  }}>
-                    <Briefcase size={48} style={{ color: 'var(--text-tertiary)', marginBottom: 16 }} />
-                    <p style={{ color: 'var(--text-secondary)' }}>No tasks available at the moment.</p>
-                    <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Check back soon!</p>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <EmptyState
+                      icon={<Briefcase size={48} />}
+                      title="No tasks available"
+                      description="Tasks will appear here when agents post new work in your area."
+                    />
                   </div>
                 ) : (
                   tasks.map(task => (
@@ -1331,7 +1310,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
                   <div>
-                    <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Apply to Task</h2>
+                    <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Apply to task</h2>
                     <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{showApplyModal.title}</p>
                   </div>
                   <button
@@ -1480,36 +1459,23 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   <div style={{ padding: 12, background: 'rgba(255, 95, 87, 0.1)', borderRadius: 'var(--radius-md)', color: '#FF5F57', fontSize: 14, marginBottom: 16 }}>{applyError}</div>
                 )}
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    style={{ flex: 1 }}
                     onClick={() => { setShowApplyModal(null); setApplyWhyFit(''); setApplyAvailability(''); setApplyQuestions(''); setApplyCounterOffer(''); setApplyError('') }}
-                    style={{
-                      flex: 1,
-                      padding: 14,
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid rgba(0,0,0,0.1)',
-                      background: 'white',
-                      fontWeight: 500,
-                      cursor: 'pointer'
-                    }}
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    style={{ flex: 1 }}
                     onClick={handleApply}
                     disabled={applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()}
-                    style={{
-                      flex: 1,
-                      padding: 14,
-                      borderRadius: 'var(--radius-md)',
-                      border: 'none',
-                      background: (applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()) ? 'var(--text-tertiary)' : 'var(--coral-500)',
-                      color: 'white',
-                      fontWeight: 600,
-                      cursor: (applyLoading || !applyWhyFit.trim() || !applyAvailability.trim()) ? 'not-allowed' : 'pointer'
-                    }}
                   >
-                    {applyLoading ? 'Submitting...' : 'Submit Application'}
-                  </button>
+                    {applyLoading ? 'Submitting...' : 'Submit application'}
+                  </Button>
                 </div>
               </>
             )}
@@ -1532,7 +1498,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 <div style={{ width: 64, height: 64, background: 'rgba(22, 163, 74, 0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                   <Check size={32} style={{ color: '#16A34A' }} />
                 </div>
-                <h3 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 8 }}>Task Created & Assigned!</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 8 }}>Task created and assigned</h3>
                 <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{showHireModal.name} has been assigned to your task.</p>
               </div>
             ) : (
@@ -1540,8 +1506,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
             <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 4 }}>rent {showHireModal.name}</h2>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>how are you hiring this human?</p>
+                  <h2 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 4 }}>Hire {showHireModal.name}</h2>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>How are you hiring this human?</p>
                 </div>
                 <button onClick={resetHireForm} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'rgba(255,255,255,0.5)' }}>
                   <X size={20} />
@@ -1564,8 +1530,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   <Bot size={20} style={{ color: 'white' }} />
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
-                  <div style={{ fontWeight: 600, color: 'white', fontSize: 15 }}>for my AI agent</div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>get a snippet to paste into your agent's chat</div>
+                  <div style={{ fontWeight: 600, color: 'white', fontSize: 15 }}>For my AI agent</div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Get a snippet to paste into your agent's chat</div>
                 </div>
                 <ChevronRight size={20} style={{ color: 'rgba(255,255,255,0.3)', transform: hireMode === 'agent' ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
               </button>
@@ -1578,7 +1544,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       onClick={() => {
                         const snippet = `I want to hire a human from irlwork.ai for a task.\n\nName: ${showHireModal.name}\nProfile: https://www.irlwork.ai/humans/${showHireModal.id}\nSkills: ${(showHireModal.skills || []).join(', ') || 'General'}\nRate: $${showHireModal.hourly_rate || 25}/hr\n\nTo contact this human, use the irlwork.ai API.\n\nIf you don't have an API key yet, help me set one up:\n- Open https://www.irlwork.ai/dashboard/hiring/api-keys in my browser\n- If I'm not logged in, I'll be prompted to sign up first\n- I can generate an API key from that page and paste it back here\n\nOnce you have the API key, call the API like this:\n\ncurl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"method": "start_conversation", "params": {"human_id": "${showHireModal.id}"}}'\n\nUse the start_conversation method with human_id "${showHireModal.id}" to message them.`
                         navigator.clipboard.writeText(snippet)
-                        toast.success('Copied to clipboard!')
+                        toast.success('Copied to clipboard')
                       }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}
                     >
@@ -1611,7 +1577,7 @@ Content-Type: application/json
 Use the start_conversation method with human_id "${showHireModal.id}" to message them.`}
                   </div>
                   <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ fontSize: 14, color: '#16A34A', fontWeight: 500, marginBottom: 12 }}>how to use this</div>
+                    <div style={{ fontSize: 14, color: '#16A34A', fontWeight: 500, marginBottom: 12 }}>How to use this</div>
                     <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.8 }}>
                       <li>Copy the snippet above</li>
                       <li>Paste it into your AI agent's chat (Claude, ChatGPT, etc.)</li>
@@ -1640,7 +1606,7 @@ Use the start_conversation method with human_id "${showHireModal.id}" to message
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontWeight: 600, color: 'white', fontSize: 15 }}>I'm a human</div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>create a task and hire {showHireModal.name} directly</div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Create a task and hire {showHireModal.name} directly</div>
                 </div>
                 <ChevronRight size={20} style={{ color: 'rgba(255,255,255,0.3)', transform: hireMode === 'human' ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
               </button>
@@ -1648,7 +1614,7 @@ Use the start_conversation method with human_id "${showHireModal.id}" to message
               {hireMode === 'human' && (
                 <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 20, marginTop: 8 }}>
                   <div style={{ marginBottom: 16 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'rgba(255,255,255,0.7)' }}>Task Title *</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'rgba(255,255,255,0.7)' }}>Task title *</label>
                     <input type="text" placeholder="e.g. Pick up my dry cleaning" value={hireTitle} onChange={(e) => setHireTitle(e.target.value)}
                       style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
                   </div>

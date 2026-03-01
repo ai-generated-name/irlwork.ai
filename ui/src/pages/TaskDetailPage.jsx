@@ -2,9 +2,11 @@
 // Handles both open tasks (browsing/applying) and assigned tasks (messaging/proof)
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../App';
+import { getErrorMessage } from '../utils/apiErrors';
+import { supabase } from '../lib/supabase';
 import { Logo } from '../components/Logo';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
+import DeadlineBanner from '../components/TaskDetail/DeadlineBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
 import TaskTimeline from '../components/TaskDetail/TaskTimeline';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
@@ -18,7 +20,9 @@ import ReportTaskModal from '../components/ReportTaskModal';
 import DisputeModal from '../components/DisputeModal';
 import WithdrawModal from '../components/WithdrawModal';
 import ShareOnXButton from '../components/ShareOnXButton';
+import { Button } from '../components/ui';
 import API_URL from '../config/api';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [task, setTask] = useState(null);
@@ -36,6 +40,8 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
+  usePageTitle(task?.title || 'Task Details');
 
   const isParticipant = user && task && (task.agent_id === user.id || task.human_id === user.id);
   const isWorker = user && task && task.human_id === user.id;
@@ -60,7 +66,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         const taskRes = await fetch(`${API_URL}/tasks/${taskId}`, { headers });
         if (!taskRes.ok) {
           const errBody = await taskRes.json().catch(() => ({}));
-          throw new Error(errBody.error || `Task not found (${taskRes.status})`);
+          throw new Error(getErrorMessage(errBody, `Task not found (${taskRes.status})`));
         }
         const taskData = await taskRes.json();
         setTask(taskData);
@@ -279,7 +285,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         window.location.reload();
       } else {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to submit proof');
+        throw new Error(getErrorMessage(errorData, 'Failed to submit proof'));
       }
     } catch (err) {
       console.error('Error submitting proof:', err);
@@ -300,7 +306,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       window.location.reload();
     } else {
       const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to file dispute');
+      throw new Error(getErrorMessage(errorData, 'Failed to file dispute'));
     }
   };
 
@@ -316,7 +322,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       window.location.reload();
     } else {
       const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to withdraw from task');
+      throw new Error(getErrorMessage(errorData, 'Failed to withdraw from task'));
     }
   };
 
@@ -362,7 +368,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 onClick={() => window.location.reload()}
                 className="text-[#E8853D] underline text-sm hover:text-[#D4703A]"
               >
-                Retry
+                Retry loading
               </button>
             </div>
           )}
@@ -377,12 +383,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="text-center">
           <div className="text-[#FF5F57] text-xl mb-4">Error: {error}</div>
-          <button
-            onClick={() => onNavigate?.('/dashboard')}
-            className="bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
-          >
-            Back to Dashboard
-          </button>
+          <Button variant="primary" size="lg" onClick={() => onNavigate?.('/dashboard')}>
+            Back to dashboard
+          </Button>
         </div>
       </div>
     );
@@ -394,12 +397,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="text-center">
           <div className="text-[#FF5F57] text-xl mb-4">Error: Task not found</div>
-          <button
-            onClick={() => onNavigate?.('/dashboard')}
-            className="bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
-          >
-            Back to Dashboard
-          </button>
+          <Button variant="primary" size="lg" onClick={() => onNavigate?.('/dashboard')}>
+            Back to dashboard
+          </Button>
         </div>
       </div>
     );
@@ -459,6 +459,11 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               <TaskTimeline task={task} taskStatus={taskStatus} />
             )}
 
+            {/* Deadline Banner - live countdown with extension request/response UI */}
+            {isParticipant && (
+              <DeadlineBanner task={task} user={user} />
+            )}
+
             {/* Mobile-only: Payment card right after header so Apply is visible early */}
             <div className="lg:hidden">
               <PaymentCard
@@ -485,19 +490,21 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm space-y-3">
                 <h4 className="text-xs font-bold text-[#888888] uppercase tracking-wider">Actions</h4>
                 {canWithdraw && (
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="md"
                     onClick={() => setShowWithdrawModal(true)}
-                    className="w-full py-2.5 border-2 border-[#E5E5E5] text-[#333333] font-semibold rounded-xl hover:bg-[#F5F3F0] transition-colors text-sm"
+                    className="w-full"
                   >
-                    Withdraw from Task
-                  </button>
+                    Withdraw from task
+                  </Button>
                 )}
                 {canDispute && (
                   <button
                     onClick={() => setShowDisputeModal(true)}
                     className="w-full py-2.5 border-2 border-[#E8853D] text-[#E8853D] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm"
                   >
-                    File a Dispute
+                    File a dispute
                   </button>
                 )}
               </div>
@@ -575,7 +582,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         >
           <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
             <div className="flex items-baseline gap-1 shrink-0">
-              <span className="text-xl font-bold text-[#16A34A] font-mono">
+              <span className="text-xl font-bold text-[#16A34A] font-['DM_Mono']">
                 ${Number(task.budget) || 0}
               </span>
               {task.budget_type === 'hourly' && <span className="text-sm text-[#333333]">/hr</span>}
@@ -586,16 +593,16 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 onClick={() => setShowApplyModal(true)}
                 className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md"
               >
-                Apply for This Task
+                Apply for this task
               </button>
             ) : hasApplied ? (
-              <span className="text-sm font-medium text-[#16A34A]">Applied ✓</span>
+              <span className="text-sm font-medium text-[#16A34A]">Applied</span>
             ) : !user ? (
               <a
                 href="/auth"
                 className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block"
               >
-                Sign In to Apply
+                Sign in to apply
               </a>
             ) : null}
           </div>

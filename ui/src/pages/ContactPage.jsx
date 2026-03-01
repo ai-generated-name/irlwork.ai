@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
 import { Mail, Send, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
+import { usePageTitle } from '../hooks/usePageTitle'
+import { Button } from '../components/ui'
 
 export default function ContactPage() {
+  usePageTitle('Contact')
   const { t } = useLanguage()
   const [category, setCategory] = useState('support')
   const [name, setName] = useState('')
@@ -170,13 +173,13 @@ export default function ContactPage() {
                     {categories[category].email}
                   </a>
                 </p>
-                <button
+                <Button
+                  variant="secondary"
+                  size="md"
                   onClick={() => { setSent(false); setMessage('') }}
-                  className="v4-btn v4-btn-secondary"
-                  style={{ padding: '10px 24px', fontSize: '14px' }}
                 >
                   {t('contact.sendAnother')}
-                </button>
+                </Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit}>
@@ -339,20 +342,15 @@ export default function ContactPage() {
                   </div>
 
                   {/* Submit */}
-                  <button
+                  <Button
                     type="submit"
-                    className="v4-btn v4-btn-primary"
-                    style={{
-                      padding: '14px 32px',
-                      fontSize: '15px',
-                      fontWeight: 600,
-                      width: '100%',
-                      justifyContent: 'center',
-                    }}
+                    variant="primary"
+                    size="lg"
+                    className="gap-2 w-full justify-center"
                   >
                     <Send size={18} />
                     {t('contact.sendTo')} {categories[category].email}
-                  </button>
+                  </Button>
                 </div>
               </form>
             )}

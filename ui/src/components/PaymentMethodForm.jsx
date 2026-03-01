@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Button } from './ui';
 import API_URL from '../config/api';
 
 const cardStyle = {
@@ -84,28 +85,19 @@ export default function PaymentMethodForm({ user, onSaved }) {
 
       {success && (
         <p style={{ color: '#22c55e', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-          Card saved successfully!
+          Payment method saved successfully.
         </p>
       )}
 
-      <button
+      <Button
         type="submit"
         disabled={!stripe || loading}
-        style={{
-          marginTop: '0.75rem',
-          padding: '10px 24px',
-          background: loading ? '#9ca3af' : '#6366f1',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '10px',
-          fontSize: '0.875rem',
-          fontWeight: 600,
-          cursor: loading ? 'not-allowed' : 'pointer',
-          width: '100%',
-        }}
+        variant="primary"
+        size="md"
+        className="w-full mt-3"
       >
-        {loading ? 'Saving...' : 'Save Card'}
-      </button>
+        {loading ? 'Saving...' : 'Save payment method'}
+      </Button>
     </form>
   );
 }

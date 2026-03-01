@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { DollarSign, Users, TrendingUp, CreditCard } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend } from 'recharts'
 import PeriodSelector from './PeriodSelector'
-import { useAuth } from '../../context/AuthContext'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 
 /**
@@ -10,7 +10,6 @@ import API_URL from '../../config/api'
  * Shows GMV, fees, escrow, subscribers, plus charts for tasks/signups per day
  */
 export default function OverviewTab({ user }) {
-  const { authenticatedFetch } = useAuth()
   const [period, setPeriod] = useState('30d')
   const [financials, setFinancials] = useState(null)
   const [growth, setGrowth] = useState(null)
@@ -22,8 +21,8 @@ export default function OverviewTab({ user }) {
     setError(null)
     try {
       const [finRes, growthRes] = await Promise.all([
-        authenticatedFetch(`${API_URL}/admin/financials?period=${period}`),
-        authenticatedFetch(`${API_URL}/admin/growth?period=${period}`),
+        adminFetch(`${API_URL}/admin/financials?period=${period}`),
+        adminFetch(`${API_URL}/admin/growth?period=${period}`),
       ])
 
       if (!finRes.ok || !growthRes.ok) throw new Error('Failed to fetch data')
@@ -36,7 +35,7 @@ export default function OverviewTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [period, authenticatedFetch])
+  }, [period])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -55,7 +54,7 @@ export default function OverviewTab({ user }) {
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
         <p className="text-red-600 font-medium mb-3">{error}</p>
         <button onClick={fetchData} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600">
-          Retry
+          Retry loading
         </button>
       </div>
     )
@@ -63,23 +62,26 @@ export default function OverviewTab({ user }) {
 
   return (
     <div className="space-y-6">
-      {/* Period selector */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">Platform Overview</h2>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Platform Overview</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Top-level metrics — GMV, escrow balances, signups, and daily activity trends.</p>
+        </div>
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 
       {/* Top cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          label="Gross Merchandise Value"
+          label="Gross merchandise value"
           value={fmt(financials?.gmv?.total_cents || 0)}
           subtitle={`${financials?.gmv?.count || 0} tasks`}
           icon={<DollarSign size={18} />}
           color="green"
         />
         <MetricCard
-          label="Platform Fees Earned"
+          label="Platform fees earned"
           value={fmt(financials?.platform_fees?.total_cents || 0)}
           subtitle={`${financials?.platform_fees?.count || 0} completed`}
           icon={<TrendingUp size={18} />}

@@ -2,30 +2,30 @@
 // Simple status indicator after proof submission (countdown is shown in banner)
 
 import React from 'react';
-import { Hourglass, AlertTriangle } from 'lucide-react';
+import { Hourglass, AlertTriangle, Check, X } from 'lucide-react';
 
 const STATUS_CONFIG = {
   pending_review: {
-    label: 'Pending Agent Review',
+    label: 'Pending agent review',
     icon: <Hourglass size={14} />,
     color: 'bg-[#FFE4DB] border-[#E8853D] text-[#D4703A]',
     description: 'Your proof has been submitted and is awaiting agent review'
   },
   approved: {
     label: 'Approved',
-    icon: '✓',
+    icon: <Check size={14} />,
     color: 'bg-[#D1FAE5] border-[#059669] text-[#059669]',
     description: 'Your proof has been approved! Payment is being processed.'
   },
   completed: {
     label: 'Approved',
-    icon: '✓',
+    icon: <Check size={14} />,
     color: 'bg-[rgba(22, 163, 74, 0.08)] border-[#16A34A] text-[#16A34A]',
     description: 'Your proof has been approved by the agent'
   },
   paid: {
     label: 'Paid',
-    icon: '✓',
+    icon: <Check size={14} />,
     color: 'bg-[rgba(22, 163, 74, 0.08)] border-[#16A34A] text-[#16A34A]',
     description: 'Payment has been released to your bank account'
   },
@@ -37,7 +37,7 @@ const STATUS_CONFIG = {
   },
   rejected: {
     label: 'Rejected',
-    icon: '✕',
+    icon: <X size={14} />,
     color: 'bg-[rgba(255, 95, 87, 0.1)] border-[#FF5F57] text-[#FF5F57]',
     description: 'Your proof was rejected. Check messages for details.'
   }
@@ -64,6 +64,15 @@ export default function ProofStatusBadge({ task, proofs }) {
             <div className="mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t border-current/20">
               <p className="text-xs opacity-70">
                 Submitted {new Date(proofs[0].created_at).toLocaleDateString()}
+                {proofs[0].submitted_late && (
+                  <span style={{
+                    marginLeft: 8, padding: '2px 6px', borderRadius: 6,
+                    background: 'rgba(255, 95, 87, 0.15)', color: '#FF5F57',
+                    fontWeight: 700, fontSize: 10, letterSpacing: '0.5px'
+                  }}>
+                    LATE
+                  </span>
+                )}
               </p>
               {proofs[0].proof_text && (
                 <p className="text-xs sm:text-sm mt-1.5 sm:mt-2 opacity-80 italic truncate sm:whitespace-normal">

@@ -2,19 +2,20 @@
 // Displays task title, description, requirements, skills, and metadata
 
 import React from 'react';
-import { CalendarDays, Timer, MapPin, Users } from 'lucide-react';
+import { CalendarDays, Timer, MapPin, Users, Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, Paperclip, Tag } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import { Card } from '../ui';
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  errands: '🏃',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  other: '📋',
+  delivery: Package,
+  photography: Camera,
+  'data-collection': BarChart3,
+  errands: Footprints,
+  'tech-setup': Monitor,
+  translation: Globe,
+  verification: CheckCircle,
+  other: ClipboardList,
 };
 
 const STATUS_CONFIG = {
@@ -37,7 +38,7 @@ export default function TaskHeader({ task }) {
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm">
+    <Card className="p-4 sm:p-6">
       {/* Status Badge + Task ID + Type Badges */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
         <span className={`inline-block px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium ${statusConfig.color}`}>
@@ -130,7 +131,7 @@ export default function TaskHeader({ task }) {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#F5F2ED] text-[#0F4C5C] hover:bg-[#EDE9E3] transition-colors text-xs sm:text-sm"
                 >
-                  <span>📎</span>
+                  <Paperclip size={14} />
                   <span className="truncate max-w-[200px]">{att.filename}</span>
                   {att.size > 0 && <span className="text-[#8A8A8A]">({(att.size / 1024).toFixed(0)}KB)</span>}
                 </a>
@@ -185,7 +186,7 @@ export default function TaskHeader({ task }) {
         {/* Category */}
         {task.category && (
           <div className="flex items-center gap-1 sm:gap-2">
-            <span>🏷️</span>
+            <Tag size={14} />
             <span>{task.category}</span>
           </div>
         )}
@@ -197,11 +198,11 @@ export default function TaskHeader({ task }) {
           <h3 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-1.5 sm:mb-2">Skills Needed</h3>
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium bg-[rgba(232,133,61,0.1)] text-[#E8853D]">
-              {CATEGORY_ICONS[task.category] || '📋'} {task.category.replace('-', ' ')}
+              {(() => { const Icon = CATEGORY_ICONS[task.category] || ClipboardList; return <Icon size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />; })()} {task.category.replace('-', ' ')}
             </span>
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

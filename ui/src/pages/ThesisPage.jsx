@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Bot } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
+import { Button } from '../components/ui'
 
 /* ─── Animated floating orb (pure CSS) ─── */
 function GradientOrb({ size = 400, top, left, right, bottom, color1, color2, delay = 0, duration = 20 }) {
@@ -279,6 +281,7 @@ function TimelineItem({ label, color, children, isLast = false }) {
    THESIS PAGE
    ═══════════════════════════════════════ */
 export default function ThesisPage() {
+  usePageTitle('Our Thesis')
 
   /* ─── Keyframe injection ─── */
   useEffect(() => {
@@ -431,7 +434,7 @@ export default function ThesisPage() {
               marginBottom: '28px',
               color: 'var(--text-primary)',
             }}>
-              The Physical Layer<br />of the AI Economy
+              The physical layer<br />of the AI economy
             </h1>
           </Reveal>
 
@@ -810,35 +813,28 @@ export default function ThesisPage() {
                 justifyContent: 'center',
                 flexWrap: 'wrap',
               }}>
-                <a
-                  href="/auth"
-                  className="v4-btn v4-btn-primary"
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => { window.location.href = '/auth' }}
+                  className="gap-2"
                   style={{
-                    padding: '14px 32px',
-                    fontSize: '15px',
-                    textDecoration: 'none',
                     background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
                     boxShadow: '0 0 30px rgba(244,132,95,0.3)',
                   }}
                 >
-                  Start Earning
+                  Start earning
                   <ArrowRight size={18} />
-                </a>
-                <a
-                  href="/connect-agent"
-                  className="v4-btn v4-btn-secondary"
-                  style={{
-                    padding: '14px 32px',
-                    fontSize: '15px',
-                    textDecoration: 'none',
-                    background: 'white',
-                    color: 'var(--text-primary)',
-                    border: '2px solid var(--text-primary)',
-                  }}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => { window.location.href = '/connect-agent' }}
+                  className="gap-2"
                 >
                   <Bot size={18} />
-                  Connect an Agent
-                </a>
+                  Connect an agent
+                </Button>
               </div>
             </div>
           </Reveal>

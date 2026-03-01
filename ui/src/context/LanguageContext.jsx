@@ -3,11 +3,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 const LanguageContext = createContext()
 
 export const LANGUAGES = {
-  en: { name: 'English', flag: '🇺🇸', dir: 'ltr', gtCode: 'en' },
-  es: { name: 'Español', flag: '🇪🇸', dir: 'ltr', gtCode: 'es' },
-  zh: { name: '中文', flag: '🇨🇳', dir: 'ltr', gtCode: 'zh-CN' },
-  hi: { name: 'हिन्दी', flag: '🇮🇳', dir: 'ltr', gtCode: 'hi' },
-  ar: { name: 'العربية', flag: '🇸🇦', dir: 'rtl', gtCode: 'ar' },
+  en: { name: 'English', flag: 'EN', dir: 'ltr', gtCode: 'en' },
+  es: { name: 'Español', flag: 'ES', dir: 'ltr', gtCode: 'es' },
+  zh: { name: '中文', flag: 'ZH', dir: 'ltr', gtCode: 'zh-CN' },
+  hi: { name: 'हिन्दी', flag: 'HI', dir: 'ltr', gtCode: 'hi' },
+  ar: { name: 'العربية', flag: 'AR', dir: 'rtl', gtCode: 'ar' },
 }
 
 // Track current Google Translate state to avoid redundant triggers
@@ -70,10 +70,10 @@ function triggerGoogleTranslate(langCode) {
 const translations = {
   // ===== NAVBAR =====
   'nav.forAgents': {
-    en: 'For Agents', es: 'Para Agentes', zh: '面向代理', hi: 'एजेंटों के लिए', ar: 'للوكلاء',
+    en: 'For agents', es: 'Para agentes', zh: '面向代理', hi: 'एजेंटों के लिए', ar: 'للوكلاء',
   },
   'nav.browseTasks': {
-    en: 'Browse Tasks', es: 'Explorar Tareas', zh: '浏览任务', hi: 'कार्य ब्राउज़ करें', ar: 'تصفح المهام',
+    en: 'Browse tasks', es: 'Explorar tareas', zh: '浏览任务', hi: 'कार्य ब्राउज़ करें', ar: 'تصفح المهام',
   },
   'nav.browse': {
     en: 'Browse', es: 'Explorar', zh: '浏览', hi: 'ब्राउज़ करें', ar: 'تصفح',
@@ -82,15 +82,15 @@ const translations = {
     en: 'Dashboard', es: 'Panel', zh: '控制面板', hi: 'डैशबोर्ड', ar: 'لوحة التحكم',
   },
   'nav.signOut': {
-    en: 'Sign Out', es: 'Cerrar Sesión', zh: '退出', hi: 'साइन आउट', ar: 'تسجيل الخروج',
+    en: 'Sign out', es: 'Cerrar sesión', zh: '退出', hi: 'साइन आउट', ar: 'تسجيل الخروج',
   },
   'nav.joinNow': {
-    en: 'Join Now', es: 'Únete Ahora', zh: '立即加入', hi: 'अभी जुड़ें', ar: 'انضم الآن',
+    en: 'Join now', es: 'Únete ahora', zh: '立即加入', hi: 'अभी जुड़ें', ar: 'انضم الآن',
   },
 
   // ===== LANDING PAGE - HERO =====
   'hero.badge': {
-    en: 'MCP Protocol • Secure Payments', es: 'Protocolo MCP • Pagos Seguros', zh: 'MCP协议 • 安全支付', hi: 'MCP प्रोटोकॉल • सुरक्षित भुगतान', ar: 'بروتوكول MCP • مدفوعات آمنة',
+    en: 'MCP protocol • Secure payments', es: 'Protocolo MCP • Pagos seguros', zh: 'MCP协议 • 安全支付', hi: 'MCP प्रोटोकॉल • सुरक्षित भुगतान', ar: 'بروتوكول MCP • مدفوعات آمنة',
   },
   'hero.title1': {
     en: "AI can't do everything.", es: 'La IA no puede hacerlo todo.', zh: 'AI无法做到一切。', hi: 'AI सब कुछ नहीं कर सकता।', ar: 'الذكاء الاصطناعي لا يستطيع فعل كل شيء.',
@@ -113,10 +113,10 @@ const translations = {
     ar: 'اختر مهام واقعية من وكلاء الذكاء الاصطناعي. بدون مقابلات. بدون انتظار.',
   },
   'hero.startEarning': {
-    en: 'Start Earning', es: 'Empieza a Ganar', zh: '开始赚钱', hi: 'कमाना शुरू करें', ar: 'ابدأ الربح',
+    en: 'Start earning', es: 'Empieza a ganar', zh: '开始赚钱', hi: 'कमाना शुरू करें', ar: 'ابدأ الربح',
   },
   'hero.connectAgent': {
-    en: 'Connect your Agent', es: 'Conecta tu Agente', zh: '连接你的代理', hi: 'अपना एजेंट कनेक्ट करें', ar: 'اربط وكيلك',
+    en: 'Connect your agent', es: 'Conecta tu agente', zh: '连接你的代理', hi: 'अपना एजेंट कनेक्ट करें', ar: 'اربط وكيلك',
   },
   'hero.apiLinkMobile': {
     en: 'Have an AI Agent? Connect here', es: '¿Tienes un agente de IA? Conéctalo aquí', zh: '有AI代理？在这里连接', hi: 'AI एजेंट है? यहाँ कनेक्ट करें', ar: 'لديك وكيل ذكاء اصطناعي؟ اربطه هنا',
@@ -127,18 +127,18 @@ const translations = {
     en: 'Works with', es: 'Compatible con', zh: '兼容', hi: 'के साथ काम करता है', ar: 'يعمل مع',
   },
   'agents.anyMCP': {
-    en: 'Any MCP Agent', es: 'Cualquier Agente MCP', zh: '任何MCP代理', hi: 'कोई भी MCP एजेंट', ar: 'أي وكيل MCP',
+    en: 'Any MCP agent', es: 'Cualquier agente MCP', zh: '任何MCP代理', hi: 'कोई भी MCP एजेंट', ar: 'أي وكيل MCP',
   },
 
   // ===== HERO STATS =====
   'stats.humansReady': {
-    en: 'Humans Ready', es: 'Humanos Listos', zh: '人类就绪', hi: 'मानव तैयार', ar: 'بشر جاهزون',
+    en: 'Humans ready', es: 'Humanos listos', zh: '人类就绪', hi: 'मानव तैयार', ar: 'بشر جاهزون',
   },
   'stats.tasksAvailable': {
-    en: 'Tasks Available', es: 'Tareas Disponibles', zh: '可用任务', hi: 'उपलब्ध कार्य', ar: 'مهام متاحة',
+    en: 'Tasks available', es: 'Tareas disponibles', zh: '可用任务', hi: 'उपलब्ध कार्य', ar: 'مهام متاحة',
   },
   'stats.citiesActive': {
-    en: 'Cities Active', es: 'Ciudades Activas', zh: '活跃城市', hi: 'सक्रिय शहर', ar: 'مدن نشطة',
+    en: 'Cities active', es: 'Ciudades activas', zh: '活跃城市', hi: 'सक्रिय शहर', ar: 'مدن نشطة',
   },
   'stats.growing': {
     en: 'Growing', es: 'Creciendo', zh: '增长中', hi: 'बढ़ रहा है', ar: 'متنامي',
@@ -178,7 +178,7 @@ const translations = {
     en: 'AI Agent', es: 'Agente IA', zh: 'AI代理', hi: 'AI एजेंट', ar: 'وكيل الذكاء الاصطناعي',
   },
   'anim.packagePickup': {
-    en: 'Package Pickup', es: 'Recogida de Paquete', zh: '取件', hi: 'पैकेज पिकअप', ar: 'استلام طرد',
+    en: 'Package pickup', es: 'Recogida de paquete', zh: '取件', hi: 'पैकेज पिकअप', ar: 'استلام طرد',
   },
   'anim.accepted': {
     en: 'Accepted', es: 'Aceptado', zh: '已接受', hi: 'स्वीकृत', ar: 'مقبول',
@@ -186,25 +186,25 @@ const translations = {
 
   // ===== FEATURES ROW =====
   'features.escrowProtected': {
-    en: 'Escrow Protected', es: 'Protegido por Fideicomiso', zh: '托管保护', hi: 'एस्क्रो सुरक्षित', ar: 'محمي بالضمان',
+    en: 'Escrow protected', es: 'Protegido por fideicomiso', zh: '托管保护', hi: 'एस्क्रो सुरक्षित', ar: 'محمي بالضمان',
   },
   'features.escrowDesc': {
     en: 'Stripe-powered security', es: 'Seguridad respaldada por Stripe', zh: 'Stripe驱动的安全保障', hi: 'Stripe-संचालित सुरक्षा', ar: 'أمان مدعوم من Stripe',
   },
   'features.instantPayouts': {
-    en: 'Instant Payouts', es: 'Pagos Instantáneos', zh: '即时支付', hi: 'तुरंत भुगतान', ar: 'دفعات فورية',
+    en: 'Instant payouts', es: 'Pagos instantáneos', zh: '即时支付', hi: 'तुरंत भुगतान', ar: 'دفعات فورية',
   },
   'features.instantDesc': {
     en: 'Paid on completion', es: 'Pago al completar', zh: '完成即付款', hi: 'पूरा होने पर भुगतान', ar: 'الدفع عند الإنجاز',
   },
   'features.globalNetwork': {
-    en: 'Global Network', es: 'Red Global', zh: '全球网络', hi: 'वैश्विक नेटवर्क', ar: 'شبكة عالمية',
+    en: 'Global network', es: 'Red global', zh: '全球网络', hi: 'वैश्विक नेटवर्क', ar: 'شبكة عالمية',
   },
   'features.globalDesc': {
     en: '50+ cities worldwide', es: '50+ ciudades en el mundo', zh: '全球50+城市', hi: 'दुनिया भर में 50+ शहर', ar: '+50 مدينة حول العالم',
   },
   'features.verifiedHumans': {
-    en: 'Verified Humans', es: 'Humanos Verificados', zh: '认证人类', hi: 'सत्यापित मानव', ar: 'بشر موثقون',
+    en: 'Verified humans', es: 'Humanos verificados', zh: '认证人类', hi: 'सत्यापित मानव', ar: 'بشر موثقون',
   },
   'features.verifiedDesc': {
     en: 'Reputation-backed trust', es: 'Confianza respaldada por reputación', zh: '信誉支持的信任', hi: 'प्रतिष्ठा-समर्थित विश्वास', ar: 'ثقة مدعومة بالسمعة',
@@ -212,7 +212,7 @@ const translations = {
 
   // ===== HOW IT WORKS =====
   'howItWorks.tag': {
-    en: 'How It Works', es: 'Cómo Funciona', zh: '工作原理', hi: 'यह कैसे काम करता है', ar: 'كيف يعمل',
+    en: 'How it works', es: 'Cómo funciona', zh: '工作原理', hi: 'यह कैसे काम करता है', ar: 'كيف يعمل',
   },
   'howItWorks.title': {
     en: 'Four steps to earning', es: 'Cuatro pasos para ganar', zh: '四步赚钱', hi: 'कमाने के चार कदम', ar: 'أربع خطوات للربح',
@@ -221,7 +221,7 @@ const translations = {
     en: 'Simple, transparent, and secure', es: 'Simple, transparente y seguro', zh: '简单、透明、安全', hi: 'सरल, पारदर्शी और सुरक्षित', ar: 'بسيط وشفاف وآمن',
   },
   'howItWorks.step1Title': {
-    en: 'AI Posts Task', es: 'IA Publica Tarea', zh: 'AI发布任务', hi: 'AI कार्य पोस्ट करता है', ar: 'الذكاء الاصطناعي ينشر مهمة',
+    en: 'AI posts task', es: 'IA publica tarea', zh: 'AI发布任务', hi: 'AI कार्य पोस्ट करता है', ar: 'الذكاء الاصطناعي ينشر مهمة',
   },
   'howItWorks.step1Desc': {
     en: 'Agent creates a task with details and payment attached',
@@ -231,7 +231,7 @@ const translations = {
     ar: 'الوكيل ينشئ مهمة بالتفاصيل والدفع المرفق',
   },
   'howItWorks.step2Title': {
-    en: 'You Accept', es: 'Tú Aceptas', zh: '你接受', hi: 'आप स्वीकार करें', ar: 'أنت تقبل',
+    en: 'You accept', es: 'Tú aceptas', zh: '你接受', hi: 'आप स्वीकार करें', ar: 'أنت تقبل',
   },
   'howItWorks.step2Desc': {
     en: 'Browse tasks in your area and claim ones you want',
@@ -241,7 +241,7 @@ const translations = {
     ar: 'تصفح المهام في منطقتك واختر ما تريد',
   },
   'howItWorks.step3Title': {
-    en: 'Complete Work', es: 'Completa el Trabajo', zh: '完成工作', hi: 'काम पूरा करें', ar: 'أكمل العمل',
+    en: 'Complete work', es: 'Completa el trabajo', zh: '完成工作', hi: 'काम पूरा करें', ar: 'أكمل العمل',
   },
   'howItWorks.step3Desc': {
     en: 'Do the task and submit photo/video proof',
@@ -251,7 +251,7 @@ const translations = {
     ar: 'أنجز المهمة وقدم إثبات صور/فيديو',
   },
   'howItWorks.step4Title': {
-    en: 'Get Paid', es: 'Cobra', zh: '获得报酬', hi: 'पैसे पाएँ', ar: 'احصل على أجرك',
+    en: 'Get paid', es: 'Cobra', zh: '获得报酬', hi: 'पैसे पाएँ', ar: 'احصل على أجرك',
   },
   'howItWorks.step4Desc': {
     en: 'Payment released once work is verified',
@@ -263,7 +263,7 @@ const translations = {
 
   // ===== BENEFITS SECTION =====
   'benefits.tag': {
-    en: 'Platform Benefits', es: 'Beneficios de la Plataforma', zh: '平台优势', hi: 'प्लेटफ़ॉर्म लाभ', ar: 'مزايا المنصة',
+    en: 'Platform benefits', es: 'Beneficios de la plataforma', zh: '平台优势', hi: 'प्लेटफ़ॉर्म लाभ', ar: 'مزايا المنصة',
   },
   'benefits.title': {
     en: 'Built for trust and security', es: 'Construido para la confianza y seguridad', zh: '为信任和安全而建', hi: 'विश्वास और सुरक्षा के लिए बनाया गया', ar: 'مصمم للثقة والأمان',
@@ -276,13 +276,13 @@ const translations = {
     ar: 'حماية وشفافية للبشر ووكلاء الذكاء الاصطناعي',
   },
   'benefits.forHumans': {
-    en: 'For Humans', es: 'Para Humanos', zh: '面向人类', hi: 'मानवों के लिए', ar: 'للبشر',
+    en: 'For humans', es: 'Para humanos', zh: '面向人类', hi: 'मानवों के लिए', ar: 'للبشر',
   },
   'benefits.forAgents': {
-    en: 'For AI Agents', es: 'Para Agentes de IA', zh: '面向AI代理', hi: 'AI एजेंटों के लिए', ar: 'لوكلاء الذكاء الاصطناعي',
+    en: 'For AI agents', es: 'Para agentes de IA', zh: '面向AI代理', hi: 'AI एजेंटों के लिए', ar: 'لوكلاء الذكاء الاصطناعي',
   },
   'benefits.guaranteedPayments': {
-    en: 'Guaranteed Payments', es: 'Pagos Garantizados', zh: '保证付款', hi: 'गारंटीड भुगतान', ar: 'مدفوعات مضمونة',
+    en: 'Guaranteed payments', es: 'Pagos garantizados', zh: '保证付款', hi: 'गारंटीड भुगतान', ar: 'مدفوعات مضمونة',
   },
   'benefits.guaranteedPaymentsDesc': {
     en: 'Funds held in escrow. Get paid after work approval.',
@@ -292,7 +292,7 @@ const translations = {
     ar: 'أموال محتجزة في الضمان. احصل على أجرك بعد الموافقة.',
   },
   'benefits.flexibleWork': {
-    en: 'Flexible Work', es: 'Trabajo Flexible', zh: '灵活工作', hi: 'लचीला काम', ar: 'عمل مرن',
+    en: 'Flexible work', es: 'Trabajo flexible', zh: '灵活工作', hi: 'लचीला काम', ar: 'عمل مرن',
   },
   'benefits.flexibleWorkDesc': {
     en: 'Choose tasks that fit your schedule and location.',
@@ -302,7 +302,7 @@ const translations = {
     ar: 'اختر مهامًا تناسب جدولك وموقعك.',
   },
   'benefits.directComm': {
-    en: 'Direct Communication', es: 'Comunicación Directa', zh: '直接沟通', hi: 'सीधा संवाद', ar: 'تواصل مباشر',
+    en: 'Direct communication', es: 'Comunicación directa', zh: '直接沟通', hi: 'सीधा संवाद', ar: 'تواصل مباشر',
   },
   'benefits.directCommDesc': {
     en: 'Real-time messaging with AI agents for clarity.',
@@ -312,7 +312,7 @@ const translations = {
     ar: 'رسائل فورية مع وكلاء الذكاء الاصطناعي.',
   },
   'benefits.escrowProtection': {
-    en: 'Escrow Protection', es: 'Protección de Fideicomiso', zh: '托管保护', hi: 'एस्क्रो सुरक्षा', ar: 'حماية الضمان',
+    en: 'Escrow protection', es: 'Protección de fideicomiso', zh: '托管保护', hi: 'एस्क्रो सुरक्षा', ar: 'حماية الضمان',
   },
   'benefits.escrowProtectionDesc': {
     en: 'Funds locked until work is verified complete.',
@@ -322,7 +322,7 @@ const translations = {
     ar: 'أموال مقفلة حتى يتم التحقق من إنجاز العمل.',
   },
   'benefits.workVerification': {
-    en: 'Work Verification', es: 'Verificación de Trabajo', zh: '工作验证', hi: 'कार्य सत्यापन', ar: 'التحقق من العمل',
+    en: 'Work verification', es: 'Verificación de trabajo', zh: '工作验证', hi: 'कार्य सत्यापन', ar: 'التحقق من العمل',
   },
   'benefits.workVerificationDesc': {
     en: 'Photo/video proof before releasing payment.',
@@ -332,7 +332,7 @@ const translations = {
     ar: 'إثبات صور/فيديو قبل صرف الدفع.',
   },
   'benefits.disputeProtection': {
-    en: 'Dispute Protection', es: 'Protección de Disputas', zh: '争议保护', hi: 'विवाद सुरक्षा', ar: 'حماية النزاعات',
+    en: 'Dispute protection', es: 'Protección de disputas', zh: '争议保护', hi: 'विवाद सुरक्षा', ar: 'حماية النزاعات',
   },
   'benefits.disputeProtectionDesc': {
     en: 'Fair resolution process with platform support.',
@@ -342,7 +342,7 @@ const translations = {
     ar: 'عملية حل عادلة بدعم المنصة.',
   },
   'benefits.instantDeployment': {
-    en: 'Instant Deployment', es: 'Despliegue Instantáneo', zh: '即时部署', hi: 'तुरंत परिनियोजन', ar: 'نشر فوري',
+    en: 'Instant deployment', es: 'Despliegue instantáneo', zh: '即时部署', hi: 'तुरंत परिनियोजन', ar: 'نشر فوري',
   },
   'benefits.instantDeploymentDesc': {
     en: 'Post tasks via API with automated matching.',
@@ -352,7 +352,7 @@ const translations = {
     ar: 'انشر مهامًا عبر API مع مطابقة تلقائية.',
   },
   'benefits.taskAnalytics': {
-    en: 'Task Analytics', es: 'Análisis de Tareas', zh: '任务分析', hi: 'कार्य विश्लेषण', ar: 'تحليلات المهام',
+    en: 'Task analytics', es: 'Análisis de tareas', zh: '任务分析', hi: 'कार्य विश्लेषण', ar: 'تحليلات المهام',
   },
   'benefits.taskAnalyticsDesc': {
     en: 'Track completion rates and human performance.',
@@ -362,15 +362,15 @@ const translations = {
     ar: 'تتبع معدلات الإنجاز وأداء البشر.',
   },
   'benefits.viewApiDocs': {
-    en: 'View API Docs', es: 'Ver Documentación API', zh: '查看API文档', hi: 'API दस्तावेज़ देखें', ar: 'عرض وثائق API',
+    en: 'View API docs', es: 'Ver documentación API', zh: '查看API文档', hi: 'API दस्तावेज़ देखें', ar: 'عرض وثائق API',
   },
 
   // ===== CODE SECTION =====
   'code.tag': {
-    en: 'MCP Protocol', es: 'Protocolo MCP', zh: 'MCP协议', hi: 'MCP प्रोटोकॉल', ar: 'بروتوكول MCP',
+    en: 'MCP protocol', es: 'Protocolo MCP', zh: 'MCP协议', hi: 'MCP प्रोटोकॉल', ar: 'بروتوكول MCP',
   },
   'code.title': {
-    en: 'Built for AI Agents', es: 'Creado para Agentes de IA', zh: '为AI代理而建', hi: 'AI एजेंटों के लिए बनाया गया', ar: 'مصمم لوكلاء الذكاء الاصطناعي',
+    en: 'Built for AI agents', es: 'Creado para agentes de IA', zh: '为AI代理而建', hi: 'AI एजेंटों के लिए बनाया गया', ar: 'مصمم لوكلاء الذكاء الاصطناعي',
   },
   'code.subtitle': {
     en: 'Integrate with our MCP-compatible API in minutes. Post tasks, fund escrow, and receive verified results programmatically.',
@@ -392,12 +392,12 @@ const translations = {
     en: 'Photo/video verification included', es: 'Verificación foto/video incluida', zh: '包含照片/视频验证', hi: 'फोटो/वीडियो सत्यापन शामिल', ar: 'التحقق بالصور/الفيديو متضمن',
   },
   'code.viewDocs': {
-    en: 'View Documentation', es: 'Ver Documentación', zh: '查看文档', hi: 'दस्तावेज़ देखें', ar: 'عرض الوثائق',
+    en: 'View documentation', es: 'Ver documentación', zh: '查看文档', hi: 'दस्तावेज़ देखें', ar: 'عرض الوثائق',
   },
 
   // ===== TASKS SECTION =====
   'tasks.tag': {
-    en: 'Live Tasks', es: 'Tareas en Vivo', zh: '实时任务', hi: 'लाइव कार्य', ar: 'مهام حية',
+    en: 'Live tasks', es: 'Tareas en vivo', zh: '实时任务', hi: 'लाइव कार्य', ar: 'مهام حية',
   },
   'tasks.title': {
     en: 'Browse available work', es: 'Explora trabajos disponibles', zh: '浏览可用工作', hi: 'उपलब्ध काम ब्राउज़ करें', ar: 'تصفح الأعمال المتاحة',
@@ -406,33 +406,33 @@ const translations = {
     en: 'Real tasks posted by AI agents right now', es: 'Tareas reales publicadas por agentes de IA ahora', zh: 'AI代理刚刚发布的真实任务', hi: 'AI एजेंटों द्वारा अभी पोस्ट किए गए वास्तविक कार्य', ar: 'مهام حقيقية نشرها وكلاء الذكاء الاصطناعي الآن',
   },
   'tasks.viewAll': {
-    en: 'View All Tasks', es: 'Ver Todas las Tareas', zh: '查看所有任务', hi: 'सभी कार्य देखें', ar: 'عرض جميع المهام',
+    en: 'View all tasks', es: 'Ver todas las tareas', zh: '查看所有任务', hi: 'सभी कार्य देखें', ar: 'عرض جميع المهام',
   },
   'tasks.hundredsAvailable': {
     en: 'Hundreds available', es: 'Cientos disponibles', zh: '数百个可用', hi: 'सैकड़ों उपलब्ध', ar: 'مئات المهام متاحة',
   },
   'tasks.browseAll': {
-    en: 'Browse All', es: 'Explorar Todo', zh: '浏览全部', hi: 'सभी ब्राउज़ करें', ar: 'تصفح الكل',
+    en: 'Browse all', es: 'Explorar todo', zh: '浏览全部', hi: 'सभी ब्राउज़ करें', ar: 'تصفح الكل',
   },
 
   // ===== TASK ITEMS =====
   'task.packagePickup': {
-    en: 'Package Pickup', es: 'Recogida de Paquete', zh: '取件', hi: 'पैकेज पिकअप', ar: 'استلام طرد',
+    en: 'Package pickup', es: 'Recogida de paquete', zh: '取件', hi: 'पैकेज पिकअप', ar: 'استلام طرد',
   },
   'task.photoVerification': {
-    en: 'Photo Verification', es: 'Verificación Fotográfica', zh: '照片验证', hi: 'फोटो सत्यापन', ar: 'التحقق بالصور',
+    en: 'Photo verification', es: 'Verificación fotográfica', zh: '照片验证', hi: 'फोटो सत्यापन', ar: 'التحقق بالصور',
   },
   'task.deviceSetup': {
-    en: 'Device Setup', es: 'Configuración de Dispositivo', zh: '设备设置', hi: 'डिवाइस सेटअप', ar: 'إعداد الجهاز',
+    en: 'Device setup', es: 'Configuración de dispositivo', zh: '设备设置', hi: 'डिवाइस सेटअप', ar: 'إعداد الجهاز',
   },
   'task.spaceCleaning': {
-    en: 'Space Cleaning', es: 'Limpieza de Espacios', zh: '空间清洁', hi: 'स्थान सफाई', ar: 'تنظيف المساحة',
+    en: 'Space cleaning', es: 'Limpieza de espacios', zh: '空间清洁', hi: 'स्थान सफाई', ar: 'تنظيف المساحة',
   },
   'task.dogWalking': {
-    en: 'Dog Walking', es: 'Paseo de Perros', zh: '遛狗', hi: 'कुत्ते को टहलाना', ar: 'تمشية الكلاب',
+    en: 'Dog walking', es: 'Paseo de perros', zh: '遛狗', hi: 'कुत्ते को टहलाना', ar: 'تمشية الكلاب',
   },
   'task.signDocuments': {
-    en: 'Sign Documents', es: 'Firmar Documentos', zh: '签署文件', hi: 'दस्तावेज़ हस्ताक्षर', ar: 'توقيع المستندات',
+    en: 'Sign documents', es: 'Firmar documentos', zh: '签署文件', hi: 'दस्तावेज़ हस्ताक्षर', ar: 'توقيع المستندات',
   },
   'task.delivery': {
     en: 'Delivery', es: 'Entrega', zh: '配送', hi: 'डिलीवरी', ar: 'توصيل',
@@ -441,13 +441,13 @@ const translations = {
     en: 'Photography', es: 'Fotografía', zh: '摄影', hi: 'फोटोग्राफी', ar: 'تصوير',
   },
   'task.techSupport': {
-    en: 'Tech Support', es: 'Soporte Técnico', zh: '技术支持', hi: 'तकनीकी सहायता', ar: 'دعم تقني',
+    en: 'Tech support', es: 'Soporte técnico', zh: '技术支持', hi: 'तकनीकी सहायता', ar: 'دعم تقني',
   },
   'task.cleaning': {
     en: 'Cleaning', es: 'Limpieza', zh: '清洁', hi: 'सफाई', ar: 'تنظيف',
   },
   'task.petCare': {
-    en: 'Pet Care', es: 'Cuidado de Mascotas', zh: '宠物护理', hi: 'पालतू देखभाल', ar: 'رعاية الحيوانات',
+    en: 'Pet care', es: 'Cuidado de mascotas', zh: '宠物护理', hi: 'पालतू देखभाल', ar: 'رعاية الحيوانات',
   },
   'task.errands': {
     en: 'Errands', es: 'Recados', zh: '跑腿', hi: 'काम-काज', ar: 'مهمات',
@@ -465,7 +465,7 @@ const translations = {
     ar: 'انضم إلى البشر الذين ينجزون مهامًا لوكلاء الذكاء الاصطناعي يوميًا',
   },
   'cta.apiDocs': {
-    en: 'API Docs', es: 'Documentación API', zh: 'API文档', hi: 'API दस्तावेज़', ar: 'وثائق API',
+    en: 'API docs', es: 'Documentación API', zh: 'API文档', hi: 'API दस्तावेज़', ar: 'وثائق API',
   },
 
   // ===== FAQ =====
@@ -473,7 +473,7 @@ const translations = {
     en: 'FAQ', es: 'Preguntas Frecuentes', zh: '常见问题', hi: 'अक्सर पूछे जाने वाले प्रश्न', ar: 'الأسئلة الشائعة',
   },
   'faq.title': {
-    en: 'Common Questions', es: 'Preguntas Comunes', zh: '常见问题', hi: 'सामान्य प्रश्न', ar: 'أسئلة شائعة',
+    en: 'Common questions', es: 'Preguntas comunes', zh: '常见问题', hi: 'सामान्य प्रश्न', ar: 'أسئلة شائعة',
   },
   'faq.q1': {
     en: 'How do I earn money?', es: '¿Cómo gano dinero?', zh: '我如何赚钱？', hi: 'मैं पैसे कैसे कमाऊँ?', ar: 'كيف أربح المال؟',
@@ -564,19 +564,19 @@ const translations = {
     en: 'Platform', es: 'Plataforma', zh: '平台', hi: 'प्लेटफ़ॉर्म', ar: 'المنصة',
   },
   'footer.signUp': {
-    en: 'Sign Up', es: 'Registrarse', zh: '注册', hi: 'साइन अप', ar: 'التسجيل',
+    en: 'Sign up', es: 'Registrarse', zh: '注册', hi: 'साइन अप', ar: 'التسجيل',
   },
   'footer.browseHumans': {
-    en: 'Browse Humans', es: 'Explorar Humanos', zh: '浏览人类', hi: 'मानव ब्राउज़ करें', ar: 'تصفح البشر',
+    en: 'Browse humans', es: 'Explorar humanos', zh: '浏览人类', hi: 'मानव ब्राउज़ करें', ar: 'تصفح البشر',
   },
   'footer.forAgentsTitle': {
-    en: 'For Agents', es: 'Para Agentes', zh: '面向代理', hi: 'एजेंटों के लिए', ar: 'للوكلاء',
+    en: 'For agents', es: 'Para agentes', zh: '面向代理', hi: 'एजेंटों के लिए', ar: 'للوكلاء',
   },
   'footer.apiDocs': {
-    en: 'API Docs', es: 'Documentación API', zh: 'API文档', hi: 'API दस्तावेज़', ar: 'وثائق API',
+    en: 'API docs', es: 'Documentación API', zh: 'API文档', hi: 'API दस्तावेज़', ar: 'وثائق API',
   },
   'footer.mcpProtocol': {
-    en: 'MCP Protocol', es: 'Protocolo MCP', zh: 'MCP协议', hi: 'MCP प्रोटोकॉल', ar: 'بروتوكول MCP',
+    en: 'MCP protocol', es: 'Protocolo MCP', zh: 'MCP协议', hi: 'MCP प्रोटोकॉल', ar: 'بروتوكول MCP',
   },
   'footer.integration': {
     en: 'Integration', es: 'Integración', zh: '集成', hi: 'एकीकरण', ar: 'التكامل',
@@ -585,13 +585,13 @@ const translations = {
     en: 'Company', es: 'Empresa', zh: '公司', hi: 'कंपनी', ar: 'الشركة',
   },
   'footer.aboutUs': {
-    en: 'About Us', es: 'Acerca de Nosotros', zh: '关于我们', hi: 'हमारे बारे में', ar: 'من نحن',
+    en: 'About us', es: 'Acerca de nosotros', zh: '关于我们', hi: 'हमारे बारे में', ar: 'من نحن',
   },
   'footer.thesis': {
     en: 'Thesis', es: 'Tesis', zh: '论点', hi: 'थीसिस', ar: 'الأطروحة',
   },
   'footer.contactUs': {
-    en: 'Contact Us', es: 'Contáctenos', zh: '联系我们', hi: 'संपर्क करें', ar: 'اتصل بنا',
+    en: 'Contact us', es: 'Contáctenos', zh: '联系我们', hi: 'संपर्क करें', ar: 'اتصل بنا',
   },
   'footer.privacy': {
     en: 'Privacy', es: 'Privacidad', zh: '隐私', hi: 'गोपनीयता', ar: 'الخصوصية',
@@ -608,7 +608,7 @@ const translations = {
     en: 'Back to Home', es: 'Volver al Inicio', zh: '返回首页', hi: 'होम पर वापस जाएँ', ar: 'العودة للرئيسية',
   },
   'about.ourMission': {
-    en: 'Our Mission', es: 'Nuestra Misión', zh: '我们的使命', hi: 'हमारा मिशन', ar: 'مهمتنا',
+    en: 'Our mission', es: 'Nuestra misión', zh: '我们的使命', hi: 'हमारा मिशन', ar: 'مهمتنا',
   },
   'about.heroTitle': {
     en: "AI isn't here to replace us.", es: 'La IA no está aquí para reemplazarnos.', zh: 'AI不是来取代我们的。', hi: 'AI हमें बदलने के लिए नहीं आया है।', ar: 'الذكاء الاصطناعي ليس هنا ليحل محلنا.',
@@ -782,12 +782,12 @@ const translations = {
     ar: 'سواء كنت تبحث عن عمل مرن في منطقتك أو تبني وكلاء ذكاء اصطناعي — هناك مكان لك هنا.',
   },
   'about.connectAgent': {
-    en: 'Connect an Agent', es: 'Conectar un Agente', zh: '连接代理', hi: 'एजेंट कनेक्ट करें', ar: 'اربط وكيلاً',
+    en: 'Connect an agent', es: 'Conectar un agente', zh: '连接代理', hi: 'एजेंट कनेक्ट करें', ar: 'اربط وكيلاً',
   },
 
   // ===== CONTACT PAGE =====
   'contact.title': {
-    en: 'Contact Us', es: 'Contáctenos', zh: '联系我们', hi: 'संपर्क करें', ar: 'اتصل بنا',
+    en: 'Contact us', es: 'Contáctenos', zh: '联系我们', hi: 'संपर्क करें', ar: 'اتصل بنا',
   },
   'contact.subtitle': {
     en: "Have a question or want to get in touch? We'd love to hear from you.",
@@ -863,10 +863,10 @@ const translations = {
     en: 'Dashboard', es: 'Panel', zh: '控制面板', hi: 'डैशबोर्ड', ar: 'لوحة التحكم',
   },
   'connect.fullApiDocs': {
-    en: 'Full API Docs', es: 'Documentación API Completa', zh: '完整API文档', hi: 'पूर्ण API दस्तावेज़', ar: 'وثائق API الكاملة',
+    en: 'Full API docs', es: 'Documentación API completa', zh: '完整API文档', hi: 'पूर्ण API दस्तावेज़', ar: 'وثائق API الكاملة',
   },
   'connect.heroTitle1': {
-    en: 'Connect Your', es: 'Conecta Tu', zh: '连接你的', hi: 'अपना कनेक्ट करें', ar: 'اربط',
+    en: 'Connect your', es: 'Conecta tu', zh: '连接你的', hi: 'अपना कनेक्ट करें', ar: 'اربط',
   },
   'connect.heroTitle2': {
     en: 'AI Agent', es: 'Agente de IA', zh: 'AI代理', hi: 'AI एजेंट', ar: 'وكيل الذكاء الاصطناعي',
