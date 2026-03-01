@@ -533,6 +533,7 @@ function AuthPage({ onLogin, onNavigate }) {
   const [form, setForm] = useState({ email: '', password: '', name: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [signupSuccess, setSignupSuccess] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -574,7 +575,31 @@ function AuthPage({ onLogin, onNavigate }) {
       const returnTo = params.get('returnTo')
       if (onNavigate) onNavigate(returnTo && decodeURIComponent(returnTo).startsWith('/dashboard') ? decodeURIComponent(returnTo) : '/dashboard')
     } catch (err) {
-      setError(err.message)
+      const msg = err.message || ''
+      // Map Supabase error messages to user-friendly, non-enumerable messages
+      if (isLogin) {
+        if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
+          setError('Invalid email or password')
+        } else if (msg.includes('Email not confirmed')) {
+          setError('Please verify your email first. Check your inbox for a confirmation link.')
+        } else if (msg.includes('rate') || msg.includes('too many') || msg.includes('429')) {
+          setError('Too many attempts. Please try again in a few minutes.')
+        } else {
+          setError('Invalid email or password')
+        }
+      } else {
+        if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('duplicate')) {
+          setError('An account with this email already exists.')
+        } else if (msg.includes('password') && (msg.includes('short') || msg.includes('least'))) {
+          setError('Password must be at least 8 characters')
+        } else if (msg.includes('valid email') || (msg.includes('invalid') && msg.includes('email'))) {
+          setError('Please enter a valid email address')
+        } else if (msg.includes('rate') || msg.includes('too many') || msg.includes('429')) {
+          setError('Too many attempts. Please try again in a few minutes.')
+        } else {
+          setError(msg || 'Something went wrong. Please try again.')
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -722,6 +747,23 @@ function AuthPage({ onLogin, onNavigate }) {
     )
   }
 
+  // Resend verification email via Supabase
+  const handleResendVerification = async () => {
+    if (resendCooldown > 0 || !supabase || !form.email) return
+    try {
+      await supabase.auth.resend({ type: 'signup', email: form.email })
+      setResendCooldown(60)
+      const timer = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) { clearInterval(timer); return 0 }
+          return prev - 1
+        })
+      }, 1000)
+    } catch (err) {
+      setError('Failed to resend verification email. Please try again.')
+    }
+  }
+
   // Show email confirmation screen after successful signup (when email verification is required)
   if (signupSuccess) {
     return (
@@ -744,6 +786,14 @@ function AuthPage({ onLogin, onNavigate }) {
               onClick={() => { setSignupSuccess(false); setIsLogin(true); setError('') }}
             >
               Back to Sign In
+            </button>
+            <button
+              onClick={handleResendVerification}
+              disabled={resendCooldown > 0}
+              className="auth-v4-switch-link"
+              style={{ marginTop: 12, display: 'block', width: '100%', background: 'none', border: 'none', cursor: resendCooldown > 0 ? 'default' : 'pointer', fontSize: 14, color: 'var(--text-tertiary)' }}
+            >
+              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Didn't receive it? Resend email"}
             </button>
           </div>
           <button onClick={() => spaNavigate('/')} className="auth-v4-back">
@@ -768,6 +818,12 @@ function AuthPage({ onLogin, onNavigate }) {
           <p className="auth-v4-subtitle">
             {isLogin ? 'Sign in to continue' : 'Start earning from real-world tasks'}
           </p>
+
+          {new URLSearchParams(window.location.search).get('reset') === 'success' && (
+            <div style={{ background: '#D1FAE5', color: '#065F46', padding: '12px 16px', borderRadius: 12, marginBottom: 16, fontSize: 14 }}>
+              Password updated successfully. Please sign in with your new password.
+            </div>
+          )}
 
           {error && (
             <div className="auth-v4-error">{error}</div>
@@ -848,6 +904,13 @@ function AuthPage({ onLogin, onNavigate }) {
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
+            {isLogin && (
+              <div style={{ textAlign: 'right', marginTop: -4, marginBottom: 8 }}>
+                <a href="/forgot-password" onClick={e => { e.preventDefault(); onNavigate('/forgot-password') }} style={{ fontSize: 13, color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+                  Forgot your password?
+                </a>
+              </div>
+            )}
             <button type="submit" className="auth-v4-submit" disabled={loading}>
               {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
             </button>
@@ -862,6 +925,213 @@ function AuthPage({ onLogin, onNavigate }) {
         </div>
 
         <button onClick={() => spaNavigate('/')} className="auth-v4-back">
+          ← Back to home
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ForgotPasswordPage({ onNavigate }) {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    if (!supabase) {
+      setError('Authentication service not configured')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/reset-password'
+      })
+      // Always show success (prevent email enumeration)
+      setSent(true)
+    } catch (err) {
+      // Still show success to prevent enumeration
+      setSent(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="auth-v4">
+        <div className="auth-v4-container">
+          <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+            <Logo variant="header" theme="light" />
+          </a>
+          <div className="auth-v4-card" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>
+              <Mail size={48} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+            </div>
+            <h1 className="auth-v4-title">Check your email</h1>
+            <p className="auth-v4-subtitle" style={{ marginBottom: 24 }}>
+              If an account exists for <strong>{email}</strong>, we sent a password reset link. Check your inbox and follow the instructions.
+            </p>
+            <button
+              className="auth-v4-submit"
+              onClick={() => onNavigate('/auth')}
+            >
+              Back to Sign In
+            </button>
+          </div>
+          <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+            ← Back to home
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="auth-v4">
+      <div className="auth-v4-container">
+        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
+        </a>
+        <div className="auth-v4-card">
+          <h1 className="auth-v4-title">Reset your password</h1>
+          <p className="auth-v4-subtitle">
+            Enter your email and we'll send you a reset link.
+          </p>
+
+          {error && <div className="auth-v4-error">{error}</div>}
+
+          <form onSubmit={handleSubmit} className="auth-v4-form">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="auth-v4-input"
+              required
+              autoComplete="email"
+              autoFocus
+            />
+            <button type="submit" className="auth-v4-submit" disabled={loading}>
+              {loading ? 'Sending...' : 'Send Reset Link'}
+            </button>
+          </form>
+
+          <p className="auth-v4-switch">
+            Remember your password?{' '}
+            <button onClick={() => onNavigate('/auth')} className="auth-v4-switch-link">
+              Sign in
+            </button>
+          </p>
+        </div>
+        <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+          ← Back to home
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ResetPasswordPage({ onNavigate }) {
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setLoading(true)
+    if (!supabase) {
+      setError('Authentication service not configured')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) throw error
+      onNavigate('/auth?reset=success')
+    } catch (err) {
+      setError(err.message || 'Failed to update password. The reset link may have expired.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="auth-v4">
+      <div className="auth-v4-container">
+        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
+        </a>
+        <div className="auth-v4-card">
+          <h1 className="auth-v4-title">Set new password</h1>
+          <p className="auth-v4-subtitle">
+            Enter your new password below.
+          </p>
+
+          {error && <div className="auth-v4-error">{error}</div>}
+
+          <form onSubmit={handleSubmit} className="auth-v4-form">
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="New password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="auth-v4-input"
+                style={{ paddingRight: 44 }}
+                required
+                minLength={8}
+                autoComplete="new-password"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                  color: 'var(--text-tertiary)', fontSize: 13, fontWeight: 500
+                }}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              className="auth-v4-input"
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+            <button type="submit" className="auth-v4-submit" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Password'}
+            </button>
+          </form>
+        </div>
+        <button onClick={() => window.location.href = '/'} className="auth-v4-back">
           ← Back to home
         </button>
       </div>
@@ -5527,7 +5797,7 @@ function App() {
     : null
 
   // Routes that should NOT get the shared marketing navbar+footer
-  const isAuthRoute = path === '/auth'
+  const isAuthRoute = path === '/auth' || path === '/forgot-password' || path === '/reset-password'
   const isOnboardRoute = path === '/onboard'
   const isDashboardRoute = path.startsWith('/dashboard')
   const isSelfContainedPage = path === '/connect-agent' || path === '/mcp' // has its own header + footer
@@ -5572,6 +5842,13 @@ function App() {
     if (path === '/auth') {
       if (user) return <Loading />
       return <AuthPage onNavigate={navigate} />
+    }
+    if (path === '/forgot-password') {
+      if (user) return <Loading />
+      return <ForgotPasswordPage onNavigate={navigate} />
+    }
+    if (path === '/reset-password') {
+      return <ResetPasswordPage onNavigate={navigate} />
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/premium') {
