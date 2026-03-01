@@ -4151,16 +4151,23 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
   
-  // Update task status to pending_review
-  await supabase
+  // Atomic update: only transition if still in_progress (prevents TOCTOU race)
+  const { data: updatedTask, error: statusErr } = await supabase
     .from('tasks')
     .update({
       status: 'pending_review',
       proof_submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', taskId);
-  
+    .eq('id', taskId)
+    .eq('status', 'in_progress')
+    .select('id')
+    .single();
+
+  if (statusErr || !updatedTask) {
+    return res.status(409).json({ error: 'Task status changed before proof could be submitted. Please refresh.' });
+  }
+
   // Notify agent
   await createNotification(
     task.agent_id,
@@ -5711,16 +5718,23 @@ app.post('/api/mcp', async (req, res) => {
           submitted_at: new Date().toISOString()
         });
 
-        // Update task to pending_review
-        await supabase
+        // Atomic update: only transition if still in_progress (prevents TOCTOU race)
+        const { data: updatedMcpTask, error: mcpStatusErr } = await supabase
           .from('tasks')
           .update({
             status: 'pending_review',
             proof_submitted_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .eq('id', task_id);
-        
+          .eq('id', task_id)
+          .eq('status', 'in_progress')
+          .select('id')
+          .single();
+
+        if (mcpStatusErr || !updatedMcpTask) {
+          return res.status(409).json({ error: 'Task status changed before proof could be submitted. Please refresh.' });
+        }
+
         // Notify agent
         await createNotification(
           task.agent_id,
