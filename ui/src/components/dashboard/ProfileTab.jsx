@@ -1,6 +1,7 @@
 // Extracted from Dashboard.jsx — profile editing with avatar, skills, languages, social links
 import React, { useRef } from 'react'
 import { Check, Copy } from 'lucide-react'
+import { Button } from '../ui'
 import CityAutocomplete from '../CityAutocomplete'
 import TimezoneDropdown from '../TimezoneDropdown'
 import { PLATFORMS, PLATFORM_ORDER, extractHandle } from '../SocialIcons'
@@ -173,7 +174,7 @@ export default function ProfileTab({
                           reader.onerror = () => reject(new Error('Failed to read file'))
                           reader.readAsDataURL(fileToUpload)
                         })
-                        console.log(`[Avatar] Original: ${file.size} bytes (${file.type}), Compressed: ${fileToUpload.size} bytes (${fileToUpload.type}), Base64 length: ${base64.length}`)
+
                         const controller = new AbortController()
                         const timeout = setTimeout(() => controller.abort(), 60000)
                         try {
@@ -193,7 +194,7 @@ export default function ProfileTab({
                             : uploadExt === 'gif' ? 'image/gif'
                             : 'image/jpeg'
                           const payload = JSON.stringify({ file: base64, filename: uploadFilename, mimeType: uploadMime })
-                          console.log(`[Avatar] Uploading: base64 length=${base64.length}, payload size=${payload.length}, compressed size=${fileToUpload.size}`)
+
                           const res = await fetch(`${API_URL}/upload/avatar`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
@@ -203,7 +204,7 @@ export default function ProfileTab({
                           clearTimeout(timeout)
                           if (res.ok) {
                             const data = await res.json()
-                            console.log(`[Avatar] Upload response:`, data)
+
                             // Use base64 for immediate display (guaranteed to show), but store
                             // the server proxy URL in localStorage for persistence across reloads.
                             const proxyUrl = data.url
@@ -214,7 +215,7 @@ export default function ProfileTab({
                             localStorage.setItem('user', JSON.stringify(cacheUser))
                             // Update the humans array so browse cards reflect the new avatar instantly
                             setHumans(prev => prev.map(h => h.id === user.id ? { ...h, avatar_url: proxyUrl || base64 } : h))
-                            toast.success('Profile photo updated!')
+                            toast.success('Profile photo updated')
                           } else {
                             const errText = await res.text().catch(() => '')
                             let errMsg = 'Failed to upload photo'
@@ -336,8 +337,8 @@ export default function ProfileTab({
                       }
                       const hasSkills = Array.isArray(data?.user?.skills || user?.skills) && (data?.user?.skills || user?.skills).length > 0
                       const hasLangs = Array.isArray(data?.user?.languages || user?.languages) && (data?.user?.languages || user?.languages).length > 0
-                      if (!hasSkills) toast.success('Profile saved! Next: add your skills')
-                      else if (!hasLangs) toast.success('Profile saved! Next: add your languages')
+                      if (!hasSkills) toast.success('Profile saved. Next: add your skills')
+                      else if (!hasLangs) toast.success('Profile saved. Next: add your languages')
                       else toast.success('Profile updated')
                       setProfileLocation(null)
                       setTimeout(() => window.location.reload(), 1500)
@@ -434,7 +435,7 @@ export default function ProfileTab({
                     <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Describe your experience, availability, and what makes you great at tasks." />
                   </div>
 
-                  <button type="submit" className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary">Save Changes</button>
+                  <Button type="submit" variant="secondary" size="md" className="w-full mt-4">Save changes</Button>
                 </form>
               )}
 
@@ -504,9 +505,11 @@ export default function ProfileTab({
                       Add
                     </button>
                   </div>
-                  <button
+                  <Button
                     type="button"
-                    className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary"
+                    variant="secondary"
+                    size="md"
+                    className="w-full mt-4"
                     onClick={async () => {
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
@@ -522,8 +525,8 @@ export default function ProfileTab({
                           }
                           const hasLangs = Array.isArray(data?.user?.languages || user?.languages) && (data?.user?.languages || user?.languages).length > 0
                           const hasSocial = data?.user?.social_links && Object.keys(data.user.social_links).length > 0
-                          if (!hasLangs) toast.success('Skills saved! Next: add your languages')
-                          else if (!hasSocial) toast.success('Skills saved! Next: add your social links')
+                          if (!hasLangs) toast.success('Skills saved. Next: add your languages')
+                          else if (!hasSocial) toast.success('Skills saved. Next: add your social links')
                           else toast.success('Skills updated')
                           setTimeout(() => window.location.reload(), 1500)
                         } else {
@@ -535,8 +538,8 @@ export default function ProfileTab({
                       }
                     }}
                   >
-                    Update Skills
-                  </button>
+                    Update skills
+                  </Button>
                 </>
               )}
 
@@ -604,9 +607,11 @@ export default function ProfileTab({
                       Add
                     </button>
                   </div>
-                  <button
+                  <Button
                     type="button"
-                    className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary"
+                    variant="secondary"
+                    size="md"
+                    className="w-full mt-4"
                     onClick={async () => {
                       try {
                         const res = await fetch(`${API_URL}/humans/profile`, {
@@ -621,7 +626,7 @@ export default function ProfileTab({
                             localStorage.setItem('user', JSON.stringify(updatedUser))
                           }
                           const hasSocial = data?.user?.social_links && Object.keys(data.user.social_links).length > 0
-                          if (!hasSocial) toast.success('Languages saved! Next: add your social links')
+                          if (!hasSocial) toast.success('Languages saved. Next: add your social links')
                           else toast.success('Languages updated')
                           setTimeout(() => window.location.reload(), 1500)
                         } else {
@@ -633,8 +638,8 @@ export default function ProfileTab({
                       }
                     }}
                   >
-                    Update Languages
-                  </button>
+                    Update languages
+                  </Button>
                 </>
               )}
 
@@ -696,7 +701,7 @@ export default function ProfileTab({
                     })}
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Enter your username or paste a profile URL — it will be auto-formatted</p>
-                  <button type="submit" className="dashboard-v4-form-submit dashboard-v4-form-submit--secondary">Update Social Links</button>
+                  <Button type="submit" variant="secondary" size="md" className="w-full mt-4">Update social links</Button>
                 </form>
               )}
 

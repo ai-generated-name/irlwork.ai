@@ -49,3 +49,19 @@ If a violation is intentional, add an inline disable comment with an explanation
 - **No emoji** in rendered text; use [lucide-react](https://lucide.dev/icons/) icons.
 - Allowed uppercase words: API, URL, AI, CTA, MCP, USDC, USD, FAQ, OAuth, SSO, ID, UI, UX.
 - Allowed Title Case phrases: Privacy Policy, Terms of Service, Terms and Conditions, Stripe Connect.
+
+---
+
+## Changelog
+
+### 2026-03-01 — Visual QA pass
+
+- **ProofSubmitModal**: Fixed undefined `user` reference in Authorization header (runtime bug)
+- **MessagesTab**: Replaced emoji error icons with `AlertTriangle` from lucide-react; migrated retry and send buttons to `Button` component
+- **ProfileTab**: Migrated all save/update buttons from `v4-btn` classes to `Button` component; removed 3 `console.log` statements; fixed 5 exclamation marks in toast messages
+- **HiringDashboard**: Replaced inline-styled cards (checklist, activity, quick actions) with `Card` component; migrated quick action icon colors from `#F4845F` to design system `#E8853D`
+- **HiringPaymentsTab**: Replaced inline stat divs with `Card` component; added `DM Mono` font for monetary values
+- **SettingsTab**: Removed 2 `console.log` statements; fixed 4 exclamation marks in toast messages
+- **PremiumPage**: Removed 5 debug `console.log` statements
+- **HumanProfilePage**: Removed 1 `console.log` statement
+- **Cleanup**: Deleted orphaned `mobile-fixes.css`; removed its `@import` from `index.css`

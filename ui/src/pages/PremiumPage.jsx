@@ -100,12 +100,12 @@ export default function PremiumPage({ user }) {
   async function fetchSubscription(checkStripe = false) {
     try {
       const token = await getFreshToken(user?.token)
-      console.log('[Premium] fetchSubscription token present:', !!token, 'length:', token?.length)
+
       const url = checkStripe ? `${API_URL}/subscription?check_stripe=true` : `${API_URL}/subscription`
       const res = await fetch(url, {
         headers: { Authorization: token }
       })
-      console.log('[Premium] fetchSubscription response status:', res.status)
+
       if (res.ok) {
         const data = await res.json()
         setSubscription(data.subscription)
@@ -124,7 +124,7 @@ export default function PremiumPage({ user }) {
     setMessage(null)
     try {
       const token = await getFreshToken(user?.token)
-      console.log('[Premium] handleCheckout token present:', !!token, 'length:', token?.length)
+
       if (!token) {
         setMessage({ type: 'error', text: 'Session expired. Please refresh the page and try again.' })
         setLoading(null)
@@ -138,9 +138,9 @@ export default function PremiumPage({ user }) {
         },
         body: JSON.stringify({ tier, billing_period: billingPeriod }),
       })
-      console.log('[Premium] checkout response status:', res.status)
+
       const data = await res.json()
-      console.log('[Premium] checkout response data:', JSON.stringify(data).substring(0, 200))
+
       if (!res.ok) {
         setMessage({ type: 'error', text: data.error || 'Could not start checkout. Please try again.' })
         setLoading(null)

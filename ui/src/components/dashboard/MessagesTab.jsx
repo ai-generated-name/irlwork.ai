@@ -1,6 +1,7 @@
 // Extracted from Dashboard.jsx — messaging interface with conversation list and message thread
 import React from 'react'
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, AlertTriangle } from 'lucide-react'
+import { Button } from '../ui'
 
 export default function MessagesTab({
   user,
@@ -63,9 +64,9 @@ export default function MessagesTab({
             </div>
           ) : conversationsError && conversations.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
+              <div style={{ marginBottom: 8 }}><AlertTriangle size={28} style={{ color: '#FEBC2E' }} /></div>
               <p style={{ fontWeight: 500, marginBottom: 8, color: 'var(--text-secondary)' }}>{conversationsError}</p>
-              <button onClick={fetchConversations} className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }}>Retry</button>
+              <Button variant="secondary" size="sm" onClick={fetchConversations}>Retry</Button>
             </div>
           ) : conversations.length === 0 ? (
             <div className="mobile-empty-state" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
@@ -172,9 +173,9 @@ export default function MessagesTab({
                   </div>
                 ) : messagesError ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8 }}>
-                    <span style={{ fontSize: 24 }}>⚠️</span>
+                    <AlertTriangle size={24} style={{ color: '#FEBC2E' }} />
                     <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>{messagesError}</p>
-                    <button onClick={() => fetchMessages(selectedConversation)} className="v4-btn v4-btn-secondary" style={{ fontSize: 12, padding: '4px 12px' }}>Retry</button>
+                    <Button variant="secondary" size="sm" onClick={() => fetchMessages(selectedConversation)}>Retry</Button>
                   </div>
                 ) : messages.length === 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: 14 }}>
@@ -208,9 +209,9 @@ export default function MessagesTab({
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(e) } }}
                   onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
                 />
-                <button className="v4-btn v4-btn-primary" onClick={sendMessage} disabled={sendingMessage || !newMessage.trim()} style={{ minHeight: 40 }}>
+                <Button variant="primary" size="md" onClick={sendMessage} disabled={sendingMessage || !newMessage.trim()} style={{ minHeight: 40 }}>
                   {sendingMessage ? '...' : 'Send'}
-                </button>
+                </Button>
               </div>
             </>
           ) : (

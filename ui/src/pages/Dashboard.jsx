@@ -802,7 +802,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const releasePayment = async (taskId) => {
     try {
       const res = await fetch(`${API_URL}/tasks/${taskId}/release`, { method: 'POST', headers: { Authorization: user.token || '' } })
-      if (res.ok) { toast.success('Payment released successfully!'); fetchPostedTasks() }
+      if (res.ok) { toast.success('Payment released successfully'); fetchPostedTasks() }
       else { const err = await res.json(); toast.error(err.error || 'Unknown error') }
     } catch (e) { toast.error('Could not release payment') }
   }
