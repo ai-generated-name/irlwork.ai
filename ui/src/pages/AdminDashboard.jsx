@@ -3,6 +3,8 @@ import { BarChart3, Flag, DollarSign, AlertTriangle, User, Users, CheckCircle, A
 import { useToast } from '../context/ToastContext'
 import { adminFetch } from '../utils/adminFetch'
 import API_URL from '../config/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+import { PageLoader } from '../components/ui/PageLoader'
 
 // Lazy-load BI tabs so they only fetch data when selected
 const OverviewTab = lazy(() => import('../components/admin/OverviewTab'))
@@ -17,6 +19,7 @@ const UserManagerTab = lazy(() => import('../components/admin/UserManagerTab'))
  * Only accessible to users with admin privileges
  */
 export default function AdminDashboard({ user }) {
+  usePageTitle('Admin')
   const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -363,23 +366,23 @@ export default function AdminDashboard({ user }) {
       {/* Content */}
       {/* BI Tabs — lazy loaded, each manages its own data fetching */}
       {activeQueue === 'bi-overview' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading overview...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading overview..." />}>
           <OverviewTab user={user} />
         </Suspense>
       ) : activeQueue === 'bi-funnel' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading funnel...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading funnel..." />}>
           <FunnelTab user={user} />
         </Suspense>
       ) : activeQueue === 'bi-financial' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading financials...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading financials..." />}>
           <FinancialTab user={user} />
         </Suspense>
       ) : activeQueue === 'bi-live-feed' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading live feed...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading live feed..." />}>
           <LiveFeedTab user={user} />
         </Suspense>
       ) : activeQueue === 'bi-task-manager' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading task manager...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading task manager..." />}>
           <TaskManagerTab user={user} />
         </Suspense>
       ) : activeQueue === 'bi-users' ? (
@@ -387,9 +390,7 @@ export default function AdminDashboard({ user }) {
           <UserManagerTab user={user} />
         </Suspense>
       ) : loading && activeQueue === 'dashboard' ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-gray-500">Loading dashboard...</div>
-        </div>
+        <PageLoader message="Loading dashboard..." />
       ) : activeQueue === 'dashboard' ? (
         /* Dashboard Overview */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -467,9 +468,7 @@ export default function AdminDashboard({ user }) {
         </div>
       ) : activeQueue === 'feedback' ? (
         loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-gray-500">Loading...</div>
-          </div>
+          <PageLoader message="Loading..." />
         ) : (
           <div className="space-y-4">
             {/* Feedback Filters */}
@@ -507,9 +506,7 @@ export default function AdminDashboard({ user }) {
           </div>
         )
       ) : loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-gray-500">Loading...</div>
-        </div>
+        <PageLoader message="Loading..." />
       ) : error ? (
         <div className="bg-white rounded-xl border-2 border-red-100 p-12 text-center">
           <div className="mb-4"><AlertTriangle size={32} /></div>

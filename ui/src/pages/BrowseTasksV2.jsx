@@ -10,6 +10,8 @@ import CustomDropdown from '../components/CustomDropdown';
 import SkillAutocomplete from '../components/SkillAutocomplete';
 
 import API_URL from '../config/api';
+import { navigate } from '../utils/navigate';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const SORT_OPTIONS = [
   { value: 'distance', label: 'Nearest First' },
@@ -66,6 +68,7 @@ export default function BrowseTasksV2({
   initialLocation = null,
   initialRadius = '25',
 }) {
+  usePageTitle('Browse Tasks');
   // Tasks state
   const [tasks, setTasks] = useState([]);
   const [tasksTotal, setTasksTotal] = useState(0);
@@ -244,7 +247,7 @@ export default function BrowseTasksV2({
 
   // Handle task selection - navigate to task detail page
   const handleTaskSelect = (taskId) => {
-    window.location.href = `/tasks/${taskId}`;
+    navigate(`/tasks/${taskId}`);
   };
 
   // Popup open/close handlers for map pins

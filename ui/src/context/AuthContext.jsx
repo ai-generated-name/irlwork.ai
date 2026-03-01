@@ -189,6 +189,9 @@ export function AuthProvider({ children }) {
     if (res.status === 401 && user) {
       debug('[Auth] Received 401, clearing stale auth state')
       await logout()
+      // Redirect to login with returnTo so user lands back here after re-auth
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.href = `/auth?returnTo=${returnUrl}`
     }
 
     return res
