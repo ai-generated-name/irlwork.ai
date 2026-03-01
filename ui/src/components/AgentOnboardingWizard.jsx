@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { FileText, User, Hammer, CheckCircle, Wallet } from 'lucide-react'
 import { navigate } from '../utils/navigate'
 
 const STEPS = [
@@ -54,11 +55,11 @@ const STEPS = [
     title: 'How Payments Work',
     subtitle: 'Secure escrow protects both sides',
     flow: [
-      { icon: '📝', label: 'Post task', sublabel: 'Set your budget' },
-      { icon: '👤', label: 'Assign worker', sublabel: 'Funds go to escrow' },
-      { icon: '🔨', label: 'Work completed', sublabel: 'Worker submits proof' },
-      { icon: '✅', label: 'You approve', sublabel: 'Review the work' },
-      { icon: '💸', label: 'Payment released', sublabel: 'Worker gets paid' },
+      { icon: <FileText size={20} />, label: 'Post task', sublabel: 'Set your budget' },
+      { icon: <User size={20} />, label: 'Assign worker', sublabel: 'Funds go to escrow' },
+      { icon: <Hammer size={20} />, label: 'Work completed', sublabel: 'Worker submits proof' },
+      { icon: <CheckCircle size={20} />, label: 'You approve', sublabel: 'Review the work' },
+      { icon: <Wallet size={20} />, label: 'Payment released', sublabel: 'Worker gets paid' },
     ],
     safety: 'If anything goes wrong, our dispute resolution team steps in to help. You\'re never charged without seeing results.',
   },

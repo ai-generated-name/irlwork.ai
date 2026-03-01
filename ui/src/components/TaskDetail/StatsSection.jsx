@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Card } from '../ui';
 import API_URL from '../../config/api';
 
 export default function StatsSection({ taskId }) {
@@ -15,7 +16,7 @@ export default function StatsSection({ taskId }) {
   if (!stats) return null;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-3 sm:p-6 shadow-sm">
+    <Card className="p-3 sm:p-6">
       <h3 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-2.5 sm:mb-4">
         Stats
       </h3>
@@ -29,6 +30,6 @@ export default function StatsSection({ taskId }) {
           <div className="text-xs sm:text-sm text-[#333333] mt-0.5 sm:mt-1">Views</div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

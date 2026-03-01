@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
-import { MapPin, Search, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Search, Globe, ChevronLeft, ChevronRight, Target } from 'lucide-react';
 const TaskMap = lazy(() => import('../components/TaskMap'));
 import { TASK_CATEGORIES } from '../components/CategoryPills';
 import TaskCardV2 from '../components/TaskCardV2';
@@ -8,6 +8,7 @@ import ReportTaskModal from '../components/ReportTaskModal';
 import CityAutocomplete from '../components/CityAutocomplete';
 import CustomDropdown from '../components/CustomDropdown';
 import SkillAutocomplete from '../components/SkillAutocomplete';
+import { PageHeader, EmptyState } from '../components/ui';
 
 import API_URL from '../config/api';
 import { navigate } from '../utils/navigate';
@@ -339,7 +340,7 @@ export default function BrowseTasksV2({
     <div className="browse-tasks-v2">
       {/* Header */}
       <div className="browse-tasks-v2-header">
-        <h1 className="browse-tasks-v2-title">Browse Tasks</h1>
+        <PageHeader title="Browse tasks" />
 
         {/* Search bar */}
         <div className="browse-tasks-v2-search-row">
@@ -506,7 +507,7 @@ export default function BrowseTasksV2({
               title={filterByMySkills ? 'Showing tasks matching your skills' : 'Show tasks matching your skills'}
               style={filterByMySkills ? { background: '#EEF2FF', color: '#4338CA', borderColor: '#C7D2FE' } : {}}
             >
-              <span>🎯</span> My Skills
+              <Target size={14} /> My skills
             </button>
           )}
         </div>
@@ -534,9 +535,9 @@ export default function BrowseTasksV2({
                     <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
                 </div>
-                <h3>We couldn't load tasks right now</h3>
+                <h3>Could not load tasks</h3>
                 <p>This might be a temporary issue. Please try again.</p>
-                <button onClick={fetchTasks}>Try again</button>
+                <button onClick={fetchTasks}>Retry search</button>
               </div>
             ) : tasks.length === 0 ? (
               <div className="browse-tasks-v2-empty">

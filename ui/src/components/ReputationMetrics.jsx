@@ -1,5 +1,5 @@
 import React from 'react'
-import { ClipboardList, CheckCircle, Handshake, FileText, AlertTriangle, DollarSign, Clock, Trophy, Star, BarChart3 } from 'lucide-react'
+import { ClipboardList, CheckCircle, Handshake, FileText, AlertTriangle, DollarSign, Clock, Trophy, Star, BarChart3, Sprout, Crown, Gem, Zap, Target } from 'lucide-react'
 
 const styles = {
   card: 'bg-white/5 border border-white/10 rounded-2xl p-6',
@@ -57,16 +57,16 @@ function MetricBar({ label, value, maxValue, color = 'orange' }) {
 }
 
 function ReputationBadge({ completionRate, paymentRate }) {
-  let badge = { label: 'New', color: 'bg-gray-500/20 text-gray-400', icon: '🌱' }
+  let badge = { label: 'New', color: 'bg-gray-500/20 text-gray-400', icon: <Sprout size={14} /> }
 
   if (completionRate >= 90 && paymentRate >= 95) {
-    badge = { label: 'Elite', color: 'bg-purple-500/20 text-purple-400', icon: '👑' }
+    badge = { label: 'Elite', color: 'bg-purple-500/20 text-purple-400', icon: <Crown size={14} /> }
   } else if (completionRate >= 80 && paymentRate >= 90) {
-    badge = { label: 'Pro', color: 'bg-blue-500/20 text-blue-400', icon: '💎' }
+    badge = { label: 'Pro', color: 'bg-blue-500/20 text-blue-400', icon: <Gem size={14} /> }
   } else if (completionRate >= 70) {
     badge = { label: 'Reliable', color: 'bg-green-500/20 text-green-400', icon: <CheckCircle size={14} /> }
   } else if (completionRate >= 50) {
-    badge = { label: 'Active', color: 'bg-orange-500/20 text-orange-400', icon: '⚡' }
+    badge = { label: 'Active', color: 'bg-orange-500/20 text-orange-400', icon: <Zap size={14} /> }
   }
 
   return (
@@ -125,9 +125,9 @@ export default function ReputationMetrics({ user, isHiringMode }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
-            {Icons.trophy} Reputation Metrics
+            {Icons.trophy} Reputation metrics
           </h2>
-          <p className="text-gray-400 text-sm">Your performance and activity stats</p>
+          <p className="text-gray-400 text-sm">Your performance and activity</p>
         </div>
         {completionRateNum !== null && (
           <ReputationBadge
@@ -144,19 +144,19 @@ export default function ReputationMetrics({ user, isHiringMode }) {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <StatCard
               icon={Icons.completed}
-              label="Tasks Completed"
+              label="Tasks completed"
               value={total_tasks_completed}
               subtitle="Successfully finished"
             />
             <StatCard
               icon={Icons.accepted}
-              label="Tasks Accepted"
+              label="Tasks accepted"
               value={total_tasks_accepted}
               subtitle="Total accepted"
             />
             <StatCard
               icon={Icons.clock}
-              label="Last Active"
+              label="Last active"
               value={formatDate(last_active_at)}
               subtitle="Recent activity"
             />
@@ -166,18 +166,18 @@ export default function ReputationMetrics({ user, isHiringMode }) {
           {total_tasks_accepted > 0 && (
             <div className={styles.card}>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                {Icons.chart} Performance
+                {Icons.chart} Performance overview
               </h3>
 
               <div className="space-y-4">
                 <MetricBar
-                  label="Completion Rate"
+                  label="Completion rate"
                   value={total_tasks_completed}
                   maxValue={total_tasks_accepted}
                 />
 
                 <div className="flex items-center justify-between pt-2">
-                  <span className="text-gray-400 text-sm">Success Rate</span>
+                  <span className="text-gray-400 text-sm">Success rate</span>
                   <span className={`text-2xl font-bold ${
                     completionRateNum >= 80 ? 'text-green-400' :
                     completionRateNum >= 60 ? 'text-orange-400' :
@@ -193,10 +193,10 @@ export default function ReputationMetrics({ user, isHiringMode }) {
           {/* Empty State */}
           {total_tasks_accepted === 0 && (
             <div className={`${styles.card} text-center py-8`}>
-              <span className="text-6xl mb-4 block">🎯</span>
-              <h3 className="text-lg font-semibold text-white mb-2">Start Building Your Reputation</h3>
+              <span className="text-4xl mb-4 block"><Target size={48} className="mx-auto text-gray-400" /></span>
+              <h3 className="text-lg font-semibold text-white mb-2">Start building your reputation</h3>
               <p className="text-gray-400 text-sm mb-4">
-                Accept and complete tasks to build your reputation score
+                Your reputation will appear here when you complete tasks
               </p>
             </div>
           )}
@@ -210,19 +210,19 @@ export default function ReputationMetrics({ user, isHiringMode }) {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <StatCard
               icon={Icons.posted}
-              label="Tasks Posted"
+              label="Tasks posted"
               value={total_tasks_posted}
               subtitle="Total created"
             />
             <StatCard
               icon={Icons.money}
-              label="Total Paid"
+              label="Total paid"
               value={formatUSD(total_paid)}
               subtitle="To humans"
             />
             <StatCard
               icon={Icons.disputes}
-              label="Disputes Filed"
+              label="Disputes filed"
               value={total_disputes_filed}
               subtitle="Issues reported"
             />
@@ -232,19 +232,19 @@ export default function ReputationMetrics({ user, isHiringMode }) {
           {total_tasks_posted > 0 && (
             <div className={styles.card}>
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                {Icons.chart} Activity Overview
+                {Icons.chart} Activity overview
               </h3>
 
               <div className="space-y-4">
                 <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Average per Task</span>
+                  <span className="text-gray-400">Average per task</span>
                   <span className="text-white font-semibold">
                     {formatUSD(total_paid / total_tasks_posted)}
                   </span>
                 </div>
 
                 <div className="flex justify-between py-3 border-b border-white/10">
-                  <span className="text-gray-400">Dispute Rate</span>
+                  <span className="text-gray-400">Dispute rate</span>
                   <span className={`font-semibold ${
                     total_disputes_filed === 0 ? 'text-green-400' :
                     (total_disputes_filed / total_tasks_posted) < 0.1 ? 'text-orange-400' :
@@ -258,7 +258,7 @@ export default function ReputationMetrics({ user, isHiringMode }) {
 
                 {paymentRateNum !== null && (
                   <div className="flex justify-between py-3">
-                    <span className="text-gray-400">Payment Rate</span>
+                    <span className="text-gray-400">Payment rate</span>
                     <span className={`font-semibold ${
                       paymentRateNum >= 95 ? 'text-green-400' :
                       paymentRateNum >= 80 ? 'text-orange-400' :
@@ -275,10 +275,10 @@ export default function ReputationMetrics({ user, isHiringMode }) {
           {/* Empty State */}
           {total_tasks_posted === 0 && (
             <div className={`${styles.card} text-center py-8`}>
-              <span className="text-6xl mb-4 block">🚀</span>
-              <h3 className="text-lg font-semibold text-white mb-2">Start Posting Tasks</h3>
+              <span className="text-4xl mb-4 block"><FileText size={48} className="mx-auto text-gray-400" /></span>
+              <h3 className="text-lg font-semibold text-white mb-2">Start posting tasks</h3>
               <p className="text-gray-400 text-sm mb-4">
-                Create your first task to start building your reputation as an agent
+                Your activity will appear here when you post tasks
               </p>
             </div>
           )}
@@ -291,7 +291,7 @@ export default function ReputationMetrics({ user, isHiringMode }) {
           <div className="flex items-center gap-3">
             <span className="text-2xl">{Icons.clock}</span>
             <div>
-              <p className="text-white font-medium">Last Active</p>
+              <p className="text-white font-medium">Last active</p>
               <p className="text-sm text-gray-400">Last platform interaction</p>
             </div>
           </div>

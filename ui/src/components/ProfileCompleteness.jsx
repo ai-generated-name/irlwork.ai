@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
+import { Camera, PenLine, Wrench, MapPin, DollarSign, Languages, Landmark } from 'lucide-react'
 
 const PROFILE_FIELDS = [
   {
     key: 'avatar_url',
     label: 'Add a profile photo',
-    icon: '📷',
+    icon: <Camera size={14} />,
     weight: 15,
     tab: 'profile',
     check: (u) => !!u?.avatar_url,
@@ -12,7 +13,7 @@ const PROFILE_FIELDS = [
   {
     key: 'bio',
     label: 'Write a bio',
-    icon: '✏️',
+    icon: <PenLine size={14} />,
     weight: 15,
     tab: 'profile',
     check: (u) => !!(u?.bio && u.bio.trim().length > 10),
@@ -20,7 +21,7 @@ const PROFILE_FIELDS = [
   {
     key: 'skills',
     label: 'Add your skills',
-    icon: '🛠️',
+    icon: <Wrench size={14} />,
     weight: 15,
     tab: 'profile',
     check: (u) => {
@@ -31,7 +32,7 @@ const PROFILE_FIELDS = [
   {
     key: 'city',
     label: 'Set your location',
-    icon: '📍',
+    icon: <MapPin size={14} />,
     weight: 15,
     tab: 'profile',
     check: (u) => !!(u?.city && u.city.trim()),
@@ -39,7 +40,7 @@ const PROFILE_FIELDS = [
   {
     key: 'hourly_rate',
     label: 'Set your hourly rate',
-    icon: '💰',
+    icon: <DollarSign size={14} />,
     weight: 10,
     tab: 'profile',
     check: (u) => !!(u?.hourly_rate && u.hourly_rate > 0),
@@ -47,7 +48,7 @@ const PROFILE_FIELDS = [
   {
     key: 'languages',
     label: 'Add languages you speak',
-    icon: '🌍',
+    icon: <Languages size={14} />,
     weight: 10,
     tab: 'profile',
     check: (u) => {
@@ -58,7 +59,7 @@ const PROFILE_FIELDS = [
   {
     key: 'stripe_connected',
     label: 'Connect bank account',
-    icon: '🏦',
+    icon: <Landmark size={14} />,
     weight: 20,
     tab: 'payments',
     check: (u) => !!(u?.stripe_connected || u?.stripe_account_id),
@@ -266,7 +267,7 @@ export default function ProfileCompleteness({ user, onNavigate }) {
               e.currentTarget.style.color = 'var(--text-secondary)'
             }}
           >
-            <span style={{ fontSize: 14 }}>{field.icon}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>{field.icon}</span>
             {field.label}
           </button>
         ))}

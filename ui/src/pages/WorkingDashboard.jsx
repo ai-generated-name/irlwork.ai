@@ -99,8 +99,8 @@ function MonthlyEarningsChart({ tasks }) {
     <div className="wd-card wd-fade-in" style={{ animationDelay: '0.3s', padding: 'var(--space-6)' }}>
       <div className="working-dash-chart-header">
         <div>
-          <h3 className="working-dash-chart-title">Monthly Earnings</h3>
-          <p className="working-dash-chart-total">${chartData.monthTotal.toFixed(0)}</p>
+          <h3 className="working-dash-chart-title">Monthly earnings</h3>
+          <p className="working-dash-chart-total font-['DM_Mono']">${chartData.monthTotal.toFixed(0)}</p>
         </div>
         <select
           className="working-dash-chart-select"
@@ -296,7 +296,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
             onClick={handleGoAvailable}
             disabled={togglingAvailability}
           >
-            {togglingAvailability ? 'Updating...' : 'Go Available'}
+            {togglingAvailability ? 'Updating...' : 'Go available'}
           </button>
         </div>
       )}
@@ -359,7 +359,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
           </svg>
-          Browse Tasks
+          Browse tasks
         </button>
       </div>
 
@@ -372,8 +372,8 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
             </svg>
           </div>
           <div>
-            <div className="working-dash-stat-label">Total Earned</div>
-            <div className="working-dash-stat-value">${totalEarned}</div>
+            <div className="working-dash-stat-label">Total earned</div>
+            <div className="working-dash-stat-value font-['DM_Mono']">${totalEarned}</div>
           </div>
         </div>
         <div className="wd-card working-dash-stat">
@@ -384,7 +384,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </div>
           <div>
             <div className="working-dash-stat-label">Active</div>
-            <div className="working-dash-stat-value">{activeTasks.length}</div>
+            <div className="working-dash-stat-value font-['DM_Mono']">{activeTasks.length}</div>
           </div>
         </div>
         <div className="wd-card working-dash-stat">
@@ -396,7 +396,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </div>
           <div>
             <div className="working-dash-stat-label">Completed</div>
-            <div className="working-dash-stat-value">{paidTasks.length}</div>
+            <div className="working-dash-stat-value font-['DM_Mono']">{paidTasks.length}</div>
           </div>
         </div>
         <div className="wd-card working-dash-stat">
@@ -407,7 +407,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </div>
           <div>
             <div className="working-dash-stat-label">Success</div>
-            <div className="working-dash-stat-value">{successRate > 0 ? `${successRate}%` : '--'}</div>
+            <div className="working-dash-stat-value font-['DM_Mono']">{successRate > 0 ? `${successRate}%` : '--'}</div>
           </div>
         </div>
       </div>
@@ -418,7 +418,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
       {/* Attention Needed */}
       {(reviewTasks.length > 0 || inProgressTasks.length > 0) && (
         <div className="wd-card wd-fade-in" style={{ animationDelay: '0.35s', padding: 'var(--space-5)' }}>
-          <h3 className="working-dash-section-title">Needs Attention</h3>
+          <h3 className="working-dash-section-title">Needs attention</h3>
           <div className="working-dash-attention-items">
             {inProgressTasks.map(task => {
               let deadlineBadge = null;
@@ -449,7 +449,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
                   <span className="working-dash-attention-badge working-dash-attention-badge--active">In Progress</span>
                   {deadlineBadge}
                   <span className="working-dash-attention-task-title">{task.title}</span>
-                  <span className="working-dash-attention-budget">${task.budget}</span>
+                  <span className="working-dash-attention-budget font-['DM_Mono']">${task.budget}</span>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
@@ -464,7 +464,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
               >
                 <span className="working-dash-attention-badge working-dash-attention-badge--review">In Review</span>
                 <span className="working-dash-attention-task-title">{task.title}</span>
-                <span className="working-dash-attention-budget">${task.budget}</span>
+                <span className="working-dash-attention-budget font-['DM_Mono']">${task.budget}</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
@@ -477,7 +477,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
       {/* Recent Activity */}
       {unreadNotifs.length > 0 && (
         <div className="wd-card wd-fade-in" style={{ animationDelay: '0.4s', padding: 'var(--space-5)' }}>
-          <h3 className="working-dash-section-title">Recent Activity</h3>
+          <h3 className="working-dash-section-title">Recent activity</h3>
           <div className="working-dash-activity-list">
             {unreadNotifs.slice(0, 5).map(n => (
               <div key={n.id} className="working-dash-activity-item">
@@ -502,19 +502,19 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
           </svg>
-          My Tasks
+          View tasks
         </button>
         <button className="working-dash-action" onClick={() => onNavigate?.('payments')}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><path d="M1 10h22" />
           </svg>
-          Earnings
+          View earnings
         </button>
         <button className="working-dash-action" onClick={() => setShowPaymentsExplainer(true)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg>
-          How Payments Work
+          How payments work
         </button>
       </div>
     </div>

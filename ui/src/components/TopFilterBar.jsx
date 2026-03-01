@@ -4,7 +4,7 @@ import SkillAutocomplete from './SkillAutocomplete';
 
 // Radius filter options
 const radiusOptions = [
-  { value: '0', label: 'Exact City' },
+  { value: '0', label: 'Exact city' },
   { value: '25', label: 'Within 25km' },
   { value: '50', label: 'Within 50km' },
   { value: '100', label: 'Within 100km' },
@@ -26,7 +26,7 @@ export default function TopFilterBar({
 }) {
   // Format categories for CustomDropdown
   const categoryOptions = [
-    { value: '', label: 'All Categories' },
+    { value: '', label: 'All categories' },
     ...categories.map(c => ({
       value: c,
       label: c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
@@ -113,7 +113,7 @@ export default function TopFilterBar({
           </svg>
           <input
             type="text"
-            placeholder="Search tasks..."
+            placeholder="Search tasks"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="city-autocomplete-v4-input w-full pl-12 pr-4 py-2.5"
@@ -148,7 +148,7 @@ export default function TopFilterBar({
             value={categoryFilter}
             onChange={onCategoryChange}
             placeholder="Search categories..."
-            allLabel="All Categories"
+            allLabel="All categories"
             className="flex-1 md:flex-none md:w-44"
           />
         </div>

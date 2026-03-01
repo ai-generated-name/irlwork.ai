@@ -1,16 +1,17 @@
 // PayoutHistory.jsx - Shows human's payout history
 import React from 'react';
 import { ArrowDownLeft } from 'lucide-react';
+import { Card, EmptyState } from './ui';
 import API_URL from '../config/api';
 
 export default function PayoutHistory({ payouts = [] }) {
   if (payouts.length === 0) {
     return (
-      <div className="text-center py-8">
-        <div className="mb-3"><ArrowDownLeft size={32} /></div>
-        <p className="text-[#333333]">No payouts yet</p>
-        <p className="text-[#888888] text-sm">Complete tasks to start earning</p>
-      </div>
+      <EmptyState
+        icon={<ArrowDownLeft size={32} />}
+        title="No payouts yet"
+        description="Complete tasks to start earning"
+      />
     );
   }
 
@@ -27,17 +28,17 @@ export default function PayoutHistory({ payouts = [] }) {
   return (
     <div className="space-y-3">
       {payouts.map((payout) => (
-        <div key={payout.id} className="bg-white border-2 border-[rgba(0,0,0,0.08)] rounded-xl p-4 flex items-center justify-between">
+        <Card key={payout.id} className="p-4 flex items-center justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[#16A34A] font-bold">+${payout.amount.toFixed(2)}</span>
+              <span className="text-[#16A34A] font-bold font-['DM_Mono']">+${payout.amount.toFixed(2)}</span>
               <span className="text-[#888888] text-sm">USD</span>
             </div>
             <p className="text-[#888888] text-xs">
               {formatDate(payout.created_at)}
             </p>
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );

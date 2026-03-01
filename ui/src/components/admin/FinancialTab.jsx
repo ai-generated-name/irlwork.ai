@@ -45,7 +45,7 @@ export default function FinancialTab({ user }) {
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
         <p className="text-red-600 font-medium mb-3">{error}</p>
         <button onClick={fetchData} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600">
-          Retry
+          Retry loading
         </button>
       </div>
     )
@@ -67,7 +67,7 @@ export default function FinancialTab({ user }) {
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <FinCard
-          label="Gross Merchandise Value"
+          label="Gross merchandise value"
           value={fmt(data?.gmv?.total_cents || 0)}
           count={`${data?.gmv?.count || 0} tasks`}
           icon={<DollarSign size={18} />}
@@ -76,7 +76,7 @@ export default function FinancialTab({ user }) {
           iconColor="text-green-600"
         />
         <FinCard
-          label="Platform Fees"
+          label="Platform fees"
           value={fmt(data?.platform_fees?.total_cents || 0)}
           count={`${data?.platform_fees?.count || 0} completed`}
           icon={<TrendingUp size={18} />}
@@ -152,8 +152,8 @@ export default function FinancialTab({ user }) {
         <h3 className="font-semibold text-gray-900 mb-4 text-sm">Summary</h3>
         <table className="w-full text-sm">
           <tbody>
-            <SummaryRow label="Gross Merchandise Value" value={fmt(data?.gmv?.total_cents || 0)} />
-            <SummaryRow label="Platform Fees Collected" value={fmt(data?.platform_fees?.total_cents || 0)} />
+            <SummaryRow label="Gross merchandise value" value={fmt(data?.gmv?.total_cents || 0)} />
+            <SummaryRow label="Platform fees collected" value={fmt(data?.platform_fees?.total_cents || 0)} />
             <SummaryRow label="Worker Payouts" value={fmt(data?.payouts?.total_cents || 0)} />
             <SummaryRow label="Refunds Issued" value={fmt(data?.refunds?.total_cents || 0)} negative />
             <SummaryRow label="Outstanding Escrow" value={fmt(data?.outstanding_escrow?.total_cents || 0)} />

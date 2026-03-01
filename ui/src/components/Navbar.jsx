@@ -12,10 +12,10 @@ export default function Navbar() {
           <Logo variant="header" theme="light" />
         </Link>
         <div className="nav-right">
-          <Link to="/connect-agent" className="nav-link">API Docs</Link>
+          <Link to="/connect-agent" className="nav-link">API docs</Link>
           <Link to="/dashboard" className="nav-link">Dashboard</Link>
           <button className="btn btn-primary" onClick={() => navigate('/auth')}>
-            Get Started
+            Get started
           </button>
         </div>
       </nav>
@@ -26,10 +26,10 @@ export default function Navbar() {
           <Logo variant="header" theme="light" />
         </Link>
         <div className="nav-links-v4">
-          <Link to="/connect-agent" className="nav-link-v4">API Docs</Link>
+          <Link to="/connect-agent" className="nav-link-v4">API docs</Link>
           <Link to="/dashboard" className="nav-link-v4">Dashboard</Link>
           <button className="btn-v4 btn-v4-primary btn-v4-sm" onClick={() => navigate('/auth')}>
-            Get Started
+            Get started
           </button>
         </div>
       </nav>

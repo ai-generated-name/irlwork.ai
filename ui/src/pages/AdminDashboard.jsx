@@ -3,6 +3,7 @@ import { BarChart3, Flag, DollarSign, AlertTriangle, User, Users, CheckCircle, A
 import { useToast } from '../context/ToastContext'
 import { adminFetch } from '../utils/adminFetch'
 import API_URL from '../config/api'
+import { PageHeader, ConfirmDialog, Button } from '../components/ui'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { PageLoader } from '../components/ui/PageLoader'
 
@@ -179,7 +180,7 @@ export default function AdminDashboard({ user }) {
 
   const confirmCancelAssignment = (taskId) => {
     setConfirmModal({
-      title: 'Cancel Assignment',
+      title: 'Cancel assignment',
       message: 'Cancel this assignment? The task will become open again.',
       onConfirm: () => { setConfirmModal(null); executeCancelAssignment(taskId) }
     })
@@ -297,7 +298,7 @@ export default function AdminDashboard({ user }) {
     { id: 'bi-overview', label: 'Overview', icon: <TrendingUp size={16} />, isBi: true },
     { id: 'bi-funnel', label: 'Funnel', icon: <Filter size={16} />, isBi: true },
     { id: 'bi-financial', label: 'Financial', icon: <DollarSign size={16} />, isBi: true },
-    { id: 'bi-live-feed', label: 'Live Feed', icon: <Activity size={16} />, isBi: true },
+    { id: 'bi-live-feed', label: 'Live feed', icon: <Activity size={16} />, isBi: true },
     { id: 'bi-task-manager', label: 'Tasks', icon: <Hammer size={16} />, isBi: true },
     { id: 'bi-users', label: 'Users', icon: <Users size={16} />, isBi: true },
   ]
@@ -305,11 +306,11 @@ export default function AdminDashboard({ user }) {
   const opsQueues = [
     { id: 'dashboard', label: 'Operations', icon: <BarChart3 size={16} /> },
     { id: 'reports', label: 'Reports', icon: <Flag size={16} />, count: dashboard?.pending_reports?.count, alert: dashboard?.pending_reports?.count > 0 },
-    { id: 'pending-deposits', label: 'Pending Deposits', icon: <DollarSign size={16} />, count: dashboard?.pending_deposits?.count },
+    { id: 'pending-deposits', label: 'Pending deposits', icon: <DollarSign size={16} />, count: dashboard?.pending_deposits?.count },
     { id: 'stale-deposits', label: 'Stale (>48h)', icon: <AlertTriangle size={16} />, count: dashboard?.stale_deposits_48h?.count, alert: dashboard?.stale_deposits_48h?.alert },
-    { id: 'pending-agent-approval', label: 'Awaiting Agent', icon: <User size={16} />, count: dashboard?.pending_agent_approval?.count },
-    { id: 'pending-release', label: 'Ready to Release', icon: <CheckCircle size={16} />, count: dashboard?.pending_release?.count },
-    { id: 'pending-withdrawals', label: 'Pending Withdrawals', icon: <ArrowDownLeft size={16} />, count: dashboard?.pending_withdrawals?.count },
+    { id: 'pending-agent-approval', label: 'Awaiting agent', icon: <User size={16} />, count: dashboard?.pending_agent_approval?.count },
+    { id: 'pending-release', label: 'Ready to release', icon: <CheckCircle size={16} />, count: dashboard?.pending_release?.count },
+    { id: 'pending-withdrawals', label: 'Pending withdrawals', icon: <ArrowDownLeft size={16} />, count: dashboard?.pending_withdrawals?.count },
     { id: 'feedback', label: 'Feedback', icon: <FileText size={16} />, count: dashboard?.feedback?.count },
   ]
 
@@ -318,18 +319,20 @@ export default function AdminDashboard({ user }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-1">Phase 1 Manual Operations</p>
-        </div>
-        <button
-          onClick={() => { fetchDashboard(); if (activeQueue !== 'dashboard') fetchQueue(activeQueue); }}
-          className="px-4 py-2 bg-teal text-white rounded-lg hover:bg-teal-dark transition-colors"
-        >
-          Refresh
-        </button>
-      </div>
+      <PageHeader
+        title="Admin dashboard"
+        subtitle="Phase 1 Manual Operations"
+        action={
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => { fetchDashboard(); if (activeQueue !== 'dashboard') fetchQueue(activeQueue); }}
+            className="bg-teal hover:bg-teal-dark"
+          >
+            Refresh
+          </Button>
+        }
+      />
 
       {/* Queue Tabs */}
       <div className="flex flex-wrap gap-2 items-center">
@@ -418,14 +421,14 @@ export default function AdminDashboard({ user }) {
             alert={dashboard?.stale_deposits_48h?.count > 0}
           />
           <StatCard
-            title="Work In Progress"
+            title="Work in progress"
             value={dashboard?.work_in_progress?.count || 0}
             subtitle={`$${dashboard?.work_in_progress?.total_usdc_held?.toFixed(2) || '0.00'} USDC held`}
             icon={<Hammer size={18} />}
             color="blue"
           />
           <StatCard
-            title="Awaiting Agent Approval"
+            title="Awaiting agent approval"
             value={dashboard?.pending_agent_approval?.count || 0}
             subtitle="Proofs submitted"
             icon={<User size={18} />}
@@ -456,7 +459,7 @@ export default function AdminDashboard({ user }) {
             <h3 className="font-bold text-gray-900 mb-4">Totals</h3>
             <div className="flex gap-8 flex-wrap">
               <div>
-                <p className="text-sm text-gray-500">Platform Fees Earned</p>
+                <p className="text-sm text-gray-500">Platform fees earned</p>
                 <p className="text-2xl font-bold text-green-600">${dashboard?.totals?.platform_fees_earned?.toFixed(2) || '0.00'}</p>
               </div>
               <div>
@@ -552,22 +555,15 @@ export default function AdminDashboard({ user }) {
       )}
 
       {/* Confirm Modal */}
-      {confirmModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">{confirmModal.title}</h2>
-            <p className="text-gray-600 mb-6">{confirmModal.message}</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmModal(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                Cancel
-              </button>
-              <button onClick={confirmModal.onConfirm} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirmModal}
+        title={confirmModal?.title}
+        description={confirmModal?.message}
+        confirmLabel="Confirm"
+        variant="destructive"
+        onConfirm={confirmModal?.onConfirm}
+        onCancel={() => setConfirmModal(null)}
+      />
 
       {/* Report Resolve Modal */}
       {reportResolveModal && (
@@ -762,12 +758,12 @@ function ReportQueueItem({ report, onResolve, loading }) {
 }
 
 const RESOLVE_ACTIONS = [
-  { value: 'no_action', label: 'No Action (Dismiss)', color: 'gray' },
-  { value: 'warning_issued', label: 'Issue Warning to Creator', color: 'yellow' },
-  { value: 'task_hidden', label: 'Hide Task from Browse', color: 'orange' },
-  { value: 'task_removed', label: 'Remove Task + Cancel', color: 'red' },
-  { value: 'user_suspended', label: 'Suspend User', color: 'red' },
-  { value: 'user_banned', label: 'Ban User', color: 'red' },
+  { value: 'no_action', label: 'No action (dismiss)', color: 'gray' },
+  { value: 'warning_issued', label: 'Issue warning to creator', color: 'yellow' },
+  { value: 'task_hidden', label: 'Hide task from browse', color: 'orange' },
+  { value: 'task_removed', label: 'Remove task + cancel', color: 'red' },
+  { value: 'user_suspended', label: 'Suspend user', color: 'red' },
+  { value: 'user_banned', label: 'Ban user', color: 'red' },
 ]
 
 function ReportResolveModal({ report, onClose, onConfirm, loading }) {
