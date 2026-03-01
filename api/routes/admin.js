@@ -687,7 +687,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       // Fetch the task
       const { data: task, error: taskError } = await supabase
         .from('tasks')
-        .select('id, title, status, agent_id, human_id, escrow_status, moderation_status')
+        .select('*')
         .eq('id', id)
         .single();
 
@@ -1046,7 +1046,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         // Get task + agent info
         const { data: task } = await supabase
           .from('tasks')
-          .select('id, title, status, moderation_status, report_count, agent_id, escrow_status, human_id')
+          .select('*')
           .eq('id', report.task_id)
           .single();
 
@@ -1054,7 +1054,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         if (task?.agent_id) {
           const { data: agentData } = await supabase
             .from('users')
-            .select('id, name, email, total_reports_received, moderation_status, warning_count')
+            .select('*')
             .eq('id', task.agent_id)
             .single();
           agent = agentData;
@@ -1174,7 +1174,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       // Get creator info for warning_count
       const { data: creator } = await supabase
         .from('users')
-        .select('id, warning_count, total_reports_upheld')
+        .select('*')
         .eq('id', taskCreatorId)
         .single();
 
@@ -1966,11 +1966,12 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       const { data: user, error: userError } = await supabase
         .from('users')
-        .select('id, name, email, type, moderation_status, warning_count, suspended_until')
+        .select('*')
         .eq('id', id)
         .single();
 
       if (userError || !user) {
+        logger.error({ err: userError, userId: id }, 'User lookup failed in moderation');
         return res.status(404).json({ error: 'User not found' });
       }
 
