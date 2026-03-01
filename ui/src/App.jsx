@@ -2137,6 +2137,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     new_message: <MessageCircle size={18} />,
     assignment_cancelled: <Ban size={18} />,
     refund_processed: <ArrowDownLeft size={18} />,
+    moderation_action: <AlertTriangle size={18} />,
+    report_reviewed: <Shield size={18} />,
+    task_under_review: <AlertTriangle size={18} />,
   }
 
   // Navigate to a notification's linked page
