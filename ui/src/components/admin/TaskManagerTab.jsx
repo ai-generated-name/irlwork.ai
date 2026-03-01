@@ -122,7 +122,10 @@ export default function TaskManagerTab({ user }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">Task Manager</h2>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Task Manager</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Search, filter, and moderate all tasks. Hide or remove policy-violating content.</p>
+        </div>
         <p className="text-sm text-gray-400">{total} task{total !== 1 ? 's' : ''} found</p>
       </div>
 
