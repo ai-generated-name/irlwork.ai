@@ -5832,9 +5832,18 @@ app.post('/api/mcp', async (req, res) => {
           `)
           .eq('id', params.task_id)
           .single();
-        
+
         if (error) throw error;
-        res.json(task);
+
+        // Strip private instructions unless requester is the task creator or assigned worker
+        const isCreator = task.agent_id === user.id || task.created_by === user.id;
+        const isAssignee = task.human_id === user.id;
+        if (!isCreator && !isAssignee) {
+          const { instructions, ...publicTask } = task;
+          res.json(publicTask);
+        } else {
+          res.json(task);
+        }
         break;
       }
       
@@ -7483,11 +7492,16 @@ async function enrichTasksForListing(tasks) {
     if (agents) agents.forEach(a => { agentMap[a.id] = a.name; });
   }
 
-  return tasks.map(t => ({
-    ...t,
-    applicant_count: countMap[t.id] || 0,
-    agent_name: t.is_anonymous ? 'Anon AI Agent' : (agentMap[t.agent_id] || null),
-  }));
+  return tasks.map(t => {
+    // Strip private instructions from listing results — instructions are never
+    // shown in browse/available views, only to task creator or assigned worker
+    const { instructions, ...publicFields } = t;
+    return {
+      ...publicFields,
+      applicant_count: countMap[t.id] || 0,
+      agent_name: t.is_anonymous ? 'Anon AI Agent' : (agentMap[t.agent_id] || null),
+    };
+  });
 }
 
 app.get('/api/tasks/available', async (req, res) => {
