@@ -211,8 +211,9 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                 const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
                 let label, bg, color;
-                if (diffMs > 0) {
-                if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
+                if (diffMs <= 0) {
+                  label = 'OVERDUE'; bg = 'rgba(255, 95, 87, 0.15)'; color = '#FF5F57';
+                } else if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#B45309'; }
                 else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
@@ -222,7 +223,6 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                     {label}
                   </span>
                 );
-                }
               }
               return (
                 <button

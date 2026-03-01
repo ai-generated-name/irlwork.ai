@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ArrowDown, Clock } from 'lucide-react'
 import PeriodSelector from './PeriodSelector'
-import { useAuth } from '../../context/AuthContext'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 
 /**
@@ -9,7 +9,6 @@ import API_URL from '../../config/api'
  * Shows task lifecycle drop-off and conversion rates
  */
 export default function FunnelTab({ user }) {
-  const { authenticatedFetch } = useAuth()
   const [period, setPeriod] = useState('30d')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -19,7 +18,7 @@ export default function FunnelTab({ user }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/funnel?period=${period}`)
+      const res = await adminFetch(`${API_URL}/admin/funnel?period=${period}`)
       if (!res.ok) throw new Error('Failed to fetch funnel data')
       setData(await res.json())
     } catch (err) {
@@ -27,7 +26,7 @@ export default function FunnelTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [period, authenticatedFetch])
+  }, [period])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -68,9 +67,12 @@ export default function FunnelTab({ user }) {
 
   return (
     <div className="space-y-6">
-      {/* Period selector */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">Conversion Funnel</h2>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Conversion Funnel</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Task lifecycle drop-off from creation to payout, with stage-by-stage conversion rates.</p>
+        </div>
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 

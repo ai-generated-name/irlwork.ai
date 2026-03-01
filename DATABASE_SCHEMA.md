@@ -56,6 +56,7 @@ erDiagram
     tasks ||--o{ manual_payments : "tracks"
     tasks ||--o{ task_reports : "reported"
     tasks ||--o{ deposits : "matched"
+    tasks ||--o{ deadline_extension_requests : "has"
     tasks ||--o{ transactions : "legacy"
     tasks ||--o{ admin_audit_log : "audits"
     tasks ||--o{ page_views : "viewed"
@@ -248,6 +249,7 @@ Replaces the `bookings` and `ad_hoc_tasks` tables from ARCHITECTURE.md.
 | `max_humans` | INTEGER | | | Multi-worker cap |
 | `spots_filled` | INTEGER | | `0` | Workers assigned so far |
 | `deadline` | TIMESTAMPTZ | | | Task deadline |
+| `deadline_warning_sent` | INTEGER | | `0` | Tiered warning level: 0=none, 1=24h, 2=6h, 3=1h, 4=past |
 | `requirements` | TEXT | | | Requirements text |
 | `required_skills` | TEXT | | | Comma-separated skills |
 | `escrow_amount` | NUMERIC | | | Escrow amount |
@@ -316,10 +318,34 @@ unfunded -> pending_deposit -> awaiting_worker -> deposited -> released -> pendi
 | `proof_text` | TEXT | | | Written description |
 | `proof_urls` | TEXT[] / JSONB | | | Photo/file URLs |
 | `status` | VARCHAR | | `'pending'` | `'pending'`, `'approved'`, `'rejected'` |
+| `submitted_late` | BOOLEAN | | `FALSE` | Whether proof was submitted after task deadline |
 | `submitted_at` | TIMESTAMPTZ | | | |
 | `created_at` | TIMESTAMPTZ | | `NOW()` | |
 
 **Note**: This table replaces `verifications` from ARCHITECTURE.md. No migration SQL file found in `db/`; likely created directly in Supabase or via an untracked migration.
+
+---
+
+### 4b. `deadline_extension_requests` -- Worker deadline extension requests
+
+| Column | Type | Constraints | Default | Notes |
+|--------|------|-------------|---------|-------|
+| `id` | UUID | PK | `gen_random_uuid()` | |
+| `task_id` | UUID | FK -> tasks, NOT NULL | | |
+| `requested_by` | UUID | FK -> profiles, NOT NULL | | Worker requesting |
+| `reason` | TEXT | NOT NULL | | Why extension needed |
+| `proposed_deadline` | TIMESTAMPTZ | NOT NULL | | Worker's proposed new deadline |
+| `original_deadline` | TIMESTAMPTZ | NOT NULL | | Deadline at time of request |
+| `status` | VARCHAR(20) | NOT NULL, CHECK | `'pending'` | `'pending'`, `'approved'`, `'declined'`, `'modified'` |
+| `responded_by` | UUID | FK -> profiles | | Poster who responded |
+| `response_note` | TEXT | | | Poster's response message |
+| `final_deadline` | TIMESTAMPTZ | | | Actual deadline set (proposed if approved, modified if modified) |
+| `created_at` | TIMESTAMPTZ | | `NOW()` | |
+| `responded_at` | TIMESTAMPTZ | | | |
+
+**Indexes**: `idx_extension_requests_task` on `task_id`. Partial unique index `idx_one_pending_per_task` on `(task_id) WHERE status = 'pending'` — enforces one pending request per task.
+
+**Migration**: `db/migrations/004_deadline_enforcement.sql`
 
 ---
 

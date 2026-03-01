@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { supabase } from '../../App'
-import { useAuth } from '../../context/AuthContext'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 import AdminTaskRow from './AdminTaskRow'
 
 export default function LiveFeedTab({ user }) {
-  const { authenticatedFetch } = useAuth()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -25,7 +24,7 @@ export default function LiveFeedTab({ user }) {
     try {
       const params = new URLSearchParams({ limit: '50' })
       if (filter !== 'all') params.set('status', filter)
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/recent?${params}`)
+      const res = await adminFetch(`${API_URL}/admin/tasks/recent?${params}`)
       if (!res.ok) throw new Error('Failed to fetch tasks')
       const data = await res.json()
       setTasks(data)
@@ -37,7 +36,7 @@ export default function LiveFeedTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [filter, authenticatedFetch])
+  }, [filter])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
@@ -146,12 +145,15 @@ export default function LiveFeedTab({ user }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold text-gray-900">Live Task Feed</h2>
-          <span className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            Live
-          </span>
+        <div>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold text-gray-900">Live Task Feed</h2>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              Live
+            </span>
+          </div>
+          <p className="text-sm text-gray-400 mt-0.5">Real-time stream of task activity. New tasks and status changes appear automatically.</p>
         </div>
         {/* Status filter */}
         <div className="relative">

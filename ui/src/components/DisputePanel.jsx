@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Scale } from 'lucide-react'
 import API_URL from '../config/api'
+import { useAuth } from '../context/AuthContext'
 
 export default function DisputePanel({ user }) {
+  const { authenticatedFetch } = useAuth()
   const [disputes, setDisputes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -13,7 +15,7 @@ export default function DisputePanel({ user }) {
   const [submitting, setSubmitting] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
 
-  const isAdmin = user && user.type === 'admin'
+  const isAdmin = user && user.is_admin === true
 
   useEffect(() => {
     fetchDisputes()
@@ -23,9 +25,7 @@ export default function DisputePanel({ user }) {
     try {
       setLoading(true)
       const params = filter !== 'all' ? `?status=${filter}` : ''
-      const res = await fetch(`${API_URL}/disputes${params}`, {
-        headers: { Authorization: user.token || '' }
-      })
+      const res = await authenticatedFetch(`${API_URL}/disputes${params}`)
 
       if (!res.ok) {
         throw new Error('Failed to fetch disputes')
@@ -47,10 +47,9 @@ export default function DisputePanel({ user }) {
 
     try {
       setSubmitting(true)
-      const res = await fetch(`${API_URL}/disputes/${disputeId}/resolve`, {
+      const res = await authenticatedFetch(`${API_URL}/disputes/${disputeId}/resolve`, {
         method: 'POST',
         headers: {
-          Authorization: user.token || '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -279,15 +278,21 @@ export default function DisputePanel({ user }) {
                         <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Evidence</p>
                         <div className="space-y-1">
                           {dispute.evidence_urls.map((url, i) => (
-                            <a
-                              key={i}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-coral hover:text-coral-dark underline block truncate"
-                            >
-                              {url}
-                            </a>
+                            /^https?:\/\//i.test(url) ? (
+                              <a
+                                key={i}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-coral hover:text-coral-dark underline block truncate"
+                              >
+                                {url}
+                              </a>
+                            ) : (
+                              <span key={i} className="text-sm text-gray-400 block truncate">
+                                {url} (invalid URL)
+                              </span>
+                            )
                           ))}
                         </div>
                       </div>
