@@ -64,6 +64,15 @@ export default function ProofStatusBadge({ task, proofs }) {
             <div className="mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t border-current/20">
               <p className="text-xs opacity-70">
                 Submitted {new Date(proofs[0].created_at).toLocaleDateString()}
+                {proofs[0].submitted_late && (
+                  <span style={{
+                    marginLeft: 8, padding: '2px 6px', borderRadius: 6,
+                    background: 'rgba(255, 95, 87, 0.15)', color: '#FF5F57',
+                    fontWeight: 700, fontSize: 10, letterSpacing: '0.5px'
+                  }}>
+                    LATE
+                  </span>
+                )}
               </p>
               {proofs[0].proof_text && (
                 <p className="text-xs sm:text-sm mt-1.5 sm:mt-2 opacity-80 italic truncate sm:whitespace-normal">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ArrowDown, Clock } from 'lucide-react'
 import PeriodSelector from './PeriodSelector'
-import { useAuth } from '../../context/AuthContext'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 
 /**
@@ -9,7 +9,6 @@ import API_URL from '../../config/api'
  * Shows task lifecycle drop-off and conversion rates
  */
 export default function FunnelTab({ user }) {
-  const { authenticatedFetch } = useAuth()
   const [period, setPeriod] = useState('30d')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -19,7 +18,7 @@ export default function FunnelTab({ user }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/funnel?period=${period}`)
+      const res = await adminFetch(`${API_URL}/admin/funnel?period=${period}`)
       if (!res.ok) throw new Error('Failed to fetch funnel data')
       setData(await res.json())
     } catch (err) {
@@ -27,7 +26,7 @@ export default function FunnelTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [period, authenticatedFetch])
+  }, [period])
 
   useEffect(() => { fetchData() }, [fetchData])
 

@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../App';
 import { Logo } from '../components/Logo';
 import CountdownBanner from '../components/TaskDetail/CountdownBanner';
+import DeadlineBanner from '../components/TaskDetail/DeadlineBanner';
 import TaskHeader from '../components/TaskDetail/TaskHeader';
 import TaskTimeline from '../components/TaskDetail/TaskTimeline';
 import AgentProfileCard from '../components/TaskDetail/AgentProfileCard';
@@ -457,6 +458,11 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             {/* Task Timeline - only for participants once task is past open */}
             {isParticipant && task.status !== 'open' && (
               <TaskTimeline task={task} taskStatus={taskStatus} />
+            )}
+
+            {/* Deadline Banner - live countdown with extension request/response UI */}
+            {isParticipant && (
+              <DeadlineBanner task={task} user={user} />
             )}
 
             {/* Mobile-only: Payment card right after header so Apply is visible early */}
