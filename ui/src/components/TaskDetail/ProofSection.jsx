@@ -2,6 +2,7 @@
 // Inline proof submission form (extracted from ProofSubmitModal logic)
 
 import React, { useState, useRef } from 'react';
+import { getErrorMessage } from '../../utils/apiErrors';
 import { Upload, Hourglass, FileText } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import API_URL from '../../config/api';
@@ -55,7 +56,7 @@ export default function ProofSection({ task, user, onSubmit }) {
       clearTimeout(timeout);
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Upload failed');
+        throw new Error(getErrorMessage(errData, 'Upload failed'));
       }
       const data = await res.json();
       return data.url;

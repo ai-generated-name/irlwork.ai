@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Scale } from 'lucide-react'
+import { getErrorMessage } from '../utils/apiErrors'
 import API_URL from '../config/api'
 
 export default function DisputePanel({ user }) {
@@ -62,7 +63,7 @@ export default function DisputePanel({ user }) {
 
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || 'Failed to resolve dispute')
+        throw new Error(getErrorMessage(data, 'Failed to resolve dispute'))
       }
 
       setResolvingId(null)
