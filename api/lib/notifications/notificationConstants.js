@@ -74,11 +74,11 @@ const EVENT_CATEGORIES = {
   dispute_resolved:   { category: 'disputes', defaultEmail: true,  defaultInApp: true },
 
   // System / Admin
-  critical_feedback:  { category: 'system',   defaultEmail: false, defaultInApp: true },
-  report_submitted:   { category: 'system',   defaultEmail: false, defaultInApp: true },
-  new_task_report:    { category: 'system',   defaultEmail: false, defaultInApp: true },
-  agent_error:        { category: 'system',   defaultEmail: false, defaultInApp: true },
-  manual_payment_required: { category: 'system', defaultEmail: true, defaultInApp: true },
+  critical_feedback:       { category: 'system',   defaultEmail: false, defaultInApp: true },
+  report_submitted:        { category: 'system',   defaultEmail: false, defaultInApp: true },
+  new_task_report:         { category: 'system',   defaultEmail: false, defaultInApp: true },
+  agent_error:             { category: 'system',   defaultEmail: false, defaultInApp: true },
+  manual_payment_required: { category: 'system',   defaultEmail: true,  defaultInApp: true },
 
   // Moderation
   moderation_action:  { category: 'system',   defaultEmail: true,  defaultInApp: true },
@@ -127,25 +127,30 @@ const EMAIL_SUBJECTS = {
   dispute_opened:     (data) => `Dispute opened: ${data.title || 'a task'}`,
   dispute_filed:      (data) => `Dispute filed: ${data.title || 'a task'}`,
   dispute:            (data) => `Dispute update: ${data.title || 'a task'}`,
-  moderation_action:  (data) => data.title || 'Account Moderation Notice',
-  report_reviewed:    (data) => `Your report has been reviewed`,
-  task_under_review:  (data) => `Your task is under review`,
-  new_application:    (data) => `New applicant for: ${data.title || 'Your Task'}`,
-  task_auto_approved: (data) => `Task auto-approved: ${data.title || 'Your Task'}`,
-  auto_released:      (data) => `Task auto-released: ${data.title || 'Your Task'}`,
-  worker_cancelled:   (data) => `Worker cancelled: ${data.title || 'Your Task'}`,
-  proof_submitted_late: (data) => `Late proof submitted: ${data.title || 'Your Task'}`,
-  extension_requested: (data) => `Extension requested: ${data.title || 'Your Task'}`,
-  extension_approved: (data) => `Extension approved: ${data.title || 'Your Task'}`,
-  extension_declined: (data) => `Extension declined: ${data.title || 'Your Task'}`,
-  deadline_passed:    (data) => `Deadline passed: ${data.title || 'Your Task'}`,
-  payment_confirmed:  (data) => `Payment confirmed: ${data.title || 'Your Task'}`,
-  auth_hold_failed:   (data) => `Payment hold failed: ${data.title || 'Your Task'}`,
-  balance_available:  (data) => `Payment available for withdrawal`,
-  withdrawal_completed: (data) => `Withdrawal completed`,
-  payout_paid:        (data) => `Payout sent to your account`,
-  subscription_activated: (data) => `Subscription activated`,
-  manual_payment_required: (data) => data.title || 'Manual payment action required',
+  // Applications
+  new_application:      (data) => `New applicant for: ${data.title || 'your task'}`,
+  // Task Lifecycle
+  task_auto_approved:   (data) => `Task auto-approved: ${data.title || 'your task'}`,
+  auto_released:        (data) => `Task auto-released: ${data.title || 'your task'}`,
+  worker_cancelled:     (data) => `Worker withdrew from: ${data.title || 'your task'}`,
+  proof_submitted_late: (data) => `Late proof submitted for: ${data.title || 'your task'}`,
+  // Extensions & Deadlines
+  extension_requested:  (data) => `Extension requested for: ${data.title || 'your task'}`,
+  extension_approved:   (data) => `Extension approved for: ${data.title || 'your task'}`,
+  extension_declined:   (data) => `Extension declined for: ${data.title || 'your task'}`,
+  deadline_passed:      (data) => `Deadline passed: ${data.title || 'your task'}`,
+  // Payments
+  payment_confirmed:    (data) => `Payment confirmed for: ${data.title || 'your task'}`,
+  auth_hold_failed:     (data) => `Payment hold issue: ${data.title || 'your task'}`,
+  balance_available:    (data) => data.title || 'Payment now available for withdrawal',
+  withdrawal_completed: (data) => data.title || 'Withdrawal complete',
+  payout_paid:          (data) => data.title || 'Payout completed',
+  subscription_activated: (data) => data.title || 'Subscription activated',
+  // Moderation
+  moderation_action:    (data) => data.title || 'Account Moderation Notice',
+  report_reviewed:      (data) => `Your report has been reviewed`,
+  task_under_review:    (data) => `Your task is under review`,
+  manual_payment_required: (data) => `Manual payment required: ${data.title || 'a task'}`,
 };
 
 // Default preferences used for seeding new users and as fallback
