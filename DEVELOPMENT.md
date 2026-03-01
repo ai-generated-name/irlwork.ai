@@ -247,18 +247,25 @@ There are no `.eslintrc`, `.prettierrc`, or similar config files. No code format
 
 The `ARCHITECTURE.md` references several background jobs. Most are **not yet implemented** or are **disabled**.
 
-| Job | Status | Location |
-|-----|--------|----------|
-| Rating visibility service | Active | `api/services/ratingVisibility.js` |
-| Balance promoter | Disabled | `api/services/_automated_disabled/` |
-| Auto-release payments | Disabled | `api/services/_automated_disabled/` |
-| Deposit watcher | Disabled | `api/services/_automated_disabled/` |
-| Withdrawal service | Disabled | `api/backend/services/withdrawalService.js` |
-| Task expiry | Not implemented | - |
-| Auth hold renewal | Not implemented | - |
-| Auto-approve tasks | Not implemented | - |
-| Proof deadline enforcement | Not implemented | - |
-| Webhook retry queue | Not implemented | Fire-and-forget currently |
+| Job | Status | Location | Frequency |
+|-----|--------|----------|-----------|
+| Rating visibility service | Active | `api/services/ratingVisibility.js` | Continuous |
+| Task expiry | Active | `api/server.js` (inline cron) | Hourly |
+| Auth hold renewal | Active | `api/server.js` (inline cron) | Every 6 hours |
+| Auto-approve tasks (72h) | Active | `api/server.js` (inline cron) | Hourly |
+| Webhook retry queue | Active | `api/server.js` (inline cron) | Every 60 seconds |
+| Balance promoter | Disabled | `api/services/_automated_disabled/` | - |
+| Auto-release payments (48h) | Disabled | `api/services/_automated_disabled/` | - |
+| Deposit watcher | Disabled | `api/services/_automated_disabled/` | - |
+| Withdrawal service | Disabled | `api/backend/services/withdrawalService.js` | - |
+| Proof deadline enforcement | Not implemented | - | - |
+
+### Active Background Jobs
+
+- **Task expiry**: Cancels tasks past their deadline or stale for 30+ days. Hourly.
+- **Auth hold renewal**: Re-authorizes Stripe payment holds on `assigned` tasks nearing the 7-day hold expiry. Creates new hold before cancelling old one. Auto-cancels task after 24h grace if renewal fails. Every 6 hours.
+- **Auto-approve tasks (72h)**: Tasks in `pending_review` for 72+ hours are automatically approved. Payment is captured/released and both parties are notified. Hourly.
+- **Webhook retry queue**: Retries failed webhook deliveries with exponential backoff (1min, 5min, 30min, 2hr, 12hr). Max 5 attempts. Every 60 seconds.
 
 Disabled jobs are in `api/services/_automated_disabled/` and are not loaded by the server.
 

@@ -6,11 +6,11 @@ import React, { useState, useEffect } from 'react'
 import { Logo } from './Logo'
 import LanguageSelector from './LanguageSelector'
 import { useLanguage } from '../context/LanguageContext'
+import { navigate } from '../utils/navigate'
 
 export default function MarketingNavbar({ user, activePage }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { t } = useLanguage()
-  const navigate = (path) => { window.location.href = path }
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function MarketingNavbar({ user, activePage }) {
 
   return (
     <nav className="navbar-v4">
-      <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
+      <a href="/" className="logo-v4" style={{ textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); navigate('/') }}>
         <Logo variant="header" theme="light" />
       </a>
 
@@ -64,14 +64,6 @@ export default function MarketingNavbar({ user, activePage }) {
           style={activePage === 'browse' ? { color: 'var(--accent-orange)' } : undefined}
         >
           {t('nav.browseTasks')}
-        </a>
-        <a
-          href="/browse/humans"
-          className="nav-link-v4"
-          onClick={() => setMobileMenuOpen(false)}
-          style={activePage === 'browse-humans' ? { color: 'var(--accent-orange)' } : undefined}
-        >
-          {t('nav.forWorkers') || 'For Workers'}
         </a>
         {/* Language selector shown inline on desktop, hidden on mobile (shown in header bar instead) */}
         <span className="navbar-v4-lang-desktop">

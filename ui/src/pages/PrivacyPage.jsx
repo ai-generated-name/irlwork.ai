@@ -1,7 +1,9 @@
 import React from 'react'
 import { Shield } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function PrivacyPage() {
+  usePageTitle('Privacy Policy')
   const sectionStyle = {
     background: 'white',
     border: '1px solid var(--border-primary)',

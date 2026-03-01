@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { BadgeCheck, ArrowLeft, Loader2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '../context/AuthContext'
+import { navigate } from '../utils/navigate'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -61,6 +63,7 @@ const TIERS = [
 ]
 
 export default function PremiumPage({ user }) {
+  usePageTitle('Premium')
   const [loading, setLoading] = useState(null)
   const [subscription, setSubscription] = useState(null)
   const [syncing, setSyncing] = useState(false)
@@ -114,7 +117,7 @@ export default function PremiumPage({ user }) {
 
   async function handleCheckout(tier) {
     if (!user) {
-      window.location.href = '/auth'
+      navigate('/auth')
       return
     }
     setLoading(tier)
@@ -158,7 +161,7 @@ export default function PremiumPage({ user }) {
 
   async function handleManageSubscription() {
     if (!user) {
-      window.location.href = '/auth'
+      navigate('/auth')
       return
     }
     setLoading('manage')
@@ -188,7 +191,7 @@ export default function PremiumPage({ user }) {
 
   async function handleSync() {
     if (!user) {
-      window.location.href = '/auth'
+      navigate('/auth')
       return
     }
     setSyncing(true)

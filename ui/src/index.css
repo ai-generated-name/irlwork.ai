@@ -1371,13 +1371,26 @@ code, pre {
 }
 
 .task-card-v2-apply-btn.applied {
-  background: var(--success-bg);
-  color: var(--success);
-  cursor: default;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.task-card-v2-apply-btn.applied:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.task-card-v2-apply-btn.filled {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .task-card-v2-apply-btn:disabled {
-  opacity: 0.7;
+  opacity: 1;
   cursor: not-allowed;
 }
 
@@ -1442,9 +1455,31 @@ code, pre {
   color: var(--orange-600);
 }
 
-.browse-tasks-v2-error svg {
-  color: var(--error);
-  margin-bottom: var(--space-4);
+.browse-tasks-v2-error-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 95, 87, 0.08);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-4);
+  color: var(--status-red);
+}
+
+/* Search spinner */
+.browse-tasks-v2-search-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--bg-tertiary);
+  border-top-color: var(--accent-orange);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Loading Skeleton */

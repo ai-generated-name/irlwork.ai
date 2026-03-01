@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, lazy, Suspense, Fragment } from 'react'
 import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer, TrendingUp, Filter, Activity } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
-import { useAuth } from '../context/AuthContext'
+import { adminFetch } from '../utils/adminFetch'
 import API_URL from '../config/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+import { PageLoader } from '../components/ui/PageLoader'
 
 // Lazy-load BI tabs so they only fetch data when selected
 const OverviewTab = lazy(() => import('../components/admin/OverviewTab'))
@@ -16,8 +18,8 @@ const TaskManagerTab = lazy(() => import('../components/admin/TaskManagerTab'))
  * Only accessible to users with admin privileges
  */
 export default function AdminDashboard({ user }) {
+  usePageTitle('Admin')
   const toast = useToast()
-  const { authenticatedFetch } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeQueue, setActiveQueue] = useState('bi-overview')
@@ -32,7 +34,7 @@ export default function AdminDashboard({ user }) {
   // Fetch dashboard summary
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/dashboard`)
+      const res = await adminFetch(`${API_URL}/admin/dashboard`)
       if (!res.ok) {
         if (res.status === 403) {
           setError('Access denied. Admin privileges required.')
@@ -48,7 +50,7 @@ export default function AdminDashboard({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [authenticatedFetch])
+  }, [])
 
   // Fetch queue data
   const fetchQueue = useCallback(async (queue) => {
@@ -58,7 +60,7 @@ export default function AdminDashboard({ user }) {
     try {
       if (queue === 'feedback') {
         const statusParam = feedbackFilter !== 'all' ? `?status=${feedbackFilter}` : ''
-        const res = await authenticatedFetch(`${API_URL}/admin/feedback${statusParam}`)
+        const res = await adminFetch(`${API_URL}/admin/feedback${statusParam}`)
         if (!res.ok) throw new Error('Failed to fetch feedback')
         const data = await res.json()
         setFeedbackData(data.items || [])
@@ -68,13 +70,16 @@ export default function AdminDashboard({ user }) {
       }
 
       const endpoints = {
+        'pending-deposits': '/admin/tasks/pending-deposits',
         'stale-deposits': '/admin/tasks/stale-deposits',
         'pending-agent-approval': '/admin/tasks/pending-agent-approval',
         'pending-release': '/admin/tasks/pending-release',
+        'pending-withdrawals': '/admin/withdrawals?status=pending',
         'reports': '/admin/reports?status=pending'
       }
 
-      const res = await authenticatedFetch(`${API_URL}${endpoints[queue]}`)
+      if (!endpoints[queue]) return
+      const res = await adminFetch(`${API_URL}${endpoints[queue]}`)
       if (!res.ok) throw new Error('Failed to fetch queue')
       const data = await res.json()
       // Reports endpoint returns { reports: [], total, page, limit }
@@ -85,7 +90,7 @@ export default function AdminDashboard({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [authenticatedFetch, feedbackFilter])
+  }, [feedbackFilter])
 
   useEffect(() => {
     fetchDashboard()
@@ -101,7 +106,7 @@ export default function AdminDashboard({ user }) {
   const confirmDeposit = async (taskId, txHash, amount) => {
     setActionLoading(taskId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/${taskId}/confirm-deposit`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${taskId}/confirm-deposit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,7 +131,7 @@ export default function AdminDashboard({ user }) {
   const releasePayment = async (taskId) => {
     setActionLoading(taskId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/${taskId}/release-payment`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${taskId}/release-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +154,7 @@ export default function AdminDashboard({ user }) {
   const confirmWithdrawal = async (paymentId, txHash, amount) => {
     setActionLoading(paymentId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/payments/${paymentId}/confirm-withdrawal`, {
+      const res = await adminFetch(`${API_URL}/admin/payments/${paymentId}/confirm-withdrawal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +187,7 @@ export default function AdminDashboard({ user }) {
   const executeCancelAssignment = async (taskId) => {
     setActionLoading(taskId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/${taskId}/cancel-assignment`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${taskId}/cancel-assignment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,7 +210,7 @@ export default function AdminDashboard({ user }) {
   const resolveReport = async (reportId, { action, notes, suspend_days }) => {
     setActionLoading(reportId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/reports/${reportId}/resolve`, {
+      const res = await adminFetch(`${API_URL}/admin/reports/${reportId}/resolve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -229,7 +234,7 @@ export default function AdminDashboard({ user }) {
   const updateFeedbackStatus = async (feedbackId, status, adminNotes) => {
     setActionLoading(feedbackId)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/feedback/${feedbackId}/status`, {
+      const res = await adminFetch(`${API_URL}/admin/feedback/${feedbackId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -359,29 +364,27 @@ export default function AdminDashboard({ user }) {
       {/* Content */}
       {/* BI Tabs — lazy loaded, each manages its own data fetching */}
       {activeQueue === 'bi-overview' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading overview...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading overview..." />}>
           <OverviewTab user={user} />
         </Suspense>
       ) : activeQueue === 'bi-funnel' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading funnel...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading funnel..." />}>
           <FunnelTab user={user} />
         </Suspense>
       ) : activeQueue === 'bi-financial' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading financials...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading financials..." />}>
           <FinancialTab user={user} />
         </Suspense>
       ) : activeQueue === 'bi-live-feed' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading live feed...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading live feed..." />}>
           <LiveFeedTab user={user} />
         </Suspense>
       ) : activeQueue === 'bi-task-manager' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading task manager...</div></div>}>
+        <Suspense fallback={<PageLoader message="Loading task manager..." />}>
           <TaskManagerTab user={user} />
         </Suspense>
       ) : loading && activeQueue === 'dashboard' ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-gray-500">Loading dashboard...</div>
-        </div>
+        <PageLoader message="Loading dashboard..." />
       ) : activeQueue === 'dashboard' ? (
         /* Dashboard Overview */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -459,9 +462,7 @@ export default function AdminDashboard({ user }) {
         </div>
       ) : activeQueue === 'feedback' ? (
         loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-gray-500">Loading...</div>
-          </div>
+          <PageLoader message="Loading..." />
         ) : (
           <div className="space-y-4">
             {/* Feedback Filters */}
@@ -499,9 +500,7 @@ export default function AdminDashboard({ user }) {
           </div>
         )
       ) : loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-gray-500">Loading...</div>
-        </div>
+        <PageLoader message="Loading..." />
       ) : error ? (
         <div className="bg-white rounded-xl border-2 border-red-100 p-12 text-center">
           <div className="mb-4"><AlertTriangle size={32} /></div>

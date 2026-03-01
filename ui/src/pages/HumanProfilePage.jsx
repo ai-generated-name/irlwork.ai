@@ -7,12 +7,16 @@ import { PageLayoutV4 } from '../components/V4Layout'
 import API_URL from '../config/api'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { formatTimezoneShort } from '../utils/timezone'
+import { navigate } from '../utils/navigate'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
+
+  usePageTitle(profile?.name ? `${profile.name}'s Profile` : 'Profile')
 
   useEffect(() => {
     if (!humanId) return
@@ -59,9 +63,9 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
 
   const handleHire = () => {
     if (user) {
-      window.location.href = `/browse/humans?hire=${profile.id}`
+      navigate(`/browse/humans?hire=${profile.id}`)
     } else {
-      window.location.href = '/auth'
+      navigate('/auth')
     }
   }
 
@@ -103,7 +107,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
         {/* Back + Share */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <button
-            onClick={() => onNavigate?.('/browse/humans') || (window.location.href = '/browse/humans')}
+            onClick={() => onNavigate?.('/browse/humans') || navigate('/browse/humans')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -152,7 +156,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
             <p style={{ color: 'var(--text-secondary, #525252)', fontSize: 18, fontWeight: 600 }}>Profile not found</p>
             <p style={{ color: 'var(--text-tertiary, #8A8A8A)', fontSize: 14, marginTop: 8 }}>{error}</p>
             <button
-              onClick={() => window.location.href = '/browse/humans'}
+              onClick={() => navigate('/browse/humans')}
               style={{
                 marginTop: 24,
                 padding: '10px 24px',
