@@ -99,6 +99,23 @@ const { haversineDistance, filterByDistance, filterByDistanceKm } = require('./u
 const { validateTaskInput, validateMessageInput, validateDisputeInput, validateRejectionInput } = require('./utils/validate');
 const { find: findTimezone } = require('geo-tz');
 
+// HTML escaping for email templates — prevents XSS/injection in user-generated content
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+function sanitizeForEmail(str, maxLength = 500) {
+  return escapeHtml((str || '').substring(0, maxLength));
+}
+function sanitizeSubject(str) {
+  return (str || '').replace(/[\r\n]/g, '').substring(0, 200);
+}
+
 // Cities data for autocomplete search (loaded once at startup)
 console.log('[Startup] Loading cities data...');
 const citiesRaw = require('cities.json');
@@ -5237,7 +5254,7 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
   const disputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <p style="color: #DC2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Dispute Opened</p>
     <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task &ldquo;${escapeHtml(task.title)}&rdquo;.</p>
-    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${escapeHtml(reason)}</p>
+    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${sanitizeForEmail(reason)}</p>
   </div>
   <p style="font-size: 13px; color: #525252; margin-bottom: 16px;">Our team will review the evidence and make a fair decision.</p>
   <a href="${disputeTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`;
@@ -8622,11 +8639,16 @@ async function enrichTasksForListing(tasks) {
     if (agents) agents.forEach(a => { agentMap[a.id] = a.name; });
   }
 
-  return tasks.map(t => ({
-    ...t,
-    applicant_count: countMap[t.id] || 0,
-    agent_name: t.is_anonymous ? 'Anon AI Agent' : (agentMap[t.agent_id] || null),
-  }));
+  return tasks.map(t => {
+    // Strip private instructions from listing results — instructions are never
+    // shown in browse/available views, only to task creator or assigned worker
+    const { instructions, ...publicFields } = t;
+    return {
+      ...publicFields,
+      applicant_count: countMap[t.id] || 0,
+      agent_name: t.is_anonymous ? 'Anon AI Agent' : (agentMap[t.agent_id] || null),
+    };
+  });
 }
 
 app.get('/api/tasks/available', async (req, res) => {
