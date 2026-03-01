@@ -8880,6 +8880,159 @@ async function start() {
     setInterval(processWebhookQueue, 60 * 1000); // every 60 seconds
     console.log('   ✅ Webhook retry queue processor started (every 60s)');
 
+    // ---- Auto-Approve (hourly) ----
+    // Tasks in pending_review for >48 hours are auto-approved to protect workers
+    // from disappearing agents. Sends a 24h warning webhook first.
+    const AUTO_APPROVE_HOURS = 48;
+    const AUTO_APPROVE_WARNING_HOURS = 24;
+
+    async function autoApprovePendingTasks() {
+      try {
+        const now = new Date();
+        const warningCutoff = new Date(now.getTime() - AUTO_APPROVE_WARNING_HOURS * 60 * 60 * 1000).toISOString();
+        const approveCutoff = new Date(now.getTime() - AUTO_APPROVE_HOURS * 60 * 60 * 1000).toISOString();
+
+        // 1. Send 24h warning to agents with pending_review tasks >24h old (not yet warned)
+        const warningSelect = 'id, agent_id, human_id, title, proof_submitted_at, deadline_warning_sent';
+        const { data: warningTasks } = await supabase
+          .from('tasks')
+          .select(warningSelect)
+          .eq('status', 'pending_review')
+          .lt('proof_submitted_at', warningCutoff)
+          .gte('proof_submitted_at', approveCutoff)
+          .or('deadline_warning_sent.is.null,deadline_warning_sent.eq.false');
+
+        for (const task of (warningTasks || [])) {
+          // Don't warn if there's an active dispute
+          const { data: activeDispute } = await supabase
+            .from('disputes')
+            .select('id')
+            .eq('task_id', task.id)
+            .eq('status', 'open')
+            .limit(1)
+            .maybeSingle();
+
+          if (activeDispute) continue;
+
+          await supabase.from('tasks').update(cleanTaskData({
+            deadline_warning_sent: true
+          })).eq('id', task.id);
+
+          if (task.agent_id) {
+            dispatchWebhook(task.agent_id, {
+              type: 'auto_approve_warning',
+              task_id: task.id,
+              data: {
+                title: task.title,
+                hours_remaining: AUTO_APPROVE_HOURS - AUTO_APPROVE_WARNING_HOURS,
+                message: `Task "${task.title}" will be auto-approved in ${AUTO_APPROVE_HOURS - AUTO_APPROVE_WARNING_HOURS} hours if you do not review it.`
+              }
+            }).catch(() => {});
+          }
+        }
+
+        // 2. Auto-approve tasks that have been in pending_review for >48h
+        const { data: expiredTasks } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('status', 'pending_review')
+          .lt('proof_submitted_at', approveCutoff);
+
+        let autoApprovedCount = 0;
+        for (const task of (expiredTasks || [])) {
+          // Skip tasks with active disputes
+          const { data: activeDispute } = await supabase
+            .from('disputes')
+            .select('id')
+            .eq('task_id', task.id)
+            .eq('status', 'open')
+            .limit(1)
+            .maybeSingle();
+
+          if (activeDispute) {
+            console.log(`[AutoApprove] Skipping task ${task.id} — active dispute exists`);
+            continue;
+          }
+
+          // Atomic status update: only if still pending_review
+          const { data: approved, error: approveErr } = await supabase
+            .from('tasks')
+            .update(cleanTaskData({
+              status: 'approved',
+              auto_approved: true,
+              updated_at: now.toISOString()
+            }))
+            .eq('id', task.id)
+            .eq('status', 'pending_review')
+            .select('id')
+            .single();
+
+          if (approveErr || !approved) continue;
+
+          // Approve the latest proof
+          await supabase
+            .from('task_proofs')
+            .update({ status: 'approved', updated_at: now.toISOString() })
+            .eq('task_id', task.id)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          // Release payment (same path as manual approval)
+          const canRelease = (task.payment_method === 'stripe' && task.stripe_payment_intent_id) ||
+            (task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held'));
+
+          if (canRelease) {
+            try {
+              await releasePaymentToPending(supabase, task.id, task.human_id, task.agent_id, createNotification);
+              console.log(`[AutoApprove] Released payment for task ${task.id}`);
+            } catch (releaseError) {
+              console.error(`[AutoApprove] Payment release failed for task ${task.id}:`, releaseError.message);
+            }
+          }
+
+          // Notify agent
+          if (task.agent_id) {
+            await createNotification(
+              task.agent_id,
+              'task_auto_approved',
+              'Task Auto-Approved',
+              `Task "${task.title}" was auto-approved after ${AUTO_APPROVE_HOURS} hours without review. Payment has been released.`,
+              `/tasks/${task.id}`
+            );
+            dispatchWebhook(task.agent_id, {
+              type: 'task_auto_approved',
+              task_id: task.id,
+              data: { title: task.title, auto_approved: true }
+            }).catch(() => {});
+          }
+
+          // Notify worker
+          if (task.human_id) {
+            await createNotification(
+              task.human_id,
+              'task_auto_approved',
+              'Work Approved!',
+              `Your work on "${task.title}" was automatically approved. Payment is being processed.`,
+              `/tasks/${task.id}`
+            );
+          }
+
+          autoApprovedCount++;
+        }
+
+        if (autoApprovedCount > 0) {
+          console.log(`[AutoApprove] Auto-approved ${autoApprovedCount} task(s)`);
+        }
+      } catch (err) {
+        console.error('[AutoApprove] Error:', err.message);
+        captureException(err, { tags: { service: 'auto_approve' } });
+      }
+    }
+    autoApprovePendingTasks();
+    setInterval(autoApprovePendingTasks, 60 * 60 * 1000); // every hour
+    console.log(`   ✅ Auto-approve service started (${AUTO_APPROVE_HOURS}h timeout, hourly check)`);
+
   } else {
     console.log('⚠️  Supabase not configured (set SUPABASE_URL and SUPABASE_ANON_KEY)');
   }
