@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import HappeningNow from '../components/HappeningNow'
 import { useLanguage } from '../context/LanguageContext'
+import { navigate as spaNavigate } from '../utils/navigate'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 // Animated Counter Component
 function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
@@ -455,8 +457,9 @@ function Icon({ name, size = 24, className = '' }) {
 }
 
 export default function LandingPageV4() {
+  usePageTitle(null)
   const { t } = useLanguage()
-  const navigate = (path) => { window.location.href = path }
+  const navigate = spaNavigate
 
   const tasks = [
     { icon: 'package', title: 'Package Pickup', rate: '$35', category: 'Delivery', location: 'San Francisco, CA', time: '~30 min' },
@@ -751,7 +754,7 @@ function CombinedBenefitsSection() {
               )
             })}
           </div>
-          <button className="benefits-cta benefits-cta-primary" onClick={() => window.location.href = '/auth'}>
+          <button className="benefits-cta benefits-cta-primary" onClick={() => spaNavigate('/auth')}>
             {t('hero.startEarning')}
             <ArrowRight size={16} />
           </button>
@@ -784,7 +787,7 @@ function CombinedBenefitsSection() {
               )
             })}
           </div>
-          <button className="benefits-cta benefits-cta-secondary" onClick={() => window.location.href = '/connect-agent'}>
+          <button className="benefits-cta benefits-cta-secondary" onClick={() => spaNavigate('/connect-agent')}>
             <Terminal size={16} />
             {t('benefits.viewApiDocs')}
           </button>

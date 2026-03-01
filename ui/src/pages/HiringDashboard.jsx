@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react'
 import AgentOnboardingWizard from '../components/AgentOnboardingWizard'
+import { navigate } from '../utils/navigate'
 import HowPaymentsWork from '../components/HowPaymentsWork'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function HiringDashboard({ user, postedTasks, onNavigate }) {
+  usePageTitle('Dashboard')
   const safeTasks = Array.isArray(postedTasks) ? postedTasks : []
 
   const openTasks = safeTasks.filter(t => t.status === 'open')
@@ -183,7 +186,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
               <button
                 key={task.id}
                 className="hiring-dash-attention-item"
-                onClick={() => window.location.href = `/tasks/${task.id}`}
+                onClick={() => navigate(`/tasks/${task.id}`)}
               >
                 <span className="hiring-dash-attention-badge">Pending Review</span>
                 <span className="hiring-dash-attention-task-title">{task.title}</span>
@@ -228,7 +231,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 <button
                   key={task.id}
                   className="hiring-dash-attention-item"
-                  onClick={() => window.location.href = `/tasks/${task.id}`}
+                  onClick={() => navigate(`/tasks/${task.id}`)}
                 >
                   <span className="hiring-dash-attention-badge hiring-dash-attention-badge--active">In Progress</span>
                   {deadlineBadge}
