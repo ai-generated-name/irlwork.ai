@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import HappeningNow from '../components/HappeningNow'
 import { useLanguage } from '../context/LanguageContext'
+import { navigate as spaNavigate } from '../utils/navigate'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 // Animated Counter Component
 function AnimatedCounter({ end, duration = 2000, suffix = '' }) {
@@ -265,7 +267,9 @@ function HeroAnimation() {
       <svg className="connection-path connection-path-1" viewBox="0 0 100 100" preserveAspectRatio="none">
         <defs>
           <linearGradient id="pathGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
             <stop offset="0%" stopColor="#E8853D" stopOpacity="0.6" />
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
             <stop offset="100%" stopColor="#E8853D" stopOpacity="1" />
           </linearGradient>
         </defs>
@@ -282,6 +286,7 @@ function HeroAnimation() {
       <svg className="connection-path connection-path-2" viewBox="0 0 100 100" preserveAspectRatio="none">
         <defs>
           <linearGradient id="pathGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
             <stop offset="0%" stopColor="#E8853D" stopOpacity="1" />
             <stop offset="100%" stopColor="#16A34A" stopOpacity="0.8" />
           </linearGradient>
@@ -311,7 +316,7 @@ function HeroAnimation() {
         <div className="human-info">
           <div className="human-name">Alex M.</div>
           <div className="human-rating">
-            <span className="stars">★★★★★</span>
+            <span className="stars">{[...Array(5)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}</span>
             <span className="rating-num">4.9</span>
           </div>
         </div>
@@ -455,15 +460,16 @@ function Icon({ name, size = 24, className = '' }) {
 }
 
 export default function LandingPageV4() {
+  usePageTitle(null)
   const { t } = useLanguage()
-  const navigate = (path) => { window.location.href = path }
+  const navigate = spaNavigate
 
   const tasks = [
-    { icon: 'package', title: 'Package Pickup', rate: '$35', category: 'Delivery', location: 'San Francisco, CA', time: '~30 min' },
-    { icon: 'building2', title: 'Property Inspection', rate: '$175', category: 'Real Estate', location: 'Denver, CO', time: '~3 hrs' },
-    { icon: 'search', title: 'Due Diligence Research', rate: '$500', category: 'Legal/Finance', location: 'New York, NY', time: '~4 hrs' },
-    { icon: 'camera', title: 'Product Photography', rate: '$150', category: 'Creative', location: 'Paris, FR', time: '~2 hrs' },
-    { icon: 'dog', title: 'Dog Walking', rate: '$22', category: 'Pet Care', location: 'Seattle, WA', time: '~45 min' },
+    { icon: 'package', title: 'Package pickup', rate: '$35', category: 'Delivery', location: 'San Francisco, CA', time: '~30 min' },
+    { icon: 'building2', title: 'Property inspection', rate: '$175', category: 'Real estate', location: 'Denver, CO', time: '~3 hrs' },
+    { icon: 'search', title: 'Due diligence research', rate: '$500', category: 'Legal/Finance', location: 'New York, NY', time: '~4 hrs' },
+    { icon: 'camera', title: 'Product photography', rate: '$150', category: 'Creative', location: 'Paris, FR', time: '~2 hrs' },
+    { icon: 'dog', title: 'Dog walking', rate: '$22', category: 'Pet care', location: 'Seattle, WA', time: '~45 min' },
     { icon: 'stamp', title: 'Notarization', rate: '$40', category: 'Legal', location: 'São Paulo, BR', time: '~1 hr' }
   ]
 
@@ -477,7 +483,7 @@ export default function LandingPageV4() {
           <div className="hero-v4-badge">
             <span className="badge-dot"></span>
             <span className="badge-text-desktop">{t('hero.badge')}</span>
-            <span className="badge-text-mobile">Verified Tasks &bull; Secure Payments</span>
+            <span className="badge-text-mobile">Verified tasks &bull; Secure payments</span>
           </div>
 
           <h1 className="hero-v4-title">
@@ -751,7 +757,7 @@ function CombinedBenefitsSection() {
               )
             })}
           </div>
-          <button className="benefits-cta benefits-cta-primary" onClick={() => window.location.href = '/auth'}>
+          <button className="benefits-cta benefits-cta-primary" onClick={() => spaNavigate('/auth')}>
             {t('hero.startEarning')}
             <ArrowRight size={16} />
           </button>
@@ -784,7 +790,7 @@ function CombinedBenefitsSection() {
               )
             })}
           </div>
-          <button className="benefits-cta benefits-cta-secondary" onClick={() => window.location.href = '/connect-agent'}>
+          <button className="benefits-cta benefits-cta-secondary" onClick={() => spaNavigate('/connect-agent')}>
             <Terminal size={16} />
             {t('benefits.viewApiDocs')}
           </button>

@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { supabase } from '../../App'
-import { useAuth } from '../../context/AuthContext'
+import { supabase } from '../../lib/supabase'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 import AdminTaskRow from './AdminTaskRow'
+import Card from '../ui/Card'
+import Button from '../ui/Button'
 
 export default function LiveFeedTab({ user }) {
-  const { authenticatedFetch } = useAuth()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -25,7 +26,7 @@ export default function LiveFeedTab({ user }) {
     try {
       const params = new URLSearchParams({ limit: '50' })
       if (filter !== 'all') params.set('status', filter)
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/recent?${params}`)
+      const res = await adminFetch(`${API_URL}/admin/tasks/recent?${params}`)
       if (!res.ok) throw new Error('Failed to fetch tasks')
       const data = await res.json()
       setTasks(data)
@@ -37,7 +38,7 @@ export default function LiveFeedTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [filter, authenticatedFetch])
+  }, [filter])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
@@ -126,19 +127,19 @@ export default function LiveFeedTab({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-gray-400">Loading live feed...</div>
+        <div className="text-[#9CA3AF]">Loading live feed...</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-        <p className="text-red-600 font-medium mb-3">{error}</p>
-        <button onClick={fetchTasks} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600">
+      <Card padding="none" className="p-12 text-center">
+        <p className="text-[#DC2626] font-medium mb-3">{error}</p>
+        <Button variant="primary" size="sm" onClick={fetchTasks}>
           Retry
-        </button>
-      </div>
+        </Button>
+      </Card>
     )
   }
 
@@ -146,19 +147,22 @@ export default function LiveFeedTab({ user }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold text-gray-900">Live Task Feed</h2>
-          <span className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            Live
-          </span>
+        <div>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold text-[#1A1A1A]">Live task feed</h2>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-[#16A34A] bg-[#F0FDF4] px-2.5 py-1 rounded-full">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              Live
+            </span>
+          </div>
+          <p className="text-sm text-[#9CA3AF] mt-0.5">Real-time stream of task activity. New tasks and status changes appear automatically.</p>
         </div>
         {/* Status filter */}
         <div className="relative">
           <select
             value={filter}
             onChange={e => setFilter(e.target.value)}
-            className="appearance-none bg-white border border-gray-200 rounded-lg px-3 py-1.5 pr-8 text-sm font-medium text-gray-700 cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-200"
+            className="appearance-none bg-white border border-[#ECECEC] rounded-lg px-3 py-1.5 pr-8 text-sm font-medium text-[#1A1A1A] cursor-pointer hover:border-[#ECECEC] focus:outline-none focus:ring-2 focus:ring-orange-200"
           >
             <option value="all">All Statuses</option>
             <option value="open">Open</option>
@@ -167,7 +171,7 @@ export default function LiveFeedTab({ user }) {
             <option value="pending_review">Pending Review</option>
             <option value="disputed">Disputed</option>
           </select>
-          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] pointer-events-none" />
         </div>
       </div>
 
@@ -182,12 +186,13 @@ export default function LiveFeedTab({ user }) {
       )}
 
       {/* Feed */}
+      {/* eslint-disable-next-line irlwork/no-inline-card-pattern -- complex admin live-feed wrapper with divide-y and scroll overflow */}
       <div
         ref={feedRef}
-        className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 max-h-[calc(100vh-280px)] overflow-y-auto"
+        className="bg-white rounded-xl border border-[#ECECEC] divide-y divide-[#ECECEC] max-h-[calc(100vh-280px)] overflow-y-auto"
       >
         {tasks.length === 0 ? (
-          <div className="py-16 text-center text-gray-400 text-sm">
+          <div className="py-16 text-center text-[#9CA3AF] text-sm">
             No tasks found
           </div>
         ) : (
@@ -201,7 +206,7 @@ export default function LiveFeedTab({ user }) {
         )}
       </div>
 
-      <p className="text-xs text-gray-400 text-center">
+      <p className="text-xs text-[#9CA3AF] text-center">
         Showing {tasks.length} most recent tasks. New tasks appear automatically.
       </p>
     </div>

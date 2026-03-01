@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DollarSign, TrendingUp, ArrowDownRight, AlertTriangle, Shield, RefreshCw } from 'lucide-react'
 import PeriodSelector from './PeriodSelector'
-import { useAuth } from '../../context/AuthContext'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
+import Card from '../ui/Card'
+import Button from '../ui/Button'
 
 /**
  * Financial Tab — detailed financial metrics
  * GMV, fees, payouts, refunds, disputes, premium breakdown
  */
 export default function FinancialTab({ user }) {
-  const { authenticatedFetch } = useAuth()
   const [period, setPeriod] = useState('30d')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -19,7 +20,7 @@ export default function FinancialTab({ user }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/financials?period=${period}`)
+      const res = await adminFetch(`${API_URL}/admin/financials?period=${period}`)
       if (!res.ok) throw new Error('Failed to fetch financial data')
       setData(await res.json())
     } catch (err) {
@@ -27,7 +28,7 @@ export default function FinancialTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [period, authenticatedFetch])
+  }, [period])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -36,19 +37,19 @@ export default function FinancialTab({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-gray-400">Loading financials...</div>
+        <div className="text-[#9CA3AF]">Loading financials...</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-        <p className="text-red-600 font-medium mb-3">{error}</p>
-        <button onClick={fetchData} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600">
-          Retry
-        </button>
-      </div>
+      <Card padding="none" className="p-12 text-center">
+        <p className="text-[#DC2626] font-medium mb-3">{error}</p>
+        <Button variant="primary" size="sm" onClick={fetchData}>
+          Retry loading
+        </Button>
+      </Card>
     )
   }
 
@@ -56,25 +57,28 @@ export default function FinancialTab({ user }) {
 
   return (
     <div className="space-y-6">
-      {/* Period selector */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">Financial Overview</h2>
+        <div>
+          <h2 className="text-lg font-bold text-[#1A1A1A]">Financial Overview</h2>
+          <p className="text-sm text-[#9CA3AF] mt-0.5">Revenue breakdown — GMV, platform fees, payouts, refunds, and subscription tiers.</p>
+        </div>
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <FinCard
-          label="Gross Merchandise Value"
+          label="Gross merchandise value"
           value={fmt(data?.gmv?.total_cents || 0)}
           count={`${data?.gmv?.count || 0} tasks`}
           icon={<DollarSign size={18} />}
-          bg="bg-green-50"
+          bg="bg-[#F0FDF4]"
           border="border-green-200"
-          iconColor="text-green-600"
+          iconColor="text-[#16A34A]"
         />
         <FinCard
-          label="Platform Fees"
+          label="Platform fees"
           value={fmt(data?.platform_fees?.total_cents || 0)}
           count={`${data?.platform_fees?.count || 0} completed`}
           icon={<TrendingUp size={18} />}
@@ -87,84 +91,84 @@ export default function FinancialTab({ user }) {
           value={fmt(data?.payouts?.total_cents || 0)}
           count={`${data?.payouts?.count || 0} payouts`}
           icon={<ArrowDownRight size={18} />}
-          bg="bg-blue-50"
+          bg="bg-[#EFF6FF]"
           border="border-blue-200"
-          iconColor="text-blue-600"
+          iconColor="text-[#2563EB]"
         />
         <FinCard
           label="Outstanding Escrow"
           value={fmt(data?.outstanding_escrow?.total_cents || 0)}
           count={`${data?.outstanding_escrow?.count || 0} pending`}
           icon={<Shield size={18} />}
-          bg="bg-yellow-50"
+          bg="bg-[#FEFCE8]"
           border="border-yellow-200"
-          iconColor="text-yellow-600"
+          iconColor="text-[#EAB308]"
         />
         <FinCard
           label="Refunds"
           value={fmt(data?.refunds?.total_cents || 0)}
           count={`${data?.refunds?.count || 0} refunded`}
           icon={<RefreshCw size={18} />}
-          bg="bg-gray-50"
-          border="border-gray-200"
-          iconColor="text-gray-600"
+          bg="bg-[#FAFAF8]"
+          border="border-[#ECECEC]"
+          iconColor="text-[#6B7280]"
         />
         <FinCard
           label="Disputes"
           value={`${data?.disputes?.open || 0} open`}
           count={`${data?.disputes?.resolved || 0} resolved`}
           icon={<AlertTriangle size={18} />}
-          bg={data?.disputes?.open > 0 ? 'bg-red-50' : 'bg-gray-50'}
-          border={data?.disputes?.open > 0 ? 'border-red-200' : 'border-gray-200'}
-          iconColor={data?.disputes?.open > 0 ? 'text-red-600' : 'text-gray-600'}
+          bg={data?.disputes?.open > 0 ? 'bg-[#FEF2F2]' : 'bg-[#FAFAF8]'}
+          border={data?.disputes?.open > 0 ? 'border-red-200' : 'border-[#ECECEC]'}
+          iconColor={data?.disputes?.open > 0 ? 'text-[#DC2626]' : 'text-[#6B7280]'}
         />
       </div>
 
       {/* Premium / subscription breakdown */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4 text-sm">Premium Subscriptions</h3>
+      <Card padding="lg">
+        <h3 className="font-semibold text-[#1A1A1A] mb-4 text-sm">Premium Subscriptions</h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           <div>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-bold text-[#1A1A1A]">
               {fmt(data?.premium_revenue?.mrr_cents || 0)}
             </p>
-            <p className="text-xs text-gray-500">Monthly Recurring Revenue</p>
+            <p className="text-xs text-[#6B7280]">Monthly recurring revenue</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-bold text-[#1A1A1A]">
               {data?.premium_revenue?.active_subscribers || 0}
             </p>
-            <p className="text-xs text-gray-500">Active Subscribers</p>
+            <p className="text-xs text-[#6B7280]">Active Subscribers</p>
           </div>
           {Object.entries(data?.premium_revenue?.by_tier || {}).map(([tier, count]) => (
             <div key={tier}>
-              <p className="text-2xl font-bold text-gray-900">{count}</p>
-              <p className="text-xs text-gray-500">{tierLabels[tier] || tier} tier</p>
+              <p className="text-2xl font-bold text-[#1A1A1A]">{count}</p>
+              <p className="text-xs text-[#6B7280]">{tierLabels[tier] || tier} tier</p>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Financial summary table */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4 text-sm">Summary</h3>
+      <Card padding="lg">
+        <h3 className="font-semibold text-[#1A1A1A] mb-4 text-sm">Summary</h3>
         <table className="w-full text-sm">
           <tbody>
-            <SummaryRow label="Gross Merchandise Value" value={fmt(data?.gmv?.total_cents || 0)} />
-            <SummaryRow label="Platform Fees Collected" value={fmt(data?.platform_fees?.total_cents || 0)} />
+            <SummaryRow label="Gross merchandise value" value={fmt(data?.gmv?.total_cents || 0)} />
+            <SummaryRow label="Platform fees collected" value={fmt(data?.platform_fees?.total_cents || 0)} />
             <SummaryRow label="Worker Payouts" value={fmt(data?.payouts?.total_cents || 0)} />
             <SummaryRow label="Refunds Issued" value={fmt(data?.refunds?.total_cents || 0)} negative />
             <SummaryRow label="Outstanding Escrow" value={fmt(data?.outstanding_escrow?.total_cents || 0)} />
             <SummaryRow label="Premium MRR" value={fmt(data?.premium_revenue?.mrr_cents || 0)} />
-            <tr className="border-t-2 border-gray-200">
-              <td className="py-3 font-bold text-gray-900">Net Revenue (Fees + MRR)</td>
-              <td className="py-3 text-right font-bold text-green-600">
+            <tr className="border-t-2 border-[#ECECEC]">
+              <td className="py-3 font-bold text-[#1A1A1A]">Net revenue (fees + MRR)</td>
+              <td className="py-3 text-right font-bold text-[#16A34A]">
                 {fmt((data?.platform_fees?.total_cents || 0) + (data?.premium_revenue?.mrr_cents || 0))}
               </td>
             </tr>
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -173,18 +177,18 @@ function FinCard({ label, value, count, icon, bg, border, iconColor }) {
   return (
     <div className={`rounded-xl border p-5 ${bg} ${border}`}>
       <div className={`mb-2 ${iconColor}`}>{icon}</div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-xs font-medium text-gray-600 mt-0.5">{label}</p>
-      <p className="text-xs text-gray-400 mt-0.5">{count}</p>
+      <p className="text-2xl font-bold text-[#1A1A1A]">{value}</p>
+      <p className="text-xs font-medium text-[#6B7280] mt-0.5">{label}</p>
+      <p className="text-xs text-[#9CA3AF] mt-0.5">{count}</p>
     </div>
   )
 }
 
 function SummaryRow({ label, value, negative }) {
   return (
-    <tr className="border-b border-gray-50">
-      <td className="py-2.5 text-gray-700">{label}</td>
-      <td className={`py-2.5 text-right font-medium ${negative ? 'text-red-500' : 'text-gray-900'}`}>
+    <tr className="border-b border-[#FAFAF8]">
+      <td className="py-2.5 text-[#1A1A1A]">{label}</td>
+      <td className={`py-2.5 text-right font-medium ${negative ? 'text-red-500' : 'text-[#1A1A1A]'}`}>
         {negative ? `(${value})` : value}
       </td>
     </tr>

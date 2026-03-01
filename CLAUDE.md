@@ -38,15 +38,17 @@ Before modifying code, read the relevant reference doc. These are the source of 
 
 These are non-negotiable constraints enforced by the codebase:
 
-1. **Status transitions** — Every task status change MUST go through `validateStatusTransition()` (server.js line 373). No direct `.update({status: '...'})` writes. Valid transitions are defined in `VALID_STATUS_TRANSITIONS` (server.js line 362):
+1. **Status transitions** — Task status transitions are enforced at the **database level** by the `check_task_status_transition` trigger (see `db/enforce_status_transitions.sql`). Invalid transitions raise a PostgreSQL exception. The old `validateStatusTransition()` function has been removed. Always use atomic `.eq('status', currentStatus)` on UPDATEs to prevent TOCTOU races. Valid transitions:
    ```
-   open → pending_acceptance | assigned | expired | cancelled
-   pending_acceptance → assigned | open | cancelled
-   assigned → in_progress | cancelled | open (worker withdrawal)
-   in_progress → pending_review | disputed | open (worker withdrawal)
-   pending_review → approved | in_progress | disputed
+   open → pending_acceptance | assigned | in_progress | cancelled
+   pending_acceptance → in_progress | open | cancelled
+   assigned → in_progress | cancelled
+   in_progress → pending_review | disputed | cancelled
+   pending_review → completed | approved | rejected | disputed
    approved → paid
-   disputed → approved | cancelled | paid
+   rejected → pending_review | disputed | cancelled
+   disputed → paid | refunded | cancelled
+   completed → paid
    ```
 
 2. **Webhooks** — Every status change that should notify external systems MUST call `deliverWebhook()` (for task events, flat payload) or `dispatchWebhook()` (for messages, wrapped payload with `{event_type, task_id, data, timestamp}`). These two functions have DIFFERENT payload structures — see `API_REFERENCE.md` Section 7.
@@ -62,6 +64,21 @@ These are non-negotiable constraints enforced by the codebase:
 7. **RLS policies** — Supabase Row Level Security is active. Backend queries using the service role key (`SUPABASE_SERVICE_ROLE_KEY`) bypass RLS. Frontend/client queries using the anon key do not.
 
 8. **Platform fee** — The 15% platform fee is hardcoded in `api/config/constants.js` as `PLATFORM_FEE_PERCENT`. The env var in `.env.example` is for documentation only.
+
+---
+
+## UI/UX Rules
+
+Before creating or modifying any UI:
+1. Read `ui/DESIGN_SYSTEM.md` — all colors, typography, spacing, component specs
+2. Import shared components from `ui/src/components/ui/` — never create inline cards, buttons, or empty states
+3. Run `cd ui && npm run lint` before committing — custom ESLint rules enforce UI consistency
+
+### Shared Components
+See `ui/src/components/ui/README.md` for usage guide.
+
+### Color System
+Use design system colors defined in `ui/tailwind.config.cjs` theme extension. Never use Tailwind default gray/slate/zinc palette — use the named tokens or hex values from DESIGN_SYSTEM.md instead.
 
 ---
 
