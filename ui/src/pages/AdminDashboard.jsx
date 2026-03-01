@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense, Fragment } from 'react'
-import { BarChart3, Flag, DollarSign, AlertTriangle, User, CheckCircle, ArrowDownLeft, FileText, Hammer, TrendingUp, Filter, Activity } from 'lucide-react'
+import { BarChart3, Flag, DollarSign, AlertTriangle, User, Users, CheckCircle, ArrowDownLeft, FileText, Hammer, TrendingUp, Filter, Activity } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { adminFetch } from '../utils/adminFetch'
 import API_URL from '../config/api'
@@ -10,6 +10,7 @@ const FunnelTab = lazy(() => import('../components/admin/FunnelTab'))
 const FinancialTab = lazy(() => import('../components/admin/FinancialTab'))
 const LiveFeedTab = lazy(() => import('../components/admin/LiveFeedTab'))
 const TaskManagerTab = lazy(() => import('../components/admin/TaskManagerTab'))
+const UserManagerTab = lazy(() => import('../components/admin/UserManagerTab'))
 
 /**
  * Admin Dashboard - Phase 1 Manual Operations
@@ -295,6 +296,7 @@ export default function AdminDashboard({ user }) {
     { id: 'bi-financial', label: 'Financial', icon: <DollarSign size={16} />, isBi: true },
     { id: 'bi-live-feed', label: 'Live Feed', icon: <Activity size={16} />, isBi: true },
     { id: 'bi-task-manager', label: 'Tasks', icon: <Hammer size={16} />, isBi: true },
+    { id: 'bi-users', label: 'Users', icon: <Users size={16} />, isBi: true },
   ]
 
   const opsQueues = [
@@ -379,6 +381,10 @@ export default function AdminDashboard({ user }) {
       ) : activeQueue === 'bi-task-manager' ? (
         <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading task manager...</div></div>}>
           <TaskManagerTab user={user} />
+        </Suspense>
+      ) : activeQueue === 'bi-users' ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-gray-400">Loading users...</div></div>}>
+          <UserManagerTab user={user} />
         </Suspense>
       ) : loading && activeQueue === 'dashboard' ? (
         <div className="flex items-center justify-center py-12">
