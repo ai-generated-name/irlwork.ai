@@ -95,6 +95,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
         left: 0,
         right: 0,
         height: 3,
+        // eslint-disable-next-line irlwork/no-orange-outside-button -- accent line uses brand color
         background: '#E8853D',
         borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
         opacity: 0.6
@@ -146,6 +147,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
             width: 56,
             height: 56,
             borderRadius: '50%',
+            // eslint-disable-next-line irlwork/no-orange-outside-button -- avatar fallback uses brand color
             background: '#E8853D',
             display: human.avatar_url ? 'none' : 'flex',
             alignItems: 'center',
@@ -228,6 +230,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
               overflow: 'hidden',
               textOverflow: 'ellipsis'
             }}>
+              {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon color uses brand accent */}
               <MapPin size={12} style={{ color: '#E8853D', flexShrink: 0 }} />
               {human.city}{human.state ? `, ${human.state}` : ''}
               {human.timezone && (
@@ -285,6 +288,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
               background: 'rgba(232,133,61,0.06)',
               borderRadius: 'var(--radius-full, 999px)',
               fontSize: 12,
+              // eslint-disable-next-line irlwork/no-orange-outside-button -- skill tag uses brand color
               color: '#E8853D',
               fontWeight: 500,
               border: '1px solid rgba(232,133,61,0.10)',
@@ -334,6 +338,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
           <span style={{
             fontSize: 24,
             fontWeight: 700,
+            // eslint-disable-next-line irlwork/no-orange-outside-button -- hourly rate uses brand color
             color: '#E8853D',
             letterSpacing: '-0.02em'
           }}>

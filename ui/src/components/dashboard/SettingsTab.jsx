@@ -1,5 +1,6 @@
 // Extracted from Dashboard.jsx — settings with general, notifications, and account sections
 import React from 'react'
+import { Button } from '../ui'
 import { supabase } from '../../lib/supabase'
 import { safeArr } from '../../utils/appConstants'
 import { trackEvent, setUserProperties } from '../../utils/analytics'
@@ -321,9 +322,10 @@ export default function SettingsTab({
                       )}
 
                       {!emailVerifSent ? (
-                        <button
-                          className="v4-btn v4-btn-primary"
-                          style={{ width: '100%', fontSize: 13, padding: '8px 16px' }}
+                        <Button
+                          variant="primary"
+                          size="md"
+                          className="w-full"
                           disabled={emailVerifSending}
                           onClick={async () => {
                             setEmailVerifSending(true)
@@ -357,8 +359,8 @@ export default function SettingsTab({
                             }
                           }}
                         >
-                          {emailVerifSending ? 'Sending...' : 'Send Verification Code'}
-                        </button>
+                          {emailVerifSending ? 'Sending...' : 'Send verification code'}
+                        </Button>
                       ) : (
                         <div>
                           <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, textAlign: 'center' }}>
@@ -382,9 +384,10 @@ export default function SettingsTab({
                               outline: 'none', boxSizing: 'border-box'
                             }}
                           />
-                          <button
-                            className="v4-btn v4-btn-primary"
-                            style={{ width: '100%', fontSize: 13, padding: '8px 16px', marginTop: 8 }}
+                          <Button
+                            variant="primary"
+                            size="md"
+                            className="w-full mt-2"
                             disabled={emailVerifying || emailVerifCode.length < 6}
                             onClick={async () => {
                               if (!emailVerifCode.trim()) return
@@ -416,7 +419,7 @@ export default function SettingsTab({
                             }}
                           >
                             {emailVerifying ? 'Verifying...' : 'Verify'}
-                          </button>
+                          </Button>
                           <button
                             onClick={async () => {
                               setEmailVerifSending(true)
@@ -463,22 +466,23 @@ export default function SettingsTab({
                     <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}</p>
                   </div>
 
-                  <button
-                    className="v4-btn v4-btn-secondary"
-                    style={{ width: '100%', marginTop: 16 }}
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    className="w-full mt-4"
                     onClick={onLogout}
                   >
-                    Sign Out
-                  </button>
+                    Sign out
+                  </Button>
                 </div>
 
                 {/* Danger Zone */}
                 <div style={{ padding: '14px 16px', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-lg)', background: 'rgba(239,68,68,0.04)' }}>
                   <p style={{ fontWeight: 500, color: '#FF5F57', marginBottom: 4, fontSize: 14 }}>Danger Zone</p>
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Deactivating your account hides your profile and pauses all activity. You can reactivate anytime by signing back in.</p>
-                  <button
-                    className="v4-btn v4-btn-secondary"
-                    style={{ fontSize: 13, color: '#FF5F57', borderColor: 'rgba(239,68,68,0.3)' }}
+                  <Button
+                    variant="destructive"
+                    size="sm"
                     onClick={() => {
                       if (window.confirm('Are you sure you want to deactivate your account? Your profile will be hidden and all active tasks will be paused. You can reactivate by signing back in.')) {
                         toast.success('Account deactivated')
@@ -486,8 +490,8 @@ export default function SettingsTab({
                       }
                     }}
                   >
-                    Deactivate Account
-                  </button>
+                    Deactivate account
+                  </Button>
                 </div>
               </div>
             )}

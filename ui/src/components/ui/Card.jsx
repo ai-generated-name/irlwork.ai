@@ -25,6 +25,13 @@ const HOVER_STYLES = {
 
 const DARK_HOVER = 'hover:bg-white/10 cursor-pointer transition-colors';
 
+function handleCardKeyDown(e, rest) {
+  if ((e.key === 'Enter' || e.key === ' ') && rest.onClick) {
+    e.preventDefault();
+    rest.onClick(e);
+  }
+}
+
 export default function Card({
   children,
   variant = 'default',
@@ -35,13 +42,26 @@ export default function Card({
   className = '',
   ...rest
 }) {
+  const interactiveProps = interactive
+    ? {
+        role: 'button',
+        tabIndex: 0,
+        onKeyDown: (e) => handleCardKeyDown(e, rest),
+      }
+    : {};
+
+  const focusClass = interactive
+    ? 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8853D] focus-visible:ring-offset-2'
+    : '';
+
   // Dark mode: preserve legacy behavior exactly
   if (dark) {
     return (
       <div
         className={`rounded-[14px] p-5 border bg-white/5 border-white/10 ${
           interactive ? DARK_HOVER : ''
-        } ${className}`}
+        } ${focusClass} ${className}`}
+        {...interactiveProps}
         {...rest}
       >
         {children}
@@ -57,7 +77,8 @@ export default function Card({
 
   return (
     <div
-      className={`rounded-[14px] border ${variantClass} ${paddingClass} ${hoverClass} ${className}`}
+      className={`rounded-[14px] border ${variantClass} ${paddingClass} ${hoverClass} ${focusClass} ${className}`}
+      {...interactiveProps}
       {...rest}
     >
       {children}

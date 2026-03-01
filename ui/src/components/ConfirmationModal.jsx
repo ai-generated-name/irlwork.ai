@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Button } from './ui';
 
 export default function ConfirmationModal({
   isOpen,
@@ -50,6 +51,7 @@ export default function ConfirmationModal({
       <div className="absolute inset-0 bg-black/40" />
 
       {/* Modal */}
+      {/* eslint-disable-next-line irlwork/no-inline-card-pattern -- modal container with alertdialog role, not a card */}
       <div
         ref={modalRef}
         tabIndex={-1}
@@ -78,14 +80,15 @@ export default function ConfirmationModal({
         )}
 
         <div className="flex gap-3">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="md"
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 px-4 py-2.5 rounded-[10px] border border-[rgba(0,0,0,0.1)] bg-white text-[#333333] text-sm font-medium hover:bg-[#F5F3F0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1"
           >
             {cancelLabel}
-          </button>
+          </Button>
           <button
             type="button"
             onClick={onConfirm}

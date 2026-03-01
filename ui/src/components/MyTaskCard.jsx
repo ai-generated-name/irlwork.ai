@@ -1,6 +1,6 @@
 import React from 'react';
 import EscrowBadge from './EscrowBadge';
-import { StatusPill } from './ui';
+import { StatusPill, Button } from './ui';
 import { Package, Camera, BarChart3, Footprints, Sparkles, Truck, Dumbbell, Search, Monitor, Globe, CheckCircle, ClipboardList, MapPin, CalendarDays, Bot } from 'lucide-react';
 
 const CATEGORY_ICONS = {
@@ -176,23 +176,23 @@ export default function MyTaskCard({
         <div className="mytasks-card__actions">
           {task.status === 'pending_acceptance' && onAccept && (
             <>
-              <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onAccept)}>Accept task</button>
+              <Button variant="primary" size="md" onClick={(e) => handleAction(e, onAccept)}>Accept task</Button>
               {onDecline && (
-                <button className="v4-btn v4-btn-secondary" onClick={(e) => handleAction(e, onDecline)}>Decline task</button>
+                <Button variant="secondary" size="md" onClick={(e) => handleAction(e, onDecline)}>Decline task</Button>
               )}
             </>
           )}
           {task.status === 'open' && onAccept && (
-            <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onAccept)}>Accept task</button>
+            <Button variant="primary" size="md" onClick={(e) => handleAction(e, onAccept)}>Accept task</Button>
           )}
           {(task.status === 'accepted' || task.status === 'assigned') && onStartWork && (
-            <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onStartWork)}>Start work</button>
+            <Button variant="primary" size="md" onClick={(e) => handleAction(e, onStartWork)}>Start work</Button>
           )}
           {task.status === 'in_progress' && onSubmitProof && (
-            <button className="v4-btn v4-btn-primary" onClick={(e) => handleAction(e, onSubmitProof)}>Submit proof</button>
+            <Button variant="primary" size="md" onClick={(e) => handleAction(e, onSubmitProof)}>Submit proof</Button>
           )}
           {task.status === 'pending_review' && (
-            <button className="v4-btn v4-btn-secondary" disabled>Waiting for approval</button>
+            <Button variant="secondary" size="md" disabled>Waiting for approval</Button>
           )}
           {task.status === 'approved' && (
             <span className="mytasks-card__info-label">Work approved, payment pending</span>

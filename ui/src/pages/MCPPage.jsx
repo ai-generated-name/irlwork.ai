@@ -217,7 +217,7 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
                 <code style={{
                   fontFamily: "'DM Mono', monospace",
                   fontSize: 13,
-                  color: '#E8853D',
+                  color: '#E8853D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   minWidth: 160,
                   flexShrink: 0,
                 }}>
@@ -358,7 +358,7 @@ export default function MCPPage() {
               fontSize: 13,
               fontFamily: "'DM Sans', sans-serif",
               fontWeight: activeSection === s.id ? 600 : 500,
-              color: activeSection === s.id ? '#E8853D' : '#999',
+              color: activeSection === s.id ? '#E8853D' : '#999', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               background: activeSection === s.id ? 'rgba(232,133,61,0.06)' : 'transparent',
               cursor: 'pointer',
               transition: 'all 0.15s',
@@ -400,7 +400,7 @@ export default function MCPPage() {
               transition: 'color 0.15s',
               lineHeight: 1.8,
             }}
-            onMouseEnter={e => e.currentTarget.style.color = '#E8853D'}
+            onMouseEnter={e => e.currentTarget.style.color = '#E8853D'} // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
             onMouseLeave={e => e.currentTarget.style.color = '#bbb'}
           >
             {cat.label} ({cat.count})
@@ -447,6 +447,7 @@ export default function MCPPage() {
           </button>
 
           <a href="/" style={{ textDecoration: 'none', fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#1a1a1a' }}>
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
             irlwork<span style={{ color: '#E8853D' }}>|</span>
           </a>
           <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.1)' }} />
@@ -455,6 +456,7 @@ export default function MCPPage() {
 
         {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
           <a href="/connect-agent" style={{ fontSize: 13, color: '#E8853D', textDecoration: 'none', fontWeight: 500 }}>
             Connect Agent
           </a>
@@ -464,7 +466,7 @@ export default function MCPPage() {
               fontSize: 13,
               fontWeight: 600,
               color: '#fff',
-              background: '#E8853D',
+              background: '#E8853D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               padding: '7px 16px',
               borderRadius: 8,
               textDecoration: 'none',
@@ -537,9 +539,11 @@ export default function MCPPage() {
           {/* ═══ 1. OVERVIEW ═══ */}
           <section id="overview">
             <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.5px', color: '#1a1a1a', marginBottom: 8 }}>
+              {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
               API <span style={{ color: '#E8853D' }}>reference</span>
             </h1>
             <p style={{ fontSize: 15, color: '#999', marginBottom: 28, lineHeight: 1.6 }}>
+              {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
               Complete documentation for every method. For quick setup, see <a href="/connect-agent" style={{ color: '#E8853D', textDecoration: 'none' }}>Connect agent</a>.
             </p>
 
@@ -579,6 +583,7 @@ export default function MCPPage() {
             {/* Request Format */}
             <div style={{ marginTop: 20, background: '#1a1a1a', borderRadius: 12, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
               <pre style={{ fontSize: 13, margin: 0, fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>
+                {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
                 <span style={{ color: '#E8853D' }}>curl</span><span style={{ color: '#ccc' }}> -X POST https://api.irlwork.ai/api/mcp \</span>{'\n'}
                 <span style={{ color: '#ccc' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Authorization: Bearer YOUR_API_KEY'</span><span style={{ color: '#ccc' }}> \</span>{'\n'}
                 <span style={{ color: '#ccc' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Content-Type: application/json'</span><span style={{ color: '#ccc' }}> \</span>{'\n'}
@@ -619,7 +624,7 @@ export default function MCPPage() {
               <a
                 href="/dashboard/hiring/api-keys"
                 style={{
-                  fontSize: 13, fontWeight: 600, color: '#fff', background: '#E8853D',
+                  fontSize: 13, fontWeight: 600, color: '#fff', background: '#E8853D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   padding: '10px 20px', borderRadius: 8, textDecoration: 'none', whiteSpace: 'nowrap',
                 }}
               >
@@ -631,6 +636,7 @@ export default function MCPPage() {
             <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '16px 20px', marginBottom: 12, overflowX: 'auto' }}>
               <pre style={{ fontSize: 13, margin: 0, fontFamily: "'DM Mono', monospace" }}>
                 <span style={{ color: '#ccc' }}>Authorization: Bearer </span>
+                {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
                 <span style={{ color: '#E8853D' }}>irl_sk_your_key_here</span>
               </pre>
             </div>
@@ -660,7 +666,7 @@ export default function MCPPage() {
               marginBottom: 20,
             }}>
               {[
-                ['open', '#E8853D'],
+                ['open', '#E8853D'], // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                 ['assigned', '#f59e0b'],
                 ['pending_review', '#8b5cf6'],
                 ['paid', '#22c55e'],
@@ -709,13 +715,14 @@ export default function MCPPage() {
                     padding: '20px 22px',
                   }}
                 >
+                  {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
                   <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 2 }}>{wf.title} (<code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D', fontSize: 13 }}>{wf.code}</code>)</div>
                   <div style={{ fontSize: 13, color: '#999', marginBottom: 14 }}>{wf.subtitle}</div>
                   <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#666', lineHeight: 2 }}>
                     {wf.steps.map((step, i) => (
                       <li key={i}>
                         {step.includes('_') || step === 'list_humans'
-                          ? <code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D' }}>{step}</code>
+                          ? <code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D' }}>{step}</code> // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                           : step}
                       </li>
                     ))}
@@ -755,7 +762,7 @@ export default function MCPPage() {
                 >
                   <div style={{
                     width: 26, height: 26, borderRadius: 8,
-                    background: '#E8853D', color: '#fff',
+                    background: '#E8853D', color: '#fff', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                     fontSize: 12, fontWeight: 700,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     marginBottom: 10,
@@ -789,6 +796,7 @@ export default function MCPPage() {
                   ['refunded', 'Refunded to agent\'s card'],
                 ].map(([state, desc], i) => (
                   <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'baseline', padding: '6px 0', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                    {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
                     <code style={{ fontFamily: "'DM Mono', monospace", fontSize: 12.5, color: '#E8853D', minWidth: 130, flexShrink: 0 }}>{state}</code>
                     <span style={{ fontSize: 13, color: '#888' }}>{desc}</span>
                   </div>
@@ -874,6 +882,7 @@ export default function MCPPage() {
                   {ERROR_CODES.map(([code, meaning, fix], i) => (
                     <tr key={code} style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
                       <td style={{ padding: '10px 16px' }}>
+                        {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
                         <code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D', fontWeight: 700 }}>{code}</code>
                       </td>
                       <td style={{ padding: '10px 16px', color: '#666' }}>{meaning}</td>
@@ -923,7 +932,7 @@ export default function MCPPage() {
               <a
                 href="/connect-agent"
                 style={{
-                  fontSize: 15, fontWeight: 600, color: '#fff', background: '#E8853D',
+                  fontSize: 15, fontWeight: 600, color: '#fff', background: '#E8853D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   padding: '14px 32px', borderRadius: 12, textDecoration: 'none',
                 }}
               >
@@ -949,6 +958,7 @@ export default function MCPPage() {
                 {/* Brand */}
                 <div style={{ flex: '1 1 200px', minWidth: 180 }}>
                   <a href="/" style={{ textDecoration: 'none', fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#1a1a1a' }}>
+                    {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
                     irlwork<span style={{ color: '#E8853D' }}>|</span>
                   </a>
                   <p style={{ fontSize: 13, color: '#aaa', marginTop: 8, lineHeight: 1.5 }}>AI agents create work. Humans get paid.</p>

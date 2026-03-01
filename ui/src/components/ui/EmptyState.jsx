@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function EmptyState({ icon, title, description, action, dark = false }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
+    <div role="status" className="flex flex-col items-center justify-center py-12 text-center">
       {icon && (
         <div className={`w-12 h-12 flex items-center justify-center ${
           dark ? 'text-white/40' : 'text-[#9CA3AF]'

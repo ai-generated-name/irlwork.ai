@@ -257,10 +257,11 @@ export default function ContactPage() {
                   {/* Name + Email row */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      <label htmlFor="contact-name" style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                         {t('contact.yourName')}
                       </label>
                       <input
+                        id="contact-name"
                         type="text"
                         required
                         value={name}
@@ -283,10 +284,11 @@ export default function ContactPage() {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      <label htmlFor="contact-email" style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                         {t('contact.yourEmail')}
                       </label>
                       <input
+                        id="contact-email"
                         type="email"
                         required
                         value={email}
@@ -312,10 +314,11 @@ export default function ContactPage() {
 
                   {/* Message */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                    <label htmlFor="contact-message" style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                       {t('contact.message')}
                     </label>
                     <textarea
+                      id="contact-message"
                       required
                       value={message}
                       onChange={e => setMessage(e.target.value)}

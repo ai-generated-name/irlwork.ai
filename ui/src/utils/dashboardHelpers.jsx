@@ -16,11 +16,11 @@ export function getTaskStatus(status) {
     accepted: 'bg-purple-100 text-purple-600',
     in_progress: 'bg-amber-100 text-amber-600',
     pending_review: 'bg-coral/10 text-coral',
-    completed: 'bg-green-100 text-green-600',
-    paid: 'bg-gray-100 text-gray-500',
-    disputed: 'bg-red-100 text-red-600',
+    completed: 'bg-green-100 text-[#16A34A]',
+    paid: 'bg-[#F3F4F6] text-[#6B7280]',
+    disputed: 'bg-red-100 text-[#DC2626]',
   }
-  return colors[status] || 'bg-gray-100 text-gray-500'
+  return colors[status] || 'bg-[#F3F4F6] text-[#6B7280]'
 }
 
 /**

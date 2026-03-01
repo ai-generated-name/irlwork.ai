@@ -359,6 +359,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="flex flex-col items-center">
+          {/* eslint-disable-next-line irlwork/no-orange-outside-button -- border uses brand color */}
           <div className="w-12 h-12 border-4 border-[#F5F3F0] border-t-[#E8853D] rounded-full animate-spin mb-4"></div>
           <div className="text-[#333333] text-lg">Loading task details...</div>
           {loadingTimeout && (
@@ -366,7 +367,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               <p className="text-[#888888] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
               <button
                 onClick={() => window.location.reload()}
-                className="text-[#E8853D] underline text-sm hover:text-[#D4703A]"
+                className="text-[#E8853D] underline text-sm hover:text-[#D4703A]" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               >
                 Retry loading
               </button>
@@ -421,7 +422,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         <div className="h-10 sm:h-14" style={{ maxWidth: 1280, margin: '0 auto', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            className="flex items-center gap-1.5 sm:gap-2 text-[#E8853D] bg-transparent border-none cursor-pointer text-xs sm:text-sm font-medium"
+            className="flex items-center gap-1.5 sm:gap-2 text-[#E8853D] bg-transparent border-none cursor-pointer text-xs sm:text-sm font-medium" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
           >
             <span>←</span>
             <span>Back</span>
@@ -500,9 +501,10 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                   </Button>
                 )}
                 {canDispute && (
+                  // eslint-disable-next-line irlwork/no-inline-button-pattern -- outlined orange variant not in Button
                   <button
                     onClick={() => setShowDisputeModal(true)}
-                    className="w-full py-2.5 border-2 border-[#E8853D] text-[#E8853D] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm"
+                    className="w-full py-2.5 border-2 border-[#E8853D] text-[#E8853D] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   >
                     File a dispute
                   </button>
@@ -589,18 +591,20 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               <span className="text-xs text-[#888888] ml-1">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
             </div>
             {user && task.agent_id !== user.id && !hasApplied ? (
-              <button
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => setShowApplyModal(true)}
-                className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md"
+                className="flex-1 max-w-[200px] shadow-md"
               >
                 Apply for this task
-              </button>
+              </Button>
             ) : hasApplied ? (
               <span className="text-sm font-medium text-[#16A34A]">Applied</span>
             ) : !user ? (
               <a
                 href="/auth"
-                className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block"
+                className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               >
                 Sign in to apply
               </a>

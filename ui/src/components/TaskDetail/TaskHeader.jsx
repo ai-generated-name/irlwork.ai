@@ -55,11 +55,13 @@ export default function TaskHeader({ task }) {
             {spotsFilled}/{quantity} filled
           </span>
         )}
+        {/* eslint-disable irlwork/no-orange-outside-button -- applicant count badge uses brand color */}
         {task.applicant_count > 0 && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium" style={{ background: 'rgba(0, 0, 0, 0.08)', color: '#E8853D' }}>
             {task.applicant_count} applicant{task.applicant_count !== 1 ? 's' : ''}
           </span>
         )}
+        {/* eslint-enable irlwork/no-orange-outside-button */}
         {/* Compact budget shown inline on mobile only */}
         <span className="lg:hidden text-lg font-bold text-[#16A34A] font-mono">
           ${task.budget} <span className="text-xs font-normal text-[#888888]">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
@@ -197,6 +199,7 @@ export default function TaskHeader({ task }) {
         <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[rgba(0,0,0,0.08)]">
           <h3 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-1.5 sm:mb-2">Skills Needed</h3>
           <div className="flex flex-wrap gap-2">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium bg-[rgba(232,133,61,0.1)] text-[#E8853D]">
               {(() => { const Icon = CATEGORY_ICONS[task.category] || ClipboardList; return <Icon size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />; })()} {task.category.replace('-', ' ')}
             </span>

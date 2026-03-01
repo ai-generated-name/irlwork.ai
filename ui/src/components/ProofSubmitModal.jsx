@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react'
-import { Upload } from 'lucide-react'
+import { Upload, X, Check } from 'lucide-react'
+import { Button } from './ui'
 import { useToast } from '../context/ToastContext'
 import API_URL from '../config/api'
 
@@ -78,7 +79,7 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
       <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Submit Proof</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}>&#10005;</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}><X size={20} /></button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
@@ -126,7 +127,7 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
                     gap: 8
                   }}>
                     <span>{file.name.length > 18 ? file.name.slice(0, 18) + '...' : file.name}</span>
-                    <button onClick={() => removeFile(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14, padding: 0 }}>&#10005;</button>
+                    <button onClick={() => removeFile(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14, padding: 0 }}><X size={14} /></button>
                   </div>
                 ))}
               </div>
@@ -139,15 +140,15 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
           )}
           {uploadedUrls.length > 0 && !uploading && (
             <p style={{ fontSize: 13, color: '#16A34A', display: 'flex', alignItems: 'center', gap: 8 }}>
-              &#10003; {uploadedUrls.length} file{uploadedUrls.length !== 1 ? 's' : ''} uploaded
+              <Check size={14} /> {uploadedUrls.length} file{uploadedUrls.length !== 1 ? 's' : ''} uploaded
             </p>
           )}
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-          <button className="v4-btn v4-btn-primary" style={{ flex: 1 }} onClick={handleSubmit} disabled={submitting || uploading}>
-            {submitting ? 'Submitting...' : 'Submit Proof'}
-          </button>
+          <Button variant="secondary" size="md" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" size="md" className="flex-1" onClick={handleSubmit} disabled={submitting || uploading}>
+            {submitting ? 'Submitting...' : 'Submit proof'}
+          </Button>
         </div>
       </div>
     </div>

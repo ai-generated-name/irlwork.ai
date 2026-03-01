@@ -1,5 +1,6 @@
 import React from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { Button } from './ui'
 
 // Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
 class TabErrorBoundary extends React.Component {
@@ -20,12 +21,13 @@ class TabErrorBoundary extends React.Component {
           <div style={{ marginBottom: 16 }}><AlertTriangle size={32} /></div>
           <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>This section encountered an error</h3>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>Try switching to another tab or refreshing the page.</p>
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             onClick={() => window.location.reload()}
-            className="v4-btn v4-btn-secondary"
           >
-            Try Again
-          </button>
+            Try again
+          </Button>
         </div>
       )
     }

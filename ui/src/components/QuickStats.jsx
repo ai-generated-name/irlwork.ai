@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react'
 import { StatCard } from './ui'
 
 export default function QuickStats({ totalEarned = 0, tasksCompleted = 0, rating = 0 }) {
@@ -16,7 +17,7 @@ export default function QuickStats({ totalEarned = 0, tasksCompleted = 0, rating
         value={
           <span className="flex items-center gap-1">
             {rating > 0 ? rating.toFixed(1) : '-'}
-            <span className="text-yellow-400 text-base md:text-lg">&#9733;</span>
+            <Star size={16} className="text-yellow-400" />
           </span>
         }
       />

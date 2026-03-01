@@ -352,11 +352,11 @@ export default function ProfileTab({
                 }}>
                   <div className="dashboard-form-grid-2col">
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                      <label className="dashboard-v4-form-label">Full Name</label>
-                      <input type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
+                      <label htmlFor="profile-name" className="dashboard-v4-form-label">Full Name</label>
+                      <input id="profile-name" type="text" name="name" defaultValue={user?.name} className="dashboard-v4-form-input" />
                     </div>
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                      <label className="dashboard-v4-form-label">City</label>
+                      <label htmlFor="profile-city" className="dashboard-v4-form-label">City</label>
                       <CityAutocomplete
                         value={profileLocation?.city || user?.city || ''}
                         onChange={setProfileLocation}
@@ -367,13 +367,17 @@ export default function ProfileTab({
                   </div>
 
                   <div className="dashboard-v4-form-group">
-                    <label className="dashboard-v4-form-label">Gender</label>
-                    <div style={{
-                      display: 'flex',
-                      borderRadius: 8,
-                      border: '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))',
-                      overflow: 'hidden',
-                    }}>
+                    <label id="profile-gender-label" className="dashboard-v4-form-label">Gender</label>
+                    <div
+                      role="group"
+                      aria-labelledby="profile-gender-label"
+                      style={{
+                        display: 'flex',
+                        borderRadius: 8,
+                        border: '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))',
+                        overflow: 'hidden',
+                      }}
+                    >
                       {['Man', 'Woman', 'Other'].map((option, idx) => (
                         <button
                           key={option}
@@ -403,25 +407,25 @@ export default function ProfileTab({
                   </div>
 
                   <div className="dashboard-v4-form-group">
-                    <label className="dashboard-v4-form-label">Headline</label>
-                    <input type="text" name="headline" defaultValue={user?.headline || ''} maxLength={120} className="dashboard-v4-form-input" placeholder="e.g. Professional Photographer & Drone Pilot" />
+                    <label htmlFor="profile-headline" className="dashboard-v4-form-label">Headline</label>
+                    <input id="profile-headline" type="text" name="headline" defaultValue={user?.headline || ''} maxLength={120} className="dashboard-v4-form-input" placeholder="e.g. Professional Photographer & Drone Pilot" />
                     <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>A short tagline that appears on your profile card</p>
                   </div>
 
                   <div className="dashboard-form-grid-2col">
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                      <label className="dashboard-v4-form-label">Hourly Rate ($)</label>
-                      <input type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
+                      <label htmlFor="profile-hourly-rate" className="dashboard-v4-form-label">Hourly Rate ($)</label>
+                      <input id="profile-hourly-rate" type="number" name="hourly_rate" defaultValue={user?.hourly_rate || 25} min={5} max={500} className="dashboard-v4-form-input" />
                       <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>Your asking rate. Actual pay is set per task by the agent.</p>
                     </div>
                     <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                      <label className="dashboard-v4-form-label">Travel Radius (miles)</label>
-                      <input type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className="dashboard-v4-form-input" />
+                      <label htmlFor="profile-travel-radius" className="dashboard-v4-form-label">Travel Radius (miles)</label>
+                      <input id="profile-travel-radius" type="number" name="travel_radius" defaultValue={user?.travel_radius || 25} min={1} max={100} className="dashboard-v4-form-input" />
                     </div>
                   </div>
 
                   <div className="dashboard-v4-form-group">
-                    <label className="dashboard-v4-form-label">Timezone</label>
+                    <label htmlFor="profile-timezone" className="dashboard-v4-form-label">Timezone</label>
                     <TimezoneDropdown
                       value={profileTimezone}
                       onChange={setProfileTimezone}
@@ -431,8 +435,8 @@ export default function ProfileTab({
                   </div>
 
                   <div className="dashboard-v4-form-group" style={{ marginBottom: 0 }}>
-                    <label className="dashboard-v4-form-label">Bio</label>
-                    <textarea name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Describe your experience, availability, and what makes you great at tasks." />
+                    <label htmlFor="profile-bio" className="dashboard-v4-form-label">Bio</label>
+                    <textarea id="profile-bio" name="bio" defaultValue={user?.bio || ''} className="dashboard-v4-form-input dashboard-v4-form-textarea" style={{ minHeight: 80 }} placeholder="Describe your experience, availability, and what makes you great at tasks." />
                   </div>
 
                   <Button type="submit" variant="secondary" size="md" className="w-full mt-4">Save changes</Button>
@@ -490,8 +494,11 @@ export default function ProfileTab({
                       placeholder="Type a skill and press Enter"
                       style={{ flex: 1, marginBottom: 0 }}
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="primary"
+                      size="md"
+                      className="shrink-0"
                       onClick={() => {
                         const val = newSkillInput.trim()
                         if (val && !skillsList.includes(val)) {
@@ -499,11 +506,9 @@ export default function ProfileTab({
                           setNewSkillInput('')
                         }
                       }}
-                      className="v4-btn v4-btn-primary"
-                      style={{ padding: '10px 20px', flexShrink: 0 }}
                     >
                       Add
-                    </button>
+                    </Button>
                   </div>
                   <Button
                     type="button"
@@ -592,8 +597,11 @@ export default function ProfileTab({
                       placeholder="Type a language and press Enter"
                       style={{ flex: 1, marginBottom: 0 }}
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="primary"
+                      size="md"
+                      className="shrink-0"
                       onClick={() => {
                         const val = newLanguageInput.trim()
                         if (val && !languagesList.includes(val)) {
@@ -601,11 +609,9 @@ export default function ProfileTab({
                           setNewLanguageInput('')
                         }
                       }}
-                      className="v4-btn v4-btn-primary"
-                      style={{ padding: '10px 20px', flexShrink: 0 }}
                     >
                       Add
-                    </button>
+                    </Button>
                   </div>
                   <Button
                     type="button"

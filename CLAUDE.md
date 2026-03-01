@@ -67,6 +67,21 @@ These are non-negotiable constraints enforced by the codebase:
 
 ---
 
+## UI/UX Rules
+
+Before creating or modifying any UI:
+1. Read `ui/DESIGN_SYSTEM.md` — all colors, typography, spacing, component specs
+2. Import shared components from `ui/src/components/ui/` — never create inline cards, buttons, or empty states
+3. Run `cd ui && npm run lint` before committing — custom ESLint rules enforce UI consistency
+
+### Shared Components
+See `ui/src/components/ui/README.md` for usage guide.
+
+### Color System
+Use design system colors defined in `ui/tailwind.config.cjs` theme extension. Never use Tailwind default gray/slate/zinc palette — use the named tokens or hex values from DESIGN_SYSTEM.md instead.
+
+---
+
 ## Known Issues & Tech Debt
 
 - **ARCHITECTURE.md is outdated** — References SQLite, bookings model, ad_hoc_tasks — all replaced. Use the reference docs (API_REFERENCE.md, DATABASE_SCHEMA.md) as the real source of truth instead.

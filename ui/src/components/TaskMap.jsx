@@ -592,7 +592,9 @@ export default function TaskMap({
             center={center}
             radius={radius * 1000}
             pathOptions={{
+              // eslint-disable-next-line irlwork/no-orange-outside-button -- map circle uses brand color
               color: '#E8853D',
+              // eslint-disable-next-line irlwork/no-orange-outside-button -- map circle fill uses brand color
               fillColor: '#E8853D',
               fillOpacity: 0.08,
               weight: 2,

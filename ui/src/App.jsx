@@ -8,22 +8,23 @@ import { debug } from './utils/appConstants'
 import { fixAvatarUrl } from './utils/avatarUrl'
 import { trackPageView, trackEvent, setUserProperties } from './utils/analytics'
 import Loading from './components/Loading'
-import Onboarding from './components/Onboarding'
-import AuthPage from './pages/AuthPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import ResetPasswordPage from './pages/ResetPasswordPage'
-import Dashboard from './pages/Dashboard'
-import LandingPageV4 from './pages/LandingPageV4'
-import NotFoundPage from './pages/NotFoundPage'
-import ContactPage from './pages/ContactPage'
-import AboutPage from './pages/AboutPage'
-import PrivacyPage from './pages/PrivacyPage'
-import TermsPage from './pages/TermsPage'
-import ThesisPage from './pages/ThesisPage'
 import MarketingFooter from './components/Footer'
 import MarketingNavbar from './components/MarketingNavbar'
 import FeedbackButton from './components/FeedbackButton'
 
+// Lazy-loaded pages — only fetched when their route is visited
+const Onboarding = lazy(() => import('./components/Onboarding'))
+const AuthPage = lazy(() => import('./pages/AuthPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const LandingPageV4 = lazy(() => import('./pages/LandingPageV4'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+const ContactPage = lazy(() => import('./pages/ContactPage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
+const ThesisPage = lazy(() => import('./pages/ThesisPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const HumanProfilePage = lazy(() => import('./pages/HumanProfilePage'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
@@ -385,13 +386,13 @@ function App() {
     // Onboarding route - dedicated route for onboarding wizard
     if (path === '/onboard') {
       if (!user || !user.needs_onboarding) return <Loading />
-      return <Onboarding onComplete={handleOnboardingComplete} user={user} />
+      return <Suspense fallback={<Loading />}><Onboarding onComplete={handleOnboardingComplete} user={user} /></Suspense>
     }
 
     // Dashboard route - requires auth (matches /dashboard/working/... and /dashboard/hiring/...)
     if (path.startsWith('/dashboard/working') || path.startsWith('/dashboard/hiring')) {
       if (!user || user.needs_onboarding) return <Loading />
-      return <Dashboard user={user} onLogout={logout} initialMode={path.startsWith('/dashboard/hiring') ? 'hiring' : 'working'} onUserUpdate={setUser} />
+      return <Suspense fallback={<Loading />}><Dashboard user={user} onLogout={logout} initialMode={path.startsWith('/dashboard/hiring') ? 'hiring' : 'working'} onUserUpdate={setUser} /></Suspense>
     }
 
     // Bare /dashboard redirect (handled by useEffect above, but guard here too)
@@ -402,14 +403,14 @@ function App() {
 
     if (path === '/auth') {
       if (user) return <Loading />
-      return <AuthPage onNavigate={navigate} />
+      return <Suspense fallback={<Loading />}><AuthPage onNavigate={navigate} /></Suspense>
     }
     if (path === '/forgot-password') {
       if (user) return <Loading />
-      return <ForgotPasswordPage onNavigate={navigate} />
+      return <Suspense fallback={<Loading />}><ForgotPasswordPage onNavigate={navigate} /></Suspense>
     }
     if (path === '/reset-password') {
-      return <ResetPasswordPage onNavigate={navigate} />
+      return <Suspense fallback={<Loading />}><ResetPasswordPage onNavigate={navigate} /></Suspense>
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/premium') {
@@ -421,32 +422,40 @@ function App() {
       return <Suspense fallback={<Loading />}><PremiumPage user={user} /></Suspense>
     }
     if (path === '/connect-agent') return <Suspense fallback={<Loading />}><ConnectAgentPage /></Suspense>
-    if (path === '/contact') return <ContactPage />
-    if (path === '/about') return <AboutPage />
-    if (path === '/privacy') return <PrivacyPage />
-    if (path === '/terms') return <TermsPage />
-    if (path === '/thesis') return <ThesisPage />
+    if (path === '/contact') return <Suspense fallback={<Loading />}><ContactPage /></Suspense>
+    if (path === '/about') return <Suspense fallback={<Loading />}><AboutPage /></Suspense>
+    if (path === '/privacy') return <Suspense fallback={<Loading />}><PrivacyPage /></Suspense>
+    if (path === '/terms') return <Suspense fallback={<Loading />}><TermsPage /></Suspense>
+    if (path === '/thesis') return <Suspense fallback={<Loading />}><ThesisPage /></Suspense>
     if (path === '/browse' || path === '/browse/tasks' || path === '/browse/humans') return <Suspense fallback={<Loading />}><BrowsePage user={user} navigate={navigate} /></Suspense>
 
     // Homepage
-    if (path === '/') return <LandingPageV4 />
+    if (path === '/') return <Suspense fallback={<Loading />}><LandingPageV4 /></Suspense>
 
     // 404 for any unmatched route
-    return <NotFoundPage />
+    return <Suspense fallback={<Loading />}><NotFoundPage /></Suspense>
   })()
 
   return (
     <>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-[14px] focus:shadow-lg focus:text-[#1A1A1A] focus:border focus:border-[#ECECEC]"
+      >
+        Skip to main content
+      </a>
       {isMarketingPage ? (
         <>
           <MarketingNavbar user={user} activePage={activePage} />
-          <div className="marketing-content-wrapper">
+          <div id="main-content" className="marketing-content-wrapper">
             {routeContent}
           </div>
           <MarketingFooter />
         </>
       ) : (
-        routeContent
+        <div id="main-content">
+          {routeContent}
+        </div>
       )}
       {!isDashboardRoute && <FeedbackButton user={user} />}
     </>

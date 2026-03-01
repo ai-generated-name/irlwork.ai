@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Button } from './ui'
 import CityAutocomplete from './CityAutocomplete'
 import SkillAutocomplete from './SkillAutocomplete'
 import { TASK_CATEGORIES } from './CategoryPills'
@@ -181,14 +182,15 @@ function Onboarding({ onComplete, user }) {
               </div>
             )}
 
-            <button
-              className="onboarding-v4-btn-next"
-              style={{ width: '100%', marginTop: '1rem' }}
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full mt-4"
               onClick={() => setStep(2)}
               disabled={!form.city.trim()}
             >
               Continue
-            </button>
+            </Button>
           </div>
         )}
 
@@ -233,14 +235,15 @@ function Onboarding({ onComplete, user }) {
               <p style={{ fontSize: 13, color: '#FEBC2E', marginTop: 8 }}>Select at least one skill or add your own</p>
             )}
             <div className="onboarding-v4-buttons">
-              <button className="onboarding-v4-btn-back" onClick={() => setStep(1)}>Back</button>
-              <button
-                className="onboarding-v4-btn-next"
+              <Button variant="ghost" size="md" onClick={() => setStep(1)}>Back</Button>
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => setStep(3)}
                 disabled={form.selectedCategories.length === 0 && !form.otherSkills.trim()}
               >
                 Continue
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -262,8 +265,8 @@ function Onboarding({ onComplete, user }) {
             />
             <p className="onboarding-v4-hint">2-3 sentences about your experience (optional but recommended)</p>
             <div className="onboarding-v4-buttons">
-              <button className="onboarding-v4-btn-back" onClick={() => setStep(2)}>Back</button>
-              <button className="onboarding-v4-btn-next" onClick={() => setStep(4)}>Continue</button>
+              <Button variant="ghost" size="md" onClick={() => setStep(2)}>Back</Button>
+              <Button variant="primary" size="md" onClick={() => setStep(4)}>Continue</Button>
             </div>
           </div>
         )}
@@ -330,14 +333,15 @@ function Onboarding({ onComplete, user }) {
             </div>
 
             <div className="onboarding-v4-buttons">
-              <button className="onboarding-v4-btn-back" onClick={() => setStep(3)}>Back</button>
-              <button
-                className="onboarding-v4-btn-next"
+              <Button variant="ghost" size="md" onClick={() => setStep(3)}>Back</Button>
+              <Button
+                variant="primary"
+                size="md"
                 onClick={handleSubmit}
                 disabled={loading || !form.hourly_rate}
               >
-                {loading ? 'Setting up...' : 'Complete Setup'}
-              </button>
+                {loading ? 'Setting up...' : 'Complete setup'}
+              </Button>
             </div>
           </div>
         )}

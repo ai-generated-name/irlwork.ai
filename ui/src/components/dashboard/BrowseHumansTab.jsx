@@ -1,6 +1,6 @@
 // Extracted from Dashboard.jsx — hiring mode browse humans with filters
 import React from 'react'
-import { Users, Plus, ChevronDown } from 'lucide-react'
+import { Users, Plus, ChevronDown, AlertTriangle } from 'lucide-react'
 import HumanProfileCard from '../HumanProfileCard'
 import SkillAutocomplete from '../SkillAutocomplete'
 import CityAutocomplete from '../CityAutocomplete'
@@ -132,15 +132,17 @@ export default function BrowseHumansTab({
                   if (humansError) {
                     return (
                       <div className="dashboard-v4-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
-                        <div style={{ fontSize: 48, marginBottom: 12 }}>&#9888;&#65039;</div>
+                        <div style={{ marginBottom: 12 }}><AlertTriangle size={48} /></div>
                         <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>Failed to load humans</p>
                         <p style={{ fontSize: 14, maxWidth: 300, margin: '0 auto 16px', color: 'var(--text-secondary)' }}>{humansError}</p>
+                        {/* eslint-disable irlwork/no-orange-outside-button -- retry button uses brand color */}
                         <button
                           onClick={fetchHumans}
                           style={{ background: 'var(--coral-500, #E8853D)', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                         >
                           Try Again
                         </button>
+                        {/* eslint-enable irlwork/no-orange-outside-button */}
                       </div>
                     )
                   }

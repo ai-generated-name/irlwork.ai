@@ -6,7 +6,7 @@ import { supabase } from '../context/AuthContext'
 import WithdrawalMethodPicker from './WithdrawalMethodPicker'
 import ConnectBankButton from './ConnectBankButton'
 import ConnectWalletSection from './ConnectWalletSection'
-import { StatCard, EmptyState, ConfirmDialog } from './ui'
+import { StatCard, EmptyState, ConfirmDialog, Card } from './ui'
 
 function PaymentFlowDiagram() {
   return (
@@ -269,7 +269,7 @@ function EarningsDashboard({ user }) {
 
       {/* Success Message */}
       {withdrawResult && (
-        <div className="bg-white border border-teal/20 rounded-xl p-4 flex items-start gap-3">
+        <Card padding="none" className="border-teal/20 p-4 flex items-start gap-3">
           <div className="w-8 h-8 bg-teal/8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
             <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -283,14 +283,14 @@ function EarningsDashboard({ user }) {
                 : `$${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account`}
             </p>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Balance Cards Grid */}
       {(
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Pending Balance Card */}
-          <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 md:p-6">
+          <Card padding="none" className="p-4 md:p-6">
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <div>
                 <h3 className="text-[#888888] text-xs md:text-sm font-medium uppercase tracking-wider">Pending</h3>
@@ -313,7 +313,7 @@ function EarningsDashboard({ user }) {
                       <div className="flex items-center gap-1.5">
                         <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
                         {tx.payout_method === 'usdc' && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600">USDC</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]">USDC</span>
                         )}
                       </div>
                       <p className="text-xs text-[#A3A3A3]">{formatDate(tx.clears_at)}</p>
@@ -332,10 +332,10 @@ function EarningsDashboard({ user }) {
             ) : (
               <p className="text-[#A3A3A3] text-xs md:text-sm mt-3 md:mt-4">No pending transactions</p>
             )}
-          </div>
+          </Card>
 
           {/* Available Balance Card */}
-          <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 md:p-6 relative overflow-hidden">
+          <Card padding="none" className="p-4 md:p-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-teal" />
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <div>
@@ -374,7 +374,7 @@ function EarningsDashboard({ user }) {
                     <div className="flex items-center gap-1.5">
                       <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
                       {tx.payout_method === 'usdc' && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600">USDC</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]">USDC</span>
                       )}
                     </div>
                     <p className="text-[#1A1A1A] font-semibold">
@@ -384,7 +384,7 @@ function EarningsDashboard({ user }) {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
       )}
 
@@ -401,9 +401,10 @@ function EarningsDashboard({ user }) {
               const isUsdc = tx.payout_method === 'usdc'
 
               return (
-                <div
+                <Card
                   key={tx.id}
-                  className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
+                  padding="none"
+                  className="p-3 md:p-4 hover:shadow-v4-md transition-shadow"
                 >
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
@@ -420,7 +421,7 @@ function EarningsDashboard({ user }) {
                           {tx.status}
                         </span>
                         {isUsdc && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 flex-shrink-0">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB] flex-shrink-0">
                             USDC
                           </span>
                         )}
@@ -465,7 +466,7 @@ function EarningsDashboard({ user }) {
                       </p>
                     </div>
                   </div>
-                </div>
+                </Card>
               )
             })}
           </div>

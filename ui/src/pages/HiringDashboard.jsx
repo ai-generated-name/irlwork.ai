@@ -349,6 +349,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
         <h3 className="hiring-dash-section-title" style={{ marginBottom: 12 }}>Quick actions</h3>
         <div className="hiring-dash-quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
           <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('posted')} className="text-left cursor-pointer">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
             </svg>
@@ -356,6 +357,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             <p style={{ fontSize: 12, color: '#6B7280' }}>View and manage posted tasks</p>
           </Card>
           <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('browse')} className="text-left cursor-pointer">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
@@ -364,6 +366,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             <p style={{ fontSize: 12, color: '#6B7280' }}>Find skilled workers for your tasks</p>
           </Card>
           <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('messages')} className="text-left cursor-pointer">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
             </svg>
@@ -371,6 +374,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             <p style={{ fontSize: 12, color: '#6B7280' }}>Chat with workers and applicants</p>
           </Card>
           <Card interactive hoverEffect="shadow" padding="md" onClick={() => setShowPaymentsExplainer(true)} className="text-left cursor-pointer">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>

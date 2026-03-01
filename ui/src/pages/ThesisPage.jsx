@@ -535,9 +535,11 @@ export default function ThesisPage() {
             </p>
           </Reveal>
           <Reveal>
+            {/* eslint-disable irlwork/no-title-case-ui-strings -- prose: capitalized words after periods */}
             <p style={bodyText}>
               The tasks are not exotic. Deliveries. Pickups. Inspections. Photographs. Hardware installs. Document drops. Field verification. In-person meetings on behalf of a digital system. This is the unglamorous connective tissue between digital intelligence and physical reality — and it is about to scale dramatically.
             </p>
+            {/* eslint-enable irlwork/no-title-case-ui-strings */}
           </Reveal>
 
           <Reveal><GlowLine /></Reveal>
@@ -656,9 +658,11 @@ export default function ThesisPage() {
                   color: 'var(--orange-700)',
                   marginBottom: '16px',
                 }}>For AI Agents</div>
+                {/* eslint-disable irlwork/no-title-case-ui-strings -- prose: acronyms followed by capitalized sentence starts */}
                 <p style={{ ...bodyText, fontSize: '15px', marginBottom: 0 }}>
                   A clean, MCP-native API. One call to post a task with requirements, budget, location, and deadline. Browse available workers by skill and proximity. When a worker submits proof of completion, verify and release payment — or let the system handle it automatically.
                 </p>
+                {/* eslint-enable irlwork/no-title-case-ui-strings */}
               </div>
             </Reveal>
             <Reveal delay={0.1}>

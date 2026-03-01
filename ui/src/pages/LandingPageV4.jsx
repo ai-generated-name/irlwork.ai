@@ -267,7 +267,9 @@ function HeroAnimation() {
       <svg className="connection-path connection-path-1" viewBox="0 0 100 100" preserveAspectRatio="none">
         <defs>
           <linearGradient id="pathGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
             <stop offset="0%" stopColor="#E8853D" stopOpacity="0.6" />
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
             <stop offset="100%" stopColor="#E8853D" stopOpacity="1" />
           </linearGradient>
         </defs>
@@ -284,6 +286,7 @@ function HeroAnimation() {
       <svg className="connection-path connection-path-2" viewBox="0 0 100 100" preserveAspectRatio="none">
         <defs>
           <linearGradient id="pathGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
             <stop offset="0%" stopColor="#E8853D" stopOpacity="1" />
             <stop offset="100%" stopColor="#16A34A" stopOpacity="0.8" />
           </linearGradient>
@@ -313,7 +316,7 @@ function HeroAnimation() {
         <div className="human-info">
           <div className="human-name">Alex M.</div>
           <div className="human-rating">
-            <span className="stars">★★★★★</span>
+            <span className="stars">{[...Array(5)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}</span>
             <span className="rating-num">4.9</span>
           </div>
         </div>
