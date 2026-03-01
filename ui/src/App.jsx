@@ -534,6 +534,7 @@ function AuthPage({ onLogin, onNavigate }) {
   const [form, setForm] = useState({ email: '', password: '', name: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [signupSuccess, setSignupSuccess] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -723,6 +724,23 @@ function AuthPage({ onLogin, onNavigate }) {
     )
   }
 
+  // Resend verification email via Supabase
+  const handleResendVerification = async () => {
+    if (resendCooldown > 0 || !supabase || !form.email) return
+    try {
+      await supabase.auth.resend({ type: 'signup', email: form.email })
+      setResendCooldown(60)
+      const timer = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) { clearInterval(timer); return 0 }
+          return prev - 1
+        })
+      }, 1000)
+    } catch (err) {
+      setError('Failed to resend verification email. Please try again.')
+    }
+  }
+
   // Show email confirmation screen after successful signup (when email verification is required)
   if (signupSuccess) {
     return (
@@ -745,6 +763,14 @@ function AuthPage({ onLogin, onNavigate }) {
               onClick={() => { setSignupSuccess(false); setIsLogin(true); setError('') }}
             >
               Back to Sign In
+            </button>
+            <button
+              onClick={handleResendVerification}
+              disabled={resendCooldown > 0}
+              className="auth-v4-switch-link"
+              style={{ marginTop: 12, display: 'block', width: '100%', background: 'none', border: 'none', cursor: resendCooldown > 0 ? 'default' : 'pointer', fontSize: 14, color: 'var(--text-tertiary)' }}
+            >
+              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Didn't receive it? Resend email"}
             </button>
           </div>
           <button onClick={() => window.location.href = '/'} className="auth-v4-back">
