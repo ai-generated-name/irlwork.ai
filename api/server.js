@@ -478,6 +478,25 @@ const QUICK_CATEGORIES = [
   'event_staff', 'tech_setup', 'grocery', 'photography', 'general'
 ];
 
+// ============ EMAIL SANITIZATION — Prevent HTML injection ============
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function sanitizeForEmail(str, maxLength = 500) {
+  return escapeHtml((str || '').substring(0, maxLength));
+}
+
+function sanitizeSubject(str) {
+  return (str || '').replace(/[\r\n]/g, '').substring(0, 200);
+}
+
 // ============ HELPERS ============
 // Generate a secure API key
 function generateApiKey() {
@@ -2756,10 +2775,10 @@ app.post('/api/tasks/:id/apply', async (req, res) => {
   // Email notification for new application
   const applyTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
   sendEmailNotification(taskForApply.agent_id,
-    `New applicant for "${taskForApply.title}"`,
+    sanitizeSubject(`New applicant for "${taskForApply.title}"`),
     `<div style="background: #EEF2FF; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
       <p style="color: #4338CA; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">New Application</p>
-      <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${user.name || 'A worker'}</strong> applied to your task "${taskForApply.title}".</p>
+      <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${escapeHtml(user.name || 'A worker')}</strong> applied to your task "${escapeHtml(taskForApply.title)}".</p>
     </div>
     <a href="${applyTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">Review Applicants</a>`
   ).catch(() => {});
@@ -4115,26 +4134,33 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   const { id: taskId } = req.params;
   const { proof_text, proof_urls } = req.body;
   
-  // Verify task exists and user is assigned
-  const { data: task, error: taskError } = await supabase
+  // Atomic status guard: update task to pending_review only if currently in_progress and assigned to this user
+  const proofId = uuidv4();
+  const now = new Date().toISOString();
+
+  const { data: updatedTask, error: updateError } = await supabase
     .from('tasks')
-    .select('id, human_id, agent_id, status, title')
+    .update({
+      status: 'pending_review',
+      proof_submitted_at: now,
+      updated_at: now
+    })
     .eq('id', taskId)
+    .eq('status', 'in_progress')
+    .eq('human_id', user.id)
+    .select('id, agent_id, title')
     .single();
 
-  if (taskError || !task) {
-    return res.status(404).json({ error: 'Task not found' });
+  if (updateError || !updatedTask) {
+    // Distinguish between not found vs wrong status/user
+    const { data: existingTask } = await supabase
+      .from('tasks').select('id, status, human_id').eq('id', taskId).single();
+    if (!existingTask) return res.status(404).json({ error: 'Task not found' });
+    if (existingTask.human_id !== user.id) return res.status(403).json({ error: 'Not assigned to this task' });
+    return res.status(409).json({ error: 'Cannot submit proof: task is not in progress', current_status: existingTask.status });
   }
 
-  if (task.human_id !== user.id) {
-    return res.status(403).json({ error: 'Not assigned to this task' });
-  }
-  
-  if (task.status !== 'in_progress') {
-    return res.status(400).json({ error: 'Task must be in_progress to submit proof' });
-  }
-  
-  const proofId = uuidv4();
+  // Create proof record after atomic status update succeeds
   const { data: proof, error } = await supabase
     .from('task_proofs')
     .insert({
@@ -4144,44 +4170,34 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
       proof_text,
       proof_urls: proof_urls || [],
       status: 'pending',
-      submitted_at: new Date().toISOString()
+      submitted_at: now
     })
     .select()
     .single();
-  
+
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
-  
-  // Update task status to pending_review
-  await supabase
-    .from('tasks')
-    .update({
-      status: 'pending_review',
-      proof_submitted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', taskId);
-  
+
   // Notify agent
   await createNotification(
-    task.agent_id,
+    updatedTask.agent_id,
     'proof_submitted',
     'Proof Submitted',
-    `${user.name} has submitted proof for "${task.title}". Review it now.`,
+    `${user.name} has submitted proof for "${updatedTask.title}". Review it now.`,
     `/tasks/${taskId}`
   );
-  
+
   // Deliver webhook to agent
-  dispatchWebhook(task.agent_id, {
+  dispatchWebhook(updatedTask.agent_id, {
     type: 'proof_submitted',
     task_id: taskId,
     data: {
       proof_id: proofId,
       human_id: user.id,
       human_name: user.name,
-      task_title: task.title
+      task_title: updatedTask.title
     }
   }).catch(() => {});
-  
+
   res.json({ success: true, proof });
 });
 
@@ -4401,10 +4417,10 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   // Email notification for task approval
   const approveTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
   sendEmailNotification(task.human_id,
-    `Your work on "${task.title}" has been approved!`,
+    sanitizeSubject(`Your work on "${task.title}" has been approved!`),
     `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
       <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Work Approved!</p>
-      <p style="color: #1A1A1A; font-size: 14px; margin: 0;">Your work on "${task.title}" has been approved. $${task.budget} is being processed and will be available after the 48-hour clearing period.</p>
+      <p style="color: #1A1A1A; font-size: 14px; margin: 0;">Your work on "${escapeHtml(task.title)}" has been approved. $${task.budget} is being processed and will be available after the 48-hour clearing period.</p>
     </div>
     <a href="${approveTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
   ).catch(() => {});
@@ -4719,13 +4735,13 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
   const disputeTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
   const disputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <p style="color: #DC2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Dispute Opened</p>
-    <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task "${task.title}".</p>
-    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${reason}</p>
+    <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task "${escapeHtml(task.title)}".</p>
+    <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${sanitizeForEmail(reason)}</p>
   </div>
   <p style="font-size: 13px; color: #525252; margin-bottom: 16px;">Our team will review the evidence and make a fair decision.</p>
   <a href="${disputeTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`;
-  sendEmailNotification(task.human_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
-  sendEmailNotification(task.agent_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
+  sendEmailNotification(task.human_id, sanitizeSubject(`Dispute opened on "${task.title}"`), disputeEmailBody).catch(() => {});
+  sendEmailNotification(task.agent_id, sanitizeSubject(`Dispute opened on "${task.title}"`), disputeEmailBody).catch(() => {});
 
   // Deliver webhook
   dispatchWebhook(task.agent_id, {
@@ -5680,26 +5696,31 @@ app.post('/api/mcp', async (req, res) => {
       case 'complete_task': {
         // Human submits proof of completion via new proof system
         const { task_id, proof_text, proof_urls } = params;
-        
-        const { data: task, error: taskError } = await supabase
+        const mcpProofNow = new Date().toISOString();
+
+        // Atomic status guard: update task to pending_review only if in_progress and assigned to this user
+        const { data: mcpUpdatedTask, error: mcpUpdateError } = await supabase
           .from('tasks')
-          .select('*')
+          .update({
+            status: 'pending_review',
+            proof_submitted_at: mcpProofNow,
+            updated_at: mcpProofNow
+          })
           .eq('id', task_id)
+          .eq('status', 'in_progress')
+          .eq('human_id', user.id)
+          .select('id, agent_id, title')
           .single();
-        
-        if (taskError || !task) {
-          return res.status(404).json({ error: 'Task not found' });
+
+        if (mcpUpdateError || !mcpUpdatedTask) {
+          const { data: existTask } = await supabase
+            .from('tasks').select('id, status, human_id').eq('id', task_id).single();
+          if (!existTask) return res.status(404).json({ error: 'Task not found' });
+          if (existTask.human_id !== user.id) return res.status(403).json({ error: 'Not assigned to you' });
+          return res.status(409).json({ error: 'Task must be in_progress to submit proof', current_status: existTask.status });
         }
-        
-        if (task.human_id !== user.id) {
-          return res.status(403).json({ error: 'Not assigned to you' });
-        }
-        
-        if (task.status !== 'in_progress') {
-          return res.status(400).json({ error: 'Task must be in_progress to submit proof' });
-        }
-        
-        // Create proof record
+
+        // Create proof record after atomic status update succeeds
         const proofId = uuidv4();
         await supabase.from('task_proofs').insert({
           id: proofId,
@@ -5708,28 +5729,18 @@ app.post('/api/mcp', async (req, res) => {
           proof_text: proof_text || '',
           proof_urls: proof_urls || [],
           status: 'pending',
-          submitted_at: new Date().toISOString()
+          submitted_at: mcpProofNow
         });
 
-        // Update task to pending_review
-        await supabase
-          .from('tasks')
-          .update({
-            status: 'pending_review',
-            proof_submitted_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', task_id);
-        
         // Notify agent
         await createNotification(
-          task.agent_id,
+          mcpUpdatedTask.agent_id,
           'proof_submitted',
           'Proof Submitted',
-          `${user.name} has completed "${task.title}". Review and release payment.`,
+          `${user.name} has completed "${mcpUpdatedTask.title}". Review and release payment.`,
           `/tasks/${task_id}`
         );
-        
+
         res.json({ success: true, status: 'pending_review', proof_id: proofId });
         break;
       }
@@ -5832,8 +5843,19 @@ app.post('/api/mcp', async (req, res) => {
           `)
           .eq('id', params.task_id)
           .single();
-        
+
         if (error) throw error;
+
+        // Strip private instructions unless user is creator or assigned worker
+        const isCreator = task.agent_id === user.id;
+        const isAssignee = task.human_id === user.id;
+        if (!isCreator && !isAssignee) {
+          delete task.instructions;
+          delete task.private_address;
+          delete task.private_notes;
+          delete task.private_contact;
+        }
+
         res.json(task);
         break;
       }
@@ -5961,7 +5983,31 @@ app.post('/api/mcp', async (req, res) => {
       case 'create_posting':
       case 'create_adhoc_task': {
         // Create a public posting for humans to apply to
-        if (!params.title) return res.status(400).json({ error: 'title is required' });
+        // Validate required fields
+        if (!params.title || typeof params.title !== 'string' || params.title.trim().length === 0) {
+          return res.status(400).json({ error: 'title is required' });
+        }
+        if (params.title.length > 200) {
+          return res.status(400).json({ error: 'Title must be 200 characters or less' });
+        }
+        if (!params.description || typeof params.description !== 'string' || params.description.trim().length === 0) {
+          return res.status(400).json({ error: 'description is required' });
+        }
+        if (params.description.length > 5000) {
+          return res.status(400).json({ error: 'Description must be 5000 characters or less' });
+        }
+        const mcpBudget = params.budget || params.budget_usd || params.budget_max || params.budget_min;
+        if (mcpBudget !== undefined && mcpBudget !== null) {
+          if (typeof mcpBudget !== 'number' || mcpBudget <= 0) {
+            return res.status(400).json({ error: 'Budget must be a positive number' });
+          }
+          if (mcpBudget < 5) {
+            return res.status(400).json({ error: 'Minimum budget is $5' });
+          }
+          if (mcpBudget > 10000) {
+            return res.status(400).json({ error: 'Maximum budget is $10,000' });
+          }
+        }
         if (!params.duration_hours || isNaN(parseFloat(params.duration_hours)) || parseFloat(params.duration_hours) <= 0) {
           return res.status(400).json({ error: 'duration_hours is required and must be a positive number (estimated hours to complete the task)' });
         }
@@ -9228,10 +9274,10 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
       // Email notification for task assignment
       const acceptTaskUrl = `https://www.irlwork.ai/tasks/${id}`;
       sendEmailNotification(task.agent_id,
-        `"${task.title}" has been accepted`,
+        sanitizeSubject(`"${task.title}" has been accepted`),
         `<div style="background: #ECFDF5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
           <p style="color: #065F46; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Task Accepted</p>
-          <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${user.name || 'A worker'}</strong> accepted your task "${task.title}". Payment has been charged and work can begin.</p>
+          <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${escapeHtml(user.name || 'A worker')}</strong> accepted your task "${escapeHtml(task.title)}". Payment has been charged and work can begin.</p>
         </div>
         <a href="${acceptTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
       ).catch(() => {});
@@ -9329,10 +9375,10 @@ app.post('/api/tasks/:id/accept', async (req, res) => {
     // Email notification for task assignment
     const openAcceptTaskUrl = `https://www.irlwork.ai/tasks/${id}`;
     sendEmailNotification(acceptedTask.agent_id,
-      `"${acceptedTask.title}" has been accepted`,
+      sanitizeSubject(`"${acceptedTask.title}" has been accepted`),
       `<div style="background: #ECFDF5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
         <p style="color: #065F46; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Task Accepted</p>
-        <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${user.name || 'A worker'}</strong> accepted your task "${acceptedTask.title}".</p>
+        <p style="color: #1A1A1A; font-size: 14px; margin: 0;"><strong>${escapeHtml(user.name || 'A worker')}</strong> accepted your task "${escapeHtml(acceptedTask.title)}".</p>
       </div>
       <a href="${openAcceptTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`
     ).catch(() => {});

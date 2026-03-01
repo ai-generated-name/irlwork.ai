@@ -40,14 +40,13 @@ These are non-negotiable constraints enforced by the codebase:
 
 1. **Status transitions** — Every task status change MUST go through `validateStatusTransition()` (server.js line 373). No direct `.update({status: '...'})` writes. Valid transitions are defined in `VALID_STATUS_TRANSITIONS` (server.js line 362):
    ```
-   open → pending_acceptance | assigned | in_progress | cancelled
-   pending_acceptance → in_progress | open | cancelled
-   assigned → in_progress | cancelled
-   in_progress → pending_review | disputed | cancelled
-   pending_review → completed | rejected | disputed
-   rejected → pending_review | disputed | cancelled
-   disputed → paid | refunded | cancelled
-   completed → paid
+   open → pending_acceptance | assigned | expired | cancelled
+   pending_acceptance → assigned | open | cancelled
+   assigned → in_progress | cancelled | open (worker withdrawal)
+   in_progress → pending_review | disputed | open (worker withdrawal)
+   pending_review → approved | in_progress | disputed
+   approved → paid
+   disputed → approved | cancelled | paid
    ```
 
 2. **Webhooks** — Every status change that should notify external systems MUST call `deliverWebhook()` (for task events, flat payload) or `dispatchWebhook()` (for messages, wrapped payload with `{event_type, task_id, data, timestamp}`). These two functions have DIFFERENT payload structures — see `API_REFERENCE.md` Section 7.

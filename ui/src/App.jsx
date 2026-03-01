@@ -35,6 +35,8 @@ import MarketingFooter from './components/Footer'
 import { Logo } from './components/Logo'
 import MarketingNavbar from './components/MarketingNavbar'
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'))
 import DisputePanel from './components/DisputePanel'
 import HumanProfileCard from './components/HumanProfileCard'
@@ -798,6 +800,12 @@ function AuthPage({ onLogin, onNavigate }) {
             <div className="auth-v4-divider-line" />
           </div>
 
+          {isLogin && new URLSearchParams(window.location.search).get('reset') === 'success' && (
+            <div style={{ background: '#D1FAE5', color: '#065F46', padding: '10px 14px', borderRadius: 10, marginBottom: 12, fontSize: 13 }}>
+              Password updated. Please sign in with your new password.
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="auth-v4-form">
             {!isLogin && (
               <input
@@ -849,6 +857,14 @@ function AuthPage({ onLogin, onNavigate }) {
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
+            {isLogin && (
+              <div style={{ textAlign: 'right', marginTop: -4, marginBottom: 4 }}>
+                <button type="button" onClick={() => onNavigate('/forgot-password')}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                  Forgot your password?
+                </button>
+              </div>
+            )}
             <button type="submit" className="auth-v4-submit" disabled={loading}>
               {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
             </button>
@@ -5488,7 +5504,7 @@ function App() {
     : null
 
   // Routes that should NOT get the shared marketing navbar+footer
-  const isAuthRoute = path === '/auth'
+  const isAuthRoute = path === '/auth' || path === '/forgot-password' || path === '/reset-password'
   const isOnboardRoute = path === '/onboard'
   const isDashboardRoute = path.startsWith('/dashboard')
   const isSelfContainedPage = path === '/connect-agent' || path === '/mcp' // has its own header + footer
@@ -5533,6 +5549,12 @@ function App() {
     if (path === '/auth') {
       if (user) return <Loading />
       return <AuthPage onNavigate={navigate} />
+    }
+    if (path === '/forgot-password') {
+      return <Suspense fallback={<Loading />}><ForgotPassword onNavigate={navigate} /></Suspense>
+    }
+    if (path === '/reset-password') {
+      return <Suspense fallback={<Loading />}><ResetPassword onNavigate={navigate} /></Suspense>
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/premium') {

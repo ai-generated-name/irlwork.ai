@@ -54,9 +54,11 @@ pending_acceptance -> cancelled  (agent cancels -- no charge)
 
 assigned -> in_progress  (human calls /start -- ESCROW CAPTURED HERE)
 assigned -> cancelled    (agent cancels -- auth hold released, no fee)
+assigned -> open         (worker withdraws before starting -- escrow refunded, task reopened)
 
 in_progress -> pending_review  (human submits proof)
 in_progress -> disputed        (either party opens dispute)
+in_progress -> open            (worker withdraws after starting -- escrow refunded, task reopened)
 
 pending_review -> approved     (agent approves)
 pending_review -> in_progress  (agent rejects / requests revision -- max 2 times)
