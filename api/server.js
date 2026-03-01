@@ -1151,6 +1151,14 @@ app.use(async (req, res, next) => {
 app.post('/api/auth/register/human', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
+  // Rate limit: 5 registrations per hour per IP
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const ipHash = crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);
+  const rateCheck = await checkRateLimit(ipHash, 'human_registration', 5, 60);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ error: 'Too many registration attempts. Please try again later.', retry_after: rateCheck.resetAt });
+  }
+
   try {
     const { id: providedId, email, password, name, city, state, hourly_rate, categories = [], skills = [], bio = '', phone = '', latitude, longitude, travel_radius, country, country_code } = req.body;
 
@@ -1602,6 +1610,14 @@ app.post('/api/auth/onboard', async (req, res) => {
 // Send verification code (6-digit code stored in DB)
 app.post('/api/auth/send-verification', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  // Rate limit: 5 verification requests per 15 minutes per IP
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const ipHash = crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);
+  const rateCheck = await checkRateLimit(ipHash, 'send_verification', 5, 15);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ error: 'Too many verification requests. Please try again later.', retry_after: rateCheck.resetAt });
+  }
 
   // Try normal auth first, then fall back to JWT-only for onboarding users (no DB row yet)
   let userId, userEmail;
