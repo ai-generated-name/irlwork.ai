@@ -2,6 +2,7 @@
 // Accurate method signatures, params, responses, error codes, and lifecycle docs
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Check, Copy, ChevronDown, Menu, X } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -288,6 +289,7 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
 // ── Main Component ──
 
 export default function MCPPage() {
+  usePageTitle('API Documentation')
   const [activeSection, setActiveSection] = useState('overview')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openCategories, setOpenCategories] = useState({})

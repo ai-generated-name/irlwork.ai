@@ -8,12 +8,16 @@ import { Button } from '../components/ui'
 import API_URL from '../config/api'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { formatTimezoneShort } from '../utils/timezone'
+import { navigate } from '../utils/navigate'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
+
+  usePageTitle(profile?.name ? `${profile.name}'s Profile` : 'Profile')
 
   useEffect(() => {
     if (!humanId) return
@@ -60,9 +64,9 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
 
   const handleHire = () => {
     if (user) {
-      window.location.href = `/browse/humans?hire=${profile.id}`
+      navigate(`/browse/humans?hire=${profile.id}`)
     } else {
-      window.location.href = '/auth'
+      navigate('/auth')
     }
   }
 
@@ -106,7 +110,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
           <Button
             variant="secondary"
             size="md"
-            onClick={() => onNavigate?.('/browse/humans') || (window.location.href = '/browse/humans')}
+            onClick={() => onNavigate?.('/browse/humans') || navigate('/browse/humans')}
           >
             <ArrowLeft size={16} style={{ marginRight: 6 }} />
             Back to browse
@@ -134,7 +138,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
             <Button
               variant="primary"
               size="lg"
-              onClick={() => window.location.href = '/browse/humans'}
+              onClick={() => navigate('/browse/humans')}
               style={{ marginTop: 24 }}
             >
               View other workers

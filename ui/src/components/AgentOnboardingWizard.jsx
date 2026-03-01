@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { FileText, User, Hammer, CheckCircle, Wallet } from 'lucide-react'
+import { navigate } from '../utils/navigate'
 
 const STEPS = [
   {
@@ -102,7 +103,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
   const handleNext = () => {
     if (isLastStep) {
       handleComplete()
-      window.location.href = '/connect-agent'
+      navigate('/connect-agent')
     } else {
       setCurrentStep(prev => prev + 1)
     }

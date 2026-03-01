@@ -1,7 +1,9 @@
 import React from 'react'
 import { Home, ArrowLeft, MapPin } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function NotFoundPage() {
+  usePageTitle('Page Not Found')
   return (
     <div style={{
       minHeight: '100vh',

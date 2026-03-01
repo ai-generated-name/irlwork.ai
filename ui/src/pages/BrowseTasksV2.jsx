@@ -11,6 +11,8 @@ import SkillAutocomplete from '../components/SkillAutocomplete';
 import { PageHeader, EmptyState } from '../components/ui';
 
 import API_URL from '../config/api';
+import { navigate } from '../utils/navigate';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const SORT_OPTIONS = [
   { value: 'distance', label: 'Nearest First' },
@@ -67,6 +69,7 @@ export default function BrowseTasksV2({
   initialLocation = null,
   initialRadius = '25',
 }) {
+  usePageTitle('Browse Tasks');
   // Tasks state
   const [tasks, setTasks] = useState([]);
   const [tasksTotal, setTasksTotal] = useState(0);
@@ -80,6 +83,7 @@ export default function BrowseTasksV2({
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [category, setCategory] = useState('');
   const [sort, setSort] = useState('newest');
   const [radius, setRadius] = useState(initialRadius || '25');
@@ -118,8 +122,10 @@ export default function BrowseTasksV2({
 
   // Debounce search input
   useEffect(() => {
+    if (searchQuery !== debouncedSearch) setIsSearching(true);
     const timeout = setTimeout(() => {
       setDebouncedSearch(searchQuery);
+      setIsSearching(false);
     }, 300);
     return () => clearTimeout(timeout);
   }, [searchQuery]);
@@ -242,7 +248,7 @@ export default function BrowseTasksV2({
 
   // Handle task selection - navigate to task detail page
   const handleTaskSelect = (taskId) => {
-    window.location.href = `/tasks/${taskId}`;
+    navigate(`/tasks/${taskId}`);
   };
 
   // Popup open/close handlers for map pins
@@ -349,11 +355,15 @@ export default function BrowseTasksV2({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            {searchQuery && (
+            {isSearching && (
+              <span className="browse-tasks-v2-search-spinner" aria-label="Searching" />
+            )}
+            {searchQuery && !isSearching && (
               <button
                 className="browse-tasks-v2-search-clear"
                 onClick={() => setSearchQuery('')}
                 type="button"
+                aria-label="Clear search"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -509,49 +519,56 @@ export default function BrowseTasksV2({
         {(effectiveViewMode === 'split' || effectiveViewMode === 'list') && (
           <div className="browse-tasks-v2-list" ref={taskListRef}>
             {loading ? (
-              // Loading skeletons
+              // Loading skeletons — 4 cards matches page layout
               <>
+                <TaskCardSkeleton />
                 <TaskCardSkeleton />
                 <TaskCardSkeleton />
                 <TaskCardSkeleton />
               </>
             ) : error ? (
               <div className="browse-tasks-v2-error">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <h3>Failed to load tasks</h3>
-                <p>{error}</p>
-                <button onClick={() => window.location.reload()}>Retry search</button>
+                <div className="browse-tasks-v2-error-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </div>
+                <h3>Could not load tasks</h3>
+                <p>This might be a temporary issue. Please try again.</p>
+                <button onClick={fetchTasks}>Retry search</button>
               </div>
             ) : tasks.length === 0 ? (
-              <EmptyState
-                icon={<Search size={24} />}
-                title="No tasks found"
-                description={
-                  radius !== 'anywhere'
-                    ? `No tasks within ${radius} km of your location.`
-                    : 'No tasks match your current filters.'
-                }
-                action={
-                  <div className="browse-tasks-v2-empty-actions">
-                    {radius !== 'anywhere' && (
-                      <button onClick={() => setRadius('50')}>
-                        Expand search radius
-                      </button>
-                    )}
-                    <button onClick={() => {
-                      setCategory('');
-                      setSearchQuery('');
-                      setRadius('anywhere');
-                    }}>
-                      Reset filters
+              <div className="browse-tasks-v2-empty">
+                <div className="browse-tasks-v2-empty-icon"><Search size={24} /></div>
+                <h3>No tasks match your current filters</h3>
+                <p>
+                  {debouncedSearch && category
+                    ? `No results for "${debouncedSearch}" in ${category.replace(/[-_]/g, ' ')}.`
+                    : debouncedSearch
+                    ? `No results for "${debouncedSearch}".`
+                    : radius !== 'anywhere'
+                    ? `No tasks within ${radius} km of ${location.city || 'your location'}.`
+                    : 'Try broadening your search or removing some filters.'}
+                </p>
+                <div className="browse-tasks-v2-empty-actions">
+                  {radius !== 'anywhere' && (
+                    <button onClick={() => setRadius('anywhere')}>
+                      Search everywhere
                     </button>
-                  </div>
-                }
-              />
+                  )}
+                  <button onClick={() => {
+                    setCategory('');
+                    setSearchQuery('');
+                    setRadius('anywhere');
+                    setFilterByMySkills(false);
+                    setIncludeRemote(true);
+                  }}>
+                    Clear all filters
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
                 {/* Result count */}

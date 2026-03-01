@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import MyTaskCard from '../components/MyTaskCard';
 import { PageHeader, EmptyState, Button } from '../components/ui';
+import { navigate } from '../utils/navigate';
+import { PageLoader } from '../components/ui/PageLoader';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const ACTIVE_STATUSES = ['pending_acceptance', 'open', 'accepted', 'assigned', 'in_progress'];
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed'];
@@ -50,6 +53,7 @@ export default function MyTasksPage({
   setShowProofSubmit,
   onNavigate,
 }) {
+  usePageTitle('My Tasks');
   const [taskFilter, setTaskFilter] = useState('all');
 
   const safeTasks = Array.isArray(tasks) ? tasks : [];
@@ -59,7 +63,7 @@ export default function MyTasksPage({
   const otherTasks = safeTasks.filter(t => OTHER_STATUSES.includes(t.status));
 
   const handleCardClick = (task) => {
-    window.location.href = '/tasks/' + task.id;
+    navigate('/tasks/' + task.id);
   };
 
   const cardActions = {
@@ -107,9 +111,7 @@ export default function MyTasksPage({
       </div>
 
       {loading ? (
-        <div className="dashboard-v4-empty">
-          <p className="dashboard-v4-empty-text">Loading tasks...</p>
-        </div>
+        <PageLoader message="Loading your tasks..." />
       ) : safeTasks.length === 0 ? (
         /* Clean Empty State */
         <EmptyState

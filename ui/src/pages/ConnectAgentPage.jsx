@@ -6,11 +6,13 @@ import { Check, Copy, Search, ListChecks, MessageSquare, Wallet, ClipboardPaste,
 import MarketingFooter from '../components/Footer'
 import { Logo } from '../components/Logo'
 import { useLanguage } from '../context/LanguageContext'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const MCP_ENDPOINT = 'https://api.irlwork.ai/api/mcp/sse'
 const API_BASE = 'https://api.irlwork.ai/api'
 
 export default function ConnectAgentPage() {
+  usePageTitle('Connect Agent')
   const [activeTab, setActiveTab] = useState('copy-paste')
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedItems, setCopiedItems] = useState({})

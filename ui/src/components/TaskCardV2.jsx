@@ -254,12 +254,13 @@ export default function TaskCardV2({
           )}
         </div>
         <button
-          className={`task-card-v2-apply-btn ${hasApplied ? 'applied' : ''}`}
+          className={`task-card-v2-apply-btn ${hasApplied ? 'applied' : (quantity > 1 && spotsRemaining === 0) ? 'filled' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
-            if (!hasApplied) onApply(task);
+            if (!hasApplied && !(quantity > 1 && spotsRemaining === 0)) onApply(task);
           }}
           disabled={hasApplied || (quantity > 1 && spotsRemaining === 0)}
+          aria-label={hasApplied ? 'Already applied' : (quantity > 1 && spotsRemaining === 0) ? 'All spots filled' : `Apply to ${task.title}`}
         >
           {hasApplied ? (
             <>

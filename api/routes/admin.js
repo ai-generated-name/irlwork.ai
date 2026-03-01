@@ -549,7 +549,7 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
 
       let query = supabase
         .from('tasks')
-        .select('id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, duration_hours, duration, moderation_status, escrow_status, human_ids, task_type, quantity')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -608,11 +608,9 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       const moderation = req.query.moderation || null;
       const sort = req.query.sort || 'newest';
 
-      const selectCols = 'id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, duration_hours, duration, moderation_status, escrow_status, human_ids, task_type, quantity';
-
       let query = supabase
         .from('tasks')
-        .select(selectCols, { count: 'exact' });
+        .select('*', { count: 'exact' });
 
       // Text search
       if (q) {
@@ -1808,76 +1806,243 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
   });
 
   // ============================================================
-  // GET /tasks/recent — Live feed: recent tasks with counts
+  // GET /api/admin/users/search — Paginated, filterable user list
   // ============================================================
-  router.get('/tasks/recent', async (req, res) => {
+  router.get('/users/search', async (req, res) => {
     try {
-      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
-      const status = req.query.status || null;
+      const page = Math.max(parseInt(req.query.page) || 1, 1);
+      const limit = Math.min(parseInt(req.query.limit) || 25, 100);
+      const offset = (page - 1) * limit;
+      const q = (req.query.q || '').trim();
+      const type = req.query.type || null;
+      const moderation = req.query.moderation || null;
+      const sort = req.query.sort || 'newest';
 
-      // Fetch recent tasks
       let query = supabase
-        .from('tasks')
-        .select('id, title, description, category, budget, status, created_at, agent_id, is_remote, location, deadline, human_ids, task_type, quantity')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .from('users')
+        .select('*', { count: 'exact' });
 
-      if (status && status !== 'all') {
-        query = query.eq('status', status);
+      // Text search (name or email)
+      if (q) {
+        const sanitized = q.replace(/[%_,.()'"]/g, '');
+        if (sanitized) {
+          query = query.or(`name.ilike.%${sanitized}%,email.ilike.%${sanitized}%`);
+        }
       }
 
-      const { data: tasks, error: tasksError } = await query;
-      if (tasksError) throw tasksError;
-      if (!tasks || tasks.length === 0) return res.json([]);
+      // Filters
+      if (type && type !== 'all') query = query.eq('type', type);
+      if (moderation && moderation !== 'all') query = query.eq('moderation_status', moderation);
 
-      const taskIds = tasks.map(t => t.id);
+      // Sort
+      const sortMap = {
+        newest: { column: 'created_at', ascending: false },
+        oldest: { column: 'created_at', ascending: true },
+        most_active: { column: 'last_active_at', ascending: false },
+        highest_rated: { column: 'rating', ascending: false },
+      };
+      const { column, ascending } = sortMap[sort] || sortMap.newest;
+      query = query.order(column, { ascending, nullsFirst: false });
 
-      // Fetch applicant counts and view counts in parallel
-      const [appResult, viewResult, agentResult] = await Promise.all([
-        supabase
-          .from('task_applications')
-          .select('task_id')
-          .in('task_id', taskIds),
-        supabase
-          .from('page_views')
-          .select('target_id')
-          .eq('page_type', 'task')
-          .in('target_id', taskIds),
-        supabase
-          .from('users')
-          .select('id, name')
-          .in('id', [...new Set(tasks.map(t => t.agent_id).filter(Boolean))]),
+      // Pagination
+      query = query.range(offset, offset + limit - 1);
+
+      const { data: users, error: usersError, count: total } = await query;
+      if (usersError) throw usersError;
+      if (!users || users.length === 0) return res.json({ users: [], total: 0, page, limit });
+
+      // Enrich with task_count (batch)
+      const userIds = users.map(u => u.id);
+      const [agentTasksResult, humanTasksResult] = await Promise.all([
+        supabase.from('tasks').select('agent_id').in('agent_id', userIds),
+        supabase.from('tasks').select('human_id').in('human_id', userIds),
       ]);
 
-      // Build count maps
-      const appCounts = {};
-      (appResult.data || []).forEach(a => {
-        appCounts[a.task_id] = (appCounts[a.task_id] || 0) + 1;
+      const agentTaskCounts = {};
+      (agentTasksResult.data || []).forEach(t => {
+        agentTaskCounts[t.agent_id] = (agentTaskCounts[t.agent_id] || 0) + 1;
+      });
+      const humanTaskCounts = {};
+      (humanTasksResult.data || []).forEach(t => {
+        humanTaskCounts[t.human_id] = (humanTaskCounts[t.human_id] || 0) + 1;
       });
 
-      const viewCounts = {};
-      (viewResult.data || []).forEach(v => {
-        viewCounts[v.target_id] = (viewCounts[v.target_id] || 0) + 1;
+      const enriched = users.map(u => {
+        const { password_hash, ...safe } = u;
+        return {
+          ...safe,
+          task_count: u.type === 'agent'
+            ? (agentTaskCounts[u.id] || 0)
+            : (humanTaskCounts[u.id] || 0),
+        };
       });
 
-      const agentNames = {};
-      (agentResult.data || []).forEach(a => {
-        agentNames[a.id] = a.name;
-      });
-
-      // Enrich tasks
-      const enriched = tasks.map(t => ({
-        ...t,
-        applicant_count: appCounts[t.id] || 0,
-        view_count: viewCounts[t.id] || 0,
-        agent_name: agentNames[t.agent_id] || 'Unknown',
-        spots_filled: Array.isArray(t.human_ids) ? t.human_ids.length : 0,
-      }));
-
-      res.json(enriched);
+      res.json({ users: enriched, total: total || 0, page, limit });
     } catch (error) {
-      logger.error({ err: error }, 'Recent tasks endpoint error');
-      captureException(error, { tags: { admin_action: 'tasks_recent' } });
+      logger.error({ err: error }, 'Users search endpoint error');
+      captureException(error, { tags: { admin_action: 'users_search' } });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================
+  // GET /api/admin/users/:id — Full user detail with activity
+  // ============================================================
+  router.get('/users/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Full user record
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (userError || !user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Strip password
+      delete user.password_hash;
+
+      // Recent tasks (posted if agent, assigned if human)
+      const taskQuery = user.type === 'agent'
+        ? supabase.from('tasks').select('id, title, status, budget, created_at, human_id, escrow_status').eq('agent_id', id)
+        : supabase.from('tasks').select('id, title, status, budget, created_at, agent_id, escrow_status').eq('human_id', id);
+
+      const [tasksResult, ratingsResult, reportsResult] = await Promise.all([
+        taskQuery.order('created_at', { ascending: false }).limit(10),
+        supabase.from('ratings')
+          .select('id, task_id, rater_id, rating_score, comment, created_at')
+          .eq('ratee_id', id)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        user.type === 'agent'
+          ? supabase.from('task_reports')
+              .select('id, task_id, reporter_id, reason, description, status, created_at')
+              .in('task_id', (await supabase.from('tasks').select('id').eq('agent_id', id).limit(100)).data?.map(t => t.id) || [])
+              .order('created_at', { ascending: false })
+              .limit(10)
+          : supabase.from('task_reports')
+              .select('id, task_id, reporter_id, reason, description, status, created_at')
+              .eq('reporter_id', id)
+              .order('created_at', { ascending: false })
+              .limit(10),
+      ]);
+
+      await logAdminAction(req.user.id, 'view_user_detail', null, null, { user_id: id });
+
+      res.json({
+        user,
+        recent_tasks: tasksResult.data || [],
+        recent_ratings: ratingsResult.data || [],
+        report_history: reportsResult.data || [],
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'User detail endpoint error');
+      captureException(error, { tags: { admin_action: 'user_detail' } });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================
+  // POST /api/admin/users/:id/moderate — Admin moderation action
+  // ============================================================
+  router.post('/users/:id/moderate', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { action, notes, suspension_days } = req.body;
+
+      const VALID_ACTIONS = ['warn', 'suspend', 'ban', 'restore'];
+      if (!action || !VALID_ACTIONS.includes(action)) {
+        return res.status(400).json({ error: `Invalid action. Must be one of: ${VALID_ACTIONS.join(', ')}` });
+      }
+
+      // Prevent self-moderation
+      if (id === req.user.id) {
+        return res.status(400).json({ error: 'Cannot moderate yourself' });
+      }
+
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, name, email, type, moderation_status, warning_count, suspended_until')
+        .eq('id', id)
+        .single();
+
+      if (userError || !user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const now = new Date().toISOString();
+      const updates = { updated_at: now };
+      let notifTitle = '';
+      let notifMessage = '';
+
+      switch (action) {
+        case 'warn':
+          updates.warning_count = (user.warning_count || 0) + 1;
+          updates.moderation_status = 'warned';
+          notifTitle = 'Account Warning';
+          notifMessage = `A warning has been issued on your account.${notes ? ' Reason: ' + notes : ' Please review our community guidelines.'}`;
+          break;
+
+        case 'suspend': {
+          const days = Math.min(365, Math.max(1, parseInt(suspension_days) || 7));
+          const suspendUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+          updates.moderation_status = 'suspended';
+          updates.suspended_until = suspendUntil.toISOString();
+          notifTitle = 'Account Suspended';
+          notifMessage = `Your account has been suspended until ${suspendUntil.toLocaleDateString()}.${notes ? ' Reason: ' + notes : ''}`;
+          break;
+        }
+
+        case 'ban':
+          updates.moderation_status = 'banned';
+          notifTitle = 'Account Banned';
+          notifMessage = `Your account has been permanently banned.${notes ? ' Reason: ' + notes : ''}`;
+          break;
+
+        case 'restore':
+          updates.moderation_status = 'good_standing';
+          updates.suspended_until = null;
+          notifTitle = 'Account Restored';
+          notifMessage = 'Your account has been restored to good standing.';
+          break;
+      }
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Notify user
+      try {
+        await createNotification(id, 'moderation_action', notifTitle, notifMessage, null);
+      } catch (notifErr) {
+        logger.error({ err: notifErr }, 'Failed to create user moderation notification');
+      }
+
+      // Audit log
+      await logAdminAction(req.user.id, `moderate_user_${action}`, null, null, {
+        user_id: id,
+        action,
+        notes,
+        suspension_days,
+        previous_status: user.moderation_status,
+      });
+
+      res.json({
+        success: true,
+        user_id: id,
+        action,
+        new_moderation_status: updates.moderation_status,
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'User moderation endpoint error');
+      captureException(error, { tags: { admin_action: 'moderate_user' } });
       res.status(500).json({ error: error.message });
     }
   });

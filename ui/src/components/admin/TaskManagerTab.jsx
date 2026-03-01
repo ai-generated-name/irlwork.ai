@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, ChevronDown, X, AlertTriangle } from 'lucide-react'
-import { useAuth } from '../../context/AuthContext'
+import { adminFetch } from '../../utils/adminFetch'
 import API_URL from '../../config/api'
 import AdminTaskRow, { STATUS_LABELS, CATEGORY_LABELS } from './AdminTaskRow'
 
@@ -21,7 +21,6 @@ const SORT_OPTIONS = [
 const PAGE_SIZE = 25
 
 export default function TaskManagerTab({ user }) {
-  const { authenticatedFetch } = useAuth()
   const [tasks, setTasks] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -69,7 +68,7 @@ export default function TaskManagerTab({ user }) {
       if (categoryFilter !== 'all') params.set('category', categoryFilter)
       if (moderationFilter !== 'all') params.set('moderation', moderationFilter)
 
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/search?${params}`)
+      const res = await adminFetch(`${API_URL}/admin/tasks/search?${params}`)
       if (!res.ok) throw new Error('Failed to fetch tasks')
       const data = await res.json()
       setTasks(data.tasks || [])
@@ -79,7 +78,7 @@ export default function TaskManagerTab({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [page, sort, debouncedSearch, statusFilter, categoryFilter, moderationFilter, authenticatedFetch])
+  }, [page, sort, debouncedSearch, statusFilter, categoryFilter, moderationFilter])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
@@ -93,7 +92,7 @@ export default function TaskManagerTab({ user }) {
     const { task, action, notes } = modal
     setActionLoading(task.id)
     try {
-      const res = await authenticatedFetch(`${API_URL}/admin/tasks/${task.id}/moderate`, {
+      const res = await adminFetch(`${API_URL}/admin/tasks/${task.id}/moderate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, notes })
@@ -123,7 +122,10 @@ export default function TaskManagerTab({ user }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">Task Manager</h2>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Task Manager</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Search, filter, and moderate all tasks. Hide or remove policy-violating content.</p>
+        </div>
         <p className="text-sm text-gray-400">{total} task{total !== 1 ? 's' : ''} found</p>
       </div>
 

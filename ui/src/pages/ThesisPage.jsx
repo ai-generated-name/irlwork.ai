@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Bot } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 /* ─── Animated floating orb (pure CSS) ─── */
 function GradientOrb({ size = 400, top, left, right, bottom, color1, color2, delay = 0, duration = 20 }) {
@@ -279,6 +280,7 @@ function TimelineItem({ label, color, children, isLast = false }) {
    THESIS PAGE
    ═══════════════════════════════════════ */
 export default function ThesisPage() {
+  usePageTitle('Our Thesis')
 
   /* ─── Keyframe injection ─── */
   useEffect(() => {

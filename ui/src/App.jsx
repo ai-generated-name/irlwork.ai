@@ -54,6 +54,7 @@ import TimezoneDropdown from './components/TimezoneDropdown'
 import { TASK_CATEGORIES } from './components/CategoryPills'
 import { Copy } from 'lucide-react'
 import StandaloneTaskDetailPage from './pages/TaskDetailPage'
+import { navigate as spaNavigate } from './utils/navigate'
 
 // Lightweight error boundary for individual dashboard tabs — prevents one tab crash from killing the entire dashboard
 class TabErrorBoundary extends React.Component {
@@ -87,11 +88,9 @@ class TabErrorBoundary extends React.Component {
   }
 }
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('[App] Supabase not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env')
-}
+// Anon key is public by design — security is enforced via Supabase RLS policies, not key secrecy
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
 export const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null
 
 // Safe no-op channel for when supabase is null
@@ -534,6 +533,7 @@ function AuthPage({ onLogin, onNavigate }) {
   const [form, setForm] = useState({ email: '', password: '', name: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [signupSuccess, setSignupSuccess] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -575,7 +575,31 @@ function AuthPage({ onLogin, onNavigate }) {
       const returnTo = params.get('returnTo')
       if (onNavigate) onNavigate(returnTo && decodeURIComponent(returnTo).startsWith('/dashboard') ? decodeURIComponent(returnTo) : '/dashboard')
     } catch (err) {
-      setError(err.message)
+      const msg = err.message || ''
+      // Map Supabase error messages to user-friendly, non-enumerable messages
+      if (isLogin) {
+        if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
+          setError('Invalid email or password')
+        } else if (msg.includes('Email not confirmed')) {
+          setError('Please verify your email first. Check your inbox for a confirmation link.')
+        } else if (msg.includes('rate') || msg.includes('too many') || msg.includes('429')) {
+          setError('Too many attempts. Please try again in a few minutes.')
+        } else {
+          setError('Invalid email or password')
+        }
+      } else {
+        if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('duplicate')) {
+          setError('An account with this email already exists.')
+        } else if (msg.includes('password') && (msg.includes('short') || msg.includes('least'))) {
+          setError('Password must be at least 8 characters')
+        } else if (msg.includes('valid email') || (msg.includes('invalid') && msg.includes('email'))) {
+          setError('Please enter a valid email address')
+        } else if (msg.includes('rate') || msg.includes('too many') || msg.includes('429')) {
+          setError('Too many attempts. Please try again in a few minutes.')
+        } else {
+          setError(msg || 'Something went wrong. Please try again.')
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -713,7 +737,7 @@ function AuthPage({ onLogin, onNavigate }) {
               <button className="auth-v4-error-btn-secondary" onClick={() => window.location.reload()}>
                 Try Again
               </button>
-              <button className="auth-v4-submit" onClick={() => window.location.href = '/'}>
+              <button className="auth-v4-submit" onClick={() => spaNavigate('/')}>
                 Go Home
               </button>
             </div>
@@ -723,12 +747,29 @@ function AuthPage({ onLogin, onNavigate }) {
     )
   }
 
+  // Resend verification email via Supabase
+  const handleResendVerification = async () => {
+    if (resendCooldown > 0 || !supabase || !form.email) return
+    try {
+      await supabase.auth.resend({ type: 'signup', email: form.email })
+      setResendCooldown(60)
+      const timer = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) { clearInterval(timer); return 0 }
+          return prev - 1
+        })
+      }, 1000)
+    } catch (err) {
+      setError('Failed to resend verification email. Please try again.')
+    }
+  }
+
   // Show email confirmation screen after successful signup (when email verification is required)
   if (signupSuccess) {
     return (
       <div className="auth-v4">
         <div className="auth-v4-container">
-          <a href="/" className="auth-v4-logo">
+          <a href="/" className="auth-v4-logo" onClick={(e) => { e.preventDefault(); spaNavigate('/') }}>
             <div className="logo-mark-v4">irl</div>
             <span className="logo-name-v4">irlwork.ai</span>
           </a>
@@ -746,8 +787,16 @@ function AuthPage({ onLogin, onNavigate }) {
             >
               Back to Sign In
             </button>
+            <button
+              onClick={handleResendVerification}
+              disabled={resendCooldown > 0}
+              className="auth-v4-switch-link"
+              style={{ marginTop: 12, display: 'block', width: '100%', background: 'none', border: 'none', cursor: resendCooldown > 0 ? 'default' : 'pointer', fontSize: 14, color: 'var(--text-tertiary)' }}
+            >
+              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Didn't receive it? Resend email"}
+            </button>
           </div>
-          <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+          <button onClick={() => spaNavigate('/')} className="auth-v4-back">
             ← Back to home
           </button>
         </div>
@@ -758,7 +807,7 @@ function AuthPage({ onLogin, onNavigate }) {
   return (
     <div className="auth-v4">
       <div className="auth-v4-container">
-        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); spaNavigate('/') }}>
           <Logo variant="header" theme="light" />
         </a>
 
@@ -769,6 +818,12 @@ function AuthPage({ onLogin, onNavigate }) {
           <p className="auth-v4-subtitle">
             {isLogin ? 'Sign in to continue' : 'Start earning from real-world tasks'}
           </p>
+
+          {new URLSearchParams(window.location.search).get('reset') === 'success' && (
+            <div style={{ background: '#D1FAE5', color: '#065F46', padding: '12px 16px', borderRadius: 12, marginBottom: 16, fontSize: 14 }}>
+              Password updated successfully. Please sign in with your new password.
+            </div>
+          )}
 
           {error && (
             <div className="auth-v4-error">{error}</div>
@@ -849,6 +904,13 @@ function AuthPage({ onLogin, onNavigate }) {
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
+            {isLogin && (
+              <div style={{ textAlign: 'right', marginTop: -4, marginBottom: 8 }}>
+                <a href="/forgot-password" onClick={e => { e.preventDefault(); onNavigate('/forgot-password') }} style={{ fontSize: 13, color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+                  Forgot your password?
+                </a>
+              </div>
+            )}
             <button type="submit" className="auth-v4-submit" disabled={loading}>
               {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
             </button>
@@ -862,6 +924,213 @@ function AuthPage({ onLogin, onNavigate }) {
           </p>
         </div>
 
+        <button onClick={() => spaNavigate('/')} className="auth-v4-back">
+          ← Back to home
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ForgotPasswordPage({ onNavigate }) {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    if (!supabase) {
+      setError('Authentication service not configured')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/reset-password'
+      })
+      // Always show success (prevent email enumeration)
+      setSent(true)
+    } catch (err) {
+      // Still show success to prevent enumeration
+      setSent(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="auth-v4">
+        <div className="auth-v4-container">
+          <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+            <Logo variant="header" theme="light" />
+          </a>
+          <div className="auth-v4-card" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>
+              <Mail size={48} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+            </div>
+            <h1 className="auth-v4-title">Check your email</h1>
+            <p className="auth-v4-subtitle" style={{ marginBottom: 24 }}>
+              If an account exists for <strong>{email}</strong>, we sent a password reset link. Check your inbox and follow the instructions.
+            </p>
+            <button
+              className="auth-v4-submit"
+              onClick={() => onNavigate('/auth')}
+            >
+              Back to Sign In
+            </button>
+          </div>
+          <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+            ← Back to home
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="auth-v4">
+      <div className="auth-v4-container">
+        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
+        </a>
+        <div className="auth-v4-card">
+          <h1 className="auth-v4-title">Reset your password</h1>
+          <p className="auth-v4-subtitle">
+            Enter your email and we'll send you a reset link.
+          </p>
+
+          {error && <div className="auth-v4-error">{error}</div>}
+
+          <form onSubmit={handleSubmit} className="auth-v4-form">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="auth-v4-input"
+              required
+              autoComplete="email"
+              autoFocus
+            />
+            <button type="submit" className="auth-v4-submit" disabled={loading}>
+              {loading ? 'Sending...' : 'Send Reset Link'}
+            </button>
+          </form>
+
+          <p className="auth-v4-switch">
+            Remember your password?{' '}
+            <button onClick={() => onNavigate('/auth')} className="auth-v4-switch-link">
+              Sign in
+            </button>
+          </p>
+        </div>
+        <button onClick={() => window.location.href = '/'} className="auth-v4-back">
+          ← Back to home
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ResetPasswordPage({ onNavigate }) {
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setLoading(true)
+    if (!supabase) {
+      setError('Authentication service not configured')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) throw error
+      onNavigate('/auth?reset=success')
+    } catch (err) {
+      setError(err.message || 'Failed to update password. The reset link may have expired.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="auth-v4">
+      <div className="auth-v4-container">
+        <a href="/" className="auth-v4-logo" style={{ textDecoration: 'none' }}>
+          <Logo variant="header" theme="light" />
+        </a>
+        <div className="auth-v4-card">
+          <h1 className="auth-v4-title">Set new password</h1>
+          <p className="auth-v4-subtitle">
+            Enter your new password below.
+          </p>
+
+          {error && <div className="auth-v4-error">{error}</div>}
+
+          <form onSubmit={handleSubmit} className="auth-v4-form">
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="New password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="auth-v4-input"
+                style={{ paddingRight: 44 }}
+                required
+                minLength={8}
+                autoComplete="new-password"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                  color: 'var(--text-tertiary)', fontSize: 13, fontWeight: 500
+                }}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              className="auth-v4-input"
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+            <button type="submit" className="auth-v4-submit" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Password'}
+            </button>
+          </form>
+        </div>
         <button onClick={() => window.location.href = '/'} className="auth-v4-back">
           ← Back to home
         </button>
@@ -1225,6 +1494,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [tasks, setTasks] = useState([])
   const [availableTasks, setAvailableTasks] = useState([]) // Tasks available for humans to browse
   const [humans, setHumans] = useState([])
+  const [humansError, setHumansError] = useState(null)
   const [bookmarkedHumans, setBookmarkedHumans] = useState(() => {
     try { return JSON.parse(localStorage.getItem('irlwork_bookmarked_humans') || '[]') } catch { return [] }
   })
@@ -1265,6 +1535,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [showProofSubmit, setShowProofSubmit] = useState(null)
   const [showProofReview, setShowProofReview] = useState(null)
   const [taskApplications, setTaskApplications] = useState({}) // { taskId: [applications] }
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [sidebarOpen]);
 
   // Dashboard tour state — show for first-time users who haven't completed the tour
   const [showTour, setShowTour] = useState(() => {
@@ -1634,14 +1912,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchHumans = async () => {
     if (!user?.token) return
+    setHumansError(null)
     try {
       const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token } })
       if (res.ok) {
         const data = await res.json()
         setHumans(fixAvatarUrl(data || []))
+      } else {
+        setHumansError(`Server error (${res.status})`)
       }
     } catch (e) {
-      debug('Could not fetch humans')
+      setHumansError('Could not connect to server')
     }
   }
 
@@ -1883,7 +2164,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
     // Task detail page
     if (link.startsWith('/tasks/')) {
-      window.location.href = link
+      spaNavigate(link)
       return
     }
 
@@ -1892,7 +2173,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       const params = new URLSearchParams(link.split('?')[1] || '')
       const taskId = params.get('task')
       if (taskId) {
-        window.location.href = `/tasks/${taskId}`
+        spaNavigate(`/tasks/${taskId}`)
         return
       }
       // Parse tab from path segment: /dashboard/working/browse → 'browse'
@@ -1907,7 +2188,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
     // Browse page
     if (link.startsWith('/browse')) {
-      window.location.href = link
+      spaNavigate(link)
       return
     }
 
@@ -1918,7 +2199,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     }
 
     // Fallback
-    window.location.href = link
+    spaNavigate(link)
   }
 
   const fetchConversations = async () => {
@@ -2250,9 +2531,14 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       )}
 
       {/* Sidebar */}
-      <aside className={`dashboard-v4-sidebar ${sidebarOpen ? 'open' : ''}`}>
+      <aside
+        className={`dashboard-v4-sidebar ${sidebarOpen ? 'open' : ''}`}
+        role="navigation"
+        aria-label="Dashboard navigation"
+        onKeyDown={(e) => { if (e.key === 'Escape') setSidebarOpen(false); }}
+      >
         {/* Logo */}
-        <a href="/" className="dashboard-v4-sidebar-logo" style={{ textDecoration: 'none' }}>
+        <a href="/" className="dashboard-v4-sidebar-logo" style={{ textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); spaNavigate('/') }}>
           <Logo variant="header" theme="light" />
         </a>
 
@@ -2280,118 +2566,78 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
           ))}
         </nav>
 
-        {/* Connect Agent - Hiring mode only, mobile sidebar */}
-        {hiringMode && (
-          <div style={{ padding: '8px var(--space-4)' }}>
+        {/* Sidebar bottom section */}
+        <div className="dashboard-v4-sidebar-bottom">
+          {/* Connect Agent - Hiring mode only, before API key is created */}
+          {hiringMode && !agentConnected && (
             <a
               href="/connect-agent"
-              className="dashboard-v4-connect-agent-btn"
+              className="dashboard-v4-sidebar-bottom-item"
               onClick={() => setSidebarOpen(false)}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24" />
               </svg>
-              Connect Agent
+              <span>Connect Agent</span>
             </a>
-          </div>
-        )}
-
-        {/* Mode Switch - mobile only, pinned above social */}
-        <div className="dashboard-v4-mode-switch-mobile">
-          {hiringMode ? (
-            <button
-              className="dashboard-v4-mode-switch-btn"
-              onClick={() => { setHiringMode(false); setActiveTabState('dashboard'); updateTabUrl('dashboard', false); setSidebarOpen(false) }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" />
-                <path d="M8 21h8" />
-                <path d="M12 17v4" />
-              </svg>
-              Switch to Working
-            </button>
-          ) : (
-            <button
-              className="dashboard-v4-mode-switch-btn hiring"
-              onClick={() => { setHiringMode(true); setActiveTabState('dashboard'); updateTabUrl('dashboard', true); setSidebarOpen(false) }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 00-3-3.87" />
-                <path d="M16 3.13a4 4 0 010 7.75" />
-              </svg>
-              Hire Humans
-            </button>
           )}
-        </div>
 
-        {/* Upgrade to Premium CTA */}
-        <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-          <a
-            href="/premium"
-            className="dashboard-v4-upgrade-premium-btn"
-          >
-            <span style={{ display: 'flex', alignItems: 'center' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="#B8860B" strokeWidth="2" fill="none" />
-                <path d="M9 12l2 2 4-4" stroke="#B8860B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Mode Switch - mobile only */}
+          <div className="dashboard-v4-mode-switch-mobile">
+            {hiringMode ? (
+              <button
+                className="dashboard-v4-sidebar-bottom-item"
+                onClick={() => { setHiringMode(false); setActiveTabState('dashboard'); updateTabUrl('dashboard', false); setSidebarOpen(false) }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <path d="M8 21h8" />
+                  <path d="M12 17v4" />
+                </svg>
+                <span>Switch to Working</span>
+              </button>
+            ) : (
+              <button
+                className="dashboard-v4-sidebar-bottom-item"
+                onClick={() => { setHiringMode(true); setActiveTabState('dashboard'); updateTabUrl('dashboard', true); setSidebarOpen(false) }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                  <path d="M16 3.13a4 4 0 010 7.75" />
+                </svg>
+                <span>Hire Humans</span>
+              </button>
+            )}
+          </div>
+
+          {/* Upgrade to Premium - hide if already on a paid plan */}
+          {(!user?.subscription_tier || user.subscription_tier === 'free') && (
+            <a
+              href="/premium"
+              className="dashboard-v4-sidebar-bottom-item dashboard-v4-sidebar-upgrade-link"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </span>
-            <span>Upgrade to Premium</span>
-          </a>
-        </div>
+              <span>Upgrade to Premium</span>
+            </a>
+          )}
 
-        {/* Social & Feedback - pinned to bottom */}
-        <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)' }}>
           {/* X / Twitter */}
           <a
             href="https://x.com/irlworkai"
             target="_blank"
             rel="noopener noreferrer"
-            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
-            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
+            className="dashboard-v4-sidebar-bottom-item"
           >
-            <div className="dashboard-v4-nav-item-content">
-              <span className="dashboard-v4-nav-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-              </span>
-              <span className="dashboard-v4-nav-label">Follow us on X</span>
-            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            <span>Follow us on X</span>
           </a>
-          {/* Contact */}
-          <a
-            href="/contact"
-            className="dashboard-v4-nav-item dashboard-v4-sidebar-social-link"
-            style={{ display: 'flex', width: '100%', textDecoration: 'none', margin: 0 }}
-          >
-            <div className="dashboard-v4-nav-item-content">
-              <span className="dashboard-v4-nav-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                </svg>
-              </span>
-              <span className="dashboard-v4-nav-label">Contact Us</span>
-            </div>
-          </a>
-          {/* Feedback */}
-          <button
-            onClick={() => setFeedbackOpen(!feedbackOpen)}
-            className="dashboard-v4-nav-item"
-            style={{ width: '100%', background: feedbackOpen ? 'linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.04))' : undefined }}
-          >
-            <div className="dashboard-v4-nav-item-content">
-              <span className="dashboard-v4-nav-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              </span>
-              <span className="dashboard-v4-nav-label">Feedback</span>
-            </div>
-          </button>
         </div>
 
       </aside>
@@ -2410,7 +2656,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       <main className="dashboard-v4-main">
         {/* Top Header Bar */}
         <div className="dashboard-v4-topbar">
-          {/* Left: Mobile menu + Logo */}
+          {/* Left: Mobile menu + Logo + Mode indicator */}
           <div className="dashboard-v4-topbar-left">
             <button className="dashboard-v4-menu-btn" onClick={() => setSidebarOpen(true)}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2420,6 +2666,37 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
             <a href={hiringMode ? '/dashboard/hiring' : '/dashboard/working'} className="dashboard-v4-topbar-logo" style={{ textDecoration: 'none' }}>
               <Logo variant="header" theme="light" />
             </a>
+            <button
+              className="dashboard-v4-mode-indicator"
+              onClick={() => {
+                const newMode = !hiringMode;
+                setHiringMode(newMode);
+                setActiveTabState('dashboard');
+                updateTabUrl('dashboard', newMode);
+              }}
+              title={hiringMode ? 'Switch to Working mode' : 'Switch to Hiring mode'}
+            >
+              {hiringMode ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                    <path d="M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                  <span className="dashboard-v4-mode-indicator-label">Hiring</span>
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <path d="M8 21h8" />
+                    <path d="M12 17v4" />
+                  </svg>
+                  <span className="dashboard-v4-mode-indicator-label">Working</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Right: Mode switch + Notifications + User */}
@@ -2588,6 +2865,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                   </button>
                   <button className="dashboard-v4-user-dropdown-item" onClick={() => { setActiveTab('settings'); setUserDropdownOpen(false); }}>
                     <span>{Icons.settings}</span> Settings
+                  </button>
+                  <a href="/contact" className="dashboard-v4-user-dropdown-item" style={{ textDecoration: 'none', color: 'inherit' }} onClick={() => setUserDropdownOpen(false)}>
+                    <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg></span> Contact Us
+                  </a>
+                  <button className="dashboard-v4-user-dropdown-item" onClick={() => { setFeedbackOpen(!feedbackOpen); setUserDropdownOpen(false); }}>
+                    <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg></span> Feedback
                   </button>
                   <div className="dashboard-v4-user-dropdown-divider" />
                   <button className="dashboard-v4-user-dropdown-item danger" onClick={onLogout}>
@@ -2995,7 +3278,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                       const isEditing = editingTaskId === task.id
 
                       return (
-                        <div key={task.id} className="dashboard-v4-task-card" style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/tasks/${task.id}`}>
+                        <div key={task.id} className="dashboard-v4-task-card" style={{ cursor: 'pointer' }} onClick={() => spaNavigate(`/tasks/${task.id}`)}>
                           <div className="dashboard-v4-task-header">
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -3017,6 +3300,16 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                             <span className="dashboard-v4-task-meta-item"><FolderOpen size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.category || 'General'}</span>
                             <span className="dashboard-v4-task-meta-item"><MapPin size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.city || 'Remote'}</span>
                             <span className="dashboard-v4-task-meta-item"><CalendarDays size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {new Date(task.created_at || Date.now()).toLocaleDateString()}</span>
+                            {task.deadline && (
+                              <>
+                                <span className="dashboard-v4-task-meta-item" style={new Date(task.deadline) < new Date(Date.now() + 86400000) ? { color: '#dc2626', fontWeight: 500 } : {}}>
+                                  <Timer size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Due {new Date(task.deadline).toLocaleDateString()}
+                                </span>
+                                {new Date(task.deadline) < new Date() && ['in_progress', 'assigned'].includes(task.status) && (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(255, 95, 87, 0.15)', color: '#FF5F57', letterSpacing: '0.5px' }}>OVERDUE</span>
+                                )}
+                              </>
+                            )}
                             {task.assignee && (
                               <span className="dashboard-v4-task-meta-item"><User size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {task.assignee.name}</span>
                             )}
@@ -3407,6 +3700,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 </div>
 
                 {(() => {
+                  if (humansError) {
+                    return (
+                      <div className="dashboard-v4-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 48, marginBottom: 12 }}>&#9888;&#65039;</div>
+                        <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>Failed to load humans</p>
+                        <p style={{ fontSize: 14, maxWidth: 300, margin: '0 auto 16px', color: 'var(--text-secondary)' }}>{humansError}</p>
+                        <button
+                          onClick={fetchHumans}
+                          style={{ background: 'var(--coral-500, #E8853D)', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    )
+                  }
                   const filtered = humans
                     .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
                     .filter(h => !filterCategory || h.skills?.includes(filterCategory))
@@ -3444,7 +3752,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                           key={human.id}
                           human={human}
                           variant="dashboard"
-                          onExpand={(h) => window.location.href = `/humans/${h.id}`}
+                          onExpand={(h) => spaNavigate(`/humans/${h.id}`)}
                           onHire={(human) => { setHireTarget(human); setTasksSubTab('create'); setActiveTabState('posted'); window.history.pushState({}, '', `/dashboard/hiring/create?hire=${human.id}`); trackPageView('/dashboard/hiring/create'); }}
                           onBookmark={toggleBookmark}
                           isBookmarked={bookmarkedHumans.includes(human.id)}
@@ -5432,8 +5740,9 @@ function App() {
       debug('[Auth] Already logged in, redirecting to dashboard')
       const params = new URLSearchParams(window.location.search)
       const returnTo = params.get('returnTo')
-      if (returnTo && decodeURIComponent(returnTo).startsWith('/dashboard')) {
-        navigate(decodeURIComponent(returnTo))
+      const decoded = returnTo ? decodeURIComponent(returnTo) : null
+      if (decoded && decoded.startsWith('/') && !decoded.startsWith('//')) {
+        navigate(decoded)
       } else {
         const savedHiring = localStorage.getItem('irlwork_hiringMode') === 'true'
         navigate(savedHiring ? '/dashboard/hiring' : '/dashboard/working')
@@ -5488,7 +5797,7 @@ function App() {
     : null
 
   // Routes that should NOT get the shared marketing navbar+footer
-  const isAuthRoute = path === '/auth'
+  const isAuthRoute = path === '/auth' || path === '/forgot-password' || path === '/reset-password'
   const isOnboardRoute = path === '/onboard'
   const isDashboardRoute = path.startsWith('/dashboard')
   const isSelfContainedPage = path === '/connect-agent' || path === '/mcp' // has its own header + footer
@@ -5533,6 +5842,13 @@ function App() {
     if (path === '/auth') {
       if (user) return <Loading />
       return <AuthPage onNavigate={navigate} />
+    }
+    if (path === '/forgot-password') {
+      if (user) return <Loading />
+      return <ForgotPasswordPage onNavigate={navigate} />
+    }
+    if (path === '/reset-password') {
+      return <ResetPasswordPage onNavigate={navigate} />
     }
     if (path === '/mcp') return <Suspense fallback={<Loading />}><MCPPage /></Suspense>
     if (path === '/premium') {
