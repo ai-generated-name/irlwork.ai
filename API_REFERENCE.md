@@ -466,11 +466,30 @@ Auth required (task owner). Update an application status. Task must be `open`.
 Returns `403` if not task owner. Returns `400` if task is not open or invalid status. Notifies applicant if rejected (`application_rejected` event).
 
 #### `POST /api/tasks/:id/assign`
-Auth required (task owner). Assign a human to a task. Stripe path: charges agent's card immediately and moves task to `in_progress` with `escrow_status: 'deposited'`. USDC path: manual deposit flow. Requires agent to have a payment method on file (returns 402 `card_required` if not).
+Auth required (task owner). Assign a human to a task. Supports two payment paths:
+
+- **Stripe path** (default): Charges agent's card immediately and moves task to `in_progress` with `escrow_status: 'deposited'`.
+- **USDC path**: Locks escrow from agent's Circle wallet USDC balance immediately. Requires sufficient `usdc_available_balance`. Moves task to `in_progress` with `escrow_status: 'deposited'` and `payment_method: 'usdc'`.
+
+Requires agent to have a payment method on file (returns 402 `card_required` if not).
 
 **Request:**
 ```json
-{ "human_id": "uuid", "payment_method_id": "optional" }
+{
+  "human_id": "uuid",
+  "payment_method_id": "optional (Stripe payment method ID)",
+  "preferred_payment_method": "stripe"
+}
+```
+
+- `preferred_payment_method` (optional) — `"stripe"` or `"usdc"`. Defaults to the agent's `default_payment_method` setting. For USDC, the agent must have sufficient USDC balance to cover the task budget plus platform fee.
+
+**Response** includes `escrow_amount_usdc` when using USDC payment:
+```json
+{
+  "task": { "...task fields..." },
+  "escrow_amount_usdc": 115.00
+}
 ```
 
 #### `POST /api/tasks/:id/accept`
@@ -786,7 +805,7 @@ Auth required. Mark a notification as read (sets `is_read: true`).
 ### 5.10 Payments & Wallet
 
 #### `GET /api/wallet/balance`
-Auth required. Get wallet balance breakdown.
+Auth required. Get wallet balance breakdown including USDC/Circle wallet info.
 
 **Response:**
 ```json
@@ -797,9 +816,21 @@ Auth required. Get wallet balance breakdown.
   "total": 75.00,
   "pending_cents": 5000,
   "available_cents": 2500,
-  "total_cents": 7500
+  "total_cents": 7500,
+  "circle_wallet_address": "0x1234...abcd",
+  "usdc_available_balance": 100.00,
+  "usdc_escrow_balance": 50.00,
+  "default_payment_method": "stripe",
+  "has_bank": true
 }
 ```
+
+Additional fields:
+- `circle_wallet_address` — The user's USDC deposit address on Base (null if not generated)
+- `usdc_available_balance` — Available USDC balance (not locked in escrow)
+- `usdc_escrow_balance` — USDC currently locked in task escrow
+- `default_payment_method` — `"stripe"` or `"usdc"`
+- `has_bank` — Whether the user has a connected Stripe bank account for withdrawals
 
 #### `POST /api/wallet/withdraw`
 Auth required. Request withdrawal to connected bank (Stripe Connect). Requires `stripe_account_id`.
@@ -825,6 +856,42 @@ Auth required. List manual payment deposits (from `manual_payments` table).
 
 #### `GET /api/payouts`
 Auth required. List payout history for the user.
+
+#### `POST /api/wallet/generate-deposit-address`
+Auth required. Generates a unique USDC deposit address on Base for the authenticated user. Idempotent — returns existing address if one has already been generated.
+
+**Response (200):**
+```json
+{
+  "circle_wallet_address": "0x1234...abcd",
+  "circle_wallet_id": "wlt_abc123",
+  "message": "Deposit address generated"
+}
+```
+
+**Errors:**
+- `500` — Circle not configured on the server (missing Circle API credentials)
+- `500` — Circle API failure during wallet creation
+
+#### `PUT /api/settings/default-payment-method`
+Auth required. Sets the user's default payment method for new tasks.
+
+**Request:**
+```json
+{ "payment_method": "stripe" }
+```
+
+Valid values: `"stripe"`, `"usdc"`.
+
+**Validation:** If setting to `"usdc"`, the user must already have a Circle wallet address (generated via `POST /api/wallet/generate-deposit-address`). Returns `400` if no wallet address exists.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "default_payment_method": "usdc"
+}
+```
 
 ---
 
@@ -918,6 +985,27 @@ Auth required (API key, agent type). Receive and store webhook notifications.
 
 #### `GET /webhooks/test`
 Auth required (API key, agent type). Test webhook connectivity.
+
+#### `POST /api/webhooks/circle`
+No auth (inbound webhook from Circle). Handles Circle webhook notifications for inbound USDC deposits on Base. Detects confirmed transfers, credits the user's platform balance, creates a ledger entry, and sends an in-app notification. Idempotent via `circle_transaction_id` uniqueness check — duplicate deliveries are safely ignored.
+
+**Request body:** Circle webhook payload.
+
+Key fields the handler inspects:
+- `type` — Must be `"transfers.complete"` to trigger deposit processing
+- Transfer data includes wallet ID, amount, and transaction hash
+
+**Response (200):**
+```json
+{ "received": true }
+```
+
+**Behavior:**
+1. Looks up the user by their `circle_wallet_id`
+2. Verifies the transfer has not already been processed (`circle_transaction_id` dedup)
+3. Credits the user's USDC available balance
+4. Creates a ledger/transaction record
+5. Sends an in-app notification to the user about the deposit
 
 ---
 
@@ -1308,14 +1396,14 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 | `get_human` | Get human profile. Params: `human_id` |
 | `create_posting` | Create a public task. Aliases: `post_task`, `create_adhoc_task`. Required params: `title`, `duration_hours` (positive number, max 720). Optional: `description`, `category`, `budget`, `location`, `latitude`, `longitude`, `is_remote`, `deadline`, `requirements`, `required_skills`, `is_anonymous`, `task_type`, `quantity` |
 | `direct_hire` | Hire human directly. Alias: `create_booking` |
-| `hire_human` | Hire with Stripe (send offer, charge on accept). Params: `task_id`, `human_id`, `deadline_hours`, `instructions` |
-| `assign_human` | Assign human (USDC path). Params: `task_id`, `human_id`, `deadline_hours`, `instructions` |
+| `hire_human` | Hire with Stripe (send offer, charge on accept). Params: `task_id`, `human_id`, `deadline_hours`, `instructions`, `payment_method` (optional: `"stripe"` or `"usdc"` — for USDC, escrow is locked immediately from agent's USDC balance) |
+| `assign_human` | Assign human to task. Params: `task_id`, `human_id`, `deadline_hours`, `instructions`, `payment_method` (optional: `"stripe"` or `"usdc"` — for USDC, escrow is locked from agent's USDC balance) |
 | `my_tasks` | List agent's tasks. Aliases: `get_tasks`, `my_postings`, `my_adhoc_tasks`, `my_bookings` |
 | `get_task_status` | Get task status with escrow info |
 | `get_task_details` | Get full task detail with participant info |
 | `get_applicants` | Get applicants for a task |
 | `complete_task` | Submit proof (as human). Alias: `complete_booking` |
-| `approve_task` | Approve and release payment. Aliases: `release_payment`, `release_escrow`. Sends email + webhook + in-app notification |
+| `approve_task` | Approve and release payment. Aliases: `release_payment`, `release_escrow`. Sends email + webhook + in-app notification. For Stripe-paid tasks, releases to pending balance with 48-hour hold. For USDC-paid tasks, escrowed funds are transferred to the worker's Circle wallet and the platform fee is sent to the treasury wallet. |
 | `reject_task` | Reject proof and request revision (max 2). Alias: `reject_proof`. Params: `task_id`, `feedback` (required, min 10 chars), `extend_deadline_hours` (default 24). Sends notification + webhook |
 | `cancel_task` | Cancel task (pre-work) or withdraw (worker). Handles refunds. Params: `task_id`, `cancellation_reason` |
 | `view_proof` | View proof submissions |
@@ -1332,6 +1420,9 @@ Embedded in the main server. Auth: API key + agent type required. Rate limit: 60
 | `setup_payment` | Set up a payment method. Returns Stripe card setup URL or USDC deposit instructions. Params: `method` (optional, `stripe` or `usdc`). Omit `method` to see current status and all options. |
 | `account_status` | Get account status including payment methods, subscription tier, and setup actions needed. No params required. |
 | `rate_task` | Rate a worker after task completion. Inserts into blind rating system. Params: `task_id` (required), `rating_score` (1-5, required), `comment` (optional) |
+| `get_wallet_info` | Get USDC wallet info including deposit address, available balance, and escrow balance. No params. |
+| `generate_deposit_address` | Generate a personal USDC deposit address on Base. One-time operation (idempotent). No params. |
+| `set_default_payment_method` | Set default payment method for new tasks. Params: `payment_method` (required: `"stripe"` or `"usdc"`) |
 | `report_error` | Report agent error. Params: `action`, `error_message`, `error_code`, `error_log` |
 | `get_task_context` | Full session context for a task. Same as `GET /api/tasks/:id/context`. Params: `task_id` (required), `include_messages` (optional, default true), `message_limit` (optional, default 50). Uses the shared `buildTaskContext()` helper — no behavioral differences from REST. |
 
@@ -1363,7 +1454,7 @@ Public endpoint (no authentication required). Returns the full MCP method catalo
   "base_url": "https://api.irlwork.ai/api",
   "endpoint": "POST /api/mcp",
   "rate_limits": { "requests": "60/min per API key" },
-  "total_methods": 27
+  "total_methods": 30
 }
 ```
 
@@ -1513,7 +1604,7 @@ Separate Node.js process (`api/mcp-server.js`) on port 3004 (configurable via `M
 >
 > Use the **in-process MCP** (`POST /api/mcp`) instead, which accesses the database directly and works correctly.
 
-Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `complete_task`, `complete_booking`, `view_proof`, `approve_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `setup_payment`, `account_status`, `rate_task`, `report_error`, `get_instructions`.
+Canonical methods: `list_humans`, `get_human`, `task_templates`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `create_posting`, `direct_hire`, `my_tasks`, `get_applicants`, `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `complete_task`, `complete_booking`, `view_proof`, `approve_task`, `reject_task`, `cancel_task`, `dispute_task`, `notifications`, `mark_notification_read`, `set_webhook`, `submit_feedback`, `setup_payment`, `account_status`, `rate_task`, `report_error`, `get_instructions`, `get_wallet_info`, `generate_deposit_address`, `set_default_payment_method`.
 
 Backward-compatible aliases: `post_task`, `create_adhoc_task` -> `create_posting`; `create_booking` -> `direct_hire`; `get_tasks`, `my_postings`, `my_adhoc_tasks`, `my_bookings` -> `my_tasks`; `release_escrow`, `release_payment` -> `approve_task`.
 
@@ -1594,6 +1685,9 @@ Full method catalog with parameters available at `GET /api/mcp/docs`.
 | `GET /api/transactions` | Transaction history |
 | `GET /api/deposits` | Deposit history |
 | `GET /api/payouts` | Payout history |
+| `POST /api/wallet/generate-deposit-address` | Generate USDC deposit address (Circle) |
+| `PUT /api/settings/default-payment-method` | Set default payment method (stripe/usdc) |
+| `POST /api/webhooks/circle` | Circle webhook for USDC deposits |
 | `POST /api/disputes` | File formal dispute |
 | `GET /api/disputes` | List disputes |
 | `POST /api/upload/proof` | Upload proof file |
@@ -1624,7 +1718,7 @@ Full method catalog with parameters available at `GET /api/mcp/docs`.
 | `get_task` (listed in ARCHITECTURE.md) | Does not exist by this exact name. Use `get_task_status` or `get_task_details` |
 | `approve_work` (listed in ARCHITECTURE.md) | Does not exist by this name. Use `approve_task` |
 | `reject_work` (listed in ARCHITECTURE.md) | Does not exist in MCP. Use REST `POST /api/tasks/:id/reject` |
-| Not in ARCHITECTURE.md | `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `get_applicants`, `view_proof`, `dispute_task`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `task_templates`, `submit_feedback`, `rate_task`, `report_error`, `get_instructions` |
+| Not in ARCHITECTURE.md | `assign_human`, `hire_human`, `get_task_status`, `get_task_details`, `get_applicants`, `view_proof`, `dispute_task`, `start_conversation`, `send_message`, `get_messages`, `get_unread_summary`, `task_templates`, `submit_feedback`, `rate_task`, `report_error`, `get_instructions`, `get_wallet_info`, `generate_deposit_address`, `set_default_payment_method` |
 
 ### Other Differences
 

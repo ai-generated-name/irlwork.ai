@@ -254,9 +254,11 @@ The `ARCHITECTURE.md` references several background jobs. Most are **not yet imp
 | Auth hold renewal | Active | `api/server.js` (inline cron) | Every 6 hours |
 | Auto-approve tasks (72h) | Active | `api/server.js` (inline cron) | Hourly |
 | Webhook retry queue | Active | `api/server.js` (inline cron) | Every 60 seconds |
+| USDC balance reconciliation | Active (run via cron) | `api/backend/jobs/reconcileBalances.js` | Hourly |
+| Circle transaction polling | Active (run via cron) | `api/backend/jobs/pollTransactions.js` | Every 5-15 minutes |
 | Balance promoter | Disabled | `api/services/_automated_disabled/` | - |
 | Auto-release payments (48h) | Disabled | `api/services/_automated_disabled/` | - |
-| Deposit watcher | Disabled | `api/services/_automated_disabled/` | - |
+| Deposit watcher | Deprecated (replaced by Circle webhooks) | `api/services/_automated_disabled/` | - |
 | Withdrawal service | Disabled | `api/backend/services/withdrawalService.js` | - |
 | Proof deadline enforcement | Not implemented | - | - |
 
@@ -268,6 +270,24 @@ The `ARCHITECTURE.md` references several background jobs. Most are **not yet imp
 - **Webhook retry queue**: Retries failed webhook deliveries with exponential backoff (1min, 5min, 30min, 2hr, 12hr). Max 5 attempts. Every 60 seconds.
 
 Disabled jobs are in `api/services/_automated_disabled/` and are not loaded by the server.
+
+### Circle Monitoring Jobs
+
+Two new jobs support the Circle Programmable Wallets integration:
+
+**Balance Reconciliation** (`api/backend/jobs/reconcileBalances.js`):
+- Compares DB-tracked USDC balances against on-chain Circle wallet balances
+- Logs discrepancies for manual review
+- Also checks escrow wallet total vs sum of user escrow balances
+- Run hourly: `node api/backend/jobs/reconcileBalances.js`
+
+**Transaction Polling** (`api/backend/jobs/pollTransactions.js`):
+- Polls Circle for status of pending deposits and task transactions
+- Catches deposits that webhooks may have missed
+- Warns on transactions stuck in non-terminal state for >30 minutes
+- Run every 5-15 minutes: `node api/backend/jobs/pollTransactions.js`
+
+Both jobs require the standard env vars (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CIRCLE_API_KEY, CIRCLE_ENTITY_SECRET).
 
 ---
 

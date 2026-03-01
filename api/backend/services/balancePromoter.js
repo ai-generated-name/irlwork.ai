@@ -148,46 +148,11 @@ async function promotePendingBalances(supabase, createNotification) {
             transferSucceeded = true;
           }
         } else if (payoutMethod === 'usdc') {
-          // USDC auto-transfer to worker's wallet address on Base
-          try {
-            const { sendUSDC, isValidAddress } = require('../lib/wallet');
-            const { data: worker } = await supabase
-              .from('users')
-              .select('wallet_address')
-              .eq('id', tx.user_id)
-              .single();
-
-            if (worker?.wallet_address && isValidAddress(worker.wallet_address)) {
-              const amountUSDC = tx.amount_cents / 100;
-              const result = await sendUSDC(worker.wallet_address, amountUSDC);
-              if (result.success) {
-                console.log(`[BalancePromoter] Auto-transferred ${amountUSDC} USDC to ${worker.wallet_address} (tx: ${result.txHash})`);
-
-                await supabase
-                  .from('pending_transactions')
-                  .update({
-                    status: 'withdrawn',
-                    withdrawn_at: new Date().toISOString(),
-                    notes: `USDC auto-transfer: ${result.txHash}`
-                  })
-                  .eq('id', tx.id)
-                  .eq('status', 'available');
-                transferSucceeded = true;
-              } else {
-                console.error(`[BalancePromoter] USDC send failed for tx ${tx.id}: ${result.error}`);
-                // Funds stay as 'available' — worker can manually withdraw later
-                transferSucceeded = true;
-              }
-            } else {
-              // If worker doesn't have wallet set up, funds stay as 'available'
-              console.log(`[BalancePromoter] USDC transaction ${tx.id} promoted to available — worker can withdraw via wallet`);
-              transferSucceeded = true;
-            }
-          } catch (transferError) {
-            console.error(`[BalancePromoter] USDC auto-transfer failed for tx ${tx.id}:`, transferError.message);
-            // Funds stay as 'available' — worker can manually withdraw later
-            transferSucceeded = true;
-          }
+          // USDC: funds already in worker's Circle wallet (transferred at approve time)
+          // For Circle-based tasks, payout happens at approve — nothing to do here.
+          // For legacy tasks (pre-Circle), funds stay as 'available' for manual withdrawal.
+          console.log(`[BalancePromoter] USDC transaction ${tx.id} promoted to available — worker can withdraw via wallet`);
+          transferSucceeded = true;
         }
 
         // Update task status to 'paid' AFTER transfer attempt (or confirmation funds are available)

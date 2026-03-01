@@ -6,6 +6,8 @@ import { Card } from '../ui'
 const StripeProvider = lazy(() => import('../StripeProvider'))
 const PaymentMethodForm = lazy(() => import('../PaymentMethodForm'))
 const PaymentMethodList = lazy(() => import('../PaymentMethodList'))
+const UsdcDepositSection = lazy(() => import('../UsdcDepositSection'))
+const DefaultPaymentMethodToggle = lazy(() => import('../DefaultPaymentMethodToggle'))
 
 export default function HiringPaymentsTab({
   user,
@@ -169,32 +171,19 @@ export default function HiringPaymentsTab({
             <div>
               <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">USDC Payments</h3>
               <div style={{ maxWidth: 520 }}>
-                <Card padding="md">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="w-10 h-10 bg-[#EFF6FF] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-[#2563EB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-[#1A1A1A]">Pay with USDC on Base</p>
-                      <p className="text-xs text-[#525252] mt-1">
-                        When assigning a worker, choose USDC to send payment directly to our platform wallet. Workers will be paid in USDC.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="bg-[#F5F2ED] rounded-lg p-3 mb-3">
-                    <p className="text-xs text-[#8A8A8A] mb-1">Platform wallet (Base)</p>
-                    <p className="text-sm font-mono text-[#1A1A1A] break-all select-all">
-                      {import.meta.env.VITE_PLATFORM_WALLET_ADDRESS || 'Configure VITE_PLATFORM_WALLET_ADDRESS'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-[#8A8A8A]">
-                    <span>Network: Base</span>
-                    <span>Token: USDC</span>
-                    <span>Decimals: 6</span>
-                  </div>
-                </Card>
+                <Suspense fallback={<Loading />}>
+                  <UsdcDepositSection user={user} />
+                </Suspense>
+              </div>
+            </div>
+
+            {/* Default Payment Method Toggle */}
+            <div>
+              <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Default Payment Method</h3>
+              <div style={{ maxWidth: 520 }}>
+                <Suspense fallback={<Loading />}>
+                  <DefaultPaymentMethodToggle user={user} />
+                </Suspense>
               </div>
             </div>
           </div>
