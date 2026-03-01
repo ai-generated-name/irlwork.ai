@@ -213,7 +213,7 @@ export default function ProofSection({ task, user, onSubmit }) {
       setProofText('');
       setFiles([]);
       setUploadedUrls([]);
-      toast.success('Proof submitted successfully!');
+      toast.success('Proof submitted successfully');
     } catch (error) {
       console.error('Error submitting proof:', error);
       setConfirmError(error.message || 'Failed to submit proof. Please try again.');

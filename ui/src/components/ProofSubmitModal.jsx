@@ -35,7 +35,7 @@ function ProofSubmitModal({ task, onClose, onSubmit }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: user?.token || task?.human_id || ''
+            Authorization: task?.human_id || ''
           },
           body: JSON.stringify({ file: base64, filename: file.name, mimeType: file.type })
         })

@@ -4,7 +4,7 @@ import AgentOnboardingWizard from '../components/AgentOnboardingWizard'
 import { navigate } from '../utils/navigate'
 import HowPaymentsWork from '../components/HowPaymentsWork'
 import { usePageTitle } from '../hooks/usePageTitle'
-import { Button, EmptyState, PageHeader } from '../components/ui'
+import { Button, Card, EmptyState, PageHeader } from '../components/ui'
 
 export default function HiringDashboard({ user, postedTasks, onNavigate }) {
   usePageTitle('Dashboard')
@@ -115,12 +115,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
 
       {/* Getting Started Checklist */}
       {showChecklist && (
-        <div className="hiring-dash-checklist" style={{
-          background: 'white',
-          border: '1px solid rgba(26,26,26,0.08)',
-          borderRadius: 16,
-          padding: 'var(--space-5)',
-        }}>
+        <Card padding="lg" className="hiring-dash-checklist">
           <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Getting started</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <button onClick={() => onNavigate?.('payments')} style={{
@@ -178,7 +173,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
               </svg>
             </button>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Tasks needing action */}
@@ -325,19 +320,13 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
       <div style={{ marginBottom: 24 }}>
         <h3 className="hiring-dash-section-title" style={{ marginBottom: 12 }}>Recent activity</h3>
         {safeTasks.length === 0 ? (
-          <div style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: '24px 16px', textAlign: 'center'
-          }}>
+          <Card className="text-center" style={{ padding: '24px 16px' }}>
             <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>No recent activity</p>
-          </div>
+          </Card>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {safeTasks.slice(0, 5).map(task => (
-              <div key={task.id} style={{
-                background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-                padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12
-              }}>
+              <Card key={task.id} padding="sm" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                   background: task.status === 'open' ? '#F59E0B' : task.status === 'in_progress' ? '#3B82F6' : task.status === 'pending_review' ? '#8B5CF6' : '#10B981'
@@ -349,7 +338,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                     {task.budget && <> &middot; ${task.budget}</>}
                   </p>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}
@@ -359,59 +348,35 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
       <div style={{ marginBottom: 24 }}>
         <h3 className="hiring-dash-section-title" style={{ marginBottom: 12 }}>Quick actions</h3>
         <div className="hiring-dash-quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-          <button onClick={() => onNavigate?.('posted')} style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'}
-          onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4845F" strokeWidth="2" style={{ marginBottom: 8 }}>
+          <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('posted')} className="text-left cursor-pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>My tasks</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>View and manage posted tasks</p>
-          </button>
-          <button onClick={() => onNavigate?.('browse')} style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'}
-          onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4845F" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>My tasks</p>
+            <p style={{ fontSize: 12, color: '#6B7280' }}>View and manage posted tasks</p>
+          </Card>
+          <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('browse')} className="text-left cursor-pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>Browse humans</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Find skilled workers for your tasks</p>
-          </button>
-          <button onClick={() => onNavigate?.('messages')} style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'}
-          onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4845F" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>Browse humans</p>
+            <p style={{ fontSize: 12, color: '#6B7280' }}>Find skilled workers for your tasks</p>
+          </Card>
+          <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('messages')} className="text-left cursor-pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>Messages</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Chat with workers and applicants</p>
-          </button>
-          <button onClick={() => setShowPaymentsExplainer(true)} style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'}
-          onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4845F" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>Messages</p>
+            <p style={{ fontSize: 12, color: '#6B7280' }}>Chat with workers and applicants</p>
+          </Card>
+          <Card interactive hoverEffect="shadow" padding="md" onClick={() => setShowPaymentsExplainer(true)} className="text-left cursor-pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>How payments work</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Learn about escrow and payouts</p>
-          </button>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>How payments work</p>
+            <p style={{ fontSize: 12, color: '#6B7280' }}>Learn about escrow and payouts</p>
+          </Card>
         </div>
       </div>
     </div>

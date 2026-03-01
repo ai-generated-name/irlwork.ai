@@ -86,7 +86,7 @@ export default function SettingsTab({
                       className="settings-availability-toggle"
                       onClick={async () => {
                         const newStatus = user?.availability === 'available' ? 'unavailable' : 'available'
-                        console.log('[Availability] Toggling:', user?.availability, '\u2192', newStatus)
+
                         try {
                           let token = user.token || ''
                           if (supabase) {
@@ -105,7 +105,7 @@ export default function SettingsTab({
                           })
                           if (res.ok) {
                             const data = await res.json()
-                            console.log('[Availability] API response:', data.user?.availability)
+
                             if (data.user) {
                               const updatedUser = { ...data.user, token, skills: safeArr(data.user.skills), languages: safeArr(data.user.languages), supabase_user: true }
                               onUserUpdate(updatedUser)
@@ -342,10 +342,10 @@ export default function SettingsTab({
                               if (res.ok) {
                                 if (data.message === 'Email already verified') {
                                   setEmailVerifSuccess(true)
-                                  toast.success('Email already verified!')
+                                  toast.success('Email already verified')
                                 } else {
                                   setEmailVerifSent(true)
-                                  toast.success('Verification code sent!')
+                                  toast.success('Verification code sent')
                                 }
                               } else {
                                 setEmailVerifError(data.error || 'Failed to send verification code')
@@ -404,7 +404,7 @@ export default function SettingsTab({
                                 const data = await res.json().catch(() => ({}))
                                 if (res.ok) {
                                   setEmailVerifSuccess(true)
-                                  toast.success('Email verified successfully!')
+                                  toast.success('Email verified successfully')
                                 } else {
                                   setEmailVerifError(data.error || 'Invalid code')
                                 }
@@ -431,7 +431,7 @@ export default function SettingsTab({
                                   method: 'POST',
                                   headers: { Authorization: token }
                                 })
-                                if (res.ok) toast.success('Code resent!')
+                                if (res.ok) toast.success('Code resent')
                                 else {
                                   const data = await res.json().catch(() => ({}))
                                   setEmailVerifError(data.error || 'Failed to resend')

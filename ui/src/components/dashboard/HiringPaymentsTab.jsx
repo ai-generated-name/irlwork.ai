@@ -1,6 +1,7 @@
 // Extracted from Dashboard.jsx — hiring mode payments overview and management
 import React, { lazy, Suspense } from 'react'
 import Loading from '../Loading'
+import { Card } from '../ui'
 
 const StripeProvider = lazy(() => import('../StripeProvider'))
 const PaymentMethodForm = lazy(() => import('../PaymentMethodForm'))
@@ -50,18 +51,18 @@ export default function HiringPaymentsTab({
               return (
                 <>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4">
-                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">Total Spent</p>
-                      <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(totalSpent / 100).toFixed(2)}</p>
-                    </div>
-                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4">
-                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">In Escrow</p>
-                      <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(inEscrow / 100).toFixed(2)}</p>
-                    </div>
-                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 col-span-2 md:col-span-1">
-                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">Released</p>
-                      <p className="text-2xl md:text-3xl font-bold text-teal tracking-tight mt-1">${(released / 100).toFixed(2)}</p>
-                    </div>
+                    <Card padding="md">
+                      <p className="text-xs text-[#6B7280] font-medium uppercase tracking-wider">Total spent</p>
+                      <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1" style={{ fontFamily: 'DM Mono, monospace' }}>${(totalSpent / 100).toFixed(2)}</p>
+                    </Card>
+                    <Card padding="md">
+                      <p className="text-xs text-[#6B7280] font-medium uppercase tracking-wider">In escrow</p>
+                      <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1" style={{ fontFamily: 'DM Mono, monospace' }}>${(inEscrow / 100).toFixed(2)}</p>
+                    </Card>
+                    <Card padding="md" className="col-span-2 md:col-span-1">
+                      <p className="text-xs text-[#6B7280] font-medium uppercase tracking-wider">Released</p>
+                      <p className="text-2xl md:text-3xl font-bold text-teal tracking-tight mt-1" style={{ fontFamily: 'DM Mono, monospace' }}>${(released / 100).toFixed(2)}</p>
+                    </Card>
                   </div>
 
                   {/* Transaction History */}
