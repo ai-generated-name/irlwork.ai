@@ -1223,6 +1223,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [tasks, setTasks] = useState([])
   const [availableTasks, setAvailableTasks] = useState([]) // Tasks available for humans to browse
   const [humans, setHumans] = useState([])
+  const [humansError, setHumansError] = useState(null)
   const [bookmarkedHumans, setBookmarkedHumans] = useState(() => {
     try { return JSON.parse(localStorage.getItem('irlwork_bookmarked_humans') || '[]') } catch { return [] }
   })
@@ -1640,14 +1641,17 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const fetchHumans = async () => {
     if (!user?.token) return
+    setHumansError(null)
     try {
       const res = await fetch(`${API_URL}/humans`, { headers: { Authorization: user.token } })
       if (res.ok) {
         const data = await res.json()
         setHumans(fixAvatarUrl(data || []))
+      } else {
+        setHumansError(`Server error (${res.status})`)
       }
     } catch (e) {
-      debug('Could not fetch humans')
+      setHumansError('Could not connect to server')
     }
   }
 
@@ -3425,6 +3429,21 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
                 </div>
 
                 {(() => {
+                  if (humansError) {
+                    return (
+                      <div className="dashboard-v4-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 48, marginBottom: 12 }}>&#9888;&#65039;</div>
+                        <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>Failed to load humans</p>
+                        <p style={{ fontSize: 14, maxWidth: 300, margin: '0 auto 16px', color: 'var(--text-secondary)' }}>{humansError}</p>
+                        <button
+                          onClick={fetchHumans}
+                          style={{ background: 'var(--coral-500, #E8853D)', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    )
+                  }
                   const filtered = humans
                     .filter(h => !searchQuery || h.name?.toLowerCase().includes(searchQuery.toLowerCase()) || h.skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())))
                     .filter(h => !filterCategory || h.skills?.includes(filterCategory))
