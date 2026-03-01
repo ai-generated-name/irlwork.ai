@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Search } from 'lucide-react';
 import { TASK_CATEGORIES } from './CategoryPills';
 
 // All skill options (excluding the "All" entry which has empty value)
@@ -265,7 +266,7 @@ const SkillAutocomplete = ({
               style={{ borderTop: filtered.length > 0 ? '1px solid rgba(0,0,0,0.06)' : 'none' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 16, lineHeight: 1 }}>🔎</span>
+                <Search size={16} />
                 <div className="city-autocomplete-v4-item-name">
                   Search for "<strong>{queryTrimmed}</strong>"
                 </div>

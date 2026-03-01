@@ -4145,50 +4145,6 @@
   gap: var(--space-4);
 }
 
-.onboarding-v4-btn-back {
-  flex: 1;
-  padding: 14px 24px;
-  background: var(--bg-tertiary);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: var(--radius-md);
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all var(--duration-normal);
-}
-
-.onboarding-v4-btn-back:hover {
-  background: var(--bg-secondary);
-  border-color: var(--text-primary);
-}
-
-.onboarding-v4-btn-next {
-  flex: 1;
-  padding: 14px 24px;
-  background: var(--accent-orange);
-  border: none;
-  border-radius: var(--radius-md);
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 700;
-  color: white;
-  cursor: pointer;
-  transition: all var(--duration-normal);
-  box-shadow: var(--shadow-md);
-}
-
-.onboarding-v4-btn-next:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg), var(--shadow-glow-orange);
-}
-
-.onboarding-v4-btn-next:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
 
 .onboarding-v4-skills-grid {
   display: grid;
@@ -7270,13 +7226,6 @@
   flex-wrap: wrap;
 }
 
-.apikeys-header .v4-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
 .apikeys-description {
   color: var(--text-secondary);
   font-size: 14px;
@@ -7471,12 +7420,6 @@
   font-size: 14px;
   color: var(--text-secondary);
   margin-bottom: 20px;
-}
-
-.apikeys-empty .v4-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .apikeys-loading {
@@ -7733,11 +7676,6 @@
   .apikeys-header {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .apikeys-header .v4-btn {
-    width: 100%;
-    justify-content: center;
   }
 
   .apikeys-card-top {
@@ -8361,11 +8299,6 @@
   /* Quick actions full width stack */
   .dashboard-v4-quick-actions {
     flex-direction: column;
-  }
-
-  .dashboard-v4-quick-actions .v4-btn {
-    width: 100%;
-    justify-content: center;
   }
 
   /* Horizontal scroll for filter pills */
@@ -9700,10 +9633,6 @@ select.select-v4-dark option:checked,
 
   .mytasks-card__actions {
     width: 100%;
-  }
-
-  .mytasks-card__actions .v4-btn {
-    flex: 1;
   }
 
   .mytasks-card--compact .mytasks-card__row {
@@ -11442,14 +11371,6 @@ select.select-v4-dark option:checked,
     font-size: 17px !important;
   }
 
-  /* Accept/action button sizing */
-  .mytasks-card .v4-btn,
-  .mytasks-card .task-card-v2-apply-btn {
-    height: 44px;
-    max-height: 44px;
-    padding: 10px 20px;
-    font-size: 15px;
-  }
 }
 
 /* Earnings summary stats */

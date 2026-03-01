@@ -137,13 +137,14 @@ export default function ApiKeysTab({ user }) {
           Manage API keys for programmatic access to irlwork.ai
         </p>
         {keys.length > 0 && (
-          <button
-            className="v4-btn v4-btn-primary"
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
           >
             <Plus size={16} />
             Generate new key
-          </button>
+          </Button>
         )}
       </div>
 
@@ -176,19 +177,21 @@ export default function ApiKeysTab({ user }) {
                   </div>
                 )}
                 <div className="apikeys-modal-actions">
-                  <button
-                    className="v4-btn v4-btn-secondary"
+                  <Button
+                    variant="secondary"
+                    size="md"
                     onClick={() => { setShowModal(false); setNewKey(null); }}
                   >
                     Cancel
-                  </button>
-                  <button
-                    className="v4-btn v4-btn-primary"
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="md"
                     onClick={generateKey}
                     disabled={generating}
                   >
                     {generating ? 'Generating...' : 'Generate key'}
-                  </button>
+                  </Button>
                 </div>
               </>
             ) : (
@@ -216,13 +219,14 @@ export default function ApiKeysTab({ user }) {
                   <span>Store this key securely. It won't be shown again.</span>
                 </div>
 
-                <button
-                  className="v4-btn v4-btn-primary"
-                  style={{ width: '100%' }}
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="w-full"
                   onClick={() => { setShowModal(false); setNewKey(null); }}
                 >
                   Close dialog
-                </button>
+                </Button>
               </>
             )}
           </div>

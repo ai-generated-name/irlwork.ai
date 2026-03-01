@@ -54,6 +54,12 @@ If a violation is intentional, add an inline disable comment with an explanation
 
 ## Changelog
 
+### 2026-03-01 — Final hardening pass
+
+- **Tailwind config**: Added convenience color tokens (page, surface, border-default, success, warning, error, info, gold) for easier adoption
+- **Component README**: Created `src/components/ui/README.md` with usage guide and rules
+- **CLAUDE.md**: Added UI/UX rules section with component and color system guidance
+
 ### 2026-03-01 — Visual QA pass
 
 - **ProofSubmitModal**: Fixed undefined `user` reference in Authorization header (runtime bug)

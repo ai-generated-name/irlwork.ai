@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { MessageCircle, Bug, Sparkles, Pin } from 'lucide-react'
+import { MessageCircle, Bug, Sparkles, Pin, X } from 'lucide-react'
 import { Button } from './ui'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -615,7 +615,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                             fontFamily: FONT,
                           }}
                         >
-                          ✕
+                          <X size={11} />
                         </button>
                       </div>
                     ))}

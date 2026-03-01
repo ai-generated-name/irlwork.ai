@@ -22,10 +22,12 @@ export default function StatsSection({ taskId }) {
       </h3>
       <div className="grid grid-cols-2 gap-2 sm:gap-4">
         <div className="text-center py-2 sm:py-3 bg-[#FAFAF8] rounded-xl">
+          {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
           <div className="text-xl sm:text-2xl font-bold text-[#E8853D] font-mono">{stats.applications}</div>
           <div className="text-xs sm:text-sm text-[#333333] mt-0.5 sm:mt-1">Applications</div>
         </div>
         <div className="text-center py-2 sm:py-3 bg-[#FAFAF8] rounded-xl">
+          {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
           <div className="text-xl sm:text-2xl font-bold text-[#E8853D] font-mono">{stats.views}</div>
           <div className="text-xs sm:text-sm text-[#333333] mt-0.5 sm:mt-1">Views</div>
         </div>

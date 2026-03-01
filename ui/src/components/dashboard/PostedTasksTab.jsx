@@ -2,8 +2,9 @@
 import React from 'react'
 import {
   Plus, ClipboardList, MapPin, FolderOpen, CalendarDays, Timer,
-  User, FileText, Ban, Star, MessageCircle, ArrowDownLeft, Hourglass
+  User, FileText, Ban, Star, MessageCircle, ArrowDownLeft, Hourglass, AlertTriangle
 } from 'lucide-react'
+import { Button } from '../ui'
 import CustomDropdown from '../CustomDropdown'
 import CityAutocomplete from '../CityAutocomplete'
 import DisputePanel from '../DisputePanel'
@@ -113,7 +114,7 @@ export default function PostedTasksTab({
                           }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                         ) : null}
                         <div style={{
-                          width: 44, height: 44, borderRadius: '50%', background: '#E8853D',
+                          width: 44, height: 44, borderRadius: '50%', background: '#E8853D', // eslint-disable-line irlwork/no-orange-outside-button -- avatar fallback uses brand color
                           display: hireTarget.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                           color: 'white', fontWeight: 700, fontSize: 18,
                           border: '2px solid rgba(232,133,61,0.25)'
@@ -449,27 +450,27 @@ export default function PostedTasksTab({
                           {/* Action buttons row */}
                           <div style={{ display: 'flex', gap: 8, marginTop: 12 }} onClick={e => e.stopPropagation()}>
                             {isOpen && (
-                              <button
-                                className="v4-btn v4-btn-secondary"
-                                style={{ fontSize: 13, padding: '6px 12px' }}
+                              <Button
+                                variant="secondary"
+                                size="sm"
                                 onClick={() => {
                                   setEditingTaskId(isEditing ? null : task.id)
                                   if (!isEditing) setEditForm({ title: task.title, description: task.description || '', budget: task.budget, category: task.category || '', location: task.city || '', is_remote: task.is_remote || false, deadline: task.deadline || '' })
                                 }}
                               >
                                 <FileText size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
-                                {isEditing ? 'Cancel Edit' : 'Edit'}
-                              </button>
+                                {isEditing ? 'Cancel edit' : 'Edit'}
+                              </Button>
                             )}
                             {cancellable && (
-                              <button
-                                className="v4-btn"
-                                style={{ fontSize: 13, padding: '6px 12px', color: '#dc2626', border: '1px solid #fecaca', background: '#fef2f2' }}
+                              <Button
+                                variant="destructive"
+                                size="sm"
                                 onClick={() => setCancelConfirmId(cancelConfirmId === task.id ? null : task.id)}
                               >
                                 <Ban size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
-                                Cancel Task
-                              </button>
+                                Cancel task
+                              </Button>
                             )}
                           </div>
 
@@ -478,15 +479,15 @@ export default function PostedTasksTab({
                             <div style={{ marginTop: 12, padding: 16, background: '#fef2f2', borderRadius: 'var(--radius-md)', border: '1px solid #fecaca' }} onClick={e => e.stopPropagation()}>
                               <p style={{ fontSize: 14, color: '#dc2626', fontWeight: 500, marginBottom: 12 }}>Are you sure you want to cancel this task?</p>
                               <div style={{ display: 'flex', gap: 8 }}>
-                                <button
-                                  className="v4-btn"
-                                  style={{ fontSize: 13, padding: '6px 16px', color: 'white', background: '#dc2626', border: 'none' }}
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
                                   disabled={cancellingTaskId === task.id}
                                   onClick={() => handleCancelTask(task.id)}
                                 >
-                                  {cancellingTaskId === task.id ? 'Cancelling...' : 'Yes, Cancel'}
-                                </button>
-                                <button className="v4-btn v4-btn-secondary" style={{ fontSize: 13, padding: '6px 16px' }} onClick={() => setCancelConfirmId(null)}>No, Keep</button>
+                                  {cancellingTaskId === task.id ? 'Cancelling...' : 'Yes, cancel'}
+                                </Button>
+                                <Button variant="secondary" size="sm" onClick={() => setCancelConfirmId(null)}>No, keep</Button>
                               </div>
                             </div>
                           )}
@@ -524,8 +525,8 @@ export default function PostedTasksTab({
                                   </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                  <button className="v4-btn v4-btn-secondary" style={{ fontSize: 13 }} onClick={() => { setEditingTaskId(null); setEditForm({}) }}>Cancel</button>
-                                  <button className="v4-btn v4-btn-primary" style={{ fontSize: 13 }} onClick={() => handleEditTask(task.id)}>Save Changes</button>
+                                  <Button variant="secondary" size="sm" onClick={() => { setEditingTaskId(null); setEditForm({}) }}>Cancel</Button>
+                                  <Button variant="primary" size="sm" onClick={() => handleEditTask(task.id)}>Save changes</Button>
                                 </div>
                               </div>
                             </div>
@@ -566,8 +567,8 @@ export default function PostedTasksTab({
                                               <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                                                 <Star size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {app.applicant?.rating?.toFixed(1) || 'New'} • {app.applicant?.jobs_completed || 0} jobs
                                                 {app.applicant?.success_rate !== null && app.applicant?.success_rate !== undefined && app.applicant?.success_rate < 70 && (
-                                                  <span style={{ color: '#D97706', fontSize: 12, marginLeft: 6 }} title="Below average success rate">
-                                                    ⚠ {app.applicant.success_rate}% success
+                                                  <span style={{ color: '#D97706', fontSize: 12, marginLeft: 6, display: 'inline-flex', alignItems: 'center', gap: 2 }} title="Below average success rate">
+                                                    <AlertTriangle size={11} /> {app.applicant.success_rate}% success
                                                   </span>
                                                 )}
                                               </p>
@@ -589,38 +590,39 @@ export default function PostedTasksTab({
                                             <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 500 }}>Declined</span>
                                           ) : (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-                                              <button
+                                              <Button
+                                                variant="primary"
+                                                size="sm"
                                                 onClick={() => handleAssignHuman(task.id, app.human_id)}
                                                 disabled={assigningHuman === app.human_id}
-                                                className="v4-btn v4-btn-primary"
-                                                style={{ fontSize: 13 }}
                                               >
                                                 {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (Card)'}
-                                              </button>
-                                              <button
+                                              </Button>
+                                              <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                className="!text-[#2563eb] !border-[#2563eb] !bg-[#eff6ff]"
                                                 onClick={() => handleAssignHuman(task.id, app.human_id, 'usdc')}
                                                 disabled={assigningHuman === app.human_id}
-                                                className="v4-btn"
-                                                style={{ fontSize: 12, padding: '6px 12px', color: '#2563eb', border: '1px solid #2563eb', background: '#eff6ff' }}
                                               >
                                                 {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (USDC)'}
-                                              </button>
-                                              <button
+                                              </Button>
+                                              <Button
+                                                variant="destructive"
+                                                size="sm"
                                                 onClick={() => handleDeclineApplication(task.id, app.id)}
                                                 disabled={decliningAppId === app.id}
-                                                className="v4-btn"
-                                                style={{ fontSize: 12, padding: '6px 12px', color: '#dc2626', border: '1px solid #fecaca', background: '#fef2f2' }}
                                               >
                                                 {decliningAppId === app.id ? 'Declining...' : 'Decline'}
-                                              </button>
-                                              <button
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
                                                 onClick={() => { setNegotiateAppId(negotiateAppId === app.id ? null : app.id); setNegotiateMsg('') }}
-                                                className="v4-btn"
-                                                style={{ fontSize: 12, padding: '6px 12px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
                                               >
                                                 <MessageCircle size={13} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
                                                 Negotiate
-                                              </button>
+                                              </Button>
                                             </div>
                                           )}
                                         </div>
@@ -650,14 +652,14 @@ export default function PostedTasksTab({
                                               onKeyDown={e => { if (e.key === 'Enter') handleNegotiate(task.id, app.human_id) }}
                                               style={{ flex: 1, padding: '6px 10px', fontSize: 13, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
                                             />
-                                            <button
-                                              className="v4-btn v4-btn-primary"
-                                              style={{ fontSize: 13, padding: '6px 12px' }}
+                                            <Button
+                                              variant="primary"
+                                              size="sm"
                                               onClick={() => handleNegotiate(task.id, app.human_id)}
                                               disabled={!negotiateMsg.trim()}
                                             >
                                               Send
-                                            </button>
+                                            </Button>
                                           </div>
                                         )}
                                       </div>
@@ -670,9 +672,9 @@ export default function PostedTasksTab({
 
                           {needsAction && (
                             <div className="dashboard-v4-task-actions" onClick={e => e.stopPropagation()}>
-                              <button className="v4-btn v4-btn-primary" onClick={() => setShowProofReview(task.id)}>
-                                Review Proof
-                              </button>
+                              <Button variant="primary" size="md" onClick={() => setShowProofReview(task.id)}>
+                                Review proof
+                              </Button>
                             </div>
                           )}
                           {task.status === 'paid' && (

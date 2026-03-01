@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Scale } from 'lucide-react'
 import { getErrorMessage } from '../utils/apiErrors'
 import API_URL from '../config/api'
-import { PageHeader, EmptyState } from './ui'
+import { PageHeader, EmptyState, Card, Button } from './ui'
 import { useAuth } from '../context/AuthContext'
 
 export default function DisputePanel({ user }) {
@@ -202,9 +202,10 @@ export default function DisputePanel({ user }) {
             const isFiler = dispute.filed_by === user.id
 
             return (
-              <div
+              <Card
                 key={dispute.id}
-                className="bg-white border-2 border-[rgba(0,0,0,0.08)] rounded-xl hover:shadow-v4-md transition-shadow"
+                padding="none"
+                className="border-2 border-[rgba(0,0,0,0.08)] hover:shadow-v4-md transition-shadow"
               >
                 {/* Dispute Summary Row */}
                 <button
@@ -287,7 +288,7 @@ export default function DisputePanel({ user }) {
                                 {url}
                               </a>
                             ) : (
-                              <span key={i} className="text-sm text-gray-400 block truncate">
+                              <span key={i} className="text-sm text-[#9CA3AF] block truncate">
                                 {url} (invalid URL)
                               </span>
                             )
@@ -327,17 +328,19 @@ export default function DisputePanel({ user }) {
 
                     {/* Admin Resolve UI */}
                     {isAdmin && isOpen && !isResolving && (
-                      <button
+                      <Button
+                        variant="primary"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           setResolvingId(dispute.id)
                           setResolutionNotes('')
                           setResolution('approved')
                         }}
-                        className="px-4 py-2 bg-coral text-white rounded-xl text-sm font-semibold hover:bg-coral-dark shadow-v4-sm hover:shadow-v4-md transition-all"
+                        className="shadow-v4-sm hover:shadow-v4-md"
                       >
                         Resolve dispute
-                      </button>
+                      </Button>
                     )}
 
                     {isAdmin && isResolving && (
@@ -400,21 +403,22 @@ export default function DisputePanel({ user }) {
                           >
                             {submitting ? 'Submitting...' : 'Submit resolution'}
                           </button>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => {
                               setResolvingId(null)
                               setResolutionNotes('')
                             }}
-                            className="px-4 py-2 rounded-xl text-sm font-medium text-[#888888] hover:text-[#333333] hover:bg-[#F5F3F0] transition-all"
                           >
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
                   </div>
                 )}
-              </div>
+              </Card>
             )
           })}
         </div>

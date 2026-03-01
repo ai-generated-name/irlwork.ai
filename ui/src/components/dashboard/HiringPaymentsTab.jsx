@@ -77,9 +77,10 @@ export default function HiringPaymentsTab({
                           const isInProgress = task.status === 'in_progress'
 
                           return (
-                            <div
+                            <Card
                               key={task.id}
-                              className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-3 md:p-4 hover:shadow-v4-md transition-shadow"
+                              padding="none"
+                              className="p-3 md:p-4 hover:shadow-v4-md transition-shadow"
                             >
                               <div className="flex justify-between items-start gap-3">
                                 <div className="flex-1 min-w-0">
@@ -97,7 +98,7 @@ export default function HiringPaymentsTab({
                                       {isReleased ? 'Released' : isCompleted ? 'Completed' : isInProgress ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
                                     </span>
                                     {task.payment_method === 'usdc' && (
-                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600 flex-shrink-0">USDC</span>
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB] flex-shrink-0">USDC</span>
                                     )}
                                   </div>
 
@@ -120,12 +121,12 @@ export default function HiringPaymentsTab({
                                   </p>
                                 </div>
                               </div>
-                            </div>
+                            </Card>
                           )
                         })}
                       </div>
                     ) : (
-                      <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-8 md:p-12 text-center">
+                      <Card padding="none" className="p-8 md:p-12 text-center">
                         <div className="w-12 h-12 bg-[#F5F3F0] rounded-xl flex items-center justify-center mx-auto mb-3 md:mb-4">
                           <svg className="w-6 h-6 text-[#888888]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
@@ -135,7 +136,7 @@ export default function HiringPaymentsTab({
                         <p className="text-xs md:text-sm text-[#A3A3A3] mt-1.5">
                           Fund a task to see your payment history
                         </p>
-                      </div>
+                      </Card>
                     )}
                   </div>
                 </>
@@ -153,12 +154,12 @@ export default function HiringPaymentsTab({
                       <PaymentMethodList user={user} onUpdate={(refresh) => { window.__refreshPaymentMethods = refresh; }} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-[#333333] mb-3">Add New Card</h4>
+                      <h4 className="text-sm font-medium text-[#333333] mb-3">Add new card</h4>
                       <PaymentMethodForm user={user} onSaved={() => { if (window.__refreshPaymentMethods) window.__refreshPaymentMethods(); }} />
                     </div>
-                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 text-xs text-[#888888]">
+                    <Card padding="none" className="p-4 text-xs text-[#888888]">
                       When you assign a worker to a task, your default card will be charged automatically. Please ensure you have a card saved before assigning workers.
-                    </div>
+                    </Card>
                   </div>
                 </StripeProvider>
               </Suspense>
@@ -168,10 +169,10 @@ export default function HiringPaymentsTab({
             <div>
               <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">USDC Payments</h3>
               <div style={{ maxWidth: 520 }}>
-                <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5">
+                <Card padding="md">
                   <div className="flex items-start gap-3 mb-4">
-                    <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <div className="w-10 h-10 bg-[#EFF6FF] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-[#2563EB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
@@ -183,7 +184,7 @@ export default function HiringPaymentsTab({
                     </div>
                   </div>
                   <div className="bg-[#F5F2ED] rounded-lg p-3 mb-3">
-                    <p className="text-xs text-[#8A8A8A] mb-1">Platform Wallet (Base)</p>
+                    <p className="text-xs text-[#8A8A8A] mb-1">Platform wallet (Base)</p>
                     <p className="text-sm font-mono text-[#1A1A1A] break-all select-all">
                       {import.meta.env.VITE_PLATFORM_WALLET_ADDRESS || 'Configure VITE_PLATFORM_WALLET_ADDRESS'}
                     </p>
@@ -193,7 +194,7 @@ export default function HiringPaymentsTab({
                     <span>Token: USDC</span>
                     <span>Decimals: 6</span>
                   </div>
-                </div>
+                </Card>
               </div>
             </div>
           </div>

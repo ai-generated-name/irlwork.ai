@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { MapPin, Clock, DollarSign, Star, Briefcase, Users, X, Check, Copy, Bot, User, ChevronRight, ChevronLeft, Search, Globe, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
+import { MapPin, Clock, DollarSign, Star, Briefcase, Users, X, Check, Copy, Bot, User, ChevronRight, ChevronLeft, Search, Globe, SlidersHorizontal, ArrowUpDown, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { navigate as spaNavigate } from '../utils/navigate'
 import { Logo } from '../components/Logo'
@@ -848,7 +848,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   borderRadius: 'var(--radius-lg)',
                   border: '1px solid rgba(26,26,26,0.06)'
                 }}>
-                  <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+                  <div style={{ marginBottom: 16 }}><AlertTriangle size={48} /></div>
                   <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Failed to load humans</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>{humansError}</p>
                   <Button variant="primary" onClick={() => fetchHumans()}>
@@ -1072,7 +1072,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 borderRadius: 'var(--radius-lg)',
                 border: '1px solid rgba(26,26,26,0.06)'
               }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+                <div style={{ marginBottom: 16 }}><AlertTriangle size={48} /></div>
                 <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Failed to load tasks</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>{tasksError}</p>
                 <Button variant="primary" onClick={() => fetchTasks()}>

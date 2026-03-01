@@ -104,6 +104,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
 
         {loading ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
             <Loader2 size={32} style={{ color: '#E8853D', animation: 'spin 1s linear infinite' }} />
             <p style={{ marginTop: 16, color: 'var(--text-tertiary)', fontSize: 14 }}>Loading profile...</p>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
@@ -134,6 +135,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                 width: 80,
                 height: 80,
                 borderRadius: '50%',
+                // eslint-disable-next-line irlwork/no-orange-outside-button -- avatar fallback uses brand color
                 background: '#E8853D',
                 display: profile.avatar_url ? 'none' : 'flex',
                 alignItems: 'center',
@@ -193,6 +195,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                     color: 'var(--text-secondary)',
                     marginBottom: 4
                   }}>
+                    {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon color uses brand accent */}
                     <MapPin size={14} style={{ color: '#E8853D' }} />
                     {profile.city}{profile.state ? `, ${profile.state}` : ''}
                     {profile.timezone && (
@@ -241,6 +244,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               <span style={{
                 fontSize: 28,
                 fontWeight: 700,
+                // eslint-disable-next-line irlwork/no-orange-outside-button -- hourly rate uses brand color
                 color: '#E8853D'
               }}>
                 ${profile.hourly_rate || 25}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>/hr</span>
@@ -273,6 +277,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                       background: 'rgba(232,133,61,0.08)',
                       borderRadius: 999,
                       fontSize: 13,
+                      // eslint-disable-next-line irlwork/no-orange-outside-button -- skill tag uses brand color
                       color: '#E8853D',
                       fontWeight: 500,
                       border: '1px solid rgba(232,133,61,0.12)'
@@ -429,6 +434,7 @@ function StatBox({ icon, value, label, highlight }) {
       textAlign: 'center',
       border: '1px solid rgba(0,0,0,0.04)'
     }}>
+      {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: '#E8853D' }}>
         {icon}
       </div>

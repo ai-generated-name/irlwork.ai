@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { X } from 'lucide-react'
+import { Button } from './ui'
 
 function ProofReviewModal({ task, onClose, onApprove, onReject }) {
   const [feedback, setFeedback] = useState('')
@@ -10,7 +12,7 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
       <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Review Proof</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}>&#10005;</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}><X size={20} /></button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
           <div style={{ background: 'var(--bg-tertiary)', borderRadius: 12, padding: 16 }}>
@@ -63,23 +65,24 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
           )}
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Close</button>
-          <button className="v4-btn v4-btn-secondary" style={{ flex: 1 }} onClick={() => setRejecting(!rejecting)}>
-            {rejecting ? 'Cancel Reject' : 'Reject'}
-          </button>
-          <button className="v4-btn v4-btn-primary" style={{ flex: 1, background: '#16A34A' }} onClick={onApprove}>
-            Approve & Pay
-          </button>
+          <Button variant="secondary" size="md" className="flex-1" onClick={onClose}>Close</Button>
+          <Button variant="secondary" size="md" className="flex-1" onClick={() => setRejecting(!rejecting)}>
+            {rejecting ? 'Cancel reject' : 'Reject'}
+          </Button>
+          <Button variant="primary" size="md" className="flex-1 !bg-[#16A34A] hover:!bg-[#15803D]" onClick={onApprove}>
+            Approve & pay
+          </Button>
         </div>
         {rejecting && (
-          <button
-            className="v4-btn"
-            style={{ width: '100%', marginTop: 12, background: '#FF5F57', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: feedback.trim() ? 'pointer' : 'not-allowed', opacity: feedback.trim() ? 1 : 0.5 }}
+          <Button
+            variant="destructive"
+            size="md"
+            className="w-full mt-3"
             onClick={() => onReject({ feedback, extendHours: hours })}
             disabled={!feedback.trim()}
           >
-            Confirm Rejection
-          </button>
+            Confirm rejection
+          </Button>
         )}
       </div>
     </div>

@@ -202,6 +202,7 @@ export default function MessagesTab({
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
+                  aria-label="Type a message"
                   className="dashboard-v4-form-input"
                   style={{ flex: 1, resize: 'none', minHeight: 40, maxHeight: 120, overflow: 'auto', lineHeight: '1.4' }}
                   rows={1}

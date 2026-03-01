@@ -13,7 +13,7 @@ module.exports = {
       jsx: true,
     },
   },
-  plugins: ['react', 'irlwork'],
+  plugins: ['react', 'react-hooks', 'irlwork'],
   settings: {
     react: {
       version: 'detect',

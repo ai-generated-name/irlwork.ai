@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ClipboardList, UserCheck, Lock, Camera, Wallet, FileEdit, Users, Eye, Send } from 'lucide-react'
+import { ClipboardList, UserCheck, Lock, Camera, Wallet, FileEdit, Users, Eye, Send, X } from 'lucide-react'
 import { Button } from './ui'
 
 const WORKING_STEPS = [
@@ -202,7 +202,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 

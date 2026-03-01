@@ -228,61 +228,6 @@ code, pre {
   box-shadow: var(--shadow-md);
 }
 
-.v4-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-md);
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-smooth);
-  border: none;
-  text-decoration: none;
-}
-
-.v4-btn-primary {
-  background: var(--accent-orange);
-  color: white;
-}
-
-.v4-btn-primary:hover {
-  background: var(--accent-orange-hover);
-  box-shadow: var(--shadow-glow-orange);
-  transform: translateY(-1px);
-}
-
-.v4-btn-secondary {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.v4-btn-secondary:hover {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.v4-btn-dark {
-  background: var(--bg-dark);
-  color: white;
-}
-
-.v4-btn-dark:hover {
-  background: var(--bg-dark-alt);
-}
-
-/* Charcoal secondary CTA — for profile saves, non-primary actions */
-.v4-btn-charcoal {
-  background: #1A1A1A;
-  color: #FFFFFF;
-}
-
-.v4-btn-charcoal:hover {
-  background: #333333;
-}
 
 .v4-input {
   width: 100%;

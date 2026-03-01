@@ -127,6 +127,7 @@ export default function PrivacyPage() {
           </div>
 
           <div style={sectionStyle}>
+            {/* eslint-disable-next-line irlwork/no-title-case-ui-strings -- legal document heading */}
             <h2 style={headingStyle}>2. Information We Collect</h2>
             <p style={textStyle}>We collect the following types of information:</p>
             <p style={{ ...textStyle, fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
@@ -158,6 +159,7 @@ export default function PrivacyPage() {
           </div>
 
           <div style={sectionStyle}>
+            {/* eslint-disable-next-line irlwork/no-title-case-ui-strings -- legal document heading */}
             <h2 style={headingStyle}>3. How We Use Your Information</h2>
             <p style={textStyle}>We use the information we collect to:</p>
             <ul style={{ ...listStyle, marginBottom: 0 }}>

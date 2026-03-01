@@ -92,6 +92,7 @@ export default function TopFilterBar({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="city-autocomplete-v4-input w-full pl-9 pr-3 py-2 text-sm"
+              aria-label="Search tasks"
             />
           </div>
         </div>
@@ -117,6 +118,7 @@ export default function TopFilterBar({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="city-autocomplete-v4-input w-full pl-12 pr-4 py-2.5"
+            aria-label="Search tasks"
           />
         </div>
 

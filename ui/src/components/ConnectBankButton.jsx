@@ -114,8 +114,8 @@ export default function ConnectBankButton({ user, compact = false }) {
     if (compact) return null;
     return (
       <div className="bg-white border-2 border-[rgba(0,0,0,0.08)] rounded-2xl p-6 md:p-8 animate-pulse">
-        <div className="h-5 bg-gray-200 rounded w-1/3 mb-3"></div>
-        <div className="h-4 bg-gray-100 rounded w-2/3"></div>
+        <div className="h-5 bg-[#ECECEC] rounded w-1/3 mb-3"></div>
+        <div className="h-4 bg-[#F3F4F6] rounded w-2/3"></div>
       </div>
     );
   }
@@ -154,6 +154,7 @@ export default function ConnectBankButton({ user, compact = false }) {
     }
 
     return (
+      /* eslint-disable-next-line irlwork/no-inline-button-pattern -- Stripe Connect branding uses indigo, not mapped to Button variants */
       <button
         onClick={handleConnect}
         disabled={connecting}
@@ -182,6 +183,7 @@ export default function ConnectBankButton({ user, compact = false }) {
           </div>
         </div>
         <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[#E5E5E5]">
+          {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- Stripe Connect manage button uses custom gray */}
           <button
             onClick={handleManageBank}
             disabled={connecting}
@@ -193,6 +195,7 @@ export default function ConnectBankButton({ user, compact = false }) {
             </svg>
             Manage account
           </button>
+          {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- Stripe Connect branding uses indigo */}
           <button
             onClick={handleUpdateBank}
             disabled={connecting}
@@ -222,6 +225,7 @@ export default function ConnectBankButton({ user, compact = false }) {
           <div className="flex-1">
             <h3 className="text-[#1A1A1A] font-bold text-base">Finish setting up your bank</h3>
             <p className="text-[#333333] text-sm mt-1">Your bank connection is incomplete. Complete the setup to start receiving payments.</p>
+            {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- warning-state button uses yellow for incomplete bank setup */}
             <button
               onClick={handleConnect}
               disabled={connecting}
@@ -289,6 +293,7 @@ export default function ConnectBankButton({ user, compact = false }) {
           </div>
         </div>
 
+        {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- Stripe Connect branding uses indigo */}
         <button
           onClick={handleConnect}
           disabled={connecting}

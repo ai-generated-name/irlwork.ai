@@ -88,7 +88,7 @@ export default function ProofStatusBadge({ task, proofs }) {
       {task.status === 'disputed' && (
         <div className="mt-2.5 sm:mt-4 pt-2.5 sm:pt-4 border-t border-current/20">
           <button className="text-xs sm:text-sm font-medium hover:underline">
-            View Dispute Details →
+            View dispute details →
           </button>
         </div>
       )}

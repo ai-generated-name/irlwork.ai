@@ -33,12 +33,13 @@ export default function Button({
 
   return (
     <button
-      className={`rounded-[14px] font-medium inline-flex items-center justify-center transition-colors ${
+      className={`rounded-[14px] font-medium inline-flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8853D] focus-visible:ring-offset-2 ${
         styles[variant] || styles.primary
       } ${SIZE_STYLES[size] || SIZE_STYLES.md} ${
         disabled ? 'opacity-50 cursor-not-allowed' : ''
       } ${className}`}
       disabled={disabled}
+      aria-disabled={disabled || undefined}
       {...rest}
     >
       {children}
