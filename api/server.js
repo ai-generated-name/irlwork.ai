@@ -473,6 +473,7 @@ const {
   VALID_STATUS_TRANSITIONS,
   validateStatusTransition,
   TERMINAL_STATUSES,
+  DISPUTABLE_STATUSES,
   isTerminalStatus,
   isCancellable,
   isDisputable
@@ -5173,6 +5174,17 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     return res.status(409).json({ error: disputeTransition.error, allowed: VALID_STATUS_TRANSITIONS[task.status] });
   }
 
+  // Enforce 48-hour dispute window after proof submission
+  if (task.proof_submitted_at) {
+    const submittedAt = new Date(task.proof_submitted_at);
+    const hoursSinceSubmission = (Date.now() - submittedAt.getTime()) / (1000 * 60 * 60);
+    if (hoursSinceSubmission > 48) {
+      return res.status(400).json({
+        error: { code: 'DISPUTE_WINDOW_CLOSED', message: 'Dispute window has closed (48 hours after proof submission)', status: 400 }
+      });
+    }
+  }
+
   // Check for existing open dispute (prevent duplicates)
   const { data: existingDispute } = await supabase
     .from('disputes')
@@ -5184,7 +5196,7 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     return res.status(409).json({ error: 'A dispute is already open for this task', dispute_id: existingDispute[0].id });
   }
 
-  // Update task to disputed (atomic status check — only succeeds if still in same status)
+  // Atomic update: use DISPUTABLE_STATUSES for stronger protection than .eq('status', task.status)
   const { data: disputedTask, error: disputeErr } = await supabase
     .from('tasks')
     .update({
@@ -5195,7 +5207,7 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
       updated_at: new Date().toISOString()
     })
     .eq('id', taskId)
-    .eq('status', task.status)
+    .in('status', DISPUTABLE_STATUSES)
     .select('id')
     .single();
 
@@ -5203,7 +5215,7 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     return res.status(409).json({ error: 'Task status changed before dispute could be filed. Please refresh.' });
   }
 
-  // Create disputes table record
+  // Create disputes table record — include category and evidence_urls (parity with MCP)
   const filedAgainst = user.id === task.human_id ? task.agent_id : task.human_id;
   const disputeId = uuidv4();
   await supabase.from('disputes').insert({
@@ -5212,6 +5224,8 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     filed_by: user.id,
     filed_against: filedAgainst,
     reason: reason,
+    category: disputeCategoryInput || 'quality_issue',
+    evidence_urls: validateEvidenceUrls(evidenceUrlsInput),
     status: 'open',
     created_at: new Date().toISOString()
   });
@@ -5221,6 +5235,13 @@ app.post('/api/tasks/:id/dispute', async (req, res) => {
     .update({ status: 'frozen', updated_at: new Date().toISOString() })
     .eq('task_id', taskId)
     .in('status', ['pending', 'available']);
+
+  // Freeze pending_transactions — parity with MCP
+  await supabase
+    .from('pending_transactions')
+    .update({ status: 'frozen', updated_at: new Date().toISOString() })
+    .eq('task_id', taskId)
+    .eq('status', 'pending');
 
   // Increment total_disputes_filed on the filing party
   await supabase.rpc('increment_user_stat', {
@@ -7388,6 +7409,17 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(409).json({ error: mcpDisputeCheck.error, allowed: VALID_STATUS_TRANSITIONS[task.status] });
         }
 
+        // Enforce 48-hour dispute window after proof submission — parity with REST
+        if (task.proof_submitted_at) {
+          const mcpSubmittedAt = new Date(task.proof_submitted_at);
+          const mcpHoursSince = (Date.now() - mcpSubmittedAt.getTime()) / (1000 * 60 * 60);
+          if (mcpHoursSince > 48) {
+            return res.status(400).json({
+              error: { code: 'DISPUTE_WINDOW_CLOSED', message: 'Dispute window has closed (48 hours after proof submission)', status: 400 }
+            });
+          }
+        }
+
         // Check for existing open dispute
         const { data: existingMcpDispute } = await supabase
           .from('disputes')
@@ -7401,7 +7433,7 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(409).json({ error: 'Dispute already filed for this task', dispute_id: existingMcpDispute.id });
         }
 
-        // Atomic task status update to 'disputed'
+        // Atomic task status update to 'disputed' — use DISPUTABLE_STATUSES (fix: was undefined disputeableStatuses)
         const { data: disputedTask, error: disputeUpdErr } = await supabase
           .from('tasks')
           .update({
@@ -7412,7 +7444,7 @@ app.post('/api/mcp', async (req, res) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', task_id)
-          .in('status', disputeableStatuses)
+          .in('status', DISPUTABLE_STATUSES)
           .select('id')
           .single();
 
@@ -7471,17 +7503,18 @@ app.post('/api/mcp', async (req, res) => {
           );
         }
 
-        // Email notifications to both parties
+        // Email notifications to both parties — use escapeHtml/sanitizeSubject (parity with REST)
         const disputeTaskUrl = `https://www.irlwork.ai/tasks/${task_id}`;
-        const disputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+        const mcpDisputeEmailBody = `<div style="background: #FEE2E2; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
           <p style="color: #DC2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Dispute Opened</p>
-          <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task "${task.title}".</p>
-          <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${reason}</p>
+          <p style="color: #1A1A1A; font-size: 14px; margin: 0;">A dispute has been opened for task &ldquo;${escapeHtml(task.title)}&rdquo;.</p>
+          <p style="color: #525252; font-size: 13px; margin: 8px 0 0 0;">Reason: ${escapeHtml(reason)}</p>
         </div>
         <p style="font-size: 13px; color: #525252; margin-bottom: 16px;">Our team will review the evidence and make a fair decision.</p>
         <a href="${disputeTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task</a>`;
-        if (task.human_id) sendEmailNotification(task.human_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
-        if (task.agent_id) sendEmailNotification(task.agent_id, `Dispute opened on "${task.title}"`, disputeEmailBody).catch(() => {});
+        const mcpDisputeSubject = sanitizeSubject(`Dispute opened on "${task.title}"`);
+        if (task.human_id) sendEmailNotification(task.human_id, mcpDisputeSubject, mcpDisputeEmailBody).catch(() => {});
+        if (task.agent_id) sendEmailNotification(task.agent_id, mcpDisputeSubject, mcpDisputeEmailBody).catch(() => {});
 
         // Dispatch webhook
         dispatchWebhook(task.agent_id, {
