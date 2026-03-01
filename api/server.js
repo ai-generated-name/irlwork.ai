@@ -3106,6 +3106,17 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       `/tasks/${taskId}`
     );
 
+    // Email notification for assignment — per notification matrix
+    const assignTaskUrl = `https://www.irlwork.ai/tasks/${taskId}`;
+    sendEmailNotification(human_id,
+      `You've been assigned to "${task.title}"`,
+      `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+        <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">You've been assigned!</p>
+        <p style="color: #1A1A1A; font-size: 14px; margin: 0; line-height: 1.5;">${notificationMessage}</p>
+      </div>
+      <a href="${assignTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Task & Instructions</a>`
+    ).catch(() => {});
+
     // Dispatch webhook to human about the assignment
     dispatchWebhook(human_id, {
       type: 'task_assigned',
@@ -10268,6 +10279,17 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
         `The task "${task.title}" has been cancelled by the poster.`,
         `/tasks/${id}`
       );
+
+      // Email notification for cancellation — per notification matrix
+      const cancelTaskUrl = `https://www.irlwork.ai/tasks/${id}`;
+      sendEmailNotification(task.human_id,
+        `Task "${task.title}" has been cancelled`,
+        `<div style="background: #FEF3C7; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+          <p style="color: #92400E; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Task Cancelled</p>
+          <p style="color: #1A1A1A; font-size: 14px; margin: 0;">The task "${task.title}" has been cancelled by the poster.${cancellation_reason ? ` Reason: ${cancellation_reason}` : ''}</p>
+        </div>
+        <a href="${cancelTaskUrl}" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Details</a>`
+      ).catch(() => {});
     }
 
     // Fire webhook to agent
