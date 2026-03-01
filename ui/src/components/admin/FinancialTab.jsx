@@ -55,9 +55,12 @@ export default function FinancialTab({ user }) {
 
   return (
     <div className="space-y-6">
-      {/* Period selector */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">Financial Overview</h2>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Financial Overview</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Revenue breakdown — GMV, platform fees, payouts, refunds, and subscription tiers.</p>
+        </div>
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 

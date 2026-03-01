@@ -145,12 +145,15 @@ export default function LiveFeedTab({ user }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold text-gray-900">Live Task Feed</h2>
-          <span className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            Live
-          </span>
+        <div>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold text-gray-900">Live Task Feed</h2>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              Live
+            </span>
+          </div>
+          <p className="text-sm text-gray-400 mt-0.5">Real-time stream of task activity. New tasks and status changes appear automatically.</p>
         </div>
         {/* Status filter */}
         <div className="relative">

@@ -67,9 +67,12 @@ export default function FunnelTab({ user }) {
 
   return (
     <div className="space-y-6">
-      {/* Period selector */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">Conversion Funnel</h2>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Conversion Funnel</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Task lifecycle drop-off from creation to payout, with stage-by-stage conversion rates.</p>
+        </div>
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 
