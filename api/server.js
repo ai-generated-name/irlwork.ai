@@ -502,9 +502,6 @@ function getApiKeyPrefix(apiKey) {
   return apiKey.substring(0, 12) + '...';
 }
 
-// Escape LIKE/ILIKE wildcards to prevent filter bypass
-const escapeLike = (s) => (typeof s === 'string' ? s.replace(/[%_\\]/g, '\\$&') : '');
-
 // Validate evidence URLs — only allow http(s) protocols, max 10
 function validateEvidenceUrls(urls) {
   if (!Array.isArray(urls)) return [];
