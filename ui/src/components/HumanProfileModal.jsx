@@ -110,7 +110,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
         ) : error ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
             <p style={{ color: 'var(--text-secondary)', fontSize: 16 }}>Could not load profile</p>
-            <p style={{ color: 'var(--text-tertiary)', fontSize: 14, marginTop: 8 }}>{error}</p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 14, marginTop: 8 }}>{error}. Try refreshing the page.</p>
           </div>
         ) : profile ? (
           <div style={{ padding: '32px 32px 24px' }}>
@@ -249,7 +249,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             {/* Bio */}
             {profile.bio && (
               <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px 0' }}>About</h4>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em', margin: '0 0 8px 0' }}>About</h4>
                 <p style={{
                   fontSize: 15,
                   color: 'var(--text-secondary)',
@@ -264,7 +264,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             {/* Skills */}
             {skills.length > 0 && (
               <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px 0' }}>Skills</h4>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em', margin: '0 0 10px 0' }}>Skills</h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {skills.map((skill, idx) => (
                     <span key={idx} style={{
@@ -286,7 +286,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             {/* Languages */}
             {languages.length > 0 && (
               <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px 0' }}>Languages</h4>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em', margin: '0 0 10px 0' }}>Languages</h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {languages.map((lang, idx) => (
                     <span key={idx} style={{
@@ -315,7 +315,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               <StatBox
                 icon={<Briefcase size={16} />}
                 value={profile.jobs_completed || profile.total_tasks_completed || 0}
-                label="Jobs Done"
+                label="Jobs done"
               />
               <StatBox
                 icon={<TrendingUp size={16} />}
@@ -332,8 +332,8 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
 
             {/* Reviews Section */}
             <div style={{ marginBottom: 24 }}>
-              <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 12px 0' }}>
-                Recent Reviews
+              <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em', margin: '0 0 12px 0' }}>
+                Recent reviews
               </h4>
               {profile.reviews && profile.reviews.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

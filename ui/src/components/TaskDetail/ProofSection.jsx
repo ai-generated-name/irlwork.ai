@@ -2,7 +2,8 @@
 // Inline proof submission form (extracted from ProofSubmitModal logic)
 
 import React, { useState, useRef } from 'react';
-import { Upload, Hourglass, FileText } from 'lucide-react';
+import { Upload, Hourglass, FileText, X, Check } from 'lucide-react';
+import { Card, Button } from '../ui';
 import { useToast } from '../../context/ToastContext';
 import API_URL from '../../config/api';
 
@@ -165,7 +166,7 @@ export default function ProofSection({ task, user, onSubmit }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm">
+    <Card className="p-4 sm:p-6">
       <h2 className="text-base sm:text-xl font-bold text-[#1A1A1A] mb-3 sm:mb-4">Submit Proof of Work</h2>
 
       <div className="space-y-3 sm:space-y-4">
@@ -218,7 +219,7 @@ export default function ProofSection({ task, user, onSubmit }) {
                     }}
                     className="text-[#888888] hover:text-[#FF5F57] text-xs sm:text-sm"
                   >
-                    ✕
+                    <X size={12} />
                   </button>
                 </div>
               ))}
@@ -228,19 +229,21 @@ export default function ProofSection({ task, user, onSubmit }) {
           {/* Uploaded Confirmation */}
           {uploadedUrls.length > 0 && (
             <p className="text-[#16A34A] text-xs sm:text-sm flex items-center gap-2 mt-2 sm:mt-3">
-              <span>✓</span> {uploadedUrls.length} file(s) uploaded
+              <Check size={14} /> {uploadedUrls.length} file(s) uploaded
             </p>
           )}
         </div>
 
         {/* Submit Button */}
-        <button
+        <Button
+          variant="primary"
+          size="lg"
+          className="w-full"
           onClick={handleSubmit}
           disabled={submitting || uploading}
-          className="w-full bg-[#E8853D] hover:bg-[#D4703A] disabled:bg-[#F5F3F0] disabled:text-[#888888] disabled:cursor-not-allowed text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl transition-colors text-sm sm:text-base"
         >
           {submitting ? 'Submitting...' : uploading ? (uploadProgress || 'Uploading files...') : 'Submit Proof'}
-        </button>
+        </Button>
 
         {/* Instructions */}
         <div className="bg-[rgba(232,133,61,0.08)] border border-[rgba(232,133,61,0.15)] rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-[#E8853D]">
@@ -252,6 +255,6 @@ export default function ProofSection({ task, user, onSubmit }) {
           </ul>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

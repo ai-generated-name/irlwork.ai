@@ -1,4 +1,5 @@
 import { Check, ClipboardList, Handshake, Pin } from 'lucide-react'
+import { Card, EmptyState } from './ui'
 
 export default function ActivityFeed({ activities = [] }) {
   const formatTimeAgo = (dateString) => {
@@ -42,11 +43,14 @@ export default function ActivityFeed({ activities = [] }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 shadow-v4-sm mt-6 md:mt-8">
-      <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Recent Activity</h3>
+    <Card className="p-4 md:p-6 mt-6 md:mt-8">
+      <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Recent activity</h3>
       <div className="space-y-2 md:space-y-3">
         {activities.length === 0 ? (
-          <p className="text-gray-500 text-sm py-4 text-center">No recent activity</p>
+          <EmptyState
+            icon={<Pin size={32} />}
+            title="No recent activity"
+          />
         ) : (
           activities.slice(0, 5).map((activity, i) => (
             <div key={i} className="flex items-start gap-2 md:gap-3 py-2 border-b border-gray-50 last:border-0">
@@ -61,6 +65,6 @@ export default function ActivityFeed({ activities = [] }) {
           ))
         )}
       </div>
-    </div>
+    </Card>
   )
 }

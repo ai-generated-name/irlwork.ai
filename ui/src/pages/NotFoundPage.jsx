@@ -106,7 +106,7 @@ export default function NotFoundPage() {
             }}
           >
             <Home size={18} />
-            Go to Homepage
+            Return to homepage
           </a>
           <button
             onClick={() => window.history.back()}
@@ -117,7 +117,7 @@ export default function NotFoundPage() {
             }}
           >
             <ArrowLeft size={18} />
-            Go Back
+            Go back
           </button>
         </div>
       </div>

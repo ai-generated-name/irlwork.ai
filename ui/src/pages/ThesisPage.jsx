@@ -431,7 +431,7 @@ export default function ThesisPage() {
               marginBottom: '28px',
               color: 'var(--text-primary)',
             }}>
-              The Physical Layer<br />of the AI Economy
+              The physical layer<br />of the AI economy
             </h1>
           </Reveal>
 
@@ -821,7 +821,7 @@ export default function ThesisPage() {
                     boxShadow: '0 0 30px rgba(244,132,95,0.3)',
                   }}
                 >
-                  Start Earning
+                  Start earning
                   <ArrowRight size={18} />
                 </a>
                 <a
@@ -837,7 +837,7 @@ export default function ThesisPage() {
                   }}
                 >
                   <Bot size={18} />
-                  Connect an Agent
+                  Connect an agent
                 </a>
               </div>
             </div>

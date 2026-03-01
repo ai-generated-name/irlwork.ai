@@ -1,7 +1,8 @@
 // ApiKeysTab - Extracted from App.jsx
 import React, { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, AlertTriangle } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Check, Key } from 'lucide-react'
 import { supabase } from '../App'
+import { EmptyState, Button, Card, ConfirmDialog } from './ui'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -139,7 +140,7 @@ export default function ApiKeysTab({ user }) {
             onClick={() => { setShowModal(true); setNewKeyName(''); setNewKey(null); setError(null); }}
             style={{ whiteSpace: 'nowrap' }}
           >
-            + Generate New Key
+            + Generate new key
           </button>
         )}
       </div>
@@ -150,7 +151,7 @@ export default function ApiKeysTab({ user }) {
           <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 500, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             {!newKey ? (
               <>
-                <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Generate New API Key</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Generate new API key</h2>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
                   Give your key a name to help you remember what it's used for.
                 </p>
@@ -194,7 +195,7 @@ export default function ApiKeysTab({ user }) {
                     onClick={generateKey}
                     disabled={generating}
                   >
-                    {generating ? 'Generating...' : 'Generate Key'}
+                    {generating ? 'Generating...' : 'Generate key'}
                   </button>
                 </div>
               </>
@@ -202,9 +203,9 @@ export default function ApiKeysTab({ user }) {
               <>
                 <div style={{ textAlign: 'center', marginBottom: 20 }}>
                   <div style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #16A34A, #16A34A)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <span style={{ fontSize: 28 }}>✓</span>
+                    <Check size={28} style={{ color: 'white' }} />
                   </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>API Key Generated</h2>
+                  <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>API key generated</h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
                     Copy this key now. You won't be able to see it again.
                   </p>
@@ -248,7 +249,7 @@ export default function ApiKeysTab({ user }) {
                       boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   >
-                    {copied ? '✓ Copied!' : 'Copy'}
+                    {copied ? 'Copied' : 'Copy key'}
                   </button>
                 </div>
 
@@ -272,7 +273,7 @@ export default function ApiKeysTab({ user }) {
                   style={{ width: '100%' }}
                   onClick={() => { setShowModal(false); setNewKey(null); }}
                 >
-                  Done
+                  Close dialog
                 </button>
               </>
             )}
@@ -281,38 +282,16 @@ export default function ApiKeysTab({ user }) {
       )}
 
       {/* Revoke Confirmation Modal */}
-      {confirmRevoke && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" style={{ background: 'white', borderRadius: 16, padding: 24, maxWidth: 400, width: '90%' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: '#FF5F57' }}>Revoke API Key?</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
-              Are you sure you want to revoke <strong>{confirmRevoke.name}</strong>? Any agents using this key will lose access immediately.
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button
-                className="v4-btn v4-btn-secondary"
-                onClick={() => setConfirmRevoke(null)}
-              >
-                Cancel
-              </button>
-              <button
-                style={{
-                  background: '#FF5F57',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '10px 20px',
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-                onClick={() => revokeKey(confirmRevoke.id)}
-              >
-                Revoke Key
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirmRevoke}
+        title="Revoke API key?"
+        description={confirmRevoke ? `Are you sure you want to revoke ${confirmRevoke.name}? Any agents using this key will lose access immediately.` : ''}
+        confirmLabel="Revoke key"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={() => revokeKey(confirmRevoke.id)}
+        onCancel={() => setConfirmRevoke(null)}
+      />
 
       {/* Filter Toggle */}
       {keys.length > 0 && (
@@ -343,36 +322,23 @@ export default function ApiKeysTab({ user }) {
           Loading keys...
         </div>
       ) : keys.length === 0 ? (
-        <div className="v4-empty-state" style={{
-          background: 'white',
-          borderRadius: 16,
-          padding: 60,
-          textAlign: 'center',
-          border: '1px solid var(--border)'
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔑</div>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No API Keys Yet</h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-            Generate an API key to access irlwork.ai programmatically.
-          </p>
-          <button
-            className="v4-btn v4-btn-primary"
-            onClick={() => setShowModal(true)}
-          >
-            Generate Your First Key
-          </button>
-        </div>
+        <EmptyState
+          icon={<Key size={48} />}
+          title="No API keys yet"
+          description="API keys will appear here when you generate one."
+          action={
+            <Button variant="primary" onClick={() => setShowModal(true)}>
+              Generate first key
+            </Button>
+          }
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {keys.filter(key => showRevoked || key.is_active).map(key => (
-            <div
+            <Card
               key={key.id}
               className="api-key-card"
               style={{
-                background: 'white',
-                borderRadius: 12,
-                padding: 16,
-                border: '1px solid var(--border)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12,
@@ -395,36 +361,12 @@ export default function ApiKeysTab({ user }) {
                 </div>
                 {key.is_active && (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={() => rotateKey(key.id)}
-                      style={{
-                        background: 'var(--bg-tertiary)',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '8px 14px',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: 'var(--text-primary)'
-                      }}
-                    >
-                      Rotate
-                    </button>
-                    <button
-                      onClick={() => setConfirmRevoke(key)}
-                      style={{
-                        background: 'rgba(255, 95, 87, 0.1)',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '8px 14px',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: '#FF5F57'
-                      }}
-                    >
-                      Revoke
-                    </button>
+                    <Button variant="secondary" size="sm" onClick={() => rotateKey(key.id)}>
+                      Rotate key
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => setConfirmRevoke(key)}>
+                      Revoke key
+                    </Button>
                   </div>
                 )}
               </div>
@@ -437,7 +379,7 @@ export default function ApiKeysTab({ user }) {
                 <span>Created: {formatDate(key.created_at)}</span>
                 <span>Last used: {formatDate(key.last_used_at)}</span>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
@@ -450,7 +392,7 @@ export default function ApiKeysTab({ user }) {
         padding: 24,
         color: 'white'
       }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Using Your API Key</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Using your API key</h3>
         <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>
           Include your API key in the Authorization header of your requests:
         </p>

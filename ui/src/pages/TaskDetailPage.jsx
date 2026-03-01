@@ -18,6 +18,7 @@ import ReportTaskModal from '../components/ReportTaskModal';
 import DisputeModal from '../components/DisputeModal';
 import WithdrawModal from '../components/WithdrawModal';
 import ShareOnXButton from '../components/ShareOnXButton';
+import { Button } from '../components/ui';
 import API_URL from '../config/api';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
@@ -362,7 +363,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 onClick={() => window.location.reload()}
                 className="text-[#E8853D] underline text-sm hover:text-[#D4703A]"
               >
-                Retry
+                Retry loading
               </button>
             </div>
           )}
@@ -377,12 +378,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="text-center">
           <div className="text-[#FF5F57] text-xl mb-4">Error: {error}</div>
-          <button
-            onClick={() => onNavigate?.('/dashboard')}
-            className="bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
-          >
-            Back to Dashboard
-          </button>
+          <Button variant="primary" size="lg" onClick={() => onNavigate?.('/dashboard')}>
+            Back to dashboard
+          </Button>
         </div>
       </div>
     );
@@ -394,12 +392,9 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="text-center">
           <div className="text-[#FF5F57] text-xl mb-4">Error: Task not found</div>
-          <button
-            onClick={() => onNavigate?.('/dashboard')}
-            className="bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold py-2 px-6 rounded-xl transition-colors"
-          >
-            Back to Dashboard
-          </button>
+          <Button variant="primary" size="lg" onClick={() => onNavigate?.('/dashboard')}>
+            Back to dashboard
+          </Button>
         </div>
       </div>
     );
@@ -485,19 +480,21 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm space-y-3">
                 <h4 className="text-xs font-bold text-[#888888] uppercase tracking-wider">Actions</h4>
                 {canWithdraw && (
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="md"
                     onClick={() => setShowWithdrawModal(true)}
-                    className="w-full py-2.5 border-2 border-[#E5E5E5] text-[#333333] font-semibold rounded-xl hover:bg-[#F5F3F0] transition-colors text-sm"
+                    className="w-full"
                   >
-                    Withdraw from Task
-                  </button>
+                    Withdraw from task
+                  </Button>
                 )}
                 {canDispute && (
                   <button
                     onClick={() => setShowDisputeModal(true)}
                     className="w-full py-2.5 border-2 border-[#E8853D] text-[#E8853D] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm"
                   >
-                    File a Dispute
+                    File a dispute
                   </button>
                 )}
               </div>
@@ -575,7 +572,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         >
           <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
             <div className="flex items-baseline gap-1 shrink-0">
-              <span className="text-xl font-bold text-[#16A34A] font-mono">
+              <span className="text-xl font-bold text-[#16A34A] font-['DM_Mono']">
                 ${Number(task.budget) || 0}
               </span>
               {task.budget_type === 'hourly' && <span className="text-sm text-[#333333]">/hr</span>}
@@ -586,16 +583,16 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 onClick={() => setShowApplyModal(true)}
                 className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md"
               >
-                Apply for This Task
+                Apply for this task
               </button>
             ) : hasApplied ? (
-              <span className="text-sm font-medium text-[#16A34A]">Applied ✓</span>
+              <span className="text-sm font-medium text-[#16A34A]">Applied</span>
             ) : !user ? (
               <a
                 href="/auth"
                 className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block"
               >
-                Sign In to Apply
+                Sign in to apply
               </a>
             ) : null}
           </div>

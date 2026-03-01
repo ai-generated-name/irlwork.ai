@@ -55,7 +55,7 @@ export default function OverviewTab({ user }) {
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
         <p className="text-red-600 font-medium mb-3">{error}</p>
         <button onClick={fetchData} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600">
-          Retry
+          Retry loading
         </button>
       </div>
     )
@@ -72,14 +72,14 @@ export default function OverviewTab({ user }) {
       {/* Top cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          label="Gross Merchandise Value"
+          label="Gross merchandise value"
           value={fmt(financials?.gmv?.total_cents || 0)}
           subtitle={`${financials?.gmv?.count || 0} tasks`}
           icon={<DollarSign size={18} />}
           color="green"
         />
         <MetricCard
-          label="Platform Fees Earned"
+          label="Platform fees earned"
           value={fmt(financials?.platform_fees?.total_cents || 0)}
           subtitle={`${financials?.platform_fees?.count || 0} completed`}
           icon={<TrendingUp size={18} />}

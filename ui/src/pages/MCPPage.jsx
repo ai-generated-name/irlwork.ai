@@ -33,17 +33,17 @@ function SectionDivider() {
 const SIDEBAR_SECTIONS = [
   { id: 'overview', label: 'Overview' },
   { id: 'auth', label: 'Authentication' },
-  { id: 'lifecycle', label: 'Task Lifecycle' },
+  { id: 'lifecycle', label: 'Task lifecycle' },
   { id: 'payments', label: 'Payments' },
-  { id: 'methods', label: 'All Methods (26)' },
-  { id: 'errors', label: 'Error Handling' },
-  { id: 'practices', label: 'Best Practices' },
+  { id: 'methods', label: 'All methods (26)' },
+  { id: 'errors', label: 'Error handling' },
+  { id: 'practices', label: 'Best practices' },
 ]
 
 const METHOD_CATEGORIES = [
-  { id: 'search', label: 'Search & Discovery', count: 3 },
+  { id: 'search', label: 'Search & discovery', count: 3 },
   { id: 'tasks', label: 'Tasks', count: 8 },
-  { id: 'proofs', label: 'Proofs & Completion', count: 3 },
+  { id: 'proofs', label: 'Proofs & completion', count: 3 },
   { id: 'conversations', label: 'Conversations', count: 4 },
   { id: 'notifications', label: 'Notifications', count: 3 },
   { id: 'feedback', label: 'Feedback', count: 1 },
@@ -535,10 +535,10 @@ export default function MCPPage() {
           {/* ═══ 1. OVERVIEW ═══ */}
           <section id="overview">
             <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.5px', color: '#1a1a1a', marginBottom: 8 }}>
-              API <span style={{ color: '#E8853D' }}>Reference</span>
+              API <span style={{ color: '#E8853D' }}>reference</span>
             </h1>
             <p style={{ fontSize: 15, color: '#999', marginBottom: 28, lineHeight: 1.6 }}>
-              Complete documentation for every method. For quick setup, see <a href="/connect-agent" style={{ color: '#E8853D', textDecoration: 'none' }}>Connect Agent</a>.
+              Complete documentation for every method. For quick setup, see <a href="/connect-agent" style={{ color: '#E8853D', textDecoration: 'none' }}>Connect agent</a>.
             </p>
 
             {/* Base Info Bar */}
@@ -594,7 +594,7 @@ export default function MCPPage() {
           {/* ═══ 2. AUTHENTICATION ═══ */}
           <section id="auth">
             <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
-              {'🔑'} Authentication
+              Authentication
             </h2>
 
             {/* API Keys Dashboard card */}
@@ -641,7 +641,7 @@ export default function MCPPage() {
           {/* ═══ 3. TASK LIFECYCLE ═══ */}
           <section id="lifecycle">
             <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 8 }}>
-              {'🔄'} Task Lifecycle
+              Task lifecycle
             </h2>
             <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Every task moves through defined states.</p>
 
@@ -728,7 +728,7 @@ export default function MCPPage() {
           {/* ═══ 4. PAYMENTS ═══ */}
           <section id="payments">
             <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 8 }}>
-              {'💳'} Payments
+              Payments
             </h2>
             <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Stripe Connect escrow. No crypto.</p>
 
@@ -824,7 +824,7 @@ export default function MCPPage() {
           {/* ═══ 5. ALL METHODS ═══ */}
           <section id="methods">
             <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 4 }}>
-              {'🛠️'} All Methods <span style={{ color: '#bbb', fontWeight: 400 }}>(26)</span>
+              All methods <span style={{ color: '#bbb', fontWeight: 400 }}>(26)</span>
             </h2>
             <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Click any category to expand methods.</p>
 
@@ -843,7 +843,7 @@ export default function MCPPage() {
           {/* ═══ 6. ERROR HANDLING ═══ */}
           <section id="errors">
             <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
-              {'⚠️'} Error Handling
+              Error handling
             </h2>
 
             {/* Error format */}
@@ -888,7 +888,7 @@ export default function MCPPage() {
           {/* ═══ 7. BEST PRACTICES ═══ */}
           <section id="practices">
             <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
-              {'✅'} Best Practices
+              Best practices
             </h2>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
@@ -925,7 +925,7 @@ export default function MCPPage() {
                   padding: '14px 32px', borderRadius: 12, textDecoration: 'none',
                 }}
               >
-                Quick Start Guide
+                View quick start guide
               </a>
               <a
                 href="/dashboard"
@@ -935,7 +935,7 @@ export default function MCPPage() {
                   padding: '12px 32px', borderRadius: 12, textDecoration: 'none',
                 }}
               >
-                Go to Dashboard
+                Go to dashboard
               </a>
             </div>
           </section>

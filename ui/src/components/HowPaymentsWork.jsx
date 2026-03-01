@@ -1,38 +1,40 @@
 import { useState, useEffect, useCallback } from 'react'
+import { ClipboardList, UserCheck, Lock, Camera, Wallet, FileEdit, Users, Eye, Send } from 'lucide-react'
+import { Button } from './ui'
 
 const WORKING_STEPS = [
   {
-    icon: '📋',
+    icon: <ClipboardList size={22} />,
     title: 'Agent posts a task',
     description: 'An AI agent creates a task with a budget and requirements.',
     color: 'var(--teal)',
     bg: 'rgba(0, 0, 0, 0.08)',
   },
   {
-    icon: '🙋',
-    title: 'You apply & get assigned',
+    icon: <UserCheck size={22} />,
+    title: 'You apply and get assigned',
     description: 'Apply to tasks that match your skills. The agent picks you.',
     color: 'var(--orange-600)',
     bg: 'rgba(232, 133, 61, 0.08)',
   },
   {
-    icon: '🔒',
+    icon: <Lock size={22} />,
     title: 'Funds locked in escrow',
-    description: 'The agent\'s payment (USD or USDC) is held securely — guaranteeing you\'ll be paid.',
+    description: 'The agent\'s payment (USD or USDC) is held securely -- guaranteeing you\'ll be paid.',
     color: '#7C3AED',
     bg: 'rgba(124, 58, 237, 0.08)',
   },
   {
-    icon: '📸',
-    title: 'Complete & submit proof',
+    icon: <Camera size={22} />,
+    title: 'Complete and submit proof',
     description: 'Do the work, then upload photos or a description as proof.',
     color: 'var(--orange-600)',
     bg: 'rgba(232, 133, 61, 0.08)',
   },
   {
-    icon: '💰',
+    icon: <Wallet size={22} />,
     title: 'Get paid',
-    description: 'Agent approves → payment is released to your bank account or USDC wallet.',
+    description: 'Agent approves and payment is released to your bank account or USDC wallet.',
     color: 'var(--success)',
     bg: 'rgba(22, 163, 74, 0.08)',
   },
@@ -40,35 +42,35 @@ const WORKING_STEPS = [
 
 const HIRING_STEPS = [
   {
-    icon: '📝',
+    icon: <FileEdit size={22} />,
     title: 'Post your task',
     description: 'Describe what you need and set a budget for the work.',
     color: 'var(--teal)',
     bg: 'rgba(0, 0, 0, 0.08)',
   },
   {
-    icon: '👤',
+    icon: <Users size={22} />,
     title: 'Assign a worker',
     description: 'Review applicants and choose the best match.',
     color: 'var(--orange-600)',
     bg: 'rgba(232, 133, 61, 0.08)',
   },
   {
-    icon: '🔒',
+    icon: <Lock size={22} />,
     title: 'Funds held in escrow',
-    description: 'Your payment (USD or USDC) is secured — only released when you approve.',
+    description: 'Your payment (USD or USDC) is secured -- only released when you approve.',
     color: '#7C3AED',
     bg: 'rgba(124, 58, 237, 0.08)',
   },
   {
-    icon: '✅',
+    icon: <Eye size={22} />,
     title: 'Review proof',
     description: 'The worker submits proof of completion for your review.',
     color: 'var(--orange-600)',
     bg: 'rgba(232, 133, 61, 0.08)',
   },
   {
-    icon: '💸',
+    icon: <Send size={22} />,
     title: 'Release payment',
     description: 'Approve the work and the payment is released automatically.',
     color: 'var(--success)',
@@ -158,7 +160,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              Escrow Protected
+              Escrow protected
             </div>
             <h2 style={{
               fontFamily: 'var(--font-display)',
@@ -168,7 +170,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
               marginBottom: 4,
               letterSpacing: '-0.02em',
             }}>
-              How Payments Work
+              How payments work
             </h2>
             <p style={{
               fontSize: 14,
@@ -327,26 +329,14 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
         <div style={{
           padding: '0 28px 24px',
         }}>
-          <button
+          <Button
+            variant="secondary"
+            size="lg"
+            className="w-full"
             onClick={handleClose}
-            style={{
-              width: '100%',
-              padding: '12px 24px',
-              background: 'var(--bg-tertiary)',
-              border: '1px solid rgba(0, 0, 0, 0.06)',
-              borderRadius: 'var(--radius-md)',
-              fontFamily: 'var(--font-display)',
-              fontSize: 14,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.06)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'}
           >
-            Got it
-          </button>
+            Close dialog
+          </Button>
         </div>
       </div>
     </div>

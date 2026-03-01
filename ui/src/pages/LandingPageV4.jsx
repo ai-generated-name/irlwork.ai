@@ -459,11 +459,11 @@ export default function LandingPageV4() {
   const navigate = (path) => { window.location.href = path }
 
   const tasks = [
-    { icon: 'package', title: 'Package Pickup', rate: '$35', category: 'Delivery', location: 'San Francisco, CA', time: '~30 min' },
-    { icon: 'building2', title: 'Property Inspection', rate: '$175', category: 'Real Estate', location: 'Denver, CO', time: '~3 hrs' },
-    { icon: 'search', title: 'Due Diligence Research', rate: '$500', category: 'Legal/Finance', location: 'New York, NY', time: '~4 hrs' },
-    { icon: 'camera', title: 'Product Photography', rate: '$150', category: 'Creative', location: 'Paris, FR', time: '~2 hrs' },
-    { icon: 'dog', title: 'Dog Walking', rate: '$22', category: 'Pet Care', location: 'Seattle, WA', time: '~45 min' },
+    { icon: 'package', title: 'Package pickup', rate: '$35', category: 'Delivery', location: 'San Francisco, CA', time: '~30 min' },
+    { icon: 'building2', title: 'Property inspection', rate: '$175', category: 'Real estate', location: 'Denver, CO', time: '~3 hrs' },
+    { icon: 'search', title: 'Due diligence research', rate: '$500', category: 'Legal/Finance', location: 'New York, NY', time: '~4 hrs' },
+    { icon: 'camera', title: 'Product photography', rate: '$150', category: 'Creative', location: 'Paris, FR', time: '~2 hrs' },
+    { icon: 'dog', title: 'Dog walking', rate: '$22', category: 'Pet care', location: 'Seattle, WA', time: '~45 min' },
     { icon: 'stamp', title: 'Notarization', rate: '$40', category: 'Legal', location: 'São Paulo, BR', time: '~1 hr' }
   ]
 
@@ -477,7 +477,7 @@ export default function LandingPageV4() {
           <div className="hero-v4-badge">
             <span className="badge-dot"></span>
             <span className="badge-text-desktop">{t('hero.badge')}</span>
-            <span className="badge-text-mobile">Verified Tasks &bull; Secure Payments</span>
+            <span className="badge-text-mobile">Verified tasks &bull; Secure payments</span>
           </div>
 
           <h1 className="hero-v4-title">

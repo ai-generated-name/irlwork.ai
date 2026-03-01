@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
-import { MapPin, Search, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Search, Globe, ChevronLeft, ChevronRight, Target } from 'lucide-react';
 const TaskMap = lazy(() => import('../components/TaskMap'));
 import { TASK_CATEGORIES } from '../components/CategoryPills';
 import TaskCardV2 from '../components/TaskCardV2';
@@ -8,6 +8,7 @@ import ReportTaskModal from '../components/ReportTaskModal';
 import CityAutocomplete from '../components/CityAutocomplete';
 import CustomDropdown from '../components/CustomDropdown';
 import SkillAutocomplete from '../components/SkillAutocomplete';
+import { PageHeader, EmptyState } from '../components/ui';
 
 import API_URL from '../config/api';
 
@@ -333,7 +334,7 @@ export default function BrowseTasksV2({
     <div className="browse-tasks-v2">
       {/* Header */}
       <div className="browse-tasks-v2-header">
-        <h1 className="browse-tasks-v2-title">Browse Tasks</h1>
+        <PageHeader title="Browse tasks" />
 
         {/* Search bar */}
         <div className="browse-tasks-v2-search-row">
@@ -496,7 +497,7 @@ export default function BrowseTasksV2({
               title={filterByMySkills ? 'Showing tasks matching your skills' : 'Show tasks matching your skills'}
               style={filterByMySkills ? { background: '#EEF2FF', color: '#4338CA', borderColor: '#C7D2FE' } : {}}
             >
-              <span>🎯</span> My Skills
+              <Target size={14} /> My skills
             </button>
           )}
         </div>
@@ -523,32 +524,34 @@ export default function BrowseTasksV2({
                 </svg>
                 <h3>Failed to load tasks</h3>
                 <p>{error}</p>
-                <button onClick={() => window.location.reload()}>Try Again</button>
+                <button onClick={() => window.location.reload()}>Retry search</button>
               </div>
             ) : tasks.length === 0 ? (
-              <div className="browse-tasks-v2-empty">
-                <div className="browse-tasks-v2-empty-icon"><Search size={24} /></div>
-                <h3>No tasks found</h3>
-                <p>
-                  {radius !== 'anywhere'
+              <EmptyState
+                icon={<Search size={24} />}
+                title="No tasks found"
+                description={
+                  radius !== 'anywhere'
                     ? `No tasks within ${radius} km of your location.`
-                    : 'No tasks match your current filters.'}
-                </p>
-                <div className="browse-tasks-v2-empty-actions">
-                  {radius !== 'anywhere' && (
-                    <button onClick={() => setRadius('50')}>
-                      Expand to 50 km
+                    : 'No tasks match your current filters.'
+                }
+                action={
+                  <div className="browse-tasks-v2-empty-actions">
+                    {radius !== 'anywhere' && (
+                      <button onClick={() => setRadius('50')}>
+                        Expand search radius
+                      </button>
+                    )}
+                    <button onClick={() => {
+                      setCategory('');
+                      setSearchQuery('');
+                      setRadius('anywhere');
+                    }}>
+                      Reset filters
                     </button>
-                  )}
-                  <button onClick={() => {
-                    setCategory('');
-                    setSearchQuery('');
-                    setRadius('anywhere');
-                  }}>
-                    Clear Filters
-                  </button>
-                </div>
-              </div>
+                  </div>
+                }
+              />
             ) : (
               <>
                 {/* Result count */}
