@@ -6,32 +6,57 @@
 
 // Category mapping for every known notification type
 const EVENT_CATEGORIES = {
-  // Tasks
+  // Tasks — Core Lifecycle
   task_match:         { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
   task_assigned:      { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
   task_offered:       { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
   task_accepted:      { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
   task_declined:      { category: 'tasks',    defaultEmail: false, defaultInApp: true },
+  task_started:       { category: 'tasks',    defaultEmail: false, defaultInApp: true },
   task_cancelled:     { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
   task_expired:       { category: 'tasks',    defaultEmail: false, defaultInApp: true },
   task_offer_expired: { category: 'tasks',    defaultEmail: false, defaultInApp: true },
   task_auto_hidden:   { category: 'tasks',    defaultEmail: false, defaultInApp: true },
   task_completed:     { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  task_auto_approved: { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  auto_released:      { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  worker_cancelled:   { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
 
-  // Proofs
-  proof_submitted:    { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
-  proof_approved:     { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
-  proof_rejected:     { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  // Tasks — Applications
+  new_application:      { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  application_rejected: { category: 'tasks',    defaultEmail: false, defaultInApp: true },
+  application_declined: { category: 'tasks',    defaultEmail: false, defaultInApp: true },
+
+  // Tasks — Proofs
+  proof_submitted:      { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  proof_approved:       { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  proof_rejected:       { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  proof_submitted_late: { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+
+  // Tasks — Extensions & Deadlines
+  extension_requested:  { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  extension_approved:   { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  extension_declined:   { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
+  deadline_extended:    { category: 'tasks',    defaultEmail: false, defaultInApp: true },
+  deadline_approaching: { category: 'tasks',    defaultEmail: false, defaultInApp: true },
+  deadline_passed:      { category: 'tasks',    defaultEmail: true,  defaultInApp: true },
 
   // Payments
-  payment_released:   { category: 'payments', defaultEmail: true,  defaultInApp: true },
-  payment_received:   { category: 'payments', defaultEmail: true,  defaultInApp: true },
-  payment_pending:    { category: 'payments', defaultEmail: true,  defaultInApp: true },
-  payment_failed:     { category: 'payments', defaultEmail: true,  defaultInApp: true },
-  transfer_failed:    { category: 'payments', defaultEmail: true,  defaultInApp: true },
-  payout_failed:      { category: 'payments', defaultEmail: true,  defaultInApp: true },
-  payout_completed:   { category: 'payments', defaultEmail: true,  defaultInApp: true },
-  deposit_confirmed:  { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  payment_released:     { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  payment_received:     { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  payment_pending:      { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  payment_failed:       { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  payment_confirmed:    { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  transfer_failed:      { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  payout_failed:        { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  payout_completed:     { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  payout_paid:          { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  deposit_confirmed:    { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  auth_hold_failed:     { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  balance_available:    { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  withdrawal_completed: { category: 'payments', defaultEmail: true,  defaultInApp: true },
+  payment_method_added: { category: 'payments', defaultEmail: false, defaultInApp: true },
+  subscription_activated: { category: 'payments', defaultEmail: true,  defaultInApp: true },
 
   // Messages
   new_message:        { category: 'messages', defaultEmail: true,  defaultInApp: true, batchable: true, batchWindowMs: 300000 },
@@ -53,6 +78,7 @@ const EVENT_CATEGORIES = {
   report_submitted:   { category: 'system',   defaultEmail: false, defaultInApp: true },
   new_task_report:    { category: 'system',   defaultEmail: false, defaultInApp: true },
   agent_error:        { category: 'system',   defaultEmail: false, defaultInApp: true },
+  manual_payment_required: { category: 'system', defaultEmail: true, defaultInApp: true },
 
   // Moderation
   moderation_action:  { category: 'system',   defaultEmail: true,  defaultInApp: true },
@@ -77,6 +103,11 @@ const EMAIL_TEMPLATES = {
   dispute_opened:     'DisputeOpened',
   dispute_filed:      'DisputeOpened',
   dispute:            'DisputeOpened',
+  task_auto_approved: 'TaskCompleted',
+  auto_released:      'TaskCompleted',
+  balance_available:  'PaymentReceived',
+  withdrawal_completed: 'PaymentReceived',
+  payout_paid:        'PaymentReceived',
 };
 
 // Email subject generators per event type
@@ -99,6 +130,22 @@ const EMAIL_SUBJECTS = {
   moderation_action:  (data) => data.title || 'Account Moderation Notice',
   report_reviewed:    (data) => `Your report has been reviewed`,
   task_under_review:  (data) => `Your task is under review`,
+  new_application:    (data) => `New applicant for: ${data.title || 'Your Task'}`,
+  task_auto_approved: (data) => `Task auto-approved: ${data.title || 'Your Task'}`,
+  auto_released:      (data) => `Task auto-released: ${data.title || 'Your Task'}`,
+  worker_cancelled:   (data) => `Worker cancelled: ${data.title || 'Your Task'}`,
+  proof_submitted_late: (data) => `Late proof submitted: ${data.title || 'Your Task'}`,
+  extension_requested: (data) => `Extension requested: ${data.title || 'Your Task'}`,
+  extension_approved: (data) => `Extension approved: ${data.title || 'Your Task'}`,
+  extension_declined: (data) => `Extension declined: ${data.title || 'Your Task'}`,
+  deadline_passed:    (data) => `Deadline passed: ${data.title || 'Your Task'}`,
+  payment_confirmed:  (data) => `Payment confirmed: ${data.title || 'Your Task'}`,
+  auth_hold_failed:   (data) => `Payment hold failed: ${data.title || 'Your Task'}`,
+  balance_available:  (data) => `Payment available for withdrawal`,
+  withdrawal_completed: (data) => `Withdrawal completed`,
+  payout_paid:        (data) => `Payout sent to your account`,
+  subscription_activated: (data) => `Subscription activated`,
+  manual_payment_required: (data) => data.title || 'Manual payment action required',
 };
 
 // Default preferences used for seeding new users and as fallback
