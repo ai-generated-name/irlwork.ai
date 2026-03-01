@@ -79,6 +79,7 @@ export default function BrowseTasksV2({
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [category, setCategory] = useState('');
   const [sort, setSort] = useState('newest');
   const [radius, setRadius] = useState(initialRadius || '25');
@@ -103,6 +104,7 @@ export default function BrowseTasksV2({
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
+  const [popupTaskId, setPopupTaskId] = useState(null);
 
   // Apply modal state
   const [applyModalTask, setApplyModalTask] = useState(null);
@@ -116,8 +118,10 @@ export default function BrowseTasksV2({
 
   // Debounce search input
   useEffect(() => {
+    if (searchQuery !== debouncedSearch) setIsSearching(true);
     const timeout = setTimeout(() => {
       setDebouncedSearch(searchQuery);
+      setIsSearching(false);
     }, 300);
     return () => clearTimeout(timeout);
   }, [searchQuery]);
@@ -243,6 +247,24 @@ export default function BrowseTasksV2({
     window.location.href = `/tasks/${taskId}`;
   };
 
+  // Popup open/close handlers for map pins
+  const handlePopupOpen = useCallback((taskId) => {
+    setPopupTaskId(taskId);
+    setSelectedTaskId(taskId);
+    // Scroll the corresponding card into view in the list
+    if (taskListRef.current) {
+      const cardEl = taskListRef.current.querySelector(`[data-task-id="${taskId}"]`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, []);
+
+  const handlePopupClose = useCallback(() => {
+    setPopupTaskId(null);
+    setSelectedTaskId(null);
+  }, []);
+
   // Handle apply success
   const handleApplySuccess = (taskId) => {
     setAppliedTaskIds(prev => new Set([...prev, taskId]));
@@ -300,6 +322,7 @@ export default function BrowseTasksV2({
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' && window.innerWidth < 768
   );
+  const [locationExpanded, setLocationExpanded] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -328,11 +351,15 @@ export default function BrowseTasksV2({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            {searchQuery && (
+            {isSearching && (
+              <span className="browse-tasks-v2-search-spinner" aria-label="Searching" />
+            )}
+            {searchQuery && !isSearching && (
               <button
                 className="browse-tasks-v2-search-clear"
                 onClick={() => setSearchQuery('')}
                 type="button"
+                aria-label="Clear search"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -399,8 +426,26 @@ export default function BrowseTasksV2({
           </div>
         </div>
 
-        {/* Location bar */}
-        <div className="browse-tasks-v2-location-bar">
+        {/* Location bar — collapsible on mobile */}
+        {isMobile && (
+          <button
+            className="browse-tasks-v2-location-toggle"
+            onClick={() => setLocationExpanded(!locationExpanded)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span className="location-summary">
+              {radius === 'anywhere' ? 'Anywhere' : `Within ${radius} km of ${location.city || 'your location'}`}
+              {includeRemote ? ' · Remote' : ''}
+            </span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: locationExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        )}
+        <div className={`browse-tasks-v2-location-bar ${isMobile && !locationExpanded ? 'collapsed' : ''}`}>
           <span className="browse-tasks-v2-location-icon"><MapPin size={16} /></span>
           <span className="browse-tasks-v2-location-label">Within</span>
           <CustomDropdown
@@ -470,44 +515,53 @@ export default function BrowseTasksV2({
         {(effectiveViewMode === 'split' || effectiveViewMode === 'list') && (
           <div className="browse-tasks-v2-list" ref={taskListRef}>
             {loading ? (
-              // Loading skeletons
+              // Loading skeletons — 4 cards matches page layout
               <>
+                <TaskCardSkeleton />
                 <TaskCardSkeleton />
                 <TaskCardSkeleton />
                 <TaskCardSkeleton />
               </>
             ) : error ? (
               <div className="browse-tasks-v2-error">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <h3>Failed to load tasks</h3>
-                <p>{error}</p>
-                <button onClick={() => window.location.reload()}>Try Again</button>
+                <div className="browse-tasks-v2-error-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </div>
+                <h3>We couldn't load tasks right now</h3>
+                <p>This might be a temporary issue. Please try again.</p>
+                <button onClick={fetchTasks}>Try again</button>
               </div>
             ) : tasks.length === 0 ? (
               <div className="browse-tasks-v2-empty">
                 <div className="browse-tasks-v2-empty-icon"><Search size={24} /></div>
-                <h3>No tasks found</h3>
+                <h3>No tasks match your current filters</h3>
                 <p>
-                  {radius !== 'anywhere'
-                    ? `No tasks within ${radius} km of your location.`
-                    : 'No tasks match your current filters.'}
+                  {debouncedSearch && category
+                    ? `No results for "${debouncedSearch}" in ${category.replace(/[-_]/g, ' ')}.`
+                    : debouncedSearch
+                    ? `No results for "${debouncedSearch}".`
+                    : radius !== 'anywhere'
+                    ? `No tasks within ${radius} km of ${location.city || 'your location'}.`
+                    : 'Try broadening your search or removing some filters.'}
                 </p>
                 <div className="browse-tasks-v2-empty-actions">
                   {radius !== 'anywhere' && (
-                    <button onClick={() => setRadius('50')}>
-                      Expand to 50 km
+                    <button onClick={() => setRadius('anywhere')}>
+                      Search everywhere
                     </button>
                   )}
                   <button onClick={() => {
                     setCategory('');
                     setSearchQuery('');
                     setRadius('anywhere');
+                    setFilterByMySkills(false);
+                    setIncludeRemote(true);
                   }}>
-                    Clear Filters
+                    Clear all filters
                   </button>
                 </div>
               </div>
@@ -613,6 +667,10 @@ export default function BrowseTasksV2({
                 onTaskHover={setHoveredTaskId}
                 onBoundsChange={handleMapBoundsChange}
                 disableFitBounds={mapDrivenSearch}
+                isMobile={false}
+                popupTaskId={popupTaskId}
+                onPopupOpen={handlePopupOpen}
+                onPopupClose={handlePopupClose}
               />
             </Suspense>
           </div>
@@ -639,7 +697,7 @@ export default function BrowseTasksV2({
         <div className="browse-tasks-v2-mobile-map-overlay">
           <button
             className="browse-tasks-v2-mobile-map-close"
-            onClick={() => setShowMobileMap(false)}
+            onClick={() => { setShowMobileMap(false); handlePopupClose(); }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -654,13 +712,14 @@ export default function BrowseTasksV2({
               radius={radius !== 'anywhere' ? parseFloat(radius) : null}
               selectedTaskId={selectedTaskId}
               hoveredTaskId={hoveredTaskId}
-              onTaskSelect={(id) => {
-                handleTaskSelect(id);
-                setShowMobileMap(false);
-              }}
+              onTaskSelect={handleTaskSelect}
               onTaskHover={setHoveredTaskId}
               onBoundsChange={handleMapBoundsChange}
               disableFitBounds={mapDrivenSearch}
+              isMobile={true}
+              popupTaskId={popupTaskId}
+              onPopupOpen={handlePopupOpen}
+              onPopupClose={handlePopupClose}
             />
           </Suspense>
         </div>

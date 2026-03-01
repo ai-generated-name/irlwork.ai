@@ -108,14 +108,13 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
 
       {/* Getting Started Checklist */}
       {showChecklist && (
-        <div style={{
+        <div className="hiring-dash-checklist" style={{
           background: 'white',
           border: '1px solid rgba(26,26,26,0.08)',
           borderRadius: 16,
-          padding: 24,
-          marginBottom: 24
+          padding: 'var(--space-5)',
         }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>Getting Started</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Getting Started</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <button onClick={() => onNavigate?.('payments')} style={{
               display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
@@ -212,8 +211,9 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                 const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
                 let label, bg, color;
-                if (diffMs > 0) {
-                if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
+                if (diffMs <= 0) {
+                  label = 'OVERDUE'; bg = 'rgba(255, 95, 87, 0.15)'; color = '#FF5F57';
+                } else if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#B45309'; }
                 else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
@@ -223,7 +223,6 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                     {label}
                   </span>
                 );
-                }
               }
               return (
                 <button
@@ -304,18 +303,18 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
           </div>
           <h3 className="hiring-dash-empty-title">No tasks posted yet</h3>
           <p className="hiring-dash-empty-text">Post a task and get matched with verified humans near you.</p>
-          <button className="hiring-dash-create-btn" onClick={() => onNavigate?.('posted')} style={{ background: 'linear-gradient(135deg, var(--orange-600) 0%, var(--orange-500) 100%)', color: 'white', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => onNavigate?.('posted')} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 5v14M5 12h14" />
             </svg>
-            + Create Task
+            Create Task
           </button>
         </div>
       )}
 
       {/* Recent Activity */}
       <div style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Recent Activity</h3>
+        <h3 className="hiring-dash-section-title" style={{ marginBottom: 12 }}>Recent Activity</h3>
         {safeTasks.length === 0 ? (
           <div style={{
             background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
@@ -349,8 +348,8 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
 
       {/* Quick Actions — Card Grid */}
       <div style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Quick Actions</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+        <h3 className="hiring-dash-section-title" style={{ marginBottom: 12 }}>Quick Actions</h3>
+        <div className="hiring-dash-quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
           <button onClick={() => onNavigate?.('posted')} style={{
             background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
             padding: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'

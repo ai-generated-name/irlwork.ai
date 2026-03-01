@@ -21,8 +21,9 @@ let intervalId = null;
  * Promote pending balances to available after dispute window
  * @param {object} supabase - Supabase client
  * @param {function} createNotification - Notification function
+ * @param {function} [sendEmailNotification] - Optional email notification function
  */
-async function promotePendingBalances(supabase, createNotification) {
+async function promotePendingBalances(supabase, createNotification, sendEmailNotification) {
   if (!supabase) {
     console.error('[BalancePromoter] No supabase client provided');
     return;
@@ -53,6 +54,19 @@ async function promotePendingBalances(supabase, createNotification) {
     // Process each cleared transaction
     for (const tx of cleared) {
       try {
+        // Check for open disputes before promoting — if active, skip
+        const { data: openDispute } = await supabase
+          .from('disputes')
+          .select('id')
+          .eq('task_id', tx.task_id)
+          .eq('status', 'open')
+          .maybeSingle();
+
+        if (openDispute) {
+          console.log(`[BalancePromoter] Skipping tx ${tx.id} — active dispute ${openDispute.id}`);
+          continue;
+        }
+
         // Atomic update with status precondition to prevent double-promotion
         const { data: promoted, error: updateError } = await supabase
           .from('pending_transactions')
@@ -83,6 +97,18 @@ async function promotePendingBalances(supabase, createNotification) {
             `$${amount.toFixed(2)} is now available for withdrawal. The 48-hour dispute window has passed.`,
             `/payments`
           );
+        }
+
+        // Send email notification for payment available
+        if (sendEmailNotification) {
+          sendEmailNotification(tx.user_id,
+            `You've been paid $${amount.toFixed(2)}!`,
+            `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+              <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Payment Available!</p>
+              <p style="color: #1A1A1A; font-size: 14px; margin: 0;">$${amount.toFixed(2)} is now available for withdrawal. The 48-hour dispute window has passed.</p>
+            </div>
+            <a href="https://www.irlwork.ai/payments" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Payments</a>`
+          ).catch(() => {});
         }
 
         // Also update the payout status
@@ -203,8 +229,9 @@ async function promotePendingBalances(supabase, createNotification) {
  * Start the balance promoter service
  * @param {object} supabase - Supabase client
  * @param {function} createNotification - Notification function
+ * @param {function} [sendEmailNotification] - Optional email notification function
  */
-function startBalancePromoter(supabase, createNotification) {
+function startBalancePromoter(supabase, createNotification, sendEmailNotification) {
   if (isRunning) {
     console.log('[BalancePromoter] Already running');
     return;
@@ -213,11 +240,11 @@ function startBalancePromoter(supabase, createNotification) {
   console.log(`[BalancePromoter] Starting... (interval: ${POLL_INTERVAL / 1000}s)`);
 
   // Run immediately on start
-  promotePendingBalances(supabase, createNotification).catch(console.error);
+  promotePendingBalances(supabase, createNotification, sendEmailNotification).catch(console.error);
 
   // Then run on interval
   intervalId = setInterval(() => {
-    promotePendingBalances(supabase, createNotification).catch(console.error);
+    promotePendingBalances(supabase, createNotification, sendEmailNotification).catch(console.error);
   }, POLL_INTERVAL);
 
   isRunning = true;

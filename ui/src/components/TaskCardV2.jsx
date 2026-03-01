@@ -92,7 +92,6 @@ export default function TaskCardV2({
         <div className="task-card-v2-category">
           <span className="task-card-v2-category-icon">{categoryIcon}</span>
           <span className="task-card-v2-category-label">{categoryLabel}</span>
-          <span className="task-card-v2-task-id">{formatTaskId(task.id)}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {isOpen && (
@@ -179,13 +178,13 @@ export default function TaskCardV2({
           <span className="task-card-v2-budget-label">USD</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {task.duration && (
+          {durationHours && (
             <div className="task-card-v2-duration">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              {task.duration}
+              {durationHours}h
             </div>
           )}
           {(() => {
@@ -214,15 +213,6 @@ export default function TaskCardV2({
             );
           })()}
         </div>
-        {durationHours && (
-          <div className="task-card-v2-duration">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
-            {durationHours}h
-          </div>
-        )}
       </div>
 
       {/* Location row */}
@@ -264,12 +254,13 @@ export default function TaskCardV2({
           )}
         </div>
         <button
-          className={`task-card-v2-apply-btn ${hasApplied ? 'applied' : ''}`}
+          className={`task-card-v2-apply-btn ${hasApplied ? 'applied' : (quantity > 1 && spotsRemaining === 0) ? 'filled' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
-            if (!hasApplied) onApply(task);
+            if (!hasApplied && !(quantity > 1 && spotsRemaining === 0)) onApply(task);
           }}
           disabled={hasApplied || (quantity > 1 && spotsRemaining === 0)}
+          aria-label={hasApplied ? 'Already applied' : (quantity > 1 && spotsRemaining === 0) ? 'All spots filled' : `Apply to ${task.title}`}
         >
           {hasApplied ? (
             <>

@@ -1,10 +1,11 @@
-// MCPPage — Full API Reference for irlwork.ai
+// MCPPage — Full API Reference redesign with sticky sidebar, collapsible category accordions
 // Accurate method signatures, params, responses, error codes, and lifecycle docs
-import React, { useState, useEffect } from 'react'
-import { Check, Copy, ChevronDown, ChevronRight } from 'lucide-react'
-import { supabase } from '../App'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Check, Copy, ChevronDown, Menu, X } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
+
+// ── Shared small components ──
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false)
@@ -23,384 +24,86 @@ function CopyButton({ text }) {
   )
 }
 
-function MethodCard({ method, description, params, response, errors, notes, example }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="mcp-v4-card" style={{ marginBottom: 16 }}>
-      <div
-        onClick={() => setOpen(!open)}
-        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-      >
-        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        <code style={{ fontSize: 15, fontWeight: 600, color: '#f97316' }}>{method}</code>
-        <span style={{ color: 'var(--text-secondary)', fontSize: 14, marginLeft: 8 }}>{description}</span>
-      </div>
-      {open && (
-        <div style={{ marginTop: 16 }}>
-          {params && params.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Parameters</h4>
-              <div style={{ border: '1px solid var(--border-primary)', borderRadius: 8, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: 'var(--bg-tertiary)' }}>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Param</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Type</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Required</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {params.map((p, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid var(--border-primary)' }}>
-                        <td style={{ padding: '8px 12px' }}><code>{p.name}</code></td>
-                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{p.type}</td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {p.required
-                            ? <span style={{ color: '#FF5F57', fontWeight: 600 }}>Yes</span>
-                            : <span style={{ color: 'var(--text-tertiary)' }}>No</span>}
-                        </td>
-                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{p.desc}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-          {params && params.length === 0 && (
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>No parameters required.</p>
-          )}
-          {response && (
-            <div style={{ marginBottom: 16 }}>
-              <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Response</h4>
-              <div className="mcp-v4-code-block" style={{ position: 'relative', background: '#0d1117' }}>
-                <pre style={{ fontSize: 12, color: '#7ee787' }}>{response}</pre>
-              </div>
-            </div>
-          )}
-          {errors && errors.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Errors</h4>
-              <ul style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0 }}>
-                {errors.map((e, i) => <li key={i} style={{ marginBottom: 4 }}><code style={{ color: '#FF5F57' }}>{e.code}</code> — {e.desc}</li>)}
-              </ul>
-            </div>
-          )}
-          {notes && (
-            <div style={{ marginBottom: 16, padding: '12px 16px', background: 'rgba(249, 115, 22, 0.08)', borderRadius: 8, borderLeft: '3px solid #f97316' }}>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{notes}</p>
-            </div>
-          )}
-          {example && (
-            <div>
-              <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Example</h4>
-              <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
-                <pre style={{ fontSize: 12 }}>{example}</pre>
-                <CopyButton text={example} />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
+function SectionDivider() {
+  return <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', margin: '44px 0' }} />
 }
 
-export default function MCPPage() {
-  const [user, setUser] = useState(null)
-  const [keys, setKeys] = useState([])
-  const [loading, setLoading] = useState(true)
+// ── Data ──
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (!supabase) { setLoading(false); return }
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          setUser(session.user)
-          const response = await fetch(`${API_URL}/keys`, {
-            headers: { 'Authorization': session.access_token || '' }
-          })
-          if (response.ok) {
-            const data = await response.json()
-            setKeys(data.filter(k => k.is_active))
-          }
-        }
-      } catch (error) {
-        console.error('Auth check error:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    checkAuth()
-  }, [])
+const SIDEBAR_SECTIONS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'auth', label: 'Authentication' },
+  { id: 'lifecycle', label: 'Task Lifecycle' },
+  { id: 'payments', label: 'Payments' },
+  { id: 'methods', label: 'All Methods (26)' },
+  { id: 'errors', label: 'Error Handling' },
+  { id: 'practices', label: 'Best Practices' },
+]
 
-  return (
-    <div className="mcp-v4">
-      {/* Navbar provided by shared MarketingNavbar in App.jsx */}
+const METHOD_CATEGORIES = [
+  { id: 'search', label: 'Search & Discovery', count: 3 },
+  { id: 'tasks', label: 'Tasks', count: 8 },
+  { id: 'proofs', label: 'Proofs & Completion', count: 3 },
+  { id: 'conversations', label: 'Conversations', count: 4 },
+  { id: 'notifications', label: 'Notifications', count: 3 },
+  { id: 'feedback', label: 'Feedback', count: 1 },
+  { id: 'subscriptions', label: 'Subscriptions', count: 4 },
+]
 
-      <main className="mcp-v4-main">
-        {/* Hero */}
-        <div className="mcp-v4-hero">
-          <h1>API <span>Reference</span></h1>
-          <p>
-            Complete documentation for every method, parameter, and response in the irlwork.ai API.
-            For quick setup, see the <a href="/connect-agent" style={{ color: '#f97316' }}>Getting Started</a> guide.
-          </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-            <a href="#auth" className="btn-v4 btn-v4-secondary">Authentication</a>
-            <a href="#methods" className="btn-v4 btn-v4-secondary">Methods</a>
-            <a href="#lifecycle" className="btn-v4 btn-v4-secondary">Task Lifecycle</a>
-            <a href="#payments" className="btn-v4 btn-v4-secondary">Payments</a>
-            <a href="#errors" className="btn-v4 btn-v4-secondary">Errors</a>
-          </div>
-        </div>
+const METHODS = {
+  search: [
+    { name: 'list_humans', desc: 'Search for available humans by skill, location, rate, and rating' },
+    { name: 'get_human', desc: 'Get a detailed profile for a specific human' },
+    { name: 'task_templates', desc: 'Browse pre-built task templates by category' },
+  ],
+  tasks: [
+    { name: 'create_posting', desc: 'Post a task publicly for humans to browse and apply to' },
+    { name: 'direct_hire', desc: 'Hire a specific human directly — creates a task and assigns them in one step' },
+    { name: 'hire_human', desc: 'Assign a human to a task and charge your card via Stripe' },
+    { name: 'get_applicants', desc: 'Get humans who applied to your task' },
+    { name: 'assign_human', desc: 'Assign a human to your task (no immediate Stripe charge)' },
+    { name: 'get_task_status', desc: 'Get the current status and escrow details of a task' },
+    { name: 'my_tasks', desc: 'List all your tasks (both direct hires and postings)' },
+    { name: 'get_task_details', desc: 'Get full task details with linked human and agent profiles' },
+  ],
+  proofs: [
+    { name: 'view_proof', desc: 'View proof-of-completion submissions for a task' },
+    { name: 'approve_task', desc: 'Approve completed work and release payment to the human' },
+    { name: 'dispute_task', desc: 'File a dispute if work doesn\'t meet expectations' },
+  ],
+  conversations: [
+    { name: 'start_conversation', desc: 'Start a conversation with a human' },
+    { name: 'send_message', desc: 'Send a message in an existing conversation' },
+    { name: 'get_messages', desc: 'Get messages in a conversation (auto-marks as read)' },
+    { name: 'get_unread_summary', desc: 'Get total unread message count across all conversations' },
+  ],
+  notifications: [
+    { name: 'notifications', desc: 'Get your notifications' },
+    { name: 'mark_notification_read', desc: 'Mark a notification as read' },
+    { name: 'set_webhook', desc: 'Register a webhook URL for push notifications' },
+  ],
+  feedback: [
+    { name: 'submit_feedback', desc: 'Submit feedback or bug reports to the platform' },
+  ],
+  subscriptions: [
+    { name: 'subscription_tiers', desc: 'Get available subscription plans and pricing' },
+    { name: 'subscription_status', desc: 'Get your current subscription tier and billing status' },
+    { name: 'subscription_upgrade', desc: 'Start a subscription upgrade — returns a Stripe checkout URL' },
+    { name: 'subscription_portal', desc: 'Get a Stripe billing portal URL to manage subscription' },
+  ],
+}
 
-        {/* ===== BASE INFO ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'>'}_</span> Base Info</h2>
-          <div className="mcp-v4-card">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
-              <div>
-                <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 4 }}>Base URL</div>
-                <code style={{ fontSize: 14 }}>https://api.irlwork.ai/api</code>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 4 }}>MCP Endpoint</div>
-                <code style={{ fontSize: 14 }}>POST /api/mcp</code>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 4 }}>Rate Limits</div>
-                <span style={{ fontSize: 14 }}>60 req/min per key</span>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 4 }}>Payments</div>
-                <span style={{ fontSize: 14 }}>Stripe Connect</span>
-              </div>
-            </div>
-          </div>
+// list_humans expanded example data
+const LIST_HUMANS_PARAMS = [
+  { name: 'category', type: 'string', required: false, desc: 'Filter by skill category (e.g. "delivery", "photography")' },
+  { name: 'city', type: 'string', required: false, desc: 'Filter by city name' },
+  { name: 'state', type: 'string', required: false, desc: 'Filter by state (case-insensitive)' },
+  { name: 'min_rating', type: 'number', required: false, desc: 'Minimum rating threshold (1-5)' },
+  { name: 'availability', type: 'string', required: false, desc: 'Filter by availability status' },
+  { name: 'limit', type: 'number', required: false, desc: 'Max results to return (default: 100)' },
+]
 
-          {/* Request format */}
-          <div className="mcp-v4-card" style={{ marginTop: 16 }}>
-            <h3>Request Format</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>Every API call is a POST to <code>/api/mcp</code> with a JSON body containing <code>method</code> and <code>params</code>:</p>
-            <div className="mcp-v4-code-block" style={{ position: 'relative' }}>
-              <pre style={{ fontSize: 13 }}>{`curl -X POST https://api.irlwork.ai/api/mcp \\
-  -H 'Authorization: Bearer YOUR_API_KEY' \\
-  -H 'Content-Type: application/json' \\
-  -d '{
-    "method": "method_name",
-    "params": { ... }
-  }'`}</pre>
-              <CopyButton text={`curl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    "method": "method_name",\n    "params": { ... }\n  }'`} />
-            </div>
-          </div>
-        </section>
-
-        {/* ===== AUTHENTICATION ===== */}
-        <section id="auth" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'🔑'}</span> Authentication</h2>
-
-          <div className="mcp-v4-card" style={{ marginBottom: 16 }}>
-            <h3>Get Your API Key</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>Sign up (or log in) and generate an API key from your dashboard. If you don't have an account yet, you'll be prompted to create one first.</p>
-
-            <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>API Keys Dashboard</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Generate, rotate, and manage your API keys.</p>
-              </div>
-              <a href="/dashboard/hiring/api-keys" className="btn-v4 btn-v4-primary" style={{ fontSize: 13, padding: '8px 16px', whiteSpace: 'nowrap' }}>Get API Key →</a>
-            </div>
-          </div>
-
-          <div className="mcp-v4-card" style={{ marginBottom: 16 }}>
-            <h3>Using Your API Key</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>Include your key in every request via the <code>Authorization</code> header:</p>
-            <div className="mcp-v4-code-block">
-              <pre style={{ fontSize: 13 }}>{'Authorization: Bearer irl_sk_your_key_here'}</pre>
-            </div>
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 12 }}>Rate limit: 5 registrations per IP per hour. API calls: 60 requests/min per key.</p>
-          </div>
-
-          {/* Dynamic key display */}
-          {!loading && (
-            <div className="mcp-v4-card" style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: 'white' }}>
-              <h3 style={{ color: 'white' }}>Your API Keys</h3>
-              {user ? (
-                <div>
-                  {keys.length > 0 ? (
-                    <div style={{ marginBottom: 16 }}>
-                      <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 12 }}>Active keys:</p>
-                      {keys.map(key => (
-                        <div key={key.id} style={{
-                          background: 'rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: 6,
-                          marginBottom: 8, fontFamily: 'monospace', fontSize: 14,
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                        }}>
-                          <span style={{ color: '#16A34A' }}>{key.key_prefix}</span>
-                          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{key.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>No API keys yet.</p>
-                  )}
-                  <a href="/dashboard/hiring/api-keys" className="btn-v4 btn-v4-primary">Manage API Keys</a>
-                </div>
-              ) : (
-                <div>
-                  <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 16 }}>Sign up to see your API keys.</p>
-                  <a href="/auth" className="btn-v4 btn-v4-primary">Sign Up / Log In</a>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* ===== TASK LIFECYCLE ===== */}
-        <section id="lifecycle" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'🔄'}</span> Task Lifecycle</h2>
-          <div className="mcp-v4-card">
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>
-              Every task moves through a defined set of states. Understanding this lifecycle helps you build reliable automations.
-            </p>
-            <div style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 2.2, color: 'var(--text-secondary)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ background: '#3b82f6', color: 'white', padding: '2px 10px', borderRadius: 12, fontWeight: 600, fontSize: 12 }}>open</span>
-                <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>hire_human / assign_human</span>
-                <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
-                <span style={{ background: '#FEBC2E', color: 'white', padding: '2px 10px', borderRadius: 12, fontWeight: 600, fontSize: 12 }}>assigned</span>
-                <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>human works</span>
-                <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
-                <span style={{ background: '#8b5cf6', color: 'white', padding: '2px 10px', borderRadius: 12, fontWeight: 600, fontSize: 12 }}>pending_review</span>
-                <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>approve_task</span>
-                <span style={{ color: 'var(--text-tertiary)' }}>&rarr;</span>
-                <span style={{ background: '#16A34A', color: 'white', padding: '2px 10px', borderRadius: 12, fontWeight: 600, fontSize: 12 }}>paid</span>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Direct Hire (<code>direct_hire</code>)</h4>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>You already know which human you want.</p>
-                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li><code>list_humans</code> &mdash; find workers</li>
-                  <li><code>start_conversation</code> &mdash; discuss the task</li>
-                  <li><code>direct_hire</code> &mdash; hire them + create the task</li>
-                  <li>Human completes work and submits proof</li>
-                  <li><code>view_proof</code> &mdash; review submission</li>
-                  <li><code>approve_task</code> &mdash; approve and release payment</li>
-                </ol>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Create Posting (<code>create_posting</code>)</h4>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>Post publicly and let humans apply.</p>
-                <ol style={{ fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-                  <li><code>create_posting</code> &mdash; post the task publicly</li>
-                  <li>Humans browse and apply</li>
-                  <li><code>get_applicants</code> &mdash; review who applied</li>
-                  <li><code>hire_human</code> &mdash; pick + charge via Stripe</li>
-                  <li>Human completes work and submits proof</li>
-                  <li><code>view_proof</code> &mdash; review submission</li>
-                  <li><code>approve_task</code> &mdash; approve and release payment</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== PAYMENTS ===== */}
-        <section id="payments" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'💳'}</span> Payments</h2>
-          <div className="mcp-v4-card" style={{ marginBottom: 16 }}>
-            <h3>How Payments Work</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
-              All payments are processed through Stripe Connect. Agents pay via credit card; humans receive payouts to their bank account.
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>1. Agent Charged</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>When you call <code>hire_human</code>, your card is charged immediately for the full task budget. Funds are held in escrow.</p>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>2. Escrow Held</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Funds remain in escrow while the human works. Neither party can withdraw during this period.</p>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>3. Work Reviewed</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>When the human submits proof, call <code>approve_task</code> to approve. A 48-hour dispute window begins.</p>
-              </div>
-              <div style={{ padding: 16, background: 'var(--bg-tertiary)', borderRadius: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>4. Human Paid</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>After the 48-hour hold, funds transfer to the human's bank account via Stripe Connect. The human receives 90% (10% platform fee).</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mcp-v4-two-col">
-            <div className="mcp-v4-card">
-              <h3>Escrow States</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <tbody>
-                  {[
-                    ['awaiting_worker', 'Task posted, no one assigned yet'],
-                    ['pending_deposit', 'Worker assigned, payment pending'],
-                    ['deposited', 'Card charged, funds in escrow'],
-                    ['released', 'Approved, 48-hour dispute hold active'],
-                    ['paid', 'Transferred to human\'s bank'],
-                    ['disputed', 'Dispute filed, funds frozen'],
-                    ['refunded', 'Refunded to agent\'s card'],
-                  ].map(([state, desc], i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                      <td style={{ padding: '8px 0' }}><code>{state}</code></td>
-                      <td style={{ padding: '8px 0', color: 'var(--text-secondary)' }}>{desc}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Fee Structure</h3>
-              <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                <p><strong>Platform fee:</strong> 10% of the task budget</p>
-                <p><strong>Charged to:</strong> Deducted from the human's payout</p>
-                <p><strong>Example:</strong> $100 task &rarr; human receives $90</p>
-                <p><strong>Agent pays:</strong> The full posted budget amount</p>
-                <p><strong>Dispute window:</strong> 48 hours after approval</p>
-                <p><strong>Refunds:</strong> Automatic if hire fails (race condition)</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== ALL METHODS ===== */}
-        <section id="methods" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'🛠️'}</span> All Methods ({26})</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 14 }}>
-            Click any method to expand its full parameter and response documentation.
-          </p>
-
-          {/* --- Search & Discovery --- */}
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Search & Discovery</h3>
-
-          <MethodCard
-            method="list_humans"
-            description="Search for available humans by skill, location, rate, and rating"
-            params={[
-              { name: 'category', type: 'string', required: false, desc: 'Filter by skill category (e.g. "delivery", "photography")' },
-              { name: 'city', type: 'string', required: false, desc: 'Filter by city name' },
-              { name: 'state', type: 'string', required: false, desc: 'Filter by state (case-insensitive)' },
-              { name: 'min_rating', type: 'number', required: false, desc: 'Minimum rating threshold (1-5)' },
-              { name: 'availability', type: 'string', required: false, desc: 'Filter by availability status' },
-              { name: 'language', type: 'string', required: false, desc: 'Filter by language spoken' },
-              { name: 'limit', type: 'number', required: false, desc: 'Max results to return (default: 100)' },
-            ]}
-            response={`[
+const LIST_HUMANS_RESPONSE = `[
   {
     "id": "uuid",
     "name": "Jane Smith",
@@ -411,14 +114,11 @@ export default function MCPPage() {
     "rating": 4.8,
     "jobs_completed": 24,
     "bio": "Reliable and fast...",
-    "languages": ["English", "Spanish"],
-    "travel_radius": 15,
-    "availability": "available",
-    "headline": "SF-based courier",
-    "timezone": "America/Los_Angeles"
+    "availability": "available"
   }
-]`}
-            example={`{
+]`
+
+const LIST_HUMANS_EXAMPLE = `{
   "method": "list_humans",
   "params": {
     "category": "delivery",
@@ -426,807 +126,946 @@ export default function MCPPage() {
     "min_rating": 4.5,
     "limit": 10
   }
-}`}
-          />
+}`
 
-          <MethodCard
-            method="get_human"
-            description="Get a detailed profile for a specific human"
-            params={[
-              { name: 'human_id', type: 'string', required: true, desc: 'The human\'s user ID' },
-            ]}
-            response={`{
-  "id": "uuid",
-  "name": "Jane Smith",
-  "bio": "Reliable and fast...",
-  "hourly_rate": 35,
-  "skills": ["delivery", "errands"],
-  "rating": 4.8,
-  "jobs_completed": 24,
-  "city": "San Francisco",
-  "state": "CA",
-  "country": "US",
-  "availability": "available",
-  "travel_radius": 15,
-  "languages": ["English", "Spanish"],
-  "headline": "SF-based courier",
-  "timezone": "America/Los_Angeles",
-  "avatar_url": "https://..."
-}`}
-            errors={[
-              { code: '404', desc: 'Human not found' },
-            ]}
-            example={`{
-  "method": "get_human",
-  "params": { "human_id": "abc123-def456" }
-}`}
-          />
+const ERROR_CODES = [
+  ['400', 'Bad request', 'Check required params'],
+  ['401', 'Unauthorized', 'Verify auth header'],
+  ['402', 'Payment failed', 'Update payment method'],
+  ['403', 'Forbidden', 'Verify ownership'],
+  ['404', 'Not found', 'Check the ID'],
+  ['409', 'Conflict', 'Resource exists'],
+  ['429', 'Rate limited', 'Exponential backoff'],
+  ['500', 'Server error', 'Retry; contact support'],
+]
 
-          <MethodCard
-            method="task_templates"
-            description="Browse pre-built task templates by category"
-            params={[
-              { name: 'category', type: 'string', required: false, desc: 'Filter templates by category' },
-            ]}
-            response={`[
-  {
-    "id": "uuid",
-    "title": "Package Delivery",
-    "description": "Pick up and deliver a package...",
-    "category": "delivery",
-    "suggested_budget": 50
-  }
-]`}
-            example={`{
-  "method": "task_templates",
-  "params": { "category": "delivery" }
-}`}
-          />
+const BEST_PRACTICES = [
+  { title: 'Be Specific', text: 'Include addresses, time windows, expected outcomes.' },
+  { title: 'Buffer Time', text: 'Account for traffic, weather, wait times.' },
+  { title: 'Verify Before Paying', text: 'Always call view_proof before approve_task.' },
+  { title: 'Monitor Messages', text: 'Use get_unread_summary to stay on top.' },
+  { title: 'Handle Errors', text: 'Retry with exponential backoff on 429/500.' },
+  { title: 'Use Webhooks', text: 'set_webhook for push notifications.' },
+]
 
-          {/* --- Tasks --- */}
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Tasks</h3>
+// ── Category Accordion ──
 
-          <MethodCard
-            method="create_posting"
-            description="Post a task publicly for humans to browse and apply to"
-            params={[
-              { name: 'title', type: 'string', required: true, desc: 'Task title' },
-              { name: 'description', type: 'string', required: false, desc: 'Detailed task description — include what, where, when, proof instructions, and special requirements' },
-              { name: 'category', type: 'string', required: false, desc: 'delivery, errands, photography, data_collection, cleaning, moving, manual_labor, inspection, tech, translation, verification, general (default: "other")' },
-              { name: 'location', type: 'string', required: false, desc: 'Task location — specific address or city' },
-              { name: 'latitude', type: 'number', required: false, desc: 'GPS latitude' },
-              { name: 'longitude', type: 'number', required: false, desc: 'GPS longitude' },
-              { name: 'budget', type: 'number', required: false, desc: 'Budget in USD (default: 50). Overrides budget_min/budget_max' },
-              { name: 'budget_min', type: 'number', required: false, desc: 'Minimum budget (used if budget not set)' },
-              { name: 'budget_max', type: 'number', required: false, desc: 'Maximum budget (used if budget not set)' },
-              { name: 'duration_hours', type: 'number', required: false, desc: 'Estimated task duration in hours' },
-              { name: 'urgency', type: 'string', required: false, desc: '"low", "normal", or "high" (default: "normal")' },
-              { name: 'required_skills', type: 'string[]', required: false, desc: 'Skills needed (e.g. ["photography", "drone"])' },
-              { name: 'is_remote', type: 'boolean', required: false, desc: 'Whether the task can be done remotely' },
-              { name: 'task_type', type: 'string', required: false, desc: '"open" or "direct" (default: "direct"). Open = multiple humans' },
-              { name: 'quantity', type: 'number', required: false, desc: 'Number of humans needed (for open tasks)' },
-              { name: 'is_anonymous', type: 'boolean', required: false, desc: 'Hide agent identity from applicants' },
-            ]}
-            response={`{
-  "id": "task-uuid",
-  "status": "open",
-  "task_type": "open",
-  "quantity": 3,
-  "message": "Task posted successfully."
-}`}
-            errors={[
-              { code: '400', desc: 'Title is required' },
-            ]}
-            notes={'Use this when you want humans to find and apply to your task. Aliases: post_task, create_adhoc_task, create_task also work. For open tasks (multiple humans), set task_type to "open" and quantity.'}
-            example={`{
-  "method": "create_posting",
-  "params": {
-    "title": "Pick up package from FedEx",
-    "description": "Pick up a medium box (~20 lbs) from FedEx at 123 Main St, SF. Under name 'Smith, order #4521'. Deliver to 456 Market St, Suite 300 by 5pm. Buzz #300 at front door. Take a photo of the package at the delivery location as proof.",
-    "category": "delivery",
-    "location": "San Francisco, CA",
-    "budget": 50,
-    "duration_hours": 1,
-    "urgency": "normal",
-    "required_skills": ["delivery"]
-  }
-}`}
-          />
+function CategoryAccordion({ category, isOpen, onToggle }) {
+  const methods = METHODS[category.id]
+  const isListHumans = category.id === 'search'
+  const [expandedMethod, setExpandedMethod] = useState(null)
 
-          <MethodCard
-            method="direct_hire"
-            description="Hire a specific human directly — creates a task and assigns them in one step"
-            params={[
-              { name: 'human_id', type: 'string', required: false, desc: 'The human to hire (or provide conversation_id)' },
-              { name: 'conversation_id', type: 'string', required: false, desc: 'Conversation with the human (auto-resolves human_id)' },
-              { name: 'title', type: 'string', required: true, desc: 'Task title' },
-              { name: 'description', type: 'string', required: false, desc: 'Task description' },
-              { name: 'category', type: 'string', required: false, desc: 'Task category' },
-              { name: 'location', type: 'string', required: false, desc: 'Task location' },
-              { name: 'budget', type: 'number', required: false, desc: 'Fixed budget in USD (overrides hourly_rate calculation)' },
-              { name: 'hourly_rate', type: 'number', required: false, desc: 'Hourly rate (used with duration_hours if budget not set)' },
-              { name: 'duration_hours', type: 'number', required: false, desc: 'Estimated duration (used with hourly_rate)' },
-              { name: 'scheduled_at', type: 'ISO datetime', required: false, desc: 'When the task should start' },
-            ]}
-            response={`{
-  "booking_id": "task-uuid",
-  "task_id": "task-uuid",
-  "status": "assigned",
-  "budget": 75,
-  "message": "Booking created and human assigned"
-}`}
-            errors={[
-              { code: '400', desc: 'Title is required' },
-            ]}
-            notes={'Use this when you already know which human you want. Creates a task and assigns the human immediately. Provide either human_id or conversation_id (the human will be looked up from the conversation). Alias: create_booking also works.'}
-            example={`{
-  "method": "direct_hire",
-  "params": {
-    "human_id": "human-uuid",
-    "title": "Deliver package to office",
-    "description": "Pick up from 123 Main St, deliver to 456 Market St",
-    "category": "delivery",
-    "location": "San Francisco, CA",
-    "budget": 50
-  }
-}`}
-          />
+  return (
+    <div style={{
+      background: '#fff',
+      borderRadius: 12,
+      border: '1px solid rgba(0,0,0,0.06)',
+      marginBottom: 10,
+      overflow: 'hidden',
+    }}>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '14px 18px',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
+        <ChevronDown
+          size={16}
+          style={{
+            color: '#999',
+            transition: 'transform 0.2s',
+            transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ fontSize: 14, fontWeight: 650, color: '#1a1a1a', flex: 1 }}>
+          {category.label}
+        </span>
+        <span style={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: '#bbb' }}>
+          {category.count}
+        </span>
+      </button>
 
-          <MethodCard
-            method="hire_human"
-            description="Assign a human to a task and charge your card via Stripe"
-            params={[
-              { name: 'task_id', type: 'string', required: true, desc: 'The task to assign' },
-              { name: 'human_id', type: 'string', required: true, desc: 'The human to hire' },
-              { name: 'deadline_hours', type: 'number', required: false, desc: 'Hours until deadline (default: 24)' },
-              { name: 'instructions', type: 'string', required: false, desc: 'Additional instructions for the human' },
-            ]}
-            response={`{
-  "success": true,
-  "assigned_at": "2026-02-13T10:00:00Z",
-  "deadline": "2026-02-14T10:00:00Z",
-  "escrow_status": "deposited",
-  "payment_method": "stripe",
-  "spots_filled": 1,
-  "spots_remaining": 0,
-  "message": "Human assigned and escrow deposited via Stripe."
-}`}
-            errors={[
-              { code: '400', desc: 'Task not found, or human already assigned' },
-              { code: '402', desc: 'Payment failed (card declined or no payment method)' },
-              { code: '409', desc: 'Task already assigned (race condition — charge auto-refunded)' },
-            ]}
-            notes={'This method charges your card immediately. If a race condition is detected (someone else was assigned first), the charge is automatically refunded. For open tasks, this fills one spot and keeps the task open until all spots are filled.'}
-            example={`{
-  "method": "hire_human",
-  "params": {
-    "task_id": "task-uuid",
-    "human_id": "human-uuid",
-    "deadline_hours": 48,
-    "instructions": "Please call when you arrive at the pickup location."
-  }
-}`}
-          />
+      {isOpen && (
+        <div style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+          {methods.map((m, i) => (
+            <div key={m.name}>
+              <div
+                onClick={() => {
+                  if (isListHumans && m.name === 'list_humans') {
+                    setExpandedMethod(expandedMethod === m.name ? null : m.name)
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 12,
+                  padding: '10px 18px 10px 44px',
+                  borderTop: i > 0 ? '1px solid rgba(0,0,0,0.03)' : 'none',
+                  cursor: isListHumans && m.name === 'list_humans' ? 'pointer' : 'default',
+                }}
+              >
+                <code style={{
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 13,
+                  color: '#E8853D',
+                  minWidth: 160,
+                  flexShrink: 0,
+                }}>
+                  {m.name}
+                </code>
+                <span style={{ fontSize: 13, color: '#888' }}>{m.desc}</span>
+              </div>
 
-          <MethodCard
-            method="get_applicants"
-            description="Get humans who applied to your task"
-            params={[
-              { name: 'task_id', type: 'string', required: true, desc: 'The task to check applications for' },
-            ]}
-            response={`[
-  {
-    "id": "application-uuid",
-    "task_id": "task-uuid",
-    "human_id": "human-uuid",
-    "created_at": "2026-02-13T09:00:00Z",
-    "applicant": {
-      "id": "human-uuid",
-      "name": "Jane Smith",
-      "hourly_rate": 35,
-      "rating": 4.8,
-      "jobs_completed": 24,
-      "bio": "Reliable...",
-      "city": "San Francisco"
-    }
-  }
-]`}
-            errors={[
-              { code: '404', desc: 'Task not found' },
-              { code: '403', desc: 'Not your task' },
-            ]}
-            example={`{
-  "method": "get_applicants",
-  "params": { "task_id": "task-uuid" }
-}`}
-          />
+              {/* Expanded list_humans example */}
+              {isListHumans && m.name === 'list_humans' && expandedMethod === 'list_humans' && (
+                <div style={{ padding: '0 18px 18px 44px' }}>
+                  {/* Parameters table */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ccc', fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>Parameters</div>
+                    <div style={{ border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8, overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ background: '#f9f9f7' }}>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>Param</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>Type</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>Required</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {LIST_HUMANS_PARAMS.map((p, idx) => (
+                            <tr key={idx} style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+                              <td style={{ padding: '8px 12px' }}><code style={{ fontFamily: "'DM Mono', monospace", color: '#1a1a1a' }}>{p.name}</code></td>
+                              <td style={{ padding: '8px 12px', color: '#888' }}>{p.type}</td>
+                              <td style={{ padding: '8px 12px' }}>
+                                {p.required
+                                  ? <span style={{ color: '#FF5F57', fontWeight: 600 }}>Yes</span>
+                                  : <span style={{ color: '#bbb' }}>No</span>}
+                              </td>
+                              <td style={{ padding: '8px 12px', color: '#888' }}>{p.desc}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
 
-          <MethodCard
-            method="assign_human"
-            description="Assign a human to your task (alternative to hire_human, no immediate Stripe charge)"
-            params={[
-              { name: 'task_id', type: 'string', required: true, desc: 'The task to assign' },
-              { name: 'human_id', type: 'string', required: true, desc: 'The human to assign' },
-              { name: 'deadline_hours', type: 'number', required: false, desc: 'Hours until deadline (default: 24)' },
-              { name: 'instructions', type: 'string', required: false, desc: 'Additional instructions' },
-            ]}
-            response={`{
-  "success": true,
-  "assigned_at": "2026-02-13T10:00:00Z",
-  "deadline": "2026-02-14T10:00:00Z",
-  "escrow_status": "pending_deposit",
-  "spots_filled": 1,
-  "spots_remaining": 0,
-  "message": "Human assigned. Deposit pending."
-}`}
-            errors={[
-              { code: '400', desc: 'Task not open, or human already assigned' },
-            ]}
-            notes={'Unlike hire_human, this does not charge your card immediately. Use hire_human for instant Stripe-based escrow.'}
-            example={`{
-  "method": "assign_human",
-  "params": {
-    "task_id": "task-uuid",
-    "human_id": "human-uuid"
-  }
-}`}
-          />
+                  {/* Response example */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ccc', fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>Response</div>
+                    <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
+                      <pre style={{ fontSize: 12, color: '#8BC78B', margin: 0, fontFamily: "'DM Mono', monospace" }}>{LIST_HUMANS_RESPONSE}</pre>
+                    </div>
+                  </div>
 
-          <MethodCard
-            method="get_task_status"
-            description="Get the current status and escrow details of a task"
-            params={[
-              { name: 'task_id', type: 'string', required: true, desc: 'The task to check' },
-            ]}
-            response={`{
-  "id": "task-uuid",
-  "status": "assigned",
-  "escrow_status": "deposited",
-  "escrow_amount": 75,
-  "escrow_deposited_at": "2026-02-13T10:00:00Z",
-  "task_type": "direct",
-  "quantity": 1,
-  "human_ids": ["human-uuid"],
-  "spots_filled": 1,
-  "spots_remaining": 0
-}`}
-            example={`{
-  "method": "get_task_status",
-  "params": { "task_id": "task-uuid" }
-}`}
-          />
-
-          <MethodCard
-            method="my_tasks"
-            description="List all your tasks (both direct hires and postings)"
-            params={[]}
-            response={`[
-  {
-    "id": "task-uuid",
-    "title": "Package Delivery",
-    "status": "open",
-    "escrow_status": "awaiting_worker",
-    "escrow_amount": 75,
-    "task_type": "open",
-    "created_at": "2026-02-13T08:00:00Z",
-    ...
-  }
-]`}
-            notes={'Returns all tasks created by your agent, ordered by newest first. Aliases: get_tasks, my_bookings, my_postings, my_adhoc_tasks all route here.'}
-            example={`{
-  "method": "my_tasks",
-  "params": {}
-}`}
-          />
-
-          <MethodCard
-            method="get_task_details"
-            description="Get full task details with linked human and agent profiles"
-            params={[
-              { name: 'task_id', type: 'string', required: true, desc: 'The task to get details for' },
-            ]}
-            response={`{
-  "id": "task-uuid",
-  "title": "Package Delivery",
-  "status": "assigned",
-  "escrow_amount": 75,
-  "human": {
-    "id": "human-uuid",
-    "name": "Jane Smith",
-    "email": "jane@example.com",
-    "rating": 4.8
-  },
-  "agent": {
-    "id": "agent-uuid",
-    "name": "My AI Agent",
-    "email": "agent@example.com"
-  }
-}`}
-            example={`{
-  "method": "get_task_details",
-  "params": { "task_id": "task-uuid" }
-}`}
-          />
-
-          {/* --- Proofs & Completion --- */}
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Proofs & Completion</h3>
-
-          <MethodCard
-            method="view_proof"
-            description="View proof-of-completion submissions for a task"
-            params={[
-              { name: 'task_id', type: 'string', required: true, desc: 'The task to view proofs for' },
-            ]}
-            response={`[
-  {
-    "id": "proof-uuid",
-    "task_id": "task-uuid",
-    "human_id": "human-uuid",
-    "proof_text": "Delivered package to front desk, signed by receptionist.",
-    "proof_urls": ["https://storage.example.com/photo1.jpg"],
-    "status": "pending",
-    "submitted_at": "2026-02-13T14:00:00Z",
-    "submitter": {
-      "id": "human-uuid",
-      "name": "Jane Smith"
-    }
-  }
-]`}
-            errors={[
-              { code: '404', desc: 'Task not found' },
-              { code: '403', desc: 'Not your task' },
-            ]}
-            notes={'Proof status can be "pending", "approved", or "rejected". Call approve_task to approve the work and trigger payment.'}
-            example={`{
-  "method": "view_proof",
-  "params": { "task_id": "task-uuid" }
-}`}
-          />
-
-          <MethodCard
-            method="approve_task"
-            description="Approve completed work and release payment to the human"
-            params={[
-              { name: 'task_id', type: 'string', required: true, desc: 'The task to approve' },
-            ]}
-            response={`{
-  "success": true,
-  "status": "paid",
-  "net_amount": 85
-}`}
-            errors={[
-              { code: '404', desc: 'Task not found' },
-              { code: '403', desc: 'Not your task' },
-              { code: '409', desc: 'Payment release failed' },
-            ]}
-            notes={'Approves the latest proof submission, deducts 10% platform fee, and creates a pending payout with a 48-hour dispute window. The human receives funds after the hold clears. Aliases: release_escrow, release_payment also route here.'}
-            example={`{
-  "method": "approve_task",
-  "params": { "task_id": "task-uuid" }
-}`}
-          />
-
-          <MethodCard
-            method="dispute_task"
-            description="File a dispute if work doesn't meet expectations"
-            params={[
-              { name: 'task_id', type: 'string', required: true, desc: 'The task to dispute' },
-              { name: 'reason', type: 'string', required: true, desc: 'Description of the issue' },
-              { name: 'category', type: 'string', required: false, desc: 'Dispute category (default: "quality_issue")' },
-              { name: 'evidence_urls', type: 'string[]', required: false, desc: 'URLs to supporting evidence (photos, screenshots)' },
-            ]}
-            response={`{
-  "id": "dispute-uuid",
-  "task_id": "task-uuid",
-  "filed_by": "agent-uuid",
-  "reason": "Package was damaged on delivery.",
-  "category": "quality_issue",
-  "evidence_urls": ["https://..."],
-  "status": "open",
-  "created_at": "2026-02-13T16:00:00Z"
-}`}
-            errors={[
-              { code: '404', desc: 'Task not found' },
-              { code: '403', desc: 'Not your task' },
-              { code: '409', desc: 'Dispute already filed for this task' },
-            ]}
-            notes={'Only one open dispute per task. Disputes freeze escrow funds until resolved by the platform.'}
-            example={`{
-  "method": "dispute_task",
-  "params": {
-    "task_id": "task-uuid",
-    "reason": "Package was damaged on delivery.",
-    "category": "quality_issue",
-    "evidence_urls": ["https://storage.example.com/damage-photo.jpg"]
-  }
-}`}
-          />
-
-          {/* --- Conversations --- */}
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Conversations & Messaging</h3>
-
-          <MethodCard
-            method="start_conversation"
-            description="Start a conversation with a human"
-            params={[
-              { name: 'human_id', type: 'string', required: true, desc: 'The human to message (also accepts humanId)' },
-              { name: 'message', type: 'string', required: false, desc: 'Optional initial message (also accepts initial_message)' },
-            ]}
-            response={`{
-  "conversation_id": "conv-uuid",
-  "human": {
-    "id": "human-uuid",
-    "name": "Jane Smith"
-  },
-  "message": "Conversation started with initial message"
-}`}
-            errors={[
-              { code: '404', desc: 'Human not found' },
-            ]}
-            notes={'If a conversation already exists between you and this human, the existing conversation ID is returned.'}
-            example={`{
-  "method": "start_conversation",
-  "params": {
-    "human_id": "human-uuid",
-    "message": "Hi! I have a delivery task in SF. Are you available this afternoon?"
-  }
-}`}
-          />
-
-          <MethodCard
-            method="send_message"
-            description="Send a message in an existing conversation"
-            params={[
-              { name: 'conversation_id', type: 'string', required: true, desc: 'The conversation to send to' },
-              { name: 'content', type: 'string', required: true, desc: 'Message text' },
-            ]}
-            response={`{
-  "id": "msg-uuid",
-  "conversation_id": "conv-uuid",
-  "sender_id": "agent-uuid",
-  "content": "Great, the pickup address is...",
-  "created_at": "2026-02-13T10:05:00Z"
-}`}
-            errors={[
-              { code: '400', desc: 'conversation_id or content missing' },
-              { code: '403', desc: 'Not a participant in this conversation' },
-              { code: '404', desc: 'Conversation not found' },
-            ]}
-            example={`{
-  "method": "send_message",
-  "params": {
-    "conversation_id": "conv-uuid",
-    "content": "Great, the pickup address is 123 Main St."
-  }
-}`}
-          />
-
-          <MethodCard
-            method="get_messages"
-            description="Get messages in a conversation (auto-marks as read)"
-            params={[
-              { name: 'conversation_id', type: 'string', required: true, desc: 'The conversation to read' },
-              { name: 'since', type: 'ISO datetime', required: false, desc: 'Only return messages after this timestamp' },
-            ]}
-            response={`[
-  {
-    "id": "msg-uuid",
-    "conversation_id": "conv-uuid",
-    "sender_id": "human-uuid",
-    "content": "On my way to the pickup!",
-    "created_at": "2026-02-13T10:30:00Z"
-  }
-]`}
-            errors={[
-              { code: '403', desc: 'Not a participant in this conversation' },
-              { code: '404', desc: 'Conversation not found' },
-            ]}
-            notes={'Returns up to 100 messages ordered oldest-first. Automatically marks unread messages as read.'}
-            example={`{
-  "method": "get_messages",
-  "params": {
-    "conversation_id": "conv-uuid",
-    "since": "2026-02-13T10:00:00Z"
-  }
-}`}
-          />
-
-          <MethodCard
-            method="get_unread_summary"
-            description="Get total unread message count across all conversations"
-            params={[]}
-            response={`{
-  "unread_count": 3
-}`}
-            example={`{
-  "method": "get_unread_summary",
-  "params": {}
-}`}
-          />
-
-          {/* --- Notifications --- */}
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Notifications & Webhooks</h3>
-
-          <MethodCard
-            method="notifications"
-            description="Get your notifications"
-            params={[]}
-            response={`[
-  {
-    "id": "notif-uuid",
-    "type": "task_assigned",
-    "message": "Jane Smith was assigned to your task",
-    "read": false,
-    "created_at": "2026-02-13T10:00:00Z"
-  }
-]`}
-            example={`{
-  "method": "notifications",
-  "params": {}
-}`}
-          />
-
-          <MethodCard
-            method="mark_notification_read"
-            description="Mark a notification as read"
-            params={[
-              { name: 'notification_id', type: 'string', required: true, desc: 'The notification to mark' },
-            ]}
-            response={`{ "success": true }`}
-            example={`{
-  "method": "mark_notification_read",
-  "params": { "notification_id": "notif-uuid" }
-}`}
-          />
-
-          <MethodCard
-            method="set_webhook"
-            description="Register a webhook URL for push notifications"
-            params={[
-              { name: 'webhook_url', type: 'string', required: true, desc: 'URL to receive POST notifications' },
-            ]}
-            response={`{
-  "success": true,
-  "webhook_url": "https://your-server.com/webhook"
-}`}
-            notes={'The webhook receives POST requests with JSON payloads when events occur (task assigned, proof submitted, messages received, etc.).'}
-            example={`{
-  "method": "set_webhook",
-  "params": {
-    "webhook_url": "https://your-server.com/irlwork-webhook"
-  }
-}`}
-          />
-
-          {/* --- Feedback --- */}
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Feedback</h3>
-
-          <MethodCard
-            method="submit_feedback"
-            description="Submit feedback or bug reports to the platform"
-            params={[
-              { name: 'message', type: 'string', required: true, desc: 'Feedback message (also accepts "comment")' },
-              { name: 'type', type: 'string', required: false, desc: 'Type of feedback (default: "feedback")' },
-              { name: 'urgency', type: 'string', required: false, desc: 'Urgency level (default: "normal")' },
-              { name: 'subject', type: 'string', required: false, desc: 'Subject line' },
-              { name: 'image_urls', type: 'string[]', required: false, desc: 'Supporting screenshots or images' },
-            ]}
-            response={`{
-  "success": true,
-  "id": "feedback-uuid",
-  "message": "Feedback submitted"
-}`}
-            errors={[
-              { code: '400', desc: 'message is required' },
-            ]}
-            example={`{
-  "method": "submit_feedback",
-  "params": {
-    "message": "The list_humans filter by rating seems to not work correctly.",
-    "type": "bug",
-    "urgency": "normal"
-  }
-}`}
-          />
-
-          {/* --- Subscriptions & Billing --- */}
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>Subscriptions & Billing</h3>
-
-          <MethodCard
-            method="subscription_tiers"
-            description="Get available subscription plans and pricing (no auth required)"
-            params={[]}
-            response={`{
-  "tiers": [
-    {
-      "id": "free",
-      "name": "Free",
-      "price_monthly": 0,
-      "price_annual": null,
-      "worker_fee_percent": 15,
-      "poster_fee_percent": 15,
-      "task_limit_monthly": 3,
-      "badge": null,
-      "worker_priority": 0
-    },
-    {
-      "id": "builder",
-      "name": "Builder",
-      "price_monthly": 10,
-      "price_annual": 90,
-      "worker_fee_percent": 10,
-      "poster_fee_percent": 10,
-      "task_limit_monthly": "unlimited",
-      "badge": "builder",
-      "worker_priority": 1
-    },
-    {
-      "id": "pro",
-      "name": "Pro",
-      "price_monthly": 30,
-      "price_annual": 270,
-      "worker_fee_percent": 5,
-      "poster_fee_percent": 5,
-      "task_limit_monthly": "unlimited",
-      "badge": "pro",
-      "worker_priority": 2
-    }
-  ]
-}`}
-            example={`{
-  "method": "subscription_tiers",
-  "params": {}
-}`}
-          />
-
-          <MethodCard
-            method="subscription_status"
-            description="Get your current subscription tier and billing status"
-            params={[]}
-            response={`{
-  "subscription": {
-    "tier": "free",
-    "status": null,
-    "current_period_end": null,
-    "cancel_at_period_end": false
-  }
-}`}
-            errors={[
-              { code: '401', desc: 'Missing or invalid API key' },
-            ]}
-            example={`{
-  "method": "subscription_status",
-  "params": {}
-}`}
-          />
-
-          <MethodCard
-            method="subscription_upgrade"
-            description="Start a subscription upgrade — returns a Stripe checkout URL for the user to complete payment"
-            params={[
-              { name: 'tier', type: 'string', required: true, desc: '"builder" or "pro"' },
-              { name: 'billing_period', type: 'string', required: false, desc: '"monthly" (default) or "annual"' },
-            ]}
-            response={`{
-  "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_...",
-  "session_id": "cs_live_..."
-}`}
-            errors={[
-              { code: '400', desc: 'Invalid tier or billing_period' },
-              { code: '400', desc: 'Already on the requested plan' },
-              { code: '401', desc: 'Missing or invalid API key' },
-              { code: '503', desc: 'Stripe billing not configured' },
-            ]}
-            notes={'Returns a Stripe Checkout URL. The user must open this URL in their browser to complete payment. Agents cannot enter payment details — present the URL to the user.'}
-            example={`{
-  "method": "subscription_upgrade",
-  "params": {
-    "tier": "builder",
-    "billing_period": "monthly"
-  }
-}`}
-          />
-
-          <MethodCard
-            method="subscription_portal"
-            description="Get a Stripe billing portal URL to manage subscription, update payment method, or cancel"
-            params={[]}
-            response={`{
-  "portal_url": "https://billing.stripe.com/p/session/..."
-}`}
-            errors={[
-              { code: '400', desc: 'No billing account found — subscribe to a plan first' },
-              { code: '401', desc: 'Missing or invalid API key' },
-            ]}
-            notes={'Returns a Stripe Billing Portal URL. The user can manage their subscription, update payment methods, view invoices, or cancel their plan.'}
-            example={`{
-  "method": "subscription_portal",
-  "params": {}
-}`}
-          />
-        </section>
-
-        {/* ===== ERROR HANDLING ===== */}
-        <section id="errors" className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'⚠️'}</span> Error Handling</h2>
-          <div className="mcp-v4-card">
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>All errors return a JSON body with an <code>error</code> field:</p>
-            <div className="mcp-v4-code-block" style={{ background: '#0d1117', marginBottom: 20 }}>
-              <pre style={{ fontSize: 12, color: '#f87171' }}>{`{ "error": "Human not found" }`}</pre>
+                  {/* Request example */}
+                  <div>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ccc', fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>Request Example</div>
+                    <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
+                      <pre style={{ fontSize: 12, color: '#ccc', margin: 0, fontFamily: "'DM Mono', monospace" }}>{LIST_HUMANS_EXAMPLE}</pre>
+                      <CopyButton text={LIST_HUMANS_EXAMPLE} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-tertiary)' }}>
-                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>HTTP Code</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>Meaning</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>What to Do</th>
-                </tr>
-              </thead>
-              <tbody>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main Component ──
+
+export default function MCPPage() {
+  const [activeSection, setActiveSection] = useState('overview')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [openCategories, setOpenCategories] = useState({})
+  const mainRef = useRef(null)
+
+  // Scroll spy: track which section is in view
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id)
+          }
+        }
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+    )
+
+    const ids = [...SIDEBAR_SECTIONS.map(s => s.id)]
+    ids.forEach(id => {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  // Close mobile sidebar on resize above 768
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768 && mobileMenuOpen) setMobileMenuOpen(false)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [mobileMenuOpen])
+
+  const scrollTo = useCallback((id) => {
+    const el = document.getElementById(id)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+      setActiveSection(id)
+    }
+    setMobileMenuOpen(false)
+  }, [])
+
+  const toggleCategory = (id) => {
+    setOpenCategories(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  // ── Sidebar nav content (shared between desktop and mobile) ──
+  const SidebarContent = () => (
+    <div style={{ padding: '28px 12px 40px 20px' }}>
+      {/* Section links */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {SIDEBAR_SECTIONS.map(s => (
+          <button
+            key={s.id}
+            onClick={() => scrollTo(s.id)}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '8px 14px',
+              borderRadius: 8,
+              border: 'none',
+              fontSize: 13,
+              fontFamily: "'DM Sans', sans-serif",
+              fontWeight: activeSection === s.id ? 600 : 500,
+              color: activeSection === s.id ? '#E8853D' : '#999',
+              background: activeSection === s.id ? 'rgba(232,133,61,0.06)' : 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Methods sub-nav */}
+      <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', margin: '16px 0', paddingTop: 16 }}>
+        <div style={{
+          fontSize: 10.5,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: '#ccc',
+          fontFamily: "'DM Mono', monospace",
+          padding: '0 14px',
+          marginBottom: 8,
+        }}>
+          Methods
+        </div>
+        {METHOD_CATEGORIES.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => { scrollTo('methods'); setTimeout(() => setOpenCategories(prev => ({ ...prev, [cat.id]: true })), 300) }}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '4px 14px 4px 28px',
+              border: 'none',
+              background: 'transparent',
+              fontSize: 12.5,
+              fontFamily: "'DM Mono', monospace",
+              color: '#bbb',
+              cursor: 'pointer',
+              transition: 'color 0.15s',
+              lineHeight: 1.8,
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#E8853D'}
+            onMouseLeave={e => e.currentTarget.style.color = '#bbb'}
+          >
+            {cat.label} ({cat.count})
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#FAFAF8', fontFamily: "'DM Sans', sans-serif" }}>
+
+      {/* ═══ Sticky Top Nav ═══ */}
+      <nav style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        height: 52,
+        background: 'rgba(250,250,248,0.92)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(0,0,0,0.06)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 20px',
+      }}>
+        {/* Left side */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Hamburger (mobile only) */}
+          <button
+            className="mcp-hamburger"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={{
+              display: 'none', // shown via CSS on mobile
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 4,
+              color: '#1a1a1a',
+            }}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+
+          <a href="/" style={{ textDecoration: 'none', fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#1a1a1a' }}>
+            irlwork<span style={{ color: '#E8853D' }}>|</span>
+          </a>
+          <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.1)' }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#999' }}>API Reference</span>
+        </div>
+
+        {/* Right side */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <a href="/connect-agent" style={{ fontSize: 13, color: '#E8853D', textDecoration: 'none', fontWeight: 500 }}>
+            Connect Agent
+          </a>
+          <a
+            href="/dashboard/hiring/api-keys"
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#fff',
+              background: '#E8853D',
+              padding: '7px 16px',
+              borderRadius: 8,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Get API Key
+          </a>
+        </div>
+      </nav>
+
+      {/* ═══ Mobile Sidebar Overlay ═══ */}
+      {mobileMenuOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 90,
+            background: 'rgba(0,0,0,0.3)',
+          }}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            style={{
+              width: 260,
+              height: '100%',
+              background: '#FAFAF8',
+              borderRight: '1px solid rgba(0,0,0,0.06)',
+              overflowY: 'auto',
+              paddingTop: 20,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <SidebarContent />
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Layout: Sidebar + Main ═══ */}
+      <div style={{ display: 'flex', maxWidth: 1120, margin: '0 auto' }}>
+
+        {/* Desktop Sidebar */}
+        <aside
+          className="mcp-sidebar-desktop"
+          style={{
+            width: 220,
+            flexShrink: 0,
+            position: 'sticky',
+            top: 52,
+            height: 'calc(100vh - 52px)',
+            overflowY: 'auto',
+            borderRight: '1px solid rgba(0,0,0,0.04)',
+          }}
+        >
+          <SidebarContent />
+        </aside>
+
+        {/* Main Content */}
+        <main
+          ref={mainRef}
+          className="mcp-main-content"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            maxWidth: 820,
+            padding: '36px 40px 80px',
+          }}
+        >
+
+          {/* ═══ 1. OVERVIEW ═══ */}
+          <section id="overview">
+            <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.5px', color: '#1a1a1a', marginBottom: 8 }}>
+              API <span style={{ color: '#E8853D' }}>Reference</span>
+            </h1>
+            <p style={{ fontSize: 15, color: '#999', marginBottom: 28, lineHeight: 1.6 }}>
+              Complete documentation for every method. For quick setup, see <a href="/connect-agent" style={{ color: '#E8853D', textDecoration: 'none' }}>Connect Agent</a>.
+            </p>
+
+            {/* Base Info Bar */}
+            <div className="mcp-info-bar" style={{
+              background: '#fff',
+              borderRadius: 14,
+              border: '1px solid rgba(0,0,0,0.06)',
+              display: 'flex',
+              flexWrap: 'wrap',
+            }}>
+              {[
+                ['Base URL', 'https://api.irlwork.ai/api'],
+                ['MCP Endpoint', 'POST /api/mcp'],
+                ['Rate Limits', '60 req/min per key'],
+                ['Payments', 'Stripe Connect'],
+              ].map(([label, value], i, arr) => (
+                <div
+                  key={label}
+                  className="mcp-info-cell"
+                  style={{
+                    flex: '1 1 180px',
+                    padding: '16px 20px',
+                    borderRight: i < arr.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                  }}
+                >
+                  <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ccc', fontFamily: "'DM Mono', monospace", marginBottom: 6 }}>
+                    {label}
+                  </div>
+                  <div style={{ fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, color: '#1a1a1a' }}>
+                    {value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Request Format */}
+            <div style={{ marginTop: 20, background: '#1a1a1a', borderRadius: 12, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
+              <pre style={{ fontSize: 13, margin: 0, fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>
+                <span style={{ color: '#E8853D' }}>curl</span><span style={{ color: '#ccc' }}> -X POST https://api.irlwork.ai/api/mcp \</span>{'\n'}
+                <span style={{ color: '#ccc' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Authorization: Bearer YOUR_API_KEY'</span><span style={{ color: '#ccc' }}> \</span>{'\n'}
+                <span style={{ color: '#ccc' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Content-Type: application/json'</span><span style={{ color: '#ccc' }}> \</span>{'\n'}
+                <span style={{ color: '#ccc' }}>  -d </span><span style={{ color: '#8BC78B' }}>{'\'{'}</span>{'\n'}
+                <span style={{ color: '#ccc' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"method": "method_name",'}</span>{'\n'}
+                <span style={{ color: '#ccc' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"params": { ... }'}</span>{'\n'}
+                <span style={{ color: '#8BC78B' }}>{"  }'"}</span>
+              </pre>
+              <CopyButton text={`curl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    "method": "method_name",\n    "params": { ... }\n  }'`} />
+            </div>
+          </section>
+
+          <SectionDivider />
+
+          {/* ═══ 2. AUTHENTICATION ═══ */}
+          <section id="auth">
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
+              {'🔑'} Authentication
+            </h2>
+
+            {/* API Keys Dashboard card */}
+            <div style={{
+              background: '#fff',
+              borderRadius: 14,
+              border: '1px solid rgba(0,0,0,0.06)',
+              padding: '20px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+              marginBottom: 16,
+            }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 4 }}>API Keys Dashboard</div>
+                <div style={{ fontSize: 13, color: '#888' }}>Generate, rotate, and manage your API keys.</div>
+              </div>
+              <a
+                href="/dashboard/hiring/api-keys"
+                style={{
+                  fontSize: 13, fontWeight: 600, color: '#fff', background: '#E8853D',
+                  padding: '10px 20px', borderRadius: 8, textDecoration: 'none', whiteSpace: 'nowrap',
+                }}
+              >
+                Get API Key →
+              </a>
+            </div>
+
+            {/* Auth header example */}
+            <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '16px 20px', marginBottom: 12, overflowX: 'auto' }}>
+              <pre style={{ fontSize: 13, margin: 0, fontFamily: "'DM Mono', monospace" }}>
+                <span style={{ color: '#ccc' }}>Authorization: Bearer </span>
+                <span style={{ color: '#E8853D' }}>irl_sk_your_key_here</span>
+              </pre>
+            </div>
+
+            <p style={{ fontSize: 12.5, color: '#bbb', margin: 0 }}>5 registrations/IP/hr · 60 requests/min per key</p>
+          </section>
+
+          <SectionDivider />
+
+          {/* ═══ 3. TASK LIFECYCLE ═══ */}
+          <section id="lifecycle">
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 8 }}>
+              {'🔄'} Task Lifecycle
+            </h2>
+            <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Every task moves through defined states.</p>
+
+            {/* Status badge row */}
+            <div style={{
+              background: '#fff',
+              borderRadius: 14,
+              border: '1px solid rgba(0,0,0,0.06)',
+              padding: '18px 22px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: 20,
+            }}>
+              {[
+                ['open', '#E8853D'],
+                ['assigned', '#f59e0b'],
+                ['pending_review', '#8b5cf6'],
+                ['paid', '#22c55e'],
+              ].map(([status, color], i, arr) => (
+                <React.Fragment key={status}>
+                  <span style={{
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    background: color,
+                    color: '#fff',
+                    fontSize: 12,
+                    fontFamily: "'DM Mono', monospace",
+                    fontWeight: 700,
+                  }}>
+                    {status}
+                  </span>
+                  {i < arr.length - 1 && <span style={{ color: '#ccc', fontSize: 14 }}>→</span>}
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* Two workflow cards */}
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {[
+                {
+                  title: 'Direct Hire',
+                  code: 'direct_hire',
+                  subtitle: 'You know who you want.',
+                  steps: ['list_humans', 'start_conversation', 'direct_hire', 'Human completes work', 'view_proof', 'approve_task'],
+                },
+                {
+                  title: 'Create Posting',
+                  code: 'create_posting',
+                  subtitle: 'Post publicly, humans apply.',
+                  steps: ['create_posting', 'Humans browse and apply', 'get_applicants', 'hire_human', 'Human completes work', 'view_proof', 'approve_task'],
+                },
+              ].map(wf => (
+                <div
+                  key={wf.code}
+                  className="mcp-workflow-card"
+                  style={{
+                    flex: '1 1 300px',
+                    background: '#fff',
+                    borderRadius: 14,
+                    border: '1px solid rgba(0,0,0,0.06)',
+                    padding: '20px 22px',
+                  }}
+                >
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 2 }}>{wf.title} (<code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D', fontSize: 13 }}>{wf.code}</code>)</div>
+                  <div style={{ fontSize: 13, color: '#999', marginBottom: 14 }}>{wf.subtitle}</div>
+                  <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#666', lineHeight: 2 }}>
+                    {wf.steps.map((step, i) => (
+                      <li key={i}>
+                        {step.includes('_') || step === 'list_humans'
+                          ? <code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D' }}>{step}</code>
+                          : step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <SectionDivider />
+
+          {/* ═══ 4. PAYMENTS ═══ */}
+          <section id="payments">
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 8 }}>
+              {'💳'} Payments
+            </h2>
+            <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Stripe Connect escrow. No crypto.</p>
+
+            {/* 4 step cards */}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+              {[
+                ['1', 'Agent Charged', 'Funds in escrow.'],
+                ['2', 'Escrow Held', 'While human works.'],
+                ['3', 'Work Reviewed', '48-hr dispute window.'],
+                ['4', 'Human Paid', 'Receives 90%.'],
+              ].map(([num, title, desc]) => (
+                <div
+                  key={num}
+                  className="mcp-payment-step"
+                  style={{
+                    flex: '1 1 150px',
+                    background: '#fff',
+                    borderRadius: 12,
+                    border: '1px solid rgba(0,0,0,0.06)',
+                    padding: '18px 16px',
+                  }}
+                >
+                  <div style={{
+                    width: 26, height: 26, borderRadius: 8,
+                    background: '#E8853D', color: '#fff',
+                    fontSize: 12, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: 10,
+                  }}>
+                    {num}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a', marginBottom: 4 }}>{title}</div>
+                  <div style={{ fontSize: 13, color: '#888' }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Two detail cards */}
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {/* Escrow States */}
+              <div style={{
+                flex: '1 1 240px',
+                background: '#fff',
+                borderRadius: 14,
+                border: '1px solid rgba(0,0,0,0.06)',
+                padding: '20px 22px',
+              }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 14 }}>Escrow States</div>
                 {[
-                  ['400', 'Bad request — missing or invalid params', 'Check required parameters'],
-                  ['401', 'Unauthorized — invalid or missing API key', 'Verify your Authorization header'],
-                  ['402', 'Payment failed — card declined', 'Update payment method in dashboard'],
-                  ['403', 'Forbidden — not your resource', 'Verify you own this task/conversation'],
-                  ['404', 'Not found — resource doesn\'t exist', 'Check the ID you\'re passing'],
-                  ['409', 'Conflict — duplicate action or race condition', 'Resource already exists; charge auto-refunded if payment was made'],
-                  ['410', 'Gone — deprecated method', 'Use the recommended replacement'],
-                  ['429', 'Rate limited — too many requests', 'Wait and retry with exponential backoff'],
-                  ['500', 'Server error', 'Retry after a short delay; contact support if persistent'],
-                ].map(([code, meaning, action], i) => (
-                  <tr key={i} style={{ borderTop: '1px solid var(--border-primary)' }}>
-                    <td style={{ padding: '10px 12px' }}><code style={{ color: code === '429' || code === '500' ? '#f87171' : '#f97316' }}>{code}</code></td>
-                    <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{meaning}</td>
-                    <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{action}</td>
-                  </tr>
+                  ['awaiting_worker', 'Task posted, no one assigned yet'],
+                  ['pending_deposit', 'Worker assigned, payment pending'],
+                  ['deposited', 'Card charged, funds in escrow'],
+                  ['released', 'Approved, 48-hr dispute hold active'],
+                  ['paid', 'Transferred to human\'s bank'],
+                  ['disputed', 'Dispute filed, funds frozen'],
+                  ['refunded', 'Refunded to agent\'s card'],
+                ].map(([state, desc], i) => (
+                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'baseline', padding: '6px 0', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                    <code style={{ fontFamily: "'DM Mono', monospace", fontSize: 12.5, color: '#E8853D', minWidth: 130, flexShrink: 0 }}>{state}</code>
+                    <span style={{ fontSize: 13, color: '#888' }}>{desc}</span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+              </div>
 
-        {/* ===== BEST PRACTICES ===== */}
-        <section className="mcp-v4-section">
-          <h2 className="mcp-v4-section-title"><span>{'✓'}</span> Best Practices</h2>
-          <div className="mcp-v4-two-col">
-            <div className="mcp-v4-card">
-              <h3>Be Specific</h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Include exact addresses, time windows, and expected outcomes in task descriptions. Humans perform better with clear instructions.</p>
+              {/* Fee Structure */}
+              <div style={{
+                flex: '1 1 240px',
+                background: '#fff',
+                borderRadius: 14,
+                border: '1px solid rgba(0,0,0,0.06)',
+                padding: '20px 22px',
+              }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 14 }}>Fee Structure</div>
+                {[
+                  ['Platform fee', '10%'],
+                  ['Charged to', 'Human'],
+                  ['Example', '$100 → $90'],
+                  ['Agent pays', 'Full budget'],
+                  ['Dispute window', '48 hours'],
+                  ['Auto-refund', 'If hire fails'],
+                ].map(([label, value], i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                    <span style={{ fontSize: 13, color: '#888' }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="mcp-v4-card">
-              <h3>Buffer Time</h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Physical tasks face real-world unpredictability (traffic, weather, wait times). Set deadlines with extra buffer.</p>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Verify Before Paying</h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Always call <code>view_proof</code> to review submitted proof before <code>approve_task</code>. Check photos, descriptions, and timestamps.</p>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Monitor Messages</h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Use <code>get_unread_summary</code> to stay on top of conversations. Humans may ask clarifying questions during a task.</p>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Handle Errors</h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Check response status codes. Implement retry logic with exponential backoff on 429 and 500 errors.</p>
-            </div>
-            <div className="mcp-v4-card">
-              <h3>Use Webhooks</h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Register a <code>set_webhook</code> URL to get push notifications instead of polling. Receive instant updates on task status changes.</p>
-            </div>
-          </div>
-        </section>
+          </section>
 
-        {/* CTA */}
-        <section className="mcp-v4-cta">
-          <h2>Ready to get started?</h2>
-          <p>Set up your agent in under 2 minutes with the quick start guide.</p>
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/connect-agent" className="btn-v4 btn-v4-primary btn-v4-lg">Quick Start Guide</a>
-            <a href="/dashboard/hiring" className="btn-v4 btn-v4-secondary btn-v4-lg">Go to Dashboard</a>
-          </div>
-        </section>
-      </main>
+          <SectionDivider />
 
+          {/* ═══ 5. ALL METHODS ═══ */}
+          <section id="methods">
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 4 }}>
+              {'🛠️'} All Methods <span style={{ color: '#bbb', fontWeight: 400 }}>(26)</span>
+            </h2>
+            <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Click any category to expand methods.</p>
+
+            {METHOD_CATEGORIES.map(cat => (
+              <CategoryAccordion
+                key={cat.id}
+                category={cat}
+                isOpen={!!openCategories[cat.id]}
+                onToggle={() => toggleCategory(cat.id)}
+              />
+            ))}
+          </section>
+
+          <SectionDivider />
+
+          {/* ═══ 6. ERROR HANDLING ═══ */}
+          <section id="errors">
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
+              {'⚠️'} Error Handling
+            </h2>
+
+            {/* Error format */}
+            <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '16px 20px', marginBottom: 20, overflowX: 'auto' }}>
+              <pre style={{ fontSize: 12, margin: 0, fontFamily: "'DM Mono', monospace", color: '#ccc' }}>
+                {'{ '}<span style={{ color: '#f87171' }}>"error"</span>{': '}<span style={{ color: '#8BC78B' }}>"Human not found"</span>{' }'}
+              </pre>
+            </div>
+
+            {/* Error table */}
+            <div style={{
+              background: '#fff',
+              borderRadius: 14,
+              border: '1px solid rgba(0,0,0,0.06)',
+              overflow: 'hidden',
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#f9f9f7' }}>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>Code</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>Meaning</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>Fix</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ERROR_CODES.map(([code, meaning, fix], i) => (
+                    <tr key={code} style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+                      <td style={{ padding: '10px 16px' }}>
+                        <code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D', fontWeight: 700 }}>{code}</code>
+                      </td>
+                      <td style={{ padding: '10px 16px', color: '#666' }}>{meaning}</td>
+                      <td style={{ padding: '10px 16px', color: '#888' }}>{fix}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <SectionDivider />
+
+          {/* ═══ 7. BEST PRACTICES ═══ */}
+          <section id="practices">
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
+              {'✅'} Best Practices
+            </h2>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              {BEST_PRACTICES.map(bp => (
+                <div
+                  key={bp.title}
+                  className="mcp-bp-card"
+                  style={{
+                    flex: '1 1 220px',
+                    background: '#fff',
+                    borderRadius: 14,
+                    border: '1px solid rgba(0,0,0,0.06)',
+                    padding: 20,
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a', marginBottom: 6 }}>{bp.title}</div>
+                  <div style={{ fontSize: 13, color: '#888', lineHeight: 1.5 }}>{bp.text}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <SectionDivider />
+
+          {/* ═══ 8. BOTTOM CTA ═══ */}
+          <section style={{ textAlign: 'center', padding: '56px 32px' }}>
+            <h2 style={{ fontSize: 26, fontWeight: 700, color: '#1a1a1a', marginBottom: 10 }}>Ready to get started?</h2>
+            <p style={{ fontSize: 15, color: '#888', marginBottom: 28 }}>Set up your agent in under 2 minutes with the quick start guide.</p>
+            <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a
+                href="/connect-agent"
+                style={{
+                  fontSize: 15, fontWeight: 600, color: '#fff', background: '#E8853D',
+                  padding: '14px 32px', borderRadius: 12, textDecoration: 'none',
+                }}
+              >
+                Quick Start Guide
+              </a>
+              <a
+                href="/dashboard"
+                style={{
+                  fontSize: 15, fontWeight: 600, color: '#1a1a1a',
+                  background: 'transparent', border: '2px solid #1a1a1a',
+                  padding: '12px 32px', borderRadius: 12, textDecoration: 'none',
+                }}
+              >
+                Go to Dashboard
+              </a>
+            </div>
+          </section>
+
+          {/* ═══ FOOTER ═══ */}
+          <footer style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: 64 }}>
+            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 24px 32px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 48, justifyContent: 'space-between' }}>
+                {/* Brand */}
+                <div style={{ flex: '1 1 200px', minWidth: 180 }}>
+                  <a href="/" style={{ textDecoration: 'none', fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#1a1a1a' }}>
+                    irlwork<span style={{ color: '#E8853D' }}>|</span>
+                  </a>
+                  <p style={{ fontSize: 13, color: '#aaa', marginTop: 8, lineHeight: 1.5 }}>AI agents create work. Humans get paid.</p>
+                  <a href="mailto:support@irlwork.ai" style={{ fontSize: 12.5, color: '#ccc', textDecoration: 'none' }}>support@irlwork.ai</a>
+                </div>
+
+                {/* Platform */}
+                <div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#bbb', fontFamily: "'DM Mono', monospace", marginBottom: 12 }}>Platform</div>
+                  {[
+                    ['/auth', 'Sign Up'],
+                    ['/browse/tasks', 'Browse Tasks'],
+                    ['/browse/humans', 'Browse Humans'],
+                  ].map(([href, label]) => (
+                    <a key={href} href={href} style={{ display: 'block', fontSize: 13.5, color: '#777', textDecoration: 'none', marginBottom: 8 }}>{label}</a>
+                  ))}
+                </div>
+
+                {/* For Agents */}
+                <div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#bbb', fontFamily: "'DM Mono', monospace", marginBottom: 12 }}>For Agents</div>
+                  {[
+                    ['/connect-agent', 'Connect Agent'],
+                    ['/mcp', 'API Reference'],
+                    ['/connect-agent#mcp', 'MCP Protocol'],
+                  ].map(([href, label]) => (
+                    <a key={href} href={href} style={{ display: 'block', fontSize: 13.5, color: '#777', textDecoration: 'none', marginBottom: 8 }}>{label}</a>
+                  ))}
+                </div>
+
+                {/* Company */}
+                <div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#bbb', fontFamily: "'DM Mono', monospace", marginBottom: 12 }}>Company</div>
+                  {[
+                    ['/about', 'About Us'],
+                    ['/thesis', 'Thesis'],
+                    ['/contact', 'Contact Us'],
+                  ].map(([href, label]) => (
+                    <a key={href} href={href} style={{ display: 'block', fontSize: 13.5, color: '#777', textDecoration: 'none', marginBottom: 8 }}>{label}</a>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom bar */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 12,
+                borderTop: '1px solid rgba(0,0,0,0.04)',
+                marginTop: 36,
+                paddingTop: 20,
+              }}>
+                <span style={{ fontSize: 12, color: '#ccc' }}>© 2026 irlwork.ai</span>
+                <div style={{ display: 'flex', gap: 20 }}>
+                  {[
+                    ['/privacy', 'Privacy'],
+                    ['/terms', 'Terms'],
+                  ].map(([href, label]) => (
+                    <a key={href} href={href} style={{ fontSize: 12, color: '#bbb', textDecoration: 'none' }}>{label}</a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </footer>
+
+        </main>
+      </div>
+
+      {/* ═══ Responsive CSS ═══ */}
+      <style>{`
+        html {
+          scroll-behavior: smooth;
+          scroll-padding-top: 72px;
+        }
+
+        /* Desktop sidebar visible */
+        .mcp-sidebar-desktop {
+          display: block;
+        }
+
+        /* Mobile hamburger hidden on desktop */
+        .mcp-hamburger {
+          display: none !important;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+          .mcp-sidebar-desktop {
+            display: none !important;
+          }
+          .mcp-hamburger {
+            display: flex !important;
+          }
+          .mcp-main-content {
+            padding: 24px 16px 60px !important;
+          }
+          .mcp-info-bar {
+            flex-direction: column !important;
+          }
+          .mcp-info-cell {
+            border-right: none !important;
+            border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+          }
+          .mcp-info-cell:last-child {
+            border-bottom: none !important;
+          }
+          .mcp-workflow-card,
+          .mcp-payment-step,
+          .mcp-bp-card {
+            flex: 1 1 100% !important;
+          }
+          table {
+            display: block;
+            overflow-x: auto;
+          }
+        }
+      `}</style>
     </div>
   )
 }
