@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ClipboardList, Shield } from 'lucide-react';
 
@@ -49,25 +49,19 @@ export default function QuickApplyModal({
     }
   }, [isOpen]);
 
-  // Fee calculation — dynamically updates when counter offer changes
-  const feeBreakdown = useMemo(() => {
-    if (!task) return null;
-    const baseAmount = counterOffer ? parseFloat(counterOffer) : Number(task.budget) || 0;
-    if (isNaN(baseAmount) || baseAmount <= 0) return null;
+  if (!isOpen || !task) return null;
 
+  // Fee calculation
+  const baseAmount = counterOffer ? parseFloat(counterOffer) : Number(task.budget) || 0;
+  const feeBreakdown = (!isNaN(baseAmount) && baseAmount > 0) ? (() => {
     const feeRate = isPremium ? PREMIUM_FEE_PERCENT : PLATFORM_FEE_PERCENT;
     const fee = Math.round(baseAmount * feeRate) / 100;
     const payout = Math.round((baseAmount - fee) * 100) / 100;
-
-    // Calculate what Premium users would earn (for upsell)
     const premiumFee = Math.round(baseAmount * PREMIUM_FEE_PERCENT) / 100;
     const premiumPayout = Math.round((baseAmount - premiumFee) * 100) / 100;
     const savings = Math.round((premiumPayout - payout) * 100) / 100;
-
     return { baseAmount, feeRate, fee, payout, premiumPayout, savings };
-  }, [task, counterOffer, isPremium]);
-
-  if (!isOpen || !task) return null;
+  })() : null;
 
   const currencyLabel = task.payment_method === 'stripe' ? 'USD' : 'USDC';
   const canSubmit = whyFit.trim().length > 0 && availability.trim().length > 0;
