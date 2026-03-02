@@ -10523,6 +10523,58 @@ app.post('/api/wallet/generate-deposit-address', async (req, res) => {
   }
 });
 
+// ============ CIRCLE WALLET: Sync On-Chain Balance ============
+app.post('/api/wallet/sync-balance', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  if (!circleService) return res.status(503).json({ error: 'USDC wallet service not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  if (!user.circle_wallet_id) {
+    return res.status(400).json({ error: 'No USDC wallet found.' });
+  }
+
+  try {
+    const onChainBalance = await circleService.getWalletBalance(user.circle_wallet_id);
+    const dbBalance = parseFloat(user.usdc_available_balance || 0);
+    const escrowBalance = parseFloat(user.usdc_escrow_balance || 0);
+
+    // If on-chain is higher than DB available + escrow, there's an undetected deposit
+    const unaccounted = onChainBalance - (dbBalance + escrowBalance);
+
+    if (unaccounted > 0.001) {
+      // Credit the difference as a deposit via atomic RPC
+      const { error: balError } = await supabase.rpc('update_usdc_balance', {
+        p_user_id: user.id,
+        p_available_delta: unaccounted,
+        p_escrow_delta: 0,
+        p_ledger_type: 'deposit',
+        p_ledger_amount: unaccounted,
+        p_description: `Balance sync — ${unaccounted.toFixed(6)} USDC detected on-chain`,
+      });
+      if (balError) {
+        console.error('[Wallet Sync] Atomic balance update failed:', balError.message);
+        return res.status(500).json({ error: 'Failed to sync balance.' });
+      }
+      console.log(`[Wallet Sync] Credited ${unaccounted.toFixed(6)} USDC to user ${user.id}`);
+    }
+
+    const newAvailable = dbBalance + (unaccounted > 0.001 ? unaccounted : 0);
+    res.json({
+      circle_wallet_address: user.circle_wallet_address,
+      on_chain_balance: onChainBalance.toFixed(6),
+      usdc_available_balance: newAvailable.toFixed(6),
+      usdc_escrow_balance: escrowBalance.toFixed(6),
+      synced: unaccounted > 0.001,
+      credited: unaccounted > 0.001 ? unaccounted.toFixed(6) : '0',
+    });
+  } catch (error) {
+    console.error('[Wallet Sync] Error:', error.message);
+    res.status(500).json({ error: 'Failed to sync balance.' });
+  }
+});
+
 // ============ CIRCLE WEBHOOK: Deposit Detection ============
 app.post('/api/webhooks/circle', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
