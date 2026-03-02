@@ -55,8 +55,9 @@ async function pollTransactions() {
 
         if (tx.state === 'COMPLETE' || tx.state === 'CONFIRMED') {
           // Deposit confirmed — update if webhook missed it
-          console.log(`[PollTx] Deposit ${deposit.id} confirmed. Updating status.`);
-          await supabase
+          // Use .eq('status', 'pending') as an optimistic lock: if the webhook
+          // already set status to 'confirmed', this returns 0 rows and we skip.
+          const { data: updated } = await supabase
             .from('usdc_deposits')
             .update({
               status: 'confirmed',
@@ -64,32 +65,31 @@ async function pollTransactions() {
               confirmed_at: new Date().toISOString(),
             })
             .eq('id', deposit.id)
-            .eq('status', 'pending');
+            .eq('status', 'pending')
+            .select('id');
 
-          // Credit user balance if not already done (idempotent via deposit status check)
+          if (!updated || updated.length === 0) {
+            // Already processed by webhook or another poll run — skip balance credit
+            console.log(`[PollTx] Deposit ${deposit.id} already confirmed (webhook beat us). Skipping.`);
+            continue;
+          }
+
+          console.log(`[PollTx] Deposit ${deposit.id} confirmed. Crediting balance.`);
+
+          // Safe to credit — we won the optimistic lock. Use atomic RPC.
           const depositAmount = parseFloat(deposit.amount);
-          const { data: userData } = await supabase
-            .from('users')
-            .select('usdc_available_balance')
-            .eq('id', deposit.user_id)
-            .single();
-
-          if (userData) {
-            const newBalance = parseFloat(userData.usdc_available_balance || '0') + depositAmount;
-            await supabase
-              .from('users')
-              .update({ usdc_available_balance: newBalance })
-              .eq('id', deposit.user_id);
-
-            await supabase.from('usdc_ledger').insert({
-              user_id: deposit.user_id,
-              type: 'deposit',
-              amount: depositAmount,
-              balance_after: newBalance,
-              circle_transaction_id: deposit.circle_transaction_id,
-              tx_hash: tx.txHash || null,
-              description: `Deposit confirmed (via poll) — ${depositAmount.toFixed(2)} USDC`,
-            });
+          const { error: balError } = await supabase.rpc('update_usdc_balance', {
+            p_user_id: deposit.user_id,
+            p_available_delta: depositAmount,
+            p_escrow_delta: 0,
+            p_ledger_type: 'deposit',
+            p_ledger_amount: depositAmount,
+            p_circle_tx_id: deposit.circle_transaction_id,
+            p_tx_hash: tx.txHash || null,
+            p_description: `Deposit confirmed (via poll) — ${depositAmount.toFixed(2)} USDC`,
+          });
+          if (balError) {
+            console.error(`[PollTx] Atomic balance update failed for deposit ${deposit.id}:`, balError.message);
           }
         } else if (tx.state === 'FAILED') {
           console.warn(`[PollTx] Deposit ${deposit.id} FAILED.`);

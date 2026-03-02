@@ -891,7 +891,18 @@ Immutable ledger of all USDC balance changes. Every credit/debit to `users.usdc_
 | `description` | TEXT | | | Human-readable description |
 | `created_at` | TIMESTAMPTZ | | `NOW()` | |
 
-**Type values**: `'deposit'`, `'escrow_lock'`, `'escrow_release'`, `'payout'`, `'withdrawal'`, `'refund'`, `'platform_fee'`
+**Type values**: `'deposit'`, `'escrow_lock'`, `'escrow_release'`, `'payout'`, `'withdrawal'`, `'refund'`, `'platform_fee'`, `'escrow_reversal'`
+
+| Type | Description |
+|------|-------------|
+| `deposit` | Balance increase from deposit |
+| `escrow_lock` | Balance moved to escrow when task is assigned |
+| `escrow_release` | Balance released from escrow when payment processed |
+| `payout` | Balance paid out to user |
+| `withdrawal` | Balance withdrawn by user |
+| `refund` | Balance refunded to user |
+| `platform_fee` | Platform fee deducted |
+| `escrow_reversal` | Balance restored due to assign race condition |
 
 **Indexes**: `user_id`, `task_id`, `type`, `created_at DESC`, `circle_transaction_id`
 
@@ -958,6 +969,34 @@ Returns a JSON summary of unread messages across all conversations for a given u
 Increments a named stat column on the `users` table. Used to update `jobs_completed`, `total_tasks_completed`, `total_paid`, etc.
 
 **Note**: No SQL definition found in tracked migrations; likely created directly in Supabase. Uses dynamic column reference via `stat_name` parameter.
+
+#### `update_usdc_balance(p_user_id, p_available_delta, p_escrow_delta, p_task_id, p_ledger_type, p_ledger_amount, p_circle_tx_id, p_tx_hash, p_description)`
+
+Atomic balance update + ledger entry for all USDC operations. Prevents read-modify-write races and ensures balance + ledger are always in sync.
+
+**Parameters**:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `p_user_id` | UUID | required | The user whose balance to update |
+| `p_available_delta` | NUMERIC(18,6) | 0 | Amount to add to `usdc_available_balance` (negative = debit) |
+| `p_escrow_delta` | NUMERIC(18,6) | 0 | Amount to add to `usdc_escrow_balance` (negative = debit) |
+| `p_task_id` | UUID | NULL | Optional task ID for the ledger entry |
+| `p_ledger_type` | VARCHAR(30) | NULL | Ledger entry type (if NULL, no ledger entry is created) |
+| `p_ledger_amount` | NUMERIC(18,6) | NULL | Display amount for the ledger entry |
+| `p_circle_tx_id` | TEXT | NULL | Circle transaction ID |
+| `p_tx_hash` | VARCHAR(128) | NULL | On-chain transaction hash |
+| `p_description` | TEXT | NULL | Human-readable description |
+
+**Returns**: `TABLE(new_available NUMERIC, new_escrow NUMERIC)`
+
+**Behavior**:
+- Atomically updates both balance columns in a single UPDATE statement
+- Raises exception if resulting balance would be negative
+- Inserts ledger entry in the same database transaction (if `p_ledger_type` is not NULL)
+- All server code MUST use this function instead of separate UPDATE + INSERT calls
+
+**Migration**: `db/migrations/add_atomic_balance_functions.sql`
 
 ### Triggers
 

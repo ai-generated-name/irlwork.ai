@@ -85,24 +85,18 @@ async function processCircleWithdrawal(supabase, userId, user, destinationAddres
     idempotencyKey,
   });
 
-  // Update user's available balance
-  const newBalance = availableBalance - withdrawAmountUSDC;
-  await supabase
-    .from('users')
-    .update({ usdc_available_balance: newBalance })
-    .eq('id', userId);
-
-  // Record in ledger
-  await supabase
-    .from('usdc_ledger')
-    .insert({
-      user_id: userId,
-      type: 'withdrawal',
-      amount: -withdrawAmountUSDC,
-      balance_after: newBalance,
-      circle_transaction_id: transferResult.transactionId,
-      description: `Withdrawal of ${withdrawAmountUSDC.toFixed(2)} USDC to ${destinationAddress}`,
-    });
+  // Atomic balance update + ledger entry
+  const { data: balResult, error: balError } = await supabase.rpc('update_usdc_balance', {
+    p_user_id: userId,
+    p_available_delta: -withdrawAmountUSDC,
+    p_escrow_delta: 0,
+    p_ledger_type: 'withdrawal',
+    p_ledger_amount: -withdrawAmountUSDC,
+    p_circle_tx_id: transferResult.transactionId,
+    p_description: `Withdrawal of ${withdrawAmountUSDC.toFixed(2)} USDC to ${destinationAddress}`,
+  });
+  if (balError) throw new Error('Failed to update balance: ' + balError.message);
+  const newBalance = balResult?.[0]?.new_available ?? (availableBalance - withdrawAmountUSDC);
 
   // Create withdrawal record
   const actualAmountCents = Math.round(withdrawAmountUSDC * 100);
