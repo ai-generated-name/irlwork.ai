@@ -3506,18 +3506,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               const released = paidTasks.filter(t => t.status === 'paid' || t.status === 'completed').reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
               return (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4">
-                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">Total Spent</p>
-                      <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(totalSpent / 100).toFixed(2)}</p>
+                  <div className="payment-stats-grid">
+                    <div className="payment-stat-card">
+                      <span className="payment-stat-label">Total Spent</span>
+                      <span className="payment-stat-value">${(totalSpent / 100).toFixed(2)}</span>
                     </div>
-                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4">
-                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">In Escrow</p>
-                      <p className="text-2xl md:text-3xl font-bold text-[#1A1A1A] tracking-tight mt-1">${(inEscrow / 100).toFixed(2)}</p>
+                    <div className="payment-stat-card">
+                      <span className="payment-stat-label">In Escrow</span>
+                      <span className="payment-stat-value">${(inEscrow / 100).toFixed(2)}</span>
                     </div>
-                    <div className="bg-white border border-[rgba(0,0,0,0.08)] rounded-xl p-4 col-span-2 md:col-span-1">
-                      <p className="text-xs text-[#888888] font-medium uppercase tracking-wider">Released</p>
-                      <p className="text-2xl md:text-3xl font-bold text-teal tracking-tight mt-1">${(released / 100).toFixed(2)}</p>
+                    <div className="payment-stat-card">
+                      <span className="payment-stat-label">Released</span>
+                      <span className="payment-stat-value payment-stat-value--accent">${(released / 100).toFixed(2)}</span>
                     </div>
                   </div>
 

@@ -213,22 +213,22 @@ function EarningsDashboard({ user }) {
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Earnings Summary Stats — always visible */}
-      <div className="earnings-summary-stats">
-        <div className="earnings-stat">
-          <span className="earnings-stat-label">Total Earned</span>
-          <span className="earnings-stat-value">
+      <div className="payment-stats-grid">
+        <div className="payment-stat-card">
+          <span className="payment-stat-label">Total Earned</span>
+          <span className="payment-stat-value">
             ${((balanceData?.pending || 0) + (balanceData?.available || 0)).toFixed(2)}
           </span>
         </div>
-        <div className="earnings-stat">
-          <span className="earnings-stat-label">In Escrow</span>
-          <span className="earnings-stat-value">
+        <div className="payment-stat-card">
+          <span className="payment-stat-label">In Escrow</span>
+          <span className="payment-stat-value">
             ${(balanceData?.pending || 0).toFixed(2)}
           </span>
         </div>
-        <div className="earnings-stat earnings-stat--available">
-          <span className="earnings-stat-label">Available</span>
-          <span className="earnings-stat-value">
+        <div className="payment-stat-card">
+          <span className="payment-stat-label">Available</span>
+          <span className="payment-stat-value payment-stat-value--accent">
             ${(balanceData?.available || 0).toFixed(2)}
           </span>
         </div>
