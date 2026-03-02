@@ -323,6 +323,24 @@ app.post('/api/stripe/webhooks',
   }
 );
 
+// Circle Programmable Wallets webhook endpoint
+// Handles USDC deposit/transfer notifications from Circle
+app.post('/api/webhooks/circle',
+  express.json({ type: 'application/json' }),
+  async (req, res) => {
+    const body = req.body;
+    console.log('[Circle Webhook] Received:', JSON.stringify(body, null, 2));
+
+    // Acknowledge immediately — Circle retries on non-2xx
+    res.json({ received: true });
+
+    // TODO: Process transaction events (deposits, transfers)
+    // - Match wallet address to escrow/treasury
+    // - Update escrow_status on tasks
+    // - Trigger notifications
+  }
+);
+
 app.use(express.json({ limit: '5mb' }));
 
 // Rate limiting middleware (applied after JSON parsing)
