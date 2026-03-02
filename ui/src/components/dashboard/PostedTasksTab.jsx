@@ -410,11 +410,11 @@ export default function PostedTasksTab({
                       const isEditing = editingTaskId === task.id
 
                       return (
-                        <div key={task.id} className="dashboard-v4-task-card" style={{ cursor: 'pointer' }} onClick={() => spaNavigate(`/tasks/${task.id}`)}>
+                        <div key={task.id} className={`dashboard-v4-task-card${task.status === 'cancelled' ? ' dashboard-v4-task-card--inactive' : ''}`} style={{ cursor: 'pointer' }} onClick={() => spaNavigate(`/tasks/${task.id}`)}>
                           <div className="dashboard-v4-task-header">
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : 'pending'}`}>
+                                <span className={`dashboard-v4-task-status ${task.status === 'open' ? 'open' : task.status === 'in_progress' ? 'in-progress' : task.status === 'completed' || task.status === 'paid' ? 'completed' : task.status === 'cancelled' ? 'cancelled' : task.status === 'disputed' ? 'disputed' : 'pending'}`}>
                                   {getStatusLabel(task.status)}
                                 </span>
                                 {pendingCount > 0 && (

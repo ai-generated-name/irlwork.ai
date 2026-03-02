@@ -6660,6 +6660,19 @@
   color: #FF5F57;
 }
 
+.dashboard-v4-task-status.cancelled {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-tertiary);
+}
+
+.dashboard-v4-task-card--inactive {
+  opacity: 0.55;
+}
+
+.dashboard-v4-task-card--inactive:hover {
+  opacity: 0.7;
+}
+
 .dashboard-v4-task-description {
   font-size: 14px;
   color: var(--text-secondary);
