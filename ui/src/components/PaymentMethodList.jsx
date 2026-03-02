@@ -78,11 +78,7 @@ export default function PaymentMethodList({ user, onUpdate, onMethodsLoaded }) {
 
   if (methods.length === 0) {
     return (
-      <EmptyState
-        icon={<CreditCard size={32} />}
-        title="No payment methods saved"
-        description="Add a card below to pay for tasks instantly."
-      />
+      <p className="text-sm text-[#888888] py-1">No cards saved yet — add one below.</p>
     );
   }
 
