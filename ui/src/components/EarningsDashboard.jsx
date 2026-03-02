@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { Timer, CreditCard, ArrowDownLeft, ChevronDown, Landmark, Wallet, Filter } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Timer, CreditCard, ArrowDownLeft, ChevronDown, Landmark, Wallet, ChevronRight } from 'lucide-react'
 import API_URL from '../config/api'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../context/AuthContext'
@@ -69,6 +69,7 @@ function EarningsDashboard({ user }) {
   const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false)
   const [balanceFilter, setBalanceFilter] = useState('all') // 'all' | 'stripe' | 'usdc'
   const [showFlowDiagram, setShowFlowDiagram] = useState(false)
+  const [expandedPayout, setExpandedPayout] = useState(null) // 'bank' | 'usdc' | null
 
   // Section refs for scroll-to navigation
   const sectionRefs = {
@@ -253,28 +254,6 @@ function EarningsDashboard({ user }) {
   return (
     <div className="space-y-5 md:space-y-7">
 
-      {/* Earnings Summary Stats */}
-      <div className="payment-stats-grid">
-        <div className="payment-stat-card">
-          <span className="payment-stat-label">Total Earned</span>
-          <span className="payment-stat-value">
-            ${((balanceData?.pending || 0) + (balanceData?.available || 0)).toFixed(2)}
-          </span>
-        </div>
-        <div className="payment-stat-card">
-          <span className="payment-stat-label">In Escrow</span>
-          <span className="payment-stat-value">
-            ${(balanceData?.pending || 0).toFixed(2)}
-          </span>
-        </div>
-        <div className="payment-stat-card">
-          <span className="payment-stat-label">Available</span>
-          <span className="payment-stat-value payment-stat-value--accent">
-            ${(balanceData?.available || 0).toFixed(2)}
-          </span>
-        </div>
-      </div>
-
       {/* ── Section Navigation ── */}
       <nav className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {SECTIONS.map(section => (
@@ -288,30 +267,32 @@ function EarningsDashboard({ user }) {
         ))}
       </nav>
 
-      {/* ── Balance Cards (top of page) ── */}
+      {/* ── Balance Cards ── */}
       <div ref={sectionRefs.balance}>
-        {/* Filter pills */}
-        <div className="flex items-center gap-2 mb-4">
-          <Filter size={14} className="text-[#888888]" />
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'stripe', label: 'Bank Transfer' },
-            { key: 'usdc', label: 'USDC' },
-          ].map(opt => (
-            <button
-              key={opt.key}
-              onClick={() => setBalanceFilter(opt.key)}
-              className={`
-                px-3 py-1.5 text-xs font-semibold rounded-lg transition-all
-                ${balanceFilter === opt.key
-                  ? 'bg-[#1A1A1A] text-white'
-                  : 'bg-[#F5F3F0] text-[#888888] hover:bg-[#EDEBE8] hover:text-[#525252]'
-                }
-              `}
-            >
-              {opt.label}
-            </button>
-          ))}
+        {/* Header with filter pills right-aligned */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A]">Balance</h3>
+          <div className="flex items-center gap-1.5">
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'stripe', label: 'Bank' },
+              { key: 'usdc', label: 'USDC' },
+            ].map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setBalanceFilter(opt.key)}
+                className={`
+                  px-2.5 py-1 text-xs font-semibold rounded-md transition-all
+                  ${balanceFilter === opt.key
+                    ? 'bg-[#1A1A1A] text-white'
+                    : 'bg-[#F5F3F0] text-[#888888] hover:bg-[#EDEBE8] hover:text-[#525252]'
+                  }
+                `}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -433,40 +414,62 @@ function EarningsDashboard({ user }) {
         </Card>
       )}
 
-      {/* ── Payout Options — 2-column grid ── */}
+      {/* ── Payout Options — collapsible rows ── */}
       <div ref={sectionRefs.payout}>
         <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Payout options</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {/* Bank Transfer */}
+        <div className="space-y-2">
+          {/* Bank Transfer row */}
           <Card padding="none" className="overflow-hidden">
-            <div className="p-5 md:p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-[#F5F3F0] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Landmark size={20} className="text-[#525252]" />
-                </div>
-                <div>
-                  <h4 className="text-[#1A1A1A] font-semibold text-sm md:text-base">Bank transfer</h4>
-                  <p className="text-xs text-[#888888]">Direct deposit via Stripe</p>
+            <button
+              onClick={() => setExpandedPayout(expandedPayout === 'bank' ? null : 'bank')}
+              className="w-full flex items-center gap-3 p-4 text-left hover:bg-[#FAFAF9] transition-colors"
+            >
+              <div className="w-9 h-9 bg-[#F5F3F0] rounded-lg flex items-center justify-center flex-shrink-0">
+                <Landmark size={18} className="text-[#525252]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-[#1A1A1A] font-semibold text-sm">Bank transfer</h4>
+                <p className="text-xs text-[#888888]">Direct deposit via Stripe</p>
+              </div>
+              <ChevronRight
+                size={16}
+                className={`text-[#A3A3A3] transition-transform duration-200 flex-shrink-0 ${expandedPayout === 'bank' ? 'rotate-90' : ''}`}
+              />
+            </button>
+            {expandedPayout === 'bank' && (
+              <div className="px-4 pb-4 pt-0 border-t border-[rgba(0,0,0,0.06)]">
+                <div className="pt-4">
+                  <ConnectBankButton user={user} />
                 </div>
               </div>
-              <ConnectBankButton user={user} />
-            </div>
+            )}
           </Card>
 
-          {/* USDC */}
+          {/* USDC row */}
           <Card padding="none" className="overflow-hidden">
-            <div className="p-5 md:p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-[#EEF2FF] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Wallet size={20} className="text-[#6366f1]" />
-                </div>
-                <div>
-                  <h4 className="text-[#1A1A1A] font-semibold text-sm md:text-base">USDC</h4>
-                  <p className="text-xs text-[#888888]">Base network wallet payout</p>
+            <button
+              onClick={() => setExpandedPayout(expandedPayout === 'usdc' ? null : 'usdc')}
+              className="w-full flex items-center gap-3 p-4 text-left hover:bg-[#FAFAF9] transition-colors"
+            >
+              <div className="w-9 h-9 bg-[#EEF2FF] rounded-lg flex items-center justify-center flex-shrink-0">
+                <Wallet size={18} className="text-[#6366f1]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-[#1A1A1A] font-semibold text-sm">USDC</h4>
+                <p className="text-xs text-[#888888]">Base network wallet payout</p>
+              </div>
+              <ChevronRight
+                size={16}
+                className={`text-[#A3A3A3] transition-transform duration-200 flex-shrink-0 ${expandedPayout === 'usdc' ? 'rotate-90' : ''}`}
+              />
+            </button>
+            {expandedPayout === 'usdc' && (
+              <div className="px-4 pb-4 pt-0 border-t border-[rgba(0,0,0,0.06)]">
+                <div className="pt-4">
+                  <ConnectWalletSection user={user} />
                 </div>
               </div>
-              <ConnectWalletSection user={user} />
-            </div>
+            )}
           </Card>
         </div>
       </div>
