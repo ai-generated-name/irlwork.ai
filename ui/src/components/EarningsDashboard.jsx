@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Timer, CreditCard, ArrowDownLeft, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { Timer, CreditCard, ArrowDownLeft, ChevronDown, Landmark, Wallet, Filter } from 'lucide-react'
 import API_URL from '../config/api'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../context/AuthContext'
@@ -51,6 +51,14 @@ function PaymentFlowDiagram() {
   )
 }
 
+// Section navigation button row
+const SECTIONS = [
+  { id: 'balance', label: 'Balance' },
+  { id: 'payout', label: 'Payout Options' },
+  { id: 'transactions', label: 'Transactions' },
+  { id: 'how-it-works', label: 'How Earnings Work' },
+]
+
 function EarningsDashboard({ user }) {
   const toast = useToast()
   const [balanceData, setBalanceData] = useState(null)
@@ -59,8 +67,16 @@ function EarningsDashboard({ user }) {
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawResult, setWithdrawResult] = useState(null)
   const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false)
-  const [showAltPayments, setShowAltPayments] = useState(false)
+  const [balanceFilter, setBalanceFilter] = useState('all') // 'all' | 'stripe' | 'usdc'
   const [showFlowDiagram, setShowFlowDiagram] = useState(false)
+
+  // Section refs for scroll-to navigation
+  const sectionRefs = {
+    balance: useRef(null),
+    payout: useRef(null),
+    transactions: useRef(null),
+    'how-it-works': useRef(null),
+  }
 
   useEffect(() => {
     if (!user?.id || !user?.token) {
@@ -77,7 +93,6 @@ function EarningsDashboard({ user }) {
     }
     try {
       setLoading(true)
-      // Get fresh token from Supabase session (auto-refreshes expired JWTs)
       let token = user.token || ''
       if (supabase) {
         const { data: { session } } = await supabase.auth.getSession()
@@ -109,7 +124,7 @@ function EarningsDashboard({ user }) {
       toast.error('No funds available to withdraw')
       return
     }
-    setShowWithdrawConfirm(method) // 'stripe' or 'usdc'
+    setShowWithdrawConfirm(method)
   }
 
   const executeWithdraw = async () => {
@@ -124,7 +139,6 @@ function EarningsDashboard({ user }) {
       setWithdrawing(true)
       setWithdrawResult(null)
 
-      // Get fresh token from Supabase session
       let token = user.token || ''
       if (supabase) {
         const { data: { session } } = await supabase.auth.getSession()
@@ -152,7 +166,6 @@ function EarningsDashboard({ user }) {
 
       setWithdrawResult({ ...result, method })
 
-      // Refresh balance after successful withdrawal
       setTimeout(() => {
         fetchBalance()
         setWithdrawResult(null)
@@ -182,6 +195,10 @@ function EarningsDashboard({ user }) {
     }
   }
 
+  const scrollToSection = (id) => {
+    sectionRefs[id]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -192,7 +209,7 @@ function EarningsDashboard({ user }) {
 
   if (error) {
     return (
-      <div className="bg-[rgba(255, 95, 87, 0.1)] border border-[#FF5F57]/20 rounded-xl p-4">
+      <div className="bg-[rgba(255,95,87,0.1)] border border-[#FF5F57]/20 rounded-xl p-4">
         <p className="text-[#FF5F57]">Error: {error}</p>
         <button
           onClick={fetchBalance}
@@ -204,90 +221,77 @@ function EarningsDashboard({ user }) {
     )
   }
 
-  const pendingTransactions = balanceData?.transactions?.filter(tx => tx.status === 'pending') || []
-  const availableTransactions = balanceData?.transactions?.filter(tx => tx.status === 'available') || []
   const allTransactions = balanceData?.transactions || []
   const stripeAvailable = (balanceData?.stripe_available_cents || 0) / 100
   const usdcAvailable = (balanceData?.usdc_available_cents || 0) / 100
-  const hasAnyBalance = (balanceData?.pending > 0) || (balanceData?.available > 0) || allTransactions.length > 0
+
+  // Compute filtered pending/available based on selected payout method
+  const filteredPendingTransactions = allTransactions.filter(tx => {
+    if (tx.status !== 'pending') return false
+    if (balanceFilter === 'all') return true
+    if (balanceFilter === 'usdc') return tx.payout_method === 'usdc'
+    return tx.payout_method !== 'usdc' // 'stripe' = everything non-usdc
+  })
+
+  const filteredAvailableTransactions = allTransactions.filter(tx => {
+    if (tx.status !== 'available') return false
+    if (balanceFilter === 'all') return true
+    if (balanceFilter === 'usdc') return tx.payout_method === 'usdc'
+    return tx.payout_method !== 'usdc'
+  })
+
+  const filteredPendingAmount = balanceFilter === 'all'
+    ? (balanceData?.pending || 0)
+    : filteredPendingTransactions.reduce((sum, tx) => sum + (tx.amount_cents || 0), 0) / 100
+
+  const filteredAvailableAmount = balanceFilter === 'all'
+    ? (balanceData?.available || 0)
+    : balanceFilter === 'usdc'
+      ? usdcAvailable
+      : stripeAvailable || (balanceData?.available || 0) - usdcAvailable
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      {/* Earnings Summary Stats — always visible */}
-      <div className="earnings-summary-stats">
-        <StatCard
-          label="Total earned"
-          value={`$${((balanceData?.pending || 0) + (balanceData?.available || 0)).toFixed(2)}`}
-        />
-        <StatCard
-          label="In escrow"
-          value={`$${(balanceData?.pending || 0).toFixed(2)}`}
-        />
-        <StatCard
-          label="Available"
-          value={`$${(balanceData?.available || 0).toFixed(2)}`}
-        />
-      </div>
+    <div className="space-y-5 md:space-y-7">
 
-      {/* Payment Flow Diagram — collapsible */}
-      <button
-        className={`earnings-flow-toggle ${showFlowDiagram ? 'expanded' : ''}`}
-        onClick={() => setShowFlowDiagram(!showFlowDiagram)}
-      >
-        How earnings work
-        <ChevronDown size={14} />
-      </button>
-      {showFlowDiagram && <PaymentFlowDiagram />}
+      {/* ── Section Navigation ── */}
+      <nav className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        {SECTIONS.map(section => (
+          <button
+            key={section.id}
+            onClick={() => scrollToSection(section.id)}
+            className="flex-shrink-0 px-4 py-2 text-sm font-medium rounded-lg border border-[rgba(0,0,0,0.08)] bg-white text-[#525252] hover:text-[#1A1A1A] hover:border-[rgba(0,0,0,0.15)] hover:shadow-sm transition-all"
+          >
+            {section.label}
+          </button>
+        ))}
+      </nav>
 
-      {/* Primary: Bank Account Setup */}
-      <ConnectBankButton user={user} />
-      <ConnectWalletSection user={user} />
+      {/* ── Balance Cards (top of page) ── */}
+      <div ref={sectionRefs.balance}>
+        {/* Filter pills */}
+        <div className="flex items-center gap-2 mb-4">
+          <Filter size={14} className="text-[#888888]" />
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'stripe', label: 'Bank Transfer' },
+            { key: 'usdc', label: 'USDC' },
+          ].map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => setBalanceFilter(opt.key)}
+              className={`
+                px-3 py-1.5 text-xs font-semibold rounded-lg transition-all
+                ${balanceFilter === opt.key
+                  ? 'bg-[#1A1A1A] text-white'
+                  : 'bg-[#F5F3F0] text-[#888888] hover:bg-[#EDEBE8] hover:text-[#525252]'
+                }
+              `}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
 
-      {/* Alternative Payment Methods - collapsible */}
-      <div className="earnings-alt-payments">
-        <button
-          className="earnings-alt-payments-toggle"
-          onClick={() => setShowAltPayments(!showAltPayments)}
-        >
-          <span>Alternative payment methods</span>
-          <ChevronDown
-            size={16}
-            style={{
-              transition: 'transform 0.2s',
-              transform: showAltPayments ? 'rotate(180deg)' : 'rotate(0deg)'
-            }}
-          />
-        </button>
-        {showAltPayments && (
-          <div className="earnings-alt-payments-content">
-            <p className="text-sm text-[#333333]">
-              USDC wallet support and other payment methods coming soon.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Success Message */}
-      {withdrawResult && (
-        <Card padding="none" className="border-teal/20 p-4 flex items-start gap-3">
-          <div className="w-8 h-8 bg-teal/8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-            <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-[#1A1A1A] font-semibold text-sm">Withdrawal successful</p>
-            <p className="text-sm text-[#333333] mt-0.5">
-              {withdrawResult.method === 'usdc'
-                ? `${withdrawResult.amount} USDC sent to your wallet`
-                : `$${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account`}
-            </p>
-          </div>
-        </Card>
-      )}
-
-      {/* Balance Cards Grid */}
-      {(
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Pending Balance Card */}
           <Card padding="none" className="p-4 md:p-6">
@@ -302,12 +306,12 @@ function EarningsDashboard({ user }) {
             </div>
 
             <p className="text-3xl md:text-4xl font-bold text-[#1A1A1A] tracking-tight">
-              ${balanceData?.pending?.toFixed(2) || '0.00'}
+              ${filteredPendingAmount.toFixed(2)}
             </p>
 
-            {pendingTransactions.length > 0 ? (
+            {filteredPendingTransactions.length > 0 ? (
               <div className="mt-3 md:mt-4 space-y-2">
-                {pendingTransactions.slice(0, 3).map(tx => (
+                {filteredPendingTransactions.slice(0, 3).map(tx => (
                   <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(0,0,0,0.06)]">
                     <div>
                       <div className="flex items-center gap-1.5">
@@ -323,9 +327,9 @@ function EarningsDashboard({ user }) {
                     </p>
                   </div>
                 ))}
-                {pendingTransactions.length > 3 && (
+                {filteredPendingTransactions.length > 3 && (
                   <p className="text-xs text-[#A3A3A3] text-center pt-2">
-                    +{pendingTransactions.length - 3} more pending
+                    +{filteredPendingTransactions.length - 3} more pending
                   </p>
                 )}
               </div>
@@ -348,7 +352,7 @@ function EarningsDashboard({ user }) {
             </div>
 
             <p className="text-3xl md:text-4xl font-bold text-[#1A1A1A] tracking-tight">
-              ${balanceData?.available?.toFixed(2) || '0.00'}
+              ${filteredAvailableAmount.toFixed(2)}
             </p>
 
             {balanceData?.available_cents > 0 && (
@@ -367,9 +371,9 @@ function EarningsDashboard({ user }) {
               <p className="text-[#A3A3A3] text-xs md:text-sm mt-3 md:mt-4">No funds available to withdraw yet</p>
             )}
 
-            {availableTransactions.length > 0 && (
+            {filteredAvailableTransactions.length > 0 && (
               <div className="mt-3 md:mt-4 space-y-2">
-                {availableTransactions.slice(0, 2).map(tx => (
+                {filteredAvailableTransactions.slice(0, 2).map(tx => (
                   <div key={tx.id} className="flex justify-between items-center text-xs md:text-sm py-2 border-t border-[rgba(0,0,0,0.06)]">
                     <div className="flex items-center gap-1.5">
                       <p className="text-[#333333]">Task #{tx.task_id?.substring(0, 8)}</p>
@@ -386,10 +390,67 @@ function EarningsDashboard({ user }) {
             )}
           </Card>
         </div>
+      </div>
+
+      {/* Success Message */}
+      {withdrawResult && (
+        <Card padding="none" className="border-teal/20 p-4 flex items-start gap-3">
+          <div className="w-8 h-8 bg-teal/8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-[#1A1A1A] font-semibold text-sm">Withdrawal successful</p>
+            <p className="text-sm text-[#333333] mt-0.5">
+              {withdrawResult.method === 'usdc'
+                ? `${withdrawResult.amount} USDC sent to your wallet`
+                : `$${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account`}
+            </p>
+          </div>
+        </Card>
       )}
 
-      {/* Transaction History */}
-      <div>
+      {/* ── Payout Options — 2-column grid ── */}
+      <div ref={sectionRefs.payout}>
+        <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Payout options</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          {/* Bank Transfer */}
+          <Card padding="none" className="overflow-hidden">
+            <div className="p-5 md:p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-[#F5F3F0] rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Landmark size={20} className="text-[#525252]" />
+                </div>
+                <div>
+                  <h4 className="text-[#1A1A1A] font-semibold text-sm md:text-base">Bank transfer</h4>
+                  <p className="text-xs text-[#888888]">Direct deposit via Stripe</p>
+                </div>
+              </div>
+              <ConnectBankButton user={user} />
+            </div>
+          </Card>
+
+          {/* USDC */}
+          <Card padding="none" className="overflow-hidden">
+            <div className="p-5 md:p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-[#EEF2FF] rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Wallet size={20} className="text-[#6366f1]" />
+                </div>
+                <div>
+                  <h4 className="text-[#1A1A1A] font-semibold text-sm md:text-base">USDC</h4>
+                  <p className="text-xs text-[#888888]">Base network wallet payout</p>
+                </div>
+              </div>
+              <ConnectWalletSection user={user} />
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* ── Transaction History ── */}
+      <div ref={sectionRefs.transactions}>
         <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Transaction history</h3>
 
         {allTransactions.length > 0 ? (
@@ -477,6 +538,18 @@ function EarningsDashboard({ user }) {
             description="Your earnings will appear here once you complete your first task"
           />
         )}
+      </div>
+
+      {/* ── How Earnings Work ── */}
+      <div ref={sectionRefs['how-it-works']}>
+        <button
+          className={`earnings-flow-toggle ${showFlowDiagram ? 'expanded' : ''}`}
+          onClick={() => setShowFlowDiagram(!showFlowDiagram)}
+        >
+          How earnings work
+          <ChevronDown size={14} />
+        </button>
+        {showFlowDiagram && <PaymentFlowDiagram />}
       </div>
 
       {/* Withdrawal Confirmation Modal */}
