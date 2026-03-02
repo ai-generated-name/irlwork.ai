@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import MyTaskCard from '../components/MyTaskCard';
+import TaskRow from '../components/TaskRow';
 import { PageHeader, EmptyState, Button } from '../components/ui';
 import { navigate } from '../utils/navigate';
 import { PageLoader } from '../components/ui/PageLoader';
@@ -10,7 +10,7 @@ const REVIEW_STATUSES = ['pending_review', 'approved', 'completed'];
 const COMPLETED_STATUSES = ['paid'];
 const OTHER_STATUSES = ['disputed', 'cancelled'];
 
-function TaskSection({ title, count, tasks, defaultOpen = true, variant, cardProps }) {
+function TaskSection({ title, count, tasks, defaultOpen = true, cardProps }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -28,14 +28,14 @@ function TaskSection({ title, count, tasks, defaultOpen = true, variant, cardPro
       </button>
 
       {open && (
-        <div className="mytasks-section__list">
+        <div className="bg-white rounded-xl border border-[#ECECEC] divide-y divide-[#ECECEC]">
           {tasks.length === 0 ? (
-            <div className="mytasks-section__empty">
+            <div className="text-sm text-[#9CA3AF] text-center py-6">
               Tasks will appear here when they match this status.
             </div>
           ) : (
             tasks.map(task => (
-              <MyTaskCard key={task.id} task={task} variant={variant} {...cardProps} />
+              <TaskRow key={task.id} task={task} variant="working" {...cardProps} />
             ))
           )}
         </div>
@@ -140,7 +140,6 @@ export default function MyTasksPage({
                   count={activeTasks.length}
                   tasks={activeTasks}
                   defaultOpen={true}
-                  variant="active"
                   cardProps={cardActions}
                 />
               )}
@@ -151,7 +150,6 @@ export default function MyTasksPage({
                   count={reviewTasks.length}
                   tasks={reviewTasks}
                   defaultOpen={true}
-                  variant="review"
                   cardProps={cardActions}
                 />
               )}
@@ -162,7 +160,6 @@ export default function MyTasksPage({
                   count={completedTasks.length}
                   tasks={completedTasks}
                   defaultOpen={activeTasks.length === 0 && reviewTasks.length === 0}
-                  variant="compact"
                   cardProps={cardActions}
                 />
               )}
@@ -173,7 +170,6 @@ export default function MyTasksPage({
                   count={otherTasks.length}
                   tasks={otherTasks}
                   defaultOpen={false}
-                  variant="active"
                   cardProps={cardActions}
                 />
               )}
@@ -181,16 +177,18 @@ export default function MyTasksPage({
           ) : (
             <div className="mytasks-sections">
               {filteredTasks && filteredTasks.length > 0 ? (
-                filteredTasks.map(task => (
-                  <MyTaskCard
-                    key={task.id}
-                    task={task}
-                    variant={taskFilter === 'paid' ? 'compact' : 'active'}
-                    {...cardActions}
-                  />
-                ))
+                <div className="bg-white rounded-xl border border-[#ECECEC] divide-y divide-[#ECECEC]">
+                  {filteredTasks.map(task => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      variant="working"
+                      {...cardActions}
+                    />
+                  ))}
+                </div>
               ) : (
-                <div className="mytasks-section__empty">
+                <div className="text-sm text-[#9CA3AF] text-center py-6">
                   Tasks will appear here when they match this filter.
                 </div>
               )}
