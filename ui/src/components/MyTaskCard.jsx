@@ -89,6 +89,8 @@ export default function MyTaskCard({
 
   const urgencyClass = getUrgencyClass();
   const daysLeftLabel = getDaysLeft();
+  const isInactive = task.status === 'cancelled';
+  const inactiveClass = isInactive ? 'mytasks-card--inactive' : '';
 
   const handleClick = () => {
     if (onClick) onClick(task);
@@ -102,7 +104,7 @@ export default function MyTaskCard({
   // Compact variant for completed/paid tasks
   if (variant === 'compact') {
     return (
-      <div className={`mytasks-card mytasks-card--compact ${urgencyClass}`} onClick={handleClick}>
+      <div className={`mytasks-card mytasks-card--compact ${urgencyClass} ${inactiveClass}`} onClick={handleClick}>
         <div className="mytasks-card__row">
           <div className="mytasks-card__row-left">
             <span className={`mytasks-status ${status.className}`}>{status.label}</span>
@@ -128,7 +130,7 @@ export default function MyTaskCard({
 
   // Full variant for active and review
   return (
-    <div className={`mytasks-card ${urgencyClass}`} onClick={handleClick}>
+    <div className={`mytasks-card ${urgencyClass} ${inactiveClass}`} onClick={handleClick}>
       <div className="mytasks-card__header">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>

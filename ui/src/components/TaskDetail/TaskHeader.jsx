@@ -21,17 +21,20 @@ const STATUS_CONFIG = {
   open: { label: 'Open', color: 'bg-[rgba(232,133,61,0.1)] text-[#E8853D]' },
   pending_acceptance: { label: 'Pending Acceptance', color: 'bg-[rgba(254, 188, 46, 0.1)] text-[#FEBC2E]' },
   accepted: { label: 'Accepted', color: 'bg-[#E8D5F0] text-[#6B21A8]' },
+  assigned: { label: 'Assigned', color: 'bg-[rgba(59,130,246,0.1)] text-[#3B82F6]' },
   in_progress: { label: 'In Progress', color: 'bg-[rgba(254, 188, 46, 0.1)] text-[#FEBC2E]' },
   pending_review: { label: 'Pending Review', color: 'bg-[#FFE4DB] text-[#D4703A]' },
+  rejected: { label: 'Rejected', color: 'bg-[rgba(255,95,87,0.1)] text-[#FF5F57]' },
   completed: { label: 'Completed', color: 'bg-[rgba(22, 163, 74, 0.08)] text-[#16A34A]' },
   paid: { label: 'Paid', color: 'bg-[#F5F3F0] text-[#333333]' },
-  disputed: { label: 'Disputed', color: 'bg-[rgba(255, 95, 87, 0.1)] text-[#FF5F57]' }
+  disputed: { label: 'Disputed', color: 'bg-[rgba(255, 95, 87, 0.1)] text-[#FF5F57]' },
+  cancelled: { label: 'Cancelled', color: 'bg-[rgba(0,0,0,0.06)] text-[#8A8A8A]' },
 };
 
 export default function TaskHeader({ task }) {
   if (!task) return null;
 
-  const statusConfig = STATUS_CONFIG[task.status] || STATUS_CONFIG.open;
+  const statusConfig = STATUS_CONFIG[task.status] || { label: task.status || 'Unknown', color: 'bg-[rgba(0,0,0,0.06)] text-[#8A8A8A]' };
   const isBounty = task.task_type === 'bounty';
   const quantity = task.quantity || 1;
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
