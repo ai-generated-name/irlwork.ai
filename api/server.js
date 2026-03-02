@@ -3616,14 +3616,31 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   if (!circleService) {
     return res.status(503).json({ error: 'USDC payments not configured. Please use card payment.' });
   }
+  if (!process.env.CIRCLE_ESCROW_WALLET_ADDRESS) {
+    console.error('[Assign] CIRCLE_ESCROW_WALLET_ADDRESS not configured');
+    return res.status(503).json({ error: 'USDC escrow wallet not configured. Please contact support or use card payment.' });
+  }
   if (!user.circle_wallet_id) {
     return res.status(400).json({ error: 'Please set up your USDC wallet first.', code: 'wallet_required' });
   }
 
-  const agentUsdcBalance = parseFloat(user.usdc_available_balance || 0);
-  if (agentUsdcBalance < budgetAmount) {
+  // Verify agent's wallet still exists on Circle before attempting transfer
+  let onChainBalance;
+  try {
+    onChainBalance = await circleService.getWalletBalance(user.circle_wallet_id);
+  } catch (walletErr) {
+    console.error(`[Assign] Failed to verify wallet ${user.circle_wallet_id}:`, walletErr.message);
     return res.status(400).json({
-      error: `Insufficient USDC balance. Available: $${agentUsdcBalance.toFixed(2)}, Required: $${budgetAmount.toFixed(2)}. Deposit more USDC or set payment_method to 'stripe' for this task.`,
+      error: 'Could not verify your USDC wallet. Please reconnect your wallet or contact support.',
+      code: 'wallet_error',
+    });
+  }
+
+  const agentUsdcBalance = parseFloat(user.usdc_available_balance || 0);
+  const effectiveBalance = Math.min(agentUsdcBalance, onChainBalance);
+  if (effectiveBalance < budgetAmount) {
+    return res.status(400).json({
+      error: `Insufficient USDC balance. Available: $${effectiveBalance.toFixed(2)}, Required: $${budgetAmount.toFixed(2)}. Deposit more USDC or use card payment.`,
       code: 'insufficient_usdc',
     });
   }
@@ -3645,7 +3662,12 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     });
   } catch (circleErr) {
     console.error(`[Assign] Circle escrow lock failed for task ${taskId}:`, circleErr.message);
-    return res.status(502).json({ error: 'USDC escrow transfer failed. Please try again.' });
+    // Surface actionable error detail to the agent
+    const isInsufficientFunds = circleErr.message.includes('INSUFFICIENT') || circleErr.message.includes('insufficient');
+    if (isInsufficientFunds) {
+      return res.status(400).json({ error: 'Insufficient on-chain USDC balance. Please deposit more USDC to your wallet.', code: 'insufficient_usdc' });
+    }
+    return res.status(502).json({ error: `USDC escrow transfer failed: ${circleErr.message}` });
   }
 
   // Atomic: update agent's USDC balances + ledger entry
@@ -6499,6 +6521,9 @@ app.post('/api/mcp', async (req, res) => {
         const reviewDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
         if (chosenMethod === 'usdc' && circleService) {
+          if (!process.env.CIRCLE_ESCROW_WALLET_ADDRESS) {
+            return res.status(503).json({ error: 'USDC escrow wallet not configured. Please contact support or use card payment.' });
+          }
           // USDC: lock escrow immediately (no pending_acceptance step)
           let escrowTransfer;
           try {
@@ -6509,7 +6534,8 @@ app.post('/api/mcp', async (req, res) => {
               idempotencyKey: `escrow-lock-${task_id}-${human_id}`,
             });
           } catch (circleErr) {
-            return res.status(502).json({ error: 'USDC escrow transfer failed. Please try again.' });
+            console.error(`[MCP hire_human] Circle escrow lock failed for task ${task_id}:`, circleErr.message);
+            return res.status(502).json({ error: `USDC escrow transfer failed: ${circleErr.message}` });
           }
 
           // Atomic: update agent's USDC balances + ledger entry
@@ -7874,6 +7900,9 @@ app.post('/api/mcp', async (req, res) => {
         if (!circleService) {
           return res.status(503).json({ error: 'USDC wallet service not configured.' });
         }
+        if (!process.env.CIRCLE_ESCROW_WALLET_ADDRESS) {
+          return res.status(503).json({ error: 'USDC escrow wallet not configured. Please contact support.' });
+        }
         if (!user.circle_wallet_id) {
           return res.status(400).json({ error: 'USDC wallet not set up. Call generate_deposit_address first.' });
         }
@@ -7894,7 +7923,8 @@ app.post('/api/mcp', async (req, res) => {
             idempotencyKey: `escrow-lock-${task_id}-${human_id}`,
           });
         } catch (circleErr) {
-          return res.status(502).json({ error: 'USDC escrow transfer failed.' });
+          console.error(`[MCP Assign] Circle escrow lock failed for task ${task_id}:`, circleErr.message);
+          return res.status(502).json({ error: `USDC escrow transfer failed: ${circleErr.message}` });
         }
 
         // Atomic: update agent's USDC balances + ledger entry
