@@ -1143,6 +1143,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
     const isHiringFromUrl = pathParts[2] === 'hiring'
     const tabSegment = pathParts[3] || null
 
+    // Admin sub-route: /dashboard/hiring/admin/...
+    if (tabSegment === 'admin' && isHiringFromUrl) return 'admin'
+
     // Also support legacy ?tab= query param for backwards compat
     const params = new URLSearchParams(window.location.search)
     const tabParam = tabSegment || params.get('tab')
@@ -1217,6 +1220,12 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       setTasksSubTab('create')
       const modeSegment = hiringMode ? 'hiring' : 'working'
       window.history.pushState({}, '', `/dashboard/${modeSegment}/create`)
+      return
+    }
+    // Admin tab — AdminDashboard manages its own sub-tab URL
+    if (tabId === 'admin') {
+      setActiveTabState('admin')
+      window.history.pushState({}, '', '/dashboard/hiring/admin')
       return
     }
     setActiveTabState(tabId)
@@ -1444,6 +1453,11 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
       const tabParam = tabSegment || new URLSearchParams(window.location.search).get('tab')
       if (tabParam) {
         const isHiring = mode === 'hiring'
+        // Handle /admin URL → admin tab (AdminDashboard handles sub-tab)
+        if (tabParam === 'admin' && isHiring) {
+          setActiveTabState('admin')
+          return
+        }
         // Handle /create URL → posted tab + create sub-tab
         if (tabParam === 'create' && isHiring) {
           setActiveTabState('posted')
@@ -4828,7 +4842,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         {activeTab === 'admin' && isAdmin && (
           <div>
             <Suspense fallback={<Loading />}>
-              <AdminDashboard user={user} />
+              <AdminDashboard user={user} initialAdminTab={(() => { const p = window.location.pathname.split('/'); return p[3] === 'admin' ? p[4] : null; })()} />
             </Suspense>
           </div>
         )}
