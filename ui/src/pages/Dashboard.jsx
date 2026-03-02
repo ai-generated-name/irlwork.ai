@@ -602,10 +602,20 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const handleNegotiate = async (taskId, humanId) => {
     if (!negotiateMsg.trim()) return
     try {
+      // First create or get the conversation between agent and human for this task
+      const convRes = await fetch(`${API_URL}/conversations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
+        body: JSON.stringify({ human_id: humanId, task_id: taskId })
+      })
+      if (!convRes.ok) { toast.error('Failed to start conversation'); return }
+      const conversation = await convRes.json()
+
+      // Then send the message in that conversation
       const msgRes = await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
-        body: JSON.stringify({ recipient_id: humanId, task_id: taskId, content: negotiateMsg.trim() })
+        body: JSON.stringify({ conversation_id: conversation.id, content: negotiateMsg.trim() })
       })
       if (msgRes.ok) { toast.success('Message sent'); setNegotiateAppId(null); setNegotiateMsg('') }
       else { toast.error('Failed to send message') }

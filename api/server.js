@@ -9170,7 +9170,11 @@ app.post('/api/conversations', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { agent_id, task_id } = req.body;
+  const { agent_id, task_id, human_id } = req.body;
+
+  // Determine roles: if human_id is provided, caller is the agent; otherwise caller is the human
+  const resolvedHumanId = human_id || user.id;
+  const resolvedAgentId = human_id ? user.id : (agent_id || null);
 
   // Use upsert to prevent race condition duplicates
   // NOTE: Do NOT pass `id` field - let DB generate UUID on insert.
@@ -9179,8 +9183,8 @@ app.post('/api/conversations', async (req, res) => {
   const { data: conversation, error } = await supabase
     .from('conversations')
     .upsert({
-      human_id: user.id,
-      agent_id: agent_id || null,
+      human_id: resolvedHumanId,
+      agent_id: resolvedAgentId,
       task_id: task_id || null
     }, {
       onConflict: 'human_id,agent_id,task_id',
