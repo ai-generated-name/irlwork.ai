@@ -1,29 +1,32 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ClipboardList, Shield } from 'lucide-react';
+import { ClipboardList, Shield, Package, Camera, BarChart3, Footprints, Sparkles, Truck, Wrench, Search, Monitor, Languages, CheckCircle } from 'lucide-react';
 
+import { getErrorMessage } from '../utils/apiErrors';
 import API_URL from '../config/api';
 import { trackEvent } from '../utils/analytics';
+import ConfirmationModal from './ConfirmationModal';
+import { Button } from './ui';
 
 const PLATFORM_FEE_PERCENT = 15;
 const PREMIUM_FEE_PERCENT = 10;
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  data_collection: '📊',
-  'data-collection': '📊',
-  errands: '🏃',
-  cleaning: '🧹',
-  moving: '🚚',
-  manual_labor: '💪',
-  inspection: '🔍',
-  tech: '💻',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  general: '📋',
-  other: '📋',
+  delivery: <Package size={16} />,
+  photography: <Camera size={16} />,
+  data_collection: <BarChart3 size={16} />,
+  'data-collection': <BarChart3 size={16} />,
+  errands: <Footprints size={16} />,
+  cleaning: <Sparkles size={16} />,
+  moving: <Truck size={16} />,
+  manual_labor: <Wrench size={16} />,
+  inspection: <Search size={16} />,
+  tech: <Monitor size={16} />,
+  'tech-setup': <Monitor size={16} />,
+  translation: <Languages size={16} />,
+  verification: <CheckCircle size={16} />,
+  general: <ClipboardList size={16} />,
+  other: <ClipboardList size={16} />,
 };
 
 export default function QuickApplyModal({
@@ -41,6 +44,7 @@ export default function QuickApplyModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [showCounterConfirm, setShowCounterConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -72,9 +76,24 @@ export default function QuickApplyModal({
   const currencyLabel = task.payment_method === 'stripe' ? 'USD' : 'USDC';
   const canSubmit = whyFit.trim().length > 0 && availability.trim().length > 0;
 
+  // Check if counter offer differs significantly from budget
+  const counterOfferDiffPercent = useMemo(() => {
+    if (!counterOffer || !task) return 0;
+    const budget = Number(task.budget) || 0;
+    if (budget === 0) return 0;
+    return Math.abs((parseFloat(counterOffer) - budget) / budget) * 100;
+  }, [counterOffer, task]);
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!canSubmit) return;
+
+    // If counter offer differs by >20%, ask for confirmation first
+    if (counterOffer && counterOfferDiffPercent > 20 && !showCounterConfirm) {
+      setShowCounterConfirm(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -96,10 +115,11 @@ export default function QuickApplyModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to apply');
+        throw new Error(getErrorMessage(data, 'Failed to apply'));
       }
 
       trackEvent('task_applied', { task_id: task.id, source: 'quick_apply' });
+      setShowCounterConfirm(false);
       setSuccess(true);
       setTimeout(() => {
         onSuccess?.(task.id);
@@ -119,6 +139,7 @@ export default function QuickApplyModal({
     setCounterOffer('');
     setError(null);
     setSuccess(false);
+    setShowCounterConfirm(false);
     onClose();
   };
 
@@ -143,14 +164,14 @@ export default function QuickApplyModal({
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <h3>Application Sent!</h3>
+            <h3>Application sent</h3>
             <p>The task poster will review your application.</p>
           </div>
         ) : (
           <>
             {/* Header */}
             <div className="quick-apply-modal-header">
-              <h2>Apply to Task</h2>
+              <h2>Apply to task</h2>
             </div>
 
             {/* Task Summary */}
@@ -171,6 +192,24 @@ export default function QuickApplyModal({
                 )}
               </div>
             </div>
+
+            {/* Deadline warning — non-blocking */}
+            {task.deadline && (() => {
+              const hoursLeft = (new Date(task.deadline) - new Date()) / (1000 * 60 * 60);
+              if (hoursLeft > 0 && hoursLeft <= 4) {
+                return (
+                  <div style={{
+                    background: 'rgba(254, 188, 46, 0.15)', border: '1px solid #FEBC2E',
+                    borderRadius: 10, padding: '10px 14px', marginBottom: 4, fontSize: 13,
+                    color: '#92400E', display: 'flex', alignItems: 'center', gap: 8
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FEBC2E" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                    This task is due in {hoursLeft < 1 ? 'less than 1 hour' : `${Math.round(hoursLeft)} hour${Math.round(hoursLeft) !== 1 ? 's' : ''}`}. Make sure you can complete it in time.
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Form */}
             <form onSubmit={handleSubmit}>
@@ -296,33 +335,59 @@ export default function QuickApplyModal({
               )}
 
               <div className="quick-apply-modal-actions">
-                <button
+                <Button
                   type="button"
-                  className="quick-apply-modal-btn secondary"
+                  variant="secondary"
+                  size="lg"
                   onClick={handleClose}
                   disabled={loading}
                 >
-                  Cancel
-                </button>
-                <button
+                  Cancel application
+                </Button>
+                <Button
                   type="submit"
-                  className="quick-apply-modal-btn primary"
+                  variant="primary"
+                  size="lg"
                   disabled={loading || !canSubmit}
+                  className="gap-2"
                 >
                   {loading ? (
                     <>
                       <span className="quick-apply-modal-spinner" />
-                      Applying...
+                      Submitting...
                     </>
                   ) : (
-                    'Apply Now'
+                    'Submit application'
                   )}
-                </button>
+                </Button>
               </div>
             </form>
           </>
         )}
       </div>
+      {/* Counter offer confirmation */}
+      <ConfirmationModal
+        isOpen={showCounterConfirm}
+        onConfirm={handleSubmit}
+        onCancel={() => setShowCounterConfirm(false)}
+        title="Confirm counter offer"
+        description={(() => {
+          const budget = Number(task?.budget) || 0;
+          const offer = parseFloat(counterOffer) || 0;
+          const direction = offer > budget ? 'higher' : 'lower';
+          const pct = Math.round(counterOfferDiffPercent);
+          return (
+            <p>
+              You're offering to complete this task for <strong>${offer.toFixed(2)}</strong>, which is {pct}% {direction} than
+              the posted budget of ${budget.toFixed(2)}. The task creator will see this amount.
+            </p>
+          );
+        })()}
+        confirmLabel="Submit Application"
+        variant="info"
+        isLoading={loading}
+        error={error}
+      />
     </div>,
     document.body
   );

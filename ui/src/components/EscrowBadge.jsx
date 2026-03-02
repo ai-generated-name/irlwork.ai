@@ -1,7 +1,8 @@
 // Escrow Badge Component
 // Shows the current escrow status for a task
 import React from 'react';
-import { Hourglass } from 'lucide-react';
+import { Hourglass, Lock, Check, RotateCcw } from 'lucide-react';
+import { Card } from './ui';
 
 const STATUS_CONFIG = {
   pending: {
@@ -15,21 +16,21 @@ const STATUS_CONFIG = {
     label: 'In Escrow',
     color: 'bg-[#E8853D]',
     textColor: 'text-[#E8853D]',
-    icon: '🔒',
+    icon: <Lock size={14} />,
     description: 'Funds secured, work can begin'
   },
   released: {
     label: 'Paid',
     color: 'bg-[#16A34A]',
     textColor: 'text-[#16A34A]',
-    icon: '✓',
+    icon: <Check size={14} />,
     description: 'Payment released to human'
   },
   refunded: {
     label: 'Refunded',
     color: 'bg-[#FF5F57]',
     textColor: 'text-[#FF5F57]',
-    icon: '↩',
+    icon: <RotateCcw size={14} />,
     description: 'Funds returned to agent'
   }
 };
@@ -78,7 +79,7 @@ export function EscrowStatusCard({
   const currencyLabel = paymentMethod === 'usdc' ? 'USDC' : 'USD';
 
   return (
-    <div className="bg-white rounded-xl border-2 border-[rgba(0,0,0,0.08)] p-4 shadow-sm">
+    <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className={`w-12 h-12 ${config.color}/20 rounded-full flex items-center justify-center text-2xl`}>
@@ -118,6 +119,6 @@ export function EscrowStatusCard({
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

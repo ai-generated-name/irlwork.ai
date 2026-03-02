@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Button } from './ui';
 import API_URL from '../config/api';
 
 export default function ConnectWalletSection({ user, compact = false }) {
@@ -99,8 +100,8 @@ export default function ConnectWalletSection({ user, compact = false }) {
     if (compact) return null;
     return (
       <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-2xl p-6 md:p-8 animate-pulse">
-        <div className="h-5 bg-gray-200 rounded w-1/3 mb-3"></div>
-        <div className="h-4 bg-gray-100 rounded w-2/3"></div>
+        <div className="h-5 bg-[#ECECEC] rounded w-1/3 mb-3"></div>
+        <div className="h-4 bg-[#F3F4F6] rounded w-2/3"></div>
       </div>
     );
   }
@@ -110,7 +111,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
     if (savedAddress) {
       return (
         <div className="flex items-center gap-2 px-3 py-2 bg-[#f0fdf4] border border-[#86efac] rounded-lg">
-          <span className="text-sm">&#9989;</span>
+          <svg className="w-4 h-4 text-[#16a34a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
           <span className="text-xs font-semibold text-[#16a34a] truncate">
             {savedAddress.slice(0, 6)}...{savedAddress.slice(-4)}
           </span>
@@ -137,30 +138,33 @@ export default function ConnectWalletSection({ user, compact = false }) {
           />
           {error && <p className="text-xs text-red-500">{error}</p>}
           <div className="flex gap-2">
+            {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- wallet branding uses indigo */}
             <button
               onClick={handleSave}
               disabled={saving}
               className="flex-1 py-2 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[#9ca3af] text-white rounded-lg text-xs font-semibold transition-colors"
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving...' : 'Save address'}
             </button>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => { setEditing(false); setError(null); setWalletAddress(savedAddress || ''); }}
-              className="px-3 py-2 text-xs text-[#525252] hover:bg-[#F5F2ED] rounded-lg"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       );
     }
 
     return (
+      /* eslint-disable-next-line irlwork/no-inline-button-pattern -- wallet branding uses indigo */
       <button
         onClick={() => setEditing(true)}
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-xl text-sm font-semibold transition-colors"
       >
-        Connect Wallet
+        Connect wallet
       </button>
     );
   }
@@ -178,24 +182,26 @@ export default function ConnectWalletSection({ user, compact = false }) {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-[#1A1A1A] font-bold text-base">USDC Wallet Connected</h3>
+            <h3 className="text-[#1A1A1A] font-bold text-base">USDC wallet connected</h3>
             <p className="text-[#525252] text-sm mt-0.5 font-mono truncate">{savedAddress}</p>
             <p className="text-[#8A8A8A] text-xs mt-1">Base network (USDC)</p>
           </div>
         </div>
         <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[#E5E5E5]">
+          {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- wallet branding uses indigo */}
           <button
             onClick={() => { setEditing(true); setWalletAddress(savedAddress); }}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#6366f1] hover:text-[#4f46e5] bg-[#EEF2FF] hover:bg-[#E0E7FF] rounded-lg transition-colors"
           >
-            Change Wallet
+            Change wallet
           </button>
+          {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- soft destructive style not in Button variants */}
           <button
             onClick={handleRemove}
             disabled={saving}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#DC2626] hover:text-[#B91C1C] bg-[#FEE2E2] hover:bg-[#FECACA] rounded-lg transition-colors disabled:opacity-50"
           >
-            {saving ? 'Removing...' : 'Remove'}
+            {saving ? 'Removing...' : 'Remove wallet'}
           </button>
           {error && <span className="text-xs text-red-500">{error}</span>}
         </div>
@@ -226,7 +232,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
 
         <div className="flex-1 w-full">
           <h3 className="text-[#1A1A1A] font-bold text-lg">
-            {savedAddress ? 'Update Wallet Address' : 'Set Up USDC Wallet'}
+            {savedAddress ? 'Update wallet address' : 'Set up USDC wallet'}
           </h3>
           <p className="text-[#525252] text-sm mt-1.5 leading-relaxed">
             {savedAddress
@@ -244,12 +250,13 @@ export default function ConnectWalletSection({ user, compact = false }) {
             />
 
             <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- wallet branding uses indigo */}
               <button
                 onClick={handleSave}
                 disabled={saving || !walletAddress}
                 className="px-6 py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[#9ca3af] text-white rounded-xl text-sm font-bold transition-all"
               >
-                {saving ? 'Saving...' : 'Save Wallet Address'}
+                {saving ? 'Saving...' : 'Save wallet address'}
               </button>
               {editing && (
                 <button

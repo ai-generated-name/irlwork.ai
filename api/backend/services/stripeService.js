@@ -58,6 +58,32 @@ async function createSetupIntent(stripeCustomerId) {
 }
 
 /**
+ * Create a Stripe Checkout Session in 'setup' mode.
+ * Returns a hosted URL where the user can add a card — no frontend JS required.
+ * Used by MCP agents who cannot render Stripe Elements.
+ */
+async function createCheckoutSetupSession(stripeCustomerId, userId) {
+  if (!stripe) throw new Error('Stripe not configured');
+
+  const baseUrl = process.env.FRONTEND_URL || 'https://www.irlwork.ai';
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'setup',
+    customer: stripeCustomerId,
+    payment_method_types: ['card'],
+    success_url: `${baseUrl}?payment_setup=success`,
+    cancel_url: `${baseUrl}?payment_setup=cancelled`,
+    metadata: {
+      user_id: userId,
+      source: 'mcp_setup_payment',
+      platform: 'irlwork'
+    },
+  });
+
+  return { url: session.url, session_id: session.id };
+}
+
+/**
  * List saved payment methods for a Stripe customer.
  */
 async function listPaymentMethods(stripeCustomerId) {
@@ -327,8 +353,11 @@ async function cancelEscrowHold(paymentIntentId) {
  */
 async function verifyAgentHasPaymentMethod(supabase, agentId) {
   if (!stripe) {
+    if (process.env.NODE_ENV === 'production') {
+      return { valid: false, reason: 'payment_service_unavailable' };
+    }
     // Graceful degradation when Stripe is not configured (dev/demo mode)
-    return { valid: true, reason: 'stripe_disabled' };
+    return { valid: true, reason: 'stripe_disabled_dev' };
   }
 
   const { data: agent, error: agentError } = await supabase
@@ -499,13 +528,20 @@ async function transferToWorker(supabase, pendingTransactionId, workerStripeAcco
 async function refundPaymentIntent(paymentIntentId, reason = 'duplicate') {
   if (!stripe) throw new Error('Stripe not configured');
 
-  const refund = await stripe.refunds.create({
-    payment_intent: paymentIntentId,
-    reason,
-    metadata: { platform: 'irlwork', reason }
-  });
-
-  return { refund_id: refund.id, status: refund.status, amount: refund.amount };
+  try {
+    const refund = await stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      reason,
+      metadata: { platform: 'irlwork', reason }
+    });
+    return { refund_id: refund.id, status: refund.status, amount: refund.amount };
+  } catch (error) {
+    if (error.code === 'charge_already_refunded') {
+      console.warn(`[Stripe] PI ${paymentIntentId} already refunded, skipping`);
+      return { alreadyRefunded: true, status: 'already_refunded' };
+    }
+    throw error;
+  }
 }
 
 /**
@@ -592,81 +628,93 @@ async function handleWebhookEvent(event, supabase, createNotification) {
     throw insertError;
   }
 
-  // Process the event, then mark as processed
-  switch (event.type) {
-    case 'payment_intent.succeeded':
-      await handlePaymentIntentSucceeded(event.data.object, supabase, createNotification);
-      break;
+  // Process the event, then mark as processed.
+  // If processing fails, DELETE the claim row so Stripe can retry.
+  try {
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(event.data.object, supabase, createNotification);
+        break;
 
-    case 'payment_intent.payment_failed':
-      await handlePaymentIntentFailed(event.data.object, supabase, createNotification);
-      break;
+      case 'payment_intent.payment_failed':
+        await handlePaymentIntentFailed(event.data.object, supabase, createNotification);
+        break;
 
-    case 'account.updated':
-      await handleAccountUpdated(event.data.object, supabase);
-      break;
+      case 'account.updated':
+        await handleAccountUpdated(event.data.object, supabase);
+        break;
 
-    case 'transfer.created':
-      await handleTransferCreated(event.data.object, supabase);
-      break;
+      case 'transfer.created':
+        await handleTransferCreated(event.data.object, supabase);
+        break;
 
-    case 'transfer.reversed':
-      await handleTransferFailed(event.data.object, supabase, createNotification);
-      break;
+      case 'transfer.reversed':
+        await handleTransferFailed(event.data.object, supabase, createNotification);
+        break;
 
-    case 'charge.dispute.created':
-      await handleDisputeCreated(event.data.object, supabase, createNotification);
-      break;
+      case 'charge.dispute.created':
+        await handleDisputeCreated(event.data.object, supabase, createNotification);
+        break;
 
-    case 'charge.dispute.closed':
-      await handleDisputeClosed(event.data.object, supabase, createNotification);
-      break;
+      case 'charge.dispute.closed':
+        await handleDisputeClosed(event.data.object, supabase, createNotification);
+        break;
 
-    case 'charge.refunded':
-      await handleChargeRefunded(event.data.object, supabase);
-      break;
+      case 'charge.refunded':
+        await handleChargeRefunded(event.data.object, supabase);
+        break;
 
-    case 'payout.failed':
-      await handlePayoutFailed(event.data.object, event.account, supabase, createNotification);
-      break;
+      case 'payout.failed':
+        await handlePayoutFailed(event.data.object, event.account, supabase, createNotification);
+        break;
 
-    case 'payout.paid':
-      await handlePayoutPaid(event.data.object, event.account, supabase, createNotification);
-      break;
+      case 'payout.paid':
+        await handlePayoutPaid(event.data.object, event.account, supabase, createNotification);
+        break;
 
-    // Subscription lifecycle events
-    case 'customer.subscription.created':
-      await subscriptionService.handleSubscriptionCreated(event.data.object, supabase, createNotification);
-      break;
+      // Subscription lifecycle events
+      case 'customer.subscription.created':
+        await subscriptionService.handleSubscriptionCreated(event.data.object, supabase, createNotification);
+        break;
 
-    case 'customer.subscription.updated':
-      await subscriptionService.handleSubscriptionUpdated(event.data.object, supabase);
-      break;
+      case 'customer.subscription.updated':
+        await subscriptionService.handleSubscriptionUpdated(event.data.object, supabase);
+        break;
 
-    case 'customer.subscription.deleted':
-      await subscriptionService.handleSubscriptionDeleted(event.data.object, supabase);
-      break;
+      case 'customer.subscription.deleted':
+        await subscriptionService.handleSubscriptionDeleted(event.data.object, supabase);
+        break;
 
-    case 'checkout.session.completed':
-      await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
-      break;
+      case 'checkout.session.completed':
+        if (event.data.object.mode === 'setup') {
+          await handleSetupCheckoutCompleted(event.data.object, supabase, createNotification);
+        } else {
+          await subscriptionService.handleCheckoutCompleted(event.data.object, supabase);
+        }
+        break;
 
-    case 'invoice.paid':
-      await subscriptionService.handleInvoicePaid(event.data.object, supabase);
-      break;
+      case 'invoice.paid':
+        await subscriptionService.handleInvoicePaid(event.data.object, supabase);
+        break;
 
-    case 'invoice.payment_failed':
-      await subscriptionService.handleInvoicePaymentFailed(event.data.object, supabase, createNotification);
-      break;
+      case 'invoice.payment_failed':
+        await subscriptionService.handleInvoicePaymentFailed(event.data.object, supabase, createNotification);
+        break;
 
-    default:
-      console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
+      default:
+        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
+    }
+
+    // Mark as processed after successful handling
+    await supabase.from('stripe_events')
+      .update({ processed_at: new Date().toISOString() })
+      .eq('id', event.id);
+  } catch (handlerError) {
+    // Delete the claim row so Stripe can retry the event
+    console.error(`[Stripe Webhook] Handler failed for event ${event.id} (${event.type}):`, handlerError.message);
+    await supabase.from('stripe_events').delete().eq('id', event.id);
+    throw handlerError;
   }
-
-  // Mark as processed after successful handling
-  await supabase.from('stripe_events')
-    .update({ processed_at: new Date().toISOString() })
-    .eq('id', event.id);
 }
 
 async function handlePaymentIntentSucceeded(paymentIntent, supabase, createNotification) {
@@ -965,6 +1013,57 @@ async function handleChargeRefunded(charge, supabase) {
 }
 
 /**
+ * Handle checkout.session.completed for mode: 'setup'.
+ * Sets the card as default if no existing default, and notifies the user.
+ */
+async function handleSetupCheckoutCompleted(session, supabase, createNotification) {
+  const setupIntentId = session.setup_intent;
+  if (!setupIntentId) return;
+
+  const userId = session.metadata?.user_id;
+  if (!userId) return;
+
+  console.log(`[Stripe Webhook] Setup checkout completed for user ${userId}`);
+
+  // Retrieve the SetupIntent to get the payment method
+  const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+  const paymentMethodId = setupIntent.payment_method;
+
+  if (paymentMethodId && session.customer) {
+    // Only set as default if user has no existing default PM
+    const customer = await stripe.customers.retrieve(session.customer);
+    if (!customer.invoice_settings?.default_payment_method) {
+      await stripe.customers.update(session.customer, {
+        invoice_settings: { default_payment_method: paymentMethodId }
+      });
+      console.log(`[Stripe Webhook] Set default PM ${paymentMethodId} for customer ${session.customer}`);
+    }
+
+    // Get card details for notification
+    let cardBrand = 'card';
+    let cardLast4 = '';
+    try {
+      const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+      cardBrand = pm.card?.brand || 'card';
+      cardLast4 = pm.card?.last4 || '';
+    } catch (e) {
+      console.error('[Stripe Webhook] Failed to retrieve PM details:', e.message);
+    }
+
+    // Send notification so MCP agents know setup is complete
+    if (createNotification) {
+      await createNotification(
+        userId,
+        'payment_method_added',
+        'Payment Method Added',
+        `Your ${cardBrand} card ending in ${cardLast4} has been added. You can now post tasks and hire humans.`,
+        null
+      );
+    }
+  }
+}
+
+/**
  * Handle payout.failed — worker's bank rejected the transfer
  * @param {object} payout - Stripe payout object
  * @param {string} connectedAccountId - The Connect account ID (event.account, e.g. acct_xxx)
@@ -1021,6 +1120,7 @@ async function handlePayoutPaid(payout, connectedAccountId, supabase, createNoti
 module.exports = {
   getOrCreateStripeCustomer,
   createSetupIntent,
+  createCheckoutSetupSession,
   listPaymentMethods,
   deletePaymentMethod,
   setDefaultPaymentMethod,

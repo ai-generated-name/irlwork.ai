@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
 import { Mail, Send, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
+import { usePageTitle } from '../hooks/usePageTitle'
+import { Button } from '../components/ui'
 
 export default function ContactPage() {
+  usePageTitle('Contact')
   const { t } = useLanguage()
   const [category, setCategory] = useState('support')
   const [name, setName] = useState('')
@@ -170,13 +173,13 @@ export default function ContactPage() {
                     {categories[category].email}
                   </a>
                 </p>
-                <button
+                <Button
+                  variant="secondary"
+                  size="md"
                   onClick={() => { setSent(false); setMessage('') }}
-                  className="v4-btn v4-btn-secondary"
-                  style={{ padding: '10px 24px', fontSize: '14px' }}
                 >
                   {t('contact.sendAnother')}
-                </button>
+                </Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit}>
@@ -254,10 +257,11 @@ export default function ContactPage() {
                   {/* Name + Email row */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      <label htmlFor="contact-name" style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                         {t('contact.yourName')}
                       </label>
                       <input
+                        id="contact-name"
                         type="text"
                         required
                         value={name}
@@ -280,10 +284,11 @@ export default function ContactPage() {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      <label htmlFor="contact-email" style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                         {t('contact.yourEmail')}
                       </label>
                       <input
+                        id="contact-email"
                         type="email"
                         required
                         value={email}
@@ -309,10 +314,11 @@ export default function ContactPage() {
 
                   {/* Message */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                    <label htmlFor="contact-message" style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                       {t('contact.message')}
                     </label>
                     <textarea
+                      id="contact-message"
                       required
                       value={message}
                       onChange={e => setMessage(e.target.value)}
@@ -339,20 +345,15 @@ export default function ContactPage() {
                   </div>
 
                   {/* Submit */}
-                  <button
+                  <Button
                     type="submit"
-                    className="v4-btn v4-btn-primary"
-                    style={{
-                      padding: '14px 32px',
-                      fontSize: '15px',
-                      fontWeight: 600,
-                      width: '100%',
-                      justifyContent: 'center',
-                    }}
+                    variant="primary"
+                    size="lg"
+                    className="gap-2 w-full justify-center"
                   >
                     <Send size={18} />
                     {t('contact.sendTo')} {categories[category].email}
-                  </button>
+                  </Button>
                 </div>
               </form>
             )}
