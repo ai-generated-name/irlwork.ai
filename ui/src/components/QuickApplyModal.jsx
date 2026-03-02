@@ -12,21 +12,21 @@ const PLATFORM_FEE_PERCENT = 15;
 const PREMIUM_FEE_PERCENT = 10;
 
 const CATEGORY_ICONS = {
-  delivery: <Package size={16} />,
-  photography: <Camera size={16} />,
-  data_collection: <BarChart3 size={16} />,
-  'data-collection': <BarChart3 size={16} />,
-  errands: <Footprints size={16} />,
-  cleaning: <Sparkles size={16} />,
-  moving: <Truck size={16} />,
-  manual_labor: <Wrench size={16} />,
-  inspection: <Search size={16} />,
-  tech: <Monitor size={16} />,
-  'tech-setup': <Monitor size={16} />,
-  translation: <Languages size={16} />,
-  verification: <CheckCircle size={16} />,
-  general: <ClipboardList size={16} />,
-  other: <ClipboardList size={16} />,
+  delivery: Package,
+  photography: Camera,
+  data_collection: BarChart3,
+  'data-collection': BarChart3,
+  errands: Footprints,
+  cleaning: Sparkles,
+  moving: Truck,
+  manual_labor: Wrench,
+  inspection: Search,
+  tech: Monitor,
+  'tech-setup': Monitor,
+  translation: Languages,
+  verification: CheckCircle,
+  general: ClipboardList,
+  other: ClipboardList,
 };
 
 export default function QuickApplyModal({
@@ -71,12 +71,12 @@ export default function QuickApplyModal({
   const canSubmit = whyFit.trim().length > 0 && availability.trim().length > 0;
 
   // Check if counter offer differs significantly from budget
-  const counterOfferDiffPercent = useMemo(() => {
+  const counterOfferDiffPercent = (() => {
     if (!counterOffer || !task) return 0;
     const budget = Number(task.budget) || 0;
     if (budget === 0) return 0;
     return Math.abs((parseFloat(counterOffer) - budget) / budget) * 100;
-  }, [counterOffer, task]);
+  })();
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -137,7 +137,7 @@ export default function QuickApplyModal({
     onClose();
   };
 
-  const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={16} />;
+  const CategoryIcon = CATEGORY_ICONS[task.category] || ClipboardList;
 
   return createPortal(
     <div className="quick-apply-modal-overlay" onClick={handleClose}>
@@ -171,7 +171,7 @@ export default function QuickApplyModal({
             {/* Task Summary */}
             <div className="quick-apply-modal-task">
               <div className="quick-apply-modal-task-category">
-                <span>{categoryIcon}</span>
+                <span><CategoryIcon size={16} /></span>
                 <span>{task.category?.replace('-', ' ') || 'General'}</span>
               </div>
               <h3 className="quick-apply-modal-task-title">{task.title}</h3>
