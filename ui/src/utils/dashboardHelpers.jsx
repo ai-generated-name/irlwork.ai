@@ -17,11 +17,14 @@ export function getTaskStatus(status) {
   const colors = {
     open: 'bg-teal/10 text-teal',
     accepted: 'bg-purple-100 text-purple-600',
+    assigned: 'bg-blue-100 text-blue-600',
     in_progress: 'bg-amber-100 text-amber-600',
     pending_review: 'bg-coral/10 text-coral',
+    rejected: 'bg-red-100 text-[#DC2626]',
     completed: 'bg-green-100 text-[#16A34A]',
     paid: 'bg-[#F3F4F6] text-[#6B7280]',
     disputed: 'bg-red-100 text-[#DC2626]',
+    cancelled: 'bg-[#F3F4F6] text-[#9CA3AF]',
   }
   return colors[status] || 'bg-[#F3F4F6] text-[#6B7280]'
 }
@@ -36,11 +39,14 @@ export function getStatusLabel(status) {
     open: 'Open',
     pending_acceptance: 'Pending Acceptance',
     accepted: 'Accepted',
+    assigned: 'Assigned',
     in_progress: 'In Progress',
     pending_review: 'Pending Review',
+    rejected: 'Rejected',
     completed: 'Completed',
     paid: 'Paid',
     disputed: 'Disputed',
+    cancelled: 'Cancelled',
   }
   return labels[status] || status
 }
