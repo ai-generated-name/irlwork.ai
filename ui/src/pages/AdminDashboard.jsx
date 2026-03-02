@@ -15,16 +15,47 @@ const LiveFeedTab = lazy(() => import('../components/admin/LiveFeedTab'))
 const TaskManagerTab = lazy(() => import('../components/admin/TaskManagerTab'))
 const UserManagerTab = lazy(() => import('../components/admin/UserManagerTab'))
 
+// URL slug ↔ internal queue ID mapping
+const ADMIN_TAB_URL_MAP = {
+  'bi-overview': 'overview',
+  'bi-funnel': 'funnel',
+  'bi-financial': 'financial',
+  'bi-live-feed': 'live-feed',
+  'bi-task-manager': 'tasks',
+  'dashboard': 'operations',
+  'reports': 'reports',
+  'pending-deposits': 'pending-deposits',
+  'stale-deposits': 'stale-deposits',
+  'pending-agent-approval': 'awaiting-agent',
+  'pending-release': 'ready-to-release',
+  'pending-withdrawals': 'pending-withdrawals',
+  'feedback': 'feedback',
+  'users': 'users',
+}
+const URL_TO_TAB_MAP = Object.fromEntries(
+  Object.entries(ADMIN_TAB_URL_MAP).map(([k, v]) => [v, k])
+)
+
+function getAdminTabFromUrl() {
+  const parts = window.location.pathname.split('/')
+  // Expected: ['', 'dashboard', 'hiring', 'admin', 'overview']
+  const slug = parts[4] || null
+  if (slug && URL_TO_TAB_MAP[slug]) return URL_TO_TAB_MAP[slug]
+  return null
+}
+
 /**
  * Admin Dashboard - Phase 1 Manual Operations
  * Only accessible to users with admin privileges
  */
-export default function AdminDashboard({ user }) {
+export default function AdminDashboard({ user, initialAdminTab }) {
   usePageTitle('Admin')
   const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [activeQueue, setActiveQueue] = useState('bi-overview')
+  const [activeQueue, setActiveQueue] = useState(() => {
+    return getAdminTabFromUrl() || initialAdminTab || 'bi-overview'
+  })
   const [dashboard, setDashboard] = useState(null)
   const [queueData, setQueueData] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
@@ -54,9 +85,9 @@ export default function AdminDashboard({ user }) {
     }
   }, [])
 
-  // Fetch queue data
+  // Fetch queue data (BI tabs and users manage their own fetching)
   const fetchQueue = useCallback(async (queue) => {
-    if (queue === 'dashboard') return
+    if (queue === 'dashboard' || queue === 'users' || queue.startsWith('bi-')) return
 
     setLoading(true)
     try {
@@ -103,6 +134,32 @@ export default function AdminDashboard({ user }) {
       fetchQueue(activeQueue)
     }
   }, [activeQueue, fetchQueue])
+
+  // Push admin sub-tab URL when active queue changes
+  const setActiveQueueWithUrl = useCallback((queueId) => {
+    setActiveQueue(queueId)
+    const slug = ADMIN_TAB_URL_MAP[queueId] || queueId
+    window.history.pushState({}, '', `/dashboard/hiring/admin/${slug}`)
+  }, [])
+
+  // Handle browser back/forward within admin tabs
+  useEffect(() => {
+    const handleAdminPopState = () => {
+      const tab = getAdminTabFromUrl()
+      if (tab) setActiveQueue(tab)
+    }
+    window.addEventListener('popstate', handleAdminPopState)
+    return () => window.removeEventListener('popstate', handleAdminPopState)
+  }, [])
+
+  // Push initial URL on mount if none set
+  useEffect(() => {
+    const parts = window.location.pathname.split('/')
+    if (parts[3] === 'admin' && !parts[4]) {
+      const slug = ADMIN_TAB_URL_MAP[activeQueue] || 'overview'
+      window.history.replaceState({}, '', `/dashboard/hiring/admin/${slug}`)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Action handlers
   const confirmDeposit = async (taskId, txHash, amount) => {
@@ -293,28 +350,47 @@ export default function AdminDashboard({ user }) {
     )
   }
 
-  // BI tabs (lazy-loaded) appear first, followed by operational queues
-  const biTabs = [
-    { id: 'bi-overview', label: 'Overview', icon: <TrendingUp size={16} />, isBi: true },
-    { id: 'bi-funnel', label: 'Funnel', icon: <Filter size={16} />, isBi: true },
-    { id: 'bi-financial', label: 'Financial', icon: <DollarSign size={16} />, isBi: true },
-    { id: 'bi-live-feed', label: 'Live feed', icon: <Activity size={16} />, isBi: true },
-    { id: 'bi-task-manager', label: 'Tasks', icon: <Hammer size={16} />, isBi: true },
-    { id: 'bi-users', label: 'Users', icon: <Users size={16} />, isBi: true },
+  // Tab groups: Analytics | Tasks | Payments | Users
+  const tabGroups = [
+    {
+      label: 'Analytics',
+      style: 'bi',
+      tabs: [
+        { id: 'bi-overview', label: 'Overview', icon: <TrendingUp size={16} /> },
+        { id: 'bi-funnel', label: 'Funnel', icon: <Filter size={16} /> },
+        { id: 'bi-financial', label: 'Financial', icon: <DollarSign size={16} /> },
+        { id: 'bi-live-feed', label: 'Live Feed', icon: <Activity size={16} /> },
+      ],
+    },
+    {
+      label: 'Tasks',
+      style: 'ops',
+      tabs: [
+        { id: 'bi-task-manager', label: 'Tasks', icon: <Hammer size={16} /> },
+        { id: 'dashboard', label: 'Operations', icon: <BarChart3 size={16} /> },
+        { id: 'reports', label: 'Reports', icon: <Flag size={16} />, count: dashboard?.pending_reports?.count, alert: dashboard?.pending_reports?.count > 0 },
+      ],
+    },
+    {
+      label: 'Payments',
+      style: 'ops',
+      tabs: [
+        { id: 'pending-deposits', label: 'Pending Deposits', icon: <DollarSign size={16} />, count: dashboard?.pending_deposits?.count },
+        { id: 'stale-deposits', label: 'Stale (>48h)', icon: <AlertTriangle size={16} />, count: dashboard?.stale_deposits_48h?.count, alert: dashboard?.stale_deposits_48h?.alert },
+        { id: 'pending-release', label: 'Ready to Release', icon: <CheckCircle size={16} />, count: dashboard?.pending_release?.count },
+        { id: 'pending-withdrawals', label: 'Pending Withdrawals', icon: <ArrowDownLeft size={16} />, count: dashboard?.pending_withdrawals?.count },
+      ],
+    },
+    {
+      label: 'Users',
+      style: 'bi',
+      tabs: [
+        { id: 'users', label: 'Users', icon: <Users size={16} /> },
+        { id: 'pending-agent-approval', label: 'Awaiting Agent', icon: <User size={16} />, count: dashboard?.pending_agent_approval?.count },
+        { id: 'feedback', label: 'Feedback', icon: <FileText size={16} />, count: dashboard?.feedback?.count },
+      ],
+    },
   ]
-
-  const opsQueues = [
-    { id: 'dashboard', label: 'Operations', icon: <BarChart3 size={16} /> },
-    { id: 'reports', label: 'Reports', icon: <Flag size={16} />, count: dashboard?.pending_reports?.count, alert: dashboard?.pending_reports?.count > 0 },
-    { id: 'pending-deposits', label: 'Pending deposits', icon: <DollarSign size={16} />, count: dashboard?.pending_deposits?.count },
-    { id: 'stale-deposits', label: 'Stale (>48h)', icon: <AlertTriangle size={16} />, count: dashboard?.stale_deposits_48h?.count, alert: dashboard?.stale_deposits_48h?.alert },
-    { id: 'pending-agent-approval', label: 'Awaiting agent', icon: <User size={16} />, count: dashboard?.pending_agent_approval?.count },
-    { id: 'pending-release', label: 'Ready to release', icon: <CheckCircle size={16} />, count: dashboard?.pending_release?.count },
-    { id: 'pending-withdrawals', label: 'Pending withdrawals', icon: <ArrowDownLeft size={16} />, count: dashboard?.pending_withdrawals?.count },
-    { id: 'feedback', label: 'Feedback', icon: <FileText size={16} />, count: dashboard?.feedback?.count },
-  ]
-
-  const queues = [...biTabs, ...opsQueues]
 
   return (
     <div className="space-y-6">
@@ -334,34 +410,34 @@ export default function AdminDashboard({ user }) {
         }
       />
 
-      {/* Queue Tabs */}
+      {/* Queue Tabs — grouped with dividers */}
       <div className="flex flex-wrap gap-2 items-center">
-        {queues.map((queue, i) => (
-          <Fragment key={queue.id}>
-            {/* Visual separator between BI tabs and operational queues */}
-            {i === biTabs.length && (
-              <div className="w-px h-6 bg-[#ECECEC] mx-1" />
-            )}
-            <button
-              onClick={() => setActiveQueue(queue.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 text-sm ${
-                activeQueue === queue.id
-                  ? queue.isBi ? 'bg-orange-500 text-white' : 'bg-teal text-white'
-                  : queue.alert
-                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                    : 'bg-[#F3F4F6] text-[#1A1A1A] hover:bg-[#ECECEC]'
-              }`}
-            >
-              <span>{queue.icon}</span>
-              <span>{queue.label}</span>
-              {queue.count > 0 && (
-                <span className={`px-2 py-0.5 rounded-[6px] text-xs ${
-                  activeQueue === queue.id ? 'bg-white/20' : 'bg-[#ECECEC]'
-                }`}>
-                  {queue.count}
-                </span>
-              )}
-            </button>
+        {tabGroups.map((group, gi) => (
+          <Fragment key={group.label}>
+            {gi > 0 && <div className="w-px h-6 bg-[#ECECEC] mx-1" />}
+            {group.tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveQueueWithUrl(tab.id)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 text-sm ${
+                  activeQueue === tab.id
+                    ? group.style === 'bi' ? 'bg-orange-500 text-white' : 'bg-teal text-white'
+                    : tab.alert
+                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                      : 'bg-[#F3F4F6] text-[#1A1A1A] hover:bg-[#ECECEC]'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {tab.count > 0 && (
+                  <span className={`px-2 py-0.5 rounded-[6px] text-xs ${
+                    activeQueue === tab.id ? 'bg-white/20' : 'bg-[#ECECEC]'
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
           </Fragment>
         ))}
       </div>
@@ -388,7 +464,7 @@ export default function AdminDashboard({ user }) {
         <Suspense fallback={<PageLoader message="Loading task manager..." />}>
           <TaskManagerTab user={user} />
         </Suspense>
-      ) : activeQueue === 'bi-users' ? (
+      ) : activeQueue === 'users' ? (
         <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-[#9CA3AF]">Loading users...</div></div>}>
           <UserManagerTab user={user} />
         </Suspense>

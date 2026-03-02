@@ -32,8 +32,6 @@ const ConnectAgentPage = lazy(() => import('./pages/ConnectAgentPage'))
 const MCPPage = lazy(() => import('./pages/MCPPage'))
 const PremiumPage = lazy(() => import('./pages/PremiumPage'))
 
-// MCPPage loaded lazily from ./pages/MCPPage — full API reference
-
 function App() {
   // Initialize from localStorage cache for instant rendering (no loading spinner for returning users)
   const [user, setUser] = useState(() => {

@@ -1203,6 +1203,61 @@ Admin dispute resolution (in server.js, not admin router).
 #### `POST /api/admin/check-auto-release`
 **DISABLED (410).** "Auto-release is disabled for Phase 1."
 
+#### `GET /api/admin/users/search`
+Paginated, filterable user list. Query: `?q=<search>&type=human|agent|all&moderation=good_standing|warned|suspended|banned|all&sort=newest|oldest|most_active|highest_rated&page=1&limit=25`.
+
+**Response:**
+```json
+{
+  "users": [{ "id": "uuid", "name": "...", "email": "...", "type": "human|agent", "moderation_status": "...", "task_count": 5, ... }],
+  "total": 403,
+  "page": 1,
+  "limit": 25
+}
+```
+
+#### `GET /api/admin/users/:id`
+Full user detail with activity data. Returns user record (minus password_hash), recent tasks, recent ratings, report history, and computed stats.
+
+**Response:**
+```json
+{
+  "user": { "id": "uuid", "name": "...", "subscription_tier": "free|builder|pro", ... },
+  "recent_tasks": [...],
+  "recent_ratings": [...],
+  "report_history": [...],
+  "messages_sent_count": 42,
+  "tasks_applied_count": 15,
+  "total_earned_cents": 50000,
+  "total_spent_cents": 75000
+}
+```
+
+#### `POST /api/admin/users/:id/moderate`
+Admin moderation actions on a user. Cannot self-moderate.
+
+**Request:**
+```json
+{
+  "action": "warn|suspend|ban|restore",
+  "notes": "optional reason",
+  "suspension_days": 7
+}
+```
+
+Actions: `warn` (increment warning_count, set warned), `suspend` (set suspended + suspended_until), `ban` (permanent), `restore` (back to good_standing). Creates notification for user, logs to admin_audit_log.
+
+#### `GET /api/admin/users/:id/audit-log`
+Moderation history for a user. Query: `?limit=20&offset=0`. Returns entries from admin_audit_log where the action targeted this user, enriched with admin names.
+
+**Response:**
+```json
+{
+  "entries": [{ "id": "uuid", "admin_id": "uuid", "admin_name": "Admin", "action": "moderate_user_warn", "request_body": { "notes": "..." }, "created_at": "..." }],
+  "total": 3
+}
+```
+
 ---
 
 ## 7. Webhooks
