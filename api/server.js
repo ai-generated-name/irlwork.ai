@@ -7481,7 +7481,7 @@ app.post('/api/mcp', async (req, res) => {
             console.error('[MCP/create_posting] Failed to check payment methods:', e.message);
           }
         }
-        if (mcpCreatePMs.length === 0 && !user.wallet_address) {
+        if (mcpCreatePMs.length === 0 && !user.wallet_address && !user.circle_wallet_id) {
           return res.status(402).json({
             error: 'No payment method on file',
             code: 'payment_required',
