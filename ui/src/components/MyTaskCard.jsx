@@ -1,3 +1,4 @@
+// @deprecated — Replaced by TaskRow.jsx (compact admin-style rows). Safe to delete.
 import React from 'react';
 import EscrowBadge from './EscrowBadge';
 import { StatusPill, Button } from './ui';
