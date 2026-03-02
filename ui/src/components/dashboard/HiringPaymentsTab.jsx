@@ -46,10 +46,11 @@ export default function HiringPaymentsTab({
 
             {/* Payment Overview */}
             {(() => {
-              const paidTasks = postedTasks.filter(t => t.escrow_amount && t.escrow_status)
-              const totalSpent = paidTasks.reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
-              const inEscrow = paidTasks.filter(t => t.status === 'in_progress').reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
-              const released = paidTasks.filter(t => t.status === 'paid' || t.status === 'completed').reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
+              // Only include tasks where money has actually moved (deposited into escrow or released to worker)
+              const fundedTasks = postedTasks.filter(t => t.escrow_amount && (t.escrow_status === 'deposited' || t.escrow_status === 'released' || t.escrow_status === 'refunded'))
+              const totalSpent = fundedTasks.filter(t => t.escrow_status === 'deposited' || t.escrow_status === 'released').reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
+              const inEscrow = fundedTasks.filter(t => t.escrow_status === 'deposited').reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
+              const released = fundedTasks.filter(t => t.escrow_status === 'released').reduce((sum, t) => sum + (t.escrow_amount || 0), 0)
               return (
                 <>
                   <div className="payment-stats-grid">
@@ -71,12 +72,13 @@ export default function HiringPaymentsTab({
                   <div>
                     <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Transaction History</h3>
 
-                    {paidTasks.length > 0 ? (
+                    {fundedTasks.length > 0 ? (
                       <div className="space-y-2 md:space-y-3">
-                        {paidTasks.map(task => {
-                          const isReleased = task.status === 'paid'
-                          const isCompleted = task.status === 'completed'
-                          const isInProgress = task.status === 'in_progress'
+                        {fundedTasks.map(task => {
+                          const isReleased = task.escrow_status === 'released'
+                          const isDeposited = task.escrow_status === 'deposited'
+                          const isRefunded = task.escrow_status === 'refunded'
+                          const isPendingReview = task.status === 'pending_review'
 
                           return (
                             <Card
@@ -93,11 +95,10 @@ export default function HiringPaymentsTab({
                                     <span className={`
                                       px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide flex-shrink-0
                                       ${isReleased ? 'bg-teal/8 text-teal' : ''}
-                                      ${isCompleted ? 'bg-teal/8 text-teal' : ''}
-                                      ${isInProgress ? 'bg-[#F5F3F0] text-[#888888]' : ''}
-                                      ${!isReleased && !isCompleted && !isInProgress ? 'bg-[#F5F3F0] text-[#333333]' : ''}
+                                      ${isRefunded ? 'bg-red-50 text-red-600' : ''}
+                                      ${isDeposited ? 'bg-[#F5F3F0] text-[#888888]' : ''}
                                     `}>
-                                      {isReleased ? 'Released' : isCompleted ? 'Completed' : isInProgress ? 'In Escrow' : task.escrow_status === 'deposited' ? 'Deposited' : task.escrow_status}
+                                      {isReleased ? 'Released' : isRefunded ? 'Refunded' : isPendingReview ? 'In Escrow — Pending Approval' : 'In Escrow'}
                                     </span>
                                     {task.payment_method === 'usdc' && (
                                       <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB] flex-shrink-0">USDC</span>
@@ -115,11 +116,11 @@ export default function HiringPaymentsTab({
                                 <div className="text-right flex-shrink-0">
                                   <p className={`
                                     text-lg md:text-xl font-bold
-                                    ${isReleased || isCompleted ? 'text-[#1A1A1A]' : ''}
-                                    ${isInProgress ? 'text-[#1A1A1A]' : ''}
-                                    ${!isReleased && !isCompleted && !isInProgress ? 'text-[#888888]' : ''}
+                                    ${isReleased ? 'text-[#1A1A1A]' : ''}
+                                    ${isRefunded ? 'text-red-600' : ''}
+                                    ${isDeposited ? 'text-[#1A1A1A]' : ''}
                                   `}>
-                                    ${(task.escrow_amount / 100).toFixed(2)}
+                                    {isRefunded ? '-' : ''}${(task.escrow_amount / 100).toFixed(2)}
                                   </p>
                                 </div>
                               </div>
