@@ -352,21 +352,41 @@ async function cancelEscrowHold(paymentIntentId) {
  * @returns {object} { valid: boolean, payment_method_id?: string, reason?: string }
  */
 async function verifyAgentHasPaymentMethod(supabase, agentId) {
-  if (!stripe) {
-    if (process.env.NODE_ENV === 'production') {
-      return { valid: false, reason: 'payment_service_unavailable' };
-    }
-    // Graceful degradation when Stripe is not configured (dev/demo mode)
-    return { valid: true, reason: 'stripe_disabled_dev' };
-  }
-
+  // Check both Stripe and USDC as valid payment methods
   const { data: agent, error: agentError } = await supabase
     .from('users')
-    .select('stripe_customer_id')
+    .select('stripe_customer_id, circle_wallet_id, usdc_available_balance, default_payment_method')
     .eq('id', agentId)
     .single();
 
-  if (agentError || !agent?.stripe_customer_id) {
+  if (agentError || !agent) {
+    return { valid: false, reason: 'user_not_found' };
+  }
+
+  // USDC wallet with balance counts as a valid payment method
+  const usdcBalance = parseFloat(agent.usdc_available_balance || 0);
+  if (agent.circle_wallet_id && usdcBalance > 0) {
+    return { valid: true, method: 'usdc', usdc_balance: usdcBalance };
+  }
+
+  // Stripe card check
+  if (!stripe) {
+    // If Stripe isn't configured and no USDC, check environment
+    if (agent.circle_wallet_id) {
+      // Has USDC wallet but zero balance — still valid (they may deposit later, escrow checked at hire time)
+      return { valid: true, method: 'usdc', usdc_balance: 0 };
+    }
+    if (process.env.NODE_ENV === 'production') {
+      return { valid: false, reason: 'payment_service_unavailable' };
+    }
+    return { valid: true, reason: 'stripe_disabled_dev' };
+  }
+
+  if (!agent.stripe_customer_id) {
+    // No Stripe customer and no USDC wallet
+    if (agent.circle_wallet_id) {
+      return { valid: true, method: 'usdc', usdc_balance: usdcBalance };
+    }
     return { valid: false, reason: 'no_payment_method' };
   }
 
@@ -374,7 +394,7 @@ async function verifyAgentHasPaymentMethod(supabase, agentId) {
   const customer = await stripe.customers.retrieve(agent.stripe_customer_id);
   const defaultPm = customer.invoice_settings?.default_payment_method;
   if (defaultPm) {
-    return { valid: true, payment_method_id: defaultPm };
+    return { valid: true, payment_method_id: defaultPm, method: 'stripe' };
   }
 
   // Fall back to listing PMs
@@ -385,7 +405,12 @@ async function verifyAgentHasPaymentMethod(supabase, agentId) {
   });
 
   if (methods.data.length > 0) {
-    return { valid: true, payment_method_id: methods.data[0].id };
+    return { valid: true, payment_method_id: methods.data[0].id, method: 'stripe' };
+  }
+
+  // No Stripe card — but USDC wallet still counts
+  if (agent.circle_wallet_id) {
+    return { valid: true, method: 'usdc', usdc_balance: usdcBalance };
   }
 
   return { valid: false, reason: 'no_payment_method' };
