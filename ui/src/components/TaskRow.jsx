@@ -2,7 +2,7 @@
 // Adapted from AdminTaskRow layout with expandable action sections.
 
 import { useState } from 'react'
-import { Eye, Users, Clock, MapPin, Globe, ChevronDown, ChevronUp, FolderOpen, FileText, Ban, Star, MessageCircle, ArrowDownLeft, AlertTriangle, Timer } from 'lucide-react'
+import { Eye, Users, Clock, MapPin, Globe, ChevronDown, ChevronUp, FolderOpen, FileText, Ban, Star, MessageCircle, ArrowDownLeft, AlertTriangle, Timer, Briefcase, CalendarDays } from 'lucide-react'
 import { StatusPill, Button } from './ui'
 import EscrowBadge from './EscrowBadge'
 import { navigate } from '../utils/navigate'
@@ -106,12 +106,19 @@ export default function TaskRow({
   const pendingCount = applications.filter?.(a => a.status === 'pending').length || task.pending_applicant_count || 0
   const { fee, payout } = calculatePayout(task.budget)
 
-  const handleRowClick = () => {
+  const handleNavigate = () => {
     if (onClick) {
       onClick(task)
     } else {
       navigate(`/tasks/${task.id}`)
     }
+  }
+
+  const handleRowClick = () => {
+    if (variant === 'hiring' && isOpen && onFetchApplications && !expanded) {
+      onFetchApplications(task.id)
+    }
+    setExpanded(!expanded)
   }
 
   const stop = (e) => e.stopPropagation()
@@ -145,8 +152,14 @@ export default function TaskRow({
               )}
             </div>
 
-            {/* Title */}
-            <p className="text-sm font-semibold text-[#1A1A1A] truncate">{task.title}</p>
+            {/* Title — clicks navigate to task detail page */}
+            <a
+              href={`/tasks/${task.id}`}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigate() }}
+              className="text-sm font-semibold text-[#1A1A1A] hover:text-[#E8853D] hover:underline transition-colors truncate block"
+            >
+              {task.title}
+            </a>
 
             {/* Description preview */}
             {task.description && (
@@ -341,12 +354,11 @@ export default function TaskRow({
                   </div>
                 )}
 
-                {/* Applicants section */}
-                {isOpen && onFetchApplications && (
+                {/* Applicants section — shown inline when expanded (no sub-toggle) */}
+                {isOpen && (
                   <ApplicantsSection
                     task={task}
                     applications={applications}
-                    onFetch={() => onFetchApplications(task.id)}
                     onAssign={onAssignHuman}
                     onDecline={onDeclineApplication}
                     onNegotiate={onNegotiate}
@@ -424,11 +436,11 @@ export default function TaskRow({
 
 
 // ── Applicants sub-section (hiring only) ────────────────────
+// Shown directly when task row is expanded (no sub-toggle needed).
 
 function ApplicantsSection({
   task,
   applications,
-  onFetch,
   onAssign,
   onDecline,
   onNegotiate,
@@ -442,132 +454,175 @@ function ApplicantsSection({
   setAssignNotes,
   user,
 }) {
-  const [showApplicants, setShowApplicants] = useState(false)
-  const pendingCount = applications.filter?.(a => a.status === 'pending').length || 0
+  if (!applications || applications.length === 0) {
+    return (
+      <div className="border-t border-[#ECECEC] pt-3">
+        <p className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wide mb-2">Applicants</p>
+        <p className="text-sm text-[#9CA3AF] text-center py-4">No applicants yet</p>
+      </div>
+    )
+  }
 
   return (
     <div className="border-t border-[#ECECEC] pt-3">
-      <button
-        onClick={() => {
-          if (!showApplicants) onFetch?.()
-          setShowApplicants(!showApplicants)
-        }}
-        className="text-sm font-medium text-[#E8853D] hover:text-[#D4742E] transition-colors bg-transparent border-none cursor-pointer p-0"
-      >
-        {showApplicants ? '▼ Hide applicants' : `▶ View applicants${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
-      </button>
+      <p className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wide mb-2">
+        Applicants ({applications.length})
+      </p>
 
-      {showApplicants && (
-        <div className="mt-2 space-y-1">
-          {applications.length === 0 ? (
-            <p className="text-sm text-[#9CA3AF] text-center py-3">No applicants yet</p>
-          ) : (
-            applications.map(app => (
-              <div key={app.id} className="px-3 py-2 bg-[#FAFAF8] rounded-lg">
-                <div className="flex items-center justify-between gap-2">
-                  {/* Left: avatar + info */}
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+      <div className="space-y-2">
+        {applications.map(app => (
+          <div key={app.id} className="p-3 bg-[#FAFAF8] rounded-xl border border-[#ECECEC]/60">
+            {/* Row 1: Avatar + name/stats + action buttons */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                {/* Avatar */}
+                <a
+                  href={`/humans/${app.human_id}`}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/humans/${app.human_id}`) }}
+                  className="shrink-0 mt-0.5"
+                >
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#E8853D] to-[#D4742E] flex items-center justify-center text-white text-xs font-semibold hover:ring-2 hover:ring-[#E8853D]/30 transition-shadow">
+                    {app.applicant?.name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                </a>
+
+                {/* Name + meta row */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <a
                       href={`/humans/${app.human_id}`}
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/humans/${app.human_id}`) }}
-                      className="shrink-0"
+                      className="text-sm font-semibold text-[#1A1A1A] hover:text-[#E8853D] hover:underline transition-colors"
                     >
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E8853D] to-[#D4742E] flex items-center justify-center text-white text-[10px] font-semibold hover:ring-2 hover:ring-[#E8853D]/30 transition-shadow">
-                        {app.applicant?.name?.[0]?.toUpperCase() || '?'}
-                      </div>
+                      {app.applicant?.name || 'Anonymous'}
                     </a>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <a
-                          href={`/humans/${app.human_id}`}
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/humans/${app.human_id}`) }}
-                          className="text-sm font-medium text-[#1A1A1A] hover:text-[#E8853D] hover:underline transition-colors truncate"
-                        >
-                          {app.applicant?.name || 'Anonymous'}
-                        </a>
-                        <span className="text-[11px] text-[#6B7280] shrink-0">
-                          <Star size={10} className="inline align-[-1px]" /> {app.applicant?.rating?.toFixed(1) || 'New'} · {app.applicant?.jobs_completed || 0} jobs
-                          {app.applicant?.success_rate != null && app.applicant?.success_rate < 70 && (
-                            <span className="text-amber-600 ml-1">
-                              <AlertTriangle size={9} className="inline align-[-1px]" /> {app.applicant.success_rate}%
-                            </span>
-                          )}
-                        </span>
-                        {app.proposed_rate != null && (
-                          <span className="text-[11px] text-[#E8853D] font-semibold shrink-0">Counter: ${app.proposed_rate}</span>
-                        )}
-                      </div>
-                      {app.cover_letter && (
-                        <p className="text-[11px] text-[#6B7280] truncate mt-0.5"><strong>Fit:</strong> {app.cover_letter}</p>
-                      )}
-                    </div>
+                    {app.applicant?.city && (
+                      <span className="text-[11px] text-[#9CA3AF] flex items-center gap-0.5">
+                        <MapPin size={9} /> {app.applicant.city}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Right: inline action buttons */}
-                  {app.status === 'rejected' ? (
-                    <span className="text-xs text-red-600 font-medium shrink-0">Declined</span>
-                  ) : (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => onAssign?.(task.id, app.human_id)}
-                        disabled={assigningHuman === app.human_id}
-                      >
-                        {assigningHuman === app.human_id ? 'Assigning...' : `Accept${user?.default_payment_method === 'usdc' ? ' (USDC)' : ''}`}
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => onDecline?.(task.id, app.id)}
-                        disabled={decliningAppId === app.id}
-                      >
-                        {decliningAppId === app.id ? '...' : 'Decline'}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => { setNegotiateAppId?.(negotiateAppId === app.id ? null : app.id); setNegotiateMsg?.('') }}
-                      >
-                        <MessageCircle size={12} className="mr-0.5" /> Negotiate
-                      </Button>
-                    </div>
+                  {/* Stats row */}
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    <span className="text-[11px] text-[#6B7280]">
+                      <Star size={10} className="inline align-[-1px] text-amber-400" /> {app.applicant?.rating?.toFixed(1) || 'New'}
+                    </span>
+                    <span className="text-[11px] text-[#6B7280]">
+                      {app.applicant?.jobs_completed || 0} jobs completed
+                    </span>
+                    {app.applicant?.hourly_rate != null && (
+                      <span className="text-[11px] text-[#6B7280]">
+                        <Briefcase size={9} className="inline align-[-1px]" /> ${app.applicant.hourly_rate}/hr
+                      </span>
+                    )}
+                    {app.applicant?.success_rate != null && app.applicant?.success_rate < 70 && (
+                      <span className="text-[11px] text-amber-600">
+                        <AlertTriangle size={9} className="inline align-[-1px]" /> {app.applicant.success_rate}% success
+                      </span>
+                    )}
+                    {app.created_at && (
+                      <span className="text-[11px] text-[#9CA3AF]">
+                        <CalendarDays size={9} className="inline align-[-1px]" /> Applied {timeAgo(app.created_at)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Bio preview */}
+                  {app.applicant?.bio && (
+                    <p className="text-[11px] text-[#6B7280] mt-1 line-clamp-2">{app.applicant.bio}</p>
                   )}
                 </div>
-
-                {/* Negotiate message (inline, shown on demand) */}
-                {negotiateAppId === app.id && (
-                  <div className="mt-1.5 flex gap-1.5">
-                    <input
-                      type="text"
-                      placeholder="Note for worker (optional)..."
-                      value={assignNotes?.[app.human_id] || ''}
-                      onChange={e => setAssignNotes?.(prev => ({ ...prev, [app.human_id]: e.target.value }))}
-                      className="flex-1 px-2 py-1 text-[11px] rounded-md border border-[#ECECEC] focus:border-[#E8853D] outline-none"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Message to negotiate..."
-                      value={negotiateMsg}
-                      onChange={e => setNegotiateMsg?.(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') onNegotiate?.(task.id, app.human_id) }}
-                      className="flex-1 px-2 py-1 text-[11px] rounded-md border border-[#ECECEC] focus:border-[#E8853D] outline-none"
-                    />
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => onNegotiate?.(task.id, app.human_id)}
-                      disabled={!negotiateMsg?.trim()}
-                    >
-                      Send
-                    </Button>
-                  </div>
-                )}
               </div>
-            ))
-          )}
-        </div>
-      )}
+
+              {/* Action buttons — inline */}
+              {app.status === 'rejected' ? (
+                <span className="text-xs text-red-600 font-medium shrink-0 mt-1">Declined</span>
+              ) : (
+                <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => onAssign?.(task.id, app.human_id)}
+                    disabled={assigningHuman === app.human_id}
+                  >
+                    {assigningHuman === app.human_id ? 'Assigning...' : `Accept${user?.default_payment_method === 'usdc' ? ' (USDC)' : ''}`}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => onDecline?.(task.id, app.id)}
+                    disabled={decliningAppId === app.id}
+                  >
+                    {decliningAppId === app.id ? '...' : 'Decline'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setNegotiateAppId?.(negotiateAppId === app.id ? null : app.id); setNegotiateMsg?.('') }}
+                  >
+                    <MessageCircle size={12} className="mr-0.5" /> Negotiate
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Row 2: Cover letter / application details — full display */}
+            {app.cover_letter && (
+              <div className="mt-2 pl-[46px] text-xs text-[#374151] whitespace-pre-line leading-relaxed bg-white rounded-lg border border-[#ECECEC]/80 px-3 py-2">
+                {app.cover_letter}
+              </div>
+            )}
+
+            {/* Counter offer */}
+            {app.proposed_rate != null && (
+              <div className="mt-1.5 pl-[46px]">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#E8853D] bg-orange-50 px-2 py-0.5 rounded-full">
+                  Counter-offer: ${app.proposed_rate}
+                </span>
+              </div>
+            )}
+
+            {/* Assignment note — shown for non-rejected applicants */}
+            {app.status !== 'rejected' && (
+              <div className="mt-2 pl-[46px]">
+                <input
+                  type="text"
+                  placeholder="Assignment note — sent to worker when you accept (optional)"
+                  value={assignNotes?.[app.human_id] || ''}
+                  onChange={e => setAssignNotes?.(prev => ({ ...prev, [app.human_id]: e.target.value }))}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#ECECEC] focus:border-[#E8853D] outline-none bg-white"
+                />
+              </div>
+            )}
+
+            {/* Negotiate — opens a conversation with the worker to discuss terms */}
+            {negotiateAppId === app.id && (
+              <div className="mt-2 pl-[46px]">
+                <p className="text-[11px] text-[#6B7280] mb-1">Send a message to discuss rate, scope, or timeline before accepting:</p>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="e.g. Can you do it for $12 instead?"
+                    value={negotiateMsg}
+                    onChange={e => setNegotiateMsg?.(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') onNegotiate?.(task.id, app.human_id) }}
+                    className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-[#ECECEC] focus:border-[#E8853D] outline-none bg-white"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => onNegotiate?.(task.id, app.human_id)}
+                    disabled={!negotiateMsg?.trim()}
+                  >
+                    Send
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
