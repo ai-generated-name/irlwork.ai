@@ -10,7 +10,7 @@ const brandIcons = {
   discover: 'Discover',
 };
 
-export default function PaymentMethodList({ user, onUpdate }) {
+export default function PaymentMethodList({ user, onUpdate, onMethodsLoaded }) {
   const [methods, setMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(null);
@@ -22,7 +22,9 @@ export default function PaymentMethodList({ user, onUpdate }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setMethods(data.payment_methods || []);
+        const m = data.payment_methods || [];
+        setMethods(m);
+        if (onMethodsLoaded) onMethodsLoaded(m);
       }
     } catch (e) {
       console.error('Failed to fetch payment methods:', e);
@@ -46,7 +48,9 @@ export default function PaymentMethodList({ user, onUpdate }) {
         method: 'DELETE',
         headers: { Authorization: user.token || '' },
       });
-      setMethods(methods.filter(m => m.id !== pmId));
+      const updated = methods.filter(m => m.id !== pmId);
+      setMethods(updated);
+      if (onMethodsLoaded) onMethodsLoaded(updated);
     } catch (e) {
       console.error('Failed to delete payment method:', e);
     } finally {
@@ -60,7 +64,9 @@ export default function PaymentMethodList({ user, onUpdate }) {
         method: 'POST',
         headers: { Authorization: user.token || '' },
       });
-      setMethods(methods.map(m => ({ ...m, is_default: m.id === pmId })));
+      const updated = methods.map(m => ({ ...m, is_default: m.id === pmId }));
+      setMethods(updated);
+      if (onMethodsLoaded) onMethodsLoaded(updated);
     } catch (e) {
       console.error('Failed to set default:', e);
     }
