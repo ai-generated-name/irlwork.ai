@@ -6,14 +6,16 @@ const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/
 /**
  * USDC deposit section for the Hiring-mode Payments tab.
  * Shows the user's personal Circle deposit address (or a generate button).
- * Displays USDC available + escrow balances.
+ * Displays USDC available + escrow balances with sync-from-chain support.
  */
 export default function UsdcDepositSection({ user }) {
   const [walletInfo, setWalletInfo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState(null)
+  const [syncMessage, setSyncMessage] = useState(null)
 
   const fetchWalletInfo = useCallback(async () => {
     try {
@@ -54,6 +56,38 @@ export default function UsdcDepositSection({ user }) {
       setError('Network error. Please try again.')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleSync = async () => {
+    setSyncing(true)
+    setSyncMessage(null)
+    setError(null)
+    try {
+      const res = await fetch(`${API_URL}/wallet/sync-balance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: user?.token || ''
+        }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.synced) {
+          setSyncMessage(`+${parseFloat(data.credited).toFixed(2)} USDC detected`)
+        } else {
+          setSyncMessage('Balance is up to date')
+        }
+        await fetchWalletInfo()
+        setTimeout(() => setSyncMessage(null), 3000)
+      } else {
+        const data = await res.json()
+        setError(data.error || 'Failed to sync balance')
+      }
+    } catch (e) {
+      setError('Network error. Please try again.')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -107,7 +141,6 @@ export default function UsdcDepositSection({ user }) {
 
   // State: Wallet exists
   const addr = walletInfo.circle_wallet_address
-  const truncated = `${addr.slice(0, 6)}...${addr.slice(-4)}`
   const usdcAvailable = walletInfo.usdc_available_balance || '0'
   const usdcEscrow = walletInfo.usdc_escrow_balance || '0'
 
@@ -117,7 +150,7 @@ export default function UsdcDepositSection({ user }) {
         <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
           <Check className="w-5 h-5 text-green-600" />
         </div>
-        <div>
+        <div className="flex-1">
           <p className="text-sm font-semibold text-[#1A1A1A]">USDC Wallet Active</p>
           <p className="text-xs text-[#525252] mt-1">
             Send USDC on Base to your deposit address below. Deposits are confirmed automatically.
@@ -148,12 +181,28 @@ export default function UsdcDepositSection({ user }) {
         </div>
       </div>
 
-      {/* Network info */}
-      <div className="flex items-center gap-4 text-xs text-[#8A8A8A]">
-        <span>Network: Base</span>
-        <span>Token: USDC</span>
-        <span>Decimals: 6</span>
+      {/* Sync + network info */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4 text-xs text-[#8A8A8A]">
+          <span>Network: Base</span>
+          <span>Token: USDC</span>
+        </div>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="flex items-center gap-1.5 text-xs font-medium text-[#525252] hover:text-[#1A1A1A] transition-colors disabled:opacity-50"
+          title="Sync balance from blockchain"
+        >
+          <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
+          {syncing ? 'Syncing...' : 'Refresh'}
+        </button>
       </div>
+
+      {/* Sync feedback */}
+      {syncMessage && (
+        <p className="text-xs text-green-600 mt-2 text-right">{syncMessage}</p>
+      )}
+      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
     </div>
   )
 }
