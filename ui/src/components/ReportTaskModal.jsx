@@ -5,8 +5,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://api.irlwork.ai';
 
 const REPORT_REASONS = [
   { value: 'scam_fraud', label: 'Scam / Fraud', icon: '🚨' },
-  { value: 'misleading', label: 'Misleading', icon: <AlertTriangle size={14} /> },
-  { value: 'inappropriate', label: 'Inappropriate', icon: <Ban size={14} /> },
+  { value: 'misleading', label: 'Misleading', Icon: AlertTriangle },
+  { value: 'inappropriate', label: 'Inappropriate', Icon: Ban },
   { value: 'spam', label: 'Spam', icon: '📧' },
   { value: 'illegal', label: 'Illegal activity', icon: '⛔' },
   { value: 'harassment', label: 'Harassment', icon: '😡' },
@@ -121,7 +121,9 @@ export default function ReportTaskModal({
               <div className="quick-apply-modal-field">
                 <label>Reason *</label>
                 <div className="report-reason-grid">
-                  {REPORT_REASONS.map((r) => (
+                  {REPORT_REASONS.map((r) => {
+                    const IconComp = r.Icon;
+                    return (
                     <button
                       key={r.value}
                       type="button"
@@ -142,10 +144,11 @@ export default function ReportTaskModal({
                         textAlign: 'left',
                       }}
                     >
-                      <span>{r.icon}</span>
+                      <span>{IconComp ? <IconComp size={14} /> : r.icon}</span>
                       <span>{r.label}</span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
