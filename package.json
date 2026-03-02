@@ -8,5 +8,8 @@
   },
   "devDependencies": {
     "pg": "^8.18.0"
+  },
+  "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^10.1.0"
   }
 }

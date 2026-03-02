@@ -6,6 +6,7 @@ import ForAgentsBox from './ForAgentsBox'
 import { fixAvatarUrl } from '../utils/avatarUrl'
 import { formatTimezoneShort } from '../utils/timezone'
 import TierBadge from './TierBadge'
+import { Button } from './ui'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
 
@@ -103,6 +104,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
 
         {loading ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
             <Loader2 size={32} style={{ color: '#E8853D', animation: 'spin 1s linear infinite' }} />
             <p style={{ marginTop: 16, color: 'var(--text-tertiary)', fontSize: 14 }}>Loading profile...</p>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
@@ -110,7 +112,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
         ) : error ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
             <p style={{ color: 'var(--text-secondary)', fontSize: 16 }}>Could not load profile</p>
-            <p style={{ color: 'var(--text-tertiary)', fontSize: 14, marginTop: 8 }}>{error}</p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 14, marginTop: 8 }}>{error}. Try refreshing the page.</p>
           </div>
         ) : profile ? (
           <div style={{ padding: '32px 32px 24px' }}>
@@ -133,6 +135,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                 width: 80,
                 height: 80,
                 borderRadius: '50%',
+                // eslint-disable-next-line irlwork/no-orange-outside-button -- avatar fallback uses brand color
                 background: '#E8853D',
                 display: profile.avatar_url ? 'none' : 'flex',
                 alignItems: 'center',
@@ -192,6 +195,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                     color: 'var(--text-secondary)',
                     marginBottom: 4
                   }}>
+                    {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon color uses brand accent */}
                     <MapPin size={14} style={{ color: '#E8853D' }} />
                     {profile.city}{profile.state ? `, ${profile.state}` : ''}
                     {profile.timezone && (
@@ -240,6 +244,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               <span style={{
                 fontSize: 28,
                 fontWeight: 700,
+                // eslint-disable-next-line irlwork/no-orange-outside-button -- hourly rate uses brand color
                 color: '#E8853D'
               }}>
                 ${profile.hourly_rate || 25}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>/hr</span>
@@ -249,7 +254,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             {/* Bio */}
             {profile.bio && (
               <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px 0' }}>About</h4>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em', margin: '0 0 8px 0' }}>About</h4>
                 <p style={{
                   fontSize: 15,
                   color: 'var(--text-secondary)',
@@ -264,7 +269,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             {/* Skills */}
             {skills.length > 0 && (
               <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px 0' }}>Skills</h4>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em', margin: '0 0 10px 0' }}>Skills</h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {skills.map((skill, idx) => (
                     <span key={idx} style={{
@@ -272,6 +277,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                       background: 'rgba(232,133,61,0.08)',
                       borderRadius: 999,
                       fontSize: 13,
+                      // eslint-disable-next-line irlwork/no-orange-outside-button -- skill tag uses brand color
                       color: '#E8853D',
                       fontWeight: 500,
                       border: '1px solid rgba(232,133,61,0.12)'
@@ -286,7 +292,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             {/* Languages */}
             {languages.length > 0 && (
               <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 10px 0' }}>Languages</h4>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em', margin: '0 0 10px 0' }}>Languages</h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {languages.map((lang, idx) => (
                     <span key={idx} style={{
@@ -315,7 +321,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
               <StatBox
                 icon={<Briefcase size={16} />}
                 value={profile.jobs_completed || profile.total_tasks_completed || 0}
-                label="Jobs Done"
+                label="Jobs done"
               />
               <StatBox
                 icon={<TrendingUp size={16} />}
@@ -332,8 +338,8 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
 
             {/* Reviews Section */}
             <div style={{ marginBottom: 24 }}>
-              <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 12px 0' }}>
-                Recent Reviews
+              <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em', margin: '0 0 12px 0' }}>
+                Recent reviews
               </h4>
               {profile.reviews && profile.reviews.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -392,48 +398,23 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             {/* Hire Button */}
             {onHire && (
               profile.availability !== 'available' ? (
-                <div style={{
-                  width: '100%',
-                  padding: '14px 24px',
-                  background: '#E5E7EB',
-                  color: '#9CA3AF',
-                  fontWeight: 600,
-                  fontSize: 16,
-                  borderRadius: 12,
-                  border: 'none',
-                  textAlign: 'center',
-                  marginTop: 16
-                }}>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  disabled
+                  className="w-full justify-center mt-4"
+                >
                   Currently unavailable for hire
-                </div>
+                </Button>
               ) : (
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
                   onClick={() => onHire(profile)}
-                  style={{
-                    width: '100%',
-                    padding: '14px 24px',
-                    background: '#E8853D',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: 16,
-                    borderRadius: 12,
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: '0 4px 16px rgba(232,133,61,0.3)',
-                    marginTop: 16
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(232,133,61,0.4)'
-                    e.currentTarget.style.transform = 'translateY(-1px)'
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,133,61,0.3)'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                  }}
+                  className="w-full justify-center mt-4"
                 >
                   Hire {profile.name?.split(' ')[0] || 'This Human'}
-                </button>
+                </Button>
               )
             )}
           </div>
@@ -453,6 +434,7 @@ function StatBox({ icon, value, label, highlight }) {
       textAlign: 'center',
       border: '1px solid rgba(0,0,0,0.04)'
     }}>
+      {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: '#E8853D' }}>
         {icon}
       </div>

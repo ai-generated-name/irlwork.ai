@@ -2,7 +2,7 @@
 
 > **This document reflects the actual production database schema** as deployed on Supabase (PostgreSQL).
 > It supersedes the SQLite schema described in `ARCHITECTURE.md`, which is outdated.
-> Last audited: 2026-02-26.
+> Last audited: 2026-03-01.
 
 ---
 
@@ -14,7 +14,7 @@
 - **Row Level Security (RLS)**: Enabled on select tables; most access control is handled at the API layer using the service role key
 - **Primary keys**: UUID (`uuid_generate_v4()` or `gen_random_uuid()`)
 - **Timestamps**: `TIMESTAMPTZ` (`TIMESTAMP WITH TIME ZONE`), defaulting to `NOW()`
-- **Total tables**: 25
+- **Total tables**: 27
 
 ---
 
@@ -45,6 +45,8 @@ erDiagram
     users ||--o{ user_categories : "has"
     users ||--o{ certifications : "holds"
     users ||--o{ email_verifications : "verifies"
+    users ||--o{ usdc_deposits : "deposits"
+    users ||--o{ usdc_ledger : "ledger entries"
 
     tasks ||--o{ task_applications : "receives"
     tasks ||--o{ task_proofs : "has"
@@ -56,9 +58,12 @@ erDiagram
     tasks ||--o{ manual_payments : "tracks"
     tasks ||--o{ task_reports : "reported"
     tasks ||--o{ deposits : "matched"
+    tasks ||--o{ deadline_extension_requests : "has"
+    tasks ||--o{ task_status_history : "tracks"
     tasks ||--o{ transactions : "legacy"
     tasks ||--o{ admin_audit_log : "audits"
     tasks ||--o{ page_views : "viewed"
+    tasks ||--o{ usdc_ledger : "ledger entries"
 
     conversations ||--o{ messages : "contains"
     payouts ||--o{ disputes : "disputed"
@@ -133,6 +138,17 @@ erDiagram
         UUID id PK
         UUID user_id FK
     }
+    usdc_deposits {
+        UUID id PK
+        UUID user_id FK
+        TEXT circle_transaction_id
+    }
+    usdc_ledger {
+        UUID id PK
+        UUID user_id FK
+        UUID task_id FK
+        VARCHAR type
+    }
 ```
 
 ---
@@ -187,11 +203,16 @@ erDiagram
 | `suspended_until` | TIMESTAMPTZ | | | Suspension expiry |
 | `total_reports_upheld` | INTEGER | | `0` | Upheld reports against user |
 | `wallet_address` | VARCHAR(64) | | | Crypto wallet (legacy) |
+| `circle_wallet_id` | TEXT | | | Circle Programmable Wallet ID (developer-controlled) |
+| `circle_wallet_address` | VARCHAR(42) | | | On-chain deposit address on Base |
+| `usdc_available_balance` | NUMERIC(18,6) | | `0` | Available USDC balance (not in escrow) |
+| `usdc_escrow_balance` | NUMERIC(18,6) | | `0` | USDC currently locked in escrow |
+| `default_payment_method` | VARCHAR(20) | | `'stripe'` | Default payment method (`'stripe'` or `'usdc'`) |
 | `onboarding_completed` | BOOLEAN | | `FALSE` | Onboarding flow done |
 | `created_at` | TIMESTAMPTZ | | `NOW()` | |
 | `updated_at` | TIMESTAMPTZ | | `NOW()` | Auto-updated by trigger |
 
-**Indexes**: `type`, `city`, `skills` (GIN), `availability`, `verified`, `wallet_address`, `stripe_customer_id`, `stripe_account_id`, `last_active_at`, `total_tasks_completed`
+**Indexes**: `type`, `city`, `skills` (GIN), `availability`, `verified`, `wallet_address`, `stripe_customer_id`, `stripe_account_id`, `last_active_at`, `total_tasks_completed`, `circle_wallet_id`, `circle_wallet_address`
 
 **RLS**: Enabled. Policies handled at API layer.
 
@@ -235,7 +256,10 @@ Replaces the `bookings` and `ad_hoc_tasks` tables from ARCHITECTURE.md.
 | `auto_released` | BOOLEAN | | `FALSE` | 48-hour auto-release flag |
 | `review_deadline` | TIMESTAMPTZ | | | Deadline for agent review |
 | `stripe_payment_intent_id` | VARCHAR(255) | | | Stripe PI ID |
-| `payment_method` | VARCHAR(20) | | `'stripe'` | `'stripe'` or `'crypto'` |
+| `payment_method` | VARCHAR(20) | | `'stripe'` | `'stripe'`, `'crypto'`, or `'usdc'` |
+| `circle_escrow_tx_id` | TEXT | | | Circle transaction ID for escrow lock |
+| `circle_payout_tx_id` | TEXT | | | Circle transaction ID for worker payout |
+| `circle_refund_tx_id` | TEXT | | | Circle transaction ID for refund (on cancellation) |
 | `assigned_at` | TIMESTAMPTZ | | | When worker was assigned |
 | `instructions` | TEXT | | | Private instructions |
 | `work_started_at` | TIMESTAMPTZ | | | When work began |
@@ -248,6 +272,7 @@ Replaces the `bookings` and `ad_hoc_tasks` tables from ARCHITECTURE.md.
 | `max_humans` | INTEGER | | | Multi-worker cap |
 | `spots_filled` | INTEGER | | `0` | Workers assigned so far |
 | `deadline` | TIMESTAMPTZ | | | Task deadline |
+| `deadline_warning_sent` | INTEGER | | `0` | Tiered warning level: 0=none, 1=24h, 2=6h, 3=1h, 4=past |
 | `requirements` | TEXT | | | Requirements text |
 | `required_skills` | TEXT | | | Comma-separated skills |
 | `escrow_amount` | NUMERIC | | | Escrow amount |
@@ -316,10 +341,54 @@ unfunded -> pending_deposit -> awaiting_worker -> deposited -> released -> pendi
 | `proof_text` | TEXT | | | Written description |
 | `proof_urls` | TEXT[] / JSONB | | | Photo/file URLs |
 | `status` | VARCHAR | | `'pending'` | `'pending'`, `'approved'`, `'rejected'` |
+| `submitted_late` | BOOLEAN | | `FALSE` | Whether proof was submitted after task deadline |
 | `submitted_at` | TIMESTAMPTZ | | | |
 | `created_at` | TIMESTAMPTZ | | `NOW()` | |
 
 **Note**: This table replaces `verifications` from ARCHITECTURE.md. No migration SQL file found in `db/`; likely created directly in Supabase or via an untracked migration.
+
+---
+
+### 4b. `deadline_extension_requests` -- Worker deadline extension requests
+
+| Column | Type | Constraints | Default | Notes |
+|--------|------|-------------|---------|-------|
+| `id` | UUID | PK | `gen_random_uuid()` | |
+| `task_id` | UUID | FK -> tasks, NOT NULL | | |
+| `requested_by` | UUID | FK -> profiles, NOT NULL | | Worker requesting |
+| `reason` | TEXT | NOT NULL | | Why extension needed |
+| `proposed_deadline` | TIMESTAMPTZ | NOT NULL | | Worker's proposed new deadline |
+| `original_deadline` | TIMESTAMPTZ | NOT NULL | | Deadline at time of request |
+| `status` | VARCHAR(20) | NOT NULL, CHECK | `'pending'` | `'pending'`, `'approved'`, `'declined'`, `'modified'` |
+| `responded_by` | UUID | FK -> profiles | | Poster who responded |
+| `response_note` | TEXT | | | Poster's response message |
+| `final_deadline` | TIMESTAMPTZ | | | Actual deadline set (proposed if approved, modified if modified) |
+| `created_at` | TIMESTAMPTZ | | `NOW()` | |
+| `responded_at` | TIMESTAMPTZ | | | |
+
+**Indexes**: `idx_extension_requests_task` on `task_id`. Partial unique index `idx_one_pending_per_task` on `(task_id) WHERE status = 'pending'` — enforces one pending request per task.
+
+**Migration**: `db/migrations/004_deadline_enforcement.sql`
+
+---
+
+### 4c. `task_status_history` -- Task status transition audit trail
+
+Records every task status transition for audit trail and agent context.
+
+| Column | Type | Constraints | Default | Notes |
+|--------|------|-------------|---------|-------|
+| `id` | UUID | PK | `gen_random_uuid()` | |
+| `task_id` | UUID | FK -> tasks (CASCADE delete), NOT NULL | | |
+| `from_status` | TEXT | | | Previous status (null for task creation) |
+| `to_status` | TEXT | NOT NULL | | New status |
+| `changed_by` | UUID | FK -> users | | Null for system/cron changes |
+| `reason` | TEXT | | | Optional context (e.g., "deadline_passed", "auto_approved_72h") |
+| `created_at` | TIMESTAMPTZ | | `NOW()` | When the transition occurred |
+
+**Indexes**: `idx_task_status_history_task(task_id, created_at)`, `idx_task_status_history_task_status(task_id, to_status)`
+
+**RLS**: Enabled. Agents can read history for tasks they created. Workers can read history for tasks they are assigned to.
 
 ---
 
@@ -781,6 +850,66 @@ Prevents duplicate processing of Stripe webhook events.
 
 ---
 
+### 26. `usdc_deposits` -- USDC on-chain deposit tracking
+
+Records incoming USDC deposits detected on Base via Circle Programmable Wallets.
+
+| Column | Type | Constraints | Default | Notes |
+|--------|------|-------------|---------|-------|
+| `id` | UUID | PK | `gen_random_uuid()` | |
+| `user_id` | UUID | FK -> users, NOT NULL | | Depositing user |
+| `circle_wallet_id` | TEXT | NOT NULL | | Circle wallet that received the deposit |
+| `circle_transaction_id` | TEXT | UNIQUE NOT NULL | | Circle transaction ID (idempotency key) |
+| `tx_hash` | VARCHAR(128) | | | On-chain transaction hash |
+| `amount` | NUMERIC(18,6) | NOT NULL | | USDC amount (6 decimal places) |
+| `status` | VARCHAR(20) | | `'pending'` | `'pending'`, `'confirmed'`, `'failed'` |
+| `source_address` | VARCHAR(42) | | | Sender's on-chain address |
+| `created_at` | TIMESTAMPTZ | | `NOW()` | |
+| `confirmed_at` | TIMESTAMPTZ | | | When deposit was confirmed on-chain |
+
+**Indexes**: `user_id`, `circle_transaction_id`, `tx_hash`, `status`, `created_at DESC`
+
+**RLS**: Not enabled. API layer auth.
+
+---
+
+### 27. `usdc_ledger` -- USDC balance ledger (double-entry style)
+
+Immutable ledger of all USDC balance changes. Every credit/debit to `users.usdc_available_balance` or `users.usdc_escrow_balance` MUST have a corresponding ledger entry.
+
+| Column | Type | Constraints | Default | Notes |
+|--------|------|-------------|---------|-------|
+| `id` | UUID | PK | `gen_random_uuid()` | |
+| `user_id` | UUID | FK -> users, NOT NULL | | User whose balance changed |
+| `task_id` | UUID | FK -> tasks | | Related task (NULL for deposits/withdrawals) |
+| `type` | VARCHAR(30) | NOT NULL | | Entry type (see values below) |
+| `amount` | NUMERIC(18,6) | NOT NULL | | Positive = credit, negative = debit |
+| `balance_after` | NUMERIC(18,6) | NOT NULL | | `usdc_available_balance` after this entry |
+| `escrow_balance_after` | NUMERIC(18,6) | | | `usdc_escrow_balance` after this entry |
+| `circle_transaction_id` | TEXT | | | Circle transaction ID (if applicable) |
+| `tx_hash` | VARCHAR(128) | | | On-chain transaction hash (if applicable) |
+| `description` | TEXT | | | Human-readable description |
+| `created_at` | TIMESTAMPTZ | | `NOW()` | |
+
+**Type values**: `'deposit'`, `'escrow_lock'`, `'escrow_release'`, `'payout'`, `'withdrawal'`, `'refund'`, `'platform_fee'`, `'escrow_reversal'`
+
+| Type | Description |
+|------|-------------|
+| `deposit` | Balance increase from deposit |
+| `escrow_lock` | Balance moved to escrow when task is assigned |
+| `escrow_release` | Balance released from escrow when payment processed |
+| `payout` | Balance paid out to user |
+| `withdrawal` | Balance withdrawn by user |
+| `refund` | Balance refunded to user |
+| `platform_fee` | Platform fee deducted |
+| `escrow_reversal` | Balance restored due to assign race condition |
+
+**Indexes**: `user_id`, `task_id`, `type`, `created_at DESC`, `circle_transaction_id`
+
+**RLS**: Not enabled. API layer auth.
+
+---
+
 ## Database Functions & Triggers
 
 ### Functions
@@ -841,6 +970,34 @@ Increments a named stat column on the `users` table. Used to update `jobs_comple
 
 **Note**: No SQL definition found in tracked migrations; likely created directly in Supabase. Uses dynamic column reference via `stat_name` parameter.
 
+#### `update_usdc_balance(p_user_id, p_available_delta, p_escrow_delta, p_task_id, p_ledger_type, p_ledger_amount, p_circle_tx_id, p_tx_hash, p_description)`
+
+Atomic balance update + ledger entry for all USDC operations. Prevents read-modify-write races and ensures balance + ledger are always in sync.
+
+**Parameters**:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `p_user_id` | UUID | required | The user whose balance to update |
+| `p_available_delta` | NUMERIC(18,6) | 0 | Amount to add to `usdc_available_balance` (negative = debit) |
+| `p_escrow_delta` | NUMERIC(18,6) | 0 | Amount to add to `usdc_escrow_balance` (negative = debit) |
+| `p_task_id` | UUID | NULL | Optional task ID for the ledger entry |
+| `p_ledger_type` | VARCHAR(30) | NULL | Ledger entry type (if NULL, no ledger entry is created) |
+| `p_ledger_amount` | NUMERIC(18,6) | NULL | Display amount for the ledger entry |
+| `p_circle_tx_id` | TEXT | NULL | Circle transaction ID |
+| `p_tx_hash` | VARCHAR(128) | NULL | On-chain transaction hash |
+| `p_description` | TEXT | NULL | Human-readable description |
+
+**Returns**: `TABLE(new_available NUMERIC, new_escrow NUMERIC)`
+
+**Behavior**:
+- Atomically updates both balance columns in a single UPDATE statement
+- Raises exception if resulting balance would be negative
+- Inserts ledger entry in the same database transaction (if `p_ledger_type` is not NULL)
+- All server code MUST use this function instead of separate UPDATE + INSERT calls
+
+**Migration**: `db/migrations/add_atomic_balance_functions.sql`
+
 ### Triggers
 
 | Trigger | Table | Event | Function |
@@ -862,6 +1019,7 @@ Increments a named stat column on the `users` table. Used to update `jobs_comple
 | `tasks` | Enabled | Public read; agent-owner write |
 | `task_applications` | Not enabled | API layer auth |
 | `task_proofs` | Not enabled | API layer auth |
+| `task_status_history` | Enabled | Read by task creator (agent) or assigned worker |
 | `pending_transactions` | Not enabled | API layer auth |
 | `payouts` | Enabled | Policies managed at API layer |
 | `withdrawals` | Not enabled | API layer auth |
@@ -883,6 +1041,8 @@ Increments a named stat column on the `users` table. Used to update `jobs_comple
 | `notifications` | Not enabled | API layer auth |
 | `deposits` | Enabled | Legacy |
 | `transactions` | Not enabled | Legacy |
+| `usdc_deposits` | Not enabled | API layer auth |
+| `usdc_ledger` | Not enabled | API layer auth |
 
 ---
 
@@ -956,3 +1116,7 @@ Increments a named stat column on the `users` table. Used to update `jobs_comple
 9. **ARCHITECTURE.md references SQLite**: The architecture document says "Database Schema (SQLite)" but the actual database is PostgreSQL on Supabase. All SQLite-specific patterns (e.g., `read (0/1)` instead of `read BOOLEAN`) have been replaced.
 
 10. **Escrow flow in ARCHITECTURE.md is outdated**: The documented flow (`booking -> accept -> complete -> release-escrow`) does not match the actual flow (`task -> apply -> assign -> proof -> approve -> pay`), which has more granular states and supports both manual and Stripe payment rails.
+
+11. **Three payment method columns**: `tasks.payment_method` can be `'stripe'`, `'crypto'`, or `'usdc'`. The `'crypto'` value is from the legacy deposit-matching flow (table `deposits`), while `'usdc'` is the new Circle Programmable Wallets flow (tables `usdc_deposits`, `usdc_ledger`). Similarly, `users.default_payment_method` (`'stripe'` or `'usdc'`) coexists with the legacy `users.wallet_address`.
+
+12. **USDC uses NUMERIC(18,6), not integer cents**: Unlike Stripe amounts stored in `INTEGER` cents, USDC amounts use `NUMERIC(18,6)` to match the 6-decimal-place precision of USDC on Base. Do not mix the two scales.
