@@ -3395,23 +3395,48 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
 
   const budgetAmount = task.escrow_amount || task.budget || 50;
 
-  // Agent must have a pre-linked card before hiring
-  let agentPaymentMethods = [];
+  // Resolve payment method: preferred > user default > auto-detect > error
+  // Falls back gracefully if the preferred method isn't usable
+  const preferred = preferred_payment_method || user.default_payment_method;
+
+  const hasUsdc = !!user.circle_wallet_id;
+  const usdcBal = parseFloat(user.usdc_available_balance || 0);
+  const usdcUsable = hasUsdc && usdcBal >= budgetAmount;
+
+  let stripeUsable = false;
   if (user.stripe_customer_id && stripe) {
     try {
-      agentPaymentMethods = await listPaymentMethods(user.stripe_customer_id);
+      const cards = await listPaymentMethods(user.stripe_customer_id);
+      stripeUsable = cards.length > 0;
     } catch (e) {
       console.error('[Assign] Failed to list Stripe payment methods:', e.message);
-      return res.status(502).json({ error: 'Unable to verify payment method. Please try again or add a new card.' });
     }
   }
-  // Agent must have a card (Stripe) OR choose USDC
-  const useUsdc = preferred_payment_method === 'usdc';
-  if (agentPaymentMethods.length === 0 && !useUsdc) {
+
+  let useUsdc;
+  if (preferred === 'usdc' && usdcUsable) {
+    useUsdc = true;
+  } else if (preferred === 'usdc' && !usdcUsable && stripeUsable) {
+    useUsdc = false; // USDC insufficient, fall back to Stripe
+    console.log(`[Assign] USDC preferred but insufficient (${usdcBal.toFixed(2)}/${budgetAmount}), falling back to Stripe`);
+  } else if (preferred === 'stripe' && stripeUsable) {
+    useUsdc = false;
+  } else if (preferred === 'stripe' && !stripeUsable && usdcUsable) {
+    useUsdc = true; // No card, fall back to USDC
+    console.log('[Assign] Stripe preferred but no card, falling back to USDC');
+  } else if (usdcUsable) {
+    useUsdc = true;
+  } else if (stripeUsable) {
+    useUsdc = false;
+  } else {
+    const reasons = [];
+    if (hasUsdc) reasons.push(`USDC balance too low ($${usdcBal.toFixed(2)} < $${budgetAmount})`);
+    else reasons.push('No USDC wallet');
+    if (!stripeUsable) reasons.push('No credit card on file');
     return res.status(402).json({
-      error: 'No payment method on file',
+      error: `No usable payment method. ${reasons.join('. ')}.`,
       code: 'payment_required',
-      message: 'You must link a payment card or choose USDC before hiring.'
+      message: 'Link a payment card or deposit USDC before hiring.'
     });
   }
 
@@ -6399,59 +6424,58 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(403).json({ error: 'Not authorized — you do not own this task' });
         }
 
-        // Determine payment method: explicit override > user default > error
-        const chosenMethod = pm_override || user.default_payment_method;
-        if (!chosenMethod) {
-          return res.status(400).json({
-            error: 'No payment method configured. Set a default via set_default_payment_method, or pass payment_method explicitly.',
-            code: 'payment_method_required',
-          });
-        }
+        // Determine payment method: explicit override > user default > auto-detect > error
+        // If the preferred method isn't usable, gracefully fall back to the other
+        const budgetAmt = taskData.escrow_amount || taskData.budget || 50;
+        const preferred = pm_override || user.default_payment_method;
 
-        if (chosenMethod === 'usdc') {
-          // USDC path: verify wallet and balance
-          if (!user.circle_wallet_id) {
-            return res.status(400).json({ error: 'USDC wallet not set up. Call generate_deposit_address first.', code: 'wallet_required' });
-          }
-          const budgetAmt = taskData.escrow_amount || taskData.budget || 50;
-          const usdcBal = parseFloat(user.usdc_available_balance || 0);
-          if (usdcBal < budgetAmt) {
-            return res.status(400).json({
-              error: `Insufficient USDC balance. Available: $${usdcBal.toFixed(2)}, Required: $${budgetAmt.toFixed(2)}. Deposit more USDC or set payment_method to 'stripe'.`,
-              code: 'insufficient_usdc',
-            });
-          }
-        } else {
-          // Stripe path: verify card exists
-          const { listPaymentMethods } = require('./backend/services/stripeService');
-          if (!user.stripe_customer_id) {
-            return res.status(402).json({
-              error: 'No payment method on file',
-              code: 'payment_required',
-              message: 'Use the setup_payment tool to add a credit card or configure USDC.',
-              actions: [
-                { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
-                { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
-              ]
-            });
-          }
-          let agentCards = [];
+        // Check which methods are available
+        const hasUsdc = !!user.circle_wallet_id;
+        const usdcBal = parseFloat(user.usdc_available_balance || 0);
+        const usdcUsable = hasUsdc && usdcBal >= budgetAmt;
+
+        let stripeUsable = false;
+        if (user.stripe_customer_id && stripe) {
           try {
-            agentCards = await listPaymentMethods(user.stripe_customer_id);
+            const { listPaymentMethods } = require('./backend/services/stripeService');
+            const cards = await listPaymentMethods(user.stripe_customer_id);
+            stripeUsable = cards.length > 0;
           } catch (e) {
             console.error('[MCP Hire] Failed to list payment methods:', e.message);
           }
-          if (agentCards.length === 0) {
-            return res.status(402).json({
-              error: 'No payment method on file',
-              code: 'payment_required',
-              message: 'Use the setup_payment tool to add a credit card or configure USDC.',
-              actions: [
-                { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
-                { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
-              ]
-            });
-          }
+        }
+
+        // Resolve: prefer user's choice, fall back to the other, error if neither works
+        let chosenMethod;
+        if (preferred === 'usdc' && usdcUsable) {
+          chosenMethod = 'usdc';
+        } else if (preferred === 'usdc' && !usdcUsable && stripeUsable) {
+          chosenMethod = 'stripe'; // USDC insufficient, fall back to Stripe
+          console.log(`[MCP Hire] USDC preferred but insufficient (${usdcBal.toFixed(2)}/${budgetAmt}), falling back to Stripe`);
+        } else if (preferred === 'stripe' && stripeUsable) {
+          chosenMethod = 'stripe';
+        } else if (preferred === 'stripe' && !stripeUsable && usdcUsable) {
+          chosenMethod = 'usdc'; // No Stripe card, fall back to USDC
+          console.log('[MCP Hire] Stripe preferred but no card, falling back to USDC');
+        } else if (usdcUsable) {
+          chosenMethod = 'usdc';
+        } else if (stripeUsable) {
+          chosenMethod = 'stripe';
+        } else {
+          // Neither method works
+          const reasons = [];
+          if (hasUsdc) reasons.push(`USDC balance too low ($${usdcBal.toFixed(2)} < $${budgetAmt})`);
+          else reasons.push('No USDC wallet');
+          if (!stripeUsable) reasons.push('No credit card on file');
+          return res.status(402).json({
+            error: `No usable payment method. ${reasons.join('. ')}.`,
+            code: 'payment_required',
+            message: 'Use the setup_payment tool to add a credit card or deposit USDC.',
+            actions: [
+              { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
+              { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
+            ]
+          });
         }
 
         // Multi-hire support
@@ -7630,21 +7654,47 @@ app.post('/api/mcp', async (req, res) => {
         // For open tasks with spots remaining, keep task open
         const mcpNextStatus = isOpen && !allSpotsFilled ? 'open' : undefined;
 
-        // Check agent's payment methods — same as REST
-        let mcpAgentPMs = [];
+        // Resolve payment method with graceful fallback — same as hire_human + REST assign
+        const mcpAssignPreferred = pm_override || user.default_payment_method;
+
+        const mcpAssignHasUsdc = !!user.circle_wallet_id;
+        const mcpAssignUsdcBal = parseFloat(user.usdc_available_balance || 0);
+        const mcpAssignUsdcUsable = mcpAssignHasUsdc && mcpAssignUsdcBal >= budgetAmount;
+
+        let mcpAssignStripeUsable = false;
         if (user.stripe_customer_id && stripe) {
           try {
-            mcpAgentPMs = await listPaymentMethods(user.stripe_customer_id);
+            const mcpAssignCards = await listPaymentMethods(user.stripe_customer_id);
+            mcpAssignStripeUsable = mcpAssignCards.length > 0;
           } catch (e) {
             console.error('[MCP/assign_human] Failed to list Stripe payment methods:', e.message);
           }
         }
-        const mcpUseUsdc = (pm_override || user.default_payment_method) === 'usdc';
-        if (mcpAgentPMs.length === 0 && !mcpUseUsdc && !user.wallet_address) {
+
+        let mcpUseUsdc;
+        if (mcpAssignPreferred === 'usdc' && mcpAssignUsdcUsable) {
+          mcpUseUsdc = true;
+        } else if (mcpAssignPreferred === 'usdc' && !mcpAssignUsdcUsable && mcpAssignStripeUsable) {
+          mcpUseUsdc = false;
+          console.log(`[MCP/assign_human] USDC preferred but insufficient (${mcpAssignUsdcBal.toFixed(2)}/${budgetAmount}), falling back to Stripe`);
+        } else if (mcpAssignPreferred === 'stripe' && mcpAssignStripeUsable) {
+          mcpUseUsdc = false;
+        } else if (mcpAssignPreferred === 'stripe' && !mcpAssignStripeUsable && mcpAssignUsdcUsable) {
+          mcpUseUsdc = true;
+          console.log('[MCP/assign_human] Stripe preferred but no card, falling back to USDC');
+        } else if (mcpAssignUsdcUsable) {
+          mcpUseUsdc = true;
+        } else if (mcpAssignStripeUsable) {
+          mcpUseUsdc = false;
+        } else {
+          const reasons = [];
+          if (mcpAssignHasUsdc) reasons.push(`USDC balance too low ($${mcpAssignUsdcBal.toFixed(2)} < $${budgetAmount})`);
+          else reasons.push('No USDC wallet');
+          if (!mcpAssignStripeUsable) reasons.push('No credit card on file');
           return res.status(402).json({
-            error: 'No payment method on file',
+            error: `No usable payment method. ${reasons.join('. ')}.`,
             code: 'payment_required',
-            message: 'You must link a payment card or choose USDC before hiring.',
+            message: 'Link a payment card or deposit USDC before hiring.',
             actions: [
               { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
               { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
