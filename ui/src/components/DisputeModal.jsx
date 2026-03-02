@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button } from './ui';
 
 export default function DisputeModal({ isOpen, onClose, onSubmit, taskTitle }) {
   const [reason, setReason] = useState('');
@@ -49,19 +50,20 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, taskTitle }) {
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <h3>Dispute Filed</h3>
+            <h3>Dispute filed</h3>
             <p>Your dispute has been submitted. Our team will review it and both parties will be notified.</p>
           </div>
         ) : (
           <>
             <div className="quick-apply-modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                   <line x1="12" y1="9" x2="12" y2="13" />
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
-                <h2>File a Dispute</h2>
+                <h2>File a dispute</h2>
               </div>
               <p style={{ fontSize: '14px', color: '#888888', marginTop: '4px' }}>
                 Disputes are reviewed by our team. Please provide a clear reason.
@@ -105,39 +107,22 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, taskTitle }) {
               )}
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                <button
+                <Button
+                  variant="secondary"
                   type="button"
                   onClick={handleClose}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: '2px solid rgba(0,0,0,0.08)',
-                    background: 'white',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                  }}
+                  style={{ flex: 1 }}
                 >
-                  Cancel
-                </button>
-                <button
+                  Go back
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={loading || !reason.trim()}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: loading || !reason.trim() ? '#ccc' : '#E8853D',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: loading || !reason.trim() ? 'not-allowed' : 'pointer',
-                  }}
+                  style={{ flex: 1 }}
                 >
-                  {loading ? 'Submitting...' : 'File Dispute'}
-                </button>
+                  {loading ? 'Submitting...' : 'File dispute'}
+                </Button>
               </div>
             </form>
           </>

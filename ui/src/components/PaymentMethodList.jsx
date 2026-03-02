@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CreditCard } from 'lucide-react'
+import { EmptyState } from './ui';
 import API_URL from '../config/api';
 
 const brandIcons = {
@@ -9,7 +10,7 @@ const brandIcons = {
   discover: 'Discover',
 };
 
-export default function PaymentMethodList({ user, onUpdate }) {
+export default function PaymentMethodList({ user, onUpdate, onMethodsLoaded }) {
   const [methods, setMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(null);
@@ -21,7 +22,9 @@ export default function PaymentMethodList({ user, onUpdate }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setMethods(data.payment_methods || []);
+        const m = data.payment_methods || [];
+        setMethods(m);
+        if (onMethodsLoaded) onMethodsLoaded(m);
       }
     } catch (e) {
       console.error('Failed to fetch payment methods:', e);
@@ -45,7 +48,9 @@ export default function PaymentMethodList({ user, onUpdate }) {
         method: 'DELETE',
         headers: { Authorization: user.token || '' },
       });
-      setMethods(methods.filter(m => m.id !== pmId));
+      const updated = methods.filter(m => m.id !== pmId);
+      setMethods(updated);
+      if (onMethodsLoaded) onMethodsLoaded(updated);
     } catch (e) {
       console.error('Failed to delete payment method:', e);
     } finally {
@@ -59,7 +64,9 @@ export default function PaymentMethodList({ user, onUpdate }) {
         method: 'POST',
         headers: { Authorization: user.token || '' },
       });
-      setMethods(methods.map(m => ({ ...m, is_default: m.id === pmId })));
+      const updated = methods.map(m => ({ ...m, is_default: m.id === pmId }));
+      setMethods(updated);
+      if (onMethodsLoaded) onMethodsLoaded(updated);
     } catch (e) {
       console.error('Failed to set default:', e);
     }
@@ -71,16 +78,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
 
   if (methods.length === 0) {
     return (
-      <div style={{
-        padding: '1.5rem',
-        background: '#fef3c7',
-        borderRadius: '12px',
-        textAlign: 'center',
-      }}>
-        <p style={{ fontSize: '0.875rem', color: '#92400e' }}>
-          No payment methods saved. Add a card below to pay for tasks instantly.
-        </p>
-      </div>
+      <p className="text-sm text-[#888888] py-1">No cards saved yet — add one below.</p>
     );
   }
 
@@ -103,7 +101,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
             <span style={{ fontSize: '0.875rem' }}>
               <><CreditCard size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {brandIcons[pm.brand] || pm.brand}</>
             </span>
-            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1a1a2e' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1a1a2e', fontFamily: "'DM Mono', monospace" }}>
               •••• {pm.last4}
             </span>
             <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
@@ -111,7 +109,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
             </span>
             {pm.is_default && (
               <span style={{
-                fontSize: '0.675rem',
+                fontSize: '0.6875rem',
                 fontWeight: 600,
                 color: '#16a34a',
                 background: '#dcfce7',
@@ -136,7 +134,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
                   textDecoration: 'underline',
                 }}
               >
-                Set default
+                Set as default
               </button>
             )}
             <button
@@ -150,7 +148,7 @@ export default function PaymentMethodList({ user, onUpdate }) {
                 cursor: 'pointer',
               }}
             >
-              {deleting === pm.id ? '...' : 'Remove'}
+              {deleting === pm.id ? '...' : 'Remove card'}
             </button>
           </div>
         </div>

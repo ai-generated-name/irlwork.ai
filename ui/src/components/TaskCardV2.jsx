@@ -1,22 +1,23 @@
 import React from 'react';
-import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
+import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, Sparkles, Truck, Wrench, Search, Languages } from 'lucide-react';
+import { Button } from './ui';
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  data_collection: '📊',
-  errands: '🏃',
-  cleaning: '🧹',
-  moving: '🚚',
-  manual_labor: '💪',
-  inspection: '🔍',
-  'tech-setup': '💻',
-  tech: '💻',
-  translation: '🌐',
-  verification: '✅',
-  general: '📋',
-  other: '📋',
+  delivery: <Package size={14} />,
+  photography: <Camera size={14} />,
+  'data-collection': <BarChart3 size={14} />,
+  data_collection: <BarChart3 size={14} />,
+  errands: <Footprints size={14} />,
+  cleaning: <Sparkles size={14} />,
+  moving: <Truck size={14} />,
+  manual_labor: <Wrench size={14} />,
+  inspection: <Search size={14} />,
+  'tech-setup': <Monitor size={14} />,
+  tech: <Monitor size={14} />,
+  translation: <Languages size={14} />,
+  verification: <CheckCircle size={14} />,
+  general: <ClipboardList size={14} />,
+  other: <ClipboardList size={14} />,
 };
 
 function formatTimeAgo(dateString) {
@@ -71,7 +72,7 @@ export default function TaskCardV2({
   onReport = () => {},
   showReport = false,
 }) {
-  const categoryIcon = CATEGORY_ICONS[task.category] || '📋';
+  const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={14} />;
   const categoryLabel = formatCategory(task.category);
   const isOpen = task.task_type === 'open';
   const quantity = task.quantity || 1;
@@ -118,29 +119,18 @@ export default function TaskCardV2({
             </div>
           ) : null}
           {showReport && (
-            <button
-              className="task-card-v2-report-btn"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={(e) => { e.stopPropagation(); onReport(task); }}
               title="Report this task"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px',
-                borderRadius: '6px',
-                color: '#888888',
-                transition: 'color 0.15s ease',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#FF5F57'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#888888'; }}
+              className="!p-1 !min-h-0"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                 <line x1="4" y1="22" x2="4" y2="15" />
               </svg>
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -174,7 +164,7 @@ export default function TaskCardV2({
       {/* Budget + Duration + Deadline row */}
       <div className="task-card-v2-meta-row">
         <div className="task-card-v2-budget">
-          <span className="task-card-v2-budget-amount">${task.budget || 0}</span>
+          <span className="task-card-v2-budget-amount font-['DM_Mono']">${task.budget || 0}</span>
           <span className="task-card-v2-budget-label">USD</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -253,13 +243,16 @@ export default function TaskCardV2({
             </span>
           )}
         </div>
-        <button
-          className={`task-card-v2-apply-btn ${hasApplied ? 'applied' : ''}`}
+        <Button
+          variant={hasApplied ? 'ghost' : (quantity > 1 && spotsRemaining === 0) ? 'ghost' : 'primary'}
+          size="sm"
           onClick={(e) => {
             e.stopPropagation();
-            if (!hasApplied) onApply(task);
+            if (!hasApplied && !(quantity > 1 && spotsRemaining === 0)) onApply(task);
           }}
           disabled={hasApplied || (quantity > 1 && spotsRemaining === 0)}
+          aria-label={hasApplied ? 'Already applied' : (quantity > 1 && spotsRemaining === 0) ? 'All spots filled' : `Apply to ${task.title}`}
+          className="gap-1.5"
         >
           {hasApplied ? (
             <>
@@ -272,14 +265,14 @@ export default function TaskCardV2({
             'Filled'
           ) : (
             <>
-              Apply
+              Apply now
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="5" y1="12" x2="19" y2="12" />
                 <polyline points="12 5 19 12 12 19" />
               </svg>
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

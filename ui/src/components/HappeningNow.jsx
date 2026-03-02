@@ -6,25 +6,45 @@ function escapeHtml(str) {
   return div.innerHTML
 }
 
+// Lucide SVG icon strings for DOM innerHTML injection (16x16, stroke-based)
+const svgIcon = (paths) => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`
+const ICON_SVG = {
+  home: svgIcon('<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  package: svgIcon('<path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/>'),
+  scale: svgIcon('<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>'),
+  camera: svgIcon('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>'),
+  scrollText: svgIcon('<path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2"/>'),
+  lock: svgIcon('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+  shoppingCart: svgIcon('<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>'),
+  fileText: svgIcon('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>'),
+  wrench: svgIcon('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'),
+  search: svgIcon('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
+  building: svgIcon('<rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>'),
+  footprints: svgIcon('<path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5 10 7.19 9 8.5 9 10c0 1.49.5 2.5 1 3"/><path d="M12 22v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C6.63 8 6 9.8 6 11.5 6 13.19 7 14.5 7 16c0 1.49-.5 2.5-1 3"/>'),
+  penLine: svgIcon('<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>'),
+  clipboardList: svgIcon('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>'),
+  car: svgIcon('<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>'),
+}
+
 const TASKS = [
-  { agent:"dan.h's agent",    task:"Real Estate Showing",   icon:"🏠", city:"San Francisco", country:"US", price:125,  worker:"Anya R.",   xPct:16.0, yPct:32.1, avatar:"#0EA5E9",  region:"NAm" },
-  { agent:"jess.f's agent",   task:"Package Pickup",        icon:"📦", city:"Nairobi",       country:"KE", price:25,   worker:"Tyler B.",  xPct:60.2, yPct:59.2, avatar:"#2D8C4E",  region:"Afr" },
-  { agent:"noah.s's agent",   task:"Patent Filing",         icon:"⚖️", city:"Tokyo",         country:"JP", price:475,  worker:"Yuki A.",   xPct:88.8, yPct:33.6, avatar:"#10B981",  region:"EAs" },
-  { agent:"emma.w's agent",   task:"Event Photography",     icon:"📸", city:"London",        country:"UK", price:200,  worker:"James L.",  xPct:49.4, yPct:22.0, avatar:"#3B82F6",  region:"Eur" },
-  { agent:"ava.t's agent",    task:"Notarization",          icon:"📜", city:"São Paulo",     country:"BR", price:40,   worker:"Carlos R.", xPct:37.1, yPct:74.7, avatar:"#EF4444",  region:"SAm" },
-  { agent:"lisa.m's agent",   task:"Compliance Check",      icon:"🔒", city:"Seoul",         country:"KR", price:310,  worker:"Nina P.",   xPct:85.3, yPct:32.2, avatar:"#EC4899",  region:"EAs" },
-  { agent:"ryan.g's agent",   task:"Grocery Delivery",      icon:"🛒", city:"Mumbai",        country:"IN", price:30,   worker:"Ravi S.",   xPct:70.2, yPct:45.1, avatar:"#F97316",  region:"SAs" },
-  { agent:"jake.r's agent",   task:"Contract Review",       icon:"📑", city:"Chicago",       country:"US", price:350,  worker:"Sofia V.",  xPct:25.7, yPct:29.2, avatar:"#6366F1",  region:"NAm" },
-  { agent:"marco.d's agent",  task:"Product Photography",   icon:"📷", city:"Paris",         country:"FR", price:150,  worker:"Priya M.",  xPct:50.7, yPct:24.4, avatar:"#F59E0B",  region:"Eur" },
-  { agent:"sarah.m's agent",  task:"Furniture Assembly",    icon:"🔧", city:"Bangkok",       country:"TH", price:45,   worker:"Alex H.",   xPct:77.9, yPct:48.8, avatar:"#E8722A",  region:"SEA" },
-  { agent:"olivia.k's agent", task:"Due Diligence",         icon:"🔍", city:"New York",      country:"US", price:500,  worker:"Kenji T.",  xPct:29.4, yPct:30.1, avatar:"#8B5CF6",  region:"NAm" },
-  { agent:"tom.j's agent",    task:"Document Drop-off",     icon:"📄", city:"Lagos",         country:"NG", price:25,   worker:"Ade O.",    xPct:50.9, yPct:53.8, avatar:"#22D3EE",  region:"Afr" },
-  { agent:"ben.k's agent",    task:"Property Inspection",   icon:"🏢", city:"Dubai",         country:"AE", price:275,  worker:"Omar F.",   xPct:65.4, yPct:40.8, avatar:"#D946EF",  region:"MdE" },
-  { agent:"chloe.p's agent",  task:"Pet Sitting",           icon:"🐾", city:"Toronto",       country:"CA", price:60,   worker:"Lena M.",   xPct:27.9, yPct:28.0, avatar:"#06B6D4",  region:"NAm" },
-  { agent:"mia.l's agent",    task:"Permit Application",    icon:"📝", city:"Singapore",     country:"SG", price:180,  worker:"Wei L.",    xPct:78.8, yPct:57.4, avatar:"#84CC16",  region:"SEA" },
-  { agent:"zoe.b's agent",    task:"Tax Preparation",       icon:"📋", city:"Berlin",        country:"DE", price:225,  worker:"Hans W.",   xPct:53.7, yPct:21.9, avatar:"#A855F7",  region:"Eur" },
-  { agent:"nina.v's agent",   task:"Car Inspection",        icon:"🚗", city:"Mexico City",   country:"MX", price:55,   worker:"Luis G.",   xPct:22.5, yPct:44.8, avatar:"#F43F5E",  region:"CAm" },
-  { agent:"liam.c's agent",   task:"Warehouse Check-in",    icon:"📦", city:"Sydney",        country:"AU", price:90,   worker:"Mia K.",    xPct:92.0, yPct:81.9, avatar:"#14B8A6",  region:"Oce" },
+  { agent:"dan.h's agent",    task:"Real Estate Showing",   icon:"home", city:"San Francisco", country:"US", price:125,  worker:"Anya R.",   xPct:16.0, yPct:32.1, avatar:"#0EA5E9",  region:"NAm" },
+  { agent:"jess.f's agent",   task:"Package Pickup",        icon:"package", city:"Nairobi",       country:"KE", price:25,   worker:"Tyler B.",  xPct:60.2, yPct:59.2, avatar:"#2D8C4E",  region:"Afr" },
+  { agent:"noah.s's agent",   task:"Patent Filing",         icon:"scale", city:"Tokyo",         country:"JP", price:475,  worker:"Yuki A.",   xPct:88.8, yPct:33.6, avatar:"#10B981",  region:"EAs" },
+  { agent:"emma.w's agent",   task:"Event Photography",     icon:"camera", city:"London",        country:"UK", price:200,  worker:"James L.",  xPct:49.4, yPct:22.0, avatar:"#3B82F6",  region:"Eur" },
+  { agent:"ava.t's agent",    task:"Notarization",          icon:"scrollText", city:"São Paulo",     country:"BR", price:40,   worker:"Carlos R.", xPct:37.1, yPct:74.7, avatar:"#EF4444",  region:"SAm" },
+  { agent:"lisa.m's agent",   task:"Compliance Check",      icon:"lock", city:"Seoul",         country:"KR", price:310,  worker:"Nina P.",   xPct:85.3, yPct:32.2, avatar:"#EC4899",  region:"EAs" },
+  { agent:"ryan.g's agent",   task:"Grocery Delivery",      icon:"shoppingCart", city:"Mumbai",        country:"IN", price:30,   worker:"Ravi S.",   xPct:70.2, yPct:45.1, avatar:"#F97316",  region:"SAs" },
+  { agent:"jake.r's agent",   task:"Contract Review",       icon:"fileText", city:"Chicago",       country:"US", price:350,  worker:"Sofia V.",  xPct:25.7, yPct:29.2, avatar:"#6366F1",  region:"NAm" },
+  { agent:"marco.d's agent",  task:"Product Photography",   icon:"camera", city:"Paris",         country:"FR", price:150,  worker:"Priya M.",  xPct:50.7, yPct:24.4, avatar:"#F59E0B",  region:"Eur" },
+  { agent:"sarah.m's agent",  task:"Furniture Assembly",    icon:"wrench", city:"Bangkok",       country:"TH", price:45,   worker:"Alex H.",   xPct:77.9, yPct:48.8, avatar:"#E8722A",  region:"SEA" },
+  { agent:"olivia.k's agent", task:"Due Diligence",         icon:"search", city:"New York",      country:"US", price:500,  worker:"Kenji T.",  xPct:29.4, yPct:30.1, avatar:"#8B5CF6",  region:"NAm" },
+  { agent:"tom.j's agent",    task:"Document Drop-off",     icon:"fileText", city:"Lagos",         country:"NG", price:25,   worker:"Ade O.",    xPct:50.9, yPct:53.8, avatar:"#22D3EE",  region:"Afr" },
+  { agent:"ben.k's agent",    task:"Property Inspection",   icon:"building", city:"Dubai",         country:"AE", price:275,  worker:"Omar F.",   xPct:65.4, yPct:40.8, avatar:"#D946EF",  region:"MdE" },
+  { agent:"chloe.p's agent",  task:"Pet Sitting",           icon:"footprints", city:"Toronto",       country:"CA", price:60,   worker:"Lena M.",   xPct:27.9, yPct:28.0, avatar:"#06B6D4",  region:"NAm" },
+  { agent:"mia.l's agent",    task:"Permit Application",    icon:"penLine", city:"Singapore",     country:"SG", price:180,  worker:"Wei L.",    xPct:78.8, yPct:57.4, avatar:"#84CC16",  region:"SEA" },
+  { agent:"zoe.b's agent",    task:"Tax Preparation",       icon:"clipboardList", city:"Berlin",        country:"DE", price:225,  worker:"Hans W.",   xPct:53.7, yPct:21.9, avatar:"#A855F7",  region:"Eur" },
+  { agent:"nina.v's agent",   task:"Car Inspection",        icon:"car", city:"Mexico City",   country:"MX", price:55,   worker:"Luis G.",   xPct:22.5, yPct:44.8, avatar:"#F43F5E",  region:"CAm" },
+  { agent:"liam.c's agent",   task:"Warehouse Check-in",    icon:"package", city:"Sydney",        country:"AU", price:90,   worker:"Mia K.",    xPct:92.0, yPct:81.9, avatar:"#14B8A6",  region:"Oce" },
 ]
 
 const STATIC_DOTS = [
@@ -225,7 +245,9 @@ export default function HappeningNow() {
 
     const popup = document.createElement('div')
     popup.className = 'hn-task-popup'
-    popup.innerHTML = `<div class="hn-popup-header"><span class="hn-popup-agent-badge"><span class="hn-bot-icon">🤖</span> ${escapeHtml(task.agent)}</span><span class="hn-popup-needs">needs</span></div><div class="hn-popup-task"><span class="hn-task-icon">${escapeHtml(task.icon)}</span><div class="hn-popup-task-info"><h4>${escapeHtml(task.task)}</h4><span>${escapeHtml(task.city)}, ${escapeHtml(task.country)}</span></div></div>`
+    const taskIconSvg = ICON_SVG[task.icon] || ICON_SVG.fileText
+    const botIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="10" x="3" y="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" x2="8" y1="16" y2="16"/><line x1="16" x2="16" y1="16" y2="16"/></svg>`
+    popup.innerHTML = `<div class="hn-popup-header"><span class="hn-popup-agent-badge"><span class="hn-bot-icon">${botIconSvg}</span> ${escapeHtml(task.agent)}</span><span class="hn-popup-needs">needs</span></div><div class="hn-popup-task"><span class="hn-task-icon">${taskIconSvg}</span><div class="hn-popup-task-info"><h4>${escapeHtml(task.task)}</h4><span>${escapeHtml(task.city)}, ${escapeHtml(task.country)}</span></div></div>`
     mapSide.appendChild(popup)
     s.currentPopup = popup
 
@@ -246,7 +268,8 @@ export default function HappeningNow() {
       pin.className = 'hn-map-pin hn-completed'
       addTermLine(`<span class="hn-worker-prefix">  ↳ worker</span> <span class="hn-worker-name">${escapeHtml(task.worker)}</span><span class="hn-term-completed">, completed</span>`, true)
       setTimeout(() => {
-        addTermLine(`<span class="hn-check">  ✓</span> <span class="hn-paid">$${escapeHtml(String(task.price))} paid</span> <span class="hn-muted">→ ${escapeHtml(task.worker)}</span>`, true)
+        const checkSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg>`
+        addTermLine(`<span class="hn-check">  ${checkSvg}</span> <span class="hn-paid">$${escapeHtml(String(task.price))} paid</span> <span class="hn-muted">${escapeHtml('→')} ${escapeHtml(task.worker)}</span>`, true)
       }, 400)
     }, 2200)
   }, [addTermLine, positionPopup, drawConnector, removeConnector])
