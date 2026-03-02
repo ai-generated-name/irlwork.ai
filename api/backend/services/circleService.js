@@ -35,8 +35,10 @@ async function createUserWallet() {
   }
   let response;
   try {
+    // Use BASE-SEPOLIA for testnet API keys, BASE for live API keys
+    const blockchain = process.env.CIRCLE_BLOCKCHAIN || 'BASE-SEPOLIA';
     response = await c.createWallets({
-      blockchains: ['BASE'],
+      blockchains: [blockchain],
       count: 1,
       walletSetId,
       accountType: 'SCA',
@@ -82,7 +84,8 @@ async function getWalletBalance(walletId) {
  */
 async function transferUSDC({ fromWalletId, toAddress, amount, idempotencyKey }) {
   const c = getClient();
-  const tokenAddress = process.env.USDC_BASE_TOKEN_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+  // Default to Base Sepolia testnet USDC; set USDC_BASE_TOKEN_ADDRESS for mainnet (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
+  const tokenAddress = process.env.USDC_BASE_TOKEN_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
   let response;
   try {
     response = await c.createTransaction({
