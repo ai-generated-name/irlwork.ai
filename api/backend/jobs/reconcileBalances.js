@@ -35,15 +35,34 @@ async function reconcileBalances() {
 
   console.log('[Reconcile] Starting USDC balance reconciliation...');
 
-  // Get all users with Circle wallets
+  // Get all users with Circle wallets AND a wallet address
+  // Users with balance but no wallet have funds held in escrow (Fix 7 edge case)
   const { data: users, error } = await supabase
     .from('users')
     .select('id, email, circle_wallet_id, circle_wallet_address, usdc_available_balance, usdc_escrow_balance')
-    .not('circle_wallet_id', 'is', null);
+    .not('circle_wallet_id', 'is', null)
+    .not('circle_wallet_address', 'is', null);
 
   if (error) {
     console.error('[Reconcile] Failed to fetch users:', error.message);
     process.exit(1);
+  }
+
+  // Log walletless workers with balances (info-level — these are expected from Fix 7)
+  const { data: walletlessWorkers } = await supabase
+    .from('users')
+    .select('id, email, usdc_available_balance')
+    .is('circle_wallet_address', null)
+    .gt('usdc_available_balance', 0);
+
+  if (walletlessWorkers?.length > 0) {
+    const walletlessFundsTotal = walletlessWorkers.reduce(
+      (sum, u) => sum + parseFloat(u.usdc_available_balance || 0), 0
+    );
+    console.log(
+      `[Reconcile] ${walletlessWorkers.length} worker(s) without Circle wallet hold ` +
+      `${walletlessFundsTotal.toFixed(6)} USDC in DB (funds held in escrow wallet on-chain)`
+    );
   }
 
   console.log(`[Reconcile] Checking ${users.length} users with Circle wallets`);
@@ -77,31 +96,45 @@ async function reconcileBalances() {
     try {
       const escrowOnChain = await circleService.getWalletBalance(escrowWalletId);
 
-      // Sum all users' escrow balances
-      const { data: escrowSum } = await supabase
-        .rpc('sum_column', { table_name: 'users', column_name: 'usdc_escrow_balance' })
-        .single();
-
-      // Fallback: manual sum if RPC not available
+      // Sum all users' escrow balances (manual sum — no dependency on sum_column RPC)
       let totalDbEscrow = 0;
-      if (escrowSum) {
-        totalDbEscrow = parseFloat(escrowSum);
-      } else {
-        for (const u of users) {
-          totalDbEscrow += parseFloat(u.usdc_escrow_balance || '0');
-        }
+      const { data: allUsersEscrow } = await supabase
+        .from('users')
+        .select('usdc_escrow_balance')
+        .gt('usdc_escrow_balance', 0);
+      for (const u of (allUsersEscrow || [])) {
+        totalDbEscrow += parseFloat(u.usdc_escrow_balance || '0');
       }
 
-      const diff = Math.abs(escrowOnChain - totalDbEscrow);
+      // Sum funds belonging to workers without Circle wallets
+      // These are legitimately held in the escrow wallet, not a discrepancy (Fix 7)
+      let walletlessFundsTotal = 0;
+      const { data: walletlessFunds } = await supabase
+        .from('users')
+        .select('usdc_available_balance')
+        .is('circle_wallet_address', null)
+        .gt('usdc_available_balance', 0);
+      for (const u of (walletlessFunds || [])) {
+        walletlessFundsTotal += parseFloat(u.usdc_available_balance || '0');
+      }
+
+      // Expected escrow on-chain = sum of DB escrow + walletless worker funds
+      const expectedEscrow = totalDbEscrow + walletlessFundsTotal;
+
+      const diff = Math.abs(escrowOnChain - expectedEscrow);
       if (diff > 0.01) {
         discrepancies++;
         console.warn(
           `[Reconcile] ESCROW WALLET DISCREPANCY: ` +
-          `on-chain=${escrowOnChain.toFixed(6)}, db_sum=${totalDbEscrow.toFixed(6)}, ` +
+          `on-chain=${escrowOnChain.toFixed(6)}, expected=${expectedEscrow.toFixed(6)} ` +
+          `(db_escrow=${totalDbEscrow.toFixed(6)} + walletless_worker_funds=${walletlessFundsTotal.toFixed(6)}), ` +
           `diff=${diff.toFixed(6)}`
         );
       } else {
-        console.log(`[Reconcile] Escrow wallet OK: on-chain=${escrowOnChain.toFixed(6)}, db_sum=${totalDbEscrow.toFixed(6)}`);
+        console.log(
+          `[Reconcile] Escrow wallet OK: on-chain=${escrowOnChain.toFixed(6)}, ` +
+          `expected=${expectedEscrow.toFixed(6)} (escrow=${totalDbEscrow.toFixed(6)} + walletless=${walletlessFundsTotal.toFixed(6)})`
+        );
       }
     } catch (e) {
       console.error('[Reconcile] Failed to check escrow wallet:', e.message);

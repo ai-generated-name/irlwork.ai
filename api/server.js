@@ -11552,11 +11552,32 @@ async function start() {
     res.status(err.status || 500).json({ error: 'Internal server error' });
   });
 
-  server.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', async () => {
     logger.info({ port: PORT }, `Server running on port ${PORT}`);
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`   API: http://localhost:${PORT}/api`);
     console.log(`   MCP: POST http://localhost:${PORT}/api/mcp`);
+
+    // Verify USDC infrastructure (non-blocking — Stripe still works if missing)
+    if (supabase) {
+      try {
+        const { error } = await supabase.rpc('update_usdc_balance', {
+          p_user_id: '00000000-0000-0000-0000-000000000000',
+          p_available_delta: 0,
+          p_escrow_delta: 0,
+        });
+        // We expect an error (user not found), but NOT "function does not exist"
+        if (error && error.message?.includes('does not exist')) {
+          console.error('❌ CRITICAL: update_usdc_balance RPC function not found in database.');
+          console.error('   Run db/migrations/add_atomic_balance_functions.sql before deploying.');
+          console.error('   All USDC operations will fail without this function.');
+        } else {
+          console.log('✅ USDC infrastructure verified: update_usdc_balance RPC function exists');
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not verify USDC infrastructure:', err.message);
+      }
+    }
   });
 }
 
