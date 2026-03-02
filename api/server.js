@@ -10510,8 +10510,12 @@ app.post('/api/wallet/generate-deposit-address', async (req, res) => {
       token: 'USDC',
     });
   } catch (error) {
-    console.error('[Generate Deposit Address] Error:', error.message);
-    res.status(500).json({ error: 'Failed to generate deposit address. Please try again.' });
+    console.error('[Generate Deposit Address] Error:', error.message, error.stack);
+    // Surface actionable detail while keeping sensitive info server-side
+    const userMessage = error.message?.includes('not configured')
+      ? error.message  // Config errors are safe to surface
+      : 'Failed to generate deposit address. Please try again.';
+    res.status(500).json({ error: userMessage, code: 'wallet_creation_failed' });
   }
 });
 

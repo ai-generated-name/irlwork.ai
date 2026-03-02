@@ -33,13 +33,26 @@ async function createUserWallet() {
   if (!walletSetId) {
     throw new Error('CIRCLE_WALLET_SET_ID not configured.');
   }
-  const response = await c.createWallets({
-    blockchains: ['BASE'],
-    count: 1,
-    walletSetId,
-    accountType: 'SCA',
-  });
-  const wallet = response.data.wallets[0];
+  let response;
+  try {
+    response = await c.createWallets({
+      blockchains: ['BASE'],
+      count: 1,
+      walletSetId,
+      accountType: 'SCA',
+    });
+  } catch (apiErr) {
+    // Surface Circle API error details
+    const detail = apiErr.response?.data || apiErr.response?.statusText || apiErr.message;
+    console.error('[CircleService] createWallets API error:', JSON.stringify(detail, null, 2));
+    throw new Error(`Circle createWallets failed: ${typeof detail === 'object' ? JSON.stringify(detail) : detail}`);
+  }
+  const wallets = response?.data?.wallets;
+  if (!wallets || wallets.length === 0) {
+    console.error('[CircleService] createWallets returned no wallets. Response:', JSON.stringify(response?.data, null, 2));
+    throw new Error('Circle createWallets returned empty wallet list.');
+  }
+  const wallet = wallets[0];
   return {
     walletId: wallet.id,
     walletAddress: wallet.address,
@@ -70,18 +83,25 @@ async function getWalletBalance(walletId) {
 async function transferUSDC({ fromWalletId, toAddress, amount, idempotencyKey }) {
   const c = getClient();
   const tokenAddress = process.env.USDC_BASE_TOKEN_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-  const response = await c.createTransaction({
-    walletId: fromWalletId,
-    tokenAddress,
-    destinationAddress: toAddress,
-    amounts: [amount.toString()],
-    fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-    idempotencyKey,
-  });
+  let response;
+  try {
+    response = await c.createTransaction({
+      walletId: fromWalletId,
+      tokenAddress,
+      destinationAddress: toAddress,
+      amounts: [amount.toString()],
+      fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
+      idempotencyKey,
+    });
+  } catch (apiErr) {
+    const detail = apiErr.response?.data || apiErr.response?.statusText || apiErr.message;
+    console.error('[CircleService] createTransaction API error:', JSON.stringify(detail, null, 2));
+    throw new Error(`Circle transfer failed: ${typeof detail === 'object' ? JSON.stringify(detail) : detail}`);
+  }
   return {
-    transactionId: response.data.id,
-    txHash: response.data.txHash || null,
-    state: response.data.state,
+    transactionId: response.data?.id,
+    txHash: response.data?.txHash || null,
+    state: response.data?.state,
   };
 }
 
