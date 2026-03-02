@@ -4,7 +4,7 @@ import {
   Check, BarChart3, Package, Camera, Wrench, Sparkles, Dog, FileSignature,
   Hand, CheckCircle, MapPin, Clock, ArrowRight, Terminal, ChevronRight, ChevronDown,
   DollarSign, Users, Building2, Cpu, User, Mail, Code, Video, UserPlus, Twitter,
-  Search, Briefcase, Scale, Stamp, Plug
+  Search, Briefcase, Scale, Stamp, Plug, Star
 } from 'lucide-react'
 import HappeningNow from '../components/HappeningNow'
 import { useLanguage } from '../context/LanguageContext'
