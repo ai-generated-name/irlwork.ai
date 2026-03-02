@@ -11373,23 +11373,21 @@ select.select-v4-dark option:checked,
 
 }
 
-/* Earnings summary stats */
-.earnings-summary-stats {
+/* Shared payment stat cards — used by both hiring and working payment views */
+.payment-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  margin-bottom: 16px;
 }
 
-.earnings-stat {
+.payment-stat-card {
   background: var(--bg-secondary);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-lg);
   padding: 16px;
-  text-align: center;
 }
 
-.earnings-stat-label {
+.payment-stat-label {
   display: block;
   font-size: 12px;
   font-weight: 600;
@@ -11399,16 +11397,17 @@ select.select-v4-dark option:checked,
   margin-bottom: 6px;
 }
 
-.earnings-stat-value {
-  font-size: 22px;
+.payment-stat-value {
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
   font-family: var(--font-display);
 }
 
-.earnings-stat--available .earnings-stat-value {
-  color: var(--success);
+.payment-stat-value--accent {
+  color: var(--accent-orange);
 }
+
 
 .earnings-flow-toggle {
   display: flex;
@@ -11433,20 +11432,20 @@ select.select-v4-dark option:checked,
 }
 
 @media (max-width: 640px) {
-  .earnings-summary-stats {
+  .payment-stats-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
 
-  .earnings-stat {
+  .payment-stat-card {
     padding: 12px 8px;
   }
 
-  .earnings-stat-value {
+  .payment-stat-value {
     font-size: 18px;
   }
 
-  .earnings-stat-label {
+  .payment-stat-label {
     font-size: 11px;
   }
 }

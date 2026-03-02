@@ -253,6 +253,28 @@ function EarningsDashboard({ user }) {
   return (
     <div className="space-y-5 md:space-y-7">
 
+      {/* Earnings Summary Stats */}
+      <div className="payment-stats-grid">
+        <div className="payment-stat-card">
+          <span className="payment-stat-label">Total Earned</span>
+          <span className="payment-stat-value">
+            ${((balanceData?.pending || 0) + (balanceData?.available || 0)).toFixed(2)}
+          </span>
+        </div>
+        <div className="payment-stat-card">
+          <span className="payment-stat-label">In Escrow</span>
+          <span className="payment-stat-value">
+            ${(balanceData?.pending || 0).toFixed(2)}
+          </span>
+        </div>
+        <div className="payment-stat-card">
+          <span className="payment-stat-label">Available</span>
+          <span className="payment-stat-value payment-stat-value--accent">
+            ${(balanceData?.available || 0).toFixed(2)}
+          </span>
+        </div>
+      </div>
+
       {/* ── Section Navigation ── */}
       <nav className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {SECTIONS.map(section => (
