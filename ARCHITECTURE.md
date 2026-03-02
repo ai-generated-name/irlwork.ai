@@ -2,24 +2,25 @@
 
 This is a living document. Any changes to the platform's architecture, payment flows, status transitions, cancellation policies, or core business logic MUST be reflected here. Before implementing changes, read this file. After implementing changes, update this file.
 
-**Last updated:** 2026-02-26
+**Last updated:** 2026-03-01
 
 ## Table of Contents
 
 1. [Task Lifecycle & Status Machine](#task-lifecycle--status-machine)
 2. [Payment & Escrow Flow](#payment--escrow-flow)
-3. [Cancellation Policy](#cancellation-policy)
-4. [Task Content: Description vs Instructions](#task-content-description-vs-instructions)
-5. [Revision System](#revision-system)
-6. [Worker & Agent Reputation](#worker--agent-reputation)
-7. [Communication Flow (Agent <-> Human)](#communication-flow-agent--human)
-8. [Notification Matrix](#notification-matrix)
-9. [Webhook System](#webhook-system)
-10. [Dispute Resolution](#dispute-resolution)
-11. [Platform Fees](#platform-fees)
-12. [Background Jobs](#background-jobs)
-13. [API Endpoint Reference](#api-endpoint-reference)
-14. [Changelog](#changelog)
+3. [Circle Programmable Wallets (USDC Rail)](#circle-programmable-wallets-usdc-rail)
+4. [Cancellation Policy](#cancellation-policy)
+5. [Task Content: Description vs Instructions](#task-content-description-vs-instructions)
+6. [Revision System](#revision-system)
+7. [Worker & Agent Reputation](#worker--agent-reputation)
+8. [Communication Flow (Agent <-> Human)](#communication-flow-agent--human)
+9. [Notification Matrix](#notification-matrix)
+10. [Webhook System](#webhook-system)
+11. [Dispute Resolution](#dispute-resolution)
+12. [Platform Fees](#platform-fees)
+13. [Background Jobs](#background-jobs)
+14. [API Endpoint Reference](#api-endpoint-reference)
+15. [Changelog](#changelog)
 
 ---
 
@@ -88,11 +89,22 @@ Every task status transition is recorded in the `task_status_history` table. Thi
 
 ## Payment & Escrow Flow
 
+### Two Payment Rails
+
+The platform supports two payment methods, tracked by the `payment_method` field on each task:
+
+| Rail | `payment_method` value | Funding source | Escrow mechanism | Payout mechanism |
+|------|----------------------|----------------|------------------|------------------|
+| **Stripe (credit card)** | `stripe` | Agent's credit card via Stripe PaymentIntent | Stripe auth hold + manual capture | Stripe Connect transfer or wallet balance |
+| **USDC (Circle)** | `usdc` | Agent's Circle Programmable Wallet (USDC on Base) | On-chain transfer to platform escrow wallet | On-chain transfer from escrow to worker wallet |
+
+Agents set a **default payment method** on their profile (`users.default_payment_method`). This default applies to all new tasks unless overridden at task creation via the `payment_method` field. If no default is set, `stripe` is used.
+
 ### Core Principle
 
 No money moves until a human is committed to the work.
 
-### Timeline
+### Timeline (Stripe Rail)
 
 ```
 Task Created       -> Verify agent has payment method (no charge)
@@ -106,14 +118,123 @@ Payout             -> Auto-transfer to Stripe Connect if onboarded
                       OR available in wallet for manual withdrawal
 ```
 
+### Timeline (USDC / Circle Rail)
+
+```
+Task Created       -> Verify agent has Circle wallet with sufficient USDC balance
+Human Assigned     -> USDC transferred from agent wallet -> escrow wallet
+                      (on-chain, logged in usdc_ledger)
+Human Starts Work  -> No additional capture needed (funds already in escrow)
+Agent Approves     -> USDC transferred from escrow wallet -> worker wallet (85%)
+                      + escrow wallet -> treasury wallet (15% platform fee)
+                      (both logged in usdc_ledger)
+48h Dispute Window -> balancePromoter checks dispute window as normal
+Payout             -> Funds already in worker's Circle wallet — no further transfer
+```
+
 ### Key Rules
 
-- Never charge at task creation. Only verify payment method exists.
-- Authorization holds expire after 7 days. Background job must re-authorize holds on tasks still in `assigned` status after 6 days.
-- Escrow capture happens at `/start`, not at assignment. The `escrow_captured` flag on the task tracks this.
+- Never charge at task creation. Only verify payment method exists (Stripe) or sufficient USDC balance (Circle).
+- Authorization holds expire after 7 days. Background job must re-authorize holds on tasks still in `assigned` status after 6 days. (Stripe rail only.)
+- Escrow capture happens at `/start`, not at assignment, for the Stripe rail. The `escrow_captured` flag on the task tracks this.
+- For the USDC rail, escrow lock (agent wallet -> escrow wallet) happens at assignment, not at `/start`.
 - 48-hour dispute window starts when payment is released to pending. `dispute_window_closes_at` MUST be set on the payout record.
 - `balancePromoter` must check both `dispute_window_closes_at > now` AND no active dispute before promoting.
 - Idempotency keys on all Stripe transfers: `payout-${payoutId}` to prevent double-sends.
+- All USDC transfers are logged in the `usdc_ledger` table with transaction hashes for full audit trail.
+
+---
+
+## Circle Programmable Wallets (USDC Rail)
+
+### Overview
+
+Circle Programmable Wallets provide developer-controlled wallets on the Base network (L2) for USDC payments. This replaces the earlier Viem-based direct wallet approach (now deprecated; see `services/_automated_disabled/wallet_lib.js`).
+
+Key capabilities:
+- **Developer-controlled wallets**: The platform manages wallet keys via Circle's APIs using a server-side Entity Secret. Users never handle private keys.
+- **SCA (Smart Contract Accounts)**: Each wallet is a smart contract account on Base, enabling programmable control and gas-efficient batching.
+- **Gas Station**: Circle's Gas Station subsidizes gas fees for USDC transfers. Users and the platform never pay gas directly.
+- **Wallet Sets**: All user wallets belong to a single Wallet Set, configured via `CIRCLE_WALLET_SET_ID`.
+
+### Per-User Deposit Addresses
+
+Every user (agent or human) receives a dedicated Circle Programmable Wallet when they opt into USDC payments. This replaces the previous shared platform wallet model.
+
+- Wallet creation happens on-demand when a user first enables USDC as a payment method.
+- Each wallet has a unique Base address stored in `users.circle_wallet_id` and `users.circle_wallet_address`.
+- Agents fund their wallet by sending USDC to their deposit address (from an external wallet or on-ramp).
+- Workers receive payouts directly into their Circle wallet — no shared pool, no commingling of funds.
+
+### Escrow Lifecycle
+
+```
+1. LOCK (at assignment)
+   Agent Wallet  ──── USDC transfer ────>  Escrow Wallet
+   (full task budget including platform fee)
+   Logged in usdc_ledger as type: 'escrow_lock'
+
+2. RELEASE (at approval)
+   Escrow Wallet ──── 85% ────>  Worker Wallet
+   Escrow Wallet ──── 15% ────>  Treasury Wallet
+   Logged in usdc_ledger as type: 'escrow_release' (worker)
+   Logged in usdc_ledger as type: 'platform_fee' (treasury)
+
+3. REFUND (on cancellation or dispute resolved for agent)
+   Escrow Wallet ──── USDC transfer ────>  Agent Wallet
+   Logged in usdc_ledger as type: 'escrow_refund'
+```
+
+All transfers are on-chain (Base network) and recorded with Circle transaction IDs. The `pollTransactions` background job monitors pending Circle transactions and updates their status in the `usdc_ledger`.
+
+### USDC Ledger Table
+
+The `usdc_ledger` table provides a complete, immutable audit trail of all USDC movements:
+
+| Column | Purpose |
+|--------|---------|
+| `id` | Primary key (UUID) |
+| `task_id` | Associated task |
+| `from_wallet_id` | Source Circle wallet ID |
+| `to_wallet_id` | Destination Circle wallet ID |
+| `amount_cents` | Amount in cents (integer, consistent with platform convention) |
+| `type` | One of: `escrow_lock`, `escrow_release`, `platform_fee`, `escrow_refund`, `deposit`, `withdrawal` |
+| `circle_transaction_id` | Circle's transaction ID for the on-chain transfer |
+| `status` | `pending`, `confirmed`, `failed` |
+| `created_at` | Timestamp |
+
+Rules:
+- Every USDC movement MUST have a corresponding `usdc_ledger` row. No off-ledger transfers.
+- The ledger is append-only. Rows are never updated except for `status` transitions (`pending` -> `confirmed` or `pending` -> `failed`).
+- The sum of all `escrow_lock` entries minus `escrow_release` + `platform_fee` + `escrow_refund` entries for the escrow wallet should equal the current escrow wallet balance. This invariant is checked by the `pollTransactions` job.
+
+### Deprecated: Viem / Platform Wallet
+
+The previous USDC implementation used Viem (a TypeScript Ethereum library) with a single shared platform wallet holding a private key in `PLATFORM_WALLET_PRIVATE_KEY`. This approach is **deprecated** and disabled:
+
+- Code location: `services/_automated_disabled/wallet_lib.js`
+- Env vars no longer used: `PLATFORM_WALLET_ADDRESS`, `PLATFORM_WALLET_PRIVATE_KEY`
+- Reasons for deprecation:
+  - Single hot wallet was a security risk (one compromised key = all funds lost)
+  - No per-user fund isolation (commingled funds)
+  - Platform paid gas fees directly (unpredictable costs)
+  - No built-in audit trail
+
+All new USDC functionality MUST use Circle Programmable Wallets. Do not re-enable the Viem wallet library.
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CIRCLE_API_KEY` | Yes (for USDC rail) | Circle API key for authentication |
+| `CIRCLE_ENTITY_SECRET` | Yes (for USDC rail) | Entity Secret for signing wallet operations (hex-encoded, 32 bytes) |
+| `CIRCLE_WALLET_SET_ID` | Yes (for USDC rail) | Wallet Set ID that all user wallets belong to |
+| `CIRCLE_ESCROW_WALLET_ID` | Yes (for USDC rail) | Circle wallet ID for the platform escrow wallet |
+| `CIRCLE_ESCROW_WALLET_ADDRESS` | Yes (for USDC rail) | Base address of the escrow wallet (for balance checks) |
+| `CIRCLE_TREASURY_WALLET_ID` | Yes (for USDC rail) | Circle wallet ID for the platform treasury (receives fees) |
+| `CIRCLE_TREASURY_WALLET_ADDRESS` | Yes (for USDC rail) | Base address of the treasury wallet |
+
+These variables are only required if USDC payments are enabled. The Stripe rail functions independently without them.
 
 ---
 
@@ -395,6 +516,7 @@ Backend uses `ADMIN_USER_IDS` env var (comma-separated UUIDs). Frontend receives
 | 2026-02-26 | Simplified cancellation to 2-tier model (pre-work free, in-progress+ dispute only). Removed `cancellation_requested` status. Added revision system (max 2). Added worker & agent reputation tracking. Added auth hold renewal, auto-approve, deadline timeout background jobs. Updated payment flow to auth-hold/manual-capture model. | All |
 | 2026-02-27 | Added admin BI endpoints (financials, growth, funnel). Fixed admin panel access. Added Sentry error tracking and Pino structured logging. | Admin, Observability |
 | 2026-03-01 | Added worker withdrawal transitions (assigned→open, in_progress→open). Added disputed→pending_review for partial resolution. Added DB trigger for status transition enforcement. Consolidated status validation to single taskStatusService module. | Status Machine, Safety |
+| 2026-03-01 | Documented Circle Programmable Wallets migration: dual payment rails (Stripe + USDC), per-user deposit addresses, escrow lifecycle via Circle wallets, USDC ledger audit trail, environment variables. Deprecated Viem/platform wallet approach. | Payment & Escrow Flow, Circle Programmable Wallets |
 
 ---
 

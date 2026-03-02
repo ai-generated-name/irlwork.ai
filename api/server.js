@@ -69,6 +69,19 @@ const { releasePaymentToPending, getWalletBalance } = require('./backend/service
 const { processWithdrawal, getWithdrawalHistory } = require('./backend/services/withdrawalService');
 const { startBalancePromoter } = require('./backend/services/balancePromoter');
 
+// Circle Programmable Wallets (USDC on Base)
+let circleService = null;
+try {
+  if (process.env.CIRCLE_API_KEY && process.env.CIRCLE_ENTITY_SECRET) {
+    circleService = require('./backend/services/circleService');
+    console.log('[Startup] Circle service loaded');
+  } else {
+    console.log('[Startup] Circle service not configured (CIRCLE_API_KEY missing)');
+  }
+} catch (e) {
+  console.warn('[Startup] Circle service failed to load:', e.message);
+}
+
 // Stripe services
 console.log('[Startup] Loading Stripe services...');
 const { stripe } = require('./backend/lib/stripe');
@@ -1742,6 +1755,10 @@ app.get('/api/auth/verify', async (req, res) => {
       subscription_current_period_end: user.subscription_current_period_end || null,
       subscription_cancel_at_period_end: user.subscription_cancel_at_period_end || false,
       tasks_posted_this_month: user.tasks_posted_this_month || 0,
+      // Payment methods
+      stripe_customer_id: user.stripe_customer_id || null,
+      circle_wallet_address: user.circle_wallet_address || null,
+      default_payment_method: user.default_payment_method || 'stripe',
     }
   });
 });
@@ -3548,14 +3565,66 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     });
   }
 
-  // ============ USDC PATH: Manual deposit flow (existing) ============
-  // Work in integer cents to avoid floating-point precision loss
-  const randomCents = Math.floor(Math.random() * 99) + 1;
-  const budgetCents = Math.round(budgetAmount * 100);
-  const uniqueDepositAmount = (budgetCents + randomCents) / 100;
+  // ============ USDC PATH: Circle escrow lock ============
+  if (!circleService) {
+    return res.status(503).json({ error: 'USDC payments not configured. Please use card payment.' });
+  }
+  if (!user.circle_wallet_id) {
+    return res.status(400).json({ error: 'Please set up your USDC wallet first.', code: 'wallet_required' });
+  }
 
-  // For open tasks with remaining spots, keep status 'open'
-  const usdcStatus = nextStatus || 'assigned';
+  const agentUsdcBalance = parseFloat(user.usdc_available_balance || 0);
+  if (agentUsdcBalance < budgetAmount) {
+    return res.status(400).json({
+      error: `Insufficient USDC balance. Available: $${agentUsdcBalance.toFixed(2)}, Required: $${budgetAmount.toFixed(2)}. Deposit more USDC or set payment_method to 'stripe' for this task.`,
+      code: 'insufficient_usdc',
+    });
+  }
+
+  // Lock worker fee at assignment time
+  const { data: workerUser2 } = await supabase.from('users').select('subscription_tier').eq('id', human_id).single();
+  const workerFeePercent2 = getTierConfig(workerUser2?.subscription_tier || 'free').worker_fee_percent;
+  const posterTier2 = user.subscription_tier || 'free';
+  const posterFeeCents2 = calculatePosterFee(Math.round(budgetAmount * 100), posterTier2);
+
+  // Transfer from agent's Circle wallet to escrow wallet
+  let escrowTransfer;
+  try {
+    escrowTransfer = await circleService.transferUSDC({
+      fromWalletId: user.circle_wallet_id,
+      toAddress: process.env.CIRCLE_ESCROW_WALLET_ADDRESS,
+      amount: budgetAmount,
+      idempotencyKey: `escrow-lock-${taskId}-${human_id}`,
+    });
+  } catch (circleErr) {
+    console.error(`[Assign] Circle escrow lock failed for task ${taskId}:`, circleErr.message);
+    return res.status(502).json({ error: 'USDC escrow transfer failed. Please try again.' });
+  }
+
+  // Update agent's USDC balances
+  const newAvailable = agentUsdcBalance - budgetAmount;
+  const newEscrow = parseFloat(user.usdc_escrow_balance || 0) + budgetAmount;
+  await supabase.from('users').update({
+    usdc_available_balance: newAvailable,
+    usdc_escrow_balance: newEscrow,
+    updated_at: new Date().toISOString(),
+  }).eq('id', user.id);
+
+  // Ledger entry for escrow lock
+  await supabase.from('usdc_ledger').insert({
+    user_id: user.id,
+    task_id: taskId,
+    type: 'escrow_lock',
+    amount: -budgetAmount,
+    balance_after: newAvailable,
+    escrow_balance_after: newEscrow,
+    circle_transaction_id: escrowTransfer.transactionId,
+    tx_hash: escrowTransfer.txHash,
+    description: `Escrow lock for task "${task.title}"`,
+  });
+
+  // Atomic update: move task to in_progress with escrow held
+  const usdcStatus = nextStatus || 'in_progress';
   const { data: usdcUpdated, error } = await supabase
     .from('tasks')
     .update(cleanTaskData({
@@ -3563,10 +3632,17 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       human_ids: updatedHumanIds,
       spots_filled: newSpotsFilled,
       status: usdcStatus,
-      escrow_status: 'pending_deposit',
-      unique_deposit_amount: uniqueDepositAmount,
-      deposit_amount_cents: budgetCents + randomCents,
+      escrow_status: 'held',
+      escrow_amount: budgetAmount,
+      escrow_deposited_at: new Date().toISOString(),
+      circle_escrow_tx_id: escrowTransfer.transactionId,
+      escrow_tx_hash: escrowTransfer.txHash,
       payment_method: 'usdc',
+      poster_fee_percent: getTierConfig(posterTier2).poster_fee_percent,
+      poster_fee_cents: posterFeeCents2,
+      worker_fee_percent: workerFeePercent2,
+      assigned_at: new Date().toISOString(),
+      work_started_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }))
     .eq('id', taskId)
@@ -3575,12 +3651,35 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     .single();
 
   if (error || !usdcUpdated) {
+    // Race condition: reverse the escrow lock
+    console.error(`[Assign] USDC task update failed (race condition), reversing escrow lock for ${taskId}`);
+    try {
+      await circleService.transferUSDC({
+        fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+        toAddress: user.circle_wallet_address,
+        amount: budgetAmount,
+        idempotencyKey: `escrow-reverse-${taskId}-${human_id}`,
+      });
+      await supabase.from('users').update({
+        usdc_available_balance: agentUsdcBalance,
+        usdc_escrow_balance: parseFloat(user.usdc_escrow_balance || 0),
+      }).eq('id', user.id);
+    } catch (reverseErr) {
+      console.error(`[Assign] CRITICAL: Failed to reverse escrow lock for task ${taskId}:`, reverseErr);
+    }
     return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
   }
 
   await finalizeAssignment(
-    `You've been selected for "${task.title}". Funding is in progress — you'll be notified when work can begin.`
+    `You've been assigned to "${task.title}" ($${budgetAmount} USDC). Payment is secured in escrow — you can start working now!`
   );
+
+  // Increment total_tasks_accepted for the worker
+  const { data: usdcAcceptWorker } = await supabase.from('users').select('total_tasks_accepted').eq('id', human_id).single();
+  await supabase.from('users').update({
+    total_tasks_accepted: (usdcAcceptWorker?.total_tasks_accepted || 0) + 1,
+    last_active_at: new Date().toISOString()
+  }).eq('id', human_id);
 
   // Send optional note as a message to the worker
   if (note && note.trim()) {
@@ -3604,19 +3703,15 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     task_id: taskId,
     worker: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
     human: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
-    escrow_status: 'pending_deposit',
+    status: usdcStatus,
+    escrow_status: 'held',
     payment_method: 'usdc',
+    payment_method_used: 'usdc',
+    amount_locked: budgetAmount.toFixed(2),
+    remaining_usdc_balance: newAvailable.toFixed(2),
     spots_filled: newSpotsFilled,
     spots_remaining: Math.max(0, maxQuantity - newSpotsFilled),
-    deposit_instructions: {
-      wallet_address: process.env.PLATFORM_WALLET_ADDRESS,
-      amount_usdc: uniqueDepositAmount,
-      network: 'Base',
-      note: 'Send exactly this amount. Your human will be notified once deposit is confirmed by the platform.'
-    },
-    message: isOpen && !allSpotsFilled
-      ? `Human selected (${newSpotsFilled}/${maxQuantity} spots filled). Please send the exact USDC amount. Task remains open for more applicants.`
-      : 'Human selected. Please send the exact USDC amount to complete the assignment.'
+    message: 'Worker assigned and USDC escrow locked. Work can begin.'
   });
 });
 
@@ -5120,22 +5215,93 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   });
 
   // Stripe-paid tasks: auto-release to pending balance (no admin step needed)
+  let paymentReleased = false;
   if (task.stripe_payment_intent_id) {
     try {
       await releasePaymentToPending(supabase, taskId, task.human_id, task.agent_id, createNotification);
+      paymentReleased = true;
       console.log(`[Approve] Auto-released payment for Stripe task ${taskId}`);
     } catch (releaseError) {
       console.error('[Approve] Auto-release failed for Stripe task:', releaseError.message);
-      // Don't fail the approve — admin can manually release if auto-release fails
     }
   } else if (task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held')) {
-    // USDC-paid tasks: release to pending balance if escrow was deposited on-chain
+    // USDC-paid tasks: release escrow via Circle and credit worker
     try {
+      // Release to pending balance (48-hour hold)
       await releasePaymentToPending(supabase, taskId, task.human_id, task.agent_id, createNotification);
+
+      // Also handle Circle-specific balance updates for the agent
+      if (task.circle_escrow_tx_id && circleService) {
+        const escrowAmount = task.escrow_amount || task.budget;
+        const { PLATFORM_FEE_PERCENT: feePct } = require('./config/constants');
+        const { calculateWorkerFee, getTierConfig } = require('./config/tiers');
+
+        const escrowCents = Math.round(escrowAmount * 100);
+        const workerFeePct = task.worker_fee_percent != null ? task.worker_fee_percent : feePct;
+        const platformFeeCents = Math.round(escrowCents * workerFeePct / 100);
+        const workerPayout = (escrowCents - platformFeeCents) / 100;
+        const platformFee = platformFeeCents / 100;
+
+        // Transfer payout from escrow wallet to worker's Circle wallet (or hold if no wallet)
+        const { data: workerData } = await supabase.from('users').select('circle_wallet_address, usdc_available_balance').eq('id', task.human_id).single();
+
+        if (workerData?.circle_wallet_address) {
+          try {
+            const payoutResult = await circleService.transferUSDC({
+              fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+              toAddress: workerData.circle_wallet_address,
+              amount: workerPayout,
+              idempotencyKey: `payout-${taskId}`,
+            });
+            await supabase.from('tasks').update({
+              circle_payout_tx_id: payoutResult.transactionId,
+              payout_tx_hash: payoutResult.txHash,
+            }).eq('id', taskId);
+
+            // Credit worker's USDC balance
+            const newWorkerBalance = parseFloat(workerData.usdc_available_balance || 0) + workerPayout;
+            await supabase.from('users').update({ usdc_available_balance: newWorkerBalance }).eq('id', task.human_id);
+            await supabase.from('usdc_ledger').insert({
+              user_id: task.human_id, task_id: taskId, type: 'payout',
+              amount: workerPayout, balance_after: newWorkerBalance,
+              circle_transaction_id: payoutResult.transactionId, tx_hash: payoutResult.txHash,
+              description: `Payout for "${task.title}"`,
+            });
+          } catch (payoutErr) {
+            console.error(`[Approve] Circle payout failed for task ${taskId}:`, payoutErr.message);
+          }
+        }
+
+        // Transfer platform fee to treasury
+        if (platformFee > 0) {
+          try {
+            await circleService.transferUSDC({
+              fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+              toAddress: process.env.CIRCLE_TREASURY_WALLET_ADDRESS,
+              amount: platformFee,
+              idempotencyKey: `fee-${taskId}`,
+            });
+          } catch (feeErr) {
+            console.error(`[Approve] Circle fee transfer failed for task ${taskId}:`, feeErr.message);
+          }
+        }
+
+        // Debit agent's escrow balance
+        const { data: agentData } = await supabase.from('users').select('usdc_escrow_balance').eq('id', task.agent_id).single();
+        const newAgentEscrow = Math.max(0, parseFloat(agentData?.usdc_escrow_balance || 0) - escrowAmount);
+        await supabase.from('users').update({ usdc_escrow_balance: newAgentEscrow }).eq('id', task.agent_id);
+        await supabase.from('usdc_ledger').insert({
+          user_id: task.agent_id, task_id: taskId, type: 'escrow_release',
+          amount: -escrowAmount, balance_after: parseFloat((await supabase.from('users').select('usdc_available_balance').eq('id', task.agent_id).single()).data?.usdc_available_balance || 0),
+          escrow_balance_after: newAgentEscrow,
+          description: `Escrow released for "${task.title}"`,
+        });
+      }
+
+      paymentReleased = true;
       console.log(`[Approve] Released USDC payment for task ${taskId}`);
     } catch (releaseError) {
       console.error('[Approve] USDC release failed for task:', releaseError.message);
-      // Don't fail the approve — admin can manually release
     }
   } else {
     // Non-Stripe, non-USDC: flag for manual processing + notify admins
@@ -5155,8 +5321,9 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
   res.json({
     success: true,
     status: 'approved',
+    payment_released: paymentReleased,
     payment_method: task.stripe_payment_intent_id ? 'stripe' : (task.payment_method || 'manual'),
-    message: task.stripe_payment_intent_id
+    message: paymentReleased
       ? 'Proof approved. Payment released to pending balance with 48-hour hold.'
       : 'Proof approved. Payment will be processed.'
   });
@@ -6173,8 +6340,8 @@ app.post('/api/mcp', async (req, res) => {
       }
       
       case 'hire_human': {
-        // Hiring sends an offer to the human — card is NOT charged until they accept
-        const { task_id, human_id, deadline_hours = 24, instructions } = params;
+        // Hiring sends an offer to the human — card/USDC is NOT charged until they accept
+        const { task_id, human_id, deadline_hours = 24, instructions, payment_method: pm_override } = params;
 
         const { data: taskData, error: fetchError } = await supabase
           .from('tasks')
@@ -6189,35 +6356,53 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(403).json({ error: 'Not authorized — you do not own this task' });
         }
 
-        // Agent must have a payment method before hiring
-        const { listPaymentMethods } = require('./backend/services/stripeService');
-        if (!user.stripe_customer_id) {
-          return res.status(402).json({
-            error: 'No payment method on file',
-            code: 'payment_required',
-            message: 'Use the setup_payment tool to add a credit card or configure USDC.',
-            actions: [
-              { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
-              { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
-            ]
-          });
-        }
-        let agentCards = [];
-        try {
-          agentCards = await listPaymentMethods(user.stripe_customer_id);
-        } catch (e) {
-          console.error('[MCP Hire] Failed to list payment methods:', e.message);
-        }
-        if (agentCards.length === 0 && !user.wallet_address) {
-          return res.status(402).json({
-            error: 'No payment method on file',
-            code: 'payment_required',
-            message: 'Use the setup_payment tool to add a credit card or configure USDC.',
-            actions: [
-              { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
-              { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
-            ]
-          });
+        // Determine payment method: explicit override > user default > stripe
+        const chosenMethod = pm_override || user.default_payment_method || 'stripe';
+
+        if (chosenMethod === 'usdc') {
+          // USDC path: verify wallet and balance
+          if (!user.circle_wallet_id) {
+            return res.status(400).json({ error: 'USDC wallet not set up. Call generate_deposit_address first.', code: 'wallet_required' });
+          }
+          const budgetAmt = taskData.escrow_amount || taskData.budget || 50;
+          const usdcBal = parseFloat(user.usdc_available_balance || 0);
+          if (usdcBal < budgetAmt) {
+            return res.status(400).json({
+              error: `Insufficient USDC balance. Available: $${usdcBal.toFixed(2)}, Required: $${budgetAmt.toFixed(2)}. Deposit more USDC or set payment_method to 'stripe'.`,
+              code: 'insufficient_usdc',
+            });
+          }
+        } else {
+          // Stripe path: verify card exists
+          const { listPaymentMethods } = require('./backend/services/stripeService');
+          if (!user.stripe_customer_id) {
+            return res.status(402).json({
+              error: 'No payment method on file',
+              code: 'payment_required',
+              message: 'Use the setup_payment tool to add a credit card or configure USDC.',
+              actions: [
+                { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
+                { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
+              ]
+            });
+          }
+          let agentCards = [];
+          try {
+            agentCards = await listPaymentMethods(user.stripe_customer_id);
+          } catch (e) {
+            console.error('[MCP Hire] Failed to list payment methods:', e.message);
+          }
+          if (agentCards.length === 0) {
+            return res.status(402).json({
+              error: 'No payment method on file',
+              code: 'payment_required',
+              message: 'Use the setup_payment tool to add a credit card or configure USDC.',
+              actions: [
+                { tool: 'setup_payment', params: { method: 'stripe' }, label: 'Add credit card' },
+                { tool: 'setup_payment', params: { method: 'usdc' }, label: 'Set up USDC' }
+              ]
+            });
+          }
         }
 
         // Multi-hire support
@@ -6238,53 +6423,119 @@ app.post('/api/mcp', async (req, res) => {
 
         const budgetAmount = taskData.escrow_amount || taskData.budget || 50;
         const deadline = new Date(Date.now() + deadline_hours * 60 * 60 * 1000).toISOString();
-        // 24-hour review window for the human to accept/decline
         const reviewDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-        // Set task to pending_acceptance — NO charge yet
-        const { data: updatedMcpTask, error: taskError } = await supabase
-          .from('tasks')
-          .update(cleanTaskData({
-            human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
-            human_ids: updatedHumanIds,
+        if (chosenMethod === 'usdc' && circleService) {
+          // USDC: lock escrow immediately (no pending_acceptance step)
+          let escrowTransfer;
+          try {
+            escrowTransfer = await circleService.transferUSDC({
+              fromWalletId: user.circle_wallet_id,
+              toAddress: process.env.CIRCLE_ESCROW_WALLET_ADDRESS,
+              amount: budgetAmount,
+              idempotencyKey: `escrow-lock-${task_id}-${human_id}`,
+            });
+          } catch (circleErr) {
+            return res.status(502).json({ error: 'USDC escrow transfer failed. Please try again.' });
+          }
+
+          const agentUsdcBal = parseFloat(user.usdc_available_balance || 0);
+          const newAvail = agentUsdcBal - budgetAmount;
+          const newEscrow = parseFloat(user.usdc_escrow_balance || 0) + budgetAmount;
+          await supabase.from('users').update({ usdc_available_balance: newAvail, usdc_escrow_balance: newEscrow }).eq('id', user.id);
+          await supabase.from('usdc_ledger').insert({
+            user_id: user.id, task_id: task_id, type: 'escrow_lock',
+            amount: -budgetAmount, balance_after: newAvail, escrow_balance_after: newEscrow,
+            circle_transaction_id: escrowTransfer.transactionId, tx_hash: escrowTransfer.txHash,
+            description: `Escrow lock for hire_human on "${taskData.title}"`,
+          });
+
+          const { data: updatedMcpTask, error: taskError } = await supabase
+            .from('tasks')
+            .update(cleanTaskData({
+              human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
+              human_ids: updatedHumanIds,
+              spots_filled: newSpotsFilled,
+              status: 'in_progress',
+              escrow_status: 'held',
+              escrow_amount: budgetAmount,
+              escrow_deposited_at: new Date().toISOString(),
+              circle_escrow_tx_id: escrowTransfer.transactionId,
+              escrow_tx_hash: escrowTransfer.txHash,
+              payment_method: 'usdc',
+              assigned_at: new Date().toISOString(),
+              work_started_at: new Date().toISOString(),
+              deadline,
+              instructions,
+              updated_at: new Date().toISOString()
+            }))
+            .eq('id', task_id)
+            .eq('status', 'open')
+            .select('id')
+            .single();
+
+          if (taskError || !updatedMcpTask) {
+            return res.status(409).json({ error: 'Task is no longer available' });
+          }
+
+          await createNotification(human_id, 'task_assigned', 'You\'ve Been Selected!',
+            `You've been assigned to "${taskData.title}" ($${budgetAmount} USDC). Escrow secured — start working!`,
+            `/tasks/${task_id}`);
+
+          res.json({
+            success: true,
+            status: 'in_progress',
+            escrow_status: 'held',
+            payment_method: 'usdc',
+            payment_method_used: 'usdc',
+            amount_locked: budgetAmount.toFixed(2),
+            remaining_usdc_balance: newAvail.toFixed(2),
             spots_filled: newSpotsFilled,
+            spots_remaining: Math.max(0, maxQuantity - newSpotsFilled),
+            message: 'Worker hired and USDC escrow locked. Work can begin immediately.'
+          });
+        } else {
+          // Stripe path: pending_acceptance — NO charge yet
+          const { data: updatedMcpTask, error: taskError } = await supabase
+            .from('tasks')
+            .update(cleanTaskData({
+              human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
+              human_ids: updatedHumanIds,
+              spots_filled: newSpotsFilled,
+              status: 'pending_acceptance',
+              escrow_status: 'unfunded',
+              escrow_amount: budgetAmount,
+              payment_method: 'stripe',
+              review_deadline: reviewDeadline,
+              deadline,
+              instructions,
+              updated_at: new Date().toISOString()
+            }))
+            .eq('id', task_id)
+            .eq('status', 'open')
+            .select('id')
+            .single();
+
+          if (taskError || !updatedMcpTask) {
+            return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
+          }
+
+          await createNotification(human_id, 'task_offered', 'New Task Offer!',
+            `You've been offered "${taskData.title}" ($${budgetAmount}). You have 24 hours to accept or decline.`,
+            `/tasks/${task_id}`);
+
+          res.json({
+            success: true,
             status: 'pending_acceptance',
-            escrow_status: 'unfunded',
-            escrow_amount: budgetAmount,
-            payment_method: 'stripe',
             review_deadline: reviewDeadline,
             deadline,
-            instructions,
-            updated_at: new Date().toISOString()
-          }))
-          .eq('id', task_id)
-          .eq('status', 'open')
-          .select('id')
-          .single();
-
-        if (taskError || !updatedMcpTask) {
-          return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
+            escrow_status: 'unfunded',
+            payment_method: 'stripe',
+            spots_filled: newSpotsFilled,
+            spots_remaining: Math.max(0, maxQuantity - newSpotsFilled),
+            message: 'Offer sent to the human. They have 24 hours to accept or decline. Your card will only be charged if they accept.'
+          });
         }
-
-        await createNotification(
-          human_id,
-          'task_offered',
-          'New Task Offer!',
-          `You've been offered "${taskData.title}" ($${budgetAmount}). You have 24 hours to accept or decline.`,
-          `/tasks/${task_id}`
-        );
-
-        res.json({
-          success: true,
-          status: 'pending_acceptance',
-          review_deadline: reviewDeadline,
-          deadline,
-          escrow_status: 'unfunded',
-          payment_method: 'stripe',
-          spots_filled: newSpotsFilled,
-          spots_remaining: Math.max(0, maxQuantity - newSpotsFilled),
-          message: 'Offer sent to the human. They have 24 hours to accept or decline. Your card will only be charged if they accept.'
-        });
         break;
       }
       
@@ -6654,6 +6905,101 @@ app.post('/api/mcp', async (req, res) => {
           revision_count: rejectRevCount + 1,
           revisions_remaining: REJECT_MAX_REVISIONS - (rejectRevCount + 1),
           new_deadline: rejectNewDeadline.toISOString()
+        });
+        break;
+      }
+
+      // ===== USDC Wallet Management MCP Tools =====
+      case 'get_wallet_info': {
+        const walletData = {
+          has_wallet: !!user.circle_wallet_id,
+          circle_wallet_address: user.circle_wallet_address || null,
+          usdc_available_balance: parseFloat(user.usdc_available_balance || 0).toFixed(2),
+          usdc_escrow_balance: parseFloat(user.usdc_escrow_balance || 0).toFixed(2),
+          default_payment_method: user.default_payment_method || 'stripe',
+          has_stripe_card: !!user.stripe_customer_id,
+        };
+
+        if (walletData.has_wallet) {
+          walletData.deposit_instructions = 'Send USDC on Base network to your deposit address above. Deposits are detected automatically and credited within minutes.';
+        } else {
+          walletData.setup_instructions = 'Call generate_deposit_address to create your USDC wallet and get a unique Base deposit address.';
+        }
+
+        res.json(walletData);
+        break;
+      }
+
+      case 'generate_deposit_address': {
+        if (!circleService) {
+          return res.status(503).json({ error: 'USDC wallet service not configured.' });
+        }
+
+        // Idempotent: return existing wallet if already created
+        if (user.circle_wallet_id && user.circle_wallet_address) {
+          return res.json({
+            wallet_address: user.circle_wallet_address,
+            network: 'Base',
+            token: 'USDC',
+            existing: true,
+            instructions: 'Send USDC on Base network to this address. Deposits are confirmed automatically within minutes and credited to your available balance.',
+          });
+        }
+
+        try {
+          const wallet = await circleService.createUserWallet();
+          await supabase.from('users').update({
+            circle_wallet_id: wallet.walletId,
+            circle_wallet_address: wallet.walletAddress,
+            updated_at: new Date().toISOString(),
+          }).eq('id', user.id);
+
+          res.json({
+            wallet_address: wallet.walletAddress,
+            network: 'Base',
+            token: 'USDC',
+            existing: false,
+            instructions: 'Send USDC on Base network to this address. Deposits are confirmed automatically within minutes and credited to your available balance. You can then use USDC to fund tasks.',
+          });
+        } catch (err) {
+          console.error('[MCP generate_deposit_address] Error:', err.message);
+          return res.status(500).json({ error: 'Failed to generate deposit address.' });
+        }
+        break;
+      }
+
+      case 'set_default_payment_method': {
+        const { payment_method: newMethod } = params;
+        if (!['stripe', 'usdc'].includes(newMethod)) {
+          return res.status(400).json({ error: 'Invalid payment method. Must be "stripe" or "usdc".' });
+        }
+
+        if (newMethod === 'usdc') {
+          if (!user.circle_wallet_id) {
+            return res.status(400).json({ error: 'No USDC wallet found. Call generate_deposit_address first, then deposit USDC before switching.' });
+          }
+          const usdcBal = parseFloat(user.usdc_available_balance || 0);
+          if (usdcBal === 0) {
+            // Warning, not error — still set the method
+            await supabase.from('users').update({ default_payment_method: newMethod, updated_at: new Date().toISOString() }).eq('id', user.id);
+            return res.json({
+              default_payment_method: newMethod,
+              warning: 'Payment method set to USDC, but your balance is 0. Deposit USDC to your address before creating tasks.',
+              message: `Default payment method set to USDC. Balance: $0.00. Deposit USDC to ${user.circle_wallet_address} before funding tasks.`,
+            });
+          }
+        }
+
+        if (newMethod === 'stripe') {
+          if (!user.stripe_customer_id) {
+            return res.status(400).json({ error: 'No card on file. Add a payment method in the dashboard first.' });
+          }
+        }
+
+        await supabase.from('users').update({ default_payment_method: newMethod, updated_at: new Date().toISOString() }).eq('id', user.id);
+        res.json({
+          default_payment_method: newMethod,
+          message: `Default payment method set to ${newMethod === 'usdc' ? 'USDC' : 'Stripe (credit card)'}. All new tasks will be funded from your ${newMethod === 'usdc' ? 'USDC balance' : 'card on file'} unless you override per-task.`,
         });
         break;
       }
@@ -7100,7 +7446,7 @@ app.post('/api/mcp', async (req, res) => {
       }
 
       case 'assign_human': {
-        const { task_id, human_id, deadline_hours = 24, instructions, preferred_payment_method, note: mcpAssignNote } = params;
+        const { task_id, human_id, deadline_hours = 24, instructions, payment_method: pm_override, note: mcpAssignNote } = params;
 
         if (!task_id) return res.status(400).json({ error: 'task_id is required' });
         if (!human_id) return res.status(400).json({ error: 'human_id is required' });
@@ -7173,7 +7519,7 @@ app.post('/api/mcp', async (req, res) => {
             console.error('[MCP/assign_human] Failed to list Stripe payment methods:', e.message);
           }
         }
-        const mcpUseUsdc = preferred_payment_method === 'usdc';
+        const mcpUseUsdc = (pm_override || user.default_payment_method) === 'usdc';
         if (mcpAgentPMs.length === 0 && !mcpUseUsdc && !user.wallet_address) {
           return res.status(402).json({
             error: 'No payment method on file',
@@ -7354,26 +7700,61 @@ app.post('/api/mcp', async (req, res) => {
           break;
         }
 
-        // ============ USDC PATH — same as REST ============
-        const randomCents = Math.floor(Math.random() * 99) + 1;
-        const budgetCents = Math.round(budgetAmount * 100);
-        const uniqueDepositAmount = (budgetCents + randomCents) / 100;
+        // ============ USDC PATH — Circle escrow lock ============
+        if (!circleService) {
+          return res.status(503).json({ error: 'USDC wallet service not configured.' });
+        }
+        if (!user.circle_wallet_id) {
+          return res.status(400).json({ error: 'USDC wallet not set up. Call generate_deposit_address first.' });
+        }
+        const usdcBal = parseFloat(user.usdc_available_balance || 0);
+        if (usdcBal < budgetAmount) {
+          return res.status(400).json({
+            error: `Insufficient USDC balance. Available: $${usdcBal.toFixed(2)}, Required: $${budgetAmount.toFixed(2)}.`,
+            code: 'insufficient_usdc',
+          });
+        }
 
-        const mcpUsdcStatus = mcpNextStatus || 'assigned';
-        const { data: assignedTask, error: taskError } = await supabase
+        let escrowTransfer;
+        try {
+          escrowTransfer = await circleService.transferUSDC({
+            fromWalletId: user.circle_wallet_id,
+            toAddress: process.env.CIRCLE_ESCROW_WALLET_ADDRESS,
+            amount: budgetAmount,
+            idempotencyKey: `escrow-lock-${task_id}-${human_id}`,
+          });
+        } catch (circleErr) {
+          return res.status(502).json({ error: 'USDC escrow transfer failed.' });
+        }
+
+        const newAvail = usdcBal - budgetAmount;
+        const newEscrow = parseFloat(user.usdc_escrow_balance || 0) + budgetAmount;
+        await supabase.from('users').update({ usdc_available_balance: newAvail, usdc_escrow_balance: newEscrow }).eq('id', user.id);
+        await supabase.from('usdc_ledger').insert({
+          user_id: user.id, task_id: task_id, type: 'escrow_lock',
+          amount: -budgetAmount, balance_after: newAvail, escrow_balance_after: newEscrow,
+          circle_transaction_id: escrowTransfer.transactionId,
+          description: `Escrow lock for assign_human on "${taskData.title}"`,
+        });
+
+        const mcpUsdcStatus = mcpNextStatus || 'in_progress';
+        const { data: assignedTask, error: mcpUsdcErr } = await supabase
           .from('tasks')
           .update(cleanTaskData({
             human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
             human_ids: updatedHumanIds,
             spots_filled: newSpotsFilled,
             status: mcpUsdcStatus,
-            escrow_status: 'pending_deposit',
-            unique_deposit_amount: uniqueDepositAmount,
-            deposit_amount_cents: budgetCents + randomCents,
+            escrow_status: 'held',
+            escrow_amount: budgetAmount,
+            escrow_deposited_at: new Date().toISOString(),
+            circle_escrow_tx_id: escrowTransfer.transactionId,
+            escrow_tx_hash: escrowTransfer.txHash,
+            payment_method: 'usdc',
             assigned_at: new Date().toISOString(),
+            work_started_at: new Date().toISOString(),
             deadline,
             instructions,
-            payment_method: 'usdc',
             updated_at: new Date().toISOString()
           }))
           .eq('id', task_id)
@@ -7381,14 +7762,14 @@ app.post('/api/mcp', async (req, res) => {
           .select('id')
           .single();
 
-        if (taskError || !assignedTask) {
+        if (mcpUsdcErr || !assignedTask) {
           return res.status(409).json({ error: 'Task is no longer available for assignment — status may have changed' });
         }
 
         await recordStatusChange(task_id, 'open', mcpUsdcStatus, user.id);
 
         await mcpFinalizeAssign(
-          `You've been selected for "${taskData.title}". Funding is in progress — you'll be notified when work can begin.`
+          `You've been assigned to "${taskData.title}" ($${budgetAmount} USDC). Escrow secured — start working!`
         );
         await mcpSendNote();
 
@@ -7399,19 +7780,17 @@ app.post('/api/mcp', async (req, res) => {
           deadline,
           worker: humanUser ? { id: humanUser.id, name: humanUser.name } : { id: human_id },
           human: humanUser ? { id: humanUser.id, name: humanUser.name } : { id: human_id },
-          escrow_status: 'pending_deposit',
+          status: mcpUsdcStatus,
+          escrow_status: 'held',
           payment_method: 'usdc',
+          payment_method_used: 'usdc',
+          amount_locked: budgetAmount.toFixed(2),
+          remaining_usdc_balance: newAvail.toFixed(2),
           spots_filled: newSpotsFilled,
           spots_remaining: Math.max(0, maxQuantity - newSpotsFilled),
-          deposit_instructions: {
-            wallet_address: process.env.PLATFORM_WALLET_ADDRESS,
-            amount_usdc: uniqueDepositAmount,
-            network: 'Base',
-            note: 'Send exactly this amount. Your human will be notified once deposit is confirmed.'
-          },
           message: isOpen && !allSpotsFilled
-            ? `Human assigned (${newSpotsFilled}/${maxQuantity} spots filled). Task remains open.`
-            : 'Human selected. Please send the exact USDC amount to complete the assignment.'
+            ? `Worker assigned and USDC escrow locked (${newSpotsFilled}/${maxQuantity} spots filled).`
+            : 'Worker assigned and USDC escrow locked. Work can begin.'
         });
         break;
       }
@@ -8424,14 +8803,14 @@ const MCP_TOOL_DEFINITIONS = [
   { name: 'get_human', description: 'Get detailed profile of a specific human by their ID', inputSchema: { type: 'object', properties: { human_id: { type: 'string', description: 'The human user ID' } }, required: ['human_id'] } },
   { name: 'create_posting', description: 'Create a new task posting for humans to apply to', inputSchema: { type: 'object', properties: { category: { type: 'string', description: 'Task category (delivery, photography, cleaning, etc.)' }, title: { type: 'string', description: 'Task title' }, description: { type: 'string', description: 'Detailed task description' }, location: { type: 'string', description: 'Task location (address or area)' }, city: { type: 'string', description: 'City where task is located' }, urgency: { type: 'string', description: 'Urgency level: low, medium, high, urgent' }, budget: { type: 'number', description: 'Budget in USD' }, budget_min: { type: 'number', description: 'Min budget in USD' }, budget_max: { type: 'number', description: 'Max budget in USD' }, deadline: { type: 'string', description: 'Task deadline (ISO 8601)' } }, required: ['title', 'description'] } },
   { name: 'direct_hire', description: 'Directly hire a specific human for a task (creates task and assigns immediately)', inputSchema: { type: 'object', properties: { human_id: { type: 'string', description: 'Human to hire (or provide conversation_id)' }, conversation_id: { type: 'string', description: 'Conversation ID to look up the human from' }, title: { type: 'string', description: 'Task title' }, description: { type: 'string', description: 'Task description' }, location: { type: 'string', description: 'Task location' }, scheduled_at: { type: 'string', description: 'When the task should happen (ISO 8601)' }, duration_hours: { type: 'number', description: 'Expected duration in hours' }, hourly_rate: { type: 'number', description: 'Hourly rate in USD' }, budget: { type: 'number', description: 'Fixed budget in USD (overrides hourly rate)' } }, required: ['title', 'description'] } },
-  { name: 'hire_human', description: 'Send a hire offer to a human for an existing task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID to hire for' }, human_id: { type: 'string', description: 'Human to hire' }, deadline_hours: { type: 'number', description: 'Hours until offer expires (default 24)' }, instructions: { type: 'string', description: 'Additional instructions for the human' } }, required: ['task_id', 'human_id'] } },
+  { name: 'hire_human', description: 'Send a hire offer to a human for an existing task. Supports both Stripe (credit card) and USDC payment methods. For USDC, escrow is locked immediately from your USDC balance. If payment_method is omitted, your default payment method is used.', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID to hire for' }, human_id: { type: 'string', description: 'Human to hire' }, deadline_hours: { type: 'number', description: 'Hours until offer expires (default 24)' }, instructions: { type: 'string', description: 'Additional instructions for the human' }, payment_method: { type: 'string', enum: ['stripe', 'usdc'], description: 'Payment method to use. If omitted, your default payment method is used. USDC requires sufficient balance.' } }, required: ['task_id', 'human_id'] } },
   { name: 'my_tasks', description: 'List all your posted tasks', inputSchema: { type: 'object', properties: {} } },
   { name: 'get_task_context', description: 'Get full session context for a task in a single call. Returns status history, applications, messages, payment state, proof, disputes, and deadlines. Use this at the start of any task interaction to reconstruct state instead of making multiple separate calls.', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'UUID of the task to get context for' }, include_messages: { type: 'boolean', default: true, description: 'Include message history. Set false to reduce payload for large conversations.' }, message_limit: { type: 'integer', default: 50, description: 'Max messages to return (most recent first). Max 200.' } }, required: ['task_id'] } },
   { name: 'get_task_status', description: 'Get the current status of a task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
   { name: 'get_task_details', description: 'Get full details of a task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
   { name: 'get_applicants', description: 'Get humans who applied to your task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
-  { name: 'assign_human', description: 'Assign a specific human to your task from the applicants', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' }, human_id: { type: 'string', description: 'Human ID to assign' } }, required: ['task_id', 'human_id'] } },
-  { name: 'approve_task', description: 'Approve completed work and release payment to the human', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID to approve' } }, required: ['task_id'] } },
+  { name: 'assign_human', description: 'Assign a specific human to your task from the applicants. For Stripe tasks, the card is charged at assignment. For USDC tasks, escrow is locked from your USDC balance. If payment_method is omitted, your default payment method is used.', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' }, human_id: { type: 'string', description: 'Human ID to assign' }, payment_method: { type: 'string', enum: ['stripe', 'usdc'], description: 'Payment method to use. If omitted, your default payment method is used. USDC requires sufficient balance.' } }, required: ['task_id', 'human_id'] } },
+  { name: 'approve_task', description: 'Approve completed work and release payment to the human. For Stripe tasks, payment is captured. For USDC tasks, escrowed funds are transferred to the worker\'s Circle wallet and the platform fee is sent to the treasury.', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID to approve' } }, required: ['task_id'] } },
   { name: 'view_proof', description: 'View proof of completion submitted by the human', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' } }, required: ['task_id'] } },
   { name: 'dispute_task', description: 'File a dispute for a task', inputSchema: { type: 'object', properties: { task_id: { type: 'string', description: 'Task ID' }, reason: { type: 'string', description: 'Reason for dispute' }, category: { type: 'string', description: 'Dispute category' }, evidence_urls: { type: 'array', items: { type: 'string' }, description: 'URLs to supporting evidence' } }, required: ['task_id', 'reason'] } },
   { name: 'start_conversation', description: 'Start a conversation with a human', inputSchema: { type: 'object', properties: { human_id: { type: 'string', description: 'Human to message' }, message: { type: 'string', description: 'Initial message' } }, required: ['human_id'] } },
@@ -8445,6 +8824,9 @@ const MCP_TOOL_DEFINITIONS = [
   { name: 'submit_feedback', description: 'Submit feedback or bug reports about the platform', inputSchema: { type: 'object', properties: { message: { type: 'string', description: 'Feedback message' }, type: { type: 'string', description: 'Feedback type' }, urgency: { type: 'string', description: 'Urgency level' }, subject: { type: 'string', description: 'Subject line' } }, required: ['message'] } },
   { name: 'setup_payment', description: 'Set up a payment method for your account. Returns a URL to add a credit card via Stripe, or USDC deposit instructions. Call with no arguments to see current payment status and all options.', inputSchema: { type: 'object', properties: { method: { type: 'string', enum: ['stripe', 'usdc'], description: 'Payment method to set up: "stripe" for credit card, "usdc" for crypto deposit. Omit to see current status and all options.' } } } },
   { name: 'account_status', description: 'Get your account status including payment methods, subscription tier, and any setup actions needed before you can post tasks or hire humans.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'get_wallet_info', description: 'Get your USDC wallet information including deposit address, available balance, and escrow balance. If you have not generated a wallet yet, this will show null values — use generate_deposit_address first.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'generate_deposit_address', description: 'Generate a personal USDC deposit address on Base. This is a one-time operation — calling it again returns the existing address. Users send USDC to this address to fund their account. Deposits are detected automatically via webhooks.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'set_default_payment_method', description: 'Set your default payment method for new tasks. Can be "stripe" (credit card) or "usdc". This default is used when no explicit payment_method is passed to hire_human or assign_human. Changing the default does NOT affect existing tasks.', inputSchema: { type: 'object', properties: { payment_method: { type: 'string', enum: ['stripe', 'usdc'], description: 'Payment method to set as default' } }, required: ['payment_method'] } },
 ];
 
 app.post('/api/mcp/sse', async (req, res) => {
@@ -9812,18 +10194,26 @@ app.get('/api/wallet/balance', async (req, res) => {
 
     const balance = await getWalletBalance(supabase, user.id);
 
-    // Calculate per-rail breakdowns
+    // Calculate per-rail breakdowns from pending_transactions
     const txs = balance.transactions || [];
     const stripeAvailableCents = txs.filter(tx => tx.payout_method !== 'usdc' && tx.status === 'available').reduce((s, tx) => s + tx.amount_cents, 0);
     const usdcAvailableCents = txs.filter(tx => tx.payout_method === 'usdc' && tx.status === 'available').reduce((s, tx) => s + tx.amount_cents, 0);
 
+    // Circle wallet balance (from DB columns, not on-chain — faster and consistent)
+    const usdcAvailableBalance = parseFloat(user.usdc_available_balance || 0).toFixed(6);
+    const usdcEscrowBalance = parseFloat(user.usdc_escrow_balance || 0).toFixed(6);
+
     res.json({
       user_id: user.id,
       wallet_address: user.wallet_address || null,
-      has_wallet: !!user.wallet_address,
+      circle_wallet_address: user.circle_wallet_address || null,
+      has_wallet: !!user.circle_wallet_address || !!user.wallet_address,
       has_bank: !!user.stripe_account_id && !!user.stripe_onboarding_complete,
       stripe_available_cents: stripeAvailableCents,
       usdc_available_cents: usdcAvailableCents,
+      usdc_available_balance: usdcAvailableBalance,
+      usdc_escrow_balance: usdcEscrowBalance,
+      default_payment_method: user.default_payment_method || 'stripe',
       ...balance
     });
   } catch (error) {
@@ -9957,6 +10347,189 @@ app.put('/api/wallet/address', async (req, res) => {
 
   await supabase.from('users').update({ wallet_address, updated_at: new Date().toISOString() }).eq('id', user.id);
   res.json({ success: true, wallet_address });
+});
+
+// ============ CIRCLE WALLET: Generate Deposit Address ============
+app.post('/api/wallet/generate-deposit-address', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  if (!circleService) return res.status(503).json({ error: 'USDC wallet service not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    // Idempotent: return existing wallet if already created
+    if (user.circle_wallet_id && user.circle_wallet_address) {
+      return res.json({
+        address: user.circle_wallet_address,
+        walletId: user.circle_wallet_id,
+        existing: true,
+        network: 'Base',
+        token: 'USDC',
+      });
+    }
+
+    // Create new Circle wallet
+    const wallet = await circleService.createUserWallet();
+
+    // Store on user record
+    await supabase.from('users').update({
+      circle_wallet_id: wallet.walletId,
+      circle_wallet_address: wallet.walletAddress,
+      updated_at: new Date().toISOString(),
+    }).eq('id', user.id);
+
+    res.json({
+      address: wallet.walletAddress,
+      walletId: wallet.walletId,
+      existing: false,
+      network: 'Base',
+      token: 'USDC',
+    });
+  } catch (error) {
+    console.error('[Generate Deposit Address] Error:', error.message);
+    res.status(500).json({ error: 'Failed to generate deposit address. Please try again.' });
+  }
+});
+
+// ============ CIRCLE WEBHOOK: Deposit Detection ============
+app.post('/api/webhooks/circle', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const eventType = body?.Type || body?.type;
+
+    // Handle subscription confirmation (Circle sends this on webhook registration)
+    if (eventType === 'SubscriptionConfirmation') {
+      console.log('[Circle Webhook] Subscription confirmation received');
+      return res.status(200).json({ ok: true });
+    }
+
+    // Parse the notification
+    const notification = body?.Message ? JSON.parse(body.Message) : body;
+    const txData = notification?.transaction || notification;
+
+    // Only process confirmed inbound transactions
+    if (!txData || txData.state !== 'CONFIRMED' || txData.transactionType !== 'INBOUND') {
+      return res.status(200).json({ ok: true, skipped: true });
+    }
+
+    const circleTransactionId = txData.id;
+    const walletId = txData.walletId;
+    const txHash = txData.txHash;
+    const sourceAddress = txData.sourceAddress;
+    const amount = parseFloat(txData.amounts?.[0] || '0');
+
+    if (!circleTransactionId || !walletId || amount <= 0) {
+      return res.status(200).json({ ok: true, skipped: true, reason: 'missing fields' });
+    }
+
+    // Idempotency: check if already processed
+    const { data: existing } = await supabase
+      .from('usdc_deposits')
+      .select('id')
+      .eq('circle_transaction_id', circleTransactionId)
+      .maybeSingle();
+
+    if (existing) {
+      return res.status(200).json({ ok: true, duplicate: true });
+    }
+
+    // Look up user by circle_wallet_id
+    const { data: depositUser } = await supabase
+      .from('users')
+      .select('id, usdc_available_balance')
+      .eq('circle_wallet_id', walletId)
+      .single();
+
+    if (!depositUser) {
+      console.warn(`[Circle Webhook] No user found for wallet ${walletId}`);
+      return res.status(200).json({ ok: true, skipped: true, reason: 'unknown wallet' });
+    }
+
+    // Credit the deposit
+    const newBalance = parseFloat(depositUser.usdc_available_balance || 0) + amount;
+
+    // Insert deposit record
+    await supabase.from('usdc_deposits').insert({
+      user_id: depositUser.id,
+      circle_wallet_id: walletId,
+      circle_transaction_id: circleTransactionId,
+      tx_hash: txHash,
+      amount,
+      status: 'confirmed',
+      source_address: sourceAddress,
+      confirmed_at: new Date().toISOString(),
+    });
+
+    // Update user balance
+    await supabase.from('users').update({
+      usdc_available_balance: newBalance,
+      updated_at: new Date().toISOString(),
+    }).eq('id', depositUser.id);
+
+    // Ledger entry
+    await supabase.from('usdc_ledger').insert({
+      user_id: depositUser.id,
+      type: 'deposit',
+      amount,
+      balance_after: newBalance,
+      escrow_balance_after: null,
+      circle_transaction_id: circleTransactionId,
+      tx_hash: txHash,
+      description: `Deposit of ${amount} USDC from ${sourceAddress || 'external'}`,
+    });
+
+    // Notify user
+    await createNotification(
+      depositUser.id,
+      'deposit_confirmed',
+      'USDC Deposit Confirmed',
+      `${amount.toFixed(2)} USDC has been deposited to your account.`,
+      '/payments'
+    );
+
+    console.log(`[Circle Webhook] Deposit ${amount} USDC for user ${depositUser.id} (tx: ${circleTransactionId})`);
+    res.status(200).json({ ok: true, credited: true });
+  } catch (error) {
+    console.error('[Circle Webhook] Error:', error.message);
+    // Always return 200 to prevent Circle from retrying on our errors
+    res.status(200).json({ ok: true, error: 'processing_error' });
+  }
+});
+
+// ============ DEFAULT PAYMENT METHOD ============
+app.put('/api/settings/default-payment-method', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { payment_method } = req.body;
+
+  if (!['stripe', 'usdc'].includes(payment_method)) {
+    return res.status(400).json({ error: 'Invalid payment method. Must be "stripe" or "usdc".' });
+  }
+
+  if (payment_method === 'usdc') {
+    if (!user.circle_wallet_id) {
+      return res.status(400).json({ error: 'No USDC wallet found. Generate a deposit address first.' });
+    }
+  }
+
+  if (payment_method === 'stripe') {
+    if (!user.stripe_customer_id) {
+      return res.status(400).json({ error: 'No card on file. Add a payment method first.' });
+    }
+  }
+
+  await supabase.from('users').update({
+    default_payment_method: payment_method,
+    updated_at: new Date().toISOString(),
+  }).eq('id', user.id);
+
+  res.json({ success: true, default_payment_method: payment_method });
 });
 
 app.get('/api/admin/pending-stats', async (req, res) => {
@@ -11680,6 +12253,33 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
         console.error(`[Cancel] Refund failed for task ${id}:`, refundErr.message);
         return res.status(500).json({ error: 'Failed to process refund. Please contact support.' });
       }
+    } else if (task.payment_method === 'usdc' && task.circle_escrow_tx_id && (task.escrow_status === 'held' || task.escrow_status === 'deposited') && circleService) {
+      // USDC escrow refund on worker withdrawal
+      const refundAmount = task.escrow_amount || task.budget;
+      try {
+        const { data: agentData } = await supabase.from('users').select('circle_wallet_address, usdc_available_balance, usdc_escrow_balance').eq('id', task.agent_id).single();
+        if (agentData?.circle_wallet_address) {
+          const refundResult = await circleService.transferUSDC({
+            fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+            toAddress: agentData.circle_wallet_address,
+            amount: refundAmount,
+            idempotencyKey: `refund-worker-withdraw-${id}`,
+          });
+          const newAvail = parseFloat(agentData.usdc_available_balance || 0) + refundAmount;
+          const newEscrow = Math.max(0, parseFloat(agentData.usdc_escrow_balance || 0) - refundAmount);
+          await supabase.from('users').update({ usdc_available_balance: newAvail, usdc_escrow_balance: newEscrow }).eq('id', task.agent_id);
+          await supabase.from('usdc_ledger').insert({
+            user_id: task.agent_id, task_id: id, type: 'refund',
+            amount: refundAmount, balance_after: newAvail, escrow_balance_after: newEscrow,
+            circle_transaction_id: refundResult.transactionId, tx_hash: refundResult.txHash,
+            description: `Escrow refund (worker withdrew from "${task.title}")`,
+          });
+          console.log(`[Cancel] USDC escrow refunded for task ${id} (worker withdrawal)`);
+        }
+      } catch (refundErr) {
+        console.error(`[Cancel] USDC refund failed for task ${id}:`, refundErr.message);
+        return res.status(500).json({ error: 'Failed to process USDC refund. Please contact support.' });
+      }
     } else if (task.stripe_payment_intent_id && !task.escrow_captured) {
       // Release auth hold if not yet captured
       try {
@@ -11756,11 +12356,49 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
       }
     }
 
+    // USDC escrow refund via Circle
+    if (task.payment_method === 'usdc' && task.circle_escrow_tx_id && circleService) {
+      const refundAmount = task.escrow_amount || task.budget;
+      try {
+        // Get agent's current Circle wallet address
+        const { data: agentData } = await supabase.from('users').select('circle_wallet_address, usdc_available_balance, usdc_escrow_balance').eq('id', task.agent_id).single();
+        if (agentData?.circle_wallet_address) {
+          const refundResult = await circleService.transferUSDC({
+            fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+            toAddress: agentData.circle_wallet_address,
+            amount: refundAmount,
+            idempotencyKey: `refund-${id}`,
+          });
+
+          // Update balances
+          const newAvail = parseFloat(agentData.usdc_available_balance || 0) + refundAmount;
+          const newEscrow = Math.max(0, parseFloat(agentData.usdc_escrow_balance || 0) - refundAmount);
+          await supabase.from('users').update({
+            usdc_available_balance: newAvail,
+            usdc_escrow_balance: newEscrow,
+          }).eq('id', task.agent_id);
+
+          await supabase.from('usdc_ledger').insert({
+            user_id: task.agent_id, task_id: id, type: 'refund',
+            amount: refundAmount, balance_after: newAvail, escrow_balance_after: newEscrow,
+            circle_transaction_id: refundResult.transactionId, tx_hash: refundResult.txHash,
+            description: `Escrow refund for cancelled task "${task.title}"`,
+          });
+
+          await supabase.from('tasks').update({ circle_refund_tx_id: refundResult.transactionId }).eq('id', id);
+          console.log(`[Cancel] USDC escrow refunded for task ${id}`);
+        }
+      } catch (refundErr) {
+        console.error(`[Cancel] USDC refund failed for task ${id}:`, refundErr.message);
+        // Don't block cancellation — admin can resolve manually
+      }
+    }
+
     const { data: cancelledTask, error: cancelErr } = await supabase
       .from('tasks')
       .update(cleanTaskData({
         status: 'cancelled',
-        escrow_status: task.stripe_payment_intent_id ? 'refunded' : task.escrow_status,
+        escrow_status: (task.stripe_payment_intent_id || task.circle_escrow_tx_id) ? 'refunded' : task.escrow_status,
         cancelled_at: new Date().toISOString(),
         cancellation_reason: cancellation_reason || null,
         updated_at: new Date().toISOString()

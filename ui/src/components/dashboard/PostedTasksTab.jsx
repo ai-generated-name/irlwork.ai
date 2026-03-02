@@ -596,17 +596,17 @@ export default function PostedTasksTab({
                                                 onClick={() => handleAssignHuman(task.id, app.human_id)}
                                                 disabled={assigningHuman === app.human_id}
                                               >
-                                                {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (Card)'}
+                                                {assigningHuman === app.human_id ? 'Assigning...' : `Accept${user?.default_payment_method === 'usdc' ? ' (USDC)' : ' (Card)'}`}
                                               </Button>
-                                              <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                className="!text-[#2563eb] !border-[#2563eb] !bg-[#eff6ff]"
-                                                onClick={() => handleAssignHuman(task.id, app.human_id, 'usdc')}
-                                                disabled={assigningHuman === app.human_id}
-                                              >
-                                                {assigningHuman === app.human_id ? 'Assigning...' : 'Accept (USDC)'}
-                                              </Button>
+                                              {user?.circle_wallet_address && (
+                                                <button
+                                                  onClick={() => handleAssignHuman(task.id, app.human_id, user?.default_payment_method === 'usdc' ? 'stripe' : 'usdc')}
+                                                  disabled={assigningHuman === app.human_id}
+                                                  className="text-[11px] py-1 px-2.5 text-gray-500 bg-transparent border-none underline cursor-pointer hover:text-gray-700"
+                                                >
+                                                  {user?.default_payment_method === 'usdc' ? 'Pay with card instead' : 'Pay with USDC instead'}
+                                                </button>
+                                              )}
                                               <Button
                                                 variant="destructive"
                                                 size="sm"

@@ -70,6 +70,21 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
 3. Assign the best fit (\`assign_human\` or \`hire_human\`)
 4. Review proof → release payment (\`view_proof\` → \`approve_task\`)
 
+## Payment Methods
+You can pay with **credit card (Stripe)** or **USDC on Base**. Use \`set_default_payment_method\` to set your preferred method.
+
+### USDC Setup
+1. Generate a deposit address: \`generate_deposit_address\` (one-time)
+2. Send USDC on Base to that address — deposits are detected automatically
+3. Check your balance: \`get_wallet_info\`
+4. When hiring, pass \`payment_method: "usdc"\` or set it as your default
+
+### Payment at Assignment
+- **Stripe**: Card is charged when you assign a human
+- **USDC**: Funds are locked from your balance into escrow at assignment
+- When you approve, payment is released to the worker (minus platform fee)
+- If you cancel before work starts, escrowed funds are returned
+
 ## How to Behave
 - **Be action-oriented.** When the user says "I need someone to pick up my dry cleaning," don't explain the API — start figuring out the location, timing, and budget, then make it happen.
 - **Ask only what you need.** Don't front-load questions. Get the essentials (what, where, when) and fill in reasonable defaults for the rest.
