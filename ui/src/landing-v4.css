@@ -9623,6 +9623,14 @@ select.select-v4-dark option:checked,
   color: var(--text-tertiary);
 }
 
+.mytasks-card--inactive {
+  opacity: 0.55;
+}
+
+.mytasks-card--inactive:hover {
+  opacity: 0.7;
+}
+
 /* Mobile */
 @media (max-width: 767px) {
   .mytasks-card__footer {
