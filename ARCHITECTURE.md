@@ -187,6 +187,16 @@ Every user (agent or human) receives a dedicated Circle Programmable Wallet when
 
 All transfers are on-chain (Base network) and recorded with Circle transaction IDs. The `pollTransactions` background job monitors pending Circle transactions and updates their status in the `usdc_ledger`.
 
+#### Atomic Balance Updates
+
+All USDC balance modifications MUST use the `update_usdc_balance` Supabase RPC function. This function:
+- Atomically updates `usdc_available_balance` and `usdc_escrow_balance` in a single SQL UPDATE
+- Inserts the corresponding `usdc_ledger` entry in the same database transaction
+- Prevents negative balances (raises exception if attempted)
+- Eliminates read-modify-write race conditions
+
+Never use separate `UPDATE users` + `INSERT usdc_ledger` calls for balance operations. All balance changes (escrow lock, escrow release, refunds) must flow through this RPC to maintain consistency.
+
 ### USDC Ledger Table
 
 The `usdc_ledger` table provides a complete, immutable audit trail of all USDC movements:
@@ -407,11 +417,21 @@ One dispute flow (via `openDispute` helper), not two parallel systems.
 1. Party opens dispute within 48-hour window -> task status -> `disputed`, payout frozen
 2. Both parties can submit evidence (messages, photos, additional proof)
 3. Platform reviews and resolves:
-   - In human's favor -> release full escrow to human -> status -> `paid`
-   - In agent's favor -> refund escrow to agent -> status -> `cancelled`
+   - In human's favor (`release_to_human`) -> release full escrow to human -> status -> `paid`
+   - In agent's favor (`refund_agent`) -> refund escrow to agent -> status -> `cancelled`
    - Split decision -> partial release + partial refund -> status -> `paid`
 4. If no resolution within 7 days, platform auto-resolves (default: in human's favor if proof was submitted)
 5. On resolution, `total_disputes_lost` is incremented on the losing party
+
+### USDC Fund Handling
+
+When disputes are resolved, USDC funds follow the same patterns as approval/cancellation:
+
+- **Agent wins** (`refund_agent`): Escrow wallet transfers full USDC amount back to agent's Circle wallet, logged as `escrow_refund` in `usdc_ledger`
+- **Worker wins** (`release_to_human`): Escrow wallet transfers 85% to worker's Circle wallet + 15% to treasury, logged as `escrow_release` and `platform_fee` in `usdc_ledger`
+- **Partial resolution**: Escrow wallet splits USDC accordingly, with separate ledger entries for each leg of the transfer
+
+All USDC transfers during dispute resolution use the `update_usdc_balance` RPC to ensure atomicity and prevent negative balances.
 
 ---
 
@@ -517,6 +537,7 @@ Backend uses `ADMIN_USER_IDS` env var (comma-separated UUIDs). Frontend receives
 | 2026-02-27 | Added admin BI endpoints (financials, growth, funnel). Fixed admin panel access. Added Sentry error tracking and Pino structured logging. | Admin, Observability |
 | 2026-03-01 | Added worker withdrawal transitions (assigned→open, in_progress→open). Added disputed→pending_review for partial resolution. Added DB trigger for status transition enforcement. Consolidated status validation to single taskStatusService module. | Status Machine, Safety |
 | 2026-03-01 | Documented Circle Programmable Wallets migration: dual payment rails (Stripe + USDC), per-user deposit addresses, escrow lifecycle via Circle wallets, USDC ledger audit trail, environment variables. Deprecated Viem/platform wallet approach. | Payment & Escrow Flow, Circle Programmable Wallets |
+| 2026-03-02 | Post-audit fixes: atomic balance RPC, USDC dispute resolution, MCP cancel USDC refund, poll job race guard | Circle Programmable Wallets, Dispute Resolution |
 
 ---
 

@@ -3619,27 +3619,24 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     return res.status(502).json({ error: 'USDC escrow transfer failed. Please try again.' });
   }
 
-  // Update agent's USDC balances
-  const newAvailable = agentUsdcBalance - budgetAmount;
-  const newEscrow = parseFloat(user.usdc_escrow_balance || 0) + budgetAmount;
-  await supabase.from('users').update({
-    usdc_available_balance: newAvailable,
-    usdc_escrow_balance: newEscrow,
-    updated_at: new Date().toISOString(),
-  }).eq('id', user.id);
-
-  // Ledger entry for escrow lock
-  await supabase.from('usdc_ledger').insert({
-    user_id: user.id,
-    task_id: taskId,
-    type: 'escrow_lock',
-    amount: -budgetAmount,
-    balance_after: newAvailable,
-    escrow_balance_after: newEscrow,
-    circle_transaction_id: escrowTransfer.transactionId,
-    tx_hash: escrowTransfer.txHash,
-    description: `Escrow lock for task "${task.title}"`,
+  // Atomic: update agent's USDC balances + ledger entry
+  const { data: lockResult, error: lockError } = await supabase.rpc('update_usdc_balance', {
+    p_user_id: user.id,
+    p_available_delta: -budgetAmount,
+    p_escrow_delta: budgetAmount,
+    p_task_id: taskId,
+    p_ledger_type: 'escrow_lock',
+    p_ledger_amount: -budgetAmount,
+    p_circle_tx_id: escrowTransfer.transactionId,
+    p_tx_hash: escrowTransfer.txHash,
+    p_description: `Escrow lock for task "${task.title}"`,
   });
+  if (lockError) {
+    console.error(`[Assign] Atomic balance update failed for task ${taskId}:`, lockError.message);
+    return res.status(500).json({ error: 'Failed to update balance. Please try again.' });
+  }
+  const newAvailable = lockResult?.[0]?.new_available ?? (agentUsdcBalance - budgetAmount);
+  const newEscrow = lockResult?.[0]?.new_escrow ?? (parseFloat(user.usdc_escrow_balance || 0) + budgetAmount);
 
   // Atomic update: move task to in_progress with escrow held
   const usdcStatus = nextStatus || 'in_progress';
@@ -3678,10 +3675,16 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
         amount: budgetAmount,
         idempotencyKey: `escrow-reverse-${taskId}-${human_id}`,
       });
-      await supabase.from('users').update({
-        usdc_available_balance: agentUsdcBalance,
-        usdc_escrow_balance: parseFloat(user.usdc_escrow_balance || 0),
-      }).eq('id', user.id);
+      await supabase.rpc('update_usdc_balance', {
+        p_user_id: user.id,
+        p_available_delta: budgetAmount,
+        p_escrow_delta: -budgetAmount,
+        p_task_id: taskId,
+        p_ledger_type: 'escrow_reversal',
+        p_ledger_amount: budgetAmount,
+        p_circle_tx_id: null,
+        p_description: `Escrow reversed: assign race condition for task "${task.title}"`,
+      });
     } catch (reverseErr) {
       console.error(`[Assign] CRITICAL: Failed to reverse escrow lock for task ${taskId}:`, reverseErr);
     }
@@ -5260,9 +5263,11 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
         const workerPayout = (escrowCents - platformFeeCents) / 100;
         const platformFee = platformFeeCents / 100;
 
-        // Transfer payout from escrow wallet to worker's Circle wallet (or hold if no wallet)
+        // Transfer payout from escrow wallet to worker's Circle wallet
         const { data: workerData } = await supabase.from('users').select('circle_wallet_address, usdc_available_balance').eq('id', task.human_id).single();
 
+        let payoutTxId = null;
+        let payoutTxHash = null;
         if (workerData?.circle_wallet_address) {
           try {
             const payoutResult = await circleService.transferUSDC({
@@ -5271,48 +5276,64 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
               amount: workerPayout,
               idempotencyKey: `payout-${taskId}`,
             });
+            payoutTxId = payoutResult.transactionId;
+            payoutTxHash = payoutResult.txHash;
             await supabase.from('tasks').update({
-              circle_payout_tx_id: payoutResult.transactionId,
-              payout_tx_hash: payoutResult.txHash,
+              circle_payout_tx_id: payoutTxId,
+              payout_tx_hash: payoutTxHash,
             }).eq('id', taskId);
-
-            // Credit worker's USDC balance
-            const newWorkerBalance = parseFloat(workerData.usdc_available_balance || 0) + workerPayout;
-            await supabase.from('users').update({ usdc_available_balance: newWorkerBalance }).eq('id', task.human_id);
-            await supabase.from('usdc_ledger').insert({
-              user_id: task.human_id, task_id: taskId, type: 'payout',
-              amount: workerPayout, balance_after: newWorkerBalance,
-              circle_transaction_id: payoutResult.transactionId, tx_hash: payoutResult.txHash,
-              description: `Payout for "${task.title}"`,
-            });
           } catch (payoutErr) {
             console.error(`[Approve] Circle payout failed for task ${taskId}:`, payoutErr.message);
           }
+        } else {
+          // Worker has no Circle wallet — credit DB balance, funds remain in escrow wallet.
+          // Worker will need to generate a wallet and withdraw later.
+          console.warn(`[Approve] Worker ${task.human_id} has no Circle wallet — crediting DB balance only. Funds remain in escrow until withdrawal.`);
         }
+
+        // Credit worker balance (regardless of on-chain transfer — DB balance is authoritative)
+        await supabase.rpc('update_usdc_balance', {
+          p_user_id: task.human_id,
+          p_available_delta: workerPayout,
+          p_escrow_delta: 0,
+          p_task_id: taskId,
+          p_ledger_type: 'payout',
+          p_ledger_amount: workerPayout,
+          p_circle_tx_id: payoutTxId,
+          p_tx_hash: payoutTxHash,
+          p_description: `Payout for "${task.title}"`,
+        });
 
         // Transfer platform fee to treasury
         if (platformFee > 0) {
           try {
-            await circleService.transferUSDC({
+            const feeResult = await circleService.transferUSDC({
               fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
               toAddress: process.env.CIRCLE_TREASURY_WALLET_ADDRESS,
               amount: platformFee,
               idempotencyKey: `fee-${taskId}`,
+            });
+            // Fix 6: Record platform fee in ledger for audit trail
+            await supabase.from('usdc_ledger').insert({
+              user_id: task.agent_id, task_id: taskId, type: 'platform_fee',
+              amount: -platformFee,
+              circle_transaction_id: feeResult.transactionId, tx_hash: feeResult.txHash,
+              description: `Platform fee for "${task.title}": $${platformFee.toFixed(2)}`,
             });
           } catch (feeErr) {
             console.error(`[Approve] Circle fee transfer failed for task ${taskId}:`, feeErr.message);
           }
         }
 
-        // Debit agent's escrow balance
-        const { data: agentData } = await supabase.from('users').select('usdc_escrow_balance').eq('id', task.agent_id).single();
-        const newAgentEscrow = Math.max(0, parseFloat(agentData?.usdc_escrow_balance || 0) - escrowAmount);
-        await supabase.from('users').update({ usdc_escrow_balance: newAgentEscrow }).eq('id', task.agent_id);
-        await supabase.from('usdc_ledger').insert({
-          user_id: task.agent_id, task_id: taskId, type: 'escrow_release',
-          amount: -escrowAmount, balance_after: parseFloat((await supabase.from('users').select('usdc_available_balance').eq('id', task.agent_id).single()).data?.usdc_available_balance || 0),
-          escrow_balance_after: newAgentEscrow,
-          description: `Escrow released for "${task.title}"`,
+        // Debit agent's escrow balance (atomic)
+        await supabase.rpc('update_usdc_balance', {
+          p_user_id: task.agent_id,
+          p_available_delta: 0,
+          p_escrow_delta: -escrowAmount,
+          p_task_id: taskId,
+          p_ledger_type: 'escrow_release',
+          p_ledger_amount: -escrowAmount,
+          p_description: `Escrow released for "${task.title}"`,
         });
       }
 
@@ -6374,8 +6395,14 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(403).json({ error: 'Not authorized — you do not own this task' });
         }
 
-        // Determine payment method: explicit override > user default > stripe
-        const chosenMethod = pm_override || user.default_payment_method || 'stripe';
+        // Determine payment method: explicit override > user default > error
+        const chosenMethod = pm_override || user.default_payment_method;
+        if (!chosenMethod) {
+          return res.status(400).json({
+            error: 'No payment method configured. Set a default via set_default_payment_method, or pass payment_method explicitly.',
+            code: 'payment_method_required',
+          });
+        }
 
         if (chosenMethod === 'usdc') {
           // USDC path: verify wallet and balance
@@ -6457,16 +6484,23 @@ app.post('/api/mcp', async (req, res) => {
             return res.status(502).json({ error: 'USDC escrow transfer failed. Please try again.' });
           }
 
-          const agentUsdcBal = parseFloat(user.usdc_available_balance || 0);
-          const newAvail = agentUsdcBal - budgetAmount;
-          const newEscrow = parseFloat(user.usdc_escrow_balance || 0) + budgetAmount;
-          await supabase.from('users').update({ usdc_available_balance: newAvail, usdc_escrow_balance: newEscrow }).eq('id', user.id);
-          await supabase.from('usdc_ledger').insert({
-            user_id: user.id, task_id: task_id, type: 'escrow_lock',
-            amount: -budgetAmount, balance_after: newAvail, escrow_balance_after: newEscrow,
-            circle_transaction_id: escrowTransfer.transactionId, tx_hash: escrowTransfer.txHash,
-            description: `Escrow lock for hire_human on "${taskData.title}"`,
+          // Atomic: update agent's USDC balances + ledger entry
+          const { data: hireLockResult, error: hireLockErr } = await supabase.rpc('update_usdc_balance', {
+            p_user_id: user.id,
+            p_available_delta: -budgetAmount,
+            p_escrow_delta: budgetAmount,
+            p_task_id: task_id,
+            p_ledger_type: 'escrow_lock',
+            p_ledger_amount: -budgetAmount,
+            p_circle_tx_id: escrowTransfer.transactionId,
+            p_tx_hash: escrowTransfer.txHash,
+            p_description: `Escrow lock for hire_human on "${taskData.title}"`,
           });
+          if (hireLockErr) {
+            console.error(`[MCP Hire] Atomic balance update failed:`, hireLockErr.message);
+          }
+          const newAvail = hireLockResult?.[0]?.new_available ?? (parseFloat(user.usdc_available_balance || 0) - budgetAmount);
+          const newEscrow = hireLockResult?.[0]?.new_escrow ?? (parseFloat(user.usdc_escrow_balance || 0) + budgetAmount);
 
           const { data: updatedMcpTask, error: taskError } = await supabase
             .from('tasks')
@@ -7059,6 +7093,36 @@ app.post('/api/mcp', async (req, res) => {
               console.error(`[MCP Cancel] Refund failed for task ${task_id}:`, refundErr.message);
               return res.status(500).json({ error: 'Failed to process refund. Please contact support.' });
             }
+          } else if (cancelTask.payment_method === 'usdc' && cancelTask.circle_escrow_tx_id && (cancelTask.escrow_status === 'held' || cancelTask.escrow_status === 'deposited') && circleService) {
+            // USDC escrow refund on worker withdrawal (mirrors REST cancel path)
+            const refundAmount = cancelTask.escrow_amount || cancelTask.budget;
+            try {
+              const { data: agentData } = await supabase.from('users').select('circle_wallet_address, usdc_available_balance, usdc_escrow_balance').eq('id', cancelTask.agent_id).single();
+              if (agentData?.circle_wallet_address) {
+                const refundResult = await circleService.transferUSDC({
+                  fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+                  toAddress: agentData.circle_wallet_address,
+                  amount: refundAmount,
+                  idempotencyKey: `mcp-refund-worker-withdraw-${task_id}`,
+                });
+                await supabase.rpc('update_usdc_balance', {
+                  p_user_id: cancelTask.agent_id,
+                  p_available_delta: refundAmount,
+                  p_escrow_delta: -refundAmount,
+                  p_task_id: task_id,
+                  p_ledger_type: 'refund',
+                  p_ledger_amount: refundAmount,
+                  p_circle_tx_id: refundResult.transactionId,
+                  p_tx_hash: refundResult.txHash,
+                  p_description: `MCP escrow refund (worker withdrew from "${cancelTask.title}")`,
+                });
+                await supabase.from('tasks').update({ circle_refund_tx_id: refundResult.transactionId }).eq('id', task_id);
+                console.log(`[MCP Cancel] USDC escrow refunded for task ${task_id} (worker withdrawal)`);
+              }
+            } catch (refundErr) {
+              console.error(`[MCP Cancel] USDC refund failed for task ${task_id}:`, refundErr.message);
+              return res.status(500).json({ error: 'Failed to process USDC refund. Please contact support.' });
+            }
           } else if (cancelTask.stripe_payment_intent_id && !cancelTask.escrow_captured) {
             try {
               const { cancelEscrowHold } = require('./backend/services/stripeService');
@@ -7068,6 +7132,7 @@ app.post('/api/mcp', async (req, res) => {
             }
           }
 
+          const workerEscrowRefunded = cancelTask.escrow_status === 'deposited' || cancelTask.escrow_status === 'held';
           await supabase
             .from('tasks')
             .update(cleanTaskData({
@@ -7075,7 +7140,7 @@ app.post('/api/mcp', async (req, res) => {
               human_id: null,
               human_ids: [],
               spots_filled: 0,
-              escrow_status: cancelTask.escrow_status === 'deposited' ? 'refunded' : cancelTask.escrow_status,
+              escrow_status: workerEscrowRefunded ? 'refunded' : cancelTask.escrow_status,
               assigned_at: null,
               work_started_at: null,
               updated_at: new Date().toISOString()
@@ -7120,11 +7185,44 @@ app.post('/api/mcp', async (req, res) => {
             }
           }
 
+          // USDC escrow refund via Circle (mirrors REST cancel agent path)
+          if (cancelTask.payment_method === 'usdc' && cancelTask.circle_escrow_tx_id && circleService) {
+            const refundAmount = cancelTask.escrow_amount || cancelTask.budget;
+            try {
+              const { data: agentData } = await supabase.from('users').select('circle_wallet_address, usdc_available_balance, usdc_escrow_balance').eq('id', cancelTask.agent_id).single();
+              if (agentData?.circle_wallet_address) {
+                const refundResult = await circleService.transferUSDC({
+                  fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+                  toAddress: agentData.circle_wallet_address,
+                  amount: refundAmount,
+                  idempotencyKey: `mcp-refund-${task_id}`,
+                });
+                await supabase.rpc('update_usdc_balance', {
+                  p_user_id: cancelTask.agent_id,
+                  p_available_delta: refundAmount,
+                  p_escrow_delta: -refundAmount,
+                  p_task_id: task_id,
+                  p_ledger_type: 'refund',
+                  p_ledger_amount: refundAmount,
+                  p_circle_tx_id: refundResult.transactionId,
+                  p_tx_hash: refundResult.txHash,
+                  p_description: `MCP escrow refund for cancelled task "${cancelTask.title}"`,
+                });
+                await supabase.from('tasks').update({ circle_refund_tx_id: refundResult.transactionId }).eq('id', task_id);
+                console.log(`[MCP Cancel] USDC escrow refunded for task ${task_id}`);
+              }
+            } catch (refundErr) {
+              console.error(`[MCP Cancel] USDC refund failed for task ${task_id}:`, refundErr.message);
+              // Don't block cancellation — reconciliation job will catch it
+            }
+          }
+
+          const agentEscrowRefunded = cancelTask.stripe_payment_intent_id || cancelTask.circle_escrow_tx_id;
           const { data: cancelledTask, error: cancelErr } = await supabase
             .from('tasks')
             .update(cleanTaskData({
               status: 'cancelled',
-              escrow_status: cancelTask.stripe_payment_intent_id ? 'refunded' : cancelTask.escrow_status,
+              escrow_status: agentEscrowRefunded ? 'refunded' : cancelTask.escrow_status,
               cancelled_at: new Date().toISOString(),
               cancellation_reason: cancellation_reason || null,
               updated_at: new Date().toISOString()
@@ -7745,15 +7843,22 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(502).json({ error: 'USDC escrow transfer failed.' });
         }
 
-        const newAvail = usdcBal - budgetAmount;
-        const newEscrow = parseFloat(user.usdc_escrow_balance || 0) + budgetAmount;
-        await supabase.from('users').update({ usdc_available_balance: newAvail, usdc_escrow_balance: newEscrow }).eq('id', user.id);
-        await supabase.from('usdc_ledger').insert({
-          user_id: user.id, task_id: task_id, type: 'escrow_lock',
-          amount: -budgetAmount, balance_after: newAvail, escrow_balance_after: newEscrow,
-          circle_transaction_id: escrowTransfer.transactionId,
-          description: `Escrow lock for assign_human on "${taskData.title}"`,
+        // Atomic: update agent's USDC balances + ledger entry
+        const { data: assignLockResult, error: assignLockErr } = await supabase.rpc('update_usdc_balance', {
+          p_user_id: user.id,
+          p_available_delta: -budgetAmount,
+          p_escrow_delta: budgetAmount,
+          p_task_id: task_id,
+          p_ledger_type: 'escrow_lock',
+          p_ledger_amount: -budgetAmount,
+          p_circle_tx_id: escrowTransfer.transactionId,
+          p_description: `Escrow lock for assign_human on "${taskData.title}"`,
         });
+        if (assignLockErr) {
+          console.error(`[MCP Assign] Atomic balance update failed:`, assignLockErr.message);
+        }
+        const newAvail = assignLockResult?.[0]?.new_available ?? (usdcBal - budgetAmount);
+        const newEscrow = assignLockResult?.[0]?.new_escrow ?? (parseFloat(user.usdc_escrow_balance || 0) + budgetAmount);
 
         const mcpUsdcStatus = mcpNextStatus || 'in_progress';
         const { data: assignedTask, error: mcpUsdcErr } = await supabase
@@ -10466,9 +10571,6 @@ app.post('/api/webhooks/circle', express.raw({ type: 'application/json' }), asyn
       return res.status(200).json({ ok: true, skipped: true, reason: 'unknown wallet' });
     }
 
-    // Credit the deposit
-    const newBalance = parseFloat(depositUser.usdc_available_balance || 0) + amount;
-
     // Insert deposit record
     await supabase.from('usdc_deposits').insert({
       user_id: depositUser.id,
@@ -10481,23 +10583,20 @@ app.post('/api/webhooks/circle', express.raw({ type: 'application/json' }), asyn
       confirmed_at: new Date().toISOString(),
     });
 
-    // Update user balance
-    await supabase.from('users').update({
-      usdc_available_balance: newBalance,
-      updated_at: new Date().toISOString(),
-    }).eq('id', depositUser.id);
-
-    // Ledger entry
-    await supabase.from('usdc_ledger').insert({
-      user_id: depositUser.id,
-      type: 'deposit',
-      amount,
-      balance_after: newBalance,
-      escrow_balance_after: null,
-      circle_transaction_id: circleTransactionId,
-      tx_hash: txHash,
-      description: `Deposit of ${amount} USDC from ${sourceAddress || 'external'}`,
+    // Atomic balance update + ledger entry
+    const { data: balResult, error: balError } = await supabase.rpc('update_usdc_balance', {
+      p_user_id: depositUser.id,
+      p_available_delta: amount,
+      p_escrow_delta: 0,
+      p_ledger_type: 'deposit',
+      p_ledger_amount: amount,
+      p_circle_tx_id: circleTransactionId,
+      p_tx_hash: txHash,
+      p_description: `Deposit of ${amount} USDC from ${sourceAddress || 'external'}`,
     });
+    if (balError) {
+      console.error('[Circle Webhook] Atomic balance update failed:', balError.message);
+    }
 
     // Notify user
     await createNotification(
@@ -12283,15 +12382,19 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
             amount: refundAmount,
             idempotencyKey: `refund-worker-withdraw-${id}`,
           });
-          const newAvail = parseFloat(agentData.usdc_available_balance || 0) + refundAmount;
-          const newEscrow = Math.max(0, parseFloat(agentData.usdc_escrow_balance || 0) - refundAmount);
-          await supabase.from('users').update({ usdc_available_balance: newAvail, usdc_escrow_balance: newEscrow }).eq('id', task.agent_id);
-          await supabase.from('usdc_ledger').insert({
-            user_id: task.agent_id, task_id: id, type: 'refund',
-            amount: refundAmount, balance_after: newAvail, escrow_balance_after: newEscrow,
-            circle_transaction_id: refundResult.transactionId, tx_hash: refundResult.txHash,
-            description: `Escrow refund (worker withdrew from "${task.title}")`,
+          // Atomic balance update + ledger
+          await supabase.rpc('update_usdc_balance', {
+            p_user_id: task.agent_id,
+            p_available_delta: refundAmount,
+            p_escrow_delta: -refundAmount,
+            p_task_id: id,
+            p_ledger_type: 'refund',
+            p_ledger_amount: refundAmount,
+            p_circle_tx_id: refundResult.transactionId,
+            p_tx_hash: refundResult.txHash,
+            p_description: `Escrow refund (worker withdrew from "${task.title}")`,
           });
+          await supabase.from('tasks').update({ circle_refund_tx_id: refundResult.transactionId }).eq('id', id);
           console.log(`[Cancel] USDC escrow refunded for task ${id} (worker withdrawal)`);
         }
       } catch (refundErr) {
@@ -12388,19 +12491,17 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
             idempotencyKey: `refund-${id}`,
           });
 
-          // Update balances
-          const newAvail = parseFloat(agentData.usdc_available_balance || 0) + refundAmount;
-          const newEscrow = Math.max(0, parseFloat(agentData.usdc_escrow_balance || 0) - refundAmount);
-          await supabase.from('users').update({
-            usdc_available_balance: newAvail,
-            usdc_escrow_balance: newEscrow,
-          }).eq('id', task.agent_id);
-
-          await supabase.from('usdc_ledger').insert({
-            user_id: task.agent_id, task_id: id, type: 'refund',
-            amount: refundAmount, balance_after: newAvail, escrow_balance_after: newEscrow,
-            circle_transaction_id: refundResult.transactionId, tx_hash: refundResult.txHash,
-            description: `Escrow refund for cancelled task "${task.title}"`,
+          // Atomic balance update + ledger
+          await supabase.rpc('update_usdc_balance', {
+            p_user_id: task.agent_id,
+            p_available_delta: refundAmount,
+            p_escrow_delta: -refundAmount,
+            p_task_id: id,
+            p_ledger_type: 'refund',
+            p_ledger_amount: refundAmount,
+            p_circle_tx_id: refundResult.transactionId,
+            p_tx_hash: refundResult.txHash,
+            p_description: `Escrow refund for cancelled task "${task.title}"`,
           });
 
           await supabase.from('tasks').update({ circle_refund_tx_id: refundResult.transactionId }).eq('id', id);
@@ -12773,8 +12874,59 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     .eq('id', id);
 
   if (refund_agent) {
-    // === REFUND AGENT: Return escrow via Stripe + freeze worker's pending balance ===
-    if (task?.stripe_payment_intent_id) {
+    // === REFUND AGENT: Return escrow to the task poster ===
+
+    if (task?.payment_method === 'usdc' && task?.circle_escrow_tx_id && circleService) {
+      // USDC path: transfer full budget from escrow back to agent's Circle wallet
+      const refundAmount = task.escrow_amount || task.budget;
+      try {
+        const { data: agentData } = await supabase.from('users')
+          .select('circle_wallet_address, usdc_available_balance, usdc_escrow_balance')
+          .eq('id', task.agent_id).single();
+
+        if (agentData?.circle_wallet_address) {
+          const refundResult = await circleService.transferUSDC({
+            fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+            toAddress: agentData.circle_wallet_address,
+            amount: refundAmount,
+            idempotencyKey: `dispute-refund-${dispute.task_id}`,
+          });
+
+          // Atomic balance update + ledger
+          await supabase.rpc('update_usdc_balance', {
+            p_user_id: task.agent_id,
+            p_available_delta: refundAmount,
+            p_escrow_delta: -refundAmount,
+            p_task_id: dispute.task_id,
+            p_ledger_type: 'refund',
+            p_ledger_amount: refundAmount,
+            p_circle_tx_id: refundResult.transactionId,
+            p_tx_hash: refundResult.txHash,
+            p_description: `Dispute refund for "${taskTitle}"`,
+          });
+
+          await supabase.from('tasks').update({
+            circle_refund_tx_id: refundResult.transactionId,
+          }).eq('id', dispute.task_id);
+        } else {
+          // Agent has no Circle wallet — credit DB balance, funds stay in escrow until they set up a wallet
+          await supabase.rpc('update_usdc_balance', {
+            p_user_id: task.agent_id,
+            p_available_delta: refundAmount,
+            p_escrow_delta: -refundAmount,
+            p_task_id: dispute.task_id,
+            p_ledger_type: 'refund',
+            p_ledger_amount: refundAmount,
+            p_description: `Dispute refund for "${taskTitle}" (pending on-chain transfer — no wallet)`,
+          });
+          console.warn(`[Dispute] Agent ${task.agent_id} has no Circle wallet — credited DB balance only`);
+        }
+      } catch (refundErr) {
+        console.error(`[Dispute] USDC refund failed for task ${dispute.task_id}:`, refundErr);
+        return res.status(500).json({ error: 'Failed to process USDC refund: ' + refundErr.message });
+      }
+    } else if (task?.stripe_payment_intent_id) {
+      // Stripe path: original behavior
       try {
         const { refundPayment } = require('./backend/services/stripeService');
         await refundPayment(supabase, dispute.task_id, 'requested_by_customer');
@@ -12823,11 +12975,99 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
     );
 
   } else if (release_to_human) {
-    // === RELEASE TO HUMAN: Pay the worker via Stripe pipeline ===
-    try {
-      await releasePaymentToPending(supabase, dispute.task_id, task.human_id, task.agent_id, createNotification);
-    } catch (e) {
-      return res.status(409).json({ error: e.message || 'Payment has already been released.' });
+    // === RELEASE TO HUMAN: Pay the worker ===
+
+    if (task?.payment_method === 'usdc' && task?.circle_escrow_tx_id && circleService) {
+      // USDC path: transfer payout to worker, fee to treasury, debit agent escrow
+      const escrowAmount = task.escrow_amount || task.budget;
+      const { PLATFORM_FEE_PERCENT: feePct } = require('./config/constants');
+      const workerFeePct = task.worker_fee_percent != null ? task.worker_fee_percent : feePct;
+      const escrowCents = Math.round(escrowAmount * 100);
+      const platformFeeCents = Math.round(escrowCents * workerFeePct / 100);
+      const workerPayout = (escrowCents - platformFeeCents) / 100;
+      const platformFee = platformFeeCents / 100;
+
+      try {
+        // 1. Transfer payout to worker
+        const { data: workerData } = await supabase.from('users')
+          .select('circle_wallet_address, usdc_available_balance')
+          .eq('id', task.human_id).single();
+
+        let payoutTxId = null;
+        let payoutTxHash = null;
+        if (workerData?.circle_wallet_address) {
+          const payoutResult = await circleService.transferUSDC({
+            fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+            toAddress: workerData.circle_wallet_address,
+            amount: workerPayout,
+            idempotencyKey: `dispute-payout-${dispute.task_id}`,
+          });
+          payoutTxId = payoutResult.transactionId;
+          payoutTxHash = payoutResult.txHash;
+        } else {
+          console.warn(`[Dispute] Worker ${task.human_id} has no Circle wallet — crediting DB balance only`);
+        }
+
+        // Credit worker balance atomically (regardless of on-chain transfer)
+        await supabase.rpc('update_usdc_balance', {
+          p_user_id: task.human_id,
+          p_available_delta: workerPayout,
+          p_escrow_delta: 0,
+          p_task_id: dispute.task_id,
+          p_ledger_type: 'payout',
+          p_ledger_amount: workerPayout,
+          p_circle_tx_id: payoutTxId,
+          p_tx_hash: payoutTxHash,
+          p_description: `Dispute payout for "${taskTitle}"`,
+        });
+
+        // 2. Transfer fee to treasury
+        if (platformFee > 0) {
+          try {
+            const feeResult = await circleService.transferUSDC({
+              fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+              toAddress: process.env.CIRCLE_TREASURY_WALLET_ADDRESS,
+              amount: platformFee,
+              idempotencyKey: `dispute-fee-${dispute.task_id}`,
+            });
+            await supabase.from('usdc_ledger').insert({
+              user_id: task.agent_id, task_id: dispute.task_id, type: 'platform_fee',
+              amount: -platformFee, circle_transaction_id: feeResult.transactionId,
+              tx_hash: feeResult.txHash,
+              description: `Platform fee for dispute resolution on "${taskTitle}": $${platformFee.toFixed(2)}`,
+            });
+          } catch (feeErr) {
+            console.error(`[Dispute] Fee transfer failed for task ${dispute.task_id}:`, feeErr.message);
+          }
+        }
+
+        // 3. Debit agent escrow balance (atomic)
+        await supabase.rpc('update_usdc_balance', {
+          p_user_id: task.agent_id,
+          p_available_delta: 0,
+          p_escrow_delta: -escrowAmount,
+          p_task_id: dispute.task_id,
+          p_ledger_type: 'escrow_release',
+          p_ledger_amount: -escrowAmount,
+          p_description: `Escrow released (dispute resolved for worker) on "${taskTitle}"`,
+        });
+
+        // 4. Update task with payout tx
+        await supabase.from('tasks').update({
+          circle_payout_tx_id: payoutTxId,
+        }).eq('id', dispute.task_id);
+
+      } catch (usdcErr) {
+        console.error(`[Dispute] USDC release to human failed for task ${dispute.task_id}:`, usdcErr);
+        return res.status(500).json({ error: 'Failed to process USDC payment: ' + usdcErr.message });
+      }
+    } else {
+      // Stripe path: original behavior
+      try {
+        await releasePaymentToPending(supabase, dispute.task_id, task.human_id, task.agent_id, createNotification);
+      } catch (e) {
+        return res.status(409).json({ error: e.message || 'Payment has already been released.' });
+      }
     }
 
     // Atomic task update with status precondition
