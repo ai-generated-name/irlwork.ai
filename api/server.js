@@ -839,7 +839,11 @@ const USER_OPTIONAL_COLUMNS = [
   'email_verified_at', 'deposit_address', 'notification_preferences',
   'subscription_tier', 'subscription_status',
   'subscription_current_period_end', 'subscription_cancel_at_period_end',
-  'gender'
+  'gender',
+  // Circle Programmable Wallets (added by add_circle_wallets.sql migration)
+  'circle_wallet_id', 'circle_wallet_address',
+  'usdc_available_balance', 'usdc_escrow_balance',
+  'default_payment_method'
 ];
 
 // Built dynamically at startup by checkUserColumns()
