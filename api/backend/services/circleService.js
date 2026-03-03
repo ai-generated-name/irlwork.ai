@@ -84,18 +84,29 @@ async function getWalletBalance(walletId) {
  */
 async function transferUSDC({ fromWalletId, toAddress, amount, idempotencyKey }) {
   const c = getClient();
+  const blockchain = process.env.CIRCLE_BLOCKCHAIN || 'BASE-SEPOLIA';
   // Default to Base Sepolia testnet USDC; set USDC_BASE_TOKEN_ADDRESS for mainnet (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
   const tokenAddress = process.env.USDC_BASE_TOKEN_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+
+  // Validate required params before calling Circle API
+  if (!fromWalletId) throw new Error('Missing fromWalletId — agent has no Circle wallet');
+  if (!toAddress) throw new Error('Missing toAddress — CIRCLE_ESCROW_WALLET_ADDRESS not configured');
+  if (!amount || parseFloat(amount) <= 0) throw new Error(`Invalid transfer amount: ${amount}`);
+
+  const txParams = {
+    walletId: fromWalletId,
+    blockchain,
+    tokenAddress,
+    destinationAddress: toAddress,
+    amounts: [String(amount)],
+    fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
+    idempotencyKey,
+  };
+  console.log('[CircleService] createTransaction params:', JSON.stringify({ ...txParams, walletId: txParams.walletId?.slice(0, 8) + '...' }));
+
   let response;
   try {
-    response = await c.createTransaction({
-      walletId: fromWalletId,
-      tokenAddress,
-      destinationAddress: toAddress,
-      amounts: [amount.toString()],
-      fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-      idempotencyKey,
-    });
+    response = await c.createTransaction(txParams);
   } catch (apiErr) {
     const detail = apiErr.response?.data || apiErr.response?.statusText || apiErr.message;
     console.error('[CircleService] createTransaction API error:', JSON.stringify(detail, null, 2));
