@@ -9,6 +9,7 @@
  */
 
 const { initiateDeveloperControlledWalletsClient } = require('@circle-fin/developer-controlled-wallets');
+const crypto = require('crypto');
 
 let client = null;
 
@@ -25,6 +26,28 @@ function getClient() {
 
 // Cache for USDC tokenId (resolved from wallet balance on first transfer)
 let cachedUsdcTokenId = process.env.CIRCLE_USDC_TOKEN_ID || null;
+
+/**
+ * Convert an arbitrary string key into a deterministic UUID v5.
+ * Circle requires idempotencyKey to be in UUID format.
+ * Using a fixed namespace ensures the same input always produces the same UUID.
+ */
+const IRLWORK_UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // DNS namespace UUID
+function toIdempotencyUUID(key) {
+  // If already a valid UUID, return as-is
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
+    return key;
+  }
+  // Generate deterministic UUID v5 from the key string
+  const hash = crypto.createHash('sha1').update(IRLWORK_UUID_NAMESPACE + key).digest('hex');
+  return [
+    hash.substring(0, 8),
+    hash.substring(8, 12),
+    '5' + hash.substring(13, 16),  // version 5
+    ((parseInt(hash.substring(16, 18), 16) & 0x3f) | 0x80).toString(16).padStart(2, '0') + hash.substring(18, 20),
+    hash.substring(20, 32),
+  ].join('-');
+}
 
 /**
  * Resolve the Circle-internal tokenId for USDC by inspecting a wallet's token balances.
@@ -123,6 +146,9 @@ async function transferUSDC({ fromWalletId, toAddress, amount, idempotencyKey })
   if (!toAddress) throw new Error('Missing toAddress — CIRCLE_ESCROW_WALLET_ADDRESS not configured');
   if (!amount || parseFloat(amount) <= 0) throw new Error(`Invalid transfer amount: ${amount}`);
 
+  // Circle requires idempotencyKey in UUID format — convert our string keys to deterministic UUIDs
+  const uuidKey = toIdempotencyUUID(idempotencyKey || crypto.randomUUID());
+
   // Resolve USDC tokenId (preferred by Circle API — avoids tokenAddress/blockchain ambiguity)
   const tokenId = await resolveUsdcTokenId(fromWalletId);
 
@@ -135,7 +161,7 @@ async function transferUSDC({ fromWalletId, toAddress, amount, idempotencyKey })
       destinationAddress: toAddress,
       amount: [String(amount)],
       fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-      idempotencyKey,
+      idempotencyKey: uuidKey,
     };
   } else {
     // Fallback: use tokenAddress + blockchain (when tokenId unavailable)
@@ -148,7 +174,7 @@ async function transferUSDC({ fromWalletId, toAddress, amount, idempotencyKey })
       destinationAddress: toAddress,
       amount: [String(amount)],
       fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-      idempotencyKey,
+      idempotencyKey: uuidKey,
     };
   }
 
