@@ -82,9 +82,32 @@ export default class IRLWorkClient {
   }
   
   /**
-   * Get wallet status
+   * Get wallet status (includes USDC deposit address, balance, and payment method info)
    */
   async getWallet() {
     return await this._request('/api/wallet/status')
+  }
+
+  /**
+   * Get USDC wallet balance (on-chain synced)
+   */
+  async getWalletBalance() {
+    return await this._request('/api/wallet/balance')
+  }
+
+  /**
+   * Generate a USDC deposit address (one-time, idempotent)
+   * @returns {{ address, walletId, existing, network, token }}
+   */
+  async generateDepositAddress() {
+    return await this._request('/api/wallet/generate-deposit-address', { method: 'POST' })
+  }
+
+  /**
+   * Sync USDC balance from on-chain (detects deposits missed by webhooks)
+   * @returns {{ synced, credited, on_chain_balance, usdc_available_balance }}
+   */
+  async syncBalance() {
+    return await this._request('/api/wallet/sync-balance', { method: 'POST' })
   }
 }

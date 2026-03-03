@@ -270,8 +270,51 @@ export class IRLWorkAgent {
     console.log(`[IRL Work Webhook] ${event}:`, data)
   }
   
+  // ============ WALLET & PAYMENT ============
+
+  /**
+   * Get account status including payment methods, USDC deposit address, and balance.
+   * @returns {Promise<Object>} Account status with payment_methods.usdc.deposit_address
+   */
+  async getAccountStatus() {
+    return await this.client.callMcp('account_status', {})
+  }
+
+  /**
+   * Get USDC wallet info (deposit address, balance, escrow).
+   * @returns {Promise<Object>} { has_wallet, circle_wallet_address, usdc_available_balance, usdc_escrow_balance }
+   */
+  async getWalletInfo() {
+    return await this.client.callMcp('get_wallet_info', {})
+  }
+
+  /**
+   * Generate a USDC deposit address on Base (one-time, idempotent).
+   * Call this before depositing USDC. Returns existing address if already generated.
+   * @returns {Promise<Object>} { wallet_address, network, token, existing }
+   */
+  async generateDepositAddress() {
+    return await this.client.callMcp('generate_deposit_address', {})
+  }
+
+  /**
+   * Set default payment method for new tasks.
+   * @param {'stripe' | 'usdc'} method - Payment method
+   */
+  async setDefaultPaymentMethod(method) {
+    return await this.client.callMcp('set_default_payment_method', { payment_method: method })
+  }
+
+  /**
+   * Sync USDC balance from on-chain (detects deposits missed by webhooks).
+   * @returns {Promise<Object>} { synced, credited, on_chain_balance, usdc_available_balance }
+   */
+  async syncBalance() {
+    return await this.client.syncBalance()
+  }
+
   // ============ UTILITY ============
-  
+
   /**
    * Get agent profile
    * @returns {Promise<Object>} Agent details
@@ -279,7 +322,7 @@ export class IRLWorkAgent {
   async getProfile() {
     return await this.client.getProfile()
   }
-  
+
   /**
    * Health check
    * @returns {Promise<Object>} API status
