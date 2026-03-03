@@ -84,7 +84,6 @@ async function getWalletBalance(walletId) {
  */
 async function transferUSDC({ fromWalletId, toAddress, amount, idempotencyKey }) {
   const c = getClient();
-  const blockchain = process.env.CIRCLE_BLOCKCHAIN || 'BASE-SEPOLIA';
   // Default to Base Sepolia testnet USDC; set USDC_BASE_TOKEN_ADDRESS for mainnet (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
   const tokenAddress = process.env.USDC_BASE_TOKEN_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 
@@ -93,12 +92,13 @@ async function transferUSDC({ fromWalletId, toAddress, amount, idempotencyKey })
   if (!toAddress) throw new Error('Missing toAddress — CIRCLE_ESCROW_WALLET_ADDRESS not configured');
   if (!amount || parseFloat(amount) <= 0) throw new Error(`Invalid transfer amount: ${amount}`);
 
+  // SDK interface: walletId + tokenId OR walletId + tokenAddress (no blockchain when using walletId)
+  // SDK uses `amount` (singular, string[]) — NOT `amounts` (that's the REST API field name)
   const txParams = {
     walletId: fromWalletId,
-    blockchain,
     tokenAddress,
     destinationAddress: toAddress,
-    amounts: [String(amount)],
+    amount: [String(amount)],
     fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
     idempotencyKey,
   };
