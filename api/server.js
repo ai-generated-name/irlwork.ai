@@ -9012,15 +9012,12 @@ app.post('/api/mcp', async (req, res) => {
         }
 
         const acctHasCard = acctCardDetails.length > 0;
-        const acctHasWallet = !!user.wallet_address;
-
-        // Get USDC available balance
-        const acctBalance = await getWalletBalance(supabase, user.id);
-        const acctTxs = acctBalance.transactions || [];
-        const usdcAvailCents = acctTxs.filter(tx => tx.payout_method === 'usdc' && tx.status === 'available').reduce((s, tx) => s + tx.amount_cents, 0);
+        const acctHasCircleWallet = !!user.circle_wallet_id;
+        const acctUsdcBalance = parseFloat(user.usdc_available_balance || 0);
+        const acctUsdcEscrow = parseFloat(user.usdc_escrow_balance || 0);
 
         // ready_to_hire = has at least one payment rail configured (general signal, not amount-specific)
-        const acctReadyToHire = acctHasCard || acctHasWallet;
+        const acctReadyToHire = acctHasCard || acctHasCircleWallet;
 
         // Build setup_needed array
         const setupNeeded = [];
@@ -9056,12 +9053,15 @@ app.post('/api/mcp', async (req, res) => {
               cards: acctCardDetails.map(c => ({ brand: c.brand, last4: c.last4, exp: `${c.exp_month}/${c.exp_year}`, is_default: c.is_default }))
             },
             usdc: {
-              configured: acctHasWallet,
-              wallet_address: user.wallet_address || null,
-              available_balance_cents: usdcAvailCents,
-              available_balance: usdcAvailCents / 100
+              configured: acctHasCircleWallet,
+              deposit_address: user.circle_wallet_address || null,
+              available_balance: acctUsdcBalance,
+              escrow_balance: acctUsdcEscrow,
+              network: 'Base',
+              token: 'USDC',
             }
           },
+          default_payment_method: user.default_payment_method || 'stripe',
           ready_to_hire: acctReadyToHire,
           setup_needed: setupNeeded,
           message: setupNeeded.length > 0
