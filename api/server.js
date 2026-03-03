@@ -6406,6 +6406,13 @@ app.post('/api/mcp', async (req, res) => {
     const { method, params = {} } = req.body;
     
     switch (method) {
+      // Help: return available MCP tool names and descriptions
+      case 'help':
+      case 'list_tools': {
+        const tools = MCP_TOOL_DEFINITIONS.map(t => ({ name: t.name, description: t.description }));
+        return res.json({ available_tools: tools, usage: 'Call POST /api/mcp with { "method": "<tool_name>", "params": { ... } }' });
+      }
+
       case 'list_humans': {
         let query = supabase
           .from('users')
@@ -7529,6 +7536,7 @@ app.post('/api/mcp', async (req, res) => {
       }
 
       // ===== Task creation (canonical: create_posting) =====
+      case 'create_task':
       case 'post_task':
       case 'create_posting':
       case 'create_adhoc_task': {

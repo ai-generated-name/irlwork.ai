@@ -100,7 +100,7 @@ export class IRLWorkAgent {
    * @returns {Promise<Object>} Task details
    */
   async postTask({ title, description, category, budget = 50, location = '', required_skills = [], requirements, is_remote, duration_hours, deadline }) {
-    const result = await this.client.callMcp('create_task', {
+    const result = await this.client.callMcp('create_posting', {
       title,
       description,
       category,
