@@ -3400,8 +3400,40 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   const preferred = preferred_payment_method || user.default_payment_method;
 
   const hasUsdc = !!user.circle_wallet_id;
-  const usdcBal = parseFloat(user.usdc_available_balance || 0);
-  const usdcUsable = hasUsdc && usdcBal >= budgetAmount;
+  let usdcBal = parseFloat(user.usdc_available_balance || 0);
+  let usdcUsable = hasUsdc && usdcBal >= budgetAmount;
+
+  // If USDC is preferred but DB balance looks insufficient, check on-chain balance
+  // in case a deposit hasn't been credited yet (polling job lag)
+  if (hasUsdc && !usdcUsable && (preferred === 'usdc' || !preferred) && circleService) {
+    try {
+      const onChainBal = await circleService.getWalletBalance(user.circle_wallet_id);
+      if (onChainBal >= budgetAmount && onChainBal > usdcBal) {
+        // On-chain has more funds than DB — sync the difference as an uncredited deposit
+        const delta = onChainBal - usdcBal;
+        console.log(`[Assign] On-chain balance (${onChainBal}) > DB balance (${usdcBal}). Auto-syncing +${delta.toFixed(6)} USDC for user ${user.id}`);
+        const { error: syncErr } = await supabase.rpc('update_usdc_balance', {
+          p_user_id: user.id,
+          p_available_delta: delta,
+          p_escrow_delta: 0,
+          p_ledger_type: 'deposit_sync',
+          p_ledger_amount: delta,
+          p_description: `Auto-sync: on-chain balance ahead of DB by ${delta.toFixed(6)} USDC`,
+        });
+        if (!syncErr) {
+          usdcBal = onChainBal;
+          usdcUsable = true;
+        } else {
+          console.error(`[Assign] Balance sync failed for user ${user.id}:`, syncErr.message);
+          // Still use on-chain balance for the usability check even if ledger write failed
+          usdcBal = onChainBal;
+          usdcUsable = onChainBal >= budgetAmount;
+        }
+      }
+    } catch (chainErr) {
+      console.error(`[Assign] On-chain balance check failed for wallet ${user.circle_wallet_id}:`, chainErr.message);
+    }
+  }
 
   let stripeUsable = false;
   if (user.stripe_customer_id && stripe) {
@@ -3624,23 +3656,11 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
     return res.status(400).json({ error: 'Please set up your USDC wallet first.', code: 'wallet_required' });
   }
 
-  // Verify agent's wallet still exists on Circle before attempting transfer
-  let onChainBalance;
-  try {
-    onChainBalance = await circleService.getWalletBalance(user.circle_wallet_id);
-  } catch (walletErr) {
-    console.error(`[Assign] Failed to verify wallet ${user.circle_wallet_id}:`, walletErr.message);
+  // Balance was already verified (and synced from on-chain if needed) during payment method resolution above.
+  // Final sanity check using the synced usdcBal value.
+  if (usdcBal < budgetAmount) {
     return res.status(400).json({
-      error: 'Could not verify your USDC wallet. Please reconnect your wallet or contact support.',
-      code: 'wallet_error',
-    });
-  }
-
-  const agentUsdcBalance = parseFloat(user.usdc_available_balance || 0);
-  const effectiveBalance = Math.min(agentUsdcBalance, onChainBalance);
-  if (effectiveBalance < budgetAmount) {
-    return res.status(400).json({
-      error: `Insufficient USDC balance. Available: $${effectiveBalance.toFixed(2)}, Required: $${budgetAmount.toFixed(2)}. Deposit more USDC or use card payment.`,
+      error: `Insufficient USDC balance. Available: $${usdcBal.toFixed(2)}, Required: $${budgetAmount.toFixed(2)}. Deposit more USDC or use card payment.`,
       code: 'insufficient_usdc',
     });
   }
@@ -6453,8 +6473,37 @@ app.post('/api/mcp', async (req, res) => {
 
         // Check which methods are available
         const hasUsdc = !!user.circle_wallet_id;
-        const usdcBal = parseFloat(user.usdc_available_balance || 0);
-        const usdcUsable = hasUsdc && usdcBal >= budgetAmt;
+        let usdcBal = parseFloat(user.usdc_available_balance || 0);
+        let usdcUsable = hasUsdc && usdcBal >= budgetAmt;
+
+        // If USDC is preferred but DB balance looks insufficient, check on-chain
+        if (hasUsdc && !usdcUsable && (preferred === 'usdc' || !preferred) && circleService) {
+          try {
+            const onChainBal = await circleService.getWalletBalance(user.circle_wallet_id);
+            if (onChainBal >= budgetAmt && onChainBal > usdcBal) {
+              const delta = onChainBal - usdcBal;
+              console.log(`[MCP Hire] On-chain balance (${onChainBal}) > DB balance (${usdcBal}). Auto-syncing +${delta.toFixed(6)} USDC`);
+              const { error: syncErr } = await supabase.rpc('update_usdc_balance', {
+                p_user_id: user.id,
+                p_available_delta: delta,
+                p_escrow_delta: 0,
+                p_ledger_type: 'deposit_sync',
+                p_ledger_amount: delta,
+                p_description: `Auto-sync: on-chain balance ahead of DB by ${delta.toFixed(6)} USDC`,
+              });
+              if (!syncErr) {
+                usdcBal = onChainBal;
+                usdcUsable = true;
+              } else {
+                console.error(`[MCP Hire] Balance sync failed:`, syncErr.message);
+                usdcBal = onChainBal;
+                usdcUsable = onChainBal >= budgetAmt;
+              }
+            }
+          } catch (chainErr) {
+            console.error(`[MCP Hire] On-chain balance check failed:`, chainErr.message);
+          }
+        }
 
         let stripeUsable = false;
         if (user.stripe_customer_id && stripe) {
@@ -7684,8 +7733,37 @@ app.post('/api/mcp', async (req, res) => {
         const mcpAssignPreferred = pm_override || user.default_payment_method;
 
         const mcpAssignHasUsdc = !!user.circle_wallet_id;
-        const mcpAssignUsdcBal = parseFloat(user.usdc_available_balance || 0);
-        const mcpAssignUsdcUsable = mcpAssignHasUsdc && mcpAssignUsdcBal >= budgetAmount;
+        let mcpAssignUsdcBal = parseFloat(user.usdc_available_balance || 0);
+        let mcpAssignUsdcUsable = mcpAssignHasUsdc && mcpAssignUsdcBal >= budgetAmount;
+
+        // If USDC is preferred but DB balance looks insufficient, check on-chain
+        if (mcpAssignHasUsdc && !mcpAssignUsdcUsable && (mcpAssignPreferred === 'usdc' || !mcpAssignPreferred) && circleService) {
+          try {
+            const onChainBal = await circleService.getWalletBalance(user.circle_wallet_id);
+            if (onChainBal >= budgetAmount && onChainBal > mcpAssignUsdcBal) {
+              const delta = onChainBal - mcpAssignUsdcBal;
+              console.log(`[MCP/assign_human] On-chain balance (${onChainBal}) > DB balance (${mcpAssignUsdcBal}). Auto-syncing +${delta.toFixed(6)} USDC`);
+              const { error: syncErr } = await supabase.rpc('update_usdc_balance', {
+                p_user_id: user.id,
+                p_available_delta: delta,
+                p_escrow_delta: 0,
+                p_ledger_type: 'deposit_sync',
+                p_ledger_amount: delta,
+                p_description: `Auto-sync: on-chain balance ahead of DB by ${delta.toFixed(6)} USDC`,
+              });
+              if (!syncErr) {
+                mcpAssignUsdcBal = onChainBal;
+                mcpAssignUsdcUsable = true;
+              } else {
+                console.error(`[MCP/assign_human] Balance sync failed:`, syncErr.message);
+                mcpAssignUsdcBal = onChainBal;
+                mcpAssignUsdcUsable = onChainBal >= budgetAmount;
+              }
+            }
+          } catch (chainErr) {
+            console.error(`[MCP/assign_human] On-chain balance check failed:`, chainErr.message);
+          }
+        }
 
         let mcpAssignStripeUsable = false;
         if (user.stripe_customer_id && stripe) {
