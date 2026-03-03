@@ -10604,6 +10604,75 @@ app.get('/api/wallet/status', async (req, res) => {
   }
 });
 
+// ============ WALLET ESCROW DIAGNOSTIC ============
+app.get('/api/wallet/escrow-check', async (req, res) => {
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const checks = {
+    circle_service_loaded: !!circleService,
+    escrow_wallet_configured: !!process.env.CIRCLE_ESCROW_WALLET_ADDRESS,
+    user_has_circle_wallet: !!user.circle_wallet_id,
+    user_circle_wallet_address: user.circle_wallet_address || null,
+    db_available_balance: parseFloat(user.usdc_available_balance || 0).toFixed(6),
+    db_escrow_balance: parseFloat(user.usdc_escrow_balance || 0).toFixed(6),
+    default_payment_method: user.default_payment_method || 'stripe',
+    on_chain_balance: null,
+    on_chain_check_error: null,
+    rpc_function_available: null,
+    rpc_check_error: null,
+    escrow_ready: false,
+  };
+
+  // Check on-chain balance
+  if (circleService && user.circle_wallet_id) {
+    try {
+      checks.on_chain_balance = (await circleService.getWalletBalance(user.circle_wallet_id)).toFixed(6);
+    } catch (e) {
+      checks.on_chain_check_error = e.message;
+    }
+  }
+
+  // Check if update_usdc_balance RPC exists
+  try {
+    // Dry-run with zero deltas to test the RPC without changing anything
+    const { error } = await supabase.rpc('update_usdc_balance', {
+      p_user_id: user.id,
+      p_available_delta: 0,
+      p_escrow_delta: 0,
+    });
+    checks.rpc_function_available = !error;
+    if (error) checks.rpc_check_error = error.message;
+  } catch (e) {
+    checks.rpc_function_available = false;
+    checks.rpc_check_error = e.message;
+  }
+
+  // Overall readiness
+  checks.escrow_ready = checks.circle_service_loaded
+    && checks.escrow_wallet_configured
+    && checks.user_has_circle_wallet
+    && checks.rpc_function_available === true
+    && parseFloat(checks.on_chain_balance || 0) > 0;
+
+  // Actionable message
+  if (!checks.circle_service_loaded) {
+    checks.issue = 'Circle service not loaded. CIRCLE_API_KEY or CIRCLE_ENTITY_SECRET may be missing.';
+  } else if (!checks.escrow_wallet_configured) {
+    checks.issue = 'CIRCLE_ESCROW_WALLET_ADDRESS env var is not set. Escrow transfers will fail.';
+  } else if (!checks.user_has_circle_wallet) {
+    checks.issue = 'No Circle wallet for this user. Call generate_deposit_address first.';
+  } else if (!checks.rpc_function_available) {
+    checks.issue = `update_usdc_balance RPC function not available: ${checks.rpc_check_error}`;
+  } else if (checks.on_chain_check_error) {
+    checks.issue = `Could not read on-chain balance: ${checks.on_chain_check_error}`;
+  } else if (parseFloat(checks.on_chain_balance || 0) === 0) {
+    checks.issue = 'On-chain wallet balance is 0. Deposit USDC to your wallet address.';
+  }
+
+  res.json(checks);
+});
+
 // ============ WALLET ADDRESS (USDC) ============
 app.get('/api/wallet/address', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
