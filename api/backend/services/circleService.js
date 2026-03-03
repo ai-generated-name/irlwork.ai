@@ -23,6 +23,34 @@ function getClient() {
   return client;
 }
 
+// Cache for USDC tokenId (resolved from wallet balance on first transfer)
+let cachedUsdcTokenId = process.env.CIRCLE_USDC_TOKEN_ID || null;
+
+/**
+ * Resolve the Circle-internal tokenId for USDC by inspecting a wallet's token balances.
+ * Caches the result so subsequent transfers don't need an extra API call.
+ * @param {string} walletId - Any wallet ID in our wallet set
+ * @returns {string} Circle tokenId for USDC
+ */
+async function resolveUsdcTokenId(walletId) {
+  if (cachedUsdcTokenId) return cachedUsdcTokenId;
+
+  const c = getClient();
+  const response = await c.getWalletTokenBalance({ id: walletId });
+  const usdcToken = response.data?.tokenBalances?.find(
+    t => t.token?.symbol === 'USDC'
+  );
+  if (usdcToken?.token?.id) {
+    cachedUsdcTokenId = usdcToken.token.id;
+    console.log(`[CircleService] Resolved USDC tokenId: ${cachedUsdcTokenId}`);
+    return cachedUsdcTokenId;
+  }
+
+  // Fallback: try tokenAddress + blockchain approach
+  console.warn('[CircleService] Could not resolve USDC tokenId from wallet balance — wallet may have zero USDC. Falling back to tokenAddress + blockchain.');
+  return null;
+}
+
 /**
  * Create a new wallet for a user on Base.
  * @returns {{ walletId: string, walletAddress: string, blockchain: string }}
@@ -79,30 +107,56 @@ async function getWalletBalance(walletId) {
 /**
  * Transfer USDC between Circle wallets (internal — no gas cost visible to user).
  * Also used for external withdrawals since the API is the same.
+ *
+ * Uses tokenId (Circle's internal UUID) for the token, resolved dynamically from
+ * the wallet's token balances. Falls back to tokenAddress + blockchain if the
+ * wallet has never held USDC (tokenId unknown).
+ *
  * @param {{ fromWalletId: string, toAddress: string, amount: number|string, idempotencyKey: string }} opts
  * @returns {{ transactionId: string, txHash: string|null, state: string }}
  */
 async function transferUSDC({ fromWalletId, toAddress, amount, idempotencyKey }) {
   const c = getClient();
-  // Default to Base Sepolia testnet USDC; set USDC_BASE_TOKEN_ADDRESS for mainnet (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
-  const tokenAddress = process.env.USDC_BASE_TOKEN_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 
   // Validate required params before calling Circle API
   if (!fromWalletId) throw new Error('Missing fromWalletId — agent has no Circle wallet');
   if (!toAddress) throw new Error('Missing toAddress — CIRCLE_ESCROW_WALLET_ADDRESS not configured');
   if (!amount || parseFloat(amount) <= 0) throw new Error(`Invalid transfer amount: ${amount}`);
 
-  // SDK interface: walletId + tokenId OR walletId + tokenAddress (no blockchain when using walletId)
-  // SDK uses `amount` (singular, string[]) — NOT `amounts` (that's the REST API field name)
-  const txParams = {
-    walletId: fromWalletId,
-    tokenAddress,
-    destinationAddress: toAddress,
-    amount: [String(amount)],
-    fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-    idempotencyKey,
-  };
-  console.log('[CircleService] createTransaction params:', JSON.stringify({ ...txParams, walletId: txParams.walletId?.slice(0, 8) + '...' }));
+  // Resolve USDC tokenId (preferred by Circle API — avoids tokenAddress/blockchain ambiguity)
+  const tokenId = await resolveUsdcTokenId(fromWalletId);
+
+  let txParams;
+  if (tokenId) {
+    // Primary path: use tokenId (matches Circle SDK example exactly)
+    txParams = {
+      walletId: fromWalletId,
+      tokenId,
+      destinationAddress: toAddress,
+      amount: [String(amount)],
+      fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
+      idempotencyKey,
+    };
+  } else {
+    // Fallback: use tokenAddress + blockchain (when tokenId unavailable)
+    const blockchain = process.env.CIRCLE_BLOCKCHAIN || 'BASE-SEPOLIA';
+    const tokenAddress = process.env.USDC_BASE_TOKEN_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+    txParams = {
+      walletId: fromWalletId,
+      tokenAddress,
+      blockchain,
+      destinationAddress: toAddress,
+      amount: [String(amount)],
+      fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
+      idempotencyKey,
+    };
+  }
+
+  console.log('[CircleService] createTransaction params:', JSON.stringify({
+    ...txParams,
+    walletId: txParams.walletId?.slice(0, 8) + '...',
+    tokenId: txParams.tokenId ? txParams.tokenId.slice(0, 8) + '...' : undefined,
+  }));
 
   let response;
   try {
@@ -147,4 +201,5 @@ module.exports = {
   transferUSDC,
   getTransaction,
   listTransactions,
+  resolveUsdcTokenId,
 };
