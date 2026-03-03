@@ -6041,7 +6041,13 @@
 /* ─── MARKETING LAYOUT CONTENT OFFSET ─── */
 /* Offsets page content below the fixed .navbar-v4 header (position:fixed, ~56px tall) */
 .marketing-content-wrapper {
-  padding-top: 56px;
+  padding-top: 60px;
+}
+
+@media (max-width: 768px) {
+  .marketing-content-wrapper {
+    padding-top: 64px;
+  }
 }
 
 /* Main Content */
@@ -8081,8 +8087,8 @@
     top: 56px;
     left: 0;
     right: 0;
-    bottom: 0;
-    z-index: 50;
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    z-index: 9990;
     border-radius: 0;
     border: none;
   }
@@ -8982,6 +8988,12 @@ select.select-v4-dark option:checked,
 }
 
 /* ─── NAVBAR V4 MOBILE ─── */
+.navbar-v4-mobile-right {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+
 .navbar-v4-mobile-toggle {
   display: none;
   padding: 8px;
@@ -8991,7 +9003,22 @@ select.select-v4-dark option:checked,
   color: var(--text-primary);
 }
 
+/* Hide desktop language selector inside nav links by default (shown on desktop only) */
+.navbar-v4-lang-desktop {
+  display: inline-flex;
+}
+
 @media (max-width: 768px) {
+  /* Show mobile-right container with language selector + hamburger */
+  .navbar-v4-mobile-right {
+    display: flex;
+  }
+
+  /* Hide desktop language selector inside nav links on mobile */
+  .navbar-v4-lang-desktop {
+    display: none !important;
+  }
+
   .navbar-v4-mobile-toggle {
     display: flex;
     align-items: center;
@@ -11627,6 +11654,14 @@ select.select-v4-dark option:checked,
   .navbar-v4 {
     position: fixed;
     z-index: 9999;
+  }
+
+  .navbar-v4-mobile-right {
+    display: flex;
+  }
+
+  .navbar-v4-lang-desktop {
+    display: none !important;
   }
 
   .navbar-v4-links {
