@@ -10581,10 +10581,14 @@ app.get('/api/wallet/status', async (req, res) => {
 
     const balance = await getWalletBalance(supabase, user.id);
 
+    // Circle USDC wallet info
+    const usdcAvailable = parseFloat(user.usdc_available_balance || 0);
+    const usdcEscrow = parseFloat(user.usdc_escrow_balance || 0);
+
     res.json({
       currency: 'USD',
 
-      // Platform-tracked balances
+      // Platform-tracked balances (Stripe rail)
       pending: balance.pending,           // Funds in 48-hour dispute window
       available: balance.available,       // Funds ready to withdraw
       total: balance.total,               // pending + available
@@ -10596,8 +10600,20 @@ app.get('/api/wallet/status', async (req, res) => {
 
       // Payment method status
       has_bank_account: !!user.stripe_account_id && !!user.stripe_onboarding_complete,
-      has_wallet: !!user.wallet_address,
-      wallet_address: user.wallet_address || null,
+      has_wallet: !!user.circle_wallet_id || !!user.wallet_address,
+      wallet_address: user.circle_wallet_address || user.wallet_address || null,
+
+      // USDC wallet (Circle Programmable Wallets)
+      usdc: {
+        configured: !!user.circle_wallet_id,
+        deposit_address: user.circle_wallet_address || null,
+        available_balance: usdcAvailable,
+        escrow_balance: usdcEscrow,
+        network: 'Base',
+        token: 'USDC',
+      },
+
+      default_payment_method: user.default_payment_method || 'stripe',
 
       // Transaction details
       transactions: balance.transactions
