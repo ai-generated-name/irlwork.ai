@@ -10750,6 +10750,57 @@ app.post('/api/wallet/generate-deposit-address', async (req, res) => {
   }
 });
 
+// ============ ADMIN: Setup Platform Escrow Wallet ============
+// One-time setup: creates escrow + treasury wallets in Circle and returns
+// the addresses/IDs to set as env vars (CIRCLE_ESCROW_WALLET_ADDRESS, etc.)
+app.post('/api/admin/setup-escrow-wallet', async (req, res) => {
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { isAdmin } = require('./middleware/adminAuth');
+  if (!isAdmin(user.id)) return res.status(403).json({ error: 'Admin access required' });
+
+  if (!circleService) return res.status(503).json({ error: 'Circle service not loaded. Check CIRCLE_API_KEY and CIRCLE_ENTITY_SECRET.' });
+
+  // Idempotent: if already configured, return current values
+  if (process.env.CIRCLE_ESCROW_WALLET_ADDRESS) {
+    return res.json({
+      existing: true,
+      escrow_wallet_id: process.env.CIRCLE_ESCROW_WALLET_ID || null,
+      escrow_wallet_address: process.env.CIRCLE_ESCROW_WALLET_ADDRESS,
+      treasury_wallet_address: process.env.CIRCLE_TREASURY_WALLET_ADDRESS || null,
+      message: 'Escrow wallet already configured. To change, update env vars and restart.',
+    });
+  }
+
+  try {
+    // Create escrow wallet (holds funds during task lifecycle)
+    const escrowWallet = await circleService.createUserWallet();
+    console.log(`[Admin] Created escrow wallet: ${escrowWallet.walletAddress} (${escrowWallet.walletId})`);
+
+    // Create treasury wallet (receives platform fees)
+    const treasuryWallet = await circleService.createUserWallet();
+    console.log(`[Admin] Created treasury wallet: ${treasuryWallet.walletAddress} (${treasuryWallet.walletId})`);
+
+    res.json({
+      existing: false,
+      escrow_wallet_id: escrowWallet.walletId,
+      escrow_wallet_address: escrowWallet.walletAddress,
+      treasury_wallet_id: treasuryWallet.walletId,
+      treasury_wallet_address: treasuryWallet.walletAddress,
+      env_vars_to_set: {
+        CIRCLE_ESCROW_WALLET_ID: escrowWallet.walletId,
+        CIRCLE_ESCROW_WALLET_ADDRESS: escrowWallet.walletAddress,
+        CIRCLE_TREASURY_WALLET_ADDRESS: treasuryWallet.walletAddress,
+      },
+      message: 'Wallets created. Add the env vars above to your Railway deployment and restart.',
+    });
+  } catch (error) {
+    console.error('[Admin] Failed to create platform wallets:', error.message);
+    res.status(500).json({ error: `Failed to create wallets: ${error.message}` });
+  }
+});
+
 // ============ CIRCLE WALLET: Sync On-Chain Balance ============
 app.post('/api/wallet/sync-balance', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
