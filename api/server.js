@@ -429,6 +429,10 @@ function cleanTaskData(data) {
   if (!taskColumnFlags.validation_attempts) delete cleaned.validation_attempts;
   if (!taskColumnFlags.cancelled_at) delete cleaned.cancelled_at;
   if (!taskColumnFlags.cancellation_reason) delete cleaned.cancellation_reason;
+  // Circle USDC columns (migration add_circle_wallets.sql)
+  if (!taskColumnFlags.circle_escrow_tx_id) delete cleaned.circle_escrow_tx_id;
+  if (!taskColumnFlags.circle_payout_tx_id) delete cleaned.circle_payout_tx_id;
+  if (!taskColumnFlags.circle_refund_tx_id) delete cleaned.circle_refund_tx_id;
   // Always strip private fields from public responses
   delete cleaned.private_address;
   delete cleaned.private_notes;
@@ -5349,10 +5353,10 @@ app.post('/api/tasks/:id/approve', async (req, res) => {
             });
             payoutTxId = payoutResult.transactionId;
             payoutTxHash = payoutResult.txHash;
-            await supabase.from('tasks').update({
+            await supabase.from('tasks').update(cleanTaskData({
               circle_payout_tx_id: payoutTxId,
               payout_tx_hash: payoutTxHash,
-            }).eq('id', taskId);
+            })).eq('id', taskId);
           } catch (payoutErr) {
             console.error(`[Approve] Circle payout failed for task ${taskId}:`, payoutErr.message);
           }
@@ -6637,6 +6641,29 @@ app.post('/api/mcp', async (req, res) => {
             .single();
 
           if (taskError || !updatedMcpTask) {
+            // Reverse escrow lock — money was already moved but task update failed
+            console.error(`[MCP Hire] USDC task update failed (race condition or missing column), reversing escrow lock for ${task_id}`, taskError?.message);
+            try {
+              if (circleService) {
+                await circleService.transferUSDC({
+                  fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+                  toAddress: user.circle_wallet_address,
+                  amount: budgetAmount,
+                  idempotencyKey: `escrow-reverse-hire-${task_id}-${human_id}`,
+                });
+              }
+              await supabase.rpc('update_usdc_balance', {
+                p_user_id: user.id,
+                p_available_delta: budgetAmount,
+                p_escrow_delta: -budgetAmount,
+                p_task_id: task_id,
+                p_ledger_type: 'escrow_reverse',
+                p_ledger_amount: budgetAmount,
+                p_description: `Escrow reversed — task update failed for hire_human "${taskData.title}"`,
+              });
+            } catch (reverseErr) {
+              console.error(`[MCP Hire] CRITICAL: Failed to reverse escrow lock for ${task_id}:`, reverseErr.message);
+            }
             return res.status(409).json({ error: 'Task is no longer available' });
           }
 
@@ -7226,7 +7253,7 @@ app.post('/api/mcp', async (req, res) => {
                   p_tx_hash: refundResult.txHash,
                   p_description: `MCP escrow refund (worker withdrew from "${cancelTask.title}")`,
                 });
-                await supabase.from('tasks').update({ circle_refund_tx_id: refundResult.transactionId }).eq('id', task_id);
+                await supabase.from('tasks').update(cleanTaskData({ circle_refund_tx_id: refundResult.transactionId })).eq('id', task_id);
                 console.log(`[MCP Cancel] USDC escrow refunded for task ${task_id} (worker withdrawal)`);
               }
             } catch (refundErr) {
@@ -7318,7 +7345,7 @@ app.post('/api/mcp', async (req, res) => {
                   p_tx_hash: refundResult.txHash,
                   p_description: `MCP escrow refund for cancelled task "${cancelTask.title}"`,
                 });
-                await supabase.from('tasks').update({ circle_refund_tx_id: refundResult.transactionId }).eq('id', task_id);
+                await supabase.from('tasks').update(cleanTaskData({ circle_refund_tx_id: refundResult.transactionId })).eq('id', task_id);
                 console.log(`[MCP Cancel] USDC escrow refunded for task ${task_id}`);
               }
             } catch (refundErr) {
@@ -8056,6 +8083,29 @@ app.post('/api/mcp', async (req, res) => {
           .single();
 
         if (mcpUsdcErr || !assignedTask) {
+          // Reverse escrow lock — money was already moved but task update failed
+          console.error(`[MCP Assign] USDC task update failed (race condition or missing column), reversing escrow lock for ${task_id}`, mcpUsdcErr?.message);
+          try {
+            if (circleService) {
+              await circleService.transferUSDC({
+                fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+                toAddress: user.circle_wallet_address,
+                amount: budgetAmount,
+                idempotencyKey: `escrow-reverse-${task_id}-${human_id}`,
+              });
+            }
+            await supabase.rpc('update_usdc_balance', {
+              p_user_id: user.id,
+              p_available_delta: budgetAmount,
+              p_escrow_delta: -budgetAmount,
+              p_task_id: task_id,
+              p_ledger_type: 'escrow_reverse',
+              p_ledger_amount: budgetAmount,
+              p_description: `Escrow reversed — task update failed for "${taskData.title}"`,
+            });
+          } catch (reverseErr) {
+            console.error(`[MCP Assign] CRITICAL: Failed to reverse escrow lock for ${task_id}:`, reverseErr.message);
+          }
           return res.status(409).json({ error: 'Task is no longer available for assignment — status may have changed' });
         }
 
@@ -11011,6 +11061,10 @@ const taskColumnFlags = {
   // Cancellation columns (migration 002)
   cancelled_at: true,
   cancellation_reason: true,
+  // Circle USDC columns (migration add_circle_wallets.sql)
+  circle_escrow_tx_id: true,
+  circle_payout_tx_id: true,
+  circle_refund_tx_id: true,
 };
 
 let userHasGenderColumn = true;
@@ -12661,7 +12715,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
             p_tx_hash: refundResult.txHash,
             p_description: `Escrow refund (worker withdrew from "${task.title}")`,
           });
-          await supabase.from('tasks').update({ circle_refund_tx_id: refundResult.transactionId }).eq('id', id);
+          await supabase.from('tasks').update(cleanTaskData({ circle_refund_tx_id: refundResult.transactionId })).eq('id', id);
           console.log(`[Cancel] USDC escrow refunded for task ${id} (worker withdrawal)`);
         }
       } catch (refundErr) {
@@ -12771,7 +12825,7 @@ app.post('/api/tasks/:id/cancel', async (req, res) => {
             p_description: `Escrow refund for cancelled task "${task.title}"`,
           });
 
-          await supabase.from('tasks').update({ circle_refund_tx_id: refundResult.transactionId }).eq('id', id);
+          await supabase.from('tasks').update(cleanTaskData({ circle_refund_tx_id: refundResult.transactionId })).eq('id', id);
           console.log(`[Cancel] USDC escrow refunded for task ${id}`);
         }
       } catch (refundErr) {
@@ -13172,9 +13226,9 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
             p_description: `Dispute refund for "${taskTitle}"`,
           });
 
-          await supabase.from('tasks').update({
+          await supabase.from('tasks').update(cleanTaskData({
             circle_refund_tx_id: refundResult.transactionId,
-          }).eq('id', dispute.task_id);
+          })).eq('id', dispute.task_id);
         } else {
           // Agent has no Circle wallet — credit DB balance, funds stay in escrow until they set up a wallet
           await supabase.rpc('update_usdc_balance', {
@@ -13320,9 +13374,9 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
         });
 
         // 4. Update task with payout tx
-        await supabase.from('tasks').update({
+        await supabase.from('tasks').update(cleanTaskData({
           circle_payout_tx_id: payoutTxId,
-        }).eq('id', dispute.task_id);
+        })).eq('id', dispute.task_id);
 
       } catch (usdcErr) {
         console.error(`[Dispute] USDC release to human failed for task ${dispute.task_id}:`, usdcErr);
