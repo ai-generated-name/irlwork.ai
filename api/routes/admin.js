@@ -122,29 +122,23 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
         .eq('status', 'approved')
         .eq('escrow_status', 'deposited');
 
-      // Pending withdrawals
+      // Pending withdrawals — funds that cleared the 48h dispute window, not yet sent to workers (both Stripe + USDC)
       const { data: pendingWithdrawals } = await supabase
-        .from('manual_payments')
-        .select('id, worker_amount')
-        .eq('status', 'pending_withdrawal');
+        .from('pending_transactions')
+        .select('id, amount_cents')
+        .eq('status', 'available');
 
-      // Total platform fees (from completed payments)
-      const { data: completedPayments } = await supabase
-        .from('manual_payments')
-        .select('platform_fee')
-        .eq('status', 'withdrawn');
+      // Platform fees + total processed — from payouts table (covers both Stripe and USDC rails)
+      const { data: completedPayouts } = await supabase
+        .from('payouts')
+        .select('fee_cents, amount_cents')
+        .in('status', ['pending', 'available', 'withdrawn']);
 
       // Pending reports
       const { data: pendingReports } = await supabase
         .from('task_reports')
         .select('id')
         .eq('status', 'pending');
-
-      // Total payments processed
-      const { data: allPayments } = await supabase
-        .from('manual_payments')
-        .select('deposit_amount')
-        .in('status', ['deposited', 'released', 'pending_withdrawal', 'withdrawn']);
 
       // Pending feedback
       const { data: pendingFeedback } = await supabase
@@ -156,9 +150,9 @@ function initAdminRoutes(supabase, getUserByToken, createNotification) {
       const pendingDepositsTotal = (pendingDeposits || []).reduce((sum, t) => sum + (t.escrow_amount || 0), 0);
       const inProgressTotal = (inProgress || []).reduce((sum, t) => sum + (t.escrow_amount || 0), 0);
       const pendingReleaseTotal = (pendingRelease || []).reduce((sum, t) => sum + (t.escrow_amount || 0), 0);
-      const pendingWithdrawalsTotal = (pendingWithdrawals || []).reduce((sum, p) => sum + (parseFloat(p.worker_amount) || 0), 0);
-      const platformFeesTotal = (completedPayments || []).reduce((sum, p) => sum + (parseFloat(p.platform_fee) || 0), 0);
-      const totalProcessed = (allPayments || []).reduce((sum, p) => sum + (parseFloat(p.deposit_amount) || 0), 0);
+      const pendingWithdrawalsTotal = (pendingWithdrawals || []).reduce((sum, p) => sum + (p.amount_cents || 0), 0) / 100;
+      const platformFeesTotal = (completedPayouts || []).reduce((sum, p) => sum + (p.fee_cents || 0), 0) / 100;
+      const totalProcessed = (completedPayouts || []).reduce((sum, p) => sum + (p.amount_cents || 0) + (p.fee_cents || 0), 0) / 100;
 
       res.json({
         pending_deposits: {
