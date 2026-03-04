@@ -1,30 +1,40 @@
 import React from 'react'
 
 /**
- * IRL Work Logo Component — Brand v2
+ * IRL Work Logo Component — v9
  *
- * Renders the "irlwork" text with an orange cursor bar.
+ * Wordmark uses Courier Prime Bold (only place in the app).
+ * Cursor blinks orange — the only decorative orange in chrome.
  *
- * @param {Object} props
  * @param {'icon' | 'wordmark' | 'header'} props.variant
- *   - 'icon'     → compact "irl" + cursor (sidebar collapsed, tab bar)
- *   - 'wordmark' → large "irlwork" + cursor (login, splash, onboarding)
- *   - 'header'   → medium "irlwork" + cursor (top bar, sidebar expanded)
  * @param {'dark' | 'light'} props.theme
- *   - 'dark'  → white text (for dark backgrounds)
- *   - 'light' → dark text (for light backgrounds)
- * @param {string} props.className — extra wrapper classes
+ * @param {string} props.className
  */
 export function Logo({ variant = 'icon', theme = 'dark', className = '' }) {
-  const textColor = theme === 'dark' ? 'text-white' : 'text-text-primary'
+  const textColor = theme === 'dark' ? '#FFFFFF' : 'var(--ink)'
+
+  const cursorStyle = {
+    display: 'inline-block',
+    background: 'var(--orange)',
+    borderRadius: '1px',
+    position: 'relative',
+    animation: 'cursorBlink 1.1s step-end infinite',
+  }
 
   if (variant === 'icon') {
     return (
       <div className={`flex items-center justify-center ${className}`}>
-        <span className={`font-mono font-bold text-lg leading-none ${textColor}`}>
+        <span style={{
+          fontFamily: "'Courier Prime', monospace",
+          fontWeight: 700,
+          fontSize: '18px',
+          color: textColor,
+          letterSpacing: '0.01em',
+          lineHeight: 1,
+        }}>
           irl
         </span>
-        <span className="inline-block w-[2px] h-[14px] bg-accent-orange rounded-sm ml-px relative top-[1px]" />
+        <span style={{ ...cursorStyle, width: '2px', height: '14px', marginLeft: '1px', top: '1px' }} />
       </div>
     )
   }
@@ -32,21 +42,35 @@ export function Logo({ variant = 'icon', theme = 'dark', className = '' }) {
   if (variant === 'wordmark') {
     return (
       <div className={`flex items-center ${className}`}>
-        <span className={`font-mono font-bold text-3xl leading-none ${textColor}`}>
+        <span style={{
+          fontFamily: "'Courier Prime', monospace",
+          fontWeight: 700,
+          fontSize: '28px',
+          color: textColor,
+          letterSpacing: '0.01em',
+          lineHeight: 1,
+        }}>
           irlwork
         </span>
-        <span className="inline-block w-[3px] h-[22px] bg-accent-orange rounded-sm ml-0.5 relative top-[2px]" />
+        <span style={{ ...cursorStyle, width: '3px', height: '22px', marginLeft: '1px', top: '2px' }} />
       </div>
     )
   }
 
-  // header variant — compact for top bar
+  // header variant
   return (
     <div className={`flex items-center ${className}`}>
-      <span className={`font-mono font-bold text-[22px] leading-none ${textColor}`}>
+      <span style={{
+        fontFamily: "'Courier Prime', monospace",
+        fontWeight: 700,
+        fontSize: '20px',
+        color: textColor,
+        letterSpacing: '0.01em',
+        lineHeight: 1,
+      }}>
         irlwork
       </span>
-      <span className="inline-block w-[2px] h-[16px] bg-accent-orange rounded-sm ml-px relative top-[1px]" />
+      <span style={{ ...cursorStyle, width: '2.5px', height: '16px', marginLeft: '1px', top: '1px' }} />
     </div>
   )
 }

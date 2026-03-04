@@ -4806,8 +4806,8 @@
 }
 
 .dashboard-v4-nav-item.active {
-  background: linear-gradient(135deg, rgba(232, 133, 61, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%);
-  color: var(--orange-600);
+  background: rgba(17,16,16,0.05);
+  color: var(--ink);
 }
 
 .dashboard-v4-nav-item-content {
@@ -4904,7 +4904,7 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-full);
-  background: var(--accent-orange);
+  background: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6426,12 +6426,12 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--orange-400), var(--orange-600));
+  background: var(--ink);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
@@ -6463,12 +6463,12 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--orange-400), var(--orange-600));
+  background: var(--ink);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 600;
   text-transform: uppercase;
@@ -8638,7 +8638,7 @@ select.select-v4-dark option:checked,
   width: 36px;
   height: 36px;
   border-radius: var(--radius-md);
-  background: var(--accent-orange);
+  background: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11240,10 +11240,12 @@ select.select-v4-dark option:checked,
   left: 0;
   right: 0;
   z-index: 9980;
-  background: var(--bg-secondary);
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
-  padding: 6px 0 calc(6px + env(safe-area-inset-bottom, 0px));
+  background: rgba(247, 245, 242, 0.93);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  box-shadow: none;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
   flex-direction: row;
   justify-content: space-around;
   align-items: stretch;
@@ -11267,7 +11269,7 @@ select.select-v4-dark option:checked,
 }
 
 .dashboard-v4-bottom-tab.active {
-  color: var(--accent-orange);
+  color: var(--ink);
 }
 
 .dashboard-v4-bottom-tab-icon {
@@ -11284,9 +11286,11 @@ select.select-v4-dark option:checked,
 }
 
 .dashboard-v4-bottom-tab-label {
-  font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   line-height: 1.2;
 }
 
