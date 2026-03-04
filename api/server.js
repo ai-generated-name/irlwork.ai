@@ -6938,6 +6938,92 @@ app.post('/api/mcp', async (req, res) => {
             console.error('[MCP Approve] Payment release failed:', e.message);
             // Don't fail the approve — admin can manually release
           }
+
+          // Circle-specific USDC balance updates (parity with REST approve endpoint)
+          if (task.payment_method === 'usdc' && task.circle_escrow_tx_id && circleService) {
+            try {
+              const mcpEscrowAmount = task.escrow_amount || task.budget;
+              const mcpEscrowCents = Math.round(mcpEscrowAmount * 100);
+              const mcpWorkerFeePct = task.worker_fee_percent != null ? task.worker_fee_percent : PLATFORM_FEE_PERCENT;
+              const mcpPlatformFeeCents = Math.round(mcpEscrowCents * mcpWorkerFeePct / 100);
+              const mcpWorkerPayout = (mcpEscrowCents - mcpPlatformFeeCents) / 100;
+              const mcpPlatformFee = mcpPlatformFeeCents / 100;
+
+              // Transfer payout from escrow wallet to worker's Circle wallet
+              const { data: mcpWorkerData } = await supabase.from('users').select('circle_wallet_address, usdc_available_balance').eq('id', task.human_id).single();
+              let mcpPayoutTxId = null;
+              let mcpPayoutTxHash = null;
+
+              if (mcpWorkerData?.circle_wallet_address) {
+                try {
+                  const mcpPayoutResult = await circleService.transferUSDC({
+                    fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+                    toAddress: mcpWorkerData.circle_wallet_address,
+                    amount: mcpWorkerPayout,
+                    idempotencyKey: `payout-${task_id}`,
+                  });
+                  mcpPayoutTxId = mcpPayoutResult.transactionId;
+                  mcpPayoutTxHash = mcpPayoutResult.txHash;
+                  await supabase.from('tasks').update(cleanTaskData({
+                    circle_payout_tx_id: mcpPayoutTxId,
+                    payout_tx_hash: mcpPayoutTxHash,
+                  })).eq('id', task_id);
+                } catch (payoutErr) {
+                  console.error(`[MCP Approve] Circle payout failed for task ${task_id}:`, payoutErr.message);
+                }
+              } else {
+                console.warn(`[MCP Approve] Worker ${task.human_id} has no Circle wallet — crediting DB balance only.`);
+              }
+
+              // Credit worker balance (DB balance is authoritative)
+              await supabase.rpc('update_usdc_balance', {
+                p_user_id: task.human_id,
+                p_available_delta: mcpWorkerPayout,
+                p_escrow_delta: 0,
+                p_task_id: task_id,
+                p_ledger_type: 'payout',
+                p_ledger_amount: mcpWorkerPayout,
+                p_circle_tx_id: mcpPayoutTxId,
+                p_tx_hash: mcpPayoutTxHash,
+                p_description: `Payout for "${task.title}"`,
+              });
+
+              // Transfer platform fee to treasury
+              if (mcpPlatformFee > 0) {
+                try {
+                  const mcpFeeResult = await circleService.transferUSDC({
+                    fromWalletId: process.env.CIRCLE_ESCROW_WALLET_ID,
+                    toAddress: process.env.CIRCLE_TREASURY_WALLET_ADDRESS,
+                    amount: mcpPlatformFee,
+                    idempotencyKey: `fee-${task_id}`,
+                  });
+                  await supabase.from('usdc_ledger').insert({
+                    user_id: task.agent_id, task_id: task_id, type: 'platform_fee',
+                    amount: -mcpPlatformFee,
+                    circle_transaction_id: mcpFeeResult.transactionId, tx_hash: mcpFeeResult.txHash,
+                    description: `Platform fee for "${task.title}": $${mcpPlatformFee.toFixed(2)}`,
+                  });
+                } catch (feeErr) {
+                  console.error(`[MCP Approve] Circle fee transfer failed for task ${task_id}:`, feeErr.message);
+                }
+              }
+
+              // Debit agent's escrow balance
+              await supabase.rpc('update_usdc_balance', {
+                p_user_id: task.agent_id,
+                p_available_delta: 0,
+                p_escrow_delta: -mcpEscrowAmount,
+                p_task_id: task_id,
+                p_ledger_type: 'escrow_release',
+                p_ledger_amount: -mcpEscrowAmount,
+                p_description: `Escrow released for "${task.title}"`,
+              });
+
+              console.log(`[MCP Approve] Circle USDC payout processed for task ${task_id}: worker=$${mcpWorkerPayout}, fee=$${mcpPlatformFee}`);
+            } catch (usdcErr) {
+              console.error(`[MCP Approve] USDC balance update failed for task ${task_id}:`, usdcErr.message);
+            }
+          }
         } else {
           // Notify admins for manual payment — same as REST
           const mcpAdminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean);
