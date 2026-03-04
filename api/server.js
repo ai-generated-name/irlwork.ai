@@ -397,6 +397,7 @@ function buildTaskInsertData(baseData, optionalFields = {}) {
   if (!taskColumnFlags.private_notes) delete data.private_notes;
   if (!taskColumnFlags.private_contact) delete data.private_contact;
   if (!taskColumnFlags.validation_attempts) delete data.validation_attempts;
+  if (!taskColumnFlags.max_revisions) delete data.max_revisions;
   // Add optional fields only if column exists
   if (taskColumnFlags.spots_filled && optionalFields.spots_filled !== undefined) {
     data.spots_filled = optionalFields.spots_filled;
@@ -433,6 +434,8 @@ function cleanTaskData(data) {
   if (!taskColumnFlags.circle_escrow_tx_id) delete cleaned.circle_escrow_tx_id;
   if (!taskColumnFlags.circle_payout_tx_id) delete cleaned.circle_payout_tx_id;
   if (!taskColumnFlags.circle_refund_tx_id) delete cleaned.circle_refund_tx_id;
+  // Revision limit (migration add_max_revisions_to_tasks.sql)
+  if (!taskColumnFlags.max_revisions) delete cleaned.max_revisions;
   // Always strip private fields from public responses
   delete cleaned.private_address;
   delete cleaned.private_notes;
@@ -2514,8 +2517,8 @@ app.get('/api/users/:id', async (req, res) => {
   const isSelf = requester && requester.id === req.params.id;
 
   const columns = isSelf
-    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, reliability_score, jobs_completed, total_tasks_completed, total_tasks_posted, total_paid, type, avatar_url, subscription_tier, tasks_posted_this_month'
-    : 'id, name, city, state, hourly_rate, bio, skills, rating, reliability_score, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url, subscription_tier';
+    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, review_count, reliability_score, jobs_completed, total_tasks_completed, total_tasks_posted, total_disputes_filed, total_paid, type, avatar_url, subscription_tier, tasks_posted_this_month'
+    : 'id, name, city, state, hourly_rate, bio, skills, rating, review_count, reliability_score, jobs_completed, total_tasks_completed, total_tasks_posted, total_disputes_filed, type, avatar_url, subscription_tier';
 
   const { data: user, error } = await supabase
     .from('users')
@@ -2524,7 +2527,48 @@ app.get('/api/users/:id', async (req, res) => {
     .single();
 
   if (error || !user) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...user, skills: safeParseJsonArray(user.skills) });
+
+  const response = { ...user, skills: safeParseJsonArray(user.skills) };
+
+  // For agent profiles, compute derived reputation metrics
+  if (user.type === 'agent') {
+    const totalCompleted = user.total_tasks_completed || 0;
+    response.dispute_rate = totalCompleted > 0
+      ? parseFloat(((user.total_disputes_filed || 0) / totalCompleted * 100).toFixed(1))
+      : null;
+
+    // Compute avg approval hours from task_status_history (last 50 approvals)
+    const { data: approvalHistory } = await supabase
+      .from('task_status_history')
+      .select('task_id, created_at')
+      .eq('changed_by', user.id)
+      .eq('to_status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (approvalHistory && approvalHistory.length > 0) {
+      const taskIds = approvalHistory.map(h => h.task_id);
+      const { data: proofTimes } = await supabase
+        .from('tasks')
+        .select('id, proof_submitted_at')
+        .in('id', taskIds)
+        .not('proof_submitted_at', 'is', null);
+
+      if (proofTimes && proofTimes.length > 0) {
+        const proofMap = {};
+        for (const t of proofTimes) proofMap[t.id] = t.proof_submitted_at;
+        const diffs = approvalHistory
+          .filter(h => proofMap[h.task_id])
+          .map(h => (new Date(h.created_at) - new Date(proofMap[h.task_id])) / (1000 * 60 * 60));
+        if (diffs.length > 0) {
+          response.avg_approval_hours = parseFloat((diffs.reduce((a, b) => a + b, 0) / diffs.length).toFixed(1));
+        }
+      }
+    }
+    if (response.avg_approval_hours === undefined) response.avg_approval_hours = null;
+  }
+
+  res.json(response);
 });
 
 app.get('/api/humans/:id', async (req, res, next) => {
@@ -2668,7 +2712,7 @@ app.get('/api/tasks', async (req, res) => {
   const pageLimit = Math.min(Math.max(parseInt(limitParam) || 50, 1), 200);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
-  let safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, human_ids, created_at, updated_at, country, country_code, human_id, agent_id, requirements, required_skills, moderation_status, is_remote, max_humans';
+  let safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, human_ids, created_at, updated_at, country, country_code, human_id, agent_id, requirements, required_skills, moderation_status, is_remote, max_humans, max_revisions, output_schema';
   if (taskColumnFlags.spots_filled) safeTaskColumns += ', spots_filled';
   if (taskColumnFlags.is_anonymous) safeTaskColumns += ', is_anonymous';
   if (taskColumnFlags.duration_hours) safeTaskColumns += ', duration_hours';
@@ -2745,6 +2789,32 @@ app.get('/api/tasks', async (req, res) => {
     ? results[results.length - 1].created_at
     : null;
 
+  // Attach poster_reputation to each task (batch fetch to avoid N+1)
+  const agentIds = [...new Set(results.map(t => t.agent_id).filter(Boolean))];
+  if (agentIds.length > 0) {
+    const { data: agents } = await supabase
+      .from('users')
+      .select('id, rating, review_count, total_tasks_posted, total_tasks_completed, total_disputes_filed')
+      .in('id', agentIds);
+    if (agents) {
+      const agentMap = {};
+      for (const a of agents) {
+        const totalCompleted = a.total_tasks_completed || 0;
+        agentMap[a.id] = {
+          rating: a.rating || null,
+          review_count: a.review_count || 0,
+          total_tasks_posted: a.total_tasks_posted || 0,
+          total_tasks_completed: totalCompleted,
+          dispute_rate: totalCompleted > 0
+            ? parseFloat(((a.total_disputes_filed || 0) / totalCompleted * 100).toFixed(1))
+            : null,
+          avg_approval_hours: null, // computed on-demand in task detail, expensive for listing
+        };
+      }
+      results = results.map(t => ({ ...t, poster_reputation: agentMap[t.agent_id] || null }));
+    }
+  }
+
   res.json({ tasks: results, cursor: nextCursor, has_more: hasMore });
 });
 
@@ -2784,7 +2854,7 @@ app.post('/api/tasks', async (req, res) => {
   res.set('Deprecation', 'true');
   res.set('Link', '</api/tasks/create>; rel="successor-version"');
 
-  const { title, description, instructions, instructions_attachments, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code, task_type_id, location_zone, private_address, private_notes, private_contact, budget_usd, datetime_start, skills_required: skillsRequiredInput } = req.body;
+  const { title, description, instructions, instructions_attachments, category, location, budget, latitude, longitude, is_remote, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, max_humans, country, country_code, task_type_id, location_zone, private_address, private_notes, private_contact, budget_usd, datetime_start, skills_required: skillsRequiredInput, max_revisions: rawMaxRevisions, output_schema } = req.body;
 
   // Verify agent has payment method using the stricter check
   try {
@@ -2873,6 +2943,8 @@ app.post('/api/tasks', async (req, res) => {
       private_address: encryptedAddress,
       private_notes: encryptedNotes,
       private_contact: encryptedContact,
+      max_revisions: Math.max(1, Math.min(parseInt(rawMaxRevisions) || 2, 5)),
+      output_schema: output_schema || null,
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,
@@ -3053,6 +3125,72 @@ app.get('/api/tasks/:id/status', async (req, res) => {
     proof_submitted_at: task.proof_submitted_at,
     proofs: proofs || [],
     dispute_window: dispute_window_info
+  });
+});
+
+// ============ ESCROW STATUS ============
+// Returns the full escrow state for a task with human-readable labels and amounts.
+// Accessible to task participants only.
+const ESCROW_STATUS_META = {
+  unfunded:           { label: 'No escrow deposited',          next: ['pending_deposit'] },
+  pending_deposit:    { label: 'Awaiting deposit confirmation', next: ['awaiting_worker', 'refunded'] },
+  awaiting_worker:    { label: 'Deposit confirmed, awaiting worker acceptance', next: ['deposited', 'refunded'] },
+  deposited:          { label: 'Funds held in escrow',          next: ['released', 'refunded'] },
+  held:               { label: 'Funds held in escrow',          next: ['released', 'refunded'] },
+  released:           { label: 'Payment released to worker',   next: ['pending_withdrawal'] },
+  pending_withdrawal: { label: 'Worker withdrawal pending',    next: ['withdrawn'] },
+  withdrawn:          { label: 'Funds withdrawn by worker',    next: [] },
+  refunded:           { label: 'Funds refunded to agent',      next: [] },
+};
+
+app.get('/api/tasks/:id/escrow', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+
+  const { data: task, error } = await supabase
+    .from('tasks')
+    .select('id, agent_id, human_id, human_ids, escrow_status, escrow_amount, budget_cents, budget, stripe_payment_intent_id, escrow_captured, auth_hold_expires_at, escrow_deposited_at, escrow_released_at, payment_method')
+    .eq('id', req.params.id)
+    .single();
+
+  if (error || !task) return res.status(404).json({ error: 'Task not found' });
+
+  const isParticipant = user.id === task.agent_id || user.id === task.human_id ||
+    (Array.isArray(task.human_ids) && task.human_ids.includes(user.id));
+  if (!isParticipant && !user.is_admin) {
+    return res.status(403).json({ error: 'Not authorized to view escrow details' });
+  }
+
+  const status = task.escrow_status || 'unfunded';
+  const meta = ESCROW_STATUS_META[status] || { label: status, next: [] };
+
+  // Calculate amounts (prefer cents, fall back to budget)
+  const budgetCents = task.budget_cents || Math.round((task.budget || task.escrow_amount || 0) * 100);
+  const { getPlatformFeeForTier } = require('./config/constants');
+  const agentTier = user.type === 'agent' ? (user.subscription_tier || 'free') : 'free';
+  const feePct = getPlatformFeeForTier(agentTier);
+  const platformFeeCents = Math.round(budgetCents * feePct / 100);
+  const workerPayoutCents = budgetCents - platformFeeCents;
+
+  res.json({
+    task_id: task.id,
+    escrow_status: status,
+    escrow_status_label: meta.label,
+    next_states: meta.next,
+    payment_method: task.payment_method || 'stripe',
+    stripe_payment_intent_id: task.stripe_payment_intent_id || null,
+    escrow_captured: task.escrow_captured || false,
+    auth_hold_expires_at: task.auth_hold_expires_at || null,
+    escrow_deposited_at: task.escrow_deposited_at || null,
+    escrow_released_at: task.escrow_released_at || null,
+    amounts: {
+      budget_cents: budgetCents,
+      platform_fee_cents: platformFeeCents,
+      worker_payout_cents: workerPayoutCents,
+      platform_fee_percent: feePct,
+    },
   });
 });
 
@@ -4815,14 +4953,14 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
     return res.status(400).json({ error: `Cannot reject proof on task with status "${task.status}". Task must be in pending_review.` });
   }
 
-  // Revision system: max 2 revisions, tracked via revision_count (sole source of truth)
-  const MAX_REVISIONS = 2;
+  // Revision system: per-task max_revisions (default 2), tracked via revision_count
+  const MAX_REVISIONS = task.max_revisions || 2;
   const currentRevisionCount = task.revision_count || 0;
 
   if (currentRevisionCount >= MAX_REVISIONS) {
     return res.status(409).json({
       error: 'max_revisions_reached',
-      message: 'Maximum revisions reached (2). Please approve the work or open a dispute.',
+      message: `Maximum revisions reached (${MAX_REVISIONS}). Please approve the work or open a dispute.`,
       actions: ['approve', 'dispute'],
       revision_count: currentRevisionCount
     });
@@ -7233,14 +7371,14 @@ app.post('/api/mcp', async (req, res) => {
           return res.status(400).json({ error: `Cannot reject proof on task with status "${rejectTask.status}". Task must be in pending_review.` });
         }
 
-        // Revision system: max 2 — same as REST
-        const REJECT_MAX_REVISIONS = 2;
+        // Revision system: per-task max_revisions (default 2) — same as REST
+        const REJECT_MAX_REVISIONS = rejectTask.max_revisions || 2;
         const rejectRevCount = rejectTask.revision_count || 0;
 
         if (rejectRevCount >= REJECT_MAX_REVISIONS) {
           return res.status(409).json({
             error: 'max_revisions_reached',
-            message: 'Maximum revisions reached (2). Please approve the work or open a dispute.',
+            message: `Maximum revisions reached (${REJECT_MAX_REVISIONS}). Please approve the work or open a dispute.`,
             actions: ['approve', 'dispute'],
             revision_count: rejectRevCount
           });
@@ -11381,6 +11519,8 @@ const taskColumnFlags = {
   circle_escrow_tx_id: true,
   circle_payout_tx_id: true,
   circle_refund_tx_id: true,
+  // Revision limit per task (migration add_max_revisions_to_tasks.sql)
+  max_revisions: true,
 };
 
 let userHasGenderColumn = true;
@@ -11462,6 +11602,73 @@ async function start() {
     // Start balance promoter (promotes pending → available after 48 hours)
     startBalancePromoter(supabase, createNotification);
     console.log('   ✅ Balance promoter started (15min interval)');
+
+    // Start webhook retry processor (retries failed webhook deliveries with exponential backoff)
+    async function processWebhookRetries() {
+      if (!supabase) return;
+      try {
+        const { data: retries } = await supabase
+          .from('webhook_deliveries')
+          .select('id, user_id, event_type, payload, attempt_count, webhook_url')
+          .eq('status', 'failed')
+          .lte('next_retry_at', new Date().toISOString())
+          .lt('attempt_count', 5)
+          .limit(20);
+
+        if (!retries || retries.length === 0) return;
+
+        for (const delivery of retries) {
+          try {
+            const { data: agent } = await supabase
+              .from('users')
+              .select('webhook_url, webhook_secret')
+              .eq('id', delivery.user_id)
+              .single();
+
+            const targetUrl = delivery.webhook_url || agent?.webhook_url;
+            if (!targetUrl) {
+              await supabase.from('webhook_deliveries').update({ status: 'dead_lettered', updated_at: new Date().toISOString() }).eq('id', delivery.id);
+              continue;
+            }
+
+            const payload = typeof delivery.payload === 'string' ? delivery.payload : JSON.stringify(delivery.payload);
+            const sig = agent?.webhook_secret
+              ? require('crypto').createHmac('sha256', agent.webhook_secret).update(payload).digest('hex')
+              : null;
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (sig) headers['X-IRL-Signature'] = `sha256=${sig}`;
+
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+            let success = false;
+            try {
+              const resp = await fetch(targetUrl, { method: 'POST', headers, body: payload, signal: controller.signal });
+              success = resp.ok;
+            } finally {
+              clearTimeout(timeout);
+            }
+
+            const newAttemptCount = (delivery.attempt_count || 0) + 1;
+            if (success) {
+              await supabase.from('webhook_deliveries').update({ status: 'delivered', attempt_count: newAttemptCount, updated_at: new Date().toISOString() }).eq('id', delivery.id);
+            } else {
+              const backoffMs = Math.pow(2, newAttemptCount) * 60 * 1000; // 2, 4, 8, 16, 32 minutes
+              const nextRetry = new Date(Date.now() + backoffMs).toISOString();
+              const newStatus = newAttemptCount >= 5 ? 'dead_lettered' : 'failed';
+              await supabase.from('webhook_deliveries').update({ status: newStatus, attempt_count: newAttemptCount, next_retry_at: nextRetry, updated_at: new Date().toISOString() }).eq('id', delivery.id);
+            }
+          } catch (retryErr) {
+            console.warn(`[WebhookRetry] Failed to retry delivery ${delivery.id}:`, retryErr.message);
+          }
+        }
+      } catch (err) {
+        console.error('[WebhookRetry] Processor error:', err.message);
+      }
+    }
+    processWebhookRetries();
+    setInterval(processWebhookRetries, 2 * 60 * 1000); // every 2 minutes
+    console.log('   ✅ Webhook retry processor started (2min interval, max 5 attempts, exponential backoff)');
 
     // Start email queue processor (processes pending notification emails)
     if (_emailService) {
@@ -11709,6 +11916,84 @@ async function start() {
 
             console.log(`[TaskExpiry] Deadline passed notification sent for task ${task.id} (overdue by ${overdueSince}h)`);
           }
+        }
+
+        // Rule 5: Auto-cancel in_progress tasks >6h past deadline with no proof submitted
+        // This protects agents from workers who never submit — funds are refunded automatically.
+        const DEADLINE_MISS_GRACE_HOURS = 6;
+        const graceCutoff = new Date(Date.now() - DEADLINE_MISS_GRACE_HOURS * 60 * 60 * 1000).toISOString();
+
+        const { data: overdueInProgress } = await supabase
+          .from('tasks')
+          .select('id, agent_id, human_id, title, deadline, stripe_payment_intent_id, payment_method')
+          .eq('status', 'in_progress')
+          .not('deadline', 'is', null)
+          .lt('deadline', graceCutoff) // deadline passed more than grace period ago
+          .is('proof_submitted_at', null); // no proof ever submitted
+
+        for (const task of (overdueInProgress || [])) {
+          // Double-check no pending proof exists
+          const { count: proofCount } = await supabase
+            .from('task_proofs')
+            .select('id', { count: 'exact', head: true })
+            .eq('task_id', task.id);
+
+          if (proofCount > 0) continue; // proof exists — skip
+
+          // Cancel the task and refund escrow
+          const { data: cancelled } = await supabase
+            .from('tasks')
+            .update(cleanTaskData({
+              status: 'cancelled',
+              cancellation_reason: 'deadline_missed_no_proof',
+              cancelled_at: now,
+              updated_at: now,
+            }))
+            .eq('id', task.id)
+            .eq('status', 'in_progress') // guard against race conditions
+            .select('id')
+            .single();
+
+          if (!cancelled) continue;
+
+          await recordStatusChange(task.id, 'in_progress', 'cancelled', null, 'deadline_missed_no_proof');
+
+          // Refund Stripe auth hold if applicable
+          if (task.payment_method !== 'usdc' && task.stripe_payment_intent_id) {
+            try {
+              const { cancelEscrowHold } = require('./backend/services/stripeService');
+              await cancelEscrowHold(task.stripe_payment_intent_id);
+            } catch (refundErr) {
+              console.error(`[TaskExpiry] Failed to refund PI ${task.stripe_payment_intent_id} for auto-cancelled task ${task.id}:`, refundErr.message);
+            }
+          }
+
+          // Notify both parties
+          if (task.agent_id) {
+            await createNotification(
+              task.agent_id,
+              'task_cancelled',
+              'Task Auto-Cancelled: Deadline Missed',
+              `Task "${task.title}" was cancelled and escrow refunded — the worker missed the deadline without submitting proof.`,
+              `/tasks/${task.id}`
+            );
+            dispatchWebhook(task.agent_id, {
+              type: 'task_cancelled',
+              task_id: task.id,
+              data: { title: task.title, reason: 'deadline_missed_no_proof', refunded: true }
+            }).catch(() => {});
+          }
+          if (task.human_id) {
+            await createNotification(
+              task.human_id,
+              'task_cancelled',
+              'Task Cancelled: Deadline Missed',
+              `Task "${task.title}" was cancelled because you missed the deadline without submitting proof.`,
+              `/tasks/${task.id}`
+            );
+          }
+
+          console.log(`[TaskExpiry] Auto-cancelled task ${task.id} — in_progress deadline missed (>${DEADLINE_MISS_GRACE_HOURS}h, no proof)`);
         }
       } catch (err) {
         logger.error({ err }, 'Task expiry error');
@@ -12260,11 +12545,11 @@ app.patch('/api/tasks/:id', async (req, res) => {
 
   const { id } = req.params;
 
-  // Whitelist of fields that agents are allowed to update
+  // Whitelist of fields that agents are allowed to update (only while task is open)
   const ALLOWED_TASK_UPDATE_FIELDS = [
     'title', 'description', 'category', 'budget', 'location', 'latitude', 'longitude',
     'urgency', 'required_skills', 'is_remote', 'duration_hours', 'spots_total',
-    'deadline', 'instructions', 'payment_type'
+    'deadline', 'instructions', 'payment_type', 'max_revisions', 'output_schema'
   ];
 
   const updates = {};
@@ -12272,6 +12557,11 @@ app.patch('/api/tasks/:id', async (req, res) => {
     if (req.body[field] !== undefined) {
       updates[field] = req.body[field];
     }
+  }
+
+  // Clamp max_revisions to valid range
+  if (updates.max_revisions !== undefined) {
+    updates.max_revisions = Math.max(1, Math.min(parseInt(updates.max_revisions) || 2, 5));
   }
 
   if (Object.keys(updates).length === 0) {
