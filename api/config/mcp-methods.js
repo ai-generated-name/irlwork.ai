@@ -241,7 +241,30 @@ const MCP_METHODS = [
       category: { type: 'string', required: false, description: 'Dispute category (default: "quality_issue")' },
       evidence_urls: { type: 'array', required: false, description: 'Array of URLs to supporting evidence' }
     },
-    returns: 'Dispute object with id, task_id, reason, category, status, created_at'
+    returns: 'Object with success, status ("disputed"), dispute_id'
+  },
+  {
+    name: 'reject_task',
+    aliases: ['reject_proof'],
+    category: 'proofs',
+    description: 'Reject submitted proof and request a revision (max 2 revisions). Sends the human back to work with feedback.',
+    params: {
+      task_id: { type: 'string', required: true, description: 'UUID of the task' },
+      feedback: { type: 'string', required: true, description: 'Feedback explaining why the proof was rejected (min 10 chars)' },
+      extend_deadline_hours: { type: 'number', required: false, description: 'Hours to extend the deadline (default: 24)' }
+    },
+    returns: 'Object with success, message, revision_count, revisions_remaining, new_deadline'
+  },
+  {
+    name: 'cancel_task',
+    aliases: [],
+    category: 'tasks',
+    description: 'Cancel a task (pre-work only) or withdraw as a worker. Handles refunds automatically.',
+    params: {
+      task_id: { type: 'string', required: true, description: 'UUID of the task' },
+      cancellation_reason: { type: 'string', required: false, description: 'Reason for cancellation' }
+    },
+    returns: 'Object with success, tier or action, and refund status'
   },
   {
     name: 'complete_booking',

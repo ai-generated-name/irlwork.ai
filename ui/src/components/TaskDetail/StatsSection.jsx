@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Card } from '../ui';
 import API_URL from '../../config/api';
 
 export default function StatsSection({ taskId }) {
@@ -15,20 +16,22 @@ export default function StatsSection({ taskId }) {
   if (!stats) return null;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-3 sm:p-6 shadow-sm">
+    <Card className="p-3 sm:p-6">
       <h3 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-2.5 sm:mb-4">
         Stats
       </h3>
       <div className="grid grid-cols-2 gap-2 sm:gap-4">
         <div className="text-center py-2 sm:py-3 bg-[#FAFAF8] rounded-xl">
+          {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
           <div className="text-xl sm:text-2xl font-bold text-[#E8853D] font-mono">{stats.applications}</div>
           <div className="text-xs sm:text-sm text-[#333333] mt-0.5 sm:mt-1">Applications</div>
         </div>
         <div className="text-center py-2 sm:py-3 bg-[#FAFAF8] rounded-xl">
+          {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
           <div className="text-xl sm:text-2xl font-bold text-[#E8853D] font-mono">{stats.views}</div>
           <div className="text-xs sm:text-sm text-[#333333] mt-0.5 sm:mt-1">Views</div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

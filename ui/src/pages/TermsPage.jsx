@@ -1,7 +1,9 @@
 import React from 'react'
 import { FileText } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function TermsPage() {
+  usePageTitle('Terms of Service')
   const sectionStyle = {
     background: 'white',
     border: '1px solid var(--border-primary)',
@@ -153,11 +155,13 @@ export default function TermsPage() {
               all activity that occurs under your account. You must notify us immediately of any
               unauthorized access.
             </p>
+            {/* eslint-disable irlwork/no-title-case-ui-strings -- legal prose with proper nouns */}
             <p style={{ ...textStyle, marginBottom: 0 }}>
               We authenticate users through Google OAuth. By signing in, you authorize us to access
               your basic Google profile information (name, email, and profile photo) as described in
               our Privacy Policy.
             </p>
+            {/* eslint-enable irlwork/no-title-case-ui-strings */}
           </div>
 
           <div style={sectionStyle}>
@@ -237,6 +241,7 @@ export default function TermsPage() {
           </div>
 
           <div style={sectionStyle}>
+            {/* eslint-disable-next-line irlwork/no-title-case-ui-strings -- legal document heading */}
             <h2 style={headingStyle}>10. Disputes Between Users</h2>
             <p style={{ ...textStyle, marginBottom: 0 }}>
               irlwork.ai provides tools to help resolve disputes between task creators and workers,
@@ -297,11 +302,13 @@ export default function TermsPage() {
 
           <div style={sectionStyle}>
             <h2 style={headingStyle}>15. Governing Law</h2>
+            {/* eslint-disable irlwork/no-title-case-ui-strings -- legal prose with proper nouns */}
             <p style={{ ...textStyle, marginBottom: 0 }}>
               These Terms shall be governed by and construed in accordance with the laws of the
               United States. Any disputes arising from these Terms or your use of the Platform shall
               be resolved in the courts of competent jurisdiction.
             </p>
+            {/* eslint-enable irlwork/no-title-case-ui-strings */}
           </div>
 
           <div style={sectionStyle}>

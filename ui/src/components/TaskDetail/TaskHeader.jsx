@@ -2,42 +2,46 @@
 // Displays task title, description, requirements, skills, and metadata
 
 import React from 'react';
-import { CalendarDays, Timer, MapPin, Users } from 'lucide-react';
+import { CalendarDays, Timer, MapPin, Users, Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, Paperclip, Tag } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import { Card } from '../ui';
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  'data-collection': '📊',
-  errands: '🏃',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  other: '📋',
+  delivery: Package,
+  photography: Camera,
+  'data-collection': BarChart3,
+  errands: Footprints,
+  'tech-setup': Monitor,
+  translation: Globe,
+  verification: CheckCircle,
+  other: ClipboardList,
 };
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: 'bg-[rgba(232,133,61,0.1)] text-[#E8853D]' },
   pending_acceptance: { label: 'Pending Acceptance', color: 'bg-[rgba(254, 188, 46, 0.1)] text-[#FEBC2E]' },
   accepted: { label: 'Accepted', color: 'bg-[#E8D5F0] text-[#6B21A8]' },
+  assigned: { label: 'Assigned', color: 'bg-[rgba(59,130,246,0.1)] text-[#3B82F6]' },
   in_progress: { label: 'In Progress', color: 'bg-[rgba(254, 188, 46, 0.1)] text-[#FEBC2E]' },
   pending_review: { label: 'Pending Review', color: 'bg-[#FFE4DB] text-[#D4703A]' },
+  rejected: { label: 'Rejected', color: 'bg-[rgba(255,95,87,0.1)] text-[#FF5F57]' },
   completed: { label: 'Completed', color: 'bg-[rgba(22, 163, 74, 0.08)] text-[#16A34A]' },
   paid: { label: 'Paid', color: 'bg-[#F5F3F0] text-[#333333]' },
-  disputed: { label: 'Disputed', color: 'bg-[rgba(255, 95, 87, 0.1)] text-[#FF5F57]' }
+  disputed: { label: 'Disputed', color: 'bg-[rgba(255, 95, 87, 0.1)] text-[#FF5F57]' },
+  cancelled: { label: 'Cancelled', color: 'bg-[rgba(0,0,0,0.06)] text-[#8A8A8A]' },
 };
 
 export default function TaskHeader({ task }) {
   if (!task) return null;
 
-  const statusConfig = STATUS_CONFIG[task.status] || STATUS_CONFIG.open;
+  const statusConfig = STATUS_CONFIG[task.status] || { label: task.status || 'Unknown', color: 'bg-[rgba(0,0,0,0.06)] text-[#8A8A8A]' };
   const isBounty = task.task_type === 'bounty';
   const quantity = task.quantity || 1;
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm">
+    <Card className="p-4 sm:p-6">
       {/* Status Badge + Task ID + Type Badges */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
         <span className={`inline-block px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium ${statusConfig.color}`}>
@@ -54,11 +58,13 @@ export default function TaskHeader({ task }) {
             {spotsFilled}/{quantity} filled
           </span>
         )}
+        {/* eslint-disable irlwork/no-orange-outside-button -- applicant count badge uses brand color */}
         {task.applicant_count > 0 && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium" style={{ background: 'rgba(0, 0, 0, 0.08)', color: '#E8853D' }}>
             {task.applicant_count} applicant{task.applicant_count !== 1 ? 's' : ''}
           </span>
         )}
+        {/* eslint-enable irlwork/no-orange-outside-button */}
         {/* Compact budget shown inline on mobile only */}
         <span className="lg:hidden text-lg font-bold text-[#16A34A] font-mono">
           ${task.budget} <span className="text-xs font-normal text-[#888888]">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
@@ -130,7 +136,7 @@ export default function TaskHeader({ task }) {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#F5F2ED] text-[#0F4C5C] hover:bg-[#EDE9E3] transition-colors text-xs sm:text-sm"
                 >
-                  <span>📎</span>
+                  <Paperclip size={14} />
                   <span className="truncate max-w-[200px]">{att.filename}</span>
                   {att.size > 0 && <span className="text-[#8A8A8A]">({(att.size / 1024).toFixed(0)}KB)</span>}
                 </a>
@@ -185,7 +191,7 @@ export default function TaskHeader({ task }) {
         {/* Category */}
         {task.category && (
           <div className="flex items-center gap-1 sm:gap-2">
-            <span>🏷️</span>
+            <Tag size={14} />
             <span>{task.category}</span>
           </div>
         )}
@@ -196,12 +202,13 @@ export default function TaskHeader({ task }) {
         <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[rgba(0,0,0,0.08)]">
           <h3 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-1.5 sm:mb-2">Skills Needed</h3>
           <div className="flex flex-wrap gap-2">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium bg-[rgba(232,133,61,0.1)] text-[#E8853D]">
-              {CATEGORY_ICONS[task.category] || '📋'} {task.category.replace('-', ' ')}
+              {(() => { const Icon = CATEGORY_ICONS[task.category] || ClipboardList; return <Icon size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />; })()} {task.category.replace('-', ' ')}
             </span>
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

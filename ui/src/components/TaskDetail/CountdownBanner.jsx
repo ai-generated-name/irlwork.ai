@@ -17,12 +17,14 @@ export default function CountdownBanner({ disputeWindowInfo }) {
   const seconds = Math.floor(((hours_remaining - totalHours) * 60 - minutes) * 60);
 
   return (
+    // eslint-disable-next-line irlwork/no-orange-outside-button -- border uses brand color
     <div className="bg-gradient-to-r from-[rgba(224,122,95,0.15)] to-[rgba(217,119,6,0.15)] border-l-4 border-[#E8853D] rounded-xl p-4 mb-6">
       <div className="flex items-center gap-4">
         <div className="text-3xl">⏰</div>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
             <h3 className="text-lg font-bold text-[#1A1A1A]">Auto-Release Countdown</h3>
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
             <div className="font-mono text-2xl font-bold text-[#E8853D]">
               {totalHours}h {minutes}m {seconds}s
             </div>

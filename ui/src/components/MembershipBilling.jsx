@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Crown, Check, CreditCard, ExternalLink, Loader2, ArrowRight, Shield, Zap, Sparkles, Receipt, X } from 'lucide-react'
+import { Button, EmptyState } from './ui'
 import { supabase } from '../context/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'https://api.irlwork.ai/api'
@@ -113,7 +114,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
     const params = new URLSearchParams(window.location.search)
     const subStatus = params.get('subscription')
     if (subStatus === 'success') {
-      toast?.success('Subscription activated! Welcome to your new plan.')
+      toast?.success('Your subscription has been activated.')
       // Clean up URL
       params.delete('subscription')
       params.delete('session_id')
@@ -239,7 +240,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to cancel subscription')
-      toast?.success('Subscription will cancel at the end of your billing period')
+      toast?.success('Your subscription will cancel at the end of your billing period.')
       await fetchSubscription()
       if (onUserUpdate) onUserUpdate({ subscription_cancel_at_period_end: true })
     } catch (err) {
@@ -259,7 +260,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to resume subscription')
-      toast?.success('Subscription resumed! You\'ll continue to be billed as normal.')
+      toast?.success('Your subscription has been resumed.')
       await fetchSubscription()
       if (onUserUpdate) onUserUpdate({ subscription_cancel_at_period_end: false })
     } catch (err) {
@@ -298,7 +299,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
       {/* ============ CURRENT PLAN STATUS ============ */}
       {currentTier !== 'free' && (
         <div className="dashboard-v4-form" style={{ maxWidth: 800, marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>Current Plan</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>Current plan</h2>
           <div style={{
             padding: 20,
             background: 'var(--bg-tertiary)',
@@ -310,7 +311,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                   <Crown size={18} style={{ color: 'var(--orange-500)' }} />
                   <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {PLANS.find(p => p.id === currentTier)?.name || currentTier} Plan
+                    {PLANS.find(p => p.id === currentTier)?.name || currentTier} plan
                   </span>
                   {isActive && !isCancelling && (
                     <span className="v4-badge v4-badge-success" style={{ fontSize: 11 }}>Active</span>
@@ -335,35 +336,35 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {isCancelling ? (
-                  <button
-                    className="v4-btn v4-btn-primary"
-                    style={{ fontSize: 13, padding: '8px 16px' }}
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={handleResume}
                     disabled={actionLoading === 'resume'}
                   >
-                    {actionLoading === 'resume' ? <Loader2 size={14} className="spin" /> : 'Resume Subscription'}
-                  </button>
+                    {actionLoading === 'resume' ? <Loader2 size={14} className="spin" /> : 'Resume subscription'}
+                  </Button>
                 ) : (
-                  <button
-                    className="v4-btn v4-btn-secondary"
-                    style={{ fontSize: 13, padding: '8px 16px', color: 'var(--error)', borderColor: 'rgba(239,68,68,0.3)' }}
+                  <Button
+                    variant="destructive"
+                    size="sm"
                     onClick={handleCancel}
                     disabled={actionLoading === 'cancel'}
                   >
-                    {actionLoading === 'cancel' ? <Loader2 size={14} className="spin" /> : 'Cancel Plan'}
-                  </button>
+                    {actionLoading === 'cancel' ? <Loader2 size={14} className="spin" /> : 'Cancel plan'}
+                  </Button>
                 )}
-                <button
-                  className="v4-btn v4-btn-secondary"
-                  style={{ fontSize: 13, padding: '8px 16px' }}
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={handleOpenPortal}
                   disabled={actionLoading === 'portal'}
                 >
                   {actionLoading === 'portal'
                     ? <Loader2 size={14} className="spin" />
-                    : <><CreditCard size={14} style={{ marginRight: 4 }} /> Manage Billing</>
+                    : <><CreditCard size={14} style={{ marginRight: 4 }} /> Manage billing</>
                   }
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -374,7 +375,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
       <div className="dashboard-v4-form" style={{ maxWidth: 800, marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-            {currentTier === 'free' ? 'Upgrade Your Plan' : 'Available Plans'}
+            {currentTier === 'free' ? 'Upgrade your plan' : 'Available plans'}
           </h2>
 
           {/* Billing interval toggle */}
@@ -477,7 +478,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                   }}>
-                    Most Popular
+                    Most popular
                   </div>
                 )}
 
@@ -497,7 +498,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                   }}>
-                    Current Plan
+                    Current plan
                   </div>
                 )}
 
@@ -512,17 +513,17 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 <div style={{ marginBottom: 16 }}>
                   {plan.id === 'free' ? (
                     <div>
-                      <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>$0</span>
+                      <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'DM Mono', monospace" }}>$0</span>
                       <span style={{ fontSize: 14, color: 'var(--text-tertiary)', marginLeft: 4 }}>/forever</span>
                     </div>
                   ) : (
                     <div>
-                      <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
+                      <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'DM Mono', monospace" }}>
                         ${formatCents(monthlyEquivalent)}
                       </span>
                       <span style={{ fontSize: 14, color: 'var(--text-tertiary)', marginLeft: 4 }}>/mo</span>
                       {billingInterval === 'annual' && (
-                        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: "'DM Mono', monospace" }}>
                           ${formatCents(price)}/year
                         </p>
                       )}
@@ -556,33 +557,29 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
 
                 {/* Action button */}
                 {isCurrent ? (
-                  <button
-                    className="v4-btn v4-btn-secondary"
-                    style={{ width: '100%', fontSize: 13, cursor: 'default', opacity: 0.6 }}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
                     disabled
                   >
-                    Current Plan
-                  </button>
+                    Current plan
+                  </Button>
                 ) : plan.id === 'free' && currentTier !== 'free' ? (
-                  <button
-                    className="v4-btn v4-btn-secondary"
-                    style={{ width: '100%', fontSize: 13 }}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
                     onClick={handleCancel}
                     disabled={!!actionLoading}
                   >
-                    Downgrade to Free
-                  </button>
+                    Downgrade to free
+                  </Button>
                 ) : plan.id !== 'free' ? (
-                  <button
-                    className="v4-btn v4-btn-primary"
-                    style={{
-                      width: '100%',
-                      fontSize: 13,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                    }}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full gap-1.5"
                     onClick={() => currentTier !== 'free' ? handleChangePlan(plan.id) : handleUpgrade(plan.id)}
                     disabled={actionLoading === `checkout-${plan.id}`}
                   >
@@ -594,7 +591,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                         <ArrowRight size={14} />
                       </>
                     )}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             )
@@ -623,7 +620,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
         >
           <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Receipt size={18} />
-            Billing History
+            Billing history
           </h2>
           <span style={{
             fontSize: 12,
@@ -641,13 +638,13 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
             {loadingBilling ? (
               <div style={{ padding: 32, textAlign: 'center' }}>
                 <Loader2 size={20} className="spin" style={{ color: 'var(--text-tertiary)' }} />
-                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 8 }}>Loading billing history...</p>
+                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 8 }}>Loading billing history</p>
               </div>
             ) : billingHistory.length === 0 ? (
-              <div style={{ padding: 24, textAlign: 'center' }}>
-                <Receipt size={24} style={{ color: 'var(--text-tertiary)', marginBottom: 8 }} />
-                <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No billing history yet</p>
-              </div>
+              <EmptyState
+                icon={<Receipt size={32} />}
+                title="No billing history yet"
+              />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {billingHistory.map((invoice) => (
@@ -679,7 +676,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                       </p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: "'DM Mono', monospace" }}>
                         ${formatCents(invoice.amount_cents || 0)}
                       </span>
                       <span
@@ -714,17 +711,17 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
             {/* Manage billing link */}
             {currentTier !== 'free' && (
               <div style={{ marginTop: 16, textAlign: 'center' }}>
-                <button
-                  className="v4-btn v4-btn-secondary"
-                  style={{ fontSize: 13 }}
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={handleOpenPortal}
                   disabled={actionLoading === 'portal'}
                 >
                   {actionLoading === 'portal'
                     ? <Loader2 size={14} className="spin" />
-                    : <><ExternalLink size={14} style={{ marginRight: 4 }} /> Manage in Stripe</>
+                    : <><ExternalLink size={14} style={{ marginRight: 4 }} /> Manage billing in Stripe</>
                   }
-                </button>
+                </Button>
               </div>
             )}
           </div>

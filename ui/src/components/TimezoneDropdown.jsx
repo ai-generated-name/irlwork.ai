@@ -171,6 +171,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
                   background: opt.value === value ? 'rgba(232,133,61,0.06)' : 'none',
                   cursor: 'pointer',
                   fontSize: 13,
+                  // eslint-disable-next-line irlwork/no-orange-outside-button -- selected item uses brand color
                   color: opt.value === value ? '#E8853D' : 'var(--text-primary, #1A1A1A)',
                   fontWeight: opt.value === value ? 500 : 400,
                   textAlign: 'left',

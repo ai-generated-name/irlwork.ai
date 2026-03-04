@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users } from 'lucide-react';
+import { Users, Check, Clock, RotateCcw } from 'lucide-react';
+import { Card, Button } from '../ui';
 import EscrowBadge from '../EscrowBadge';
 import API_URL from '../../config/api';
 
@@ -37,24 +38,24 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
   const getStatusMessage = () => {
     switch (escrowStatus) {
       case 'deposited':
-        return { icon: '✓', text: 'Funds secured in escrow. Work can begin safely.', color: 'text-[#16A34A]' };
+        return { icon: <Check size={18} />, text: 'Funds secured in escrow. Work can begin safely.', color: 'text-[#16A34A]' };
       case 'released':
-        return { icon: '✓', text: 'Payment has been released to you.', color: 'text-[#16A34A]' };
+        return { icon: <Check size={18} />, text: 'Payment has been released to you.', color: 'text-[#16A34A]' };
       case 'unfunded':
-        return { icon: '⏳', text: 'Card will be charged when you accept. No charge until then.', color: 'text-[#FEBC2E]' };
+        return { icon: <Clock size={18} />, text: 'Card will be charged when you accept. No charge until then.', color: 'text-[#FEBC2E]' };
       case 'pending':
-        return { icon: '⏳', text: 'Waiting for agent to fund escrow...', color: 'text-[#FEBC2E]' };
+        return { icon: <Clock size={18} />, text: 'Waiting for agent to fund escrow...', color: 'text-[#FEBC2E]' };
       case 'refunded':
-        return { icon: '↩', text: 'Funds returned to agent.', color: 'text-[#333333]' };
+        return { icon: <RotateCcw size={18} />, text: 'Funds returned to agent.', color: 'text-[#333333]' };
       default:
-        return { icon: '⏳', text: 'Escrow status pending...', color: 'text-[#333333]' };
+        return { icon: <Clock size={18} />, text: 'Escrow status pending...', color: 'text-[#333333]' };
     }
   };
 
   const statusMessage = getStatusMessage();
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm">
+    <Card className="p-4 sm:p-6">
       {/* Budget amount */}
       <div className="text-center mb-3 sm:mb-4">
         <div className="flex items-baseline justify-center gap-1">
@@ -107,20 +108,28 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
 
       {/* Apply button — public view only */}
       {canApply && (
-        <button
+        <Button
+          variant="primary"
+          size="lg"
+          className="w-full mt-3 sm:mt-4"
           onClick={onApply}
-          className="w-full mt-3 sm:mt-4 py-2.5 sm:py-3 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm sm:text-base shadow-md"
         >
           Apply for This Task
-        </button>
+        </Button>
       )}
 
       {showSignIn && (
         <a
           href="/auth"
-          className="block w-full mt-3 sm:mt-4 py-2.5 sm:py-3 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm sm:text-base shadow-md text-center no-underline"
+          className="block w-full mt-3 sm:mt-4 no-underline"
         >
-          Sign In to Apply
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+          >
+            Sign In to Apply
+          </Button>
         </a>
       )}
 
@@ -180,6 +189,6 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

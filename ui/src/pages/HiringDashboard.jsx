@@ -1,8 +1,13 @@
 import { useState, useMemo } from 'react'
+import { Check } from 'lucide-react'
 import AgentOnboardingWizard from '../components/AgentOnboardingWizard'
+import { navigate } from '../utils/navigate'
 import HowPaymentsWork from '../components/HowPaymentsWork'
+import { usePageTitle } from '../hooks/usePageTitle'
+import { Button, Card, EmptyState, PageHeader } from '../components/ui'
 
 export default function HiringDashboard({ user, postedTasks, onNavigate }) {
+  usePageTitle('Dashboard')
   const safeTasks = Array.isArray(postedTasks) ? postedTasks : []
 
   const openTasks = safeTasks.filter(t => t.status === 'open')
@@ -46,15 +51,17 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
       />
 
       {/* Header */}
-      <div className="hiring-dash-header">
-        <h1 className="hiring-dash-greeting">Dashboard</h1>
-        <button className="hiring-dash-create-btn" onClick={() => onNavigate?.('create')}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Create Task
-        </button>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        action={
+          <Button variant="primary" size="md" onClick={() => onNavigate?.('create')} className="gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Create task
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="hiring-dash-stats">
@@ -65,7 +72,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             </svg>
           </div>
           <div>
-            <div className="hiring-dash-stat-label">Total Spent</div>
+            <div className="hiring-dash-stat-label">Total spent</div>
             <div className="hiring-dash-stat-value">${totalSpent}</div>
           </div>
         </div>
@@ -100,7 +107,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             </svg>
           </div>
           <div>
-            <div className="hiring-dash-stat-label">In Review</div>
+            <div className="hiring-dash-stat-label">In review</div>
             <div className="hiring-dash-stat-value">{reviewTasks.length}</div>
           </div>
         </div>
@@ -108,13 +115,8 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
 
       {/* Getting Started Checklist */}
       {showChecklist && (
-        <div className="hiring-dash-checklist" style={{
-          background: 'white',
-          border: '1px solid rgba(26,26,26,0.08)',
-          borderRadius: 16,
-          padding: 'var(--space-5)',
-        }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Getting Started</h3>
+        <Card padding="lg" className="hiring-dash-checklist">
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Getting started</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <button onClick={() => onNavigate?.('payments')} style={{
               display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
@@ -125,7 +127,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                 background: hasPaymentMethod ? '#10B981' : '#D1D5DB',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700
-              }}>{hasPaymentMethod ? '✓' : '1'}</div>
+              }}>{hasPaymentMethod ? <Check size={14} /> : '1'}</div>
               <div>
                 <p style={{ fontWeight: 500, fontSize: 14, color: hasPaymentMethod ? '#059669' : 'var(--text-primary)' }}>Add a payment method</p>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Required to fund tasks and pay workers</p>
@@ -143,7 +145,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                 background: hasPostedTask ? '#10B981' : '#D1D5DB',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700
-              }}>{hasPostedTask ? '✓' : '2'}</div>
+              }}>{hasPostedTask ? <Check size={14} /> : '2'}</div>
               <div>
                 <p style={{ fontWeight: 500, fontSize: 14, color: hasPostedTask ? '#059669' : 'var(--text-primary)' }}>Post your first task</p>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Describe what you need done and set a budget</p>
@@ -161,7 +163,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                 background: hasBrowsedHumans ? '#10B981' : '#D1D5DB',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700
-              }}>{hasBrowsedHumans ? '✓' : '3'}</div>
+              }}>{hasBrowsedHumans ? <Check size={14} /> : '3'}</div>
               <div>
                 <p style={{ fontWeight: 500, fontSize: 14, color: hasBrowsedHumans ? '#059669' : 'var(--text-primary)' }}>Browse available humans</p>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Find skilled workers near you or worldwide</p>
@@ -171,21 +173,21 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
               </svg>
             </button>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Tasks needing action */}
       {reviewTasks.length > 0 && (
         <div className="hiring-dash-attention">
-          <h3 className="hiring-dash-section-title">Needs Review</h3>
+          <h3 className="hiring-dash-section-title">Needs review</h3>
           <div className="hiring-dash-attention-items">
             {reviewTasks.map(task => (
               <button
                 key={task.id}
                 className="hiring-dash-attention-item"
-                onClick={() => window.location.href = `/tasks/${task.id}`}
+                onClick={() => navigate(`/tasks/${task.id}`)}
               >
-                <span className="hiring-dash-attention-badge">Pending Review</span>
+                <span className="hiring-dash-attention-badge">Pending review</span>
                 <span className="hiring-dash-attention-task-title">{task.title}</span>
                 <span className="hiring-dash-attention-meta">
                   {task.assignee?.name || 'Worker'} &middot; ${task.budget}
@@ -202,7 +204,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
       {/* Active work */}
       {inProgressTasks.length > 0 && (
         <div className="hiring-dash-active">
-          <h3 className="hiring-dash-section-title">Active Work</h3>
+          <h3 className="hiring-dash-section-title">Active work</h3>
           <div className="hiring-dash-attention-items">
             {inProgressTasks.map(task => {
               let deadlineBadge = null;
@@ -211,8 +213,9 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                 const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
                 let label, bg, color;
-                if (diffMs > 0) {
-                if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
+                if (diffMs <= 0) {
+                  label = 'OVERDUE'; bg = 'rgba(255, 95, 87, 0.15)'; color = '#FF5F57';
+                } else if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#B45309'; }
                 else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
@@ -222,15 +225,14 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                     {label}
                   </span>
                 );
-                }
               }
               return (
                 <button
                   key={task.id}
                   className="hiring-dash-attention-item"
-                  onClick={() => window.location.href = `/tasks/${task.id}`}
+                  onClick={() => navigate(`/tasks/${task.id}`)}
                 >
-                  <span className="hiring-dash-attention-badge hiring-dash-attention-badge--active">In Progress</span>
+                  <span className="hiring-dash-attention-badge hiring-dash-attention-badge--active">In progress</span>
                   {deadlineBadge}
                   <span className="hiring-dash-attention-task-title">{task.title}</span>
                   <span className="hiring-dash-attention-meta">
@@ -249,7 +251,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
       {/* Open tasks awaiting applicants */}
       {openTasks.length > 0 && (
         <div className="hiring-dash-open">
-          <h3 className="hiring-dash-section-title">Awaiting Applicants</h3>
+          <h3 className="hiring-dash-section-title">Awaiting applicants</h3>
           <div className="hiring-dash-attention-items">
             {openTasks.map(task => {
               let deadlineBadge = null;
@@ -293,42 +295,38 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
 
       {/* Empty state */}
       {safeTasks.length === 0 && !showChecklist && (
-        <div className="hiring-dash-empty">
-          <div className="hiring-dash-empty-icon">
+        <EmptyState
+          icon={
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
               <path d="M2 17l10 5 10-5" />
               <path d="M2 12l10 5 10-5" />
             </svg>
-          </div>
-          <h3 className="hiring-dash-empty-title">No tasks posted yet</h3>
-          <p className="hiring-dash-empty-text">Post a task and get matched with verified humans near you.</p>
-          <button onClick={() => onNavigate?.('posted')} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Create Task
-          </button>
-        </div>
+          }
+          title="No tasks posted yet"
+          description="Your tasks will appear here when you post one."
+          action={
+            <Button variant="secondary" size="md" onClick={() => onNavigate?.('posted')} className="gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Create task
+            </Button>
+          }
+        />
       )}
 
       {/* Recent Activity */}
       <div style={{ marginBottom: 24 }}>
-        <h3 className="hiring-dash-section-title" style={{ marginBottom: 12 }}>Recent Activity</h3>
+        <h3 className="hiring-dash-section-title" style={{ marginBottom: 12 }}>Recent activity</h3>
         {safeTasks.length === 0 ? (
-          <div style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: '24px 16px', textAlign: 'center'
-          }}>
+          <Card className="text-center" style={{ padding: '24px 16px' }}>
             <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>No recent activity</p>
-          </div>
+          </Card>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {safeTasks.slice(0, 5).map(task => (
-              <div key={task.id} style={{
-                background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-                padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12
-              }}>
+              <Card key={task.id} padding="sm" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                   background: task.status === 'open' ? '#F59E0B' : task.status === 'in_progress' ? '#3B82F6' : task.status === 'pending_review' ? '#8B5CF6' : '#10B981'
@@ -336,11 +334,11 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                    {task.status === 'open' ? 'Awaiting applicants' : task.status === 'in_progress' ? `Assigned to ${task.assignee?.name || 'worker'}` : task.status === 'pending_review' ? 'Pending your review' : task.status === 'paid' ? 'Payment released' : 'Completed'}
+                    {task.status === 'open' ? 'Awaiting applicants' : task.status === 'in_progress' ? `Assigned to ${task.assignee?.name || 'worker'}` : task.status === 'pending_review' ? 'Pending your review' : task.status === 'paid' ? 'Payment released' : 'Task completed'}
                     {task.budget && <> &middot; ${task.budget}</>}
                   </p>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}
@@ -348,61 +346,41 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
 
       {/* Quick Actions — Card Grid */}
       <div style={{ marginBottom: 24 }}>
-        <h3 className="hiring-dash-section-title" style={{ marginBottom: 12 }}>Quick Actions</h3>
+        <h3 className="hiring-dash-section-title" style={{ marginBottom: 12 }}>Quick actions</h3>
         <div className="hiring-dash-quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-          <button onClick={() => onNavigate?.('posted')} style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'}
-          onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4845F" strokeWidth="2" style={{ marginBottom: 8 }}>
+          <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('posted')} className="text-left cursor-pointer">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>My Tasks</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>View and manage posted tasks</p>
-          </button>
-          <button onClick={() => onNavigate?.('browse')} style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'}
-          onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4845F" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>My tasks</p>
+            <p style={{ fontSize: 12, color: '#6B7280' }}>View and manage posted tasks</p>
+          </Card>
+          <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('browse')} className="text-left cursor-pointer">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>Browse Humans</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Find skilled workers for your tasks</p>
-          </button>
-          <button onClick={() => onNavigate?.('messages')} style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'}
-          onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4845F" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>Browse humans</p>
+            <p style={{ fontSize: 12, color: '#6B7280' }}>Find skilled workers for your tasks</p>
+          </Card>
+          <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('messages')} className="text-left cursor-pointer">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>Messages</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Chat with workers and applicants</p>
-          </button>
-          <button onClick={() => setShowPaymentsExplainer(true)} style={{
-            background: 'white', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12,
-            padding: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'}
-          onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4845F" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>Messages</p>
+            <p style={{ fontSize: 12, color: '#6B7280' }}>Chat with workers and applicants</p>
+          </Card>
+          <Card interactive hoverEffect="shadow" padding="md" onClick={() => setShowPaymentsExplainer(true)} className="text-left cursor-pointer">
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>How Payments Work</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Learn about escrow and payouts</p>
-          </button>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>How payments work</p>
+            <p style={{ fontSize: 12, color: '#6B7280' }}>Learn about escrow and payouts</p>
+          </Card>
         </div>
       </div>
     </div>

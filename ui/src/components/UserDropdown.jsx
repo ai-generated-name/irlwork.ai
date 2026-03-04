@@ -62,20 +62,20 @@ export default function UserDropdown({ user, onLogout, onNavigate }) {
             onClick={() => { onNavigate?.('profile'); setIsOpen(false) }}
             className="user-dropdown-v4-menu-item"
           >
-            <span>Profile</span>
+            <span>View profile</span>
           </button>
           <button
             onClick={() => { onNavigate?.('settings'); setIsOpen(false) }}
             className="user-dropdown-v4-menu-item"
           >
-            <span>Settings</span>
+            <span>Account settings</span>
           </button>
           <div className="user-dropdown-v4-divider" />
           <button
             onClick={() => { onLogout(); setIsOpen(false) }}
             className="user-dropdown-v4-menu-item danger"
           >
-            <span>Sign Out</span>
+            <span>Sign out</span>
           </button>
         </div>
       )}

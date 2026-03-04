@@ -1,29 +1,32 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ClipboardList, Shield } from 'lucide-react';
+import { ClipboardList, Shield, Package, Camera, BarChart3, Footprints, Sparkles, Truck, Wrench, Search, Monitor, Languages, CheckCircle } from 'lucide-react';
 
+import { getErrorMessage } from '../utils/apiErrors';
 import API_URL from '../config/api';
 import { trackEvent } from '../utils/analytics';
+import ConfirmationModal from './ConfirmationModal';
+import { Button } from './ui';
 
 const PLATFORM_FEE_PERCENT = 15;
 const PREMIUM_FEE_PERCENT = 10;
 
 const CATEGORY_ICONS = {
-  delivery: '📦',
-  photography: '📸',
-  data_collection: '📊',
-  'data-collection': '📊',
-  errands: '🏃',
-  cleaning: '🧹',
-  moving: '🚚',
-  manual_labor: '💪',
-  inspection: '🔍',
-  tech: '💻',
-  'tech-setup': '💻',
-  translation: '🌐',
-  verification: '✅',
-  general: '📋',
-  other: '📋',
+  delivery: Package,
+  photography: Camera,
+  data_collection: BarChart3,
+  'data-collection': BarChart3,
+  errands: Footprints,
+  cleaning: Sparkles,
+  moving: Truck,
+  manual_labor: Wrench,
+  inspection: Search,
+  tech: Monitor,
+  'tech-setup': Monitor,
+  translation: Languages,
+  verification: CheckCircle,
+  general: ClipboardList,
+  other: ClipboardList,
 };
 
 export default function QuickApplyModal({
@@ -41,6 +44,7 @@ export default function QuickApplyModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [showCounterConfirm, setShowCounterConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -49,32 +53,41 @@ export default function QuickApplyModal({
     }
   }, [isOpen]);
 
-  // Fee calculation — dynamically updates when counter offer changes
-  const feeBreakdown = useMemo(() => {
-    if (!task) return null;
-    const baseAmount = counterOffer ? parseFloat(counterOffer) : Number(task.budget) || 0;
-    if (isNaN(baseAmount) || baseAmount <= 0) return null;
+  if (!isOpen || !task) return null;
 
+  // Fee calculation
+  const baseAmount = counterOffer ? parseFloat(counterOffer) : Number(task.budget) || 0;
+  const feeBreakdown = (!isNaN(baseAmount) && baseAmount > 0) ? (() => {
     const feeRate = isPremium ? PREMIUM_FEE_PERCENT : PLATFORM_FEE_PERCENT;
     const fee = Math.round(baseAmount * feeRate) / 100;
     const payout = Math.round((baseAmount - fee) * 100) / 100;
-
-    // Calculate what Premium users would earn (for upsell)
     const premiumFee = Math.round(baseAmount * PREMIUM_FEE_PERCENT) / 100;
     const premiumPayout = Math.round((baseAmount - premiumFee) * 100) / 100;
     const savings = Math.round((premiumPayout - payout) * 100) / 100;
-
     return { baseAmount, feeRate, fee, payout, premiumPayout, savings };
-  }, [task, counterOffer, isPremium]);
-
-  if (!isOpen || !task) return null;
+  })() : null;
 
   const currencyLabel = task.payment_method === 'stripe' ? 'USD' : 'USDC';
   const canSubmit = whyFit.trim().length > 0 && availability.trim().length > 0;
 
+  // Check if counter offer differs significantly from budget
+  const counterOfferDiffPercent = (() => {
+    if (!counterOffer || !task) return 0;
+    const budget = Number(task.budget) || 0;
+    if (budget === 0) return 0;
+    return Math.abs((parseFloat(counterOffer) - budget) / budget) * 100;
+  })();
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!canSubmit) return;
+
+    // If counter offer differs by >20%, ask for confirmation first
+    if (counterOffer && counterOfferDiffPercent > 20 && !showCounterConfirm) {
+      setShowCounterConfirm(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -96,10 +109,11 @@ export default function QuickApplyModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to apply');
+        throw new Error(getErrorMessage(data, 'Failed to apply'));
       }
 
       trackEvent('task_applied', { task_id: task.id, source: 'quick_apply' });
+      setShowCounterConfirm(false);
       setSuccess(true);
       setTimeout(() => {
         onSuccess?.(task.id);
@@ -119,10 +133,11 @@ export default function QuickApplyModal({
     setCounterOffer('');
     setError(null);
     setSuccess(false);
+    setShowCounterConfirm(false);
     onClose();
   };
 
-  const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={16} />;
+  const CategoryIcon = CATEGORY_ICONS[task.category] || ClipboardList;
 
   return createPortal(
     <div className="quick-apply-modal-overlay" onClick={handleClose}>
@@ -143,20 +158,20 @@ export default function QuickApplyModal({
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <h3>Application Sent!</h3>
+            <h3>Application sent</h3>
             <p>The task poster will review your application.</p>
           </div>
         ) : (
           <>
             {/* Header */}
             <div className="quick-apply-modal-header">
-              <h2>Apply to Task</h2>
+              <h2>Apply to task</h2>
             </div>
 
             {/* Task Summary */}
             <div className="quick-apply-modal-task">
               <div className="quick-apply-modal-task-category">
-                <span>{categoryIcon}</span>
+                <span><CategoryIcon size={16} /></span>
                 <span>{task.category?.replace('-', ' ') || 'General'}</span>
               </div>
               <h3 className="quick-apply-modal-task-title">{task.title}</h3>
@@ -171,6 +186,24 @@ export default function QuickApplyModal({
                 )}
               </div>
             </div>
+
+            {/* Deadline warning — non-blocking */}
+            {task.deadline && (() => {
+              const hoursLeft = (new Date(task.deadline) - new Date()) / (1000 * 60 * 60);
+              if (hoursLeft > 0 && hoursLeft <= 4) {
+                return (
+                  <div style={{
+                    background: 'rgba(254, 188, 46, 0.15)', border: '1px solid #FEBC2E',
+                    borderRadius: 10, padding: '10px 14px', marginBottom: 4, fontSize: 13,
+                    color: '#92400E', display: 'flex', alignItems: 'center', gap: 8
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FEBC2E" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                    This task is due in {hoursLeft < 1 ? 'less than 1 hour' : `${Math.round(hoursLeft)} hour${Math.round(hoursLeft) !== 1 ? 's' : ''}`}. Make sure you can complete it in time.
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Form */}
             <form onSubmit={handleSubmit}>
@@ -296,33 +329,59 @@ export default function QuickApplyModal({
               )}
 
               <div className="quick-apply-modal-actions">
-                <button
+                <Button
                   type="button"
-                  className="quick-apply-modal-btn secondary"
+                  variant="secondary"
+                  size="lg"
                   onClick={handleClose}
                   disabled={loading}
                 >
-                  Cancel
-                </button>
-                <button
+                  Cancel application
+                </Button>
+                <Button
                   type="submit"
-                  className="quick-apply-modal-btn primary"
+                  variant="primary"
+                  size="lg"
                   disabled={loading || !canSubmit}
+                  className="gap-2"
                 >
                   {loading ? (
                     <>
                       <span className="quick-apply-modal-spinner" />
-                      Applying...
+                      Submitting...
                     </>
                   ) : (
-                    'Apply Now'
+                    'Submit application'
                   )}
-                </button>
+                </Button>
               </div>
             </form>
           </>
         )}
       </div>
+      {/* Counter offer confirmation */}
+      <ConfirmationModal
+        isOpen={showCounterConfirm}
+        onConfirm={handleSubmit}
+        onCancel={() => setShowCounterConfirm(false)}
+        title="Confirm counter offer"
+        description={(() => {
+          const budget = Number(task?.budget) || 0;
+          const offer = parseFloat(counterOffer) || 0;
+          const direction = offer > budget ? 'higher' : 'lower';
+          const pct = Math.round(counterOfferDiffPercent);
+          return (
+            <p>
+              You're offering to complete this task for <strong>${offer.toFixed(2)}</strong>, which is {pct}% {direction} than
+              the posted budget of ${budget.toFixed(2)}. The task creator will see this amount.
+            </p>
+          );
+        })()}
+        confirmLabel="Submit Application"
+        variant="info"
+        isLoading={loading}
+        error={error}
+      />
     </div>,
     document.body
   );

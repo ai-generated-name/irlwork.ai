@@ -9,7 +9,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint src/ --ext .js,.jsx",
+    "lint:ui": "eslint src/ --ext .js,.jsx --rule 'irlwork/no-inline-card-pattern: warn' --rule 'irlwork/no-inline-button-pattern: warn' --rule 'irlwork/no-orange-outside-button: warn' --rule 'irlwork/no-title-case-ui-strings: warn' --rule 'irlwork/no-exclamation-in-ui: warn' --rule 'irlwork/no-emoji-in-ui: warn'",
+    "postinstall": "test -d node_modules/eslint-plugin-irlwork || ln -s ../eslint-plugin-irlwork node_modules/eslint-plugin-irlwork"
   },
   "dependencies": {
     "@sentry/react": "^10.40.0",
@@ -35,6 +38,9 @@
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@vitejs/plugin-react": "^4.2.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "vite": "^5.0.0"
   }
 }

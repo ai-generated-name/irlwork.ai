@@ -3,6 +3,7 @@ import { MapPin, Star, Globe, Clock } from 'lucide-react'
 import { SocialIconsRow } from './SocialIcons'
 import { formatTimezoneShort } from '../utils/timezone'
 import TierBadge from './TierBadge'
+import { Button } from './ui'
 
 function StarRating({ rating, count, showNewBadge = false }) {
   const numRating = parseFloat(rating) || 0
@@ -94,6 +95,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
         left: 0,
         right: 0,
         height: 3,
+        // eslint-disable-next-line irlwork/no-orange-outside-button -- accent line uses brand color
         background: '#E8853D',
         borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
         opacity: 0.6
@@ -145,6 +147,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
             width: 56,
             height: 56,
             borderRadius: '50%',
+            // eslint-disable-next-line irlwork/no-orange-outside-button -- avatar fallback uses brand color
             background: '#E8853D',
             display: human.avatar_url ? 'none' : 'flex',
             alignItems: 'center',
@@ -227,6 +230,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
               overflow: 'hidden',
               textOverflow: 'ellipsis'
             }}>
+              {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon color uses brand accent */}
               <MapPin size={12} style={{ color: '#E8853D', flexShrink: 0 }} />
               {human.city}{human.state ? `, ${human.state}` : ''}
               {human.timezone && (
@@ -284,6 +288,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
               background: 'rgba(232,133,61,0.06)',
               borderRadius: 'var(--radius-full, 999px)',
               fontSize: 12,
+              // eslint-disable-next-line irlwork/no-orange-outside-button -- skill tag uses brand color
               color: '#E8853D',
               fontWeight: 500,
               border: '1px solid rgba(232,133,61,0.10)',
@@ -333,6 +338,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
           <span style={{
             fontSize: 24,
             fontWeight: 700,
+            // eslint-disable-next-line irlwork/no-orange-outside-button -- hourly rate uses brand color
             color: '#E8853D',
             letterSpacing: '-0.02em'
           }}>
@@ -365,35 +371,16 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
             Unavailable
           </span>
         ) : (
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={(e) => {
               e.stopPropagation()
               onHire?.(human)
             }}
-            style={{
-              padding: '10px 24px',
-              background: '#E8853D',
-              color: 'white',
-              fontWeight: 600,
-              fontSize: 14,
-              borderRadius: 'var(--radius-md, 10px)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 2px 8px rgba(232,133,61,0.25)',
-              letterSpacing: '0.02em'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,133,61,0.35)'
-              e.currentTarget.style.transform = 'translateY(-1px)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(232,133,61,0.25)'
-              e.currentTarget.style.transform = 'translateY(0)'
-            }}
           >
             Hire {firstName}
-          </button>
+          </Button>
         )}
       </div>
     </div>

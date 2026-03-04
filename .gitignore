@@ -14,3 +14,7 @@ ui/irlwork.ai/
 
 # Test scripts (may contain credentials)
 test_api_keys.js
+
+# Circle wallet setup (contains secrets)
+scripts/circle_recovery_file.dat
+.env.circle

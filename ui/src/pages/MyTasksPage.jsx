@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import MyTaskCard from '../components/MyTaskCard';
+import TaskRow from '../components/TaskRow';
+import { PageHeader, EmptyState, Button } from '../components/ui';
+import { navigate } from '../utils/navigate';
+import { PageLoader } from '../components/ui/PageLoader';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const ACTIVE_STATUSES = ['pending_acceptance', 'open', 'accepted', 'assigned', 'in_progress'];
 const REVIEW_STATUSES = ['pending_review', 'approved', 'completed'];
 const COMPLETED_STATUSES = ['paid'];
 const OTHER_STATUSES = ['disputed', 'cancelled'];
 
-function TaskSection({ title, count, tasks, defaultOpen = true, variant, cardProps }) {
+function TaskSection({ title, count, tasks, defaultOpen = true, cardProps }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -24,14 +28,14 @@ function TaskSection({ title, count, tasks, defaultOpen = true, variant, cardPro
       </button>
 
       {open && (
-        <div className="mytasks-section__list">
+        <div className="bg-white rounded-xl border border-[#ECECEC] divide-y divide-[#ECECEC]">
           {tasks.length === 0 ? (
-            <div className="mytasks-section__empty">
-              No tasks in this section
+            <div className="text-sm text-[#9CA3AF] text-center py-6">
+              Tasks will appear here when they match this status.
             </div>
           ) : (
             tasks.map(task => (
-              <MyTaskCard key={task.id} task={task} variant={variant} {...cardProps} />
+              <TaskRow key={task.id} task={task} variant="working" {...cardProps} />
             ))
           )}
         </div>
@@ -49,6 +53,7 @@ export default function MyTasksPage({
   setShowProofSubmit,
   onNavigate,
 }) {
+  usePageTitle('My Tasks');
   const [taskFilter, setTaskFilter] = useState('all');
 
   const safeTasks = Array.isArray(tasks) ? tasks : [];
@@ -58,7 +63,7 @@ export default function MyTasksPage({
   const otherTasks = safeTasks.filter(t => OTHER_STATUSES.includes(t.status));
 
   const handleCardClick = (task) => {
-    window.location.href = '/tasks/' + task.id;
+    navigate('/tasks/' + task.id);
   };
 
   const cardActions = {
@@ -84,14 +89,14 @@ export default function MyTasksPage({
   return (
     <div>
       {/* Page Title */}
-      <h1 className="dashboard-v4-page-title" style={{ marginBottom: 16 }}>My Tasks</h1>
+      <PageHeader title="My tasks" />
 
       {/* Always-visible tab headers showing task lifecycle */}
       <div className="mytasks-filters">
         {[
           { id: 'all', label: 'All', count: safeTasks.length },
-          { id: 'in_progress', label: 'In Progress', count: safeTasks.filter(t => t.status === 'in_progress').length },
-          { id: 'pending_review', label: 'Pending Review', count: safeTasks.filter(t => REVIEW_STATUSES.includes(t.status)).length },
+          { id: 'in_progress', label: 'In progress', count: safeTasks.filter(t => t.status === 'in_progress').length },
+          { id: 'pending_review', label: 'Pending review', count: safeTasks.filter(t => REVIEW_STATUSES.includes(t.status)).length },
           { id: 'paid', label: 'Paid', count: completedTasks.length },
         ].map(filter => (
           <button
@@ -106,28 +111,24 @@ export default function MyTasksPage({
       </div>
 
       {loading ? (
-        <div className="dashboard-v4-empty">
-          <div className="dashboard-v4-empty-icon">&#8987;</div>
-          <p className="dashboard-v4-empty-text">Loading...</p>
-        </div>
+        <PageLoader message="Loading your tasks..." />
       ) : safeTasks.length === 0 ? (
         /* Clean Empty State */
-        <div className="dashboard-v4-zero-state" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div className="dashboard-v4-zero-state-icon" style={{ marginBottom: 16 }}>
+        <EmptyState
+          icon={
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
               <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
             </svg>
-          </div>
-          <h2 className="dashboard-v4-zero-state-title" style={{ marginBottom: 8 }}>No active tasks</h2>
-          <p className="dashboard-v4-zero-state-subtitle" style={{ marginBottom: 24 }}>Browse available tasks to find work that matches your skills.</p>
-          <button
-            className="v4-btn v4-btn-primary"
-            onClick={() => onNavigate?.('browse')}
-          >
-            Browse Tasks
-          </button>
-        </div>
+          }
+          title="No active tasks"
+          description="Your tasks will appear here when you accept or get assigned one."
+          action={
+            <Button variant="primary" onClick={() => onNavigate?.('browse')}>
+              Browse tasks
+            </Button>
+          }
+        />
       ) : (
         <>
           {/* Task Sections */}
@@ -139,18 +140,16 @@ export default function MyTasksPage({
                   count={activeTasks.length}
                   tasks={activeTasks}
                   defaultOpen={true}
-                  variant="active"
                   cardProps={cardActions}
                 />
               )}
 
               {reviewTasks.length > 0 && (
                 <TaskSection
-                  title="In Review"
+                  title="In review"
                   count={reviewTasks.length}
                   tasks={reviewTasks}
                   defaultOpen={true}
-                  variant="review"
                   cardProps={cardActions}
                 />
               )}
@@ -161,7 +160,6 @@ export default function MyTasksPage({
                   count={completedTasks.length}
                   tasks={completedTasks}
                   defaultOpen={activeTasks.length === 0 && reviewTasks.length === 0}
-                  variant="compact"
                   cardProps={cardActions}
                 />
               )}
@@ -172,7 +170,6 @@ export default function MyTasksPage({
                   count={otherTasks.length}
                   tasks={otherTasks}
                   defaultOpen={false}
-                  variant="active"
                   cardProps={cardActions}
                 />
               )}
@@ -180,17 +177,19 @@ export default function MyTasksPage({
           ) : (
             <div className="mytasks-sections">
               {filteredTasks && filteredTasks.length > 0 ? (
-                filteredTasks.map(task => (
-                  <MyTaskCard
-                    key={task.id}
-                    task={task}
-                    variant={taskFilter === 'paid' ? 'compact' : 'active'}
-                    {...cardActions}
-                  />
-                ))
+                <div className="bg-white rounded-xl border border-[#ECECEC] divide-y divide-[#ECECEC]">
+                  {filteredTasks.map(task => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      variant="working"
+                      {...cardActions}
+                    />
+                  ))}
+                </div>
               ) : (
-                <div className="mytasks-section__empty">
-                  No tasks match this filter
+                <div className="text-sm text-[#9CA3AF] text-center py-6">
+                  Tasks will appear here when they match this filter.
                 </div>
               )}
             </div>

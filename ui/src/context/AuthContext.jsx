@@ -6,10 +6,11 @@ import API_URL from '../config/api'
 // Only log auth diagnostics in development
 const debug = import.meta.env.DEV ? console.log.bind(console) : () => {}
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Anon key is public by design — security is enforced via Supabase RLS policies, not key secrecy
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tqoxllqofxbcwxskguuj.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxb3hsbHFvZnhiY3d4c2tndXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODE5MjUsImV4cCI6MjA4NTc1NzkyNX0.kUi4_yHpg3H3rBUhi2L9a0KdcUQoYbiCC6hyPj-A0Yg'
 
-export const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const AuthContext = createContext(null)
 
@@ -18,12 +19,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!supabase) {
-      console.error('[Auth] Supabase not configured — missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY')
-      setLoading(false)
-      return
-    }
-
     debug('[Auth] Initializing auth, API_URL:', API_URL)
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
@@ -194,6 +189,9 @@ export function AuthProvider({ children }) {
     if (res.status === 401 && user) {
       debug('[Auth] Received 401, clearing stale auth state')
       await logout()
+      // Redirect to login with returnTo so user lands back here after re-auth
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.href = `/auth?returnTo=${returnUrl}`
     }
 
     return res

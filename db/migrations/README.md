@@ -11,6 +11,7 @@ Migrations must be run in numerical order:
 | 001 | `../api/migrations/001_add_auto_release.sql` | Auto-release timer columns (proof_submitted_at, review_deadline) |
 | 002 | `002_escrow_and_cancellation.sql` | Auth-hold escrow model, revision system, reputation tracking, status constraints |
 | 003 | `003_attachments_and_webhooks.sql` | Message attachments, instructions attachments, webhook retry queue |
+| 004 | `004_deadline_enforcement.sql` | Extension requests table, submitted_late flag, deadline_warning_sent tiered integer |
 
 ## How to Run
 

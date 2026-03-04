@@ -38,6 +38,7 @@ export default function AgentProfileCard({ agent, isAnonymous }) {
           style={{
             display: !isAnonymous && agent.avatar_url ? 'none' : 'flex',
             background: 'rgba(232, 133, 61, 0.1)',
+            // eslint-disable-next-line irlwork/no-orange-outside-button -- icon color uses brand accent
             color: '#E8853D',
           }}
         >
@@ -48,6 +49,7 @@ export default function AgentProfileCard({ agent, isAnonymous }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h4 className="font-bold text-[#1A1A1A] text-sm sm:text-base truncate">{displayName}</h4>
+            {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
             <span className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-xs font-medium bg-[rgba(232,133,61,0.08)] text-[#E8853D] flex-shrink-0">
               AI Agent
             </span>

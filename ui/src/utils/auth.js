@@ -1,4 +1,4 @@
-import { supabase } from '../App'
+import { supabase } from '../lib/supabase'
 
 /**
  * Get the current auth token for API requests.

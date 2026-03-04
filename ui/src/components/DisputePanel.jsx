@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Scale } from 'lucide-react'
+import { getErrorMessage } from '../utils/apiErrors'
 import API_URL from '../config/api'
+import { PageHeader, EmptyState, Card, Button } from './ui'
+import { useAuth } from '../context/AuthContext'
 
 export default function DisputePanel({ user }) {
+  const { authenticatedFetch } = useAuth()
   const [disputes, setDisputes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -13,7 +17,7 @@ export default function DisputePanel({ user }) {
   const [submitting, setSubmitting] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
 
-  const isAdmin = user && user.type === 'admin'
+  const isAdmin = user && user.is_admin === true
 
   useEffect(() => {
     fetchDisputes()
@@ -23,9 +27,7 @@ export default function DisputePanel({ user }) {
     try {
       setLoading(true)
       const params = filter !== 'all' ? `?status=${filter}` : ''
-      const res = await fetch(`${API_URL}/disputes${params}`, {
-        headers: { Authorization: user.token || '' }
-      })
+      const res = await authenticatedFetch(`${API_URL}/disputes${params}`)
 
       if (!res.ok) {
         throw new Error('Failed to fetch disputes')
@@ -47,10 +49,9 @@ export default function DisputePanel({ user }) {
 
     try {
       setSubmitting(true)
-      const res = await fetch(`${API_URL}/disputes/${disputeId}/resolve`, {
+      const res = await authenticatedFetch(`${API_URL}/disputes/${disputeId}/resolve`, {
         method: 'POST',
         headers: {
-          Authorization: user.token || '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -62,7 +63,7 @@ export default function DisputePanel({ user }) {
 
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || 'Failed to resolve dispute')
+        throw new Error(getErrorMessage(data, 'Failed to resolve dispute'))
       }
 
       setResolvingId(null)
@@ -90,10 +91,10 @@ export default function DisputePanel({ user }) {
 
   const getCategoryLabel = (category) => {
     const labels = {
-      quality: 'Quality Issue',
-      incomplete: 'Incomplete Work',
-      no_show: 'No Show',
-      payment: 'Payment Dispute',
+      quality: 'Quality issue',
+      incomplete: 'Incomplete work',
+      no_show: 'No show',
+      payment: 'Payment dispute',
       communication: 'Communication',
       other: 'Other'
     }
@@ -116,7 +117,7 @@ export default function DisputePanel({ user }) {
           onClick={fetchDisputes}
           className="mt-2 text-sm text-[#FF5F57] hover:text-[#B91C1C] underline"
         >
-          Retry
+          Retry loading
         </button>
       </div>
     )
@@ -126,14 +127,10 @@ export default function DisputePanel({ user }) {
     <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl md:text-2xl font-bold text-teal">Disputes</h2>
-          {disputes.length > 0 && (
-            <p className="text-sm text-[#888888] mt-1">
-              {disputes.length} dispute{disputes.length !== 1 ? 's' : ''} found
-            </p>
-          )}
-        </div>
+        <PageHeader
+          title="Disputes"
+          subtitle={disputes.length > 0 ? `${disputes.length} dispute${disputes.length !== 1 ? 's' : ''} found` : undefined}
+        />
 
         {/* Filter Tabs — only show when disputes exist */}
         {disputes.length > 0 && (
@@ -167,31 +164,31 @@ export default function DisputePanel({ user }) {
             onClick={() => setError(null)}
             className="text-[#FF5F57] hover:text-[#B91C1C] text-sm font-medium ml-3"
           >
-            Dismiss
+            Dismiss error
           </button>
         </div>
       )}
 
       {/* Empty State */}
       {disputes.length === 0 ? (
-        <div className="bg-white border-2 border-[rgba(0,0,0,0.08)] rounded-xl p-8 md:p-12 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-teal/10 rounded-2xl flex items-center justify-center">
-            <Scale size={28} />
-          </div>
-          <p className="text-[#333333] font-medium text-sm md:text-base">No disputes</p>
-          <p className="text-xs md:text-sm text-[#888888] mt-2 max-w-xs mx-auto">
-            {filter !== 'all'
-              ? `No ${filter} disputes. Try changing the filter.`
-              : "If something goes wrong with a task, you or the worker can file a dispute. We'll help resolve it."}
-          </p>
-          <a
-            href="/about#disputes"
-            className="text-xs md:text-sm text-coral hover:text-coral-dark mt-3 inline-block"
-            style={{ color: '#E07A5F' }}
-          >
-            Learn about disputes &rarr;
-          </a>
-        </div>
+        <EmptyState
+          icon={<Scale size={28} />}
+          title="No disputes"
+          description={
+            filter !== 'all'
+              ? `Disputes will appear here when they match the "${filter}" filter.`
+              : "Disputes will appear here if you or a worker files one on a task."
+          }
+          action={
+            <a
+              href="/about#disputes"
+              className="text-xs md:text-sm text-coral hover:text-coral-dark inline-block"
+              style={{ color: '#E07A5F' }}
+            >
+              Learn about disputes
+            </a>
+          }
+        />
       ) : (
         /* Dispute List */
         <div className="space-y-3">
@@ -205,9 +202,10 @@ export default function DisputePanel({ user }) {
             const isFiler = dispute.filed_by === user.id
 
             return (
-              <div
+              <Card
                 key={dispute.id}
-                className="bg-white border-2 border-[rgba(0,0,0,0.08)] rounded-xl hover:shadow-v4-md transition-shadow"
+                padding="none"
+                className="border-2 border-[rgba(0,0,0,0.08)] hover:shadow-v4-md transition-shadow"
               >
                 {/* Dispute Summary Row */}
                 <button
@@ -269,25 +267,31 @@ export default function DisputePanel({ user }) {
                   <div className="border-t border-[rgba(0,0,0,0.08)] px-4 pb-4 pt-3 space-y-3">
                     {/* Full Reason */}
                     <div>
-                      <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Reason</p>
+                      <p className="text-xs font-semibold text-teal tracking-wide mb-1">Reason</p>
                       <p className="text-sm text-[#333333]">{dispute.reason}</p>
                     </div>
 
                     {/* Evidence URLs */}
                     {dispute.evidence_urls && dispute.evidence_urls.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Evidence</p>
+                        <p className="text-xs font-semibold text-teal tracking-wide mb-1">Evidence</p>
                         <div className="space-y-1">
                           {dispute.evidence_urls.map((url, i) => (
-                            <a
-                              key={i}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-coral hover:text-coral-dark underline block truncate"
-                            >
-                              {url}
-                            </a>
+                            /^https?:\/\//i.test(url) ? (
+                              <a
+                                key={i}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-coral hover:text-coral-dark underline block truncate"
+                              >
+                                {url}
+                              </a>
+                            ) : (
+                              <span key={i} className="text-sm text-[#9CA3AF] block truncate">
+                                {url} (invalid URL)
+                              </span>
+                            )
                           ))}
                         </div>
                       </div>
@@ -296,13 +300,13 @@ export default function DisputePanel({ user }) {
                     {/* Parties */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Filed By</p>
+                        <p className="text-xs font-semibold text-teal tracking-wide mb-1">Filed by</p>
                         <p className="text-sm text-[#333333]">
                           {filedByName}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-teal uppercase tracking-wide mb-1">Filed Against</p>
+                        <p className="text-xs font-semibold text-teal tracking-wide mb-1">Filed against</p>
                         <p className="text-sm text-[#333333]">
                           {filedAgainstName}
                         </p>
@@ -312,7 +316,7 @@ export default function DisputePanel({ user }) {
                     {/* Resolution (if resolved) */}
                     {dispute.status === 'resolved' && dispute.resolution_notes && (
                       <div className="bg-[rgba(22, 163, 74, 0.08)] border border-[#16A34A]/20 rounded-lg p-3">
-                        <p className="text-xs font-semibold text-[#16A34A] uppercase tracking-wide mb-1">Resolution</p>
+                        <p className="text-xs font-semibold text-[#16A34A] tracking-wide mb-1">Resolution</p>
                         <p className="text-sm text-[#065F46]">{dispute.resolution_notes}</p>
                         {dispute.resolved_at && (
                           <p className="text-xs text-[#16A34A]/70 mt-1">
@@ -324,22 +328,24 @@ export default function DisputePanel({ user }) {
 
                     {/* Admin Resolve UI */}
                     {isAdmin && isOpen && !isResolving && (
-                      <button
+                      <Button
+                        variant="primary"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           setResolvingId(dispute.id)
                           setResolutionNotes('')
                           setResolution('approved')
                         }}
-                        className="px-4 py-2 bg-coral text-white rounded-xl text-sm font-semibold hover:bg-coral-dark shadow-v4-sm hover:shadow-v4-md transition-all"
+                        className="shadow-v4-sm hover:shadow-v4-md"
                       >
-                        Resolve Dispute
-                      </button>
+                        Resolve dispute
+                      </Button>
                     )}
 
                     {isAdmin && isResolving && (
                       <div className="bg-cream border-2 border-teal/20 rounded-xl p-4 space-y-3">
-                        <p className="text-sm font-semibold text-teal">Resolve This Dispute</p>
+                        <p className="text-sm font-semibold text-teal">Resolve this dispute</p>
 
                         {/* Resolution Type */}
                         <div>
@@ -373,7 +379,7 @@ export default function DisputePanel({ user }) {
                         {/* Resolution Notes */}
                         <div>
                           <label className="text-xs font-medium text-[#333333] block mb-1.5">
-                            Resolution Notes
+                            Resolution notes
                           </label>
                           <textarea
                             value={resolutionNotes}
@@ -395,23 +401,24 @@ export default function DisputePanel({ user }) {
                                 : 'bg-teal text-white hover:bg-teal-dark shadow-v4-sm hover:shadow-v4-md'
                             }`}
                           >
-                            {submitting ? 'Submitting...' : 'Submit Resolution'}
+                            {submitting ? 'Submitting...' : 'Submit resolution'}
                           </button>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => {
                               setResolvingId(null)
                               setResolutionNotes('')
                             }}
-                            className="px-4 py-2 rounded-xl text-sm font-medium text-[#888888] hover:text-[#333333] hover:bg-[#F5F3F0] transition-all"
                           >
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
                   </div>
                 )}
-              </div>
+              </Card>
             )
           })}
         </div>

@@ -15,6 +15,7 @@ export default function RequirementsSection({ task }) {
         <ul className="space-y-2 text-[#333333] text-base">
           {lines.map((line, i) => (
             <li key={i} className="flex items-start gap-2">
+              {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
               <span className="text-[#E8853D] mt-0.5">•</span>
               <span>{line.replace(/^[-•*]\s*/, '')}</span>
             </li>

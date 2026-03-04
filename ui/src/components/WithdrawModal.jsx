@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button } from './ui';
 
 export default function WithdrawModal({ isOpen, onClose, onConfirm, taskTitle, hasEscrow }) {
   const [loading, setLoading] = useState(false);
@@ -40,7 +41,7 @@ export default function WithdrawModal({ isOpen, onClose, onConfirm, taskTitle, h
               <line x1="15" y1="9" x2="9" y2="15" />
               <line x1="9" y1="9" x2="15" y2="15" />
             </svg>
-            <h2>Withdraw from Task</h2>
+            <h2>Withdraw from task</h2>
           </div>
         </div>
 
@@ -69,40 +70,25 @@ export default function WithdrawModal({ isOpen, onClose, onConfirm, taskTitle, h
         )}
 
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="lg"
+            className="flex-1"
             onClick={handleClose}
-            style={{
-              flex: 1,
-              padding: '12px',
-              borderRadius: '10px',
-              border: '2px solid rgba(0,0,0,0.08)',
-              background: 'white',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-            }}
           >
-            Keep Working
-          </button>
-          <button
+            Keep working
+          </Button>
+          <Button
             type="button"
+            variant="destructive"
+            size="lg"
+            className="flex-1"
             onClick={handleConfirm}
             disabled={loading}
-            style={{
-              flex: 1,
-              padding: '12px',
-              borderRadius: '10px',
-              border: 'none',
-              background: loading ? '#ccc' : '#FF5F57',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
           >
-            {loading ? 'Withdrawing...' : 'Withdraw'}
-          </button>
+            {loading ? 'Withdrawing...' : 'Withdraw from task'}
+          </Button>
         </div>
       </div>
     </div>

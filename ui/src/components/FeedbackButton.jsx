@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { MessageCircle, Bug, Sparkles, Pin } from 'lucide-react'
+import { MessageCircle, Bug, Sparkles, Pin, X } from 'lucide-react'
+import { Button } from './ui'
 
 const API_URL = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL + '/api'
@@ -322,7 +323,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
               <MessageCircle size={15} />
             </div>
             <span style={{ fontWeight: 700, fontSize: 15, color: C.textPrimary, letterSpacing: '-0.01em' }}>
-              Send Feedback
+              Send feedback
             </span>
           </div>
           <button
@@ -394,7 +395,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                   animation: 'feedbackFadeUp 0.4s ease-out 0.2s both',
                 }}
               >
-                Thank you!
+                Thank you
               </p>
               <p
                 style={{
@@ -403,7 +404,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                   animation: 'feedbackFadeUp 0.4s ease-out 0.35s both',
                 }}
               >
-                Your feedback helps us improve.
+                Your feedback has been submitted.
               </p>
             </div>
           ) : (
@@ -609,12 +610,12 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: 10,
+                            fontSize: 11,
                             lineHeight: 1,
                             fontFamily: FONT,
                           }}
                         >
-                          ✕
+                          <X size={11} />
                         </button>
                       </div>
                     ))}
@@ -623,38 +624,12 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
               </div>
 
               {/* Submit */}
-              <button
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full gap-2"
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                style={{
-                  width: '100%',
-                  padding: '12px 20px',
-                  borderRadius: 10,
-                  border: 'none',
-                  background: canSubmit
-                    ? C.coral
-                    : C.creamDeep,
-                  color: canSubmit ? C.white : C.textTertiary,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: canSubmit ? 'pointer' : 'not-allowed',
-                  fontFamily: FONT,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  transition: 'opacity 0.15s, transform 0.1s',
-                  boxShadow: canSubmit
-                    ? '0 4px 14px rgba(232, 133, 61, 0.25)'
-                    : 'none',
-                  letterSpacing: '-0.01em',
-                }}
-                onMouseEnter={(e) => {
-                  if (canSubmit) e.currentTarget.style.opacity = '0.9'
-                }}
-                onMouseLeave={(e) => {
-                  if (canSubmit) e.currentTarget.style.opacity = '1'
-                }}
               >
                 {submitting && (
                   <span
@@ -669,8 +644,8 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                     }}
                   />
                 )}
-                {submitting ? 'Sending...' : 'Submit Feedback'}
-              </button>
+                {submitting ? 'Sending...' : 'Send feedback'}
+              </Button>
             </div>
           )}
         </div>

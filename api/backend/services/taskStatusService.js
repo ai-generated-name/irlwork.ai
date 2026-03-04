@@ -44,11 +44,11 @@
 const VALID_STATUS_TRANSITIONS = {
   open: ['pending_acceptance', 'assigned', 'expired', 'cancelled'],
   pending_acceptance: ['assigned', 'open', 'cancelled'],
-  assigned: ['in_progress', 'cancelled'],
-  in_progress: ['pending_review', 'disputed'],
+  assigned: ['in_progress', 'cancelled', 'open'],        // 'open' = worker withdrawal (task reopens)
+  in_progress: ['pending_review', 'disputed', 'open'],   // 'open' = worker withdrawal (task reopens)
   pending_review: ['approved', 'in_progress', 'disputed'],
   approved: ['paid'],
-  disputed: ['approved', 'cancelled', 'paid'],
+  disputed: ['approved', 'cancelled', 'paid', 'pending_review'],  // 'pending_review' = partial dispute resolution
   paid: [],
   expired: [],
   cancelled: [],

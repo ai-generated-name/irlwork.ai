@@ -11,7 +11,7 @@ export default function TierBadge({ tier, size = 'sm' }) {
   const config = TIER_CONFIG[tier]
   if (!config) return null
 
-  const fontSize = size === 'xs' ? 10 : size === 'sm' ? 11 : 12
+  const fontSize = size === 'xs' ? 11 : size === 'sm' ? 11 : 12
   const padding = size === 'xs' ? '1px 6px' : size === 'sm' ? '2px 8px' : '3px 10px'
 
   return (

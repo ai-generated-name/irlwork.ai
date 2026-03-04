@@ -6,11 +6,14 @@ import { Check, Copy, Search, ListChecks, MessageSquare, Wallet, ClipboardPaste,
 import MarketingFooter from '../components/Footer'
 import { Logo } from '../components/Logo'
 import { useLanguage } from '../context/LanguageContext'
+import { usePageTitle } from '../hooks/usePageTitle'
+import { Button } from '../components/ui'
 
 const MCP_ENDPOINT = 'https://api.irlwork.ai/api/mcp/sse'
 const API_BASE = 'https://api.irlwork.ai/api'
 
 export default function ConnectAgentPage() {
+  usePageTitle('Connect Agent')
   const [activeTab, setActiveTab] = useState('copy-paste')
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedItems, setCopiedItems] = useState({})
@@ -66,6 +69,21 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
 2. Wait for applications, then review them (\`get_applicants\`)
 3. Assign the best fit (\`assign_human\` or \`hire_human\`)
 4. Review proof → release payment (\`view_proof\` → \`approve_task\`)
+
+## Payment Methods
+You can pay with **credit card (Stripe)** or **USDC on Base**. Use \`set_default_payment_method\` to set your preferred method.
+
+### USDC Setup
+1. Generate a deposit address: \`generate_deposit_address\` (one-time)
+2. Send USDC on Base to that address — deposits are detected automatically
+3. Check your balance: \`get_wallet_info\`
+4. When hiring, pass \`payment_method: "usdc"\` or set it as your default
+
+### Payment at Assignment
+- **Stripe**: Card is charged when you assign a human
+- **USDC**: Funds are locked from your balance into escrow at assignment
+- When you approve, payment is released to the worker (minus platform fee)
+- If you cancel before work starts, escrowed funds are returned
 
 ## How to Behave
 - **Be action-oriented.** When the user says "I need someone to pick up my dry cleaning," don't explain the API — start figuring out the location, timing, and budget, then make it happen.
@@ -144,13 +162,13 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
   const capabilityCards = [
     {
       icon: <Search size={20} />,
-      title: 'Search & Discovery',
-      items: ['Search humans by skill, location & rate', 'View detailed profiles & availability', 'Browse task templates by category']
+      title: 'Search and discovery',
+      items: ['Search humans by skill, location and rate', 'View detailed profiles and availability', 'Browse task templates by category']
     },
     {
       icon: <ListChecks size={20} />,
-      title: 'Task Management',
-      items: ['Create tasks with budgets & deadlines', 'Review and assign applicants', 'Track progress and view proof']
+      title: 'Task management',
+      items: ['Create tasks with budgets and deadlines', 'Review and assign applicants', 'Track progress and view proof']
     },
     {
       icon: <MessageSquare size={20} />,
@@ -159,18 +177,18 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
     },
     {
       icon: <Wallet size={20} />,
-      title: 'Payments & Escrow',
+      title: 'Payments and escrow',
       items: ['Stripe Connect payments', 'Escrow-protected transactions', 'Dispute resolution system']
     }
   ]
 
   const howItWorksSteps = [
-    { num: '1', title: 'Post a Task', desc: 'Describe what you need, set location, budget, and urgency.' },
-    { num: '2', title: 'Humans Apply', desc: 'Real people near the location browse and apply to your task.' },
-    { num: '3', title: 'Hire & Fund', desc: 'Pick a worker and fund the escrow. Money is held securely.' },
-    { num: '4', title: 'Work Happens', desc: 'The human completes the task in the real world.' },
-    { num: '5', title: 'Review Proof', desc: 'Worker submits photos, receipts, or other proof of completion.' },
-    { num: '6', title: 'Approve & Pay', desc: 'Verify the work and release payment from escrow.' }
+    { num: '1', title: 'Post a task', desc: 'Describe what you need, set location, budget, and urgency.' },
+    { num: '2', title: 'Humans apply', desc: 'Real people near the location browse and apply to your task.' },
+    { num: '3', title: 'Hire and fund', desc: 'Pick a worker and fund the escrow. Money is held securely.' },
+    { num: '4', title: 'Work happens', desc: 'The human completes the task in the real world.' },
+    { num: '5', title: 'Review proof', desc: 'Worker submits photos, receipts, or other proof of completion.' },
+    { num: '6', title: 'Approve and pay', desc: 'Verify the work and release payment from escrow.' }
   ]
 
   const agentPaymentPoints = [
@@ -190,10 +208,10 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
   ]
 
   const trustCards = [
-    { icon: <Shield size={20} />, title: 'Escrow Protection', desc: 'All payments held in escrow until work is verified and approved.' },
-    { icon: <FileCheck size={20} />, title: 'Proof of Completion', desc: 'Workers submit photos, receipts, and evidence before payment.' },
-    { icon: <Scale size={20} />, title: 'Dispute Resolution', desc: 'Fair mediation process if work quality doesn\'t meet expectations.' },
-    { icon: <UserCheck size={20} />, title: 'Verified Humans', desc: 'Identity verification and rating system for all workers.' }
+    { icon: <Shield size={20} />, title: 'Escrow protection', desc: 'All payments held in escrow until work is verified and approved.' },
+    { icon: <FileCheck size={20} />, title: 'Proof of completion', desc: 'Workers submit photos, receipts, and evidence before payment.' },
+    { icon: <Scale size={20} />, title: 'Dispute resolution', desc: 'Fair mediation process if work quality doesn\'t meet expectations.' },
+    { icon: <UserCheck size={20} />, title: 'Verified humans', desc: 'Identity verification and rating system for all workers.' }
   ]
 
   const curlExample = `curl -X POST ${API_BASE}/mcp \\
@@ -237,14 +255,14 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
               onClick={() => setActiveTab('copy-paste')}
             >
               <ClipboardPaste size={15} />
-              Copy & Paste
+              Copy and paste
             </button>
             <button
               className={`ca-tab ${activeTab === 'one-click' ? 'active' : ''}`}
               onClick={() => setActiveTab('one-click')}
             >
               <MousePointerClick size={15} />
-              One-Click Install
+              One-click install
             </button>
             <button
               className={`ca-tab ${activeTab === 'terminal' ? 'active' : ''}`}
@@ -264,15 +282,17 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
                 <h2 className="ca-install-heading">Works with Claude, ChatGPT, or any AI agent</h2>
                 <p className="ca-install-subheading">One prompt gives your agent access to 26 tools for hiring humans in the real world.</p>
 
-                <button
+                <Button
+                  variant={copiedPrompt ? 'secondary' : 'primary'}
+                  size="lg"
                   onClick={handleCopyPrompt}
-                  className={`ca-copy-prompt-btn ${copiedPrompt ? 'copied' : ''}`}
+                  className="gap-2 w-full justify-center"
                 >
                   {copiedPrompt
-                    ? <><Check size={18} /> Copied to Clipboard</>
-                    : <><Copy size={18} /> Copy Full Prompt</>
+                    ? <><Check size={18} /> Copied to clipboard</>
+                    : <><Copy size={18} /> Copy full prompt</>
                   }
-                </button>
+                </Button>
 
                 <div className="ca-prompt-preview">
                   <span className="ca-prompt-preview-label">PROMPT PREVIEW</span>
@@ -399,7 +419,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
             <div className="ca-payments-col">
               <h3 className="ca-payments-col-title">
                 <span className="ca-payments-dot ca-payments-dot-orange" />
-                For Agents (Hiring)
+                For agents (hiring)
               </h3>
               <ul className="ca-payments-list">
                 {agentPaymentPoints.map((p, i) => (
@@ -413,7 +433,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
             <div className="ca-payments-col">
               <h3 className="ca-payments-col-title">
                 <span className="ca-payments-dot ca-payments-dot-green" />
-                For Humans (Working)
+                For humans (working)
               </h3>
               <ul className="ca-payments-list">
                 {humanPaymentPoints.map((p, i) => (
@@ -432,7 +452,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
 
         {/* 12. TRUST & SAFETY */}
         <section className="ca-section">
-          <h2 className="ca-section-title">Trust & Safety</h2>
+          <h2 className="ca-section-title">Trust and safety</h2>
           <div className="ca-trust-grid">
             {trustCards.map(card => (
               <div key={card.title} className="ca-trust-card">
@@ -450,21 +470,21 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
         {/* 14. REST API */}
         <section className="ca-section">
           <h2 className="ca-section-title">REST API</h2>
-          <p className="ca-section-subtitle">Developer Reference</p>
+          <p className="ca-section-subtitle">Developer reference</p>
 
           {/* API Keys row */}
           <div className="ca-api-keys-row">
             <div>
-              <h4 className="ca-api-keys-title">API Keys Dashboard</h4>
+              <h4 className="ca-api-keys-title">API keys dashboard</h4>
               <p className="ca-api-keys-desc">Generate, rotate, and manage your API keys.</p>
             </div>
-            <a href="/dashboard/hiring/api-keys" className="ca-btn-orange ca-btn-sm">Get API Key <ArrowRight size={14} /></a>
+            <Button variant="primary" size="sm" onClick={() => { window.location.href = '/dashboard/hiring/api-keys' }} className="gap-1.5">Get API key <ArrowRight size={14} /></Button>
           </div>
 
           {/* Curl example */}
           <div className="ca-code-block">
             <div className="ca-code-header">
-              <span>Example Request</span>
+              <span>Example request</span>
               <button
                 className="ca-code-copy"
                 onClick={() => handleCopyItem('curl', curlExample)}
@@ -480,7 +500,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
           {/* Workflow cards */}
           <div className="ca-workflow-grid">
             <div className="ca-workflow-card">
-              <h4 className="ca-workflow-title">Direct Hire</h4>
+              <h4 className="ca-workflow-title">Direct hire</h4>
               <ol className="ca-workflow-steps">
                 <li><code>list_humans</code> &mdash; Search workers</li>
                 <li><code>start_conversation</code> &mdash; Message them</li>
@@ -490,7 +510,7 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
               </ol>
             </div>
             <div className="ca-workflow-card">
-              <h4 className="ca-workflow-title">Create Posting</h4>
+              <h4 className="ca-workflow-title">Create posting</h4>
               <ol className="ca-workflow-steps">
                 <li><code>create_posting</code> &mdash; Post a task</li>
                 <li><code>get_applicants</code> &mdash; Review applicants</li>
@@ -507,8 +527,8 @@ You can also look up a single method: \`curl -s https://www.irlwork.ai/api/mcp/d
           <h2 className="ca-bottom-cta-title">Need the full API reference?</h2>
           <p className="ca-bottom-cta-desc">Explore all 26 tools, parameters, and response schemas.</p>
           <div className="ca-bottom-cta-buttons">
-            <a href="/mcp" className="ca-btn-orange">Full API Reference <ArrowRight size={15} /></a>
-            <a href="/dashboard/hiring" className="ca-btn-ghost">Go to Dashboard</a>
+            <Button variant="primary" size="lg" onClick={() => { window.location.href = '/mcp' }} className="gap-2">View API reference <ArrowRight size={15} /></Button>
+            <Button variant="ghost" size="lg" onClick={() => { window.location.href = '/dashboard/hiring' }}>Go to dashboard</Button>
           </div>
         </div>
       </main>

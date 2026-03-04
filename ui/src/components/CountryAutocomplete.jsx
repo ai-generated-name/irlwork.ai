@@ -12,6 +12,7 @@ const CountryAutocomplete = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchError, setSearchError] = useState(false);
   const [dropdownTop, setDropdownTop] = useState(null);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -28,12 +29,16 @@ const CountryAutocomplete = ({
       abortRef.current = controller;
 
       setIsLoading(true);
+      setSearchError(false);
       const url = query.length >= 1
         ? `${API_URL}/countries/search?q=${encodeURIComponent(query)}&limit=20`
         : `${API_URL}/countries/search?limit=20`;
 
       fetch(url, { signal: controller.signal })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error(`Server error (${res.status})`);
+          return res.json();
+        })
         .then(countries => {
           setResults(countries);
           setShowDropdown(true);
@@ -43,6 +48,8 @@ const CountryAutocomplete = ({
         .catch(err => {
           if (err.name !== 'AbortError') {
             console.error('Country search failed:', err);
+            setSearchError(true);
+            setResults([]);
           }
         })
         .finally(() => setIsLoading(false));
@@ -248,7 +255,12 @@ const CountryAutocomplete = ({
 
           {!isLoading && results.length === 0 && query.length >= 1 && (
             <div className="city-autocomplete-v4-empty">
-              No countries match "{query}"
+              {searchError ? 'Country search unavailable — try again later' : `No countries match "${query}"`}
+            </div>
+          )}
+          {!isLoading && results.length === 0 && query.length < 1 && searchError && (
+            <div className="city-autocomplete-v4-empty">
+              Country search unavailable — try again later
             </div>
           )}
         </div>

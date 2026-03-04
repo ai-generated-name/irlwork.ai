@@ -21,9 +21,8 @@ let intervalId = null;
  * Promote pending balances to available after dispute window
  * @param {object} supabase - Supabase client
  * @param {function} createNotification - Notification function
- * @param {function} [sendEmailNotification] - Optional email notification function
  */
-async function promotePendingBalances(supabase, createNotification, sendEmailNotification) {
+async function promotePendingBalances(supabase, createNotification) {
   if (!supabase) {
     console.error('[BalancePromoter] No supabase client provided');
     return;
@@ -88,7 +87,7 @@ async function promotePendingBalances(supabase, createNotification, sendEmailNot
 
         console.log(`[BalancePromoter] Promoted transaction ${tx.id} - $${amount.toFixed(2)} now available for ${tx.user_id}`);
 
-        // Send notification to worker
+        // Send notification to worker (email handled by notification pipeline — balance_available registered with defaultEmail: true)
         if (createNotification) {
           await createNotification(
             tx.user_id,
@@ -97,18 +96,6 @@ async function promotePendingBalances(supabase, createNotification, sendEmailNot
             `$${amount.toFixed(2)} is now available for withdrawal. The 48-hour dispute window has passed.`,
             `/payments`
           );
-        }
-
-        // Send email notification for payment available
-        if (sendEmailNotification) {
-          sendEmailNotification(tx.user_id,
-            `You've been paid $${amount.toFixed(2)}!`,
-            `<div style="background: #D1FAE5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-              <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Payment Available!</p>
-              <p style="color: #1A1A1A; font-size: 14px; margin: 0;">$${amount.toFixed(2)} is now available for withdrawal. The 48-hour dispute window has passed.</p>
-            </div>
-            <a href="https://www.irlwork.ai/payments" style="display: inline-block; background: #E07A5F; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">View Payments</a>`
-          ).catch(() => {});
         }
 
         // Also update the payout status
@@ -161,46 +148,11 @@ async function promotePendingBalances(supabase, createNotification, sendEmailNot
             transferSucceeded = true;
           }
         } else if (payoutMethod === 'usdc') {
-          // USDC auto-transfer to worker's wallet address on Base
-          try {
-            const { sendUSDC, isValidAddress } = require('../lib/wallet');
-            const { data: worker } = await supabase
-              .from('users')
-              .select('wallet_address')
-              .eq('id', tx.user_id)
-              .single();
-
-            if (worker?.wallet_address && isValidAddress(worker.wallet_address)) {
-              const amountUSDC = tx.amount_cents / 100;
-              const result = await sendUSDC(worker.wallet_address, amountUSDC);
-              if (result.success) {
-                console.log(`[BalancePromoter] Auto-transferred ${amountUSDC} USDC to ${worker.wallet_address} (tx: ${result.txHash})`);
-
-                await supabase
-                  .from('pending_transactions')
-                  .update({
-                    status: 'withdrawn',
-                    withdrawn_at: new Date().toISOString(),
-                    notes: `USDC auto-transfer: ${result.txHash}`
-                  })
-                  .eq('id', tx.id)
-                  .eq('status', 'available');
-                transferSucceeded = true;
-              } else {
-                console.error(`[BalancePromoter] USDC send failed for tx ${tx.id}: ${result.error}`);
-                // Funds stay as 'available' — worker can manually withdraw later
-                transferSucceeded = true;
-              }
-            } else {
-              // If worker doesn't have wallet set up, funds stay as 'available'
-              console.log(`[BalancePromoter] USDC transaction ${tx.id} promoted to available — worker can withdraw via wallet`);
-              transferSucceeded = true;
-            }
-          } catch (transferError) {
-            console.error(`[BalancePromoter] USDC auto-transfer failed for tx ${tx.id}:`, transferError.message);
-            // Funds stay as 'available' — worker can manually withdraw later
-            transferSucceeded = true;
-          }
+          // USDC: funds already in worker's Circle wallet (transferred at approve time)
+          // For Circle-based tasks, payout happens at approve — nothing to do here.
+          // For legacy tasks (pre-Circle), funds stay as 'available' for manual withdrawal.
+          console.log(`[BalancePromoter] USDC transaction ${tx.id} promoted to available — worker can withdraw via wallet`);
+          transferSucceeded = true;
         }
 
         // Update task status to 'paid' AFTER transfer attempt (or confirmation funds are available)
@@ -210,6 +162,16 @@ async function promotePendingBalances(supabase, createNotification, sendEmailNot
             .update({ status: 'paid', updated_at: new Date().toISOString() })
             .eq('id', tx.task_id)
             .in('status', ['approved', 'completed']);
+
+          await supabase.from('task_status_history').insert({
+            task_id: tx.task_id,
+            from_status: null,
+            to_status: 'paid',
+            changed_by: null,
+            reason: 'balance_promoted'
+          }).then(() => {}).catch(err => {
+            console.error(`[BalancePromoter] Failed to record status change for task ${tx.task_id}:`, err.message);
+          });
         }
         // Funds stay as 'available' if no matching payout method is set up — worker can manually withdraw later
 
@@ -229,9 +191,8 @@ async function promotePendingBalances(supabase, createNotification, sendEmailNot
  * Start the balance promoter service
  * @param {object} supabase - Supabase client
  * @param {function} createNotification - Notification function
- * @param {function} [sendEmailNotification] - Optional email notification function
  */
-function startBalancePromoter(supabase, createNotification, sendEmailNotification) {
+function startBalancePromoter(supabase, createNotification) {
   if (isRunning) {
     console.log('[BalancePromoter] Already running');
     return;
@@ -240,11 +201,11 @@ function startBalancePromoter(supabase, createNotification, sendEmailNotificatio
   console.log(`[BalancePromoter] Starting... (interval: ${POLL_INTERVAL / 1000}s)`);
 
   // Run immediately on start
-  promotePendingBalances(supabase, createNotification, sendEmailNotification).catch(console.error);
+  promotePendingBalances(supabase, createNotification).catch(console.error);
 
   // Then run on interval
   intervalId = setInterval(() => {
-    promotePendingBalances(supabase, createNotification, sendEmailNotification).catch(console.error);
+    promotePendingBalances(supabase, createNotification).catch(console.error);
   }, POLL_INTERVAL);
 
   isRunning = true;

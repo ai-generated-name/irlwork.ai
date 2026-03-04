@@ -1,20 +1,20 @@
 import React from 'react';
-import { Search, Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react'
+import { Search, Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, Sparkles, Truck, Dumbbell } from 'lucide-react'
 
 const TASK_CATEGORIES = [
-  { value: '', label: 'All', icon: '🔍' },
-  { value: 'delivery', label: 'Delivery', icon: '📦' },
-  { value: 'photography', label: 'Photography', icon: '📸' },
-  { value: 'data_collection', label: 'Data Collection', icon: '📊' },
-  { value: 'errands', label: 'Errands', icon: '🏃' },
-  { value: 'cleaning', label: 'Cleaning', icon: '🧹' },
-  { value: 'moving', label: 'Moving', icon: '🚚' },
-  { value: 'manual_labor', label: 'Manual Labor', icon: '💪' },
-  { value: 'inspection', label: 'Inspection', icon: '🔍' },
-  { value: 'tech', label: 'Tech', icon: '💻' },
-  { value: 'translation', label: 'Translation', icon: '🌐' },
-  { value: 'verification', label: 'Verification', icon: '✅' },
-  { value: 'general', label: 'General', icon: '📋' },
+  { value: '', label: 'All', icon: <Search size={16} /> },
+  { value: 'delivery', label: 'Delivery', icon: <Package size={16} /> },
+  { value: 'photography', label: 'Photography', icon: <Camera size={16} /> },
+  { value: 'data_collection', label: 'Data Collection', icon: <BarChart3 size={16} /> },
+  { value: 'errands', label: 'Errands', icon: <Footprints size={16} /> },
+  { value: 'cleaning', label: 'Cleaning', icon: <Sparkles size={16} /> },
+  { value: 'moving', label: 'Moving', icon: <Truck size={16} /> },
+  { value: 'manual_labor', label: 'Manual Labor', icon: <Dumbbell size={16} /> },
+  { value: 'inspection', label: 'Inspection', icon: <Search size={16} /> },
+  { value: 'tech', label: 'Tech', icon: <Monitor size={16} /> },
+  { value: 'translation', label: 'Translation', icon: <Globe size={16} /> },
+  { value: 'verification', label: 'Verification', icon: <CheckCircle size={16} /> },
+  { value: 'general', label: 'General', icon: <ClipboardList size={16} /> },
 ];
 
 export default function CategoryPills({

@@ -12,6 +12,7 @@ const CityAutocomplete = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchError, setSearchError] = useState(false);
   const [dropdownTop, setDropdownTop] = useState(null);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -37,10 +38,14 @@ const CityAutocomplete = ({
       abortRef.current = controller;
 
       setIsLoading(true);
+      setSearchError(false);
       fetch(`${API_URL}/cities/search?q=${encodeURIComponent(query)}&limit=10`, {
         signal: controller.signal
       })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error(`Server error (${res.status})`);
+          return res.json();
+        })
         .then(cities => {
           setResults(cities);
           setShowDropdown(cities.length > 0);
@@ -49,6 +54,9 @@ const CityAutocomplete = ({
         .catch(err => {
           if (err.name !== 'AbortError') {
             console.error('City search failed:', err);
+            setSearchError(true);
+            setShowDropdown(true);
+            setResults([]);
           }
         })
         .finally(() => setIsLoading(false));
@@ -254,7 +262,7 @@ const CityAutocomplete = ({
           onTouchStart={() => { isSelectingRef.current = true; }}
         >
           <div className="city-autocomplete-v4-empty">
-            No cities found for "{query}"
+            {searchError ? 'City search unavailable — try again later' : `No cities found for "${query}"`}
           </div>
         </div>
       )}

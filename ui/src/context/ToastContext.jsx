@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
+import { Check, X, Info } from 'lucide-react'
 
 const ToastContext = createContext(null)
 
@@ -37,14 +38,14 @@ export function ToastProvider({ children }) {
         {toasts.map(toast => (
           <div key={toast.id} className={`toast toast-${toast.type}`}>
             <div className="toast-icon">
-              {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
+              {toast.type === 'success' ? <Check size={14} /> : toast.type === 'error' ? <X size={14} /> : <Info size={14} />}
             </div>
             <div className="toast-message">{toast.message}</div>
             <button
               className="toast-close"
               onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
             >
-              ✕
+              <X size={12} />
             </button>
           </div>
         ))}

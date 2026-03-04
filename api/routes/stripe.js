@@ -9,6 +9,7 @@ const express = require('express');
 const {
   getOrCreateStripeCustomer,
   createSetupIntent,
+  createCheckoutSetupSession,
   listPaymentMethods,
   deletePaymentMethod,
   setDefaultPaymentMethod,
@@ -56,6 +57,23 @@ function initStripeRoutes(supabase, getUserByToken, createNotification) {
       res.json({ client_secret, setup_intent_id });
     } catch (error) {
       console.error('[Stripe] Setup intent error:', error.message);
+      res.status(500).json({ error: 'Payment service error. Please try again.' });
+    }
+  });
+
+  // ============================================================================
+  // POST /api/stripe/checkout-setup - Agent adds card via hosted Checkout
+  // Used by MCP agents who cannot render Stripe Elements.
+  // Returns a URL the operator opens in a browser.
+  // ============================================================================
+  router.post('/checkout-setup', async (req, res) => {
+    try {
+      const customerId = await getOrCreateStripeCustomer(supabase, req.user);
+      const { url, session_id } = await createCheckoutSetupSession(customerId, req.user.id);
+
+      res.json({ url, session_id });
+    } catch (error) {
+      console.error('[Stripe] Checkout setup error:', error.message);
       res.status(500).json({ error: error.message });
     }
   });
@@ -73,7 +91,7 @@ function initStripeRoutes(supabase, getUserByToken, createNotification) {
       res.json({ payment_methods: methods });
     } catch (error) {
       console.error('[Stripe] List payment methods error:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Payment service error. Please try again.' });
     }
   });
 
@@ -97,7 +115,7 @@ function initStripeRoutes(supabase, getUserByToken, createNotification) {
       res.json({ success: true });
     } catch (error) {
       console.error('[Stripe] Delete payment method error:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Payment service error. Please try again.' });
     }
   });
 
@@ -121,7 +139,7 @@ function initStripeRoutes(supabase, getUserByToken, createNotification) {
       res.json({ success: true });
     } catch (error) {
       console.error('[Stripe] Set default PM error:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Payment service error. Please try again.' });
     }
   });
 
@@ -153,7 +171,7 @@ function initStripeRoutes(supabase, getUserByToken, createNotification) {
       res.json(result);
     } catch (error) {
       console.error('[Stripe] Connect onboard error:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Payment service error. Please try again.' });
     }
   });
 
@@ -175,7 +193,7 @@ function initStripeRoutes(supabase, getUserByToken, createNotification) {
       res.json({ dashboard_url: dashboardUrl });
     } catch (error) {
       console.error('[Stripe] Dashboard link error:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Payment service error. Please try again.' });
     }
   });
 
@@ -193,7 +211,7 @@ function initStripeRoutes(supabase, getUserByToken, createNotification) {
       res.json({ onboarding_url: onboardingUrl });
     } catch (error) {
       console.error('[Stripe] Update bank error:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Payment service error. Please try again.' });
     }
   });
 
@@ -215,7 +233,7 @@ function initStripeRoutes(supabase, getUserByToken, createNotification) {
       });
     } catch (error) {
       console.error('[Stripe] Connect status error:', error.message);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Payment service error. Please try again.' });
     }
   });
 

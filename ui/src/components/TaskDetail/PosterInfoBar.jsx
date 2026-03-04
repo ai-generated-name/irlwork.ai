@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList } from 'lucide-react';
+import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, Check, AlertTriangle } from 'lucide-react';
 
 const CATEGORY_ICONS = {
   delivery: <Package size={16} />,
@@ -39,6 +39,7 @@ export default function PosterInfoBar({ task }) {
     <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-5 mb-6 shadow-sm">
       <div className="flex items-center gap-4">
         {/* Avatar */}
+        {/* eslint-disable irlwork/no-orange-outside-button -- avatar fallback uses brand color */}
         <div
           className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
             isAnonymous
@@ -48,6 +49,7 @@ export default function PosterInfoBar({ task }) {
         >
           {isAnonymous ? '?' : (poster.name?.[0]?.toUpperCase() || 'A')}
         </div>
+        {/* eslint-enable irlwork/no-orange-outside-button */}
 
         {/* Name + badges */}
         <div className="flex-1 min-w-0">
@@ -57,6 +59,7 @@ export default function PosterInfoBar({ task }) {
             </span>
 
             {/* Type badge */}
+            {/* eslint-disable irlwork/no-orange-outside-button -- type badge uses brand color */}
             {!isAnonymous && poster.type && (
               <span
                 className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
@@ -68,10 +71,11 @@ export default function PosterInfoBar({ task }) {
                 {poster.type === 'human' ? 'human' : 'agent'}
               </span>
             )}
+            {/* eslint-enable irlwork/no-orange-outside-button */}
 
             {/* Verified badge */}
             {!isAnonymous && poster.verified && (
-              <span className="text-[#16A34A] text-sm" title="Verified">✓</span>
+              <Check size={14} className="text-[#16A34A]" title="Verified" />
             )}
           </div>
 
@@ -96,8 +100,8 @@ export default function PosterInfoBar({ task }) {
               return cancelRate > 0.2 ? (
                 <>
                   <span>·</span>
-                  <span className="text-amber-500" title="This requester cancels tasks frequently">
-                    ⚠ {Math.round(cancelRate * 100)}% cancellation rate
+                  <span className="text-amber-500 inline-flex items-center gap-1" title="This requester cancels tasks frequently">
+                    <AlertTriangle size={13} /> {Math.round(cancelRate * 100)}% cancellation rate
                   </span>
                 </>
               ) : null;
