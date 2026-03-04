@@ -2924,6 +2924,7 @@ app.get('/api/tasks', async (req, res) => {
     results = results.filter(t => !t.payment_method || t.payment_method === payment_method);
   }
 
+
   res.json({ tasks: results, cursor: nextCursor, has_more: hasMore });
 });
 
