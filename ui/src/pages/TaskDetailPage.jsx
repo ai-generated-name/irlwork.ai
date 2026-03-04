@@ -19,6 +19,7 @@ import DisputeModal from '../components/DisputeModal';
 import WithdrawModal from '../components/WithdrawModal';
 import ShareOnXButton from '../components/ShareOnXButton';
 import API_URL from '../config/api';
+import { fixAvatarUrl } from '../utils/avatarUrl';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
   const [task, setTask] = useState(null);
@@ -73,7 +74,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, { headers: agentHeaders });
           if (agentRes.ok) {
             const agentData = await agentRes.json();
-            setAgentProfile(agentData);
+            setAgentProfile(fixAvatarUrl(agentData));
           }
         }
 
