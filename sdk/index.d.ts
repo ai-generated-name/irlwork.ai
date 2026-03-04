@@ -21,9 +21,12 @@ export type TaskStatus =
 export type EscrowStatus =
   | 'unfunded'
   | 'pending_deposit'
+  | 'awaiting_worker'
   | 'deposited'
   | 'held'
   | 'released'
+  | 'pending_withdrawal'
+  | 'withdrawn'
   | 'refunded';
 
 export type TaskCategory =
@@ -62,6 +65,9 @@ export interface Task {
   max_humans?: number;
   escrow_status?: EscrowStatus;
   moderation_status?: string;
+  max_revisions?: number;
+  output_schema?: Record<string, unknown> | null;
+  poster_reputation?: AgentReputation | null;
   created_at: string;
   updated_at: string;
 }
@@ -152,6 +158,15 @@ export interface IRLWorkAgentOptions {
 
 // ─── Method params ───────────────────────────────────────────────────────────
 
+export interface AgentReputation {
+  rating: number | null;
+  review_count: number;
+  total_tasks_posted: number;
+  total_tasks_completed: number;
+  dispute_rate: number | null;
+  avg_approval_hours: number | null;
+}
+
 export interface PostTaskParams {
   title: string;
   description: string;
@@ -163,6 +178,10 @@ export interface PostTaskParams {
   is_remote?: boolean;
   duration_hours?: number;
   deadline?: string;
+  /** Max proof revisions allowed (1–5, default 2). Locked after assignment. */
+  max_revisions?: number;
+  /** Expected output format for structured proof validation */
+  output_schema?: Record<string, unknown>;
 }
 
 export interface ListHumansParams {
