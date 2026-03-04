@@ -130,6 +130,12 @@ async function releasePaymentToPending(supabase, taskId, humanId, agentId, creat
   // Update human stats (atomic increment via RPC to prevent lost updates)
   await supabase.rpc('increment_user_stat', { user_id_param: humanId, stat_name: 'jobs_completed', increment_by: 1 });
   await supabase.rpc('increment_user_stat', { user_id_param: humanId, stat_name: 'total_tasks_completed', increment_by: 1 });
+
+  // Recalculate reliability score now that completion count has changed
+  try {
+    const { updateReliabilityScore } = require('./reliabilityService');
+    updateReliabilityScore(humanId, supabase).catch(e => console.error('[Reliability] completion update failed:', e.message));
+  } catch (e) { /* non-fatal */ }
   await supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', humanId);
 
   // Update agent's total paid (atomic increment)

@@ -520,6 +520,36 @@ const {
 // Escape SQL LIKE wildcards (% and _) to prevent wildcard injection
 function escapeLike(s) { return s.replace(/[%_\\]/g, '\\$&'); }
 
+// Validate a worker's submission_data against a task's output_schema.
+// Returns { valid: true } or { valid: false, errors: string[] }.
+// Only validates required fields and basic type checks — not a full JSON Schema validator.
+function validateSubmissionData(data, schema) {
+  const errors = [];
+  if (!schema || typeof schema !== 'object') return { valid: true };
+  const fields = schema.fields;
+  if (Array.isArray(fields)) {
+    for (const field of fields) {
+      if (field.required && (data[field.name] === undefined || data[field.name] === null || data[field.name] === '')) {
+        errors.push(`Missing required field: ${field.name}`);
+      }
+      if (field.type && data[field.name] !== undefined && data[field.name] !== null) {
+        const actualType = typeof data[field.name];
+        const expectedType = field.type === 'integer' ? 'number' : field.type;
+        if (actualType !== expectedType) {
+          errors.push(`Field "${field.name}" must be of type ${field.type}, got ${actualType}`);
+        }
+      }
+    }
+  }
+  if (schema.type === 'url' && typeof data.url !== 'string') {
+    errors.push('submission_data must include a "url" string field');
+  }
+  if (schema.type === 'text' && schema.min_length && typeof data.text === 'string' && data.text.length < schema.min_length) {
+    errors.push(`"text" field must be at least ${schema.min_length} characters`);
+  }
+  return errors.length > 0 ? { valid: false, errors } : { valid: true };
+}
+
 // Data categories
 const QUICK_CATEGORIES = [
   'delivery', 'pickup', 'errands', 'dog_walking', 'pet_sitting',
@@ -2434,7 +2464,7 @@ app.get('/api/humans', async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier, total_tasks_completed')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, reliability_score, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier, total_tasks_completed')
     .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${escapeLike(category)}%`);
@@ -2484,8 +2514,8 @@ app.get('/api/users/:id', async (req, res) => {
   const isSelf = requester && requester.id === req.params.id;
 
   const columns = isSelf
-    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, total_paid, type, avatar_url, subscription_tier, tasks_posted_this_month'
-    : 'id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url, subscription_tier';
+    ? 'id, name, email, city, state, hourly_rate, bio, skills, rating, reliability_score, jobs_completed, total_tasks_completed, total_tasks_posted, total_paid, type, avatar_url, subscription_tier, tasks_posted_this_month'
+    : 'id, name, city, state, hourly_rate, bio, skills, rating, reliability_score, jobs_completed, total_tasks_completed, total_tasks_posted, type, avatar_url, subscription_tier';
 
   const { data: user, error } = await supabase
     .from('users')
@@ -2508,7 +2538,7 @@ app.get('/api/humans/:id', async (req, res, next) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, name, city, state, hourly_rate, bio, skills, rating, jobs_completed, profile_completeness, avatar_url, headline, languages, timezone, social_links, travel_radius')
+    .select('id, name, city, state, hourly_rate, bio, skills, rating, reliability_score, jobs_completed, profile_completeness, avatar_url, headline, languages, timezone, social_links, travel_radius')
     .eq('id', req.params.id)
     .eq('type', 'human')
     .single();
@@ -4626,12 +4656,12 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   }
   
   const { id: taskId } = req.params;
-  const { proof_text, proof_urls } = req.body;
-  
+  const { proof_text, proof_urls, submission_data } = req.body;
+
   // Verify task exists and user is assigned
   const { data: task, error: taskError } = await supabase
     .from('tasks')
-    .select('id, human_id, agent_id, status, title, deadline')
+    .select('id, human_id, agent_id, status, title, deadline, output_schema')
     .eq('id', taskId)
     .single();
 
@@ -4649,6 +4679,15 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
   }
 
   const isLate = task.deadline && new Date(task.deadline) < new Date();
+
+  // Validate submission_data against output_schema if both are present
+  let schemaValid = null;
+  if (task.output_schema && submission_data) {
+    schemaValid = validateSubmissionData(submission_data, task.output_schema);
+    if (!schemaValid.valid) {
+      return res.status(400).json({ error: 'submission_data does not match task output_schema', details: schemaValid.errors });
+    }
+  }
 
   // Atomic update FIRST: only transition if still in_progress AND user is the assigned worker.
   // This prevents TOCTOU races — if another request (cancel, dispute) changes the status
@@ -4682,6 +4721,7 @@ app.post('/api/tasks/:id/submit-proof', async (req, res) => {
       human_id: user.id,
       proof_text,
       proof_urls: Array.isArray(proof_urls) ? proof_urls.slice(0, 20).filter(u => typeof u === 'string') : [],
+      submission_data: submission_data || null,
       status: 'pending',
       submitted_late: !!isLate,
       submitted_at: new Date().toISOString()
@@ -4839,11 +4879,13 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
 
   await recordStatusChange(taskId, 'pending_review', 'in_progress', user.id, feedback || 'revision_requested');
 
-  // Increment total_rejections on human's user record
+  // Increment total_rejections on human's user record, then update reliability score
   if (task.human_id) {
     await supabase.rpc('increment_user_stat', {
       user_id_param: task.human_id, stat_name: 'total_rejections', increment_by: 1
     });
+    const { updateReliabilityScore } = require('./backend/services/reliabilityService');
+    updateReliabilityScore(task.human_id, supabase).catch(e => console.error('[Reliability] reject update failed:', e.message));
   }
 
   // Notify human
@@ -5810,6 +5852,93 @@ app.post('/api/admin/check-auto-release', async (req, res) => {
   });
 });
 
+// ============ MULTI-WORKER: GET ALL WORKERS FOR A TASK ============
+// Returns all assigned workers with individual proof/payment/conversation status.
+// For agents managing multi-worker tasks — each worker has their own chat + proof.
+app.get('/api/tasks/:id/workers', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id: taskId } = req.params;
+
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .select('id, title, agent_id, human_ids, quantity, spots_filled, status, payment_method')
+    .eq('id', taskId)
+    .single();
+
+  if (taskError || !task) return res.status(404).json({ error: 'Task not found' });
+  if (task.agent_id !== user.id) return res.status(403).json({ error: 'Not your task' });
+
+  const workerIds = Array.isArray(task.human_ids) ? task.human_ids : [];
+
+  if (workerIds.length === 0) {
+    return res.json({
+      task_id: taskId,
+      num_workers_needed: task.quantity || 1,
+      spots_filled: 0,
+      spots_remaining: task.quantity || 1,
+      workers: []
+    });
+  }
+
+  // Fetch all workers in parallel
+  const [usersResult, proofsResult, convsResult, pendingResult] = await Promise.all([
+    supabase.from('users')
+      .select('id, name, avatar_url, rating, reliability_score, city')
+      .in('id', workerIds),
+    supabase.from('task_proofs')
+      .select('human_id, status, submitted_at')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: false }),
+    supabase.from('conversations')
+      .select('id, human_id')
+      .eq('task_id', taskId)
+      .eq('agent_id', user.id),
+    supabase.from('pending_transactions')
+      .select('user_id, status, amount_cents, clears_at')
+      .eq('task_id', taskId)
+  ]);
+
+  const usersMap = Object.fromEntries((usersResult.data || []).map(u => [u.id, u]));
+  const proofsMap = {};
+  for (const p of (proofsResult.data || [])) {
+    if (!proofsMap[p.human_id]) proofsMap[p.human_id] = p; // latest per human
+  }
+  const convsMap = Object.fromEntries((convsResult.data || []).map(c => [c.human_id, c.id]));
+  const paymentMap = Object.fromEntries((pendingResult.data || []).map(p => [p.user_id, p]));
+
+  const workers = workerIds.map(wid => {
+    const worker = usersMap[wid] || {};
+    const proof = proofsMap[wid];
+    const payment = paymentMap[wid];
+    return {
+      user_id: wid,
+      name: worker.name || null,
+      avatar_url: worker.avatar_url || null,
+      city: worker.city || null,
+      rating: worker.rating || null,
+      reliability_score: worker.reliability_score || null,
+      proof_status: proof?.status || null,
+      proof_submitted_at: proof?.submitted_at || null,
+      conversation_id: convsMap[wid] || null,
+      payment_status: payment?.status || null,
+      payment_amount: payment ? payment.amount_cents / 100 : null,
+      payment_clears_at: payment?.clears_at || null
+    };
+  });
+
+  res.json({
+    task_id: taskId,
+    num_workers_needed: task.quantity || 1,
+    spots_filled: workerIds.length,
+    spots_remaining: Math.max(0, (task.quantity || 1) - workerIds.length),
+    workers
+  });
+});
+
 // ============ RATINGS (BLIND RATING WINDOW) ============
 // Submit a rating for a task (after finalization)
 app.post('/api/tasks/:id/rate', async (req, res) => {
@@ -5910,8 +6039,10 @@ app.post('/api/tasks/:id/rate', async (req, res) => {
   const bothRated = allRatings && allRatings.length === 2;
   const isVisible = bothRated && allRatings[0].visible_at !== null;
 
-  // Update user's aggregate rating
+  // Update user's aggregate rating and reliability score
   await updateUserRating(ratee_id);
+  const { updateReliabilityScore } = require('./backend/services/reliabilityService');
+  updateReliabilityScore(ratee_id, supabase).catch(e => console.error('[Reliability] rate update failed:', e.message));
 
   // Send notification to the other party
   const otherPartyId = ratee_id;
@@ -6440,7 +6571,7 @@ app.post('/api/mcp', async (req, res) => {
       case 'list_humans': {
         let query = supabase
           .from('users')
-          .select('id, name, city, state, hourly_rate, skills, rating, jobs_completed, bio, languages, travel_radius, availability, headline, timezone')
+          .select('id, name, city, state, hourly_rate, skills, rating, reliability_score, jobs_completed, bio, languages, travel_radius, availability, headline, timezone')
           .eq('type', 'human');
 
         // Default to only showing available workers unless explicitly requesting all
@@ -7739,8 +7870,9 @@ app.post('/api/mcp', async (req, res) => {
 
         const id = uuidv4();
         const budgetAmount = params.budget || params.budget_usd || params.budget_max || params.budget_min || 50;
-        const taskType = params.task_type === 'open' ? 'open' : 'direct';
-        const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(params.quantity) || 1) : 1;
+        const mcpNumWorkers = Math.max(1, parseInt(params.num_workers || params.quantity) || 1);
+        const taskType = mcpNumWorkers > 1 ? 'open' : (params.task_type === 'open' ? 'open' : 'direct');
+        const taskQuantity = taskType === 'open' ? mcpNumWorkers : 1;
 
         // Encrypt private fields
         let mcpEncAddr = null, mcpEncNotes = null, mcpEncContact = null;
@@ -7775,6 +7907,7 @@ app.post('/api/mcp', async (req, res) => {
             private_address: mcpEncAddr,
             private_notes: mcpEncNotes,
             private_contact: mcpEncContact,
+            output_schema: params.output_schema || null,
             created_at: new Date().toISOString()
           }, {
             is_anonymous: !!params.is_anonymous,
@@ -7802,6 +7935,50 @@ app.post('/api/mcp', async (req, res) => {
           mcpResponse.note = 'Private fields will be released to the assigned worker upon task acceptance';
         }
         res.json(mcpResponse);
+        break;
+      }
+
+      // ===== Get all workers for a multi-worker task =====
+      case 'get_task_workers': {
+        if (!params.task_id) return res.status(400).json({ error: 'task_id is required' });
+        const { data: mwTask } = await supabase
+          .from('tasks')
+          .select('id, agent_id, human_ids, quantity, status')
+          .eq('id', params.task_id)
+          .single();
+        if (!mwTask) return res.status(404).json({ error: 'Task not found' });
+        if (mwTask.agent_id !== user.id) return res.status(403).json({ error: 'Not your task' });
+
+        const mwIds = Array.isArray(mwTask.human_ids) ? mwTask.human_ids : [];
+        const [mwUsers, mwProofs, mwConvs, mwPayments] = await Promise.all([
+          supabase.from('users').select('id, name, rating, reliability_score, city').in('id', mwIds.length ? mwIds : ['00000000-0000-0000-0000-000000000000']),
+          supabase.from('task_proofs').select('human_id, status, submitted_at').eq('task_id', params.task_id).order('created_at', { ascending: false }),
+          supabase.from('conversations').select('id, human_id').eq('task_id', params.task_id).eq('agent_id', user.id),
+          supabase.from('pending_transactions').select('user_id, status, amount_cents').eq('task_id', params.task_id)
+        ]);
+        const mwUsersMap = Object.fromEntries((mwUsers.data || []).map(u => [u.id, u]));
+        const mwProofsMap = {};
+        for (const p of (mwProofs.data || [])) { if (!mwProofsMap[p.human_id]) mwProofsMap[p.human_id] = p; }
+        const mwConvsMap = Object.fromEntries((mwConvs.data || []).map(c => [c.human_id, c.id]));
+        const mwPayMap = Object.fromEntries((mwPayments.data || []).map(p => [p.user_id, p]));
+        res.json({
+          task_id: params.task_id,
+          num_workers_needed: mwTask.quantity || 1,
+          spots_filled: mwIds.length,
+          spots_remaining: Math.max(0, (mwTask.quantity || 1) - mwIds.length),
+          workers: mwIds.map(wid => ({
+            user_id: wid,
+            name: mwUsersMap[wid]?.name || null,
+            city: mwUsersMap[wid]?.city || null,
+            rating: mwUsersMap[wid]?.rating || null,
+            reliability_score: mwUsersMap[wid]?.reliability_score || null,
+            proof_status: mwProofsMap[wid]?.status || null,
+            proof_submitted_at: mwProofsMap[wid]?.submitted_at || null,
+            conversation_id: mwConvsMap[wid] || null,
+            payment_status: mwPayMap[wid]?.status || null,
+            payment_amount: mwPayMap[wid] ? mwPayMap[wid].amount_cents / 100 : null
+          }))
+        });
         break;
       }
 
@@ -8714,8 +8891,10 @@ app.post('/api/mcp', async (req, res) => {
         const mcpBothRated = allMcpRatings && allMcpRatings.length === 2;
         const mcpIsVisible = mcpBothRated && allMcpRatings[0].visible_at !== null;
 
-        // Update aggregate rating
+        // Update aggregate rating and reliability score
         await updateUserRating(rateRateeId);
+        const { updateReliabilityScore: mcpUpdateScore } = require('./backend/services/reliabilityService');
+        mcpUpdateScore(rateRateeId, supabase).catch(e => console.error('[Reliability] MCP rate update failed:', e.message));
 
         // Send notification
         const mcpRaterType = user.id === rateTask.human_id ? 'human' : 'agent';
@@ -10291,7 +10470,7 @@ app.post('/api/tasks/create', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { title, description, instructions, instructions_attachments, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, assign_to, task_type_id, location_zone, private_address, private_notes, private_contact, budget_usd, datetime_start, skills_required: skillsRequiredInput } = req.body;
+  const { title, description, instructions, instructions_attachments, category, location, budget, latitude, longitude, country, country_code, duration_hours, deadline, requirements, required_skills, is_anonymous, task_type, quantity, num_workers, assign_to, task_type_id, location_zone, private_address, private_notes, private_contact, budget_usd, datetime_start, skills_required: skillsRequiredInput, output_schema } = req.body;
 
   // Verify agent has payment method before allowing task creation
   if (user.type === 'agent') {
@@ -10319,8 +10498,9 @@ app.post('/api/tasks/create', async (req, res) => {
 
   const id = uuidv4();
   const budgetAmount = parseFloat(budget || budget_usd) || 50;
-  const taskType = task_type === 'open' ? 'open' : 'direct';
-  const taskQuantity = taskType === 'open' ? Math.max(1, parseInt(quantity) || 1) : 1;
+  const numWorkers = Math.max(1, parseInt(num_workers || quantity) || 1);
+  const taskType = numWorkers > 1 ? 'open' : (task_type === 'open' ? 'open' : 'direct');
+  const taskQuantity = taskType === 'open' ? numWorkers : 1;
   const skillsArray = Array.isArray(required_skills || skillsRequiredInput) ? (required_skills || skillsRequiredInput) : [];
 
   // Duration is required
@@ -10378,6 +10558,7 @@ app.post('/api/tasks/create', async (req, res) => {
       private_address: encAddr,
       private_notes: encNotes,
       private_contact: encContact,
+      output_schema: output_schema || null,
       created_at: new Date().toISOString()
     }, {
       is_anonymous: !!is_anonymous,
