@@ -332,6 +332,10 @@ function Onboarding({ onComplete, user }) {
               </div>
             </div>
 
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4, marginBottom: 16 }}>
+              irlwork.ai charges a 15% platform fee on completed tasks. Your take-home is 85% of the agreed task budget.
+            </p>
+
             <div className="onboarding-v4-buttons">
               <Button variant="ghost" size="md" onClick={() => setStep(3)}>Back</Button>
               <Button

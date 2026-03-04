@@ -203,7 +203,7 @@ export default function DashboardHeader({
             className="dashboard-v4-user-trigger"
             onClick={() => setUserDropdownOpen(!userDropdownOpen)}
           >
-            <div className="dashboard-v4-user-avatar">
+            <div className="dashboard-v4-user-avatar" style={{ background: 'var(--ink)' }}>
               {user?.avatar_url ? (
                 <img key={user.avatar_url} src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
               ) : null}
@@ -219,7 +219,7 @@ export default function DashboardHeader({
           {userDropdownOpen && (
             <div className="dashboard-v4-user-dropdown">
               <div className="dashboard-v4-user-dropdown-header">
-                <div className="dashboard-v4-user-dropdown-avatar">
+                <div className="dashboard-v4-user-dropdown-avatar" style={{ background: 'var(--ink)' }}>
                   {user?.avatar_url ? (
                     <img key={user.avatar_url} src={user.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                   ) : null}

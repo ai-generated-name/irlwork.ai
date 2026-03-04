@@ -787,6 +787,38 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// ============ PROFILE READ RATE LIMITING ============
+// Prevents scraping of worker/user profiles. 60 profile reads per 5 minutes per IP.
+const profileRateLimitStore = new Map();
+const PROFILE_RATE_LIMITS = { maxRequests: 60, windowMs: 5 * 60 * 1000 };
+
+function profileRateLimit(req, res, next) {
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const key = `profile:${crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16)}`;
+  const now = Date.now();
+  let record = profileRateLimitStore.get(key);
+
+  if (record && now - record.windowStart > PROFILE_RATE_LIMITS.windowMs) record = null;
+  if (!record) { record = { count: 0, windowStart: now }; profileRateLimitStore.set(key, record); }
+  record.count++;
+
+  if (record.count > PROFILE_RATE_LIMITS.maxRequests) {
+    const resetAt = new Date(record.windowStart + PROFILE_RATE_LIMITS.windowMs);
+    return res.status(429).json({
+      error: 'Too many profile requests. Please slow down.',
+      retry_after_seconds: Math.ceil((resetAt.getTime() - now) / 1000)
+    });
+  }
+  next();
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of profileRateLimitStore.entries()) {
+    if (now - record.windowStart > PROFILE_RATE_LIMITS.windowMs) profileRateLimitStore.delete(key);
+  }
+}, 5 * 60 * 1000);
+
 // ============ PER-CONVERSATION MESSAGE RATE LIMITING ============
 // Prevents message spam: max 30 messages per minute per user per conversation
 const messageRateLimitStore = new Map();
@@ -2463,11 +2495,16 @@ app.get('/api/stats', async (req, res) => {
 app.get('/api/humans', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const { category, city, min_rate, max_rate, user_lat, user_lng, radius } = req.query;
+  const { category, city, min_rate, max_rate, user_lat, user_lng, radius,
+    limit: limitParam, page: pageParam } = req.query;
+
+  const pageLimit = Math.min(Math.max(parseInt(limitParam) || 50, 1), 100);
+  const page = Math.max(parseInt(pageParam) || 1, 1);
+  const offset = (page - 1) * pageLimit;
 
   let query = supabase
     .from('users')
-    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, reliability_score, jobs_completed, verified, availability, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier, total_tasks_completed')
+    .select('id, name, city, state, country, country_code, hourly_rate, bio, skills, rating, reliability_score, jobs_completed, verified, availability, availability_schedule, availability_timezone, created_at, updated_at, total_ratings_count, social_links, headline, languages, timezone, travel_radius, latitude, longitude, avatar_url, subscription_tier, total_tasks_completed', { count: 'exact' })
     .eq('type', 'human');
 
   if (category) query = query.like('skills', `%${escapeLike(category)}%`);
@@ -2475,7 +2512,7 @@ app.get('/api/humans', async (req, res) => {
   if (min_rate) query = query.gte('hourly_rate', parseFloat(min_rate));
   if (max_rate) query = query.lte('hourly_rate', parseFloat(max_rate));
 
-  const { data: humans, error } = await query.order('rating', { ascending: false }).limit(100);
+  const { data: humans, error, count } = await query.order('rating', { ascending: false }).range(offset, offset + pageLimit - 1);
 
   if (error) {
     console.error('[GET /api/humans] Supabase query error:', error.message || error);
@@ -2507,10 +2544,10 @@ app.get('/api/humans', async (req, res) => {
     return (b.rating || 0) - (a.rating || 0);
   });
 
-  res.json(results);
+  res.json({ humans: results, total: count || 0, page, limit: pageLimit, has_more: offset + results.length < (count || 0) });
 });
 
-app.get('/api/users/:id', async (req, res) => {
+app.get('/api/users/:id', profileRateLimit, async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   const requester = await getUserByToken(req.headers.authorization);
@@ -2571,7 +2608,7 @@ app.get('/api/users/:id', async (req, res) => {
   res.json(response);
 });
 
-app.get('/api/humans/:id', async (req, res, next) => {
+app.get('/api/humans/:id', profileRateLimit, async (req, res, next) => {
   // Skip if id is a reserved route name (handled by later routes)
   const reservedRoutes = ['directory'];
   if (reservedRoutes.includes(req.params.id)) {
@@ -2701,11 +2738,64 @@ app.put('/api/humans/profile', async (req, res) => {
   }
 });
 
+// ============ AVAILABILITY ============
+// GET /api/users/:id/availability — public read of a worker's weekly schedule
+app.get('/api/users/:id/availability', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, availability_schedule, availability_timezone')
+    .eq('id', req.params.id)
+    .single();
+  if (error || !user) return res.status(404).json({ error: 'User not found' });
+  res.json({
+    user_id: user.id,
+    availability_schedule: user.availability_schedule || [],
+    availability_timezone: user.availability_timezone || 'UTC'
+  });
+});
+
+// PUT /api/users/:id/availability — update own availability schedule
+app.put('/api/users/:id/availability', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  const caller = await getUserByToken(req.headers.authorization);
+  if (!caller) return res.status(401).json({ error: 'Unauthorized' });
+  if (caller.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const { availability_schedule, availability_timezone } = req.body;
+
+  // Validate schedule format
+  if (availability_schedule !== undefined) {
+    if (!Array.isArray(availability_schedule)) {
+      return res.status(400).json({ error: 'availability_schedule must be an array' });
+    }
+    for (const w of availability_schedule) {
+      if (typeof w.day !== 'number' || w.day < 0 || w.day > 6) {
+        return res.status(400).json({ error: 'Each window must have day (0-6)' });
+      }
+      if (!/^\d{2}:\d{2}$/.test(w.start) || !/^\d{2}:\d{2}$/.test(w.end)) {
+        return res.status(400).json({ error: 'start and end must be HH:MM' });
+      }
+    }
+  }
+
+  const updates = {};
+  if (availability_schedule !== undefined) updates.availability_schedule = availability_schedule;
+  if (availability_timezone) updates.availability_timezone = availability_timezone;
+  updates.updated_at = new Date().toISOString();
+
+  const { error } = await supabase.from('users').update(updates).eq('id', caller.id);
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+
+  res.json({ success: true, availability_schedule: availability_schedule ?? null, availability_timezone: availability_timezone ?? 'UTC' });
+});
+
 // ============ TASKS ============
 app.get('/api/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const { category, city, urgency, status, my_tasks, user_lat, user_lng, radius_km, after, limit: limitParam } = req.query;
+  const { category, city, urgency, status, my_tasks, user_lat, user_lng, radius_km, after, limit: limitParam,
+    min_agent_rating, max_dispute_rate, payment_method } = req.query;
   const user = await getUserByToken(req.headers.authorization);
 
   // Pagination
@@ -2812,8 +2902,28 @@ app.get('/api/tasks', async (req, res) => {
         };
       }
       results = results.map(t => ({ ...t, poster_reputation: agentMap[t.agent_id] || null }));
+
+      // Post-fetch filtering by agent reputation (applied after poster_reputation attached)
+      if (min_agent_rating) {
+        const minRating = parseFloat(min_agent_rating);
+        if (!isNaN(minRating)) {
+          results = results.filter(t => t.poster_reputation?.rating != null && t.poster_reputation.rating >= minRating);
+        }
+      }
+      if (max_dispute_rate) {
+        const maxRate = parseFloat(max_dispute_rate);
+        if (!isNaN(maxRate)) {
+          results = results.filter(t => t.poster_reputation?.dispute_rate == null || t.poster_reputation.dispute_rate <= maxRate);
+        }
+      }
     }
   }
+
+  // Filter by payment method preference (Stripe vs USDC)
+  if (payment_method && !my_tasks) {
+    results = results.filter(t => !t.payment_method || t.payment_method === payment_method);
+  }
+
 
   res.json({ tasks: results, cursor: nextCursor, has_more: hasMore });
 });
@@ -3012,9 +3122,135 @@ app.get('/api/tasks/:id/context', async (req, res) => {
   res.json(result.data);
 });
 
+// ============ TASK DRAFTS ============
+// GET /api/tasks/drafts — list the agent's saved drafts
+app.get('/api/tasks/drafts', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  if (user.type !== 'agent') return res.status(403).json({ error: 'Only agents can use drafts' });
+
+  const { data, error } = await supabase
+    .from('task_drafts')
+    .select('*')
+    .eq('agent_id', user.id)
+    .order('updated_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    if (error.message?.includes('does not exist')) return res.json([]);
+    return res.status(500).json({ error: safeErrorMessage(error) });
+  }
+  res.json(data || []);
+});
+
+// POST /api/tasks/drafts — save a new draft
+app.post('/api/tasks/drafts', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  if (user.type !== 'agent') return res.status(403).json({ error: 'Only agents can use drafts' });
+
+  const { title, description, category, budget, location, requirements, required_skills,
+    is_remote, duration_hours, deadline, max_revisions, output_schema } = req.body;
+
+  const { data, error } = await supabase
+    .from('task_drafts')
+    .insert({
+      agent_id: user.id,
+      title: (title || '').slice(0, 200),
+      description: description || '',
+      category: category || '',
+      budget: budget ? parseFloat(budget) : null,
+      location: location || '',
+      requirements: requirements || null,
+      required_skills: Array.isArray(required_skills) ? required_skills : [],
+      is_remote: !!is_remote,
+      duration_hours: duration_hours ? parseFloat(duration_hours) : null,
+      deadline: deadline || null,
+      max_revisions: Math.max(1, Math.min(parseInt(max_revisions) || 2, 5)),
+      output_schema: output_schema || null
+    })
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+  res.status(201).json(data);
+});
+
+// PUT /api/tasks/drafts/:id — update an existing draft
+app.put('/api/tasks/drafts/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data: draft } = await supabase.from('task_drafts').select('agent_id').eq('id', req.params.id).single();
+  if (!draft) return res.status(404).json({ error: 'Draft not found' });
+  if (draft.agent_id !== user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const allowed = ['title', 'description', 'category', 'budget', 'location', 'requirements',
+    'required_skills', 'is_remote', 'duration_hours', 'deadline', 'max_revisions', 'output_schema'];
+  const updates = { updated_at: new Date().toISOString() };
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) updates[key] = req.body[key];
+  }
+  if (updates.max_revisions) updates.max_revisions = Math.max(1, Math.min(parseInt(updates.max_revisions) || 2, 5));
+
+  const { data, error } = await supabase.from('task_drafts').update(updates).eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ error: safeErrorMessage(error) });
+  res.json(data);
+});
+
+// DELETE /api/tasks/drafts/:id — delete a draft
+app.delete('/api/tasks/drafts/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data: draft } = await supabase.from('task_drafts').select('agent_id').eq('id', req.params.id).single();
+  if (!draft) return res.status(404).json({ error: 'Draft not found' });
+  if (draft.agent_id !== user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  await supabase.from('task_drafts').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
+
+// POST /api/tasks/drafts/:id/publish — publish a draft as a real task
+app.post('/api/tasks/drafts/:id/publish', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data: draft, error: fetchErr } = await supabase
+    .from('task_drafts').select('*').eq('id', req.params.id).single();
+
+  if (fetchErr || !draft) return res.status(404).json({ error: 'Draft not found' });
+  if (draft.agent_id !== user.id) return res.status(403).json({ error: 'Forbidden' });
+  if (!draft.title?.trim() || !draft.description?.trim() || !draft.category) {
+    return res.status(400).json({ error: 'Draft must have title, description, and category before publishing' });
+  }
+
+  const taskData = buildTaskInsertData({
+    title: draft.title, description: draft.description, category: draft.category,
+    budget: draft.budget || 0, location: draft.location, requirements: draft.requirements,
+    required_skills: draft.required_skills, is_remote: draft.is_remote,
+    duration_hours: draft.duration_hours, deadline: draft.deadline,
+    max_revisions: draft.max_revisions, output_schema: draft.output_schema,
+    agent_id: user.id, status: 'open'
+  });
+
+  const { data: task, error: insertErr } = await supabase.from('tasks').insert(taskData).select().single();
+  if (insertErr) return res.status(500).json({ error: safeErrorMessage(insertErr) });
+
+  // Delete draft after successful publish
+  await supabase.from('task_drafts').delete().eq('id', draft.id);
+
+  res.status(201).json(task);
+});
+
 app.get('/api/tasks/:id', async (req, res, next) => {
   // Skip if id is a reserved route name (handled by later routes)
-  const reservedRoutes = ['available', 'my-tasks'];
+  const reservedRoutes = ['available', 'my-tasks', 'drafts'];
   if (reservedRoutes.includes(req.params.id)) {
     return next();
   }
@@ -3214,6 +3450,51 @@ app.get('/api/tasks/:id/stats', async (req, res) => {
     applications: appResult.count || 0,
     views: viewResult.count || 0
   });
+});
+
+// POST /api/tasks/:id/clone — duplicate an existing task as a new open task (agent only)
+app.post('/api/tasks/:id/clone', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data: source, error: fetchErr } = await supabase
+    .from('tasks')
+    .select('title, description, category, budget, location, latitude, longitude, requirements, required_skills, is_remote, duration_hours, max_revisions, output_schema, agent_id')
+    .eq('id', req.params.id)
+    .single();
+
+  if (fetchErr || !source) return res.status(404).json({ error: 'Task not found' });
+  if (source.agent_id !== user.id) return res.status(403).json({ error: 'Can only clone your own tasks' });
+
+  const cloneData = buildTaskInsertData({
+    title: `${source.title} (copy)`,
+    description: source.description,
+    category: source.category,
+    budget: source.budget,
+    location: source.location,
+    latitude: source.latitude,
+    longitude: source.longitude,
+    requirements: source.requirements,
+    required_skills: source.required_skills,
+    is_remote: source.is_remote,
+    duration_hours: source.duration_hours,
+    max_revisions: source.max_revisions,
+    output_schema: source.output_schema,
+    agent_id: user.id,
+    status: 'open'
+  });
+
+  const { data: clone, error: insertErr } = await supabase
+    .from('tasks')
+    .insert(cloneData)
+    .select()
+    .single();
+
+  if (insertErr) return res.status(500).json({ error: safeErrorMessage(insertErr) });
+
+  res.status(201).json(clone);
 });
 
 app.post('/api/tasks/:id/apply', async (req, res) => {
@@ -6510,7 +6791,98 @@ app.get('/api/webhooks/deliveries', async (req, res) => {
     return res.status(500).json({ error: safeErrorMessage(error) });
   }
 
-  res.json({ deliveries: deliveries || [], total: count || 0, page, limit });
+  // Aggregate summary by status for the dashboard
+  const { data: summaryData } = await supabase
+    .from('webhook_deliveries')
+    .select('status')
+    .eq('user_id', user.id);
+
+  const summary = { delivered: 0, pending: 0, failed: 0, dead_lettered: 0 };
+  (summaryData || []).forEach(d => {
+    const s = d.status === 'exhausted' ? 'dead_lettered' : d.status;
+    if (s in summary) summary[s]++;
+  });
+
+  res.json({ deliveries: deliveries || [], total: count || 0, page, limit, summary });
+});
+
+// ============ INVOICES ============
+// GET /api/invoices/download — download a CSV or JSON statement of all completed payments
+app.get('/api/invoices/download', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const format = (req.query.format || 'json').toLowerCase();
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+  const month = parseInt(req.query.month); // optional: 1-12
+
+  let dateFilter = `${year}-01-01`;
+  let dateEnd = `${year + 1}-01-01`;
+  if (month && month >= 1 && month <= 12) {
+    dateFilter = `${year}-${String(month).padStart(2, '0')}-01`;
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    dateEnd = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+  }
+
+  // Workers: query payouts. Agents: query tasks they paid for.
+  let rows = [];
+  if (user.type === 'human' || user.type === 'worker') {
+    const { data: payouts } = await supabase
+      .from('payouts')
+      .select('id, task_id, amount_cents, fee_cents, status, created_at, tasks(title, category)')
+      .eq('human_id', user.id)
+      .gte('created_at', dateFilter)
+      .lt('created_at', dateEnd)
+      .order('created_at', { ascending: false });
+
+    rows = (payouts || []).map(p => ({
+      date: p.created_at?.split('T')[0],
+      type: 'payout',
+      task_id: p.task_id,
+      task_title: p.tasks?.title || '',
+      category: p.tasks?.category || '',
+      gross_cents: p.amount_cents,
+      fee_cents: p.fee_cents,
+      net_cents: (p.amount_cents || 0) - (p.fee_cents || 0),
+      status: p.status
+    }));
+  } else {
+    const { data: tasks } = await supabase
+      .from('tasks')
+      .select('id, title, category, budget, escrow_amount, status, completed_at, created_at')
+      .eq('agent_id', user.id)
+      .in('status', ['approved', 'paid'])
+      .gte('created_at', dateFilter)
+      .lt('created_at', dateEnd)
+      .order('created_at', { ascending: false });
+
+    rows = (tasks || []).map(t => ({
+      date: (t.completed_at || t.created_at)?.split('T')[0],
+      type: 'payment',
+      task_id: t.id,
+      task_title: t.title,
+      category: t.category,
+      budget_usd: t.budget,
+      status: t.status
+    }));
+  }
+
+  if (format === 'csv') {
+    if (rows.length === 0) {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="irlwork_statement_${year}${month ? `_${String(month).padStart(2,'0')}` : ''}.csv"`);
+      return res.send('No data found for the selected period.');
+    }
+    const headers = Object.keys(rows[0]).join(',');
+    const lines = rows.map(r => Object.values(r).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="irlwork_statement_${year}${month ? `_${String(month).padStart(2,'0')}` : ''}.csv"`);
+    return res.send([headers, ...lines].join('\n'));
+  }
+
+  res.json({ year, month: month || null, total_rows: rows.length, rows });
 });
 
 // ============ TRANSACTIONS ============
@@ -9714,7 +10086,10 @@ app.get('/api/conversations', async (req, res) => {
   const user = await getUserByToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { data: conversations, error } = await supabase
+  const pageLimit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 100);
+  const after = req.query.after; // cursor: last updated_at from previous page
+
+  let convQuery = supabase
     .from('conversations')
     .select(`
       *,
@@ -9723,16 +10098,28 @@ app.get('/api/conversations', async (req, res) => {
       agent:users!agent_id(id, name, type, avatar_url, last_active_at)
     `)
     .or(`human_id.eq.${user.id},agent_id.eq.${user.id}`)
-    .order('updated_at', { ascending: false });
+    .is('deleted_at', null)
+    .order('updated_at', { ascending: false })
+    .limit(pageLimit + 1);
+
+  if (after) {
+    const cursorDate = new Date(after);
+    if (!isNaN(cursorDate.getTime())) convQuery = convQuery.lt('updated_at', cursorDate.toISOString());
+  }
+
+  const { data: conversations, error } = await convQuery;
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
-  if (!conversations || conversations.length === 0) {
-    return res.json([]);
+  const hasMore = (conversations || []).length > pageLimit;
+  const page = hasMore ? conversations.slice(0, pageLimit) : (conversations || []);
+
+  if (page.length === 0) {
+    return res.json({ conversations: [], cursor: null, has_more: false });
   }
 
   // Compute per-conversation unread counts using a single aggregation query
-  const convIds = conversations.map(c => c.id);
+  const convIds = page.map(c => c.id);
   const { data: unreadData } = await supabase
     .from('messages')
     .select('conversation_id')
@@ -9745,12 +10132,10 @@ app.get('/api/conversations', async (req, res) => {
     unreadMap[m.conversation_id] = (unreadMap[m.conversation_id] || 0) + 1;
   });
 
-  const result = conversations.map(c => ({
-    ...c,
-    unread: unreadMap[c.id] || 0
-  }));
+  const result = page.map(c => ({ ...c, unread: unreadMap[c.id] || 0 }));
+  const nextCursor = hasMore && result.length > 0 ? result[result.length - 1].updated_at : null;
 
-  res.json(result);
+  res.json({ conversations: result, cursor: nextCursor, has_more: hasMore });
 });
 
 app.post('/api/conversations', async (req, res) => {
@@ -10145,6 +10530,32 @@ app.put('/api/conversations/:id/read-all', async (req, res) => {
   }
 
   res.json({ marked_count: data?.length || 0 });
+});
+
+// Soft-delete a conversation (only visible to participants; preserves history for dispute audit)
+app.delete('/api/conversations/:id', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data: conv } = await supabase
+    .from('conversations')
+    .select('id, human_id, agent_id')
+    .eq('id', req.params.id)
+    .is('deleted_at', null)
+    .single();
+
+  if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+  if (conv.human_id !== user.id && conv.agent_id !== user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  await supabase.from('conversations')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', req.params.id);
+
+  res.json({ success: true });
 });
 
 // Get unread message summary across all conversations (for agents and humans)
@@ -12005,6 +12416,70 @@ async function start() {
     setInterval(expireOpenTasks, TASK_EXPIRY_INTERVAL_MS);
     console.log(`   ✅ Task expiry service started (deadline + ${TASK_EXPIRY_DAYS}-day stale + review expiry + deadline warnings, hourly check)`);
 
+    // ---- Application Expiry (every hour — runs within expireOpenTasks window) ----
+    // Rule 6: Expire pending task applications older than 14 days with no agent response.
+    async function expireStaleApplications() {
+      try {
+        const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: expired, error } = await supabase
+          .from('task_applications')
+          .update({ status: 'expired', updated_at: new Date().toISOString() })
+          .eq('status', 'pending')
+          .lt('created_at', cutoff)
+          .select('id, task_id, user_id');
+
+        if (error && !error.message?.includes('does not exist')) {
+          console.error('[AppExpiry] Error:', error.message);
+          return;
+        }
+        if (expired && expired.length > 0) {
+          console.log(`[AppExpiry] Expired ${expired.length} stale application(s)`);
+          for (const app of expired) {
+            await createNotification(
+              app.user_id, 'application_expired', 'Application Expired',
+              'Your application expired after 14 days with no response from the agent.',
+              app.task_id ? `/tasks/${app.task_id}` : '/tasks'
+            );
+          }
+        }
+      } catch (err) {
+        console.error('[AppExpiry] Error:', err.message);
+      }
+    }
+    expireStaleApplications();
+    setInterval(expireStaleApplications, 60 * 60 * 1000); // hourly
+    console.log('   ✅ Application expiry service started (14-day stale, hourly check)');
+
+    // ---- Idle Account Cleanup (weekly) ----
+    // Flag accounts with no activity in 365+ days. Does NOT delete accounts — only marks them.
+    // Marked accounts are hidden from worker browse results to keep listings fresh.
+    async function cleanupIdleAccounts() {
+      try {
+        const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: idleUsers, error } = await supabase
+          .from('users')
+          .update({ availability: 'unavailable', updated_at: new Date().toISOString() })
+          .eq('type', 'human')
+          .eq('availability', 'available')
+          .lt('last_active_at', cutoff)
+          .not('last_active_at', 'is', null)
+          .select('id');
+
+        if (error && !error.message?.includes('does not exist')) {
+          console.error('[IdleCleanup] Error:', error.message);
+          return;
+        }
+        if (idleUsers && idleUsers.length > 0) {
+          console.log(`[IdleCleanup] Marked ${idleUsers.length} idle account(s) as unavailable`);
+        }
+      } catch (err) {
+        console.error('[IdleCleanup] Error:', err.message);
+      }
+    }
+    // Run weekly (7 days in ms) — no need to run at startup
+    setInterval(cleanupIdleAccounts, 7 * 24 * 60 * 60 * 1000);
+    console.log('   ✅ Idle account cleanup started (365-day threshold, weekly)');
+
     // ---- Auth Hold Renewal (every 6 hours) ----
     async function renewExpiringAuthHolds() {
       try {
@@ -12109,94 +12584,8 @@ async function start() {
     setInterval(renewExpiringAuthHolds, 6 * 60 * 60 * 1000);
     console.log('   ✅ Auth hold renewal service started (every 6 hours)');
 
-    // ---- Auto-Approval for Stale Reviews (every hour) ----
-    // Tasks in pending_review for 72+ hours are auto-approved and payment released.
-    const AUTO_APPROVE_THRESHOLD_MS = 72 * 60 * 60 * 1000; // 72 hours
-    async function autoApproveStaleReviews() {
-      try {
-        const cutoff = new Date(Date.now() - AUTO_APPROVE_THRESHOLD_MS).toISOString();
-        const { data: staleTasks } = await supabase
-          .from('tasks')
-          .select('id, title, agent_id, human_id, budget, escrow_amount, proof_submitted_at, stripe_payment_intent_id, escrow_captured')
-          .eq('status', 'pending_review')
-          .lt('proof_submitted_at', cutoff)
-          .not('proof_submitted_at', 'is', null);
-
-        for (const task of (staleTasks || [])) {
-          if (!task.human_id) continue;
-
-          // Atomic status update — use 'approved' (not 'completed' which is not in the status machine)
-          const { data: updated } = await supabase.from('tasks')
-            .update(cleanTaskData({
-              status: 'approved',
-              auto_released: true,
-              completed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }))
-            .eq('id', task.id)
-            .eq('status', 'pending_review')
-            .select('id')
-            .single();
-
-          if (!updated) continue; // Already changed by someone else
-
-          await recordStatusChange(task.id, 'pending_review', 'approved', null, 'auto_approved_72h');
-
-          // Approve latest proof
-          await supabase.from('task_proofs')
-            .update({ status: 'approved', agent_feedback: 'Auto-approved after 72 hours', updated_at: new Date().toISOString() })
-            .eq('task_id', task.id)
-            .eq('status', 'submitted');
-
-          // If escrow is held (auth hold), capture it now
-          if (task.stripe_payment_intent_id && !task.escrow_captured) {
-            try {
-              const { captureEscrow } = require('./backend/services/stripeService');
-              await captureEscrow(task.stripe_payment_intent_id);
-              await supabase.from('tasks').update({
-                escrow_status: 'deposited',
-                escrow_captured: true,
-                updated_at: new Date().toISOString()
-              }).eq('id', task.id);
-            } catch (captureErr) {
-              console.error(`[AutoApprove] Failed to capture escrow for task ${task.id}:`, captureErr.message);
-            }
-          }
-
-          // Release payment — same pipeline as manual approval and 48h auto-approve
-          const canRelease72h = (task.payment_method === 'stripe' && task.stripe_payment_intent_id) ||
-            (task.payment_method === 'usdc' && (task.escrow_status === 'deposited' || task.escrow_status === 'held'));
-          if (canRelease72h) {
-            try {
-              await releasePaymentToPending(supabase, task.id, task.human_id, task.agent_id, createNotification);
-              console.log(`[AutoApprove/72h] Released payment for task ${task.id}`);
-            } catch (releaseError) {
-              console.error(`[AutoApprove/72h] Payment release failed for task ${task.id}:`, releaseError.message);
-            }
-          }
-
-          // Notify both parties
-          await createNotification(task.human_id, 'payment_released', 'Task Auto-Approved',
-            `Task "${task.title}" was auto-approved after 72 hours. Payment will be released shortly.`,
-            `/tasks/${task.id}`);
-          await createNotification(task.agent_id, 'auto_released', 'Task Auto-Approved',
-            `Task "${task.title}" was automatically approved after 72 hours of no response.`,
-            `/tasks/${task.id}`);
-          dispatchWebhook(task.agent_id, {
-            type: 'auto_released',
-            task_id: task.id,
-            data: { title: task.title }
-          }).catch(() => {});
-
-          console.log(`[AutoApprove] Auto-approved task ${task.id}: "${task.title}"`);
-        }
-      } catch (err) {
-        console.error('[AutoApprove] Error:', err.message);
-      }
-    }
-    autoApproveStaleReviews();
-    setInterval(autoApproveStaleReviews, 60 * 60 * 1000); // hourly
-    console.log('   ✅ Auto-approval service started (72h threshold, hourly check)');
+    // NOTE: 72h auto-approve removed — the 48h system below (autoApprovePendingTasks)
+    // is preferred: it includes a 24h warning webhook and runs first.
 
     // ---- Webhook Retry Queue Processor (every 60 seconds) ----
     async function processWebhookQueue() {

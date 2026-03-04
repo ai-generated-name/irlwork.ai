@@ -39,14 +39,14 @@ export const styles = {
   btnPrimary: `bg-coral text-white hover:bg-coral-dark shadow-v4-md hover:shadow-v4-lg`,
   btnSecondary: `bg-coral/10 text-coral hover:bg-coral/20`,
   btnSmall: `px-3 py-1.5 text-sm rounded-lg`,
-  input: `w-full px-4 py-2.5 bg-[#F5F3F0] border border-[rgba(0,0,0,0.08)] rounded-[10px] text-[#1A1A1A] placeholder-[#AAAAAA] focus:border-coral focus:ring-2 focus:ring-coral/20 focus:outline-none transition-all`,
-  card: `bg-white border border-[rgba(0,0,0,0.06)] rounded-[14px] p-4 shadow-v4-sm hover:shadow-v4-md transition-shadow`,
+  input: `w-full px-4 py-2.5 bg-[#F0EDE8] border border-[rgba(0,0,0,0.08)] rounded-[10px] text-[#111010] placeholder-[rgba(17,16,16,0.26)] focus:border-[rgba(0,0,0,0.3)] focus:ring-2 focus:ring-[rgba(17,16,16,0.06)] focus:outline-none transition-all`,
+  card: `bg-white border border-[rgba(0,0,0,0.06)] rounded-[16px] p-4 shadow-v4-sm hover:shadow-v4-md transition-shadow`,
   container: `max-w-6xl mx-auto px-6`,
-  gradient: `bg-cream`,
+  gradient: `bg-bg`,
   // Dashboard-specific styles
-  sidebar: `bg-cream`,
-  sidebarNav: `text-[#888888] hover:bg-[#F5F3F0] hover:text-[#1A1A1A]`,
-  sidebarNavActive: `bg-coral/[0.06] text-coral font-semibold`,
+  sidebar: `bg-bg`,
+  sidebarNav: `text-[rgba(17,16,16,0.46)] hover:bg-[rgba(0,0,0,0.04)] hover:text-[#111010]`,
+  sidebarNavActive: `bg-[rgba(17,16,16,0.05)] text-[#111010] font-semibold`,
 }
 
 // Onboarding skill categories (exclude "All" filter option)

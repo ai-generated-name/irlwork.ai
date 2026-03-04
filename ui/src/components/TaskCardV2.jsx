@@ -1,6 +1,7 @@
 import React from 'react';
 import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, Sparkles, Truck, Wrench, Search, Languages } from 'lucide-react';
 import { Button } from './ui';
+import { TaskDocket } from './TaskDocket';
 
 const CATEGORY_ICONS = {
   delivery: <Package size={14} />,
@@ -164,7 +165,7 @@ export default function TaskCardV2({
       {/* Budget + Duration + Deadline row */}
       <div className="task-card-v2-meta-row">
         <div className="task-card-v2-budget">
-          <span className="task-card-v2-budget-amount font-['DM_Mono']">${task.budget || 0}</span>
+          <span className="task-card-v2-budget-amount" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--orange)', fontWeight: 800, fontSize: '22px', letterSpacing: '-0.04em' }}>${task.budget || 0}</span>
           <span className="task-card-v2-budget-label">USD</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
