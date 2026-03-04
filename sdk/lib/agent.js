@@ -316,6 +316,15 @@ export class IRLWorkAgent {
   // ============ UTILITY ============
 
   /**
+   * Verify API key and return agent metadata.
+   * Lightweight — use this for SDK initialization checks.
+   * @returns {Promise<Object>} { id, name, email, type, subscription_tier, webhook_configured, ... }
+   */
+  async getMe() {
+    return await this.client.getMe()
+  }
+
+  /**
    * Get agent profile
    * @returns {Promise<Object>} Agent details
    */
