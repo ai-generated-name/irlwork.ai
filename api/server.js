@@ -2631,8 +2631,11 @@ app.put('/api/humans/profile', async (req, res) => {
 app.get('/api/tasks', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
-  const { category, city, urgency, status, my_tasks, user_lat, user_lng, radius_km } = req.query;
+  const { category, city, urgency, status, my_tasks, user_lat, user_lng, radius_km, after, limit: limitParam } = req.query;
   const user = await getUserByToken(req.headers.authorization);
+
+  // Pagination
+  const pageLimit = Math.min(Math.max(parseInt(limitParam) || 50, 1), 200);
 
   // Only return safe public columns (no escrow, deposit, or internal fields)
   let safeTaskColumns = 'id, title, description, category, location, latitude, longitude, budget, deadline, status, task_type, quantity, human_ids, created_at, updated_at, country, country_code, human_id, agent_id, requirements, required_skills, moderation_status, is_remote, max_humans';
@@ -2655,11 +2658,24 @@ app.get('/api/tasks', async (req, res) => {
     query = query.not('moderation_status', 'in', '("hidden","removed")');
   }
 
-  const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(100);
+  // Cursor-based pagination: `after` is the created_at of the last item from the previous page
+  if (after) {
+    const cursorDate = new Date(after);
+    if (!isNaN(cursorDate.getTime())) {
+      query = query.lt('created_at', cursorDate.toISOString());
+    }
+  }
+
+  // Fetch one extra to detect if there are more pages
+  const { data: tasks, error } = await query.order('created_at', { ascending: false }).limit(pageLimit + 1);
 
   if (error) return res.status(500).json({ error: safeErrorMessage(error) });
 
-  let results = tasks || [];
+  const allFetched = tasks || [];
+  const hasMore = allFetched.length > pageLimit;
+  const page = hasMore ? allFetched.slice(0, pageLimit) : allFetched;
+
+  let results = page;
 
   // Apply location filtering
   if (user_lat && user_lng && radius_km !== 'anywhere') {
@@ -2678,7 +2694,7 @@ app.get('/api/tasks', async (req, res) => {
 
     // Fallback: include tasks without coords that match city string
     if (city) {
-      const tasksWithoutCoords = (tasks || []).filter(t =>
+      const tasksWithoutCoords = page.filter(t =>
         !t.latitude && !t.longitude &&
         t.location?.toLowerCase().includes(city.toLowerCase())
       );
@@ -2695,7 +2711,11 @@ app.get('/api/tasks', async (req, res) => {
     );
   }
 
-  res.json(results);
+  const nextCursor = hasMore && results.length > 0
+    ? results[results.length - 1].created_at
+    : null;
+
+  res.json({ tasks: results, cursor: nextCursor, has_more: hasMore });
 });
 
 app.post('/api/tasks', async (req, res) => {
@@ -4835,8 +4855,8 @@ app.post('/api/tasks/:id/reject', async (req, res) => {
     `/tasks/${taskId}`
   );
 
-  // Deliver webhook
-  dispatchWebhook(task.agent_id, {
+  // Deliver webhook to human — they need to resubmit
+  dispatchWebhook(task.human_id, {
     type: 'proof_rejected',
     task_id: taskId,
     data: {
@@ -11076,6 +11096,35 @@ app.get('/api/admin/pending-stats', async (req, res) => {
 });
 
 // ============ HEALTH ============
+// GET /api/me — verify API key and return agent metadata
+// The canonical "am I authenticated?" endpoint for SDK initialization.
+app.get('/api/me', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { data: profile, error } = await supabase
+    .from('users')
+    .select('id, name, email, type, created_at, webhook_url, subscription_tier, tasks_posted_this_month, total_tasks_posted')
+    .eq('id', user.id)
+    .single();
+
+  if (error || !profile) return res.status(404).json({ error: 'Profile not found' });
+
+  res.json({
+    id: profile.id,
+    name: profile.name,
+    email: profile.email,
+    type: profile.type,
+    subscription_tier: profile.subscription_tier || 'free',
+    webhook_configured: !!profile.webhook_url,
+    total_tasks_posted: profile.total_tasks_posted || 0,
+    tasks_posted_this_month: profile.tasks_posted_this_month || 0,
+    created_at: profile.created_at
+  });
+});
+
 app.get('/api/health', async (req, res) => {
   let dbStatus = 'not_configured';
   if (supabase) {
@@ -13553,6 +13602,19 @@ app.post('/api/disputes/:id/resolve', async (req, res) => {
       `/disputes/${id}`
     );
   }
+
+  // Webhooks: fire dispute_resolved to both parties
+  const webhookResolution = refund_agent ? 'refunded' : release_to_human ? 'paid' : resolution;
+  dispatchWebhook(task.agent_id, {
+    type: 'dispute_resolved',
+    task_id: dispute.task_id,
+    data: { resolution: webhookResolution, notes: resolution_notes || null }
+  }).catch(() => {});
+  dispatchWebhook(task.human_id, {
+    type: 'dispute_resolved',
+    task_id: dispute.task_id,
+    data: { resolution: webhookResolution, notes: resolution_notes || null }
+  }).catch(() => {});
 
   res.json({
     success: true,

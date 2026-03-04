@@ -61,6 +61,14 @@ export default class IRLWorkClient {
   // ============ REST API ============
   
   /**
+   * Verify API key and return agent metadata.
+   * Use this for SDK initialization checks.
+   */
+  async getMe() {
+    return await this._request('/api/me')
+  }
+
+  /**
    * Get agent profile
    */
   async getProfile() {

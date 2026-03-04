@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "IRL Work SDK for AI agents - Create tasks, hire humans, manage payments",
   "main": "index.js",
+  "types": "index.d.ts",
   "type": "module",
   "scripts": {
     "test": "node test.js",
