@@ -22,6 +22,7 @@ import WithdrawModal from '../components/WithdrawModal';
 import ShareOnXButton from '../components/ShareOnXButton';
 import { Button } from '../components/ui';
 import API_URL from '../config/api';
+import { fixAvatarUrl } from '../utils/avatarUrl';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function TaskDetailPage({ user, taskId, onNavigate }) {
@@ -79,7 +80,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
           const agentRes = await fetch(`${API_URL}/users/${taskData.agent_id}`, { headers: agentHeaders });
           if (agentRes.ok) {
             const agentData = await agentRes.json();
-            setAgentProfile(agentData);
+            setAgentProfile(fixAvatarUrl(agentData));
           }
         }
 

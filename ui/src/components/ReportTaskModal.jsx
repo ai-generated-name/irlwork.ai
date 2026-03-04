@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Ban } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.irlwork.ai';
+import API_URL from '../config/api';
 
 const REPORT_REASONS = [
   { value: 'scam_fraud', label: 'Scam / Fraud', icon: '🚨' },
@@ -34,7 +33,7 @@ export default function ReportTaskModal({
     setError(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/tasks/${task.id}/report`, {
+      const res = await fetch(`${API_URL}/tasks/${task.id}/report`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
