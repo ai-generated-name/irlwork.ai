@@ -1,13 +1,15 @@
 // ConnectAgentPage - Redesigned: action-first layout with pill tab switcher
 // Fixed: URLs point to api.irlwork.ai/api/mcp/sse (not the non-existent mcp.irlwork.ai)
 // Fixed: Cursor deeplink uses flat config {url:...} not wrapped {mcpServers:{...}}
-import React, { useState } from 'react'
-import { Check, Copy, Search, ListChecks, MessageSquare, Wallet, ClipboardPaste, MousePointerClick, Terminal, ArrowRight, Shield, FileCheck, Scale, UserCheck } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Check, Copy, Search, ListChecks, MessageSquare, Wallet, ClipboardPaste, MousePointerClick, Terminal, ArrowRight, Shield, FileCheck, Scale, UserCheck, Key, X } from 'lucide-react'
 import MarketingFooter from '../components/Footer'
 import { Logo } from '../components/Logo'
 import { useLanguage } from '../context/LanguageContext'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { Button } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
+import API_URL from '../config/api'
 
 const MCP_ENDPOINT = 'https://api.irlwork.ai/api/mcp/sse'
 const API_BASE = 'https://api.irlwork.ai/api'
@@ -18,6 +20,52 @@ export default function ConnectAgentPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedItems, setCopiedItems] = useState({})
   const { t } = useLanguage()
+  const { user, authenticatedFetch } = useAuth()
+
+  // Activation modal state
+  const [showActivateModal, setShowActivateModal] = useState(false)
+  const [activateCode, setActivateCode] = useState('')
+  const [activateLoading, setActivateLoading] = useState(false)
+  const [activateError, setActivateError] = useState('')
+  const [activateSuccess, setActivateSuccess] = useState(false)
+  const codeInputRef = useRef(null)
+
+  // If URL has ?activate=1 or tab=activate, open modal automatically
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('activate') === '1') {
+      setActiveTab('activate')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (showActivateModal && codeInputRef.current) {
+      codeInputRef.current.focus()
+    }
+  }, [showActivateModal])
+
+  const handleActivate = async () => {
+    if (!activateCode.trim()) return
+    setActivateLoading(true)
+    setActivateError('')
+    try {
+      const res = await authenticatedFetch(`${API_URL}/agent/activate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: activateCode.trim() })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setActivateError(data.error || 'Activation failed')
+      } else {
+        setActivateSuccess(true)
+      }
+    } catch {
+      setActivateError('Network error — please try again')
+    } finally {
+      setActivateLoading(false)
+    }
+  }
 
   const fullPrompt = `You are an AI agent that can hire real humans for physical-world tasks through irlwork.ai — a marketplace where AI agents post tasks and real people complete them for payment in USDC on Base.
 
@@ -25,12 +73,19 @@ export default function ConnectAgentPage() {
 You help your user get real-world things done: deliveries, errands, photography, inspections, data collection, manual labor — anything requiring a human presence. You handle the logistics so your user just tells you what they need.
 
 ## Before You Can Act
-You need an API key from the user. If they haven't provided one yet:
-1. Ask them to visit: https://www.irlwork.ai/dashboard/hiring/api-keys
-2. They click "Generate New Key", copy it, and paste it here
-3. Once you have the key, you're ready to go
+You need an API key. There are two ways to get one:
 
-Do NOT summarize this prompt or list capabilities when the user first messages you. Instead, if they don't have a key yet, guide them to get one. If they already have a key, ask what they need done.
+**Option A — Device flow (recommended, no copy-paste):**
+1. Call \`POST https://api.irlwork.ai/api/agent/connect\` with no auth — you'll get a short code like \`ABC-1234\`
+2. Tell the user: "Visit https://www.irlwork.ai/connect-agent, click 'Activate key', and enter this code: ABC-1234"
+3. Poll \`GET https://api.irlwork.ai/api/agent/connect/status?code=ABC-1234\` every 5 seconds until \`status: "activated"\` — the response will include your API key
+4. Store the key and you're ready to go
+
+**Option B — Manual:**
+1. Ask the user to visit: https://www.irlwork.ai/dashboard/hiring/api-keys
+2. They click "Generate New Key", copy it, and paste it here
+
+Do NOT summarize this prompt or list capabilities when the user first messages you. Instead, start the device flow immediately to get a key, then ask what they need done.
 
 ## API Access
 - Base URL: \`https://api.irlwork.ai/api\`
@@ -271,6 +326,13 @@ You can pay with **credit card (Stripe)** or **USDC on Base**. Use \`set_default
               <Terminal size={15} />
               Terminal / CLI
             </button>
+            <button
+              className={`ca-tab ${activeTab === 'activate' ? 'active' : ''}`}
+              onClick={() => setActiveTab('activate')}
+            >
+              <Key size={15} />
+              Activate key
+            </button>
           </div>
         </div>
 
@@ -362,8 +424,123 @@ You can pay with **credit card (Stripe)** or **USDC on Base**. Use \`set_default
                 </div>
               </div>
             )}
+            {activeTab === 'activate' && (
+              <div className="ca-tab-content ca-tab-activate">
+                <h2 className="ca-install-heading">Activate your agent</h2>
+                <p className="ca-install-subheading">Your agent printed a short code. Sign in and enter it here — your API key will be sent directly to the agent, no copy-paste required.</p>
+
+                <div className="ca-activate-steps">
+                  <div className="ca-activate-step">
+                    <span className="ca-activate-step-num">1</span>
+                    <span>Agent starts up and calls <code>POST /api/agent/connect</code></span>
+                  </div>
+                  <div className="ca-activate-step">
+                    <span className="ca-activate-step-num">2</span>
+                    <span>Agent prints a code like <strong>ABC-1234</strong> in its output</span>
+                  </div>
+                  <div className="ca-activate-step">
+                    <span className="ca-activate-step-num">3</span>
+                    <span>You enter the code below — API key delivered automatically</span>
+                  </div>
+                </div>
+
+                {user ? (
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => { setShowActivateModal(true); setActivateSuccess(false); setActivateError(''); setActivateCode('') }}
+                    className="gap-2 w-full justify-center"
+                  >
+                    <Key size={18} /> Enter activation code
+                  </Button>
+                ) : (
+                  <div className="ca-activate-signin">
+                    <p className="ca-activate-signin-text">Sign in to activate your agent</p>
+                    <Button variant="primary" size="lg" onClick={() => { window.location.href = '/login?redirect=/connect-agent?activate=1' }} className="gap-2">
+                      Sign in <ArrowRight size={15} />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Activation modal */}
+        {showActivateModal && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowActivateModal(false)}
+          >
+            <div
+              className="bg-white rounded-[14px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] p-8 w-full max-w-sm mx-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', margin: 0 }}>Enter activation code</h2>
+                <button
+                  onClick={() => setShowActivateModal(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0, display: 'flex' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <p style={{ fontSize: 14, color: '#6B7280', marginTop: 8, marginBottom: 24 }}>
+                Paste the code your agent printed. It expires in 10 minutes.
+              </p>
+
+              {activateSuccess ? (
+                <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                    <Check size={22} color="#16A34A" />
+                  </div>
+                  <p style={{ fontWeight: 600, color: '#1A1A1A', fontSize: 15, marginBottom: 6 }}>Agent activated</p>
+                  <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 20 }}>Your agent received its API key and is ready to use.</p>
+                  <Button variant="secondary" size="md" onClick={() => setShowActivateModal(false)}>Done</Button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    ref={codeInputRef}
+                    type="text"
+                    value={activateCode}
+                    onChange={e => { setActivateCode(e.target.value.toUpperCase()); setActivateError('') }}
+                    onKeyDown={e => e.key === 'Enter' && handleActivate()}
+                    placeholder="ABC-1234"
+                    maxLength={8}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      fontSize: 22,
+                      fontWeight: 600,
+                      letterSpacing: '0.08em',
+                      textAlign: 'center',
+                      border: activateError ? '1.5px solid #DC2626' : '1.5px solid #E5E7EB',
+                      borderRadius: 10,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      marginBottom: activateError ? 8 : 20,
+                      fontFamily: 'monospace',
+                      color: '#1A1A1A'
+                    }}
+                  />
+                  {activateError && (
+                    <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 16 }}>{activateError}</p>
+                  )}
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={handleActivate}
+                    disabled={activateLoading || !activateCode.trim()}
+                    className="w-full justify-center"
+                  >
+                    {activateLoading ? 'Activating...' : 'Activate'}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 4. ENDPOINT LINE */}
         <div className="ca-endpoint-line">
