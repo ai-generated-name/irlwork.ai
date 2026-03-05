@@ -84,6 +84,7 @@ export default function TaskRow({
   setNegotiateMsg,
   assignNotes = {},
   setAssignNotes,
+  paymentError,
   // Worker-specific
   onAccept,
   onDecline,
@@ -213,6 +214,34 @@ export default function TaskRow({
           </div>
         </div>
       </div>
+
+      {/* ── Payment error banner ── */}
+      {paymentError && variant === 'hiring' && (
+        <div className="mx-4 sm:mx-5 mb-2 px-3 py-2.5 rounded-lg bg-[rgba(255,95,87,0.08)] border border-[#FF5F57]/20 flex items-start gap-2.5">
+          <AlertTriangle size={15} className="text-[#FF5F57] mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-[#1A1A1A] font-medium">Payment failed</p>
+            <p className="text-xs text-[#525252] mt-0.5">{typeof paymentError === 'object' ? paymentError.message : paymentError}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <a href="/?tab=payments" className="text-xs font-semibold text-[#FF5F57] hover:text-[#B91C1C] underline">
+                Update Payment Method
+              </a>
+              {(() => {
+                const retryHumanId = (typeof paymentError === 'object' ? paymentError.humanId : null) || task.human_id;
+                if (!retryHumanId || !onAssignHuman) return null;
+                return (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onAssignHuman(task.id, retryHumanId) }}
+                    className="text-xs font-semibold text-[#0F4C5C] hover:text-[#0A3540] underline"
+                  >
+                    Retry
+                  </button>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Expanded section ─────────────────────────────── */}
       {expanded && (

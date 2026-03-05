@@ -107,6 +107,26 @@ export default function PaymentMethodList({ user, onUpdate, onMethodsLoaded }) {
             <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
               {pm.exp_month}/{pm.exp_year}
             </span>
+            {(() => {
+              const now = new Date();
+              const expDate = new Date(pm.exp_year, pm.exp_month); // month after expiry (0-indexed)
+              const daysUntilExpiry = Math.floor((expDate - now) / (1000 * 60 * 60 * 24));
+              if (daysUntilExpiry <= 0) {
+                return (
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#DC2626', background: '#FEE2E2', padding: '2px 8px', borderRadius: '6px' }}>
+                    Expired
+                  </span>
+                );
+              }
+              if (daysUntilExpiry <= 60) {
+                return (
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#92400E', background: '#FEF3C7', padding: '2px 8px', borderRadius: '6px' }}>
+                    Expiring soon
+                  </span>
+                );
+              }
+              return null;
+            })()}
             {pm.is_default && (
               <span style={{
                 fontSize: '0.6875rem',

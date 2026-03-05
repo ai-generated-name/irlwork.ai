@@ -4138,7 +4138,7 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
   };
 
   // ============ STRIPE PATH: Auth hold and assign (no charge until /start) ============
-  if (!useUsdc && agentPaymentMethods.length > 0) {
+  if (!useUsdc && stripeUsable) {
     const budgetCents = Math.round(budgetAmount * 100);
 
     // Calculate fees based on poster's tier
@@ -4168,8 +4168,57 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       });
     }
 
-    // Auth hold expires in ~7 days — record the expiry for cron renewal
-    const authHoldExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    // 3DS/SCA required — save PI to task in pending_acceptance, return 202 for frontend to handle
+    if (authResult.requires_action) {
+      // Move task to pending_acceptance with a 30-min timeout so cron cleans up abandoned 3DS
+      const { data: updated3ds, error: update3dsErr } = await supabase
+        .from('tasks')
+        .update(cleanTaskData({
+          human_id: isOpen ? (updatedHumanIds[0] || human_id) : human_id,
+          human_ids: updatedHumanIds,
+          spots_filled: newSpotsFilled,
+          status: 'pending_acceptance',
+          escrow_status: 'pending',
+          escrow_amount: budgetAmount,
+          stripe_payment_intent_id: authResult.payment_intent_id,
+          escrow_captured: false,
+          payment_method: 'stripe',
+          poster_fee_percent: getTierConfig(posterTier).poster_fee_percent,
+          poster_fee_cents: posterFeeCents,
+          worker_fee_percent: workerFeePercent,
+          total_charge_cents: totalChargeCents,
+          review_deadline: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          updated_at: new Date().toISOString()
+        }))
+        .eq('id', taskId)
+        .eq('status', 'open')
+        .select('id')
+        .single();
+
+      if (update3dsErr || !updated3ds) {
+        // Race condition: task was grabbed by someone else — cancel the PI
+        try {
+          const { cancelEscrowHold } = require('./backend/services/stripeService');
+          await cancelEscrowHold(authResult.payment_intent_id);
+        } catch (cancelErr) {
+          console.error(`[Assign] CRITICAL: Failed to cancel orphaned 3DS PI ${authResult.payment_intent_id}:`, cancelErr);
+        }
+        return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
+      }
+
+      await recordStatusChange(taskId, 'open', 'pending_acceptance', user.id, '3ds_required');
+
+      return res.status(202).json({
+        requires_action: true,
+        client_secret: authResult.client_secret,
+        payment_intent_id: authResult.payment_intent_id,
+        task_id: taskId,
+        message: 'Card requires 3D Secure authentication. Please complete verification.'
+      });
+    }
+
+    // Auth hold expires in ~6.5 days — use value from Stripe service for consistency
+    const authHoldExpiresAt = authResult.auth_hold_expires_at || new Date(Date.now() + 6.5 * 24 * 60 * 60 * 1000).toISOString();
 
     // Atomic update: move to assigned with escrow held (not deposited — captured at /start)
     const assignStatus = nextStatus || 'assigned';
@@ -4209,6 +4258,8 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       }
       return res.status(409).json({ error: 'Task is no longer available — it may have already been assigned' });
     }
+
+    await recordStatusChange(taskId, 'open', assignStatus, user.id, 'stripe_assign');
 
     // Finalize: accept application, reject others, notify worker
     await finalizeAssignment(
@@ -4252,13 +4303,13 @@ app.post('/api/tasks/:id/assign', async (req, res) => {
       worker: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
       human: { id: humanUser?.id || human_id, name: humanUser?.name || 'Human' },
       status: assignStatus,
-      escrow_status: 'deposited',
+      escrow_status: 'held',
       payment_method: 'stripe',
       total_charge_cents: totalChargeCents,
       poster_fee_cents: posterFeeCents,
       spots_filled: newSpotsFilled,
       spots_remaining: Math.max(0, maxQuantity - newSpotsFilled),
-      message: 'Worker assigned and payment charged. Escrow deposited — work can begin.'
+      message: 'Worker assigned and payment hold placed. Escrow will be captured when work begins.'
     });
   }
 
@@ -6971,16 +7022,25 @@ app.get('/api/invoices/download', async (req, res) => {
     dateEnd = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
   }
 
-  // Workers: query payouts. Agents: query tasks they paid for.
+  // Workers: query payouts + pending_transactions. Agents: query tasks they paid for.
   let rows = [];
   if (user.type === 'human' || user.type === 'worker') {
-    const { data: payouts } = await supabase
-      .from('payouts')
-      .select('id, task_id, amount_cents, fee_cents, status, created_at, tasks(title, category)')
-      .eq('human_id', user.id)
-      .gte('created_at', dateFilter)
-      .lt('created_at', dateEnd)
-      .order('created_at', { ascending: false });
+    const [{ data: payouts }, { data: pendingTxns }] = await Promise.all([
+      supabase
+        .from('payouts')
+        .select('id, task_id, amount_cents, fee_cents, status, created_at, tasks(title, category)')
+        .eq('human_id', user.id)
+        .gte('created_at', dateFilter)
+        .lt('created_at', dateEnd)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('pending_transactions')
+        .select('id, task_id, amount_cents, fee_cents, status, created_at, clears_at, task_title')
+        .eq('user_id', user.id)
+        .gte('created_at', dateFilter)
+        .lt('created_at', dateEnd)
+        .order('created_at', { ascending: false })
+    ]);
 
     rows = (payouts || []).map(p => ({
       date: p.created_at?.split('T')[0],
@@ -6993,6 +7053,25 @@ app.get('/api/invoices/download', async (req, res) => {
       net_cents: (p.amount_cents || 0) - (p.fee_cents || 0),
       status: p.status
     }));
+
+    // Append pending transactions
+    for (const tx of (pendingTxns || [])) {
+      rows.push({
+        date: tx.created_at?.split('T')[0],
+        type: 'pending',
+        task_id: tx.task_id,
+        task_title: tx.task_title || '',
+        category: '',
+        gross_cents: tx.amount_cents,
+        fee_cents: tx.fee_cents || 0,
+        net_cents: (tx.amount_cents || 0) - (tx.fee_cents || 0),
+        status: tx.status,
+        clears_at: tx.clears_at?.split('T')[0] || ''
+      });
+    }
+
+    // Sort by date descending
+    rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   } else {
     const { data: tasks } = await supabase
       .from('tasks')
@@ -12324,37 +12403,59 @@ async function start() {
             await recordStatusChange(task.id, 'open', 'expired', null, 'stale_no_applicants');
           }
         }
-        // Rule 3: Expire pending_acceptance tasks past their 24-hour review deadline
+        // Rule 3: Expire pending_acceptance tasks past their review deadline (includes 3DS timeouts)
         const { data: reviewExpired, error: reviewErr } = await supabase
           .from('tasks')
-          .update({
+          .update(cleanTaskData({
             status: 'open',
             human_id: null,
             human_ids: [],
             spots_filled: 0,
             review_deadline: null,
+            stripe_payment_intent_id: null,
+            escrow_status: null,
+            escrow_amount: null,
+            escrow_captured: false,
+            poster_fee_cents: null,
+            worker_fee_percent: null,
+            total_charge_cents: null,
             updated_at: now
-          })
+          }))
           .eq('status', 'pending_acceptance')
           .not('review_deadline', 'is', null)
           .lt('review_deadline', now)
-          .select('id, agent_id, human_id, title');
+          .select('id, agent_id, human_id, title, stripe_payment_intent_id, escrow_status');
 
         if (reviewErr) {
           console.error('[TaskExpiry] Review expiry error:', reviewErr.message);
         } else if (reviewExpired && reviewExpired.length > 0) {
           console.log(`[TaskExpiry] Reverted ${reviewExpired.length} pending_acceptance tasks (review period expired)`);
           for (const task of reviewExpired) {
+            // Cancel any Stripe auth hold (e.g., abandoned 3DS)
+            if (task.stripe_payment_intent_id) {
+              try {
+                const { cancelEscrowHold } = require('./backend/services/stripeService');
+                await cancelEscrowHold(task.stripe_payment_intent_id);
+                console.log(`[TaskExpiry] Cancelled PI ${task.stripe_payment_intent_id} for expired task ${task.id}`);
+              } catch (cancelErr) {
+                console.error(`[TaskExpiry] PI cancel failed for ${task.stripe_payment_intent_id}:`, cancelErr.message);
+              }
+            }
+            // Determine if this was a 3DS timeout (short deadline) vs worker acceptance timeout (24h)
+            const is3dsTimeout = task.stripe_payment_intent_id && task.escrow_status === 'pending';
+            const timeoutLabel = is3dsTimeout ? 'Payment verification timed out' : 'The worker did not respond in time';
             if (task.agent_id) {
               await createNotification(
                 task.agent_id,
                 'task_offer_expired',
-                'Offer Expired',
-                `The worker did not respond to your task "${task.title}" within 24 hours. The task is back to open.`,
+                is3dsTimeout ? 'Payment Timed Out' : 'Offer Expired',
+                is3dsTimeout
+                  ? `Payment verification for "${task.title}" timed out. The task is back to open — you can try assigning again.`
+                  : `The worker did not respond to your task "${task.title}" within 24 hours. The task is back to open.`,
                 `/tasks/${task.id}`
               );
             }
-            if (task.human_id) {
+            if (task.human_id && !is3dsTimeout) {
               await createNotification(
                 task.human_id,
                 'task_offer_expired',
@@ -12655,7 +12756,8 @@ async function start() {
         for (const task of (expiringTasks || [])) {
           try {
             // Create new auth hold FIRST (before cancelling old — no gap if new fails)
-            const amountCents = Math.round((task.escrow_amount || task.budget || 0) * 100);
+            // Use total_charge_cents (budget + fees) if available, otherwise calculate from escrow_amount
+            const amountCents = task.total_charge_cents || Math.round((task.escrow_amount || task.budget || 0) * 100);
             const oldPiId = task.stripe_payment_intent_id;
             const newAuth = await authorizeEscrow(supabase, task.agent_id, task.id, amountCents);
 
@@ -12667,20 +12769,23 @@ async function start() {
             }
 
             if (newAuth.requires_action) {
-              // 3DS required on renewal — notify agent
-              await createNotification(task.agent_id, 'auth_hold_failed', 'Payment Hold Expiring',
-                `Your payment hold for "${task.title}" could not be renewed. Please update your payment method within 24 hours or the task will be cancelled.`,
-                `/tasks/${task.id}`);
-              dispatchWebhook(task.agent_id, {
-                type: 'auth_hold_failed',
-                task_id: task.id,
-                data: { title: task.title, action_required: 'update_payment_method' }
-              }).catch(() => {});
-              // Set a short expiry so next cycle auto-cancels if still unresolved
+              // 3DS required on renewal — update PI reference so we don't orphan the new PI,
+              // then notify agent. Set a 24h expiry so next cron cycle auto-cancels if unresolved.
               await supabase.from('tasks').update({
+                stripe_payment_intent_id: newAuth.payment_intent_id,
+                escrow_status: 'pending',
                 auth_hold_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
                 updated_at: new Date().toISOString()
               }).eq('id', task.id);
+              await createNotification(task.agent_id, 'auth_hold_failed', 'Payment Hold Expiring',
+                `Your payment hold for "${task.title}" could not be renewed automatically (3D Secure required). Please update your payment method within 24 hours or the task will be cancelled.`,
+                '/?tab=payments');
+              dispatchWebhook(task.agent_id, {
+                type: 'auth_hold_failed',
+                task_id: task.id,
+                data: { title: task.title, action_required: 'update_payment_method', requires_3ds: true }
+              }).catch(() => {});
+              console.log(JSON.stringify({ service: 'stripe', event: 'auth_hold_renewal_3ds', task_id: task.id, new_pi: newAuth.payment_intent_id, timestamp: new Date().toISOString() }));
               continue;
             }
 
@@ -12690,9 +12795,9 @@ async function start() {
               updated_at: new Date().toISOString()
             }).eq('id', task.id);
 
-            console.log(`[AuthRenewal] Renewed auth hold for task ${task.id}`);
+            console.log(JSON.stringify({ service: 'stripe', event: 'auth_hold_renewed', task_id: task.id, new_pi: newAuth.payment_intent_id, timestamp: new Date().toISOString() }));
           } catch (err) {
-            console.error(`[AuthRenewal] Failed for task ${task.id}:`, err.message);
+            console.log(JSON.stringify({ service: 'stripe', event: 'auth_hold_renewal_failed', task_id: task.id, error: err.message, timestamp: new Date().toISOString() }));
             await createNotification(task.agent_id, 'auth_hold_failed', 'Payment Hold Failed',
               `Your payment hold for "${task.title}" could not be renewed. Update your payment method or the task may be cancelled.`,
               `/tasks/${task.id}`);
@@ -12730,8 +12835,15 @@ async function start() {
             await createNotification(task.human_id, 'task_cancelled', 'Task Cancelled',
               `Task "${task.title}" was cancelled due to a payment issue with the requester.`, `/tasks/${task.id}`);
           }
-          console.log(`[AuthRenewal] Auto-cancelled task ${task.id} — auth hold expired`);
+          console.log(JSON.stringify({ service: 'stripe', event: 'auth_hold_auto_cancelled', task_id: task.id, timestamp: new Date().toISOString() }));
         }
+        // Summary stats
+        console.log(JSON.stringify({
+          service: 'stripe', event: 'auth_hold_cron_complete',
+          renewed: (expiringTasks || []).length,
+          expired_cancelled: (expiredHolds || []).length,
+          timestamp: new Date().toISOString()
+        }));
       } catch (err) {
         console.error('[AuthRenewal] Error:', err.message);
       }
@@ -12740,6 +12852,67 @@ async function start() {
     renewExpiringAuthHolds();
     setInterval(renewExpiringAuthHolds, 6 * 60 * 60 * 1000);
     console.log('   ✅ Auth hold renewal service started (every 6 hours)');
+
+    // ---- Card Expiration Warnings (daily) ----
+    async function checkExpiringCards() {
+      try {
+        const { listPaymentMethods } = require('./backend/services/stripeService');
+        const now = new Date();
+        const warningMonth = now.getMonth() + 1; // 1-indexed
+        const warningYear = now.getFullYear();
+        // Check cards expiring within 30 days
+        const futureDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const futureMonth = futureDate.getMonth() + 1;
+        const futureYear = futureDate.getFullYear();
+
+        // Find agents with Stripe customers
+        const { data: agents } = await supabase
+          .from('users')
+          .select('id, name, stripe_customer_id')
+          .not('stripe_customer_id', 'is', null);
+
+        let warned = 0;
+        for (const agent of (agents || [])) {
+          try {
+            const methods = await listPaymentMethods(agent.stripe_customer_id);
+            for (const pm of methods) {
+              const expiring = (pm.exp_year < futureYear) ||
+                (pm.exp_year === futureYear && pm.exp_month <= futureMonth);
+              const alreadyExpired = (pm.exp_year < warningYear) ||
+                (pm.exp_year === warningYear && pm.exp_month < warningMonth);
+              if (expiring && !alreadyExpired) {
+                // Dedup: skip if already warned this agent in the past 7 days
+                const { data: existing } = await supabase
+                  .from('notifications')
+                  .select('id')
+                  .eq('user_id', agent.id)
+                  .eq('type', 'card_expiring')
+                  .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+                  .limit(1);
+                if (existing?.length > 0) continue;
+                await createNotification(
+                  agent.id,
+                  'card_expiring',
+                  'Card Expiring Soon',
+                  `Your ${pm.brand || 'card'} ending in ${pm.last4} expires ${pm.exp_month}/${pm.exp_year}. Update it to avoid payment failures.`,
+                  '/?tab=payments'
+                );
+                warned++;
+              }
+            }
+          } catch (err) {
+            // Skip agents with invalid Stripe customers
+          }
+        }
+        if (warned > 0) console.log(`[CardExpiry] Warned ${warned} agent(s) about expiring cards`);
+      } catch (err) {
+        console.error('[CardExpiry] Error:', err.message);
+      }
+    }
+    // Run daily
+    setTimeout(checkExpiringCards, 60 * 1000); // first run 1 min after startup
+    setInterval(checkExpiringCards, 24 * 60 * 60 * 1000);
+    console.log('   ✅ Card expiration warning service started (daily)');
 
     // NOTE: 72h auto-approve removed — the 48h system below (autoApprovePendingTasks)
     // is preferred: it includes a 24h warning webhook and runs first.
@@ -13534,8 +13707,9 @@ app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
       .from('tasks')
       .update(cleanTaskData({
         status: 'assigned',
-        escrow_status: 'authorized',
+        escrow_status: 'held',
         auth_hold_expires_at: authHoldExpiresAt,
+        review_deadline: null,
         assigned_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
@@ -13550,6 +13724,15 @@ app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
 
     await recordStatusChange(taskId, 'pending_acceptance', 'assigned', user.id, 'payment_confirmed');
 
+    // Mark the winning application as accepted
+    if (task.human_id) {
+      await supabase
+        .from('task_applications')
+        .update({ status: 'accepted', updated_at: new Date().toISOString() })
+        .eq('task_id', taskId)
+        .eq('human_id', task.human_id);
+    }
+
     // Reject other applicants
     const { data: rejectedApps } = await supabase
       .from('task_applications')
@@ -13561,13 +13744,23 @@ app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
         `Another worker was selected for "${task.title}". Browse other tasks ->`, '/tasks');
     }
 
+    // Increment worker stats (parity with normal assign path)
+    if (task.human_id) {
+      const { data: acceptWorker } = await supabase.from('users')
+        .select('total_tasks_accepted').eq('id', task.human_id).single();
+      await supabase.from('users').update({
+        total_tasks_accepted: (acceptWorker?.total_tasks_accepted || 0) + 1,
+        last_active_at: new Date().toISOString()
+      }).eq('id', task.human_id);
+    }
+
     await createNotification(task.agent_id, 'payment_confirmed', 'Payment Verified',
       `Payment for "${task.title}" has been verified. Task is now assigned.`,
       `/tasks/${taskId}`);
     dispatchWebhook(task.agent_id, {
       type: 'payment_confirmed',
       task_id: taskId,
-      data: { title: task.title, status: 'assigned', escrow_status: 'authorized' }
+      data: { title: task.title, status: 'assigned', escrow_status: 'held' }
     }).catch(() => {});
     if (task.human_id) {
       await createNotification(task.human_id, 'task_assigned', 'You\'ve Been Assigned',
@@ -13575,7 +13768,7 @@ app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
         `/tasks/${taskId}`);
     }
 
-    return res.json({ success: true, status: 'assigned', escrow_status: 'authorized' });
+    return res.json({ success: true, status: 'assigned', escrow_status: 'held' });
   }
 
   if (pi.status === 'requires_action' || pi.status === 'requires_confirmation') {
@@ -13586,12 +13779,40 @@ app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
     });
   }
 
-  if (pi.status === 'canceled') {
+  // Helper: revert task from pending_acceptance to open and clean up assignment data
+  const revertTaskToOpen = async (reason) => {
     await supabase.from('tasks')
-      .update({ status: 'open', human_id: null, updated_at: new Date().toISOString() })
+      .update(cleanTaskData({
+        status: 'open',
+        human_id: null,
+        human_ids: [],
+        spots_filled: 0,
+        stripe_payment_intent_id: null,
+        escrow_status: null,
+        escrow_amount: null,
+        escrow_captured: false,
+        poster_fee_cents: null,
+        worker_fee_percent: null,
+        total_charge_cents: null,
+        review_deadline: null,
+        payment_method: null,
+        assigned_at: null,
+        updated_at: new Date().toISOString()
+      }))
       .eq('id', taskId)
       .eq('status', 'pending_acceptance');
-    await recordStatusChange(taskId, 'pending_acceptance', 'open', user.id, 'payment_reconfirmed');
+    await recordStatusChange(taskId, 'pending_acceptance', 'open', user.id, reason);
+    // Cancel PI if it still exists
+    try {
+      const { cancelEscrowHold } = require('./backend/services/stripeService');
+      await cancelEscrowHold(task.stripe_payment_intent_id);
+    } catch (cancelErr) {
+      console.error(`[ConfirmPayment] PI cancel failed for ${task.stripe_payment_intent_id}:`, cancelErr.message);
+    }
+  };
+
+  if (pi.status === 'canceled') {
+    await revertTaskToOpen('payment_cancelled');
     return res.status(400).json({
       error: 'payment_cancelled',
       message: 'Payment was cancelled. The task has been reopened.'
@@ -13599,14 +13820,16 @@ app.post('/api/tasks/:id/confirm-payment', async (req, res) => {
   }
 
   if (pi.status === 'requires_payment_method') {
+    await revertTaskToOpen('payment_method_failed');
     return res.status(402).json({
       error: 'payment_failed',
       message: 'Payment method was declined. Please update your payment method and try again.'
     });
   }
 
-  // Any other unexpected status
+  // Any other unexpected status — revert to prevent stuck tasks
   console.warn(`[ConfirmPayment] Unexpected PI status '${pi.status}' for task ${taskId}`);
+  await revertTaskToOpen('unexpected_payment_status');
   return res.status(400).json({
     error: 'unexpected_payment_status',
     message: `Unexpected payment status: ${pi.status}. Please contact support.`
@@ -13737,9 +13960,27 @@ app.post('/api/tasks/:id/start', async (req, res) => {
       await captureEscrow(task.stripe_payment_intent_id);
     } catch (captureErr) {
       console.error(`[Start] Escrow capture failed for task ${id}:`, captureErr.message);
+
+      // Notify agent about the capture failure so they can update payment method
+      if (task.agent_id) {
+        await createNotification(
+          task.agent_id,
+          'payment_failed',
+          'Payment Capture Failed',
+          `Payment capture for "${task.title}" failed: ${captureErr.message}. Please update your payment method.`,
+          '/?tab=payments'
+        );
+      }
+
+      // Mark the auth hold as failed so the renewal cron can attempt recovery
+      await supabase.from('tasks').update({
+        escrow_status: 'failed',
+        updated_at: new Date().toISOString()
+      }).eq('id', id);
+
       return res.status(402).json({
         error: 'capture_failed',
-        message: 'Payment capture failed. Please contact the task requester.'
+        message: 'Payment capture failed. The task requester has been notified to update their payment method.'
       });
     }
 
@@ -13761,7 +14002,22 @@ app.post('/api/tasks/:id/start', async (req, res) => {
       .single();
 
     if (startErr || !startedTask) {
-      return res.status(409).json({ error: 'Task status changed before work could start.' });
+      // CRITICAL: Stripe capture succeeded but DB update failed — log for manual reconciliation
+      console.error(`[Start] CRITICAL: Stripe capture succeeded for PI ${task.stripe_payment_intent_id} but DB update failed for task ${id}. Manual reconciliation required.`);
+      // Retry once with broader status match
+      const { error: retryErr } = await supabase.from('tasks').update(cleanTaskData({
+        status: 'in_progress',
+        escrow_status: 'deposited',
+        escrow_deposited_at: new Date().toISOString(),
+        escrow_captured: true,
+        escrow_captured_at: new Date().toISOString(),
+        work_started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })).eq('id', id);
+      if (retryErr) {
+        console.error(`[Start] CRITICAL RETRY FAILED for task ${id}:`, retryErr.message);
+        return res.status(500).json({ error: 'Payment was captured but task update failed. Please contact support immediately.' });
+      }
     }
   } else {
     // No Stripe PI (USDC/legacy) or already captured — just update status

@@ -4,6 +4,16 @@ const { v4: uuidv4 } = require('uuid');
 const { PLATFORM_FEE_PERCENT } = require('../../config/constants');
 const subscriptionService = require('./subscriptionService');
 
+// Structured log for Stripe operations
+function stripeLog(event, data) {
+  console.log(JSON.stringify({
+    service: 'stripe',
+    event,
+    timestamp: new Date().toISOString(),
+    ...data
+  }));
+}
+
 // ============================================================================
 // CUSTOMER MANAGEMENT (Agents)
 // ============================================================================
@@ -218,10 +228,10 @@ async function chargeAgentForTask(supabase, agentId, taskId, amountCents, paymen
 async function authorizeEscrow(supabase, agentId, taskId, amountCents, paymentMethodId) {
   if (!stripe) throw new Error('Stripe not configured');
 
-  // Get agent's Stripe customer
+  // Get agent's Stripe customer (include email for receipt)
   const { data: agent, error: agentError } = await supabase
     .from('users')
-    .select('stripe_customer_id')
+    .select('stripe_customer_id, email')
     .eq('id', agentId)
     .single();
 
@@ -259,16 +269,20 @@ async function authorizeEscrow(supabase, agentId, taskId, amountCents, paymentMe
     capture_method: 'manual',
     confirm: true,
     off_session: true,
+    receipt_email: agent.email || undefined,
     metadata: {
       task_id: taskId,
       agent_id: agentId,
       platform: 'irlwork'
     },
     description: `irlwork.ai task escrow (auth hold) - ${taskId}`,
+  }, {
+    idempotencyKey: `auth-hold-${taskId}-${agentId}-${Date.now()}`
   });
 
   // Handle 3DS / SCA requirement
   if (paymentIntent.status === 'requires_action') {
+    stripeLog('escrow_auth_3ds_required', { task_id: taskId, agent_id: agentId, amount_cents: amountCents, pi_id: paymentIntent.id });
     return {
       requires_action: true,
       client_secret: paymentIntent.client_secret,
@@ -280,6 +294,7 @@ async function authorizeEscrow(supabase, agentId, taskId, amountCents, paymentMe
   if (paymentIntent.status === 'requires_capture') {
     // 6.5 days from now (buffer before Stripe's 7-day expiry)
     const authHoldExpiresAt = new Date(Date.now() + 6.5 * 24 * 60 * 60 * 1000).toISOString();
+    stripeLog('escrow_authorized', { task_id: taskId, agent_id: agentId, amount_cents: amountCents, pi_id: paymentIntent.id, expires_at: authHoldExpiresAt });
     return {
       payment_intent_id: paymentIntent.id,
       status: paymentIntent.status,
@@ -289,6 +304,7 @@ async function authorizeEscrow(supabase, agentId, taskId, amountCents, paymentMe
   }
 
   // Unexpected status
+  stripeLog('escrow_auth_unexpected', { task_id: taskId, agent_id: agentId, status: paymentIntent.status, pi_id: paymentIntent.id });
   throw new Error(`Unexpected PaymentIntent status after authorization: ${paymentIntent.status}`);
 }
 
@@ -305,9 +321,11 @@ async function captureEscrow(paymentIntentId) {
   const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId);
 
   if (paymentIntent.status !== 'succeeded') {
+    stripeLog('escrow_capture_failed', { pi_id: paymentIntentId, status: paymentIntent.status });
     throw new Error(`Escrow capture failed. Status: ${paymentIntent.status}`);
   }
 
+  stripeLog('escrow_captured', { pi_id: paymentIntent.id, amount_cents: paymentIntent.amount_received });
   return {
     payment_intent_id: paymentIntent.id,
     status: paymentIntent.status,
@@ -775,16 +793,16 @@ async function handlePaymentIntentFailed(paymentIntent, supabase, createNotifica
 
   if (!taskId || !agentId) return;
 
-  console.error(`[Stripe Webhook] PaymentIntent failed for task ${taskId}: ${paymentIntent.last_payment_error?.message}`);
+  stripeLog('payment_intent_failed', { task_id: taskId, agent_id: agentId, pi_id: paymentIntent.id, error: paymentIntent.last_payment_error?.message });
 
-  // Notify agent
+  // Notify agent with link to payments tab
   if (createNotification) {
     await createNotification(
       agentId,
       'payment_failed',
       'Payment Failed',
       `Your payment for a task failed: ${paymentIntent.last_payment_error?.message || 'Unknown error'}. Please update your payment method.`,
-      null
+      '/?tab=payments'
     );
   }
 }

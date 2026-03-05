@@ -317,6 +317,17 @@ function EarningsDashboard({ user }) {
               ${filteredPendingAmount.toFixed(2)}
             </p>
 
+            {/* Mobile: next clearing summary */}
+            {filteredPendingTransactions.length > 0 && (() => {
+              const nextTx = [...filteredPendingTransactions].sort((a, b) => new Date(a.clears_at) - new Date(b.clears_at))[0]
+              if (!nextTx) return null
+              return (
+                <p className="text-[11px] text-[#525252] mt-1 md:hidden">
+                  Next: ${(nextTx.amount_cents / 100).toFixed(2)} clears in {formatDate(nextTx.clears_at)}
+                </p>
+              )
+            })()}
+
             {filteredPendingTransactions.length > 0 ? (
               <div className="mt-2 md:mt-4 space-y-1.5 hidden md:block">
                 {filteredPendingTransactions.slice(0, 3).map(tx => (
@@ -414,6 +425,21 @@ function EarningsDashboard({ user }) {
                 ? `${withdrawResult.amount} USDC sent to your wallet`
                 : `$${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account`}
             </p>
+            {withdrawResult.method !== 'usdc' && (() => {
+              const now = new Date()
+              let arrivalDate = new Date(now)
+              let bizDays = 0
+              while (bizDays < 3) {
+                arrivalDate.setDate(arrivalDate.getDate() + 1)
+                const day = arrivalDate.getDay()
+                if (day !== 0 && day !== 6) bizDays++
+              }
+              return (
+                <p className="text-xs text-[#888888] mt-1">
+                  Estimated arrival: {arrivalDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} (2-3 business days)
+                </p>
+              )
+            })()}
           </div>
         </Card>
       )}
@@ -490,7 +516,19 @@ function EarningsDashboard({ user }) {
 
       {/* ── Transaction History (completed tasks only) ── */}
       <div>
-        <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A] mb-3 md:mb-4">Completed tasks</h3>
+        <div className="flex items-center justify-between mb-3 md:mb-4">
+          <h3 className="text-lg md:text-xl font-bold text-[#1A1A1A]">Completed tasks</h3>
+          {completedTransactions.length > 0 && (
+            <a
+              href={`${API_URL}/invoices/download?format=csv&year=${new Date().getFullYear()}`}
+              className="text-xs font-medium text-[#0F4C5C] hover:text-[#0A3540] underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Export CSV
+            </a>
+          )}
+        </div>
 
         {completedTransactions.length > 0 ? (
           <div className="space-y-2 md:space-y-3">
