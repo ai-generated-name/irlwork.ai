@@ -12,38 +12,38 @@ export const v4 = {
   colors: {
     bgPrimary: '#FAFAF8',
     bgSecondary: '#FFFFFF',
-    bgTertiary: '#F5F3F0',
-    textPrimary: '#1A1A1A',
-    textSecondary: '#333333',
-    textTertiary: '#888888',
+    bgTertiary: 'rgba(220,200,180,0.15)',
+    textPrimary: '#1A1410',
+    textSecondary: 'rgba(26,20,16,0.65)',
+    textTertiary: 'rgba(26,20,16,0.40)',
     textMuted: '#AAAAAA',
-    textOnDark: '#DDDDDD',
+    textOnDark: 'rgba(220,200,180,0.40)',
     // Legacy teal names remapped to orange accent
     teal900: '#D4703A',
-    teal700: '#E8853D',
-    teal500: '#E8853D',
+    teal700: '#E8703D',
+    teal500: '#E8703D',
     teal300: '#FFF3EB',
     coral600: '#D4703A',
-    coral500: '#E8853D',
+    coral500: '#E8703D',
     coral400: '#FFF3EB',
-    orange: '#E8853D',
+    orange: '#E8703D',
     orangeHover: '#D4703A',
     orangeLight: '#FFF3EB',
     amber500: '#FEBC2E',
-    success: '#16A34A',
-    successBg: 'rgba(22, 163, 74, 0.08)',
+    success: '#1A9E6A',
+    successBg: 'rgba(26, 158, 106, 0.08)',
     error: '#FF5F57',
     errorBg: 'rgba(255, 95, 87, 0.1)',
   },
   fonts: {
     display: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    mono: "'DM Mono', 'SF Mono', 'Fira Code', monospace",
+    mono: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
   },
   shadows: {
-    sm: '0 1px 3px rgba(0, 0, 0, 0.04)',
+    sm: '0 1px 3px rgba(200,150,100,0.06)',
     md: '0 1px 4px rgba(0, 0, 0, 0.02), 0 8px 40px rgba(0, 0, 0, 0.035)',
-    lg: '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
-    xl: '0 16px 48px rgba(0, 0, 0, 0.1)',
+    lg: '0 4px 20px rgba(220,200,180,0.35), 0 1px 3px rgba(200,150,100,0.06)',
+    xl: '0 16px 48px rgba(220,200,180,0.35)',
   }
 }
 
@@ -75,7 +75,7 @@ export function NavbarV4({ user, onLogout }) {
       padding: '16px 32px',
       background: 'rgba(250, 250, 248, 0.9)',
       backdropFilter: 'blur(8px)',
-      borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+      borderBottom: '1px solid rgba(220,200,180,0.25)',
       fontFamily: v4.fonts.display,
     }}>
       <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
@@ -129,7 +129,7 @@ export function NavbarV4({ user, onLogout }) {
                 style={{
                   padding: '10px 20px',
                   background: 'transparent',
-                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  border: '1px solid rgba(220,200,180,0.35)',
                   borderRadius: 10,
                   color: v4.colors.textPrimary,
                   fontWeight: 600,
@@ -220,10 +220,10 @@ export function ButtonV4({
     secondary: {
       background: 'transparent',
       color: v4.colors.textPrimary,
-      border: '1px solid rgba(0, 0, 0, 0.1)',
+      border: '1px solid rgba(220,200,180,0.35)',
     },
     charcoal: {
-      background: '#1A1A1A',
+      background: '#1A1410',
       color: '#FFFFFF',
     },
     ghost: {
@@ -278,7 +278,7 @@ export function InputV4({
         width: '100%',
         padding: '10px 14px',
         background: v4.colors.bgTertiary,
-        border: '1px solid rgba(0, 0, 0, 0.08)',
+        border: '1px solid rgba(220,200,180,0.35)',
         borderRadius: 10,
         color: v4.colors.textPrimary,
         fontSize: 14,
@@ -286,8 +286,8 @@ export function InputV4({
         outline: 'none',
         transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
       }}
-      onFocus={(e) => { e.target.style.borderColor = '#E8853D'; e.target.style.boxShadow = '0 0 0 3px rgba(232, 133, 61, 0.1)'; }}
-      onBlur={(e) => { e.target.style.borderColor = 'rgba(0, 0, 0, 0.08)'; e.target.style.boxShadow = 'none'; }}
+      onFocus={(e) => { e.target.style.borderColor = '#E8703D'; e.target.style.boxShadow = '0 0 0 3px rgba(232, 112, 61, 0.1)'; }}
+      onBlur={(e) => { e.target.style.borderColor = 'rgba(220,200,180,0.35)'; e.target.style.boxShadow = 'none'; }}
       {...props}
     />
   )
@@ -299,7 +299,7 @@ export function CardV4({ children, className = '', style = {}, ...props }) {
     <div
       style={{
         background: v4.colors.bgSecondary,
-        border: '1px solid rgba(0, 0, 0, 0.06)',
+        border: '1px solid rgba(220,200,180,0.25)',
         borderRadius: 14,
         padding: 16,
         boxShadow: v4.shadows.sm,
@@ -349,7 +349,7 @@ export function LoadingV4({ message }) {
 export function BadgeV4({ children, variant = 'default', style = {} }) {
   const variants = {
     default: { background: v4.colors.bgTertiary, color: v4.colors.textSecondary },
-    success: { background: v4.colors.successBg, color: v4.colors.success, border: '1px solid rgba(22, 163, 74, 0.15)' },
+    success: { background: v4.colors.successBg, color: v4.colors.success, border: '1px solid rgba(26, 158, 106, 0.15)' },
     warning: { background: 'rgba(254, 188, 46, 0.1)', color: '#FEBC2E' },
     error: { background: v4.colors.errorBg, color: v4.colors.error },
     teal: { background: v4.colors.orangeLight, color: v4.colors.orange, fontFamily: v4.fonts.mono },

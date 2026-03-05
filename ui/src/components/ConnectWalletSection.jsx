@@ -100,8 +100,8 @@ export default function ConnectWalletSection({ user, compact = false }) {
     if (compact) return null;
     return (
       <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-2xl p-6 md:p-8 animate-pulse">
-        <div className="h-5 bg-[#ECECEC] rounded w-1/3 mb-3"></div>
-        <div className="h-4 bg-[#F3F4F6] rounded w-2/3"></div>
+        <div className="h-5 bg-[rgba(220,200,180,0.35)] rounded w-1/3 mb-3"></div>
+        <div className="h-4 bg-[rgba(220,200,180,0.15)] rounded w-2/3"></div>
       </div>
     );
   }
@@ -111,8 +111,8 @@ export default function ConnectWalletSection({ user, compact = false }) {
     if (savedAddress) {
       return (
         <div className="flex items-center gap-2 px-3 py-2 bg-[#f0fdf4] border border-[#86efac] rounded-lg">
-          <svg className="w-4 h-4 text-[#16a34a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-          <span className="text-xs font-semibold text-[#16a34a] truncate">
+          <svg className="w-4 h-4 text-[#1A9E6A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          <span className="text-xs font-semibold text-[#1A9E6A] truncate">
             {savedAddress.slice(0, 6)}...{savedAddress.slice(-4)}
           </span>
           <button
@@ -142,7 +142,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 py-2 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[#9ca3af] text-white rounded-lg text-xs font-semibold transition-colors"
+              className="flex-1 py-2 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-lg text-xs font-semibold transition-colors"
             >
               {saving ? 'Saving...' : 'Save address'}
             </button>
@@ -174,20 +174,20 @@ export default function ConnectWalletSection({ user, compact = false }) {
   // Connected — show address and manage options
   if (savedAddress && !editing) {
     return (
-      <div className="bg-white border-2 border-[#059669]/20 rounded-2xl p-5 md:p-6">
+      <div className="bg-white border-2 border-[#1A9E6A]/20 rounded-2xl p-5 md:p-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-[#D1FAE5] rounded-full flex items-center justify-center flex-shrink-0">
-            <svg className="w-6 h-6 text-[#059669]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <svg className="w-6 h-6 text-[#1A9E6A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-[#1A1A1A] font-bold text-base">USDC wallet connected</h3>
+            <h3 className="text-[#1A1410] font-bold text-base">USDC wallet connected</h3>
             <p className="text-[#525252] text-sm mt-0.5 font-mono truncate">{savedAddress}</p>
             <p className="text-[#8A8A8A] text-xs mt-1">Base network (USDC)</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[#E5E5E5]">
+        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[rgba(220,200,180,0.45)]">
           {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- wallet branding uses indigo */}
           <button
             onClick={() => { setEditing(true); setWalletAddress(savedAddress); }}
@@ -231,7 +231,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
         </div>
 
         <div className="flex-1 w-full">
-          <h3 className="text-[#1A1A1A] font-bold text-lg">
+          <h3 className="text-[#1A1410] font-bold text-lg">
             {savedAddress ? 'Update wallet address' : 'Set up USDC wallet'}
           </h3>
           <p className="text-[#525252] text-sm mt-1.5 leading-relaxed">
@@ -254,7 +254,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
               <button
                 onClick={handleSave}
                 disabled={saving || !walletAddress}
-                className="px-6 py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[#9ca3af] text-white rounded-xl text-sm font-bold transition-all"
+                className="px-6 py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-xl text-sm font-bold transition-all"
               >
                 {saving ? 'Saving...' : 'Save wallet address'}
               </button>

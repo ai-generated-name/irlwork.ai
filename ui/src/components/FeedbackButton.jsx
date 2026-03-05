@@ -7,25 +7,25 @@ const API_URL = import.meta.env.VITE_API_URL
   : 'https://api.irlwork.ai/api'
 
 const C = {
-  teal: '#E8853D',
-  tealLight: '#E8853D',
-  coral: '#E8853D',
+  teal: '#E8703D',
+  tealLight: '#E8703D',
+  coral: '#E8703D',
   coralDark: '#D4703A',
-  coralBg: 'rgba(232, 133, 61, 0.08)',
-  orange: '#E8853D',
+  coralBg: 'rgba(232,112,61, 0.08)',
+  orange: '#E8703D',
   orangeBg: 'rgba(244, 140, 95, 0.1)',
   cream: '#FAFAF8',
-  creamDark: '#F5F3F0',
+  creamDark: 'rgba(220,200,180,0.15)',
   creamDeep: '#EDE8E1',
   white: '#FFFFFF',
-  textPrimary: '#1A1A1A',
-  textSecondary: '#333333',
-  textTertiary: '#888888',
-  border: 'rgba(0, 0, 0, 0.08)',
-  borderMed: 'rgba(0, 0, 0, 0.12)',
+  textPrimary: '#1A1410',
+  textSecondary: 'rgba(26,20,16,0.65)',
+  textTertiary: 'rgba(26,20,16,0.40)',
+  border: 'rgba(220,200,180,0.35)',
+  borderMed: 'rgba(220,200,180,0.40)',
   borderHover: 'rgba(0, 0, 0, 0.18)',
-  success: '#16A34A',
-  successBg: 'rgba(22, 163, 74, 0.08)',
+  success: '#1A9E6A',
+  successBg: 'rgba(26,158,106,0.08)',
 }
 
 const FONT = "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
@@ -187,8 +187,8 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
     style.id = 'feedback-btn-styles'
     style.textContent = `
       @keyframes feedbackPulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(232, 133, 61, 0.4); }
-        50% { box-shadow: 0 0 0 12px rgba(232, 133, 61, 0); }
+        0%, 100% { box-shadow: 0 0 0 0 rgba(232,112,61, 0.4); }
+        50% { box-shadow: 0 0 0 12px rgba(232,112,61, 0); }
       }
       @keyframes feedbackCheckIn {
         0% { transform: scale(0) rotate(-45deg); opacity: 0; }
@@ -219,7 +219,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.25)',
+            background: 'rgba(220,200,180,0.55)',
             zIndex: 9998,
             backdropFilter: 'blur(2px)',
           }}
@@ -246,7 +246,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9998,
-            boxShadow: '0 6px 20px rgba(232, 133, 61, 0.35), 0 2px 6px rgba(0, 0, 0, 0.06)',
+            boxShadow: '0 6px 20px rgba(232,112,61, 0.35), 0 2px 6px rgba(220,200,180,0.25)',
             transition: 'transform 0.2s ease, box-shadow 0.2s ease',
             animation: showPulse ? 'feedbackPulse 2s ease-in-out 3' : 'none',
             fontFamily: FONT,
@@ -254,12 +254,12 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.08)'
             e.currentTarget.style.boxShadow =
-              '0 12px 32px rgba(232, 133, 61, 0.4), 0 4px 10px rgba(0, 0, 0, 0.08)'
+              '0 12px 32px rgba(232,112,61, 0.4), 0 4px 10px rgba(220,200,180,0.35)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)'
             e.currentTarget.style.boxShadow =
-              '0 6px 20px rgba(232, 133, 61, 0.35), 0 2px 6px rgba(0, 0, 0, 0.06)'
+              '0 6px 20px rgba(232,112,61, 0.35), 0 2px 6px rgba(220,200,180,0.25)'
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -284,7 +284,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           borderTop: `1px solid ${C.borderMed}`,
           borderTopLeftRadius: 20,
           boxShadow: isOpen
-            ? '-8px -4px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04)'
+            ? '-8px -4px 40px rgba(220,200,180,0.35), 0 4px 12px rgba(200,150,100,0.06)'
             : 'none',
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

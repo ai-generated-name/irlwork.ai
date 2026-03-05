@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children }) {
   if (timedOut) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-[#6B7280]">Unable to verify authentication.</p>
+        <p className="text-[rgba(26,20,16,0.50)]">Unable to verify authentication.</p>
         <Button
           variant="primary"
           size="md"

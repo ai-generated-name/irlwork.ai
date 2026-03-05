@@ -67,7 +67,7 @@ export default function ProfileTab({
                   {user?.avatar_url ? (
                     <img key={user.avatar_url} src={user.avatar_url} alt={user?.name || ''} style={{
                       width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
-                      boxShadow: '0 2px 8px rgba(232,133,61,0.25)'
+                      boxShadow: '0 2px 8px rgba(232,112,61,0.25)'
                     }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                   ) : null}
                   <div style={{
@@ -75,7 +75,7 @@ export default function ProfileTab({
                     background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
                     display: user?.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                     color: 'white', fontWeight: 700, fontSize: 28,
-                    boxShadow: '0 2px 8px rgba(232,133,61,0.25)'
+                    boxShadow: '0 2px 8px rgba(232,112,61,0.25)'
                   }}>
                     {user?.name?.charAt(0) || '?'}
                   </div>
@@ -449,10 +449,10 @@ export default function ProfileTab({
                     {skillsList.map((skill, idx) => (
                       <span key={idx} style={{
                         padding: '6px 12px',
-                        background: '#F3F4F6',
+                        background: 'rgba(220,200,180,0.15)',
                         borderRadius: 999,
                         fontSize: 13,
-                        color: '#374151',
+                        color: 'rgba(26,20,16,0.65)',
                         fontWeight: 500,
                         border: '1px solid rgba(26,26,26,0.06)',
                         display: 'flex',
@@ -463,9 +463,9 @@ export default function ProfileTab({
                         <button
                           type="button"
                           onClick={() => setSkillsList(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#6B7280', display: 'flex', alignItems: 'center' }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = '#1A1A1A'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'rgba(26,20,16,0.50)', display: 'flex', alignItems: 'center' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#1A1410'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(26,20,16,0.50)'}
                         >
                           <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
                         </button>
@@ -554,12 +554,12 @@ export default function ProfileTab({
                     {languagesList.map((lang, idx) => (
                       <span key={idx} style={{
                         padding: '6px 12px',
-                        background: 'rgba(59,130,246,0.08)',
+                        background: 'rgba(37,99,235,0.08)',
                         borderRadius: 999,
                         fontSize: 13,
-                        color: '#3B82F6',
+                        color: '#2563EB',
                         fontWeight: 500,
-                        border: '1px solid rgba(59,130,246,0.12)',
+                        border: '1px solid rgba(37,99,235,0.12)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6
@@ -568,7 +568,7 @@ export default function ProfileTab({
                         <button
                           type="button"
                           onClick={() => setLanguagesList(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#3B82F6', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#2563EB', display: 'flex', alignItems: 'center' }}
                         >
                           <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
                         </button>

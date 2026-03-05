@@ -18,18 +18,18 @@ export default function CountdownBanner({ disputeWindowInfo }) {
 
   return (
     // eslint-disable-next-line irlwork/no-orange-outside-button -- border uses brand color
-    <div className="bg-gradient-to-r from-[rgba(224,122,95,0.15)] to-[rgba(217,119,6,0.15)] border-l-4 border-[#E8853D] rounded-xl p-4 mb-6">
+    <div className="bg-gradient-to-r from-[rgba(224,122,95,0.15)] to-[rgba(217,119,6,0.15)] border-l-4 border-[#E8703D] rounded-xl p-4 mb-6">
       <div className="flex items-center gap-4">
         <div className="text-3xl">⏰</div>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
-            <h3 className="text-lg font-bold text-[#1A1A1A]">Auto-Release Countdown</h3>
+            <h3 className="text-lg font-bold text-[#1A1410]">Auto-Release Countdown</h3>
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
-            <div className="font-mono text-2xl font-bold text-[#E8853D]">
+            <div className="font-mono text-2xl font-bold text-[#E8703D]">
               {totalHours}h {minutes}m {seconds}s
             </div>
           </div>
-          <p className="text-[#333333] text-sm">
+          <p className="text-[rgba(26,20,16,0.65)] text-sm">
             Payment will automatically release to you if the agent doesn't respond within the dispute window
           </p>
         </div>

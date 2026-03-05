@@ -97,12 +97,12 @@ export default function TaskCardV2({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {isOpen && (
-            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: 'rgba(139, 92, 246, 0.1)', color: '#7C3AED', letterSpacing: '0.02em' }}>
+            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: 'rgba(109,79,194,0.09)', color: '#6D4FC2', letterSpacing: '0.02em' }}>
               Open
             </span>
           )}
           {quantity > 1 && (
-            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: spotsFilled >= quantity ? 'rgba(22, 163, 74, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: spotsFilled >= quantity ? '#16A34A' : '#2563EB' }}>
+            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: spotsFilled >= quantity ? 'rgba(26,158,106,0.09)' : 'rgba(37,99,235,0.09)', color: spotsFilled >= quantity ? '#1A9E6A' : '#2563EB' }}>
               {spotsFilled}/{quantity} filled
             </span>
           )}
@@ -150,13 +150,13 @@ export default function TaskCardV2({
           {task.required_skills.slice(0, 3).map((skill, i) => (
             <span key={i} style={{
               display: 'inline-block', padding: '2px 8px', borderRadius: 12,
-              fontSize: 11, fontWeight: 500, background: '#EEF2FF', color: '#4338CA'
+              fontSize: 11, fontWeight: 500, background: 'rgba(109,79,194,0.08)', color: '#6D4FC2'
             }}>{skill}</span>
           ))}
           {task.required_skills.length > 3 && (
             <span style={{
               display: 'inline-block', padding: '2px 8px', borderRadius: 12,
-              fontSize: 11, fontWeight: 500, background: '#F5F5F5', color: '#333333'
+              fontSize: 11, fontWeight: 500, background: 'rgba(220,200,180,0.15)', color: 'rgba(26,20,16,0.65)'
             }}>+{task.required_skills.length - 3} more</span>
           )}
         </div>

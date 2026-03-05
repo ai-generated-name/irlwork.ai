@@ -38,9 +38,9 @@ function durationLabel(task) {
     const hours = Math.floor(diff / (1000 * 60 * 60))
     if (hours < 24) return { text: `Due ${hours}h`, color: 'text-orange-500' }
     const days = Math.floor(hours / 24)
-    return { text: `Due ${days}d`, color: 'text-[#9CA3AF]' }
+    return { text: `Due ${days}d`, color: 'text-[rgba(26,20,16,0.28)]' }
   }
-  if (task.duration_hours) return { text: `~${task.duration_hours}h`, color: 'text-[#9CA3AF]' }
+  if (task.duration_hours) return { text: `~${task.duration_hours}h`, color: 'text-[rgba(26,20,16,0.28)]' }
   return null
 }
 
@@ -133,7 +133,7 @@ export default function TaskRow({
             {/* Badges row */}
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
               <StatusPill status={task.status} size="sm" />
-              <span className="text-[11px] font-medium text-[#9CA3AF] uppercase">
+              <span className="text-[11px] font-medium text-[rgba(26,20,16,0.28)] uppercase">
                 {CATEGORY_LABELS[task.category] || task.category || 'General'}
               </span>
               {task.is_remote || (!task.city && !task.location) ? (
@@ -141,12 +141,12 @@ export default function TaskRow({
                   <Globe size={10} /> Remote
                 </span>
               ) : (
-                <span className="flex items-center gap-0.5 text-[11px] text-[#9CA3AF] truncate max-w-[140px]">
+                <span className="flex items-center gap-0.5 text-[11px] text-[rgba(26,20,16,0.28)] truncate max-w-[140px]">
                   <MapPin size={10} /> {task.city || task.location}
                 </span>
               )}
               {variant === 'hiring' && pendingCount > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#E8853D]">
+                <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#E8703D]">
                   <Users size={10} /> {pendingCount} pending
                 </span>
               )}
@@ -156,20 +156,20 @@ export default function TaskRow({
             <a
               href={`/tasks/${task.id}`}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigate() }}
-              className="text-sm font-semibold text-[#1A1A1A] hover:text-[#E8853D] hover:underline transition-colors truncate block"
+              className="text-sm font-semibold text-[#1A1410] hover:text-[#E8703D] hover:underline transition-colors truncate block"
             >
               {task.title}
             </a>
 
             {/* Description preview */}
             {task.description && (
-              <p className="text-xs text-[#6B7280] mt-0.5 truncate">{truncate(task.description, 120)}</p>
+              <p className="text-xs text-[rgba(26,20,16,0.50)] mt-0.5 truncate">{truncate(task.description, 120)}</p>
             )}
 
             {/* Worker payout line (working variant) */}
             {variant === 'working' && (
-              <p className="text-[11px] text-[#9CA3AF] mt-0.5">
-                You earn <span className="font-semibold text-[#16A34A]">${payout}</span>
+              <p className="text-[11px] text-[rgba(26,20,16,0.28)] mt-0.5">
+                You earn <span className="font-semibold text-[#1A9E6A]">${payout}</span>
                 <span className="ml-2">Fee ${fee}</span>
               </p>
             )}
@@ -177,7 +177,7 @@ export default function TaskRow({
 
           {/* Right: metrics */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <p className="text-sm font-bold text-[#1A1A1A]">${task.budget}</p>
+            <p className="text-sm font-bold text-[#1A1410]">${task.budget}</p>
 
             {dur && (
               <div className={`hidden sm:flex items-center gap-1 text-xs ${dur.color}`} title="Deadline">
@@ -187,18 +187,18 @@ export default function TaskRow({
             )}
 
             {variant === 'hiring' && (
-              <div className="hidden sm:flex items-center gap-1 text-xs text-[#9CA3AF]" title="Applicants">
+              <div className="hidden sm:flex items-center gap-1 text-xs text-[rgba(26,20,16,0.28)]" title="Applicants">
                 <Users size={13} />
                 <span>{task.applicant_count || 0}</span>
               </div>
             )}
 
-            <div className="hidden sm:flex items-center gap-1 text-xs text-[#9CA3AF]" title="Views">
+            <div className="hidden sm:flex items-center gap-1 text-xs text-[rgba(26,20,16,0.28)]" title="Views">
               <Eye size={13} />
               <span>{task.view_count || 0}</span>
             </div>
 
-            <div className="hidden md:flex items-center gap-1 text-xs text-[#9CA3AF] w-14 justify-end" title={task.created_at ? new Date(task.created_at).toLocaleString() : ''}>
+            <div className="hidden md:flex items-center gap-1 text-xs text-[rgba(26,20,16,0.28)] w-14 justify-end" title={task.created_at ? new Date(task.created_at).toLocaleString() : ''}>
               <Clock size={13} />
               <span>{timeAgo(task.created_at)}</span>
             </div>
@@ -206,7 +206,7 @@ export default function TaskRow({
             {/* Expand toggle */}
             <button
               onClick={(e) => { stop(e); setExpanded(!expanded) }}
-              className="p-1.5 rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6] transition-colors"
+              className="p-1.5 rounded-lg text-[rgba(26,20,16,0.28)] hover:bg-[rgba(220,200,180,0.15)] transition-colors"
             >
               {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
@@ -216,7 +216,7 @@ export default function TaskRow({
 
       {/* ── Expanded section ─────────────────────────────── */}
       {expanded && (
-        <div className="px-4 sm:px-5 pb-4 pt-0 border-t border-[#ECECEC]" onClick={stop}>
+        <div className="px-4 sm:px-5 pb-4 pt-0 border-t border-[rgba(220,200,180,0.35)]" onClick={stop}>
           <div className="pt-3 space-y-3">
 
             {/* ── HIRING variant actions ─────────────────── */}
@@ -290,60 +290,60 @@ export default function TaskRow({
                 {isEditing && (
                   <div className="p-4 bg-[#FAFAF8] rounded-xl space-y-3">
                     <div>
-                      <label className="text-xs font-medium text-[#6B7280] block mb-1">Title</label>
+                      <label className="text-xs font-medium text-[rgba(26,20,16,0.50)] block mb-1">Title</label>
                       <input
                         type="text"
                         value={editForm.title || ''}
                         onChange={e => setEditForm?.(f => ({ ...f, title: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm rounded-lg border border-[#ECECEC] focus:border-[#E8853D] focus:ring-1 focus:ring-[#E8853D]/20 outline-none"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-[rgba(220,200,180,0.35)] focus:border-[#E8703D] focus:ring-1 focus:ring-[#E8703D]/20 outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-[#6B7280] block mb-1">Description</label>
+                      <label className="text-xs font-medium text-[rgba(26,20,16,0.50)] block mb-1">Description</label>
                       <textarea
                         value={editForm.description || ''}
                         onChange={e => setEditForm?.(f => ({ ...f, description: e.target.value }))}
                         rows={3}
-                        className="w-full px-3 py-2 text-sm rounded-lg border border-[#ECECEC] focus:border-[#E8853D] focus:ring-1 focus:ring-[#E8853D]/20 outline-none resize-y"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-[rgba(220,200,180,0.35)] focus:border-[#E8703D] focus:ring-1 focus:ring-[#E8703D]/20 outline-none resize-y"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-medium text-[#6B7280] block mb-1">Budget ($)</label>
+                        <label className="text-xs font-medium text-[rgba(26,20,16,0.50)] block mb-1">Budget ($)</label>
                         <input
                           type="number"
                           value={editForm.budget || ''}
                           onChange={e => setEditForm?.(f => ({ ...f, budget: parseFloat(e.target.value) || '' }))}
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-[#ECECEC] focus:border-[#E8853D] focus:ring-1 focus:ring-[#E8853D]/20 outline-none"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-[rgba(220,200,180,0.35)] focus:border-[#E8703D] focus:ring-1 focus:ring-[#E8703D]/20 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-[#6B7280] block mb-1">Category</label>
+                        <label className="text-xs font-medium text-[rgba(26,20,16,0.50)] block mb-1">Category</label>
                         <input
                           type="text"
                           value={editForm.category || ''}
                           onChange={e => setEditForm?.(f => ({ ...f, category: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-[#ECECEC] focus:border-[#E8853D] focus:ring-1 focus:ring-[#E8853D]/20 outline-none"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-[rgba(220,200,180,0.35)] focus:border-[#E8703D] focus:ring-1 focus:ring-[#E8703D]/20 outline-none"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-medium text-[#6B7280] block mb-1">Location</label>
+                        <label className="text-xs font-medium text-[rgba(26,20,16,0.50)] block mb-1">Location</label>
                         <input
                           type="text"
                           value={editForm.location || ''}
                           onChange={e => setEditForm?.(f => ({ ...f, location: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-[#ECECEC] focus:border-[#E8853D] focus:ring-1 focus:ring-[#E8853D]/20 outline-none"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-[rgba(220,200,180,0.35)] focus:border-[#E8703D] focus:ring-1 focus:ring-[#E8703D]/20 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-[#6B7280] block mb-1">Deadline</label>
+                        <label className="text-xs font-medium text-[rgba(26,20,16,0.50)] block mb-1">Deadline</label>
                         <input
                           type="datetime-local"
                           value={editForm.deadline ? editForm.deadline.slice(0, 16) : ''}
                           onChange={e => setEditForm?.(f => ({ ...f, deadline: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-[#ECECEC] focus:border-[#E8853D] focus:ring-1 focus:ring-[#E8853D]/20 outline-none"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-[rgba(220,200,180,0.35)] focus:border-[#E8703D] focus:ring-1 focus:ring-[#E8703D]/20 outline-none"
                         />
                       </div>
                     </div>
@@ -376,7 +376,7 @@ export default function TaskRow({
 
                 {/* Payment released */}
                 {task.status === 'paid' && (
-                  <p className="text-sm text-[#16A34A] flex items-center gap-1">
+                  <p className="text-sm text-[#1A9E6A] flex items-center gap-1">
                     <ArrowDownLeft size={14} /> Payment released
                   </p>
                 )}
@@ -413,13 +413,13 @@ export default function TaskRow({
                     <Button variant="secondary" size="sm" disabled>Waiting for approval</Button>
                   )}
                   {task.status === 'approved' && (
-                    <span className="text-sm text-[#6B7280]">Work approved, payment pending</span>
+                    <span className="text-sm text-[rgba(26,20,16,0.50)]">Work approved, payment pending</span>
                   )}
                   {task.status === 'completed' && (
-                    <span className="text-sm text-[#16A34A]">Task completed, payment pending</span>
+                    <span className="text-sm text-[#1A9E6A]">Task completed, payment pending</span>
                   )}
                   {task.status === 'paid' && (
-                    <span className="text-sm text-[#16A34A] flex items-center gap-1">
+                    <span className="text-sm text-[#1A9E6A] flex items-center gap-1">
                       <ArrowDownLeft size={14} /> Payment received
                     </span>
                   )}
@@ -456,22 +456,22 @@ function ApplicantsSection({
 }) {
   if (!applications || applications.length === 0) {
     return (
-      <div className="border-t border-[#ECECEC] pt-3">
-        <p className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wide mb-2">Applicants</p>
-        <p className="text-sm text-[#9CA3AF] text-center py-4">No applicants yet</p>
+      <div className="border-t border-[rgba(220,200,180,0.35)] pt-3">
+        <p className="text-xs font-medium text-[rgba(26,20,16,0.28)] uppercase tracking-wide mb-2">Applicants</p>
+        <p className="text-sm text-[rgba(26,20,16,0.28)] text-center py-4">No applicants yet</p>
       </div>
     )
   }
 
   return (
-    <div className="border-t border-[#ECECEC] pt-3">
-      <p className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wide mb-2">
+    <div className="border-t border-[rgba(220,200,180,0.35)] pt-3">
+      <p className="text-xs font-medium text-[rgba(26,20,16,0.28)] uppercase tracking-wide mb-2">
         Applicants ({applications.length})
       </p>
 
       <div className="space-y-2">
         {applications.map(app => (
-          <div key={app.id} className="p-3 bg-[#FAFAF8] rounded-xl border border-[#ECECEC]/60">
+          <div key={app.id} className="p-3 bg-[#FAFAF8] rounded-xl border border-[rgba(220,200,180,0.35)]/60">
             {/* Row 1: Avatar + name/stats + action buttons */}
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2.5 flex-1 min-w-0">
@@ -481,7 +481,7 @@ function ApplicantsSection({
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/humans/${app.human_id}`) }}
                   className="shrink-0 mt-0.5"
                 >
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#E8853D] to-[#D4742E] flex items-center justify-center text-white text-xs font-semibold hover:ring-2 hover:ring-[#E8853D]/30 transition-shadow">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#E8703D] to-[#D4631E] flex items-center justify-center text-white text-xs font-semibold hover:ring-2 hover:ring-[#E8703D]/30 transition-shadow">
                     {app.applicant?.name?.[0]?.toUpperCase() || '?'}
                   </div>
                 </a>
@@ -492,12 +492,12 @@ function ApplicantsSection({
                     <a
                       href={`/humans/${app.human_id}`}
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/humans/${app.human_id}`) }}
-                      className="text-sm font-semibold text-[#1A1A1A] hover:text-[#E8853D] hover:underline transition-colors"
+                      className="text-sm font-semibold text-[#1A1410] hover:text-[#E8703D] hover:underline transition-colors"
                     >
                       {app.applicant?.name || 'Anonymous'}
                     </a>
                     {app.applicant?.city && (
-                      <span className="text-[11px] text-[#9CA3AF] flex items-center gap-0.5">
+                      <span className="text-[11px] text-[rgba(26,20,16,0.28)] flex items-center gap-0.5">
                         <MapPin size={9} /> {app.applicant.city}
                       </span>
                     )}
@@ -505,14 +505,14 @@ function ApplicantsSection({
 
                   {/* Stats row */}
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    <span className="text-[11px] text-[#6B7280]">
+                    <span className="text-[11px] text-[rgba(26,20,16,0.50)]">
                       <Star size={10} className="inline align-[-1px] text-amber-400" /> {app.applicant?.rating?.toFixed(1) || 'New'}
                     </span>
-                    <span className="text-[11px] text-[#6B7280]">
+                    <span className="text-[11px] text-[rgba(26,20,16,0.50)]">
                       {app.applicant?.jobs_completed || 0} jobs completed
                     </span>
                     {app.applicant?.hourly_rate != null && (
-                      <span className="text-[11px] text-[#6B7280]">
+                      <span className="text-[11px] text-[rgba(26,20,16,0.50)]">
                         <Briefcase size={9} className="inline align-[-1px]" /> ${app.applicant.hourly_rate}/hr
                       </span>
                     )}
@@ -522,7 +522,7 @@ function ApplicantsSection({
                       </span>
                     )}
                     {app.created_at && (
-                      <span className="text-[11px] text-[#9CA3AF]">
+                      <span className="text-[11px] text-[rgba(26,20,16,0.28)]">
                         <CalendarDays size={9} className="inline align-[-1px]" /> Applied {timeAgo(app.created_at)}
                       </span>
                     )}
@@ -530,7 +530,7 @@ function ApplicantsSection({
 
                   {/* Bio preview */}
                   {app.applicant?.bio && (
-                    <p className="text-[11px] text-[#6B7280] mt-1 line-clamp-2">{app.applicant.bio}</p>
+                    <p className="text-[11px] text-[rgba(26,20,16,0.50)] mt-1 line-clamp-2">{app.applicant.bio}</p>
                   )}
                 </div>
               </div>
@@ -569,7 +569,7 @@ function ApplicantsSection({
 
             {/* Row 2: Cover letter / application details — full display */}
             {app.cover_letter && (
-              <div className="mt-2 pl-[46px] text-xs text-[#374151] whitespace-pre-line leading-relaxed bg-white rounded-lg border border-[#ECECEC]/80 px-3 py-2">
+              <div className="mt-2 pl-[46px] text-xs text-[rgba(26,20,16,0.65)] whitespace-pre-line leading-relaxed bg-white rounded-lg border border-[rgba(220,200,180,0.35)]/80 px-3 py-2">
                 {app.cover_letter}
               </div>
             )}
@@ -577,7 +577,7 @@ function ApplicantsSection({
             {/* Counter offer */}
             {app.proposed_rate != null && (
               <div className="mt-1.5 pl-[46px]">
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#E8853D] bg-orange-50 px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#E8703D] bg-orange-50 px-2 py-0.5 rounded-full">
                   Counter-offer: ${app.proposed_rate}
                 </span>
               </div>
@@ -591,7 +591,7 @@ function ApplicantsSection({
                   placeholder="Assignment note — sent to worker when you accept (optional)"
                   value={assignNotes?.[app.human_id] || ''}
                   onChange={e => setAssignNotes?.(prev => ({ ...prev, [app.human_id]: e.target.value }))}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#ECECEC] focus:border-[#E8853D] outline-none bg-white"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[rgba(220,200,180,0.35)] focus:border-[#E8703D] outline-none bg-white"
                 />
               </div>
             )}
@@ -599,7 +599,7 @@ function ApplicantsSection({
             {/* Negotiate — opens a conversation with the worker to discuss terms */}
             {negotiateAppId === app.id && (
               <div className="mt-2 pl-[46px]">
-                <p className="text-[11px] text-[#6B7280] mb-1">Send a message to discuss rate, scope, or timeline before accepting:</p>
+                <p className="text-[11px] text-[rgba(26,20,16,0.50)] mb-1">Send a message to discuss rate, scope, or timeline before accepting:</p>
                 <div className="flex gap-1.5">
                   <input
                     type="text"
@@ -607,7 +607,7 @@ function ApplicantsSection({
                     value={negotiateMsg}
                     onChange={e => setNegotiateMsg?.(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') onNegotiate?.(task.id, app.human_id) }}
-                    className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-[#ECECEC] focus:border-[#E8853D] outline-none bg-white"
+                    className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-[rgba(220,200,180,0.35)] focus:border-[#E8703D] outline-none bg-white"
                   />
                   <Button
                     variant="primary"

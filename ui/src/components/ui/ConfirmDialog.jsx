@@ -22,7 +22,6 @@ export default function ConfirmDialog({
         return;
       }
 
-      // Focus trap: cycle through focusable elements within the dialog
       if (e.key === 'Tab' && dialogRef.current) {
         const focusable = dialogRef.current.querySelectorAll(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -50,12 +49,9 @@ export default function ConfirmDialog({
 
   useEffect(() => {
     if (open) {
-      // Save previously focused element to restore on close
       previousFocusRef.current = document.activeElement;
-
       document.addEventListener('keydown', handleKeyDown);
 
-      // Focus the dialog panel on open
       requestAnimationFrame(() => {
         if (dialogRef.current) {
           const firstFocusable = dialogRef.current.querySelector(
@@ -67,7 +63,6 @@ export default function ConfirmDialog({
 
       return () => {
         document.removeEventListener('keydown', handleKeyDown);
-        // Restore focus on close
         if (previousFocusRef.current && previousFocusRef.current.focus) {
           previousFocusRef.current.focus();
         }
@@ -79,7 +74,15 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 200,
+      }}
       onClick={onCancel}
     >
       <div
@@ -87,27 +90,39 @@ export default function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className={`max-w-sm w-full mx-4 p-6 rounded-[14px] ${
-          dark
-            ? 'bg-[#1A1A1A] border border-white/10'
-            : 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)]'
-        }`}
+        className="irw-fade"
+        style={{
+          maxWidth: 380,
+          width: '100%',
+          margin: '0 16px',
+          padding: 24,
+          borderRadius: 20,
+          background: dark ? '#1A1410' : 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(220,200,180,0.35)',
+          boxShadow: '0 8px 32px rgba(200,150,100,0.12)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <h2
           id="confirm-dialog-title"
-          className={`text-lg font-semibold ${
-            dark ? 'text-white' : 'text-[#1A1A1A]'
-          }`}
+          style={{
+            fontSize: 18,
+            fontWeight: 600,
+            color: dark ? '#fff' : '#1A1410',
+          }}
         >
           {title}
         </h2>
         {description && (
-          <p className={`text-sm mt-2 ${
-            dark ? 'text-white/60' : 'text-[#6B7280]'
-          }`}>{description}</p>
+          <p style={{
+            fontSize: 14,
+            marginTop: 8,
+            color: dark ? 'rgba(255,255,255,0.60)' : 'rgba(26,20,16,0.50)',
+          }}>{description}</p>
         )}
-        <div className="flex justify-end gap-3 mt-6">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
           <Button variant="secondary" size="md" dark={dark} onClick={onCancel}>
             {cancelLabel}
           </Button>

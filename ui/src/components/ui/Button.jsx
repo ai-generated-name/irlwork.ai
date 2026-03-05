@@ -1,23 +1,63 @@
 import React from 'react';
 
 const VARIANT_STYLES = {
-  primary: 'bg-[#E8853D] text-white hover:bg-[#D4742E]',
-  secondary: 'bg-white border border-[#1A1A1A] text-[#1A1A1A] hover:bg-gray-50',
-  ghost: 'bg-transparent text-[#6B7280] hover:bg-[#F3F4F6]',
-  destructive: 'bg-[#DC2626] text-white hover:bg-red-700',
+  primary: {
+    background: 'linear-gradient(135deg, #F0905A 0%, #E8703D 100%)',
+    color: '#fff',
+    border: 'none',
+    boxShadow: '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset',
+  },
+  secondary: {
+    background: 'transparent',
+    color: '#1A1410',
+    border: '1px solid rgba(220,200,180,0.35)',
+    boxShadow: 'none',
+  },
+  ghost: {
+    background: 'transparent',
+    color: 'rgba(26,20,16,0.50)',
+    border: 'none',
+    boxShadow: 'none',
+  },
+  destructive: {
+    background: '#c4420a',
+    color: '#fff',
+    border: 'none',
+    boxShadow: 'none',
+  },
 };
 
 const DARK_VARIANT_STYLES = {
-  primary: 'bg-[#E8853D] text-white hover:bg-[#D4742E]',
-  secondary: 'bg-white/10 border border-white/20 text-white hover:bg-white/15',
-  ghost: 'bg-transparent text-white/60 hover:bg-white/10 hover:text-white',
-  destructive: 'bg-[#DC2626] text-white hover:bg-red-700',
+  primary: {
+    background: 'linear-gradient(135deg, #F0905A 0%, #E8703D 100%)',
+    color: '#fff',
+    border: 'none',
+    boxShadow: '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset',
+  },
+  secondary: {
+    background: 'rgba(255,255,255,0.10)',
+    color: '#fff',
+    border: '1px solid rgba(255,255,255,0.20)',
+    boxShadow: 'none',
+  },
+  ghost: {
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.60)',
+    border: 'none',
+    boxShadow: 'none',
+  },
+  destructive: {
+    background: '#c4420a',
+    color: '#fff',
+    border: 'none',
+    boxShadow: 'none',
+  },
 };
 
 const SIZE_STYLES = {
-  sm: 'text-xs min-h-8 px-3',
-  md: 'text-sm min-h-9 px-4',
-  lg: 'text-sm min-h-11 px-6',
+  sm: { fontSize: 12, minHeight: 32, padding: '0 12px' },
+  md: { fontSize: 14, minHeight: 36, padding: '0 16px' },
+  lg: { fontSize: 14, minHeight: 44, padding: '0 24px' },
 };
 
 export default function Button({
@@ -27,17 +67,30 @@ export default function Button({
   children,
   className = '',
   disabled = false,
+  style: styleProp = {},
   ...rest
 }) {
   const styles = dark ? DARK_VARIANT_STYLES : VARIANT_STYLES;
+  const variantStyle = styles[variant] || styles.primary;
+  const sizeStyle = SIZE_STYLES[size] || SIZE_STYLES.md;
 
   return (
     <button
-      className={`rounded-[14px] font-medium inline-flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8853D] focus-visible:ring-offset-2 ${
-        styles[variant] || styles.primary
-      } ${SIZE_STYLES[size] || SIZE_STYLES.md} ${
-        disabled ? 'opacity-50 cursor-not-allowed' : ''
-      } ${className}`}
+      className={`irw-btn ${className}`}
+      style={{
+        borderRadius: variant === 'primary' ? 20 : 11,
+        fontWeight: variant === 'primary' ? 700 : 500,
+        fontFamily: "'Sora', sans-serif",
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'all 0.2s ease',
+        ...variantStyle,
+        ...sizeStyle,
+        ...styleProp,
+      }}
       disabled={disabled}
       aria-disabled={disabled || undefined}
       {...rest}

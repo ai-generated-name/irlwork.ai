@@ -37,7 +37,7 @@ function SentryFallback({ error, resetError }) {
         <button
           onClick={resetError}
           style={{
-            padding: '10px 24px', backgroundColor: '#E8853D', color: 'white',
+            padding: '10px 24px', backgroundColor: '#E8703D', color: 'white',
             border: 'none', borderRadius: 14, cursor: 'pointer', fontWeight: 600,
             fontSize: 14
           }}

@@ -46,12 +46,12 @@ function formatCategory(cat) {
 // Custom coral marker icon for tasks
 const createTaskIcon = (isSelected = false, isHovered = false, budget = null) => {
   const size = isSelected ? 40 : isHovered ? 36 : 32;
-  const color = isSelected ? '#C35A44' : '#E8853D';
+  const color = isSelected ? '#C35A44' : '#E8703D';
   const shadow = isSelected
     ? '0 2px 12px rgba(195, 90, 68, 0.5)'
     : isHovered
-      ? '0 2px 10px rgba(232, 133, 61, 0.4)'
-      : '0 2px 8px rgba(0,0,0,0.3)';
+      ? '0 2px 10px rgba(232,112,61, 0.4)'
+      : '0 2px 8px rgba(200,150,100,0.3)';
 
   // Show price tooltip on hover
   const tooltipHtml = (isHovered && !isSelected && budget != null) ? `
@@ -593,9 +593,9 @@ export default function TaskMap({
             radius={radius * 1000}
             pathOptions={{
               // eslint-disable-next-line irlwork/no-orange-outside-button -- map circle uses brand color
-              color: '#E8853D',
+              color: '#E8703D',
               // eslint-disable-next-line irlwork/no-orange-outside-button -- map circle fill uses brand color
-              fillColor: '#E8853D',
+              fillColor: '#E8703D',
               fillOpacity: 0.08,
               weight: 2,
               dashArray: '5, 5',

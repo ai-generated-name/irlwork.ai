@@ -58,14 +58,14 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, taskTitle }) {
             <div className="quick-apply-modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8703D" strokeWidth="2">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                   <line x1="12" y1="9" x2="12" y2="13" />
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
                 <h2>File a dispute</h2>
               </div>
-              <p style={{ fontSize: '14px', color: '#888888', marginTop: '4px' }}>
+              <p style={{ fontSize: '14px', color: 'rgba(26,20,16,0.40)', marginTop: '4px' }}>
                 Disputes are reviewed by our team. Please provide a clear reason.
               </p>
             </div>
@@ -91,13 +91,13 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, taskTitle }) {
                     width: '100%',
                     padding: '12px',
                     borderRadius: '10px',
-                    border: '2px solid rgba(0,0,0,0.08)',
+                    border: '2px solid rgba(220,200,180,0.35)',
                     fontSize: '14px',
                     resize: 'vertical',
                     fontFamily: 'inherit',
                   }}
                 />
-                <span style={{ fontSize: '12px', color: '#888888' }}>
+                <span style={{ fontSize: '12px', color: 'rgba(26,20,16,0.40)' }}>
                   {reason.length}/1000
                 </span>
               </div>

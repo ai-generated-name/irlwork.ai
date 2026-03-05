@@ -119,7 +119,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
             variant="secondary"
             size="md"
             onClick={handleShare}
-            style={copied ? { color: '#059669', borderColor: '#059669' } : {}}
+            style={copied ? { color: '#1A9E6A', borderColor: '#1A9E6A' } : {}}
           >
             {copied ? <Check size={16} style={{ marginRight: 6 }} /> : <Share2 size={16} style={{ marginRight: 6 }} />}
             {copied ? 'Link copied' : 'Share profile'}
@@ -152,7 +152,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                 background: 'white',
                 borderRadius: 20,
                 border: '1px solid rgba(26,26,26,0.06)',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+                boxShadow: '0 4px 24px rgba(220,200,180,0.25)',
                 overflow: 'hidden'
               }}>
                 {/* Profile Header */}
@@ -198,7 +198,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         <h1 style={{
                           fontSize: 26,
                           fontWeight: 700,
-                          color: 'var(--text-primary, #1A1A1A)',
+                          color: 'var(--text-primary, #1A1410)',
                           margin: 0,
                           lineHeight: 1.2
                         }}>
@@ -209,7 +209,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                             width: 22,
                             height: 22,
                             borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #10B981, #059669)',
+                            background: 'linear-gradient(135deg, #1A9E6A, #1A9E6A)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -221,7 +221,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         {numRating === 0 && numCount === 0 && (
                           <span style={{
                             padding: '2px 8px',
-                            background: 'linear-gradient(135deg, #10B981, #059669)',
+                            background: 'linear-gradient(135deg, #1A9E6A, #1A9E6A)',
                             borderRadius: 999,
                             fontSize: 10,
                             color: 'white',
@@ -361,12 +361,12 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         {languages.map((lang, idx) => (
                           <span key={idx} style={{
                             padding: '6px 14px',
-                            background: 'rgba(59,130,246,0.08)',
+                            background: 'rgba(37,99,235,0.08)',
                             borderRadius: 999,
                             fontSize: 13,
-                            color: '#3B82F6',
+                            color: '#2563EB',
                             fontWeight: 500,
-                            border: '1px solid rgba(59,130,246,0.12)'
+                            border: '1px solid rgba(37,99,235,0.12)'
                           }}>
                             {lang}
                           </span>
@@ -394,7 +394,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                                     key={i}
                                     size={13}
                                     fill={i <= (review.score || review.rating || review.rating_score || 0) ? '#F59E0B' : 'none'}
-                                    stroke={i <= (review.score || review.rating || review.rating_score || 0) ? '#F59E0B' : '#D1D5DB'}
+                                    stroke={i <= (review.score || review.rating || review.rating_score || 0) ? '#F59E0B' : 'rgba(220,200,180,0.45)'}
                                     strokeWidth={1.5}
                                   />
                                 ))}
@@ -428,7 +428,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                   background: 'white',
                   borderRadius: 16,
                   border: '1px solid rgba(26,26,26,0.06)',
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+                  boxShadow: '0 4px 24px rgba(220,200,180,0.25)',
                   padding: 24,
                 }}>
                   {/* Rate */}
@@ -449,17 +449,17 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                     gap: 6,
                     padding: '4px 12px',
                     borderRadius: 999,
-                    background: isAvailable ? 'rgba(16,185,129,0.08)' : 'rgba(156,163,175,0.1)',
+                    background: isAvailable ? 'rgba(26,158,106,0.08)' : 'rgba(156,163,175,0.1)',
                     fontSize: 13,
                     fontWeight: 500,
-                    color: isAvailable ? '#059669' : '#9CA3AF',
+                    color: isAvailable ? '#1A9E6A' : 'rgba(26,20,16,0.28)',
                     marginBottom: 20,
                   }}>
                     <span style={{
                       width: 7,
                       height: 7,
                       borderRadius: '50%',
-                      background: isAvailable ? 'var(--success)' : '#9CA3AF',
+                      background: isAvailable ? 'var(--success)' : 'rgba(26,20,16,0.28)',
                       display: 'inline-block',
                     }} />
                     {isAvailable ? 'Available' : 'Unavailable'}
@@ -471,7 +471,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                       width: '100%',
                       padding: '14px 20px',
                       background: '#E5E7EB',
-                      color: '#9CA3AF',
+                      color: 'rgba(26,20,16,0.28)',
                       fontWeight: 600,
                       fontSize: 16,
                       borderRadius: 12,
@@ -559,7 +559,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                   backdropFilter: 'blur(12px)',
                   WebkitBackdropFilter: 'blur(12px)',
                   borderTop: '1px solid rgba(26,26,26,0.08)',
-                  boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+                  boxShadow: '0 -4px 20px rgba(220,200,180,0.35)',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
