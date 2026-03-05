@@ -2413,30 +2413,37 @@ app.post('/api/agent/connect', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
 
   try {
-    const { label } = req.body;
-
-    // Generate a short, human-readable code: ABC-1234
-    const letters = Array.from({ length: 3 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]).join('');
-    const digits = String(Math.floor(1000 + Math.random() * 9000));
-    const code = `${letters}-${digits}`;
+    const { label } = req.body || {};
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
-    const { error } = await supabase.from('pending_connections').insert({
-      id: uuidv4(),
-      code,
-      label: label || null,
-      status: 'pending',
-      expires_at: expiresAt,
-      created_at: new Date().toISOString()
-    });
+    // Retry up to 3 times on code collision (UNIQUE constraint)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const letters = Array.from({ length: 3 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]).join('');
+      const digits = String(Math.floor(1000 + Math.random() * 9000));
+      const code = `${letters}-${digits}`;
 
-    if (error) {
-      console.error('[DeviceFlow] Insert error:', error);
-      return res.status(500).json({ error: 'Failed to create connection code' });
+      const { error } = await supabase.from('pending_connections').insert({
+        id: uuidv4(),
+        code,
+        label: label || null,
+        status: 'pending',
+        expires_at: expiresAt,
+        created_at: new Date().toISOString()
+      });
+
+      if (!error) {
+        return res.json({ code, expires_at: expiresAt, activate_url: 'https://www.irlwork.ai/connect-agent' });
+      }
+
+      // If not a unique violation, fail immediately
+      if (error.code !== '23505') {
+        console.error('[DeviceFlow] Insert error:', error);
+        return res.status(500).json({ error: 'Failed to create connection code' });
+      }
     }
 
-    res.json({ code, expires_at: expiresAt, activate_url: 'https://www.irlwork.ai/connect-agent' });
+    return res.status(500).json({ error: 'Failed to generate unique code, please retry' });
   } catch (e) {
     console.error('[DeviceFlow] Error:', e);
     res.status(500).json({ error: 'Internal server error' });

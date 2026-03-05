@@ -8,7 +8,7 @@ import { Logo } from '../components/Logo'
 import { useLanguage } from '../context/LanguageContext'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { Button } from '../components/ui'
-import { useAuth } from '../context/AuthContext'
+import { supabase } from '../context/AuthContext'
 import API_URL from '../config/api'
 
 const MCP_ENDPOINT = 'https://api.irlwork.ai/api/mcp/sse'
@@ -20,7 +20,9 @@ export default function ConnectAgentPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedItems, setCopiedItems] = useState({})
   const { t } = useLanguage()
-  const { user, authenticatedFetch } = useAuth()
+
+  // Auth state — managed directly via Supabase client (AuthProvider is not in the tree for self-contained pages)
+  const [user, setUser] = useState(null)
 
   // Activation modal state
   const [showActivateModal, setShowActivateModal] = useState(false)
@@ -29,6 +31,17 @@ export default function ConnectAgentPage() {
   const [activateError, setActivateError] = useState('')
   const [activateSuccess, setActivateSuccess] = useState(false)
   const codeInputRef = useRef(null)
+
+  // Check auth state on mount and listen for changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   // If URL has ?activate=1 or tab=activate, open modal automatically
   useEffect(() => {
@@ -49,9 +62,18 @@ export default function ConnectAgentPage() {
     setActivateLoading(true)
     setActivateError('')
     try {
-      const res = await authenticatedFetch(`${API_URL}/agent/activate`, {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        setActivateError('Please sign in first')
+        setActivateLoading(false)
+        return
+      }
+      const res = await fetch(`${API_URL}/agent/activate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': session.access_token
+        },
         body: JSON.stringify({ code: activateCode.trim() })
       })
       const data = await res.json()
@@ -456,7 +478,7 @@ You can pay with **credit card (Stripe)** or **USDC on Base**. Use \`set_default
                 ) : (
                   <div className="ca-activate-signin">
                     <p className="ca-activate-signin-text">Sign in to activate your agent</p>
-                    <Button variant="primary" size="lg" onClick={() => { window.location.href = '/auth?returnTo=/connect-agent?activate=1' }} className="gap-2">
+                    <Button variant="primary" size="lg" onClick={() => { window.location.href = '/auth?returnTo=' + encodeURIComponent('/connect-agent?activate=1') }} className="gap-2">
                       Sign in <ArrowRight size={15} />
                     </Button>
                   </div>
