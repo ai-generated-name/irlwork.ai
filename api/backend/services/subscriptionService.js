@@ -17,15 +17,15 @@ const TIER_PRICE_MAP = {
 const TIER_DEFINITIONS = {
   builder: {
     name: 'irlwork.ai Builder Plan',
-    description: 'Enhanced visibility, lower fees, unlimited task posting',
-    monthly_amount: 1000, // $10.00
-    annual_amount: 9000,  // $90.00
+    description: 'Lower fees, direct hiring, unlimited task posting, blue badge',
+    monthly_amount: 1000,  // $10.00
+    annual_amount: 9000,   // $90.00
   },
   pro: {
     name: 'irlwork.ai Pro Plan',
-    description: 'Max visibility, lowest fees, unlimited task posting',
-    monthly_amount: 3000, // $30.00
-    annual_amount: 27000, // $270.00
+    description: 'Lowest fees, top listing priority, direct hiring, gold badge',
+    monthly_amount: 3000,  // $30.00
+    annual_amount: 27000,  // $270.00
   },
 };
 
