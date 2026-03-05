@@ -9870,8 +9870,8 @@ app.post('/api/mcp', async (req, res) => {
         const tier = params.tier;
         const billingPeriod = params.billing_period || 'monthly';
 
-        if (!tier || !['pro'].includes(tier)) {
-          return res.status(400).json({ error: 'tier parameter is required and must be "pro"' });
+        if (!tier || !['builder', 'pro'].includes(tier)) {
+          return res.status(400).json({ error: 'tier parameter is required and must be "builder" or "pro"' });
         }
         if (billingPeriod && !['monthly', 'annual'].includes(billingPeriod)) {
           return res.status(400).json({ error: 'billing_period must be "monthly" or "annual"' });
@@ -11261,6 +11261,18 @@ app.post('/api/tasks/create', async (req, res) => {
     await supabase.rpc('increment_user_stat', {
       user_id_param: user.id, stat_name: 'total_tasks_posted', increment_by: 1
     });
+  }
+
+  // If assign_to is provided (direct hire flow), verify tier allows it
+  if (assign_to) {
+    const { canDirectHire } = require('./config/tiers');
+    if (!canDirectHire(user.subscription_tier)) {
+      return res.status(403).json({
+        error: 'direct_hire_not_allowed',
+        code: 'upgrade_required',
+        message: 'Direct hiring requires a Builder or Pro subscription.',
+      });
+    }
   }
 
   // If assign_to is provided (direct hire flow), assign the human immediately
