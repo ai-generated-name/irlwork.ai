@@ -248,6 +248,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
   const [negotiateAppId, setNegotiateAppId] = useState(null)
   const [negotiateMsg, setNegotiateMsg] = useState('')
   const [assignNotes, setAssignNotes] = useState({})
+  const [paymentErrors, setPaymentErrors] = useState({})
 
   const [taskForm, setTaskForm] = useState({
     title: '', description: '', category: '', budget: '',
@@ -542,12 +543,55 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
         body: JSON.stringify(body)
       })
+
+      // 3DS/SCA required — launch Stripe modal for card authentication
+      if (res.status === 202) {
+        const data = await res.json()
+        if (data.requires_action && data.client_secret) {
+          toast('Card requires verification. Opening authentication...', { icon: '🔐' })
+          try {
+            const { loadStripe } = await import('@stripe/stripe-js')
+            const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '')
+            if (!stripe) throw new Error('Stripe not available')
+            const { error: stripeError } = await stripe.handleCardAction(data.client_secret)
+            if (stripeError) {
+              setPaymentErrors(prev => ({ ...prev, [taskId]: { message: stripeError.message, humanId } }))
+              toast.error(`Authentication failed: ${stripeError.message}`)
+              return
+            }
+            // 3DS succeeded — call /confirm-payment to finalize assignment
+            const confirmRes = await fetch(`${API_URL}/tasks/${taskId}/confirm-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: user.token || '' },
+              body: JSON.stringify({ payment_intent_id: data.payment_intent_id })
+            })
+            if (confirmRes.ok) {
+              fetchPostedTasks()
+              setExpandedTask(null)
+              setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
+              setAssignNotes(prev => { const next = { ...prev }; delete next[humanId]; return next })
+              setPaymentErrors(prev => { const next = { ...prev }; delete next[taskId]; return next })
+              toast.success('Payment verified! Worker assigned.')
+            } else {
+              const err = await confirmRes.json()
+              setPaymentErrors(prev => ({ ...prev, [taskId]: { message: err.message || 'Payment confirmation failed', humanId } }))
+              toast.error(err.message || 'Payment confirmation failed')
+            }
+          } catch (stripeErr) {
+            setPaymentErrors(prev => ({ ...prev, [taskId]: { message: stripeErr.message, humanId } }))
+            toast.error(`3DS verification failed: ${stripeErr.message}`)
+          }
+          return
+        }
+      }
+
       if (res.ok) {
         const data = await res.json()
         fetchPostedTasks()
         setExpandedTask(null)
         setTaskApplications(prev => ({ ...prev, [taskId]: [] }))
         setAssignNotes(prev => { const next = { ...prev }; delete next[humanId]; return next })
+        setPaymentErrors(prev => { const next = { ...prev }; delete next[taskId]; return next })
         if (data.payment_method === 'usdc') {
           toast.success(`Worker assigned! Send ${data.deposit_instructions?.amount_usdc} USDC to complete escrow.`)
         } else if (data.amount_charged) {
@@ -557,8 +601,9 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
         }
       } else {
         const err = await res.json()
-        if (err.code === 'payment_failed') {
-          toast.error(`Payment failed: ${err.details || err.error}`)
+        if (err.code === 'payment_failed' || err.code === 'payment_error') {
+          setPaymentErrors(prev => ({ ...prev, [taskId]: { message: err.message || err.details || err.error, humanId } }))
+          toast.error(`Payment failed: ${err.details || err.message || err.error}`)
         } else {
           toast.error(err.error || 'Failed to assign human')
         }
@@ -811,9 +856,18 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
 
   const startWork = async (taskId) => {
     try {
-      await fetch(`${API_URL}/tasks/${taskId}/start`, { method: 'POST', headers: { Authorization: user.token || '' } })
-      fetchTasks()
-    } catch (e) { debug('Could not start work') }
+      const res = await fetch(`${API_URL}/tasks/${taskId}/start`, { method: 'POST', headers: { Authorization: user.token || '' } })
+      if (res.ok) {
+        fetchTasks()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        if (err.error === 'capture_failed') {
+          toast.error('Payment issue — the agent has been notified. Please try again later.')
+        } else {
+          toast.error(err.message || err.error || 'Could not start work. Please try again.')
+        }
+      }
+    } catch (e) { toast.error('Network error — could not start work. Please try again.') }
   }
 
   const approveTask = async (taskId) => {
@@ -949,6 +1003,7 @@ function Dashboard({ user, onLogout, needsOnboarding, onCompleteOnboarding, init
               negotiateMsg={negotiateMsg} setNegotiateMsg={setNegotiateMsg}
               assignNotes={assignNotes} setAssignNotes={setAssignNotes}
               assigningHuman={assigningHuman}
+              paymentErrors={paymentErrors}
               handleCreateTask={handleCreateTask}
               handleAssignHuman={handleAssignHuman}
               handleCancelTask={handleCancelTask}

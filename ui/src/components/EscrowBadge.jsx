@@ -12,6 +12,20 @@ const STATUS_CONFIG = {
     icon: <Hourglass size={14} />,
     description: 'Waiting for agent to fund escrow'
   },
+  held: {
+    label: 'Funds Reserved',
+    color: 'bg-[#FEBC2E]',
+    textColor: 'text-[#92400E]',
+    icon: <Lock size={14} />,
+    description: 'Auth hold placed — funds reserved on card'
+  },
+  authorized: {
+    label: 'Funds Reserved',
+    color: 'bg-[#FEBC2E]',
+    textColor: 'text-[#92400E]',
+    icon: <Lock size={14} />,
+    description: 'Auth hold placed — funds reserved on card'
+  },
   deposited: {
     label: 'In Escrow',
     color: 'bg-[#E8703D]',

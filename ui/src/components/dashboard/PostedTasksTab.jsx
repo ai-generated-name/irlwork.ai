@@ -34,6 +34,7 @@ export default function PostedTasksTab({
   negotiateMsg, setNegotiateMsg,
   assignNotes, setAssignNotes,
   assigningHuman,
+  paymentErrors,
   handleCreateTask,
   handleAssignHuman,
   handleCancelTask,
@@ -428,6 +429,7 @@ export default function PostedTasksTab({
                         setNegotiateMsg={setNegotiateMsg}
                         assignNotes={assignNotes}
                         setAssignNotes={setAssignNotes}
+                        paymentError={paymentErrors?.[task.id]}
                       />
                     ))}
                   </div>

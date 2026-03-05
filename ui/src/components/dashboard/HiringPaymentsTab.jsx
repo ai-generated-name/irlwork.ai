@@ -2,6 +2,7 @@
 import React, { lazy, Suspense, useState } from 'react'
 import Loading from '../Loading'
 import { Card } from '../ui'
+import API_URL from '../../config/api'
 
 const StripeProvider = lazy(() => import('../StripeProvider'))
 const PaymentMethodForm = lazy(() => import('../PaymentMethodForm'))
@@ -206,7 +207,19 @@ export default function HiringPaymentsTab({
 
             {/* Transaction History */}
             <div>
-              <h3 className="text-base md:text-lg font-bold text-[#1A1410] mb-3">Transaction History</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base md:text-lg font-bold text-[#1A1410]">Transaction History</h3>
+                {fundedTasks.length > 0 && (
+                  <a
+                    href={`${API_URL}/invoices/download?format=csv&year=${new Date().getFullYear()}`}
+                    className="text-xs font-medium text-[#0F4C5C] hover:text-[#0A3540] underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Export CSV
+                  </a>
+                )}
+              </div>
               {fundedTasks.length > 0 ? (
                 <div className="space-y-2">
                   {[...fundedTasks]
