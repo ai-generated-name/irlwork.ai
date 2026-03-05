@@ -35,7 +35,7 @@ export default function FunnelTab({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-[#9CA3AF]">Loading funnel...</div>
+        <div className="text-[rgba(26,20,16,0.28)]">Loading funnel...</div>
       </div>
     )
   }
@@ -72,8 +72,8 @@ export default function FunnelTab({ user }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-[#1A1A1A]">Conversion Funnel</h2>
-          <p className="text-sm text-[#9CA3AF] mt-0.5">Task lifecycle drop-off from creation to payout, with stage-by-stage conversion rates.</p>
+          <h2 className="text-lg font-bold text-[#1A1410]">Conversion Funnel</h2>
+          <p className="text-sm text-[rgba(26,20,16,0.28)] mt-0.5">Task lifecycle drop-off from creation to payout, with stage-by-stage conversion rates.</p>
         </div>
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
@@ -88,13 +88,13 @@ export default function FunnelTab({ user }) {
               <div key={stage.key}>
                 {i > 0 && stage.rate && (
                   <div className="flex items-center gap-2 py-1.5 pl-4">
-                    <ArrowDown size={14} className="text-[#9CA3AF]" />
-                    <span className="text-xs font-medium text-[#9CA3AF]">{stage.rate} conversion</span>
+                    <ArrowDown size={14} className="text-[rgba(26,20,16,0.28)]" />
+                    <span className="text-xs font-medium text-[rgba(26,20,16,0.28)]">{stage.rate} conversion</span>
                   </div>
                 )}
                 <div className="flex items-center gap-4">
                   <div className="w-36 text-right">
-                    <span className="text-sm font-medium text-[#1A1A1A]">{stage.label}</span>
+                    <span className="text-sm font-medium text-[#1A1410]">{stage.label}</span>
                   </div>
                   <div className="flex-1 relative">
                     <div
@@ -115,16 +115,16 @@ export default function FunnelTab({ user }) {
         </div>
 
         {/* Overall rate */}
-        <div className="mt-6 pt-4 border-t border-[#ECECEC] flex items-center gap-2">
-          <span className="text-sm font-medium text-[#6B7280]">Overall conversion:</span>
+        <div className="mt-6 pt-4 border-t border-[rgba(220,200,180,0.35)] flex items-center gap-2">
+          <span className="text-sm font-medium text-[rgba(26,20,16,0.50)]">Overall conversion:</span>
           <span className="text-lg font-bold text-orange-600">{rates.overall || '0%'}</span>
-          <span className="text-xs text-[#9CA3AF] ml-2">(created to paid)</span>
+          <span className="text-xs text-[rgba(26,20,16,0.28)] ml-2">(created to paid)</span>
         </div>
       </Card>
 
       {/* Average times */}
       <Card padding="lg">
-        <h3 className="font-semibold text-[#1A1A1A] mb-4 text-sm flex items-center gap-2">
+        <h3 className="font-semibold text-[#1A1410] mb-4 text-sm flex items-center gap-2">
           <Clock size={16} /> Average lifecycle times
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -145,13 +145,13 @@ export default function FunnelTab({ user }) {
 
       {/* Conversion rates table */}
       <Card padding="lg">
-        <h3 className="font-semibold text-[#1A1A1A] mb-4 text-sm">Conversion Rates</h3>
+        <h3 className="font-semibold text-[#1A1410] mb-4 text-sm">Conversion Rates</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#ECECEC]">
-                <th className="text-left py-2 text-[#6B7280] font-medium">Transition</th>
-                <th className="text-right py-2 text-[#6B7280] font-medium">Rate</th>
+              <tr className="border-b border-[rgba(220,200,180,0.35)]">
+                <th className="text-left py-2 text-[rgba(26,20,16,0.50)] font-medium">Transition</th>
+                <th className="text-right py-2 text-[rgba(26,20,16,0.50)] font-medium">Rate</th>
               </tr>
             </thead>
             <tbody>
@@ -160,8 +160,8 @@ export default function FunnelTab({ user }) {
               <RateRow label="Assigned \u2192 Started" rate={rates.assigned_to_started} />
               <RateRow label="Started \u2192 Completed" rate={rates.started_to_completed} />
               <RateRow label="Completed \u2192 Paid" rate={rates.completed_to_paid} />
-              <tr className="border-t-2 border-[#ECECEC]">
-                <td className="py-2 font-bold text-[#1A1A1A]">Overall</td>
+              <tr className="border-t-2 border-[rgba(220,200,180,0.35)]">
+                <td className="py-2 font-bold text-[#1A1410]">Overall</td>
                 <td className="py-2 text-right font-bold text-orange-600">{rates.overall}</td>
               </tr>
             </tbody>
@@ -187,8 +187,8 @@ function TimeCard({ label, hours }) {
 
   return (
     <div className="text-center">
-      <p className="text-2xl font-bold text-[#1A1A1A]">{display}</p>
-      <p className="text-xs text-[#6B7280] mt-1">{label}</p>
+      <p className="text-2xl font-bold text-[#1A1410]">{display}</p>
+      <p className="text-xs text-[rgba(26,20,16,0.50)] mt-1">{label}</p>
     </div>
   )
 }
@@ -198,9 +198,9 @@ function RateRow({ label, rate }) {
 
   return (
     <tr className="border-b border-[#FAFAF8]">
-      <td className="py-2.5 text-[#1A1A1A]">{label}</td>
+      <td className="py-2.5 text-[#1A1410]">{label}</td>
       <td className="py-2.5 text-right">
-        <span className={`font-medium ${pctNum >= 50 ? 'text-[#16A34A]' : pctNum >= 20 ? 'text-[#EAB308]' : 'text-red-500'}`}>
+        <span className={`font-medium ${pctNum >= 50 ? 'text-[#1A9E6A]' : pctNum >= 20 ? 'text-[#EAB308]' : 'text-red-500'}`}>
           {rate || '0%'}
         </span>
       </td>

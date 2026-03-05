@@ -8,12 +8,12 @@ export default function EmptyState({
   secondaryAction
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#ECECEC] p-8 md:p-12 shadow-v4-sm text-center">
+    <div className="bg-white rounded-2xl border border-[rgba(220,200,180,0.35)] p-8 md:p-12 shadow-v4-sm text-center">
       <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 bg-teal/10 rounded-2xl flex items-center justify-center">
         <span className="text-3xl md:text-4xl">{icon}</span>
       </div>
-      <h3 className="text-lg md:text-xl font-semibold text-[#1A1A1A] mb-2">{title}</h3>
-      <p className="text-sm md:text-base text-[#6B7280] mb-6 md:mb-8 max-w-md mx-auto">{description}</p>
+      <h3 className="text-lg md:text-xl font-semibold text-[#1A1410] mb-2">{title}</h3>
+      <p className="text-sm md:text-base text-[rgba(26,20,16,0.50)] mb-6 md:mb-8 max-w-md mx-auto">{description}</p>
       <div className="flex flex-col sm:flex-row justify-center gap-3 md:gap-4">
         {primaryAction && (
           <Button

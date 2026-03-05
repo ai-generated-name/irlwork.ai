@@ -63,7 +63,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1a1a2e', margin: 0 }}>
+      <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1A1410', margin: 0 }}>
         Withdraw to:
       </p>
 
@@ -79,15 +79,15 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1a1a2e' }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1A1410' }}>
                 Bank Account
               </span>
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '2px 0 0' }}>
+              <p style={{ fontSize: '0.75rem', color: 'rgba(26,20,16,0.50)', margin: '2px 0 0' }}>
                 ${stripeAvailable.toFixed(2)} via Stripe (2-3 business days)
               </p>
             </div>
             {stripeReady && (
-              <span style={{ fontSize: '0.675rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.675rem', background: '#dcfce7', color: '#1A9E6A', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
                 Connected
               </span>
             )}
@@ -104,7 +104,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               style={{
                 marginTop: '0.75rem',
                 padding: '10px 20px',
-                background: (loading || stripeAvailable <= 0) ? '#d1d5db' : '#16a34a',
+                background: (loading || stripeAvailable <= 0) ? 'rgba(220,200,180,0.45)' : '#1A9E6A',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '10px',
@@ -132,15 +132,15 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1a1a2e' }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1A1410' }}>
                 USDC Wallet
               </span>
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '2px 0 0' }}>
+              <p style={{ fontSize: '0.75rem', color: 'rgba(26,20,16,0.50)', margin: '2px 0 0' }}>
                 ${usdcAvailable.toFixed(2)} USDC on Base (instant)
               </p>
             </div>
             {walletReady && (
-              <span style={{ fontSize: '0.675rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.675rem', background: '#dcfce7', color: '#1A9E6A', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
                 Connected
               </span>
             )}
@@ -157,7 +157,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               style={{
                 marginTop: '0.75rem',
                 padding: '10px 20px',
-                background: (loading || usdcAvailable <= 0) ? '#d1d5db' : '#2563eb',
+                background: (loading || usdcAvailable <= 0) ? 'rgba(220,200,180,0.45)' : '#2563eb',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '10px',
@@ -185,15 +185,15 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1a1a2e' }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1A1410' }}>
                 Bank Account
               </span>
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '2px 0 0' }}>
+              <p style={{ fontSize: '0.75rem', color: 'rgba(26,20,16,0.50)', margin: '2px 0 0' }}>
                 Direct deposit via Stripe (2-3 business days)
               </p>
             </div>
             {stripeReady && (
-              <span style={{ fontSize: '0.675rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.675rem', background: '#dcfce7', color: '#1A9E6A', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
                 Connected
               </span>
             )}
@@ -210,7 +210,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               style={{
                 marginTop: '0.75rem',
                 padding: '10px 20px',
-                background: (loading || availableBalance <= 0) ? '#d1d5db' : '#16a34a',
+                background: (loading || availableBalance <= 0) ? 'rgba(220,200,180,0.45)' : '#1A9E6A',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '10px',
@@ -238,7 +238,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               Withdraw <strong>${confirmWithdraw.amount?.toFixed(2)}</strong> to {confirmWithdraw.label}
               {confirmWithdraw.method === 'usdc' ? ' (instant)' : ''}
             </p>
-            <p style={{ color: '#888888', fontSize: 12 }}>
+            <p style={{ color: 'rgba(26,20,16,0.40)', fontSize: 12 }}>
               {confirmWithdraw.method === 'stripe'
                 ? 'Withdrawals typically take 2-3 business days and cannot be reversed.'
                 : 'USDC transfers are instant and cannot be reversed.'}

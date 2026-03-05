@@ -43,15 +43,15 @@ export default function ForAgentsBox({ human, collapsible = false }) {
             width: 28,
             height: 28,
             borderRadius: 7,
-            background: 'rgba(59,130,246,0.1)',
+            background: 'rgba(37,99,235,0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <Bot size={15} style={{ color: '#3B82F6' }} />
+            <Bot size={15} style={{ color: '#2563EB' }} />
           </div>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #1A1A1A)', flex: 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #1A1410)', flex: 1 }}>
             For Agents
           </span>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary, #8A8A8A)' }}>
@@ -78,12 +78,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
               gap: 4,
               fontSize: 12,
               fontWeight: 500,
-              color: '#3B82F6',
+              color: '#2563EB',
               textDecoration: 'none',
               padding: '4px 10px',
               borderRadius: 6,
-              border: '1px solid rgba(59,130,246,0.2)',
-              background: 'rgba(59,130,246,0.04)',
+              border: '1px solid rgba(37,99,235,0.2)',
+              background: 'rgba(37,99,235,0.04)',
               transition: 'all 0.2s'
             }}
           >
@@ -98,12 +98,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
               gap: 4,
               fontSize: 12,
               fontWeight: 500,
-              color: '#3B82F6',
+              color: '#2563EB',
               textDecoration: 'none',
               padding: '4px 10px',
               borderRadius: 6,
-              border: '1px solid rgba(59,130,246,0.2)',
-              background: 'rgba(59,130,246,0.04)',
+              border: '1px solid rgba(37,99,235,0.2)',
+              background: 'rgba(37,99,235,0.04)',
               transition: 'all 0.2s'
             }}
           >
@@ -134,7 +134,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
                   borderRadius: 6,
                   cursor: 'pointer',
                   fontSize: 11,
-                  color: copied ? '#34D399' : '#9CA3AF',
+                  color: copied ? '#34D399' : 'rgba(26,20,16,0.28)',
                   transition: 'all 0.2s',
                   zIndex: 1,
                 }}
@@ -143,7 +143,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
                 {copied ? 'Copied' : 'Copy'}
               </button>
               <pre style={{
-                background: '#1a1a1a',
+                background: '#1A1410',
                 color: '#e0e0e0',
                 padding: 14,
                 borderRadius: 10,
@@ -171,7 +171,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
       background: 'var(--bg-tertiary, #F9FAFB)',
       borderRadius: 16,
       padding: 24,
-      border: '1px solid rgba(0,0,0,0.06)',
+      border: '1px solid rgba(220,200,180,0.25)',
       marginBottom: 16
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -179,12 +179,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
           width: 32,
           height: 32,
           borderRadius: 8,
-          background: 'rgba(59,130,246,0.1)',
+          background: 'rgba(37,99,235,0.1)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <Bot size={18} style={{ color: '#3B82F6' }} />
+          <Bot size={18} style={{ color: '#2563EB' }} />
         </div>
         <h4 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
           For Agents
@@ -205,11 +205,11 @@ export default function ForAgentsBox({ human, collapsible = false }) {
               gap: 4,
               padding: '4px 8px',
               background: 'none',
-              border: '1px solid rgba(0,0,0,0.1)',
+              border: '1px solid rgba(220,200,180,0.35)',
               borderRadius: 6,
               cursor: 'pointer',
               fontSize: 12,
-              color: copied ? '#16A34A' : 'var(--text-tertiary)',
+              color: copied ? '#1A9E6A' : 'var(--text-tertiary)',
               transition: 'all 0.2s'
             }}
           >
@@ -218,7 +218,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
           </button>
         </div>
         <pre style={{
-          background: '#1a1a1a',
+          background: '#1A1410',
           color: '#e0e0e0',
           padding: 16,
           borderRadius: 10,
@@ -226,7 +226,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
           lineHeight: 1.6,
           overflow: 'auto',
           margin: 0,
-          fontFamily: "'DM Mono', 'SF Mono', 'Fira Code', monospace",
+          fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
           maxHeight: 200,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-all'
@@ -244,12 +244,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
             gap: 4,
             fontSize: 13,
             fontWeight: 500,
-            color: '#3B82F6',
+            color: '#2563EB',
             textDecoration: 'none',
             padding: '6px 12px',
             borderRadius: 8,
-            border: '1px solid rgba(59,130,246,0.2)',
-            background: 'rgba(59,130,246,0.04)',
+            border: '1px solid rgba(37,99,235,0.2)',
+            background: 'rgba(37,99,235,0.04)',
             transition: 'all 0.2s'
           }}
         >
@@ -264,12 +264,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
             gap: 4,
             fontSize: 13,
             fontWeight: 500,
-            color: '#3B82F6',
+            color: '#2563EB',
             textDecoration: 'none',
             padding: '6px 12px',
             borderRadius: 8,
-            border: '1px solid rgba(59,130,246,0.2)',
-            background: 'rgba(59,130,246,0.04)',
+            border: '1px solid rgba(37,99,235,0.2)',
+            background: 'rgba(37,99,235,0.04)',
             transition: 'all 0.2s'
           }}
         >

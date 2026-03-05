@@ -101,7 +101,7 @@ function MonthlyEarningsChart({ tasks }) {
       <div className="working-dash-chart-header">
         <div>
           <h3 className="working-dash-chart-title">Monthly earnings</h3>
-          <p className="working-dash-chart-total font-['DM_Mono']">${chartData.monthTotal.toFixed(0)}</p>
+          <p className="working-dash-chart-total font-['JetBrains_Mono']">${chartData.monthTotal.toFixed(0)}</p>
         </div>
         <select
           className="working-dash-chart-select"
@@ -375,7 +375,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </div>
           <div>
             <div className="working-dash-stat-label">Total earned</div>
-            <div className="working-dash-stat-value font-['DM_Mono']">${totalEarned}</div>
+            <div className="working-dash-stat-value font-['JetBrains_Mono']">${totalEarned}</div>
           </div>
         </div>
         <div className="wd-card working-dash-stat">
@@ -386,7 +386,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </div>
           <div>
             <div className="working-dash-stat-label">Active</div>
-            <div className="working-dash-stat-value font-['DM_Mono']">{activeTasks.length}</div>
+            <div className="working-dash-stat-value font-['JetBrains_Mono']">{activeTasks.length}</div>
           </div>
         </div>
         <div className="wd-card working-dash-stat">
@@ -398,7 +398,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </div>
           <div>
             <div className="working-dash-stat-label">Completed</div>
-            <div className="working-dash-stat-value font-['DM_Mono']">{paidTasks.length}</div>
+            <div className="working-dash-stat-value font-['JetBrains_Mono']">{paidTasks.length}</div>
           </div>
         </div>
         <div className="wd-card working-dash-stat">
@@ -409,7 +409,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
           </div>
           <div>
             <div className="working-dash-stat-label">Success</div>
-            <div className="working-dash-stat-value font-['DM_Mono']">{successRate > 0 ? `${successRate}%` : '--'}</div>
+            <div className="working-dash-stat-value font-['JetBrains_Mono']">{successRate > 0 ? `${successRate}%` : '--'}</div>
           </div>
         </div>
       </div>
@@ -451,7 +451,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
                   <span className="working-dash-attention-badge working-dash-attention-badge--active">In Progress</span>
                   {deadlineBadge}
                   <span className="working-dash-attention-task-title">{task.title}</span>
-                  <span className="working-dash-attention-budget font-['DM_Mono']">${task.budget}</span>
+                  <span className="working-dash-attention-budget font-['JetBrains_Mono']">${task.budget}</span>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
@@ -466,7 +466,7 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
               >
                 <span className="working-dash-attention-badge working-dash-attention-badge--review">In Review</span>
                 <span className="working-dash-attention-task-title">{task.title}</span>
-                <span className="working-dash-attention-budget font-['DM_Mono']">${task.budget}</span>
+                <span className="working-dash-attention-budget font-['JetBrains_Mono']">${task.budget}</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>

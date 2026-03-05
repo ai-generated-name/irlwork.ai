@@ -395,7 +395,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 transition: 'all 0.15s',
                 background: billingInterval === 'monthly' ? 'var(--bg-primary)' : 'transparent',
                 color: billingInterval === 'monthly' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                boxShadow: billingInterval === 'monthly' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                boxShadow: billingInterval === 'monthly' ? '0 1px 3px rgba(220,200,180,0.35)' : 'none',
               }}
             >
               Monthly
@@ -412,7 +412,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 transition: 'all 0.15s',
                 background: billingInterval === 'annual' ? 'var(--bg-primary)' : 'transparent',
                 color: billingInterval === 'annual' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                boxShadow: billingInterval === 'annual' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                boxShadow: billingInterval === 'annual' ? '0 1px 3px rgba(220,200,180,0.35)' : 'none',
               }}
             >
               Annual
@@ -421,7 +421,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 fontSize: 11,
                 fontWeight: 600,
                 color: 'var(--success)',
-                background: 'rgba(16,185,129,0.1)',
+                background: 'rgba(26,158,106,0.1)',
                 padding: '2px 6px',
                 borderRadius: 4,
               }}>
@@ -510,17 +510,17 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 <div style={{ marginBottom: 16 }}>
                   {plan.id === 'free' ? (
                     <div>
-                      <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'DM Mono', monospace" }}>$0</span>
+                      <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>$0</span>
                       <span style={{ fontSize: 14, color: 'var(--text-tertiary)', marginLeft: 4 }}>/forever</span>
                     </div>
                   ) : (
                     <div>
-                      <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'DM Mono', monospace" }}>
+                      <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>
                         ${formatCents(monthlyEquivalent)}
                       </span>
                       <span style={{ fontSize: 14, color: 'var(--text-tertiary)', marginLeft: 4 }}>/mo</span>
                       {billingInterval === 'annual' && (
-                        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: "'DM Mono', monospace" }}>
+                        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: "'JetBrains Mono', monospace" }}>
                           ${formatCents(price)}/year
                         </p>
                       )}
@@ -673,7 +673,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                       </p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: "'DM Mono', monospace" }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>
                         ${formatCents(invoice.amount_cents || 0)}
                       </span>
                       <span

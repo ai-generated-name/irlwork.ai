@@ -9,7 +9,7 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
 
   return (
     <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
-      <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: 'white', borderRadius: 16, maxWidth: 520, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(200,150,100,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Review Proof</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-tertiary)', padding: 4 }}><X size={20} /></button>
@@ -69,7 +69,7 @@ function ProofReviewModal({ task, onClose, onApprove, onReject }) {
           <Button variant="secondary" size="md" className="flex-1" onClick={() => setRejecting(!rejecting)}>
             {rejecting ? 'Cancel reject' : 'Reject'}
           </Button>
-          <Button variant="primary" size="md" className="flex-1 !bg-[#16A34A] hover:!bg-[#15803D]" onClick={onApprove}>
+          <Button variant="primary" size="md" className="flex-1 !bg-[#1A9E6A] hover:!bg-[#15803D]" onClick={onApprove}>
             Approve & pay
           </Button>
         </div>

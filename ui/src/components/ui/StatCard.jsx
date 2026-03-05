@@ -2,18 +2,18 @@ import React from 'react';
 import Card from './Card';
 
 const ICON_COLORS = {
-  gray: { text: 'text-[#9CA3AF]', bg: '' },
-  orange: { text: 'text-[#E8853D]', bg: 'bg-[#FFF7ED]' },
-  green: { text: 'text-[#16A34A]', bg: 'bg-[#F0FDF4]' },
-  blue: { text: 'text-[#2563EB]', bg: 'bg-[#EFF6FF]' },
-  red: { text: 'text-[#DC2626]', bg: 'bg-[#FEF2F2]' },
-  gold: { text: 'text-[#D4A017]', bg: 'bg-[#FEF9E7]' },
+  gray:   { text: 'rgba(26,20,16,0.28)', bg: '' },
+  orange: { text: '#E8703D', bg: '#FDEEE6' },
+  green:  { text: '#1A9E6A', bg: 'rgba(26,158,106,0.09)' },
+  blue:   { text: '#2563EB', bg: '#EFF6FF' },
+  red:    { text: '#c4420a', bg: 'rgba(196,66,10,0.08)' },
+  gold:   { text: '#D4A017', bg: 'rgba(212,160,23,0.08)' },
 };
 
 const SIZE_CONFIG = {
-  sm: { padding: 'sm', valueClass: 'text-base', labelClass: 'text-[10px]', iconSize: 'w-4 h-4', circleSize: 'w-7 h-7' },
-  md: { padding: 'md', valueClass: 'text-2xl', labelClass: 'text-xs', iconSize: 'w-5 h-5', circleSize: 'w-9 h-9' },
-  lg: { padding: 'lg', valueClass: 'text-[32px]', labelClass: 'text-sm', iconSize: 'w-6 h-6', circleSize: 'w-11 h-11' },
+  sm: { padding: 'sm', valueSize: 16, labelSize: 9, iconSize: 16, circleSize: 28 },
+  md: { padding: 'md', valueSize: 24, labelSize: 12, iconSize: 20, circleSize: 36 },
+  lg: { padding: 'lg', valueSize: 32, labelSize: 14, iconSize: 24, circleSize: 44 },
 };
 
 export default function StatCard({ label, value, icon, trend, dark = false, iconColor = 'gray', size = 'md' }) {
@@ -23,29 +23,42 @@ export default function StatCard({ label, value, icon, trend, dark = false, icon
 
   return (
     <Card dark={dark} padding={sizeConfig.padding}>
-      <div className="flex items-start justify-between">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <p className={`${sizeConfig.labelClass} uppercase tracking-wider font-medium ${
-            dark ? 'text-white/60' : 'text-[#6B7280]'
-          }`}>
+          <p style={{
+            fontSize: sizeConfig.labelSize,
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            fontWeight: 500,
+            color: dark ? 'rgba(255,255,255,0.60)' : 'rgba(26,20,16,0.28)',
+          }}>
             {label}
           </p>
-          <p className={`${sizeConfig.valueClass} font-['DM_Mono'] font-medium mt-1 ${
-            dark ? 'text-white' : 'text-[#1A1A1A]'
-          }`}>
+          <p style={{
+            fontSize: sizeConfig.valueSize,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 600,
+            marginTop: 4,
+            color: dark ? '#fff' : '#1A1410',
+            letterSpacing: '-0.02em',
+          }}>
             {value}
           </p>
           {trend && <TrendIndicator trend={trend} />}
         </div>
         {icon && (
           dark ? (
-            <div className={`${sizeConfig.iconSize} text-white/40 flex-shrink-0`}>{icon}</div>
+            <div style={{ width: sizeConfig.iconSize, height: sizeConfig.iconSize, color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>{icon}</div>
           ) : showCircle ? (
-            <div className={`${sizeConfig.circleSize} rounded-full ${colorConfig.bg} ${colorConfig.text} flex items-center justify-center flex-shrink-0`}>
-              <div className={sizeConfig.iconSize}>{icon}</div>
+            <div style={{
+              width: sizeConfig.circleSize, height: sizeConfig.circleSize,
+              borderRadius: '50%', background: colorConfig.bg, color: colorConfig.text,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <div style={{ width: sizeConfig.iconSize, height: sizeConfig.iconSize }}>{icon}</div>
             </div>
           ) : (
-            <div className={`${sizeConfig.iconSize} ${colorConfig.text} flex-shrink-0`}>{icon}</div>
+            <div style={{ width: sizeConfig.iconSize, height: sizeConfig.iconSize, color: colorConfig.text, flexShrink: 0 }}>{icon}</div>
           )
         )}
       </div>
@@ -54,10 +67,9 @@ export default function StatCard({ label, value, icon, trend, dark = false, icon
 }
 
 function TrendIndicator({ trend }) {
-  // Support object format: { direction, value, period }
   if (typeof trend === 'object' && trend !== null && trend.direction) {
     const dir = trend.direction;
-    const trendColor = dir === 'up' ? 'text-green-600' : dir === 'down' ? 'text-red-600' : 'text-gray-500';
+    const trendColor = dir === 'up' ? '#1A9E6A' : dir === 'down' ? '#c4420a' : 'rgba(26,20,16,0.50)';
     const arrow = dir === 'up'
       ? <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
       : dir === 'down'
@@ -65,63 +77,31 @@ function TrendIndicator({ trend }) {
         : <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />;
 
     return (
-      <span className={`inline-flex items-center text-xs ${trendColor} mt-1 gap-0.5`}>
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12, color: trendColor, marginTop: 4, gap: 2 }}>
+        <svg style={{ width: 12, height: 12 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           {arrow}
         </svg>
-        {trend.value && <span className="font-medium">{trend.value}</span>}
-        {trend.period && <span className="text-gray-400 ml-0.5">{trend.period}</span>}
+        {trend.value && <span style={{ fontWeight: 500 }}>{trend.value}</span>}
+        {trend.period && <span style={{ color: 'rgba(26,20,16,0.28)', marginLeft: 2 }}>{trend.period}</span>}
       </span>
     );
   }
 
-  // Legacy string format
-  if (trend === 'up') {
-    return (
-      <span className="inline-flex items-center text-xs text-green-600 mt-1">
-        <svg
-          className="w-3 h-3 mr-0.5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-        </svg>
-        Up
-      </span>
-    );
-  }
-
-  if (trend === 'down') {
-    return (
-      <span className="inline-flex items-center text-xs text-red-600 mt-1">
-        <svg
-          className="w-3 h-3 mr-0.5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-        Down
-      </span>
-    );
-  }
+  const dir = trend;
+  const trendColor = dir === 'up' ? '#1A9E6A' : dir === 'down' ? '#c4420a' : 'rgba(26,20,16,0.50)';
+  const arrow = dir === 'up'
+    ? <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+    : dir === 'down'
+      ? <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+      : <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />;
+  const label = dir === 'up' ? 'Up' : dir === 'down' ? 'Down' : 'Flat';
 
   return (
-    <span className="inline-flex items-center text-xs text-gray-500 mt-1">
-      <svg
-        className="w-3 h-3 mr-0.5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+    <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12, color: trendColor, marginTop: 4 }}>
+      <svg style={{ width: 12, height: 12, marginRight: 2 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        {arrow}
       </svg>
-      Flat
+      {label}
     </span>
   );
 }

@@ -35,7 +35,7 @@ const TIERS = [
     price_monthly: 10,
     price_annual: 90,
     description: 'Lower fees, direct hiring, blue badge',
-    badge: { label: 'Builder', color: '#3B82F6' },
+    badge: { label: 'Builder', color: '#2563EB' },
     features: [
       { label: 'Badge', value: 'Blue', highlight: true },
       { label: 'Worker priority', value: '+1 priority', highlight: true },
@@ -257,7 +257,7 @@ export default function PremiumPage({ user }) {
       {message && (
         <div style={{
           maxWidth: 1100, margin: '16px auto 0', padding: isMobile ? '10px 16px' : '12px 20px', borderRadius: 'var(--radius-md)',
-          background: message.type === 'success' ? 'var(--success-bg)' : message.type === 'error' ? 'var(--error-bg)' : 'rgba(59,130,246,0.08)',
+          background: message.type === 'success' ? 'var(--success-bg)' : message.type === 'error' ? 'var(--error-bg)' : 'rgba(37,99,235,0.08)',
           color: message.type === 'success' ? '#065f46' : message.type === 'error' ? '#991b1b' : '#1e40af',
           fontSize: isMobile ? 13 : 14, fontWeight: 500, marginLeft: isMobile ? 16 : 'auto', marginRight: isMobile ? 16 : 'auto',
         }}>
@@ -376,7 +376,7 @@ export default function PremiumPage({ user }) {
                 {/* Tier header */}
                 <div style={{ textAlign: 'center', marginBottom: isMobile ? 12 : 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: isMobile ? 4 : 8 }}>
-                    {tier.id === 'builder' && <BadgeCheck size={isMobile ? 16 : 20} color="#3B82F6" />}
+                    {tier.id === 'builder' && <BadgeCheck size={isMobile ? 16 : 20} color="#2563EB" />}
                     {tier.id === 'pro' && <BadgeCheck size={isMobile ? 16 : 20} color="#F59E0B" />}
                     <h2 style={{ fontSize: isMobile ? 17 : 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: 'var(--font-display)' }}>{tier.name}</h2>
                   </div>

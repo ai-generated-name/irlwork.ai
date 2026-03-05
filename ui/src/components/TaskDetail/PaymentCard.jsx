@@ -38,17 +38,17 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
   const getStatusMessage = () => {
     switch (escrowStatus) {
       case 'deposited':
-        return { icon: <Check size={18} />, text: 'Funds secured in escrow. Work can begin safely.', color: 'text-[#16A34A]' };
+        return { icon: <Check size={18} />, text: 'Funds secured in escrow. Work can begin safely.', color: 'text-[#1A9E6A]' };
       case 'released':
-        return { icon: <Check size={18} />, text: 'Payment has been released to you.', color: 'text-[#16A34A]' };
+        return { icon: <Check size={18} />, text: 'Payment has been released to you.', color: 'text-[#1A9E6A]' };
       case 'unfunded':
         return { icon: <Clock size={18} />, text: 'Card will be charged when you accept. No charge until then.', color: 'text-[#FEBC2E]' };
       case 'pending':
         return { icon: <Clock size={18} />, text: 'Waiting for agent to fund escrow...', color: 'text-[#FEBC2E]' };
       case 'refunded':
-        return { icon: <RotateCcw size={18} />, text: 'Funds returned to agent.', color: 'text-[#333333]' };
+        return { icon: <RotateCcw size={18} />, text: 'Funds returned to agent.', color: 'text-[rgba(26,20,16,0.65)]' };
       default:
-        return { icon: <Clock size={18} />, text: 'Escrow status pending...', color: 'text-[#333333]' };
+        return { icon: <Clock size={18} />, text: 'Escrow status pending...', color: 'text-[rgba(26,20,16,0.65)]' };
     }
   };
 
@@ -59,32 +59,32 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
       {/* Budget amount */}
       <div className="text-center mb-3 sm:mb-4">
         <div className="flex items-baseline justify-center gap-1">
-          <span className="text-3xl sm:text-4xl font-bold text-[#16A34A] font-mono">
+          <span className="text-3xl sm:text-4xl font-bold text-[#1A9E6A] font-mono">
             ${budget}
           </span>
-          {isHourly && <span className="text-base sm:text-lg text-[#333333]">/hr</span>}
+          {isHourly && <span className="text-base sm:text-lg text-[rgba(26,20,16,0.65)]">/hr</span>}
         </div>
-        <div className="text-xs sm:text-sm text-[#888888] mt-1">
+        <div className="text-xs sm:text-sm text-[rgba(26,20,16,0.40)] mt-1">
           {currencyLabel} {!isHourly ? '· Fixed Price' : ''}
         </div>
       </div>
 
       {/* Slots info for multi-person tasks */}
       {quantity > 1 && (
-        <div className="border-t border-[rgba(0,0,0,0.08)] pt-2 sm:pt-3 mt-2 sm:mt-3">
+        <div className="border-t border-[rgba(220,200,180,0.35)] pt-2 sm:pt-3 mt-2 sm:mt-3">
           <div className="flex items-center justify-between text-xs sm:text-sm">
-            <span className="text-[#333333] flex items-center gap-1.5">
+            <span className="text-[rgba(26,20,16,0.65)] flex items-center gap-1.5">
               <Users size={14} />
               Spots
             </span>
-            <span className="font-semibold" style={{ color: spotsFilled >= quantity ? '#16A34A' : '#2563EB' }}>
+            <span className="font-semibold" style={{ color: spotsFilled >= quantity ? '#1A9E6A' : '#2563EB' }}>
               {spotsFilled}/{quantity} filled
             </span>
           </div>
           {budget > 0 && (
             <div className="flex items-center justify-between text-xs sm:text-sm mt-1.5">
-              <span className="text-[#333333]">Per person</span>
-              <span className="text-[#1A1A1A] font-medium">${budget} {currencyLabel}</span>
+              <span className="text-[rgba(26,20,16,0.65)]">Per person</span>
+              <span className="text-[#1A1410] font-medium">${budget} {currencyLabel}</span>
             </div>
           )}
         </div>
@@ -92,15 +92,15 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
 
       {/* Estimated hours and total for hourly tasks */}
       {isHourly && durationHours > 0 && (
-        <div className="border-t border-[rgba(0,0,0,0.08)] pt-2 sm:pt-3 mt-2 sm:mt-3 space-y-1.5 sm:space-y-2">
+        <div className="border-t border-[rgba(220,200,180,0.35)] pt-2 sm:pt-3 mt-2 sm:mt-3 space-y-1.5 sm:space-y-2">
           <div className="flex justify-between text-xs sm:text-sm">
-            <span className="text-[#333333]">Estimated hours</span>
-            <span className="text-[#1A1A1A] font-medium">~{durationHours}h</span>
+            <span className="text-[rgba(26,20,16,0.65)]">Estimated hours</span>
+            <span className="text-[#1A1410] font-medium">~{durationHours}h</span>
           </div>
           {estimatedTotal && (
             <div className="flex justify-between text-xs sm:text-sm">
-              <span className="text-[#333333]">Est. total</span>
-              <span className="text-[#1A1A1A] font-medium">${estimatedTotal.toLocaleString()}</span>
+              <span className="text-[rgba(26,20,16,0.65)]">Est. total</span>
+              <span className="text-[#1A1410] font-medium">${estimatedTotal.toLocaleString()}</span>
             </div>
           )}
         </div>
@@ -136,7 +136,7 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
       {/* Inline stats */}
       {stats && (
         <div className="mt-3 sm:mt-4 text-center">
-          <span className="text-xs text-[#888888]">
+          <span className="text-xs text-[rgba(26,20,16,0.40)]">
             {stats.applications} applicant{stats.applications !== 1 ? 's' : ''} · {stats.views} view{stats.views !== 1 ? 's' : ''}
           </span>
         </div>
@@ -144,8 +144,8 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
 
       {/* Payment Status — participant only */}
       {isParticipant && (
-        <div className="border-t border-[rgba(0,0,0,0.08)] mt-3 sm:mt-4 pt-3 sm:pt-4">
-          <h4 className="text-xs font-bold text-[#888888] uppercase tracking-wider mb-2.5 sm:mb-3">
+        <div className="border-t border-[rgba(220,200,180,0.35)] mt-3 sm:mt-4 pt-3 sm:pt-4">
+          <h4 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider mb-2.5 sm:mb-3">
             Payment Status
           </h4>
 
@@ -167,12 +167,12 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
                 {statusMessage.text}
               </p>
               {task.escrow_deposited_at && (
-                <p className="text-[#888888] text-xs mt-1.5">
+                <p className="text-[rgba(26,20,16,0.40)] text-xs mt-1.5">
                   Deposited {new Date(task.escrow_deposited_at).toLocaleDateString()}
                 </p>
               )}
               {task.escrow_released_at && (
-                <p className="text-[#888888] text-xs mt-1.5">
+                <p className="text-[rgba(26,20,16,0.40)] text-xs mt-1.5">
                   Released {new Date(task.escrow_released_at).toLocaleDateString()}
                 </p>
               )}
@@ -181,8 +181,8 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
 
           {/* Security Note */}
           {escrowStatus === 'deposited' && (
-            <div className="mt-3 pt-3 border-t border-[rgba(0,0,0,0.08)]">
-              <div className="text-xs text-[#888888]">
+            <div className="mt-3 pt-3 border-t border-[rgba(220,200,180,0.35)]">
+              <div className="text-xs text-[rgba(26,20,16,0.40)]">
                 Payment protected. Funds released on proof approval or after the dispute window.
               </div>
             </div>

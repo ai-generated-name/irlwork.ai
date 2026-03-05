@@ -31,7 +31,7 @@ export default function MessagesTab({
     const diff = Date.now() - new Date(party.last_active_at).getTime()
     if (diff < 5 * 60 * 1000) return { status: 'online', label: 'Online', color: '#22C55E' }
     if (diff < 30 * 60 * 1000) return { status: 'idle', label: 'Away', color: '#FEBC2E' }
-    return { status: 'offline', label: 'Offline', color: '#9CA3AF' }
+    return { status: 'offline', label: 'Offline', color: 'rgba(26,20,16,0.28)' }
   }
   // Helper: relative time
   const timeAgo = (dateStr) => {
@@ -128,7 +128,7 @@ export default function MessagesTab({
           {selectedConversation && activeConv ? (
             <>
               {/* Thread Header: back button + other party + task link + online status */}
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
+              <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(220,200,180,0.35)', display: 'flex', alignItems: 'center', gap: 12, background: 'white', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}>
                 <button onClick={() => setSelectedConversation(null)} className="msg-back-btn" style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)' }}>
                   ←
                 </button>
@@ -140,12 +140,12 @@ export default function MessagesTab({
                       {activeOther?.name?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                   )}
-                  <span style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', background: activeOnline?.color || '#9CA3AF', border: '2px solid white' }} />
+                  <span style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', background: activeOnline?.color || 'rgba(26,20,16,0.28)', border: '2px solid white' }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{activeOther?.name}</p>
-                    <span style={{ fontSize: 11, color: activeOnline?.color || '#9CA3AF' }}>{activeOnline?.label}</span>
+                    <span style={{ fontSize: 11, color: activeOnline?.color || 'rgba(26,20,16,0.28)' }}>{activeOnline?.label}</span>
                   </div>
                   {activeConv.task && (
                     <a

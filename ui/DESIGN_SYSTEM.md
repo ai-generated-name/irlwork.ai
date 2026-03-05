@@ -6,8 +6,6 @@ Shared UI components live in `src/components/ui/`. Import them from the barrel e
 import { Button, Card, StatCard, StatusPill, PageHeader, EmptyState, ConfirmDialog, PageLoader } from '../components/ui';
 ```
 
-See `REDESIGN_V4.md` for color palette, typography, and layout guidance.
-
 ---
 
 ## Enforcement
@@ -16,7 +14,7 @@ These rules are enforced via ESLint (`eslint-plugin-irlwork`):
 
 | Rule | What it catches | Severity |
 |------|----------------|----------|
-| `no-inline-card-pattern` | `<div>` with Card-like Tailwind classes (`bg-white` + `rounded-xl`/`rounded-[14px]` + `border`/`shadow`) | warn |
+| `no-inline-card-pattern` | `<div>` with Card-like Tailwind classes (`bg-white` + `rounded-xl`/`rounded-[20px]` + `border`/`shadow`) | warn |
 | `no-inline-button-pattern` | `<button>` with inline background color, text color, and border-radius styling | warn |
 | `no-orange-outside-button` | `#E8703D` or `#E8853D` used outside the `Button` component and shared UI components | warn |
 | `no-title-case-ui-strings` | "Browse All Tasks" instead of "Browse all tasks" (3+ consecutive Title Case words) | warn |
@@ -54,34 +52,82 @@ If a violation is intentional, add an inline disable comment with an explanation
 
 ---
 
-## v9 Token Reference (2026-03-04)
+## v16 Token Reference (2026-03-05)
 
 ### Fonts
 | Token | Family | Usage |
 |-------|--------|-------|
-| `--font-sans` / `font-sans` | Sora | All UI text, headings, buttons, labels |
-| `--font-mono-v9` / `font-mono` | JetBrains Mono | Status labels, timestamps, agent source tags, progress labels, code |
+| `--font-sans` / `font-sans` | Sora (300-800) | All UI text, headings, buttons, labels |
+| `--font-mono-v9` / `font-mono` | JetBrains Mono (400, 500) | Task IDs, timestamps, prices, code |
 | `--font-courier` / `font-courier` | Courier Prime Bold | `irlwork` wordmark ONLY — never elsewhere |
 
 ### Colors
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--bg` | `#F7F5F2` | Page background |
+| `--bg` | `#FAFAF8` | Page background |
 | `--surface` | `#FFFFFF` | Card/panel background |
-| `--ink` | `#111010` | Primary text, active nav, avatars, attention borders |
-| `--ink2` | `rgba(17,16,16,0.46)` | Secondary text |
-| `--ink3` | `rgba(17,16,16,0.26)` | Muted text, labels, inactive nav |
-| `--orange` | `#E8703D` | Pay amounts, primary CTA, urgent actions, notification badge, logo cursor, open status pill |
-| `--orange-bg` | `#FEF1EA` | Orange pill backgrounds |
-| `--orange-glo` | `rgba(232,112,61,0.18)` | Orange button glow shadow |
-| `--green` | `#16A071` | In-progress status, active worker badges |
-| `--green-bg` | `rgba(22,160,113,0.08)` | Green pill backgrounds |
-| `--purple` | `#6B4FBF` | Review/pending status |
-| `--purple-bg` | `rgba(107,79,191,0.08)` | Purple pill backgrounds |
-| `--border` | `rgba(0,0,0,0.06)` | Default card/element border |
-| `--border-md` | `rgba(0,0,0,0.10)` | Medium-emphasis border |
-| `--r` | `16px` | Default border radius |
-| `--r-sm` | `10px` | Small border radius |
+| `--ink` | `#1A1410` | Primary text |
+| `--ink2` | `rgba(26,20,16,0.50)` | Secondary text |
+| `--ink3` | `rgba(26,20,16,0.28)` | Muted text, labels, light elements |
+| `--orange` | `#E8703D` | Pay amounts, primary CTA, open status |
+| `--orange-bg` | `#FDEEE6` | Orange pill/accent backgrounds |
+| `--orange-soft` | `#F0905A` | Gradient start for CTA buttons |
+| `--orange-glo` | `rgba(232,112,61,0.18)` | Orange glow shadow |
+| `--green` | `#1A9E6A` | Assigned, in-progress, completed, paid status |
+| `--green-bg` | `rgba(26,158,106,0.09)` | Green pill backgrounds |
+| `--green-border` | `rgba(26,158,106,0.18)` | Green pill/card borders |
+| `--purple` | `#6D4FC2` | In-review, submitted status |
+| `--purple-bg` | `rgba(109,79,194,0.09)` | Purple pill backgrounds |
+| `--purple-border` | `rgba(109,79,194,0.18)` | Purple pill/card borders |
+| `--red` | `#c4420a` | Error, disputed status |
+| `--red-bg` | `rgba(196,66,10,0.08)` | Red pill backgrounds |
+| `--gold` | `#D4A017` | Ratings, premium, warnings |
+| `--gold-bg` | `rgba(212,160,23,0.08)` | Gold pill backgrounds |
+| `--border` | `rgba(220,200,180,0.35)` | Default warm border |
+| `--border-md` | `rgba(220,200,180,0.50)` | Medium-emphasis border |
+
+### Border Radius
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--r` | `20px` | Cards, large containers |
+| `--r-sm` | `11px` | Inputs, small elements |
+| `--r-pill` | `30px` | Pills, tags, status badges |
+
+### Shadows (warm tone)
+| Token | Value |
+|-------|-------|
+| `--shadow-card` | `0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset` |
+| `--shadow-cta` | `0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset` |
+
+### Glass effects
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--glass` | `rgba(255,255,255,0.65)` | Light glass |
+| `--glass-md` | `rgba(255,255,255,0.80)` | Medium glass (inputs) |
+| `--glass-hi` | `rgba(255,255,255,0.92)` | High glass (sheets, modals) |
+| `--blur` | `blur(20px)` | Backdrop blur for all glass |
+
+### CTA Button
+```css
+background: linear-gradient(135deg, #F0905A 0%, #E8703D 100%);
+box-shadow: 0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset;
+border-radius: 20px;
+font-weight: 700;
+```
+**Rule**: ONE orange CTA per screen maximum.
+
+### Status Badge (pill style)
+```css
+border-radius: 30px;
+padding: 3px 9px;
+font-size: 10px;
+font-weight: 600;
+/* 5px colored dot before label */
+```
+Three-color system:
+- **Orange** (`#E8703D` / `#FDEEE6`): open, awaiting_worker
+- **Green** (`#1A9E6A` / green-bg): assigned, in_progress, completed, paid
+- **Purple** (`#6D4FC2` / purple-bg): in_review, submitted
 
 ### Orange usage rules
 Orange (`#E8703D`) is allowed ONLY in:
@@ -94,15 +140,35 @@ Orange (`#E8703D`) is allowed ONLY in:
 
 Orange is **NOT** allowed in: mode toggle, nav active state, user avatar, attention card borders, worker status badges, activity icons, section headings, non-money stat values.
 
-### New components (v9)
-- `TaskDocket` — docket strip replacing task ID header, shows status dot + source tag
-- `TaskProgress` — fill-bar progress (not numbered circles)
-- `WorkerAvatar` — gradient avatar keyed on name initial (`avatarGradient.js`)
-- `WorkingTaskRow` / `WorkingTaskList` — dense row layout for Working mode
+### Section labels
+```css
+font-size: 11px;
+font-weight: 600;
+text-transform: uppercase;
+letter-spacing: 0.08em;
+color: var(--ink3);
+```
 
 ---
 
 ## Changelog
+
+### 2026-03-05 — v16 design system
+
+- **Background**: Changed from `#F7F5F2` to `#FAFAF8`
+- **Text colors**: Primary `#1A1410`, secondary `rgba(26,20,16,0.50)`, muted `rgba(26,20,16,0.28)`
+- **Borders**: Warm translucent `rgba(220,200,180,0.35)` replacing cold `rgba(0,0,0,0.06)`
+- **Border radius**: Cards 20px (was 16px), inputs/small 11px (was 10px), pills 30px (new)
+- **Shadows**: Warm `rgba(200,150,100,...)` replacing grey `rgba(0,0,0,...)`
+- **Glass effects**: Three tiers (glass, glassMd, glassHi) with 20px backdrop blur
+- **CTA buttons**: Gradient `linear-gradient(135deg, #F0905A, #E8703D)` with warm shadow
+- **Status green**: `#1A9E6A` (was `#16A071`)
+- **Status purple**: `#6D4FC2` (was `#6B4FBF`)
+- **Status red**: `#c4420a` (was `#FF5F57`)
+- **Gold**: `#D4A017` for ratings/warnings
+- **Inputs**: Glass background with backdrop blur, 11px radius
+- **Toasts**: Dark background pill style (was white card style)
+- **Animations**: Added irw-fadeIn, irw-slideUp, irw-pulse, irw-toast, irw-shimmer
 
 ### 2026-03-04 — v9 design system
 

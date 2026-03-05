@@ -1,7 +1,7 @@
 import React from 'react'
 
 const TIER_CONFIG = {
-  builder: { label: 'Builder', color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
+  builder: { label: 'Builder', color: '#2563EB', bg: 'rgba(37,99,235,0.1)' },
   pro: { label: 'Pro', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
 }
 

@@ -7,7 +7,7 @@ import { Button } from '../ui';
 import { useToast } from '../../context/ToastContext';
 
 const styles = {
-  input: 'w-full bg-white border-2 border-[rgba(0,0,0,0.1)] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#888888] focus:outline-none focus:border-[#E8853D] transition-colors'
+  input: 'w-full bg-white border-2 border-[rgba(220,200,180,0.35)] rounded-xl px-4 py-3 text-[#1A1410] placeholder-[rgba(26,20,16,0.40)] focus:outline-none focus:border-[#E8703D] transition-colors'
 };
 
 export default function TaskMessageThread({
@@ -139,12 +139,12 @@ export default function TaskMessageThread({
   }, [sortedMessages, lastReadTimestamp, user.id]);
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] flex flex-col h-[320px] sm:h-[420px] lg:h-[500px] shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] flex flex-col h-[320px] sm:h-[420px] lg:h-[500px] shadow-sm">
       {/* Header */}
-      <div className="px-3 py-2.5 sm:p-4 border-b border-[rgba(0,0,0,0.08)] flex items-center justify-between">
+      <div className="px-3 py-2.5 sm:p-4 border-b border-[rgba(220,200,180,0.35)] flex items-center justify-between">
         <div>
-          <h3 className="text-[#1A1A1A] font-bold text-sm sm:text-base">Messages</h3>
-          <p className="text-[#333333] text-xs sm:text-sm">
+          <h3 className="text-[#1A1410] font-bold text-sm sm:text-base">Messages</h3>
+          <p className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm">
             Chat with the {isHiringMode ? 'worker' : 'agent'} about this task
           </p>
         </div>
@@ -153,11 +153,11 @@ export default function TaskMessageThread({
           <div className="flex items-center gap-1.5">
             <span
               className={`inline-block w-2 h-2 rounded-full ${
-                pollingStatus === 'active' ? 'bg-[#16A34A]' : 'bg-[#FEBC2E]'
+                pollingStatus === 'active' ? 'bg-[#1A9E6A]' : 'bg-[#FEBC2E]'
               }`}
               style={pollingStatus === 'active' ? { animation: 'pulse-dot 2s ease-in-out infinite' } : {}}
             />
-            <span className="text-[10px] sm:text-xs text-[#888888]" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+            <span className="text-[10px] sm:text-xs text-[rgba(26,20,16,0.40)]" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
               {pollingStatus === 'active' ? 'Live' : 'Reconnecting'}
             </span>
           </div>
@@ -167,18 +167,18 @@ export default function TaskMessageThread({
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-[#FAFAF8]">
         {!conversation && isInitialLoad ? (
-          <div className="flex items-center justify-center h-full text-[#888888] text-xs sm:text-sm">
+          <div className="flex items-center justify-center h-full text-[rgba(26,20,16,0.40)] text-xs sm:text-sm">
             Loading messages...
           </div>
         ) : !conversation ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="w-12 h-12 rounded-full bg-[#F5F3F0] flex items-center justify-center mb-3">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="2">
+            <div className="w-12 h-12 rounded-full bg-[rgba(220,200,180,0.15)] flex items-center justify-center mb-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(26,20,16,0.40)" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
             </div>
-            <p className="text-[#333333] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
-            <p className="text-[#888888] text-xs max-w-[240px]">
+            <p className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
+            <p className="text-[rgba(26,20,16,0.40)] text-xs max-w-[240px]">
               {isHiringMode
                 ? 'Messages from the assigned worker will appear here.'
                 : 'Send a message to start the conversation. The task creator will be notified.'}
@@ -186,13 +186,13 @@ export default function TaskMessageThread({
           </div>
         ) : sortedMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="w-12 h-12 rounded-full bg-[#F5F3F0] flex items-center justify-center mb-3">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="2">
+            <div className="w-12 h-12 rounded-full bg-[rgba(220,200,180,0.15)] flex items-center justify-center mb-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(26,20,16,0.40)" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
             </div>
-            <p className="text-[#333333] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
-            <p className="text-[#888888] text-xs">Be the first to send a message</p>
+            <p className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
+            <p className="text-[rgba(26,20,16,0.40)] text-xs">Be the first to send a message</p>
           </div>
         ) : (
           <>
@@ -202,11 +202,11 @@ export default function TaskMessageThread({
                 {idx === newMessagesDividerIndex && idx > 0 && (
                   <div className="flex items-center gap-2 py-1">
                     {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
-                    <div className="flex-1 h-px bg-[#E8853D] opacity-30" />
+                    <div className="flex-1 h-px bg-[#E8703D] opacity-30" />
                     {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
-                    <span className="text-[10px] font-medium text-[#E8853D] px-2">New</span>
+                    <span className="text-[10px] font-medium text-[#E8703D] px-2">New</span>
                     {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
-                    <div className="flex-1 h-px bg-[#E8853D] opacity-30" />
+                    <div className="flex-1 h-px bg-[#E8703D] opacity-30" />
                   </div>
                 )}
                 <div className={`flex ${m.sender_id === user.id ? 'justify-end' : 'justify-start'}`}>
@@ -214,8 +214,8 @@ export default function TaskMessageThread({
                   <div
                     className={`max-w-[80%] sm:max-w-[70%] rounded-xl p-2.5 sm:p-3 ${
                       m.sender_id === user.id
-                        ? 'bg-[#E8853D] text-white'
-                        : 'bg-white text-[#1A1A1A] border border-[rgba(0,0,0,0.08)]'
+                        ? 'bg-[#E8703D] text-white'
+                        : 'bg-white text-[#1A1410] border border-[rgba(220,200,180,0.35)]'
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words text-sm">{m.content}</p>
@@ -237,7 +237,7 @@ export default function TaskMessageThread({
                               className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg ${
                                 m.sender_id === user.id
                                   ? 'bg-[rgba(255,255,255,0.15)] text-white hover:bg-[rgba(255,255,255,0.25)]'
-                                  : 'bg-[#F5F2ED] text-[#0F4C5C] hover:bg-[#EDE9E3]'
+                                  : 'bg-[rgba(220,200,180,0.15)] text-[#0F4C5C] hover:bg-[rgba(220,200,180,0.25)]'
                               } transition-colors`}
                             >
                               <Paperclip size={14} />
@@ -252,7 +252,7 @@ export default function TaskMessageThread({
                       className={`text-xs mt-1 ${
                         m.sender_id === user.id
                           ? 'text-[rgba(255,255,255,0.7)]'
-                          : 'text-[#888888]'
+                          : 'text-[rgba(26,20,16,0.40)]'
                       }`}
                     >
                       {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -275,7 +275,7 @@ export default function TaskMessageThread({
           <button
             onClick={retryFailedMessage}
             disabled={sending}
-            className="text-xs font-medium text-[#E8853D] hover:text-[#D4703A]"
+            className="text-xs font-medium text-[#E8703D] hover:text-[#D4703A]"
           >
             Retry
           </button>
@@ -284,7 +284,7 @@ export default function TaskMessageThread({
       )}
 
       {/* Message Input — sticky within container */}
-      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(0,0,0,0.08)] flex gap-2 sm:gap-3 items-end bg-white rounded-b-2xl sticky bottom-0 z-10">
+      <form onSubmit={handleSubmit} className="p-2.5 sm:p-4 border-t border-[rgba(220,200,180,0.35)] flex gap-2 sm:gap-3 items-end bg-white rounded-b-2xl sticky bottom-0 z-10">
         <textarea
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}

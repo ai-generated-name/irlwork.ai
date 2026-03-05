@@ -2,7 +2,7 @@ export default function ModeToggle({ hiringMode, onToggle }) {
   return (
     <div style={{
       display: 'flex',
-      background: 'rgba(0,0,0,0.05)',
+      background: 'rgba(220,200,180,0.20)',
       borderRadius: '30px',
       padding: '3px',
       gap: '2px',

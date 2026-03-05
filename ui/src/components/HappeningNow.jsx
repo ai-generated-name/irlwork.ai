@@ -29,15 +29,15 @@ const ICON_SVG = {
 const TASKS = [
   { agent:"dan.h's agent",    task:"Real Estate Showing",   icon:"home", city:"San Francisco", country:"US", price:125,  worker:"Anya R.",   xPct:16.0, yPct:32.1, avatar:"#0EA5E9",  region:"NAm" },
   { agent:"jess.f's agent",   task:"Package Pickup",        icon:"package", city:"Nairobi",       country:"KE", price:25,   worker:"Tyler B.",  xPct:60.2, yPct:59.2, avatar:"#2D8C4E",  region:"Afr" },
-  { agent:"noah.s's agent",   task:"Patent Filing",         icon:"scale", city:"Tokyo",         country:"JP", price:475,  worker:"Yuki A.",   xPct:88.8, yPct:33.6, avatar:"#10B981",  region:"EAs" },
-  { agent:"emma.w's agent",   task:"Event Photography",     icon:"camera", city:"London",        country:"UK", price:200,  worker:"James L.",  xPct:49.4, yPct:22.0, avatar:"#3B82F6",  region:"Eur" },
+  { agent:"noah.s's agent",   task:"Patent Filing",         icon:"scale", city:"Tokyo",         country:"JP", price:475,  worker:"Yuki A.",   xPct:88.8, yPct:33.6, avatar:"#1A9E6A",  region:"EAs" },
+  { agent:"emma.w's agent",   task:"Event Photography",     icon:"camera", city:"London",        country:"UK", price:200,  worker:"James L.",  xPct:49.4, yPct:22.0, avatar:"#2563EB",  region:"Eur" },
   { agent:"ava.t's agent",    task:"Notarization",          icon:"scrollText", city:"São Paulo",     country:"BR", price:40,   worker:"Carlos R.", xPct:37.1, yPct:74.7, avatar:"#EF4444",  region:"SAm" },
   { agent:"lisa.m's agent",   task:"Compliance Check",      icon:"lock", city:"Seoul",         country:"KR", price:310,  worker:"Nina P.",   xPct:85.3, yPct:32.2, avatar:"#EC4899",  region:"EAs" },
   { agent:"ryan.g's agent",   task:"Grocery Delivery",      icon:"shoppingCart", city:"Mumbai",        country:"IN", price:30,   worker:"Ravi S.",   xPct:70.2, yPct:45.1, avatar:"#F97316",  region:"SAs" },
   { agent:"jake.r's agent",   task:"Contract Review",       icon:"fileText", city:"Chicago",       country:"US", price:350,  worker:"Sofia V.",  xPct:25.7, yPct:29.2, avatar:"#6366F1",  region:"NAm" },
   { agent:"marco.d's agent",  task:"Product Photography",   icon:"camera", city:"Paris",         country:"FR", price:150,  worker:"Priya M.",  xPct:50.7, yPct:24.4, avatar:"#F59E0B",  region:"Eur" },
   { agent:"sarah.m's agent",  task:"Furniture Assembly",    icon:"wrench", city:"Bangkok",       country:"TH", price:45,   worker:"Alex H.",   xPct:77.9, yPct:48.8, avatar:"#E8722A",  region:"SEA" },
-  { agent:"olivia.k's agent", task:"Due Diligence",         icon:"search", city:"New York",      country:"US", price:500,  worker:"Kenji T.",  xPct:29.4, yPct:30.1, avatar:"#8B5CF6",  region:"NAm" },
+  { agent:"olivia.k's agent", task:"Due Diligence",         icon:"search", city:"New York",      country:"US", price:500,  worker:"Kenji T.",  xPct:29.4, yPct:30.1, avatar:"#6D4FC2",  region:"NAm" },
   { agent:"tom.j's agent",    task:"Document Drop-off",     icon:"fileText", city:"Lagos",         country:"NG", price:25,   worker:"Ade O.",    xPct:50.9, yPct:53.8, avatar:"#22D3EE",  region:"Afr" },
   { agent:"ben.k's agent",    task:"Property Inspection",   icon:"building", city:"Dubai",         country:"AE", price:275,  worker:"Omar F.",   xPct:65.4, yPct:40.8, avatar:"#D946EF",  region:"MdE" },
   { agent:"chloe.p's agent",  task:"Pet Sitting",           icon:"footprints", city:"Toronto",       country:"CA", price:60,   worker:"Lena M.",   xPct:27.9, yPct:28.0, avatar:"#06B6D4",  region:"NAm" },
@@ -79,7 +79,7 @@ function buildShuffledOrder(tasks) {
 
 const WorldMapSVG = () => (
   <svg className="hn-world-map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice">
-    <g fill="#1A1A1A">
+    <g fill="#1A1410">
       <path d="M345,15 L375,8 L400,16 L412,32 L408,52 L394,60 L370,58 L350,48 L340,32Z"/>
       <path d="M65,58 L95,48 L130,44 L165,42 L200,38 L240,36 L280,38 L310,46 L330,58 L335,75 L328,95 L318,112 L308,128 L300,142 L296,155 L290,168 L282,180 L278,195 L280,208 L272,215 L258,215 L242,208 L232,195 L218,192 L200,196 L182,192 L168,182 L158,168 L152,155 L148,140 L142,125 L135,108 L125,92 L112,78 L95,68 L78,62Z"/>
       <path d="M192,200 L215,198 L232,205 L242,218 L244,232 L236,245 L222,248 L208,244 L196,234 L188,220 L186,208Z"/>
