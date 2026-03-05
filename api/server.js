@@ -2406,6 +2406,144 @@ app.post('/api/keys/:id/rotate', async (req, res) => {
   }
 });
 
+// ============ DEVICE FLOW (Agent connect codes) ============
+// Generates a short activation code for the device flow.
+// Agent calls this with no auth, gets a code to show to the human.
+app.post('/api/agent/connect', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  try {
+    const { label } = req.body;
+
+    // Generate a short, human-readable code: ABC-1234
+    const letters = Array.from({ length: 3 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]).join('');
+    const digits = String(Math.floor(1000 + Math.random() * 9000));
+    const code = `${letters}-${digits}`;
+
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+
+    const { error } = await supabase.from('pending_connections').insert({
+      id: uuidv4(),
+      code,
+      label: label || null,
+      status: 'pending',
+      expires_at: expiresAt,
+      created_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('[DeviceFlow] Insert error:', error);
+      return res.status(500).json({ error: 'Failed to create connection code' });
+    }
+
+    res.json({ code, expires_at: expiresAt, activate_url: 'https://www.irlwork.ai/connect-agent' });
+  } catch (e) {
+    console.error('[DeviceFlow] Error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Human (signed in) activates a code — creates an API key linked to their account.
+app.post('/api/agent/activate', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const user = await getUserByToken(req.headers.authorization);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'code is required' });
+
+    // Look up the pending connection
+    const { data: conn } = await supabase
+      .from('pending_connections')
+      .select('*')
+      .eq('code', code.trim().toUpperCase())
+      .eq('status', 'pending')
+      .single();
+
+    if (!conn) return res.status(404).json({ error: 'Code not found or already used' });
+    if (new Date(conn.expires_at) < new Date()) {
+      await supabase.from('pending_connections').update({ status: 'expired' }).eq('id', conn.id);
+      return res.status(410).json({ error: 'Code has expired' });
+    }
+
+    // Create API key
+    const apiKey = generateApiKey();
+    const keyHash = hashApiKey(apiKey);
+    const keyPrefix = getApiKeyPrefix(apiKey);
+    const keyId = uuidv4();
+    const keyName = conn.label || 'Agent Key';
+
+    const { error: keyError } = await supabase.from('api_keys').insert({
+      id: keyId,
+      user_id: user.id,
+      key_hash: keyHash,
+      key_prefix: keyPrefix,
+      name: keyName,
+      is_active: true,
+      created_at: new Date().toISOString()
+    });
+
+    if (keyError) {
+      console.error('[DeviceFlow] Key creation error:', keyError);
+      return res.status(500).json({ error: 'Failed to create API key' });
+    }
+
+    // Mark connection as activated, store plaintext key for one-time retrieval
+    await supabase.from('pending_connections').update({
+      status: 'activated',
+      user_id: user.id,
+      api_key_id: keyId,
+      api_key_plaintext: apiKey
+    }).eq('id', conn.id);
+
+    res.json({ success: true, key_name: keyName, key_prefix: keyPrefix });
+  } catch (e) {
+    console.error('[DeviceFlow] Activate error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Agent polls this to check if their code has been activated and retrieve the key.
+app.get('/api/agent/connect/status', async (req, res) => {
+  if (!supabase) return res.status(500).json({ error: 'Database not configured' });
+
+  const { code } = req.query;
+  if (!code) return res.status(400).json({ error: 'code is required' });
+
+  try {
+    const { data: conn } = await supabase
+      .from('pending_connections')
+      .select('status, expires_at, api_key_plaintext')
+      .eq('code', code.trim().toUpperCase())
+      .single();
+
+    if (!conn) return res.status(404).json({ error: 'Code not found' });
+
+    if (conn.status === 'pending') {
+      if (new Date(conn.expires_at) < new Date()) {
+        await supabase.from('pending_connections').update({ status: 'expired' }).eq('code', code.trim().toUpperCase());
+        return res.json({ status: 'expired' });
+      }
+      return res.json({ status: 'pending' });
+    }
+
+    if (conn.status === 'activated' && conn.api_key_plaintext) {
+      const apiKey = conn.api_key_plaintext;
+      // Clear the plaintext key after first retrieval
+      await supabase.from('pending_connections').update({ api_key_plaintext: null }).eq('code', code.trim().toUpperCase());
+      return res.json({ status: 'activated', api_key: apiKey });
+    }
+
+    // Already retrieved or expired
+    return res.json({ status: conn.status });
+  } catch (e) {
+    console.error('[DeviceFlow] Status error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ============ PAGE VIEWS ============
 app.post('/api/views', async (req, res) => {
   if (!supabase) return res.status(500).json({ error: 'Database not configured' });
@@ -9732,8 +9870,8 @@ app.post('/api/mcp', async (req, res) => {
         const tier = params.tier;
         const billingPeriod = params.billing_period || 'monthly';
 
-        if (!tier || !['builder', 'pro'].includes(tier)) {
-          return res.status(400).json({ error: 'tier parameter is required and must be "builder" or "pro"' });
+        if (!tier || !['pro'].includes(tier)) {
+          return res.status(400).json({ error: 'tier parameter is required and must be "pro"' });
         }
         if (billingPeriod && !['monthly', 'annual'].includes(billingPeriod)) {
           return res.status(400).json({ error: 'billing_period must be "monthly" or "annual"' });
