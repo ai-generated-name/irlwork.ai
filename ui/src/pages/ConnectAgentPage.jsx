@@ -456,7 +456,7 @@ You can pay with **credit card (Stripe)** or **USDC on Base**. Use \`set_default
                 ) : (
                   <div className="ca-activate-signin">
                     <p className="ca-activate-signin-text">Sign in to activate your agent</p>
-                    <Button variant="primary" size="lg" onClick={() => { window.location.href = '/login?redirect=/connect-agent?activate=1' }} className="gap-2">
+                    <Button variant="primary" size="lg" onClick={() => { window.location.href = '/auth?returnTo=/connect-agent?activate=1' }} className="gap-2">
                       Sign in <ArrowRight size={15} />
                     </Button>
                   </div>
