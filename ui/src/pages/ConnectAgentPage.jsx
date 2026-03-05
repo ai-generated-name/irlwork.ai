@@ -473,29 +473,29 @@ You can pay with **credit card (Stripe)** or **USDC on Base**. Use \`set_default
             onClick={() => setShowActivateModal(false)}
           >
             <div
-              className="bg-white rounded-[14px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] p-8 w-full max-w-sm mx-4"
+              className="bg-white rounded-[14px] shadow-[0_4px_20px_rgba(220,200,180,0.40)] p-8 w-full max-w-sm mx-4"
               onClick={e => e.stopPropagation()}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', margin: 0 }}>Enter activation code</h2>
+                <h2 style={{ fontSize: 18, fontWeight: 600, color: '#1A1410', margin: 0 }}>Enter activation code</h2>
                 <button
                   onClick={() => setShowActivateModal(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0, display: 'flex' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(26,20,16,0.28)', padding: 0, display: 'flex' }}
                 >
                   <X size={18} />
                 </button>
               </div>
-              <p style={{ fontSize: 14, color: '#6B7280', marginTop: 8, marginBottom: 24 }}>
+              <p style={{ fontSize: 14, color: 'rgba(26,20,16,0.50)', marginTop: 8, marginBottom: 24 }}>
                 Paste the code your agent printed. It expires in 10 minutes.
               </p>
 
               {activateSuccess ? (
                 <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
                   <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                    <Check size={22} color="#16A34A" />
+                    <Check size={22} color="#1A9E6A" />
                   </div>
-                  <p style={{ fontWeight: 600, color: '#1A1A1A', fontSize: 15, marginBottom: 6 }}>Agent activated</p>
-                  <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 20 }}>Your agent received its API key and is ready to use.</p>
+                  <p style={{ fontWeight: 600, color: '#1A1410', fontSize: 15, marginBottom: 6 }}>Agent activated</p>
+                  <p style={{ fontSize: 13, color: 'rgba(26,20,16,0.50)', marginBottom: 20 }}>Your agent received its API key and is ready to use.</p>
                   <Button variant="secondary" size="md" onClick={() => setShowActivateModal(false)}>Done</Button>
                 </div>
               ) : (
@@ -521,7 +521,7 @@ You can pay with **credit card (Stripe)** or **USDC on Base**. Use \`set_default
                       boxSizing: 'border-box',
                       marginBottom: activateError ? 8 : 20,
                       fontFamily: 'monospace',
-                      color: '#1A1A1A'
+                      color: '#1A1410'
                     }}
                   />
                   {activateError && (

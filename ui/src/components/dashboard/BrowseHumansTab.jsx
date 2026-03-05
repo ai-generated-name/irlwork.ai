@@ -71,7 +71,7 @@ export default function BrowseHumansTab({
                       const el = document.querySelector('.browse-extra-filters')
                       if (el) el.classList.toggle('browse-extra-filters-hidden')
                     }}
-                    style={{ display: 'none', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ display: 'none', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid rgba(220,200,180,0.35)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
                     <ChevronDown size={16} /> Filters
                   </button>
@@ -138,7 +138,7 @@ export default function BrowseHumansTab({
                         {/* eslint-disable irlwork/no-orange-outside-button -- retry button uses brand color */}
                         <button
                           onClick={fetchHumans}
-                          style={{ background: 'var(--coral-500, #E8853D)', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                          style={{ background: 'var(--coral-500, #E8703D)', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                         >
                           Try Again
                         </button>
@@ -171,7 +171,7 @@ export default function BrowseHumansTab({
                       </p>
                       <button
                         onClick={() => { setTasksSubTab('create'); setActiveTab('posted') }}
-                        style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                        style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(220,200,180,0.40)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
                       >
                         <Plus size={16} /> Post a Task
                       </button>

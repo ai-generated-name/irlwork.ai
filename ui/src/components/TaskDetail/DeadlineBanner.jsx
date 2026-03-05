@@ -177,7 +177,7 @@ export default function DeadlineBanner({ task, user }) {
           position: 'fixed', top: 20, right: 20, zIndex: 9999,
           padding: '12px 20px', borderRadius: 10,
           background: toast.type === 'error' ? '#FF5F57' : '#22C55E',
-          color: '#fff', fontWeight: 600, fontSize: 14, boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          color: '#fff', fontWeight: 600, fontSize: 14, boxShadow: '0 4px 12px rgba(200,150,100,0.15)'
         }}>
           {toast.msg}
         </div>
@@ -200,10 +200,10 @@ export default function DeadlineBanner({ task, user }) {
               <polyline points="12 6 12 12 16 14" />
             </svg>
             <div>
-              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 22, fontWeight: 700, color: urgency.text }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: urgency.text }}>
                 {countdownText}
               </div>
-              <div style={{ fontSize: 13, color: '#888888', marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: 'rgba(26,20,16,0.40)', marginTop: 2 }}>
                 Deadline: {new Date(task.deadline).toLocaleString()}
               </div>
             </div>
@@ -215,7 +215,7 @@ export default function DeadlineBanner({ task, user }) {
               <button
                 onClick={() => setShowExtensionModal(true)}
                 style={{
-                  padding: '8px 16px', borderRadius: 10, border: '2px solid #E5E5E5',
+                  padding: '8px 16px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                   background: '#fff', color: '#333', fontWeight: 600, fontSize: 13,
                   cursor: 'pointer'
                 }}
@@ -228,7 +228,7 @@ export default function DeadlineBanner({ task, user }) {
               <button
                 onClick={() => setShowExtendModal(true)}
                 style={{
-                  padding: '8px 16px', borderRadius: 10, border: '2px solid #E5E5E5',
+                  padding: '8px 16px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                   background: '#fff', color: '#333', fontWeight: 600, fontSize: 13,
                   cursor: 'pointer'
                 }}
@@ -258,7 +258,7 @@ export default function DeadlineBanner({ task, user }) {
 
         {/* Poster: pending extension request to review */}
         {isPoster && pendingRequest && (
-          <div style={{ marginTop: 12, padding: '14px', background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.08)' }}>
+          <div style={{ marginTop: 12, padding: '14px', background: '#fff', borderRadius: 10, border: '1px solid rgba(220,200,180,0.35)' }}>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
               Extension Request from {pendingRequest.requester?.name || 'Worker'}
             </div>
@@ -297,7 +297,7 @@ export default function DeadlineBanner({ task, user }) {
                   value={modifyDeadline}
                   onChange={e => setModifyDeadline(e.target.value)}
                   style={{
-                    padding: '7px 10px', borderRadius: 10, border: '2px solid #E5E5E5',
+                    padding: '7px 10px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                     fontSize: 13
                   }}
                 />
@@ -305,7 +305,7 @@ export default function DeadlineBanner({ task, user }) {
                   onClick={() => modifyDeadline && handleRespondExtension(pendingRequest.id, 'modify')}
                   disabled={submitting || !modifyDeadline}
                   style={{
-                    padding: '8px 16px', borderRadius: 10, border: '2px solid #E5E5E5',
+                    padding: '8px 16px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                     background: '#fff', color: '#333', fontWeight: 600, fontSize: 13,
                     cursor: modifyDeadline ? 'pointer' : 'not-allowed', opacity: (submitting || !modifyDeadline) ? 0.5 : 1
                   }}
@@ -322,7 +322,7 @@ export default function DeadlineBanner({ task, user }) {
                 onChange={e => setResponseNote(e.target.value)}
                 style={{
                   width: '100%', padding: '8px 12px', borderRadius: 10,
-                  border: '2px solid #E5E5E5', fontSize: 13
+                  border: '2px solid rgba(220,200,180,0.45)', fontSize: 13
                 }}
               />
             </div>
@@ -338,9 +338,9 @@ export default function DeadlineBanner({ task, user }) {
         }} onClick={() => setShowExtensionModal(false)}>
           <div onClick={e => e.stopPropagation()} style={{
             background: '#fff', borderRadius: 14, padding: 24, width: '90%', maxWidth: 440,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
+            boxShadow: '0 20px 60px rgba(200,150,100,0.20)'
           }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1A1A' }}>Request deadline extension</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1410' }}>Request deadline extension</h3>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>
               Reason <span style={{ color: '#FF5F57' }}>*</span>
             </label>
@@ -350,7 +350,7 @@ export default function DeadlineBanner({ task, user }) {
               placeholder="Why do you need more time?"
               rows={3}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 10, border: '2px solid #E5E5E5',
+                width: '100%', padding: '10px 12px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                 fontSize: 14, resize: 'vertical', marginBottom: 12, boxSizing: 'border-box'
               }}
             />
@@ -362,7 +362,7 @@ export default function DeadlineBanner({ task, user }) {
               value={proposedDeadline}
               onChange={e => setProposedDeadline(e.target.value)}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 10, border: '2px solid #E5E5E5',
+                width: '100%', padding: '10px 12px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                 fontSize: 14, marginBottom: 16, boxSizing: 'border-box'
               }}
             />
@@ -370,7 +370,7 @@ export default function DeadlineBanner({ task, user }) {
               <button
                 onClick={() => setShowExtensionModal(false)}
                 style={{
-                  padding: '10px 20px', borderRadius: 10, border: '2px solid #E5E5E5',
+                  padding: '10px 20px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                   background: '#fff', color: '#333', fontWeight: 600, fontSize: 14, cursor: 'pointer'
                 }}
               >
@@ -401,15 +401,15 @@ export default function DeadlineBanner({ task, user }) {
         }} onClick={() => setShowExtendModal(false)}>
           <div onClick={e => e.stopPropagation()} style={{
             background: '#fff', borderRadius: 14, padding: 24, width: '90%', maxWidth: 440,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
+            boxShadow: '0 20px 60px rgba(200,150,100,0.20)'
           }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1A1A' }}>Extend Deadline</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1410' }}>Extend Deadline</h3>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               <button
                 onClick={() => setExtendMode('datetime')}
                 style={{
                   padding: '6px 14px', borderRadius: 8, border: '2px solid',
-                  borderColor: extendMode === 'datetime' ? '#333' : '#E5E5E5',
+                  borderColor: extendMode === 'datetime' ? '#333' : 'rgba(220,200,180,0.45)',
                   background: extendMode === 'datetime' ? '#333' : '#fff',
                   color: extendMode === 'datetime' ? '#fff' : '#333',
                   fontWeight: 600, fontSize: 13, cursor: 'pointer'
@@ -421,7 +421,7 @@ export default function DeadlineBanner({ task, user }) {
                 onClick={() => setExtendMode('hours')}
                 style={{
                   padding: '6px 14px', borderRadius: 8, border: '2px solid',
-                  borderColor: extendMode === 'hours' ? '#333' : '#E5E5E5',
+                  borderColor: extendMode === 'hours' ? '#333' : 'rgba(220,200,180,0.45)',
                   background: extendMode === 'hours' ? '#333' : '#fff',
                   color: extendMode === 'hours' ? '#fff' : '#333',
                   fontWeight: 600, fontSize: 13, cursor: 'pointer'
@@ -438,7 +438,7 @@ export default function DeadlineBanner({ task, user }) {
                   value={extendDatetime}
                   onChange={e => setExtendDatetime(e.target.value)}
                   style={{
-                    width: '100%', padding: '10px 12px', borderRadius: 10, border: '2px solid #E5E5E5',
+                    width: '100%', padding: '10px 12px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                     fontSize: 14, marginBottom: 16, boxSizing: 'border-box'
                   }}
                 />
@@ -454,7 +454,7 @@ export default function DeadlineBanner({ task, user }) {
                   onChange={e => setExtendHours(e.target.value)}
                   placeholder="e.g. 24"
                   style={{
-                    width: '100%', padding: '10px 12px', borderRadius: 10, border: '2px solid #E5E5E5',
+                    width: '100%', padding: '10px 12px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                     fontSize: 14, marginBottom: 16, boxSizing: 'border-box'
                   }}
                 />
@@ -464,7 +464,7 @@ export default function DeadlineBanner({ task, user }) {
               <button
                 onClick={() => setShowExtendModal(false)}
                 style={{
-                  padding: '10px 20px', borderRadius: 10, border: '2px solid #E5E5E5',
+                  padding: '10px 20px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
                   background: '#fff', color: '#333', fontWeight: 600, fontSize: 14, cursor: 'pointer'
                 }}
               >

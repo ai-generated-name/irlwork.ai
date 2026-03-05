@@ -437,7 +437,7 @@ function App() {
     <>
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-[14px] focus:shadow-lg focus:text-[#1A1A1A] focus:border focus:border-[#ECECEC]"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-[14px] focus:shadow-lg focus:text-[#1A1410] focus:border focus:border-[rgba(220,200,180,0.35)]"
       >
         Skip to main content
       </a>

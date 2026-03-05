@@ -79,7 +79,7 @@ export default function DefaultPaymentMethodToggle({ user }) {
   if (hasCard && !hasWallet) {
     return (
       <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5">
-        <div className="flex items-center gap-2 text-sm text-[#1A1A1A]">
+        <div className="flex items-center gap-2 text-sm text-[#1A1410]">
           <CreditCard size={16} className="text-[#E07A5F]" />
           <span className="font-medium">Payment Method: Credit Card</span>
           <Check size={14} className="text-green-600" />
@@ -91,7 +91,7 @@ export default function DefaultPaymentMethodToggle({ user }) {
   if (!hasCard && hasWallet) {
     return (
       <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5">
-        <div className="flex items-center gap-2 text-sm text-[#1A1A1A]">
+        <div className="flex items-center gap-2 text-sm text-[#1A1410]">
           <Wallet size={16} className="text-blue-600" />
           <span className="font-medium">Payment Method: USDC</span>
           <Check size={14} className="text-green-600" />
@@ -120,7 +120,7 @@ export default function DefaultPaymentMethodToggle({ user }) {
         >
           <CreditCard size={16} className={defaultMethod === 'stripe' ? 'text-[#E07A5F]' : 'text-[#8A8A8A]'} />
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium ${defaultMethod === 'stripe' ? 'text-[#1A1A1A]' : 'text-[#525252]'}`}>
+            <p className={`text-sm font-medium ${defaultMethod === 'stripe' ? 'text-[#1A1410]' : 'text-[#525252]'}`}>
               Credit Card
             </p>
           </div>
@@ -139,7 +139,7 @@ export default function DefaultPaymentMethodToggle({ user }) {
         >
           <Wallet size={16} className={defaultMethod === 'usdc' ? 'text-[#E07A5F]' : 'text-[#8A8A8A]'} />
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium ${defaultMethod === 'usdc' ? 'text-[#1A1A1A]' : 'text-[#525252]'}`}>
+            <p className={`text-sm font-medium ${defaultMethod === 'usdc' ? 'text-[#1A1410]' : 'text-[#525252]'}`}>
               USDC on Base
             </p>
           </div>

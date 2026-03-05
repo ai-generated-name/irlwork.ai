@@ -361,14 +361,14 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="flex flex-col items-center">
           {/* eslint-disable-next-line irlwork/no-orange-outside-button -- border uses brand color */}
-          <div className="w-12 h-12 border-4 border-[#F5F3F0] border-t-[#E8853D] rounded-full animate-spin mb-4"></div>
-          <div className="text-[#333333] text-lg">Loading task details...</div>
+          <div className="w-12 h-12 border-4 border-[rgba(220,200,180,0.15)] border-t-[#E8703D] rounded-full animate-spin mb-4"></div>
+          <div className="text-[rgba(26,20,16,0.65)] text-lg">Loading task details...</div>
           {loadingTimeout && (
             <div className="mt-4 text-center">
-              <p className="text-[#888888] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
+              <p className="text-[rgba(26,20,16,0.40)] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
               <button
                 onClick={() => window.location.reload()}
-                className="text-[#E8853D] underline text-sm hover:text-[#D4703A]" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                className="text-[#E8703D] underline text-sm hover:text-[#D4703A]" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               >
                 Retry loading
               </button>
@@ -413,17 +413,17 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       {/* Sub-header with back button */}
       <header style={{
-        borderBottom: '1px solid rgba(0,0,0,0.08)',
+        borderBottom: '1px solid rgba(220,200,180,0.35)',
         position: 'sticky',
         top: 56,
         background: 'white',
         zIndex: 10,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+        boxShadow: '0 1px 2px rgba(200,150,100,0.06)'
       }}>
         <div className="h-10 sm:h-14" style={{ maxWidth: 1280, margin: '0 auto', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            className="flex items-center gap-1.5 sm:gap-2 text-[#E8853D] bg-transparent border-none cursor-pointer text-xs sm:text-sm font-medium" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+            className="flex items-center gap-1.5 sm:gap-2 text-[#E8703D] bg-transparent border-none cursor-pointer text-xs sm:text-sm font-medium" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
           >
             <span>←</span>
             <span>Back</span>
@@ -435,7 +435,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             {user && task && task.agent_id !== user.id && (
               <button
                 onClick={() => setShowReportModal(true)}
-                className="flex items-center gap-1 sm:gap-1.5 text-[#888888] bg-transparent border-none cursor-pointer text-xs"
+                className="flex items-center gap-1 sm:gap-1.5 text-[rgba(26,20,16,0.40)] bg-transparent border-none cursor-pointer text-xs"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
@@ -489,8 +489,8 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
             {/* Worker Actions: Dispute + Withdraw */}
             {(canDispute || canWithdraw) && (
-              <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-4 sm:p-6 shadow-sm space-y-3">
-                <h4 className="text-xs font-bold text-[#888888] uppercase tracking-wider">Actions</h4>
+              <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-4 sm:p-6 shadow-sm space-y-3">
+                <h4 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider">Actions</h4>
                 {canWithdraw && (
                   <Button
                     variant="secondary"
@@ -505,7 +505,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                   // eslint-disable-next-line irlwork/no-inline-button-pattern -- outlined orange variant not in Button
                   <button
                     onClick={() => setShowDisputeModal(true)}
-                    className="w-full py-2.5 border-2 border-[#E8853D] text-[#E8853D] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                    className="w-full py-2.5 border-2 border-[#E8703D] text-[#E8703D] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   >
                     File a dispute
                   </button>
@@ -580,16 +580,16 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       {/* Mobile Sticky Apply Bar */}
       {task.status === 'open' && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(0,0,0,0.12)] px-4 pr-20 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(220,200,180,0.40)] px-4 pr-20 py-3 shadow-[0_-2px_12px_rgba(220,200,180,0.35)]"
           style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
           <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
             <div className="flex items-baseline gap-1 shrink-0">
-              <span className="text-xl font-bold text-[#16A34A] font-['DM_Mono']">
+              <span className="text-xl font-bold text-[#1A9E6A] font-['JetBrains_Mono']">
                 ${Number(task.budget) || 0}
               </span>
-              {task.budget_type === 'hourly' && <span className="text-sm text-[#333333]">/hr</span>}
-              <span className="text-xs text-[#888888] ml-1">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
+              {task.budget_type === 'hourly' && <span className="text-sm text-[rgba(26,20,16,0.65)]">/hr</span>}
+              <span className="text-xs text-[rgba(26,20,16,0.40)] ml-1">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
             </div>
             {user && task.agent_id !== user.id && !hasApplied ? (
               <Button
@@ -601,11 +601,11 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 Apply for this task
               </Button>
             ) : hasApplied ? (
-              <span className="text-sm font-medium text-[#16A34A]">Applied</span>
+              <span className="text-sm font-medium text-[#1A9E6A]">Applied</span>
             ) : !user ? (
               <a
                 href="/auth"
-                className="flex-1 max-w-[200px] py-2.5 bg-[#E8853D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                className="flex-1 max-w-[200px] py-2.5 bg-[#E8703D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               >
                 Sign in to apply
               </a>

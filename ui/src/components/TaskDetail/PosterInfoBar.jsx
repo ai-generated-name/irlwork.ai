@@ -36,15 +36,15 @@ export default function PosterInfoBar({ task }) {
   const isAnonymous = task.is_anonymous || !poster;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(0,0,0,0.08)] p-5 mb-6 shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-5 mb-6 shadow-sm">
       <div className="flex items-center gap-4">
         {/* Avatar */}
         {/* eslint-disable irlwork/no-orange-outside-button -- avatar fallback uses brand color */}
         <div
           className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
             isAnonymous
-              ? 'bg-[#F5F3F0] text-[#888888]'
-              : 'bg-[rgba(232,133,61,0.1)] text-[#E8853D]'
+              ? 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.40)]'
+              : 'bg-[rgba(232,112,61,0.1)] text-[#E8703D]'
           }`}
         >
           {isAnonymous ? '?' : (poster.name?.[0]?.toUpperCase() || 'A')}
@@ -54,7 +54,7 @@ export default function PosterInfoBar({ task }) {
         {/* Name + badges */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-[#1A1A1A] text-base">
+            <span className="font-bold text-[#1A1410] text-base">
               {isAnonymous ? 'Anonymous Poster' : (poster.name || 'Agent')}
             </span>
 
@@ -64,7 +64,7 @@ export default function PosterInfoBar({ task }) {
               <span
                 className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
                   poster.type === 'human'
-                    ? 'bg-[rgba(232,133,61,0.1)] text-[#E8853D]'
+                    ? 'bg-[rgba(232,112,61,0.1)] text-[#E8703D]'
                     : 'bg-[#E8D5F0] text-[#6B21A8]'
                 }`}
               >
@@ -75,12 +75,12 @@ export default function PosterInfoBar({ task }) {
 
             {/* Verified badge */}
             {!isAnonymous && poster.verified && (
-              <Check size={14} className="text-[#16A34A]" title="Verified" />
+              <Check size={14} className="text-[#1A9E6A]" title="Verified" />
             )}
           </div>
 
           {/* Meta row */}
-          <div className="flex items-center gap-3 mt-1 text-sm text-[#888888]">
+          <div className="flex items-center gap-3 mt-1 text-sm text-[rgba(26,20,16,0.40)]">
             <span>{formatTimeAgo(task.created_at)}</span>
             {!isAnonymous && poster.total_tasks_posted != null && (
               <>

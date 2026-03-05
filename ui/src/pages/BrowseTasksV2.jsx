@@ -56,7 +56,7 @@ function TaskCardSkeleton() {
         <div className="skeleton-line" style={{ width: 120, height: 16 }} />
         <div className="skeleton-line" style={{ width: 60, height: 16 }} />
       </div>
-      <div className="skeleton-row" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+      <div className="skeleton-row" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(220,200,180,0.25)' }}>
         <div className="skeleton-line" style={{ width: 100, height: 14 }} />
         <div className="skeleton-line" style={{ width: 90, height: 36, borderRadius: 8 }} />
       </div>
@@ -605,7 +605,7 @@ export default function BrowseTasksV2({
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: 36, height: 36, borderRadius: 8,
-                        border: '1px solid rgba(0,0,0,0.1)', background: 'white',
+                        border: '1px solid rgba(220,200,180,0.35)', background: 'white',
                         cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
                         opacity: currentPage === 1 ? 0.4 : 1,
                         transition: 'all 0.15s', color: 'var(--text-primary)',
@@ -624,7 +624,7 @@ export default function BrowseTasksV2({
                           onClick={() => goToPage(page)}
                           style={{
                             width: 36, height: 36, borderRadius: 8,
-                            border: page === currentPage ? '1px solid var(--coral-500)' : '1px solid rgba(0,0,0,0.08)',
+                            border: page === currentPage ? '1px solid var(--coral-500)' : '1px solid rgba(220,200,180,0.35)',
                             background: page === currentPage ? 'var(--coral-500)' : 'white',
                             color: page === currentPage ? 'white' : 'var(--text-primary)',
                             fontWeight: page === currentPage ? 700 : 500,
@@ -641,7 +641,7 @@ export default function BrowseTasksV2({
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: 36, height: 36, borderRadius: 8,
-                        border: '1px solid rgba(0,0,0,0.1)', background: 'white',
+                        border: '1px solid rgba(220,200,180,0.35)', background: 'white',
                         cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
                         opacity: currentPage === totalPages ? 0.4 : 1,
                         transition: 'all 0.15s', color: 'var(--text-primary)',

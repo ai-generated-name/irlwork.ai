@@ -26,7 +26,7 @@ function CopyButton({ text }) {
 }
 
 function SectionDivider() {
-  return <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', margin: '44px 0' }} />
+  return <div style={{ borderTop: '1px solid rgba(220,200,180,0.25)', margin: '44px 0' }} />
 }
 
 // ── Data ──
@@ -160,7 +160,7 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
     <div style={{
       background: '#fff',
       borderRadius: 12,
-      border: '1px solid rgba(0,0,0,0.06)',
+      border: '1px solid rgba(220,200,180,0.25)',
       marginBottom: 10,
       overflow: 'hidden',
     }}>
@@ -187,16 +187,16 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
             flexShrink: 0,
           }}
         />
-        <span style={{ fontSize: 14, fontWeight: 650, color: '#1a1a1a', flex: 1 }}>
+        <span style={{ fontSize: 14, fontWeight: 650, color: '#1A1410', flex: 1 }}>
           {category.label}
         </span>
-        <span style={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: '#bbb' }}>
+        <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: 'rgba(220,200,180,0.55)' }}>
           {category.count}
         </span>
       </button>
 
       {isOpen && (
-        <div style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+        <div style={{ borderTop: '1px solid rgba(200,150,100,0.06)' }}>
           {methods.map((m, i) => (
             <div key={m.name}>
               <div
@@ -210,14 +210,14 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
                   alignItems: 'baseline',
                   gap: 12,
                   padding: '10px 18px 10px 44px',
-                  borderTop: i > 0 ? '1px solid rgba(0,0,0,0.03)' : 'none',
+                  borderTop: i > 0 ? '1px solid rgba(200,150,100,0.06)' : 'none',
                   cursor: isListHumans && m.name === 'list_humans' ? 'pointer' : 'default',
                 }}
               >
                 <code style={{
-                  fontFamily: "'DM Mono', monospace",
+                  fontFamily: "'JetBrains Mono', monospace",
                   fontSize: 13,
-                  color: '#E8853D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                  color: '#E8703D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   minWidth: 160,
                   flexShrink: 0,
                 }}>
@@ -231,8 +231,8 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
                 <div style={{ padding: '0 18px 18px 44px' }}>
                   {/* Parameters table */}
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ccc', fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>Parameters</div>
-                    <div style={{ border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8, overflow: 'hidden' }}>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(220,200,180,0.45)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Parameters</div>
+                    <div style={{ border: '1px solid rgba(220,200,180,0.25)', borderRadius: 8, overflow: 'hidden' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                           <tr style={{ background: '#f9f9f7' }}>
@@ -244,13 +244,13 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
                         </thead>
                         <tbody>
                           {LIST_HUMANS_PARAMS.map((p, idx) => (
-                            <tr key={idx} style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
-                              <td style={{ padding: '8px 12px' }}><code style={{ fontFamily: "'DM Mono', monospace", color: '#1a1a1a' }}>{p.name}</code></td>
+                            <tr key={idx} style={{ borderTop: '1px solid rgba(200,150,100,0.06)' }}>
+                              <td style={{ padding: '8px 12px' }}><code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#1A1410' }}>{p.name}</code></td>
                               <td style={{ padding: '8px 12px', color: '#888' }}>{p.type}</td>
                               <td style={{ padding: '8px 12px' }}>
                                 {p.required
                                   ? <span style={{ color: '#FF5F57', fontWeight: 600 }}>Yes</span>
-                                  : <span style={{ color: '#bbb' }}>No</span>}
+                                  : <span style={{ color: 'rgba(220,200,180,0.55)' }}>No</span>}
                               </td>
                               <td style={{ padding: '8px 12px', color: '#888' }}>{p.desc}</td>
                             </tr>
@@ -262,17 +262,17 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
 
                   {/* Response example */}
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ccc', fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>Response</div>
-                    <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
-                      <pre style={{ fontSize: 12, color: '#8BC78B', margin: 0, fontFamily: "'DM Mono', monospace" }}>{LIST_HUMANS_RESPONSE}</pre>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(220,200,180,0.45)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Response</div>
+                    <div style={{ background: '#1A1410', borderRadius: 10, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
+                      <pre style={{ fontSize: 12, color: '#8BC78B', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>{LIST_HUMANS_RESPONSE}</pre>
                     </div>
                   </div>
 
                   {/* Request example */}
                   <div>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ccc', fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>Request Example</div>
-                    <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
-                      <pre style={{ fontSize: 12, color: '#ccc', margin: 0, fontFamily: "'DM Mono', monospace" }}>{LIST_HUMANS_EXAMPLE}</pre>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(220,200,180,0.45)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Request Example</div>
+                    <div style={{ background: '#1A1410', borderRadius: 10, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
+                      <pre style={{ fontSize: 12, color: 'rgba(220,200,180,0.45)', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>{LIST_HUMANS_EXAMPLE}</pre>
                       <CopyButton text={LIST_HUMANS_EXAMPLE} />
                     </div>
                   </div>
@@ -358,8 +358,8 @@ export default function MCPPage() {
               fontSize: 13,
               fontFamily: "'DM Sans', sans-serif",
               fontWeight: activeSection === s.id ? 600 : 500,
-              color: activeSection === s.id ? '#E8853D' : '#999', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
-              background: activeSection === s.id ? 'rgba(232,133,61,0.06)' : 'transparent',
+              color: activeSection === s.id ? '#E8703D' : '#999', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+              background: activeSection === s.id ? 'rgba(232,112,61,0.06)' : 'transparent',
               cursor: 'pointer',
               transition: 'all 0.15s',
             }}
@@ -370,13 +370,13 @@ export default function MCPPage() {
       </div>
 
       {/* Methods sub-nav */}
-      <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', margin: '16px 0', paddingTop: 16 }}>
+      <div style={{ borderTop: '1px solid rgba(220,200,180,0.25)', margin: '16px 0', paddingTop: 16 }}>
         <div style={{
           fontSize: 10.5,
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
-          color: '#ccc',
-          fontFamily: "'DM Mono', monospace",
+          color: 'rgba(220,200,180,0.45)',
+          fontFamily: "'JetBrains Mono', monospace",
           padding: '0 14px',
           marginBottom: 8,
         }}>
@@ -394,14 +394,14 @@ export default function MCPPage() {
               border: 'none',
               background: 'transparent',
               fontSize: 12.5,
-              fontFamily: "'DM Mono', monospace",
-              color: '#bbb',
+              fontFamily: "'JetBrains Mono', monospace",
+              color: 'rgba(220,200,180,0.55)',
               cursor: 'pointer',
               transition: 'color 0.15s',
               lineHeight: 1.8,
             }}
-            onMouseEnter={e => e.currentTarget.style.color = '#E8853D'} // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
-            onMouseLeave={e => e.currentTarget.style.color = '#bbb'}
+            onMouseEnter={e => e.currentTarget.style.color = '#E8703D'} // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(220,200,180,0.55)'}
           >
             {cat.label} ({cat.count})
           </button>
@@ -422,7 +422,7 @@ export default function MCPPage() {
         background: 'rgba(250,250,248,0.92)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(0,0,0,0.06)',
+        borderBottom: '1px solid rgba(220,200,180,0.25)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -440,24 +440,24 @@ export default function MCPPage() {
               border: 'none',
               cursor: 'pointer',
               padding: 4,
-              color: '#1a1a1a',
+              color: '#1A1410',
             }}
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          <a href="/" style={{ textDecoration: 'none', fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#1a1a1a' }}>
+          <a href="/" style={{ textDecoration: 'none', fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#1A1410' }}>
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-            irlwork<span style={{ color: '#E8853D' }}>|</span>
+            irlwork<span style={{ color: '#E8703D' }}>|</span>
           </a>
-          <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.1)' }} />
+          <div style={{ width: 1, height: 18, background: 'rgba(220,200,180,0.35)' }} />
           <span style={{ fontSize: 13, fontWeight: 600, color: '#999' }}>API Reference</span>
         </div>
 
         {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-          <a href="/connect-agent" style={{ fontSize: 13, color: '#E8853D', textDecoration: 'none', fontWeight: 500 }}>
+          <a href="/connect-agent" style={{ fontSize: 13, color: '#E8703D', textDecoration: 'none', fontWeight: 500 }}>
             Connect Agent
           </a>
           <a
@@ -466,7 +466,7 @@ export default function MCPPage() {
               fontSize: 13,
               fontWeight: 600,
               color: '#fff',
-              background: '#E8853D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+              background: '#E8703D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               padding: '7px 16px',
               borderRadius: 8,
               textDecoration: 'none',
@@ -485,7 +485,7 @@ export default function MCPPage() {
             position: 'fixed',
             inset: 0,
             zIndex: 90,
-            background: 'rgba(0,0,0,0.3)',
+            background: 'rgba(220,200,180,0.55)',
           }}
           onClick={() => setMobileMenuOpen(false)}
         >
@@ -494,7 +494,7 @@ export default function MCPPage() {
               width: 260,
               height: '100%',
               background: '#FAFAF8',
-              borderRight: '1px solid rgba(0,0,0,0.06)',
+              borderRight: '1px solid rgba(220,200,180,0.25)',
               overflowY: 'auto',
               paddingTop: 20,
             }}
@@ -518,7 +518,7 @@ export default function MCPPage() {
             top: 52,
             height: 'calc(100vh - 52px)',
             overflowY: 'auto',
-            borderRight: '1px solid rgba(0,0,0,0.04)',
+            borderRight: '1px solid rgba(200,150,100,0.06)',
           }}
         >
           <SidebarContent />
@@ -538,20 +538,20 @@ export default function MCPPage() {
 
           {/* ═══ 1. OVERVIEW ═══ */}
           <section id="overview">
-            <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.5px', color: '#1a1a1a', marginBottom: 8 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.5px', color: '#1A1410', marginBottom: 8 }}>
               {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-              API <span style={{ color: '#E8853D' }}>reference</span>
+              API <span style={{ color: '#E8703D' }}>reference</span>
             </h1>
             <p style={{ fontSize: 15, color: '#999', marginBottom: 28, lineHeight: 1.6 }}>
               {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-              Complete documentation for every method. For quick setup, see <a href="/connect-agent" style={{ color: '#E8853D', textDecoration: 'none' }}>Connect agent</a>.
+              Complete documentation for every method. For quick setup, see <a href="/connect-agent" style={{ color: '#E8703D', textDecoration: 'none' }}>Connect agent</a>.
             </p>
 
             {/* Base Info Bar */}
             <div className="mcp-info-bar" style={{
               background: '#fff',
               borderRadius: 14,
-              border: '1px solid rgba(0,0,0,0.06)',
+              border: '1px solid rgba(220,200,180,0.25)',
               display: 'flex',
               flexWrap: 'wrap',
             }}>
@@ -567,13 +567,13 @@ export default function MCPPage() {
                   style={{
                     flex: '1 1 180px',
                     padding: '16px 20px',
-                    borderRight: i < arr.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                    borderRight: i < arr.length - 1 ? '1px solid rgba(220,200,180,0.25)' : 'none',
                   }}
                 >
-                  <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#ccc', fontFamily: "'DM Mono', monospace", marginBottom: 6 }}>
+                  <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(220,200,180,0.45)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 6 }}>
                     {label}
                   </div>
-                  <div style={{ fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, color: '#1a1a1a' }}>
+                  <div style={{ fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: '#1A1410' }}>
                     {value}
                   </div>
                 </div>
@@ -581,15 +581,15 @@ export default function MCPPage() {
             </div>
 
             {/* Request Format */}
-            <div style={{ marginTop: 20, background: '#1a1a1a', borderRadius: 12, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
-              <pre style={{ fontSize: 13, margin: 0, fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>
+            <div style={{ marginTop: 20, background: '#1A1410', borderRadius: 12, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
+              <pre style={{ fontSize: 13, margin: 0, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6 }}>
                 {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-                <span style={{ color: '#E8853D' }}>curl</span><span style={{ color: '#ccc' }}> -X POST https://api.irlwork.ai/api/mcp \</span>{'\n'}
-                <span style={{ color: '#ccc' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Authorization: Bearer YOUR_API_KEY'</span><span style={{ color: '#ccc' }}> \</span>{'\n'}
-                <span style={{ color: '#ccc' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Content-Type: application/json'</span><span style={{ color: '#ccc' }}> \</span>{'\n'}
-                <span style={{ color: '#ccc' }}>  -d </span><span style={{ color: '#8BC78B' }}>{'\'{'}</span>{'\n'}
-                <span style={{ color: '#ccc' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"method": "method_name",'}</span>{'\n'}
-                <span style={{ color: '#ccc' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"params": { ... }'}</span>{'\n'}
+                <span style={{ color: '#E8703D' }}>curl</span><span style={{ color: 'rgba(220,200,180,0.45)' }}> -X POST https://api.irlwork.ai/api/mcp \</span>{'\n'}
+                <span style={{ color: 'rgba(220,200,180,0.45)' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Authorization: Bearer YOUR_API_KEY'</span><span style={{ color: 'rgba(220,200,180,0.45)' }}> \</span>{'\n'}
+                <span style={{ color: 'rgba(220,200,180,0.45)' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Content-Type: application/json'</span><span style={{ color: 'rgba(220,200,180,0.45)' }}> \</span>{'\n'}
+                <span style={{ color: 'rgba(220,200,180,0.45)' }}>  -d </span><span style={{ color: '#8BC78B' }}>{'\'{'}</span>{'\n'}
+                <span style={{ color: 'rgba(220,200,180,0.45)' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"method": "method_name",'}</span>{'\n'}
+                <span style={{ color: 'rgba(220,200,180,0.45)' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"params": { ... }'}</span>{'\n'}
                 <span style={{ color: '#8BC78B' }}>{"  }'"}</span>
               </pre>
               <CopyButton text={`curl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    "method": "method_name",\n    "params": { ... }\n  }'`} />
@@ -600,7 +600,7 @@ export default function MCPPage() {
 
           {/* ═══ 2. AUTHENTICATION ═══ */}
           <section id="auth">
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A1410', marginBottom: 16 }}>
               Authentication
             </h2>
 
@@ -608,7 +608,7 @@ export default function MCPPage() {
             <div style={{
               background: '#fff',
               borderRadius: 14,
-              border: '1px solid rgba(0,0,0,0.06)',
+              border: '1px solid rgba(220,200,180,0.25)',
               padding: '20px 24px',
               display: 'flex',
               alignItems: 'center',
@@ -618,13 +618,13 @@ export default function MCPPage() {
               marginBottom: 16,
             }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 4 }}>API Keys Dashboard</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1410', marginBottom: 4 }}>API Keys Dashboard</div>
                 <div style={{ fontSize: 13, color: '#888' }}>Generate, rotate, and manage your API keys.</div>
               </div>
               <a
                 href="/dashboard/hiring/api-keys"
                 style={{
-                  fontSize: 13, fontWeight: 600, color: '#fff', background: '#E8853D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                  fontSize: 13, fontWeight: 600, color: '#fff', background: '#E8703D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   padding: '10px 20px', borderRadius: 8, textDecoration: 'none', whiteSpace: 'nowrap',
                 }}
               >
@@ -633,22 +633,22 @@ export default function MCPPage() {
             </div>
 
             {/* Auth header example */}
-            <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '16px 20px', marginBottom: 12, overflowX: 'auto' }}>
-              <pre style={{ fontSize: 13, margin: 0, fontFamily: "'DM Mono', monospace" }}>
-                <span style={{ color: '#ccc' }}>Authorization: Bearer </span>
+            <div style={{ background: '#1A1410', borderRadius: 10, padding: '16px 20px', marginBottom: 12, overflowX: 'auto' }}>
+              <pre style={{ fontSize: 13, margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>
+                <span style={{ color: 'rgba(220,200,180,0.45)' }}>Authorization: Bearer </span>
                 {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-                <span style={{ color: '#E8853D' }}>irl_sk_your_key_here</span>
+                <span style={{ color: '#E8703D' }}>irl_sk_your_key_here</span>
               </pre>
             </div>
 
-            <p style={{ fontSize: 12.5, color: '#bbb', margin: 0 }}>5 registrations/IP/hr · 60 requests/min per key</p>
+            <p style={{ fontSize: 12.5, color: 'rgba(220,200,180,0.55)', margin: 0 }}>5 registrations/IP/hr · 60 requests/min per key</p>
           </section>
 
           <SectionDivider />
 
           {/* ═══ 3. TASK LIFECYCLE ═══ */}
           <section id="lifecycle">
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 8 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A1410', marginBottom: 8 }}>
               Task lifecycle
             </h2>
             <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Every task moves through defined states.</p>
@@ -657,7 +657,7 @@ export default function MCPPage() {
             <div style={{
               background: '#fff',
               borderRadius: 14,
-              border: '1px solid rgba(0,0,0,0.06)',
+              border: '1px solid rgba(220,200,180,0.25)',
               padding: '18px 22px',
               display: 'flex',
               alignItems: 'center',
@@ -666,7 +666,7 @@ export default function MCPPage() {
               marginBottom: 20,
             }}>
               {[
-                ['open', '#E8853D'], // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                ['open', '#E8703D'], // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                 ['assigned', '#f59e0b'],
                 ['pending_review', '#8b5cf6'],
                 ['paid', '#22c55e'],
@@ -678,12 +678,12 @@ export default function MCPPage() {
                     background: color,
                     color: '#fff',
                     fontSize: 12,
-                    fontFamily: "'DM Mono', monospace",
+                    fontFamily: "'JetBrains Mono', monospace",
                     fontWeight: 700,
                   }}>
                     {status}
                   </span>
-                  {i < arr.length - 1 && <span style={{ color: '#ccc', fontSize: 14 }}>→</span>}
+                  {i < arr.length - 1 && <span style={{ color: 'rgba(220,200,180,0.45)', fontSize: 14 }}>→</span>}
                 </React.Fragment>
               ))}
             </div>
@@ -711,18 +711,18 @@ export default function MCPPage() {
                     flex: '1 1 300px',
                     background: '#fff',
                     borderRadius: 14,
-                    border: '1px solid rgba(0,0,0,0.06)',
+                    border: '1px solid rgba(220,200,180,0.25)',
                     padding: '20px 22px',
                   }}
                 >
                   {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-                  <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 2 }}>{wf.title} (<code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D', fontSize: 13 }}>{wf.code}</code>)</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1410', marginBottom: 2 }}>{wf.title} (<code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#E8703D', fontSize: 13 }}>{wf.code}</code>)</div>
                   <div style={{ fontSize: 13, color: '#999', marginBottom: 14 }}>{wf.subtitle}</div>
                   <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#666', lineHeight: 2 }}>
                     {wf.steps.map((step, i) => (
                       <li key={i}>
                         {step.includes('_') || step === 'list_humans'
-                          ? <code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D' }}>{step}</code> // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                          ? <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#E8703D' }}>{step}</code> // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                           : step}
                       </li>
                     ))}
@@ -736,7 +736,7 @@ export default function MCPPage() {
 
           {/* ═══ 4. PAYMENTS ═══ */}
           <section id="payments">
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 8 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A1410', marginBottom: 8 }}>
               Payments
             </h2>
             <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Stripe Connect escrow. No crypto.</p>
@@ -756,20 +756,20 @@ export default function MCPPage() {
                     flex: '1 1 150px',
                     background: '#fff',
                     borderRadius: 12,
-                    border: '1px solid rgba(0,0,0,0.06)',
+                    border: '1px solid rgba(220,200,180,0.25)',
                     padding: '18px 16px',
                   }}
                 >
                   <div style={{
                     width: 26, height: 26, borderRadius: 8,
-                    background: '#E8853D', color: '#fff', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                    background: '#E8703D', color: '#fff', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                     fontSize: 12, fontWeight: 700,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     marginBottom: 10,
                   }}>
                     {num}
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a', marginBottom: 4 }}>{title}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1410', marginBottom: 4 }}>{title}</div>
                   <div style={{ fontSize: 13, color: '#888' }}>{desc}</div>
                 </div>
               ))}
@@ -782,10 +782,10 @@ export default function MCPPage() {
                 flex: '1 1 240px',
                 background: '#fff',
                 borderRadius: 14,
-                border: '1px solid rgba(0,0,0,0.06)',
+                border: '1px solid rgba(220,200,180,0.25)',
                 padding: '20px 22px',
               }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 14 }}>Escrow States</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1410', marginBottom: 14 }}>Escrow States</div>
                 {[
                   ['awaiting_worker', 'Task posted, no one assigned yet'],
                   ['pending_deposit', 'Worker assigned, payment pending'],
@@ -795,9 +795,9 @@ export default function MCPPage() {
                   ['disputed', 'Dispute filed, funds frozen'],
                   ['refunded', 'Refunded to agent\'s card'],
                 ].map(([state, desc], i) => (
-                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'baseline', padding: '6px 0', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'baseline', padding: '6px 0', borderTop: i > 0 ? '1px solid rgba(200,150,100,0.06)' : 'none' }}>
                     {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-                    <code style={{ fontFamily: "'DM Mono', monospace", fontSize: 12.5, color: '#E8853D', minWidth: 130, flexShrink: 0 }}>{state}</code>
+                    <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12.5, color: '#E8703D', minWidth: 130, flexShrink: 0 }}>{state}</code>
                     <span style={{ fontSize: 13, color: '#888' }}>{desc}</span>
                   </div>
                 ))}
@@ -808,10 +808,10 @@ export default function MCPPage() {
                 flex: '1 1 240px',
                 background: '#fff',
                 borderRadius: 14,
-                border: '1px solid rgba(0,0,0,0.06)',
+                border: '1px solid rgba(220,200,180,0.25)',
                 padding: '20px 22px',
               }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a1a', marginBottom: 14 }}>Fee Structure</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1410', marginBottom: 14 }}>Fee Structure</div>
                 {[
                   ['Platform fee', '10%'],
                   ['Charged to', 'Human'],
@@ -820,9 +820,9 @@ export default function MCPPage() {
                   ['Dispute window', '48 hours'],
                   ['Auto-refund', 'If hire fails'],
                 ].map(([label, value], i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: i > 0 ? '1px solid rgba(200,150,100,0.06)' : 'none' }}>
                     <span style={{ fontSize: 13, color: '#888' }}>{label}</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{value}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1410' }}>{value}</span>
                   </div>
                 ))}
               </div>
@@ -833,8 +833,8 @@ export default function MCPPage() {
 
           {/* ═══ 5. ALL METHODS ═══ */}
           <section id="methods">
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 4 }}>
-              All methods <span style={{ color: '#bbb', fontWeight: 400 }}>(26)</span>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A1410', marginBottom: 4 }}>
+              All methods <span style={{ color: 'rgba(220,200,180,0.55)', fontWeight: 400 }}>(26)</span>
             </h2>
             <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Click any category to expand methods.</p>
 
@@ -852,13 +852,13 @@ export default function MCPPage() {
 
           {/* ═══ 6. ERROR HANDLING ═══ */}
           <section id="errors">
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A1410', marginBottom: 16 }}>
               Error handling
             </h2>
 
             {/* Error format */}
-            <div style={{ background: '#1a1a1a', borderRadius: 10, padding: '16px 20px', marginBottom: 20, overflowX: 'auto' }}>
-              <pre style={{ fontSize: 12, margin: 0, fontFamily: "'DM Mono', monospace", color: '#ccc' }}>
+            <div style={{ background: '#1A1410', borderRadius: 10, padding: '16px 20px', marginBottom: 20, overflowX: 'auto' }}>
+              <pre style={{ fontSize: 12, margin: 0, fontFamily: "'JetBrains Mono', monospace", color: 'rgba(220,200,180,0.45)' }}>
                 {'{ '}<span style={{ color: '#f87171' }}>"error"</span>{': '}<span style={{ color: '#8BC78B' }}>"Human not found"</span>{' }'}
               </pre>
             </div>
@@ -867,7 +867,7 @@ export default function MCPPage() {
             <div style={{
               background: '#fff',
               borderRadius: 14,
-              border: '1px solid rgba(0,0,0,0.06)',
+              border: '1px solid rgba(220,200,180,0.25)',
               overflow: 'hidden',
             }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -880,10 +880,10 @@ export default function MCPPage() {
                 </thead>
                 <tbody>
                   {ERROR_CODES.map(([code, meaning, fix], i) => (
-                    <tr key={code} style={{ borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+                    <tr key={code} style={{ borderTop: '1px solid rgba(200,150,100,0.06)' }}>
                       <td style={{ padding: '10px 16px' }}>
                         {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-                        <code style={{ fontFamily: "'DM Mono', monospace", color: '#E8853D', fontWeight: 700 }}>{code}</code>
+                        <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#E8703D', fontWeight: 700 }}>{code}</code>
                       </td>
                       <td style={{ padding: '10px 16px', color: '#666' }}>{meaning}</td>
                       <td style={{ padding: '10px 16px', color: '#888' }}>{fix}</td>
@@ -898,7 +898,7 @@ export default function MCPPage() {
 
           {/* ═══ 7. BEST PRACTICES ═══ */}
           <section id="practices">
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A1410', marginBottom: 16 }}>
               Best practices
             </h2>
 
@@ -911,11 +911,11 @@ export default function MCPPage() {
                     flex: '1 1 220px',
                     background: '#fff',
                     borderRadius: 14,
-                    border: '1px solid rgba(0,0,0,0.06)',
+                    border: '1px solid rgba(220,200,180,0.25)',
                     padding: 20,
                   }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a', marginBottom: 6 }}>{bp.title}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1A1410', marginBottom: 6 }}>{bp.title}</div>
                   <div style={{ fontSize: 13, color: '#888', lineHeight: 1.5 }}>{bp.text}</div>
                 </div>
               ))}
@@ -926,13 +926,13 @@ export default function MCPPage() {
 
           {/* ═══ 8. BOTTOM CTA ═══ */}
           <section style={{ textAlign: 'center', padding: '56px 32px' }}>
-            <h2 style={{ fontSize: 26, fontWeight: 700, color: '#1a1a1a', marginBottom: 10 }}>Ready to get started?</h2>
+            <h2 style={{ fontSize: 26, fontWeight: 700, color: '#1A1410', marginBottom: 10 }}>Ready to get started?</h2>
             <p style={{ fontSize: 15, color: '#888', marginBottom: 28 }}>Set up your agent in under 2 minutes with the quick start guide.</p>
             <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
               <a
                 href="/connect-agent"
                 style={{
-                  fontSize: 15, fontWeight: 600, color: '#fff', background: '#E8853D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                  fontSize: 15, fontWeight: 600, color: '#fff', background: '#E8703D', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   padding: '14px 32px', borderRadius: 12, textDecoration: 'none',
                 }}
               >
@@ -941,8 +941,8 @@ export default function MCPPage() {
               <a
                 href="/dashboard"
                 style={{
-                  fontSize: 15, fontWeight: 600, color: '#1a1a1a',
-                  background: 'transparent', border: '2px solid #1a1a1a',
+                  fontSize: 15, fontWeight: 600, color: '#1A1410',
+                  background: 'transparent', border: '2px solid #1A1410',
                   padding: '12px 32px', borderRadius: 12, textDecoration: 'none',
                 }}
               >
@@ -952,22 +952,22 @@ export default function MCPPage() {
           </section>
 
           {/* ═══ FOOTER ═══ */}
-          <footer style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: 64 }}>
+          <footer style={{ borderTop: '1px solid rgba(220,200,180,0.25)', marginTop: 64 }}>
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 24px 32px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 48, justifyContent: 'space-between' }}>
                 {/* Brand */}
                 <div style={{ flex: '1 1 200px', minWidth: 180 }}>
-                  <a href="/" style={{ textDecoration: 'none', fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#1a1a1a' }}>
+                  <a href="/" style={{ textDecoration: 'none', fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#1A1410' }}>
                     {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-                    irlwork<span style={{ color: '#E8853D' }}>|</span>
+                    irlwork<span style={{ color: '#E8703D' }}>|</span>
                   </a>
                   <p style={{ fontSize: 13, color: '#aaa', marginTop: 8, lineHeight: 1.5 }}>AI agents create work. Humans get paid.</p>
-                  <a href="mailto:support@irlwork.ai" style={{ fontSize: 12.5, color: '#ccc', textDecoration: 'none' }}>support@irlwork.ai</a>
+                  <a href="mailto:support@irlwork.ai" style={{ fontSize: 12.5, color: 'rgba(220,200,180,0.45)', textDecoration: 'none' }}>support@irlwork.ai</a>
                 </div>
 
                 {/* Platform */}
                 <div>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#bbb', fontFamily: "'DM Mono', monospace", marginBottom: 12 }}>Platform</div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(220,200,180,0.55)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 12 }}>Platform</div>
                   {[
                     ['/auth', 'Sign Up'],
                     ['/browse/tasks', 'Browse Tasks'],
@@ -979,7 +979,7 @@ export default function MCPPage() {
 
                 {/* For Agents */}
                 <div>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#bbb', fontFamily: "'DM Mono', monospace", marginBottom: 12 }}>For Agents</div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(220,200,180,0.55)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 12 }}>For Agents</div>
                   {[
                     ['/connect-agent', 'Connect Agent'],
                     ['/mcp', 'API Reference'],
@@ -991,7 +991,7 @@ export default function MCPPage() {
 
                 {/* Company */}
                 <div>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#bbb', fontFamily: "'DM Mono', monospace", marginBottom: 12 }}>Company</div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(220,200,180,0.55)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 12 }}>Company</div>
                   {[
                     ['/about', 'About Us'],
                     ['/thesis', 'Thesis'],
@@ -1009,17 +1009,17 @@ export default function MCPPage() {
                 alignItems: 'center',
                 flexWrap: 'wrap',
                 gap: 12,
-                borderTop: '1px solid rgba(0,0,0,0.04)',
+                borderTop: '1px solid rgba(200,150,100,0.06)',
                 marginTop: 36,
                 paddingTop: 20,
               }}>
-                <span style={{ fontSize: 12, color: '#ccc' }}>© 2026 irlwork.ai</span>
+                <span style={{ fontSize: 12, color: 'rgba(220,200,180,0.45)' }}>© 2026 irlwork.ai</span>
                 <div style={{ display: 'flex', gap: 20 }}>
                   {[
                     ['/privacy', 'Privacy'],
                     ['/terms', 'Terms'],
                   ].map(([href, label]) => (
-                    <a key={href} href={href} style={{ fontSize: 12, color: '#bbb', textDecoration: 'none' }}>{label}</a>
+                    <a key={href} href={href} style={{ fontSize: 12, color: 'rgba(220,200,180,0.55)', textDecoration: 'none' }}>{label}</a>
                   ))}
                 </div>
               </div>
@@ -1062,7 +1062,7 @@ export default function MCPPage() {
           }
           .mcp-info-cell {
             border-right: none !important;
-            border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+            border-bottom: 1px solid rgba(220,200,180,0.25) !important;
           }
           .mcp-info-cell:last-child {
             border-bottom: none !important;

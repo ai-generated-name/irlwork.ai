@@ -1,34 +1,39 @@
 import React from 'react';
 
-const STATUS_STYLES = {
-  open: 'bg-blue-50 text-blue-700',
-  assigned: 'bg-blue-50 text-blue-700',
-  accepted: 'bg-blue-50 text-blue-700',
-  in_progress: 'bg-amber-50 text-amber-700',
-  pending_review: 'bg-purple-50 text-purple-700',
-  pending_acceptance: 'bg-purple-50 text-purple-700',
-  in_review: 'bg-purple-50 text-purple-700',
-  approved: 'bg-green-50 text-green-700',
-  completed: 'bg-green-50 text-green-700',
-  paid: 'bg-green-50 text-green-700',
-  disputed: 'bg-red-50 text-red-700',
-  cancelled: 'bg-gray-100 text-gray-500',
-  expired: 'bg-gray-100 text-gray-500',
-  applied: 'bg-blue-50 text-blue-700',
-  rejected: 'bg-red-50 text-red-700',
-  refunded: 'bg-amber-50 text-amber-700',
-  overdue: 'bg-red-50 text-red-700',
-  new: 'bg-green-50 text-green-700',
-  pending: 'bg-amber-50 text-amber-700',
-  resolved: 'bg-green-50 text-green-700',
-  dismissed: 'bg-gray-100 text-gray-500',
+/**
+ * v16 StatusPill — pill shape with colored dot + label
+ * Three-color system: orange (open/awaiting), green (assigned/in_progress/completed/paid),
+ * purple (in_review/submitted), red (disputed), neutral (cancelled/expired)
+ */
+
+const STATUS_CONFIG = {
+  open:               { color: '#E8703D', bg: '#FDEEE6',                    border: 'rgba(232,112,61,0.18)' },
+  awaiting_worker:    { color: '#E8703D', bg: '#FDEEE6',                    border: 'rgba(232,112,61,0.18)' },
+  awaiting:           { color: '#E8703D', bg: '#FDEEE6',                    border: 'rgba(232,112,61,0.18)' },
+  pending_acceptance: { color: '#E8703D', bg: '#FDEEE6',                    border: 'rgba(232,112,61,0.18)' },
+  applied:            { color: '#E8703D', bg: '#FDEEE6',                    border: 'rgba(232,112,61,0.18)' },
+  assigned:           { color: '#1A9E6A', bg: 'rgba(26,158,106,0.09)',      border: 'rgba(26,158,106,0.18)' },
+  accepted:           { color: '#1A9E6A', bg: 'rgba(26,158,106,0.09)',      border: 'rgba(26,158,106,0.18)' },
+  in_progress:        { color: '#1A9E6A', bg: 'rgba(26,158,106,0.09)',      border: 'rgba(26,158,106,0.18)' },
+  completed:          { color: '#1A9E6A', bg: 'rgba(26,158,106,0.09)',      border: 'rgba(26,158,106,0.18)' },
+  approved:           { color: '#1A9E6A', bg: 'rgba(26,158,106,0.09)',      border: 'rgba(26,158,106,0.18)' },
+  paid:               { color: '#1A9E6A', bg: 'rgba(26,158,106,0.09)',      border: 'rgba(26,158,106,0.18)' },
+  resolved:           { color: '#1A9E6A', bg: 'rgba(26,158,106,0.09)',      border: 'rgba(26,158,106,0.18)' },
+  new:                { color: '#1A9E6A', bg: 'rgba(26,158,106,0.09)',      border: 'rgba(26,158,106,0.18)' },
+  pending_review:     { color: '#6D4FC2', bg: 'rgba(109,79,194,0.09)',      border: 'rgba(109,79,194,0.18)' },
+  in_review:          { color: '#6D4FC2', bg: 'rgba(109,79,194,0.09)',      border: 'rgba(109,79,194,0.18)' },
+  submitted:          { color: '#6D4FC2', bg: 'rgba(109,79,194,0.09)',      border: 'rgba(109,79,194,0.18)' },
+  pending:            { color: '#6D4FC2', bg: 'rgba(109,79,194,0.09)',      border: 'rgba(109,79,194,0.18)' },
+  disputed:           { color: '#c4420a', bg: 'rgba(196,66,10,0.08)',       border: 'rgba(196,66,10,0.18)' },
+  rejected:           { color: '#c4420a', bg: 'rgba(196,66,10,0.08)',       border: 'rgba(196,66,10,0.18)' },
+  overdue:            { color: '#c4420a', bg: 'rgba(196,66,10,0.08)',       border: 'rgba(196,66,10,0.18)' },
+  refunded:           { color: '#D4A017', bg: 'rgba(212,160,23,0.08)',      border: 'rgba(212,160,23,0.18)' },
+  cancelled:          { color: 'rgba(26,20,16,0.50)', bg: 'rgba(26,20,16,0.05)', border: 'rgba(220,200,180,0.35)' },
+  expired:            { color: 'rgba(26,20,16,0.50)', bg: 'rgba(26,20,16,0.05)', border: 'rgba(220,200,180,0.35)' },
+  dismissed:          { color: 'rgba(26,20,16,0.50)', bg: 'rgba(26,20,16,0.05)', border: 'rgba(220,200,180,0.35)' },
 };
 
-const SIZE_STYLES = {
-  sm: 'text-[10px] px-2 py-0.5',
-  md: 'text-xs px-2.5 py-1',
-  lg: 'text-sm px-3 py-1.5',
-};
+const DEFAULT_CONFIG = { color: 'rgba(26,20,16,0.50)', bg: 'rgba(26,20,16,0.05)', border: 'rgba(220,200,180,0.35)' };
 
 function formatStatus(status) {
   return status
@@ -37,26 +42,55 @@ function formatStatus(status) {
 }
 
 export default function StatusPill({ status, size = 'md', color, children }) {
-  const sizeClass = SIZE_STYLES[size] || SIZE_STYLES.md;
-
   // Custom color override
   if (color && typeof color === 'object') {
     return (
       <span
-        className={`inline-flex rounded-xl font-medium ${sizeClass}`}
-        style={{ backgroundColor: color.bg, color: color.text }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '3px 9px',
+          borderRadius: 30,
+          fontSize: 10,
+          fontWeight: 600,
+          fontFamily: "'Sora', sans-serif",
+          backgroundColor: color.bg,
+          color: color.text,
+          border: `1px solid ${color.border || 'transparent'}`,
+        }}
       >
+        <span style={{
+          width: 5, height: 5, borderRadius: '50%',
+          background: color.text, flexShrink: 0,
+        }} />
         {children || formatStatus(status)}
       </span>
     );
   }
 
-  const styles = STATUS_STYLES[status] || 'bg-gray-100 text-gray-500';
+  const config = STATUS_CONFIG[status] || DEFAULT_CONFIG;
 
   return (
     <span
-      className={`inline-flex rounded-xl font-medium ${styles} ${sizeClass}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '3px 9px',
+        borderRadius: 30,
+        fontSize: 10,
+        fontWeight: 600,
+        fontFamily: "'Sora', sans-serif",
+        backgroundColor: config.bg,
+        color: config.color,
+        border: `1px solid ${config.border}`,
+      }}
     >
+      <span style={{
+        width: 5, height: 5, borderRadius: '50%',
+        background: config.color, flexShrink: 0,
+      }} />
       {children || formatStatus(status)}
     </span>
   );

@@ -39,7 +39,7 @@ const PLATFORMS = {
   github: {
     label: 'GitHub',
     url: (h) => `https://github.com/${h}`,
-    color: '#333333',
+    color: 'rgba(26,20,16,0.65)',
     placeholder: 'username',
     icon: (size) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -148,7 +148,7 @@ export function SocialIconsRow({ socialLinks, size = 18, gap = 8, alwaysShow = f
             <span
               key={platform}
               style={{
-                color: 'var(--text-tertiary, #9CA3AF)',
+                color: 'var(--text-tertiary, rgba(26,20,16,0.28))',
                 opacity: 0.25,
                 display: 'flex',
                 alignItems: 'center',
@@ -181,7 +181,7 @@ export function SocialIconsRow({ socialLinks, size = 18, gap = 8, alwaysShow = f
             onMouseEnter={() => setHoveredPlatform(platform)}
             onMouseLeave={() => setHoveredPlatform(null)}
             style={{
-              color: isHovered ? config.color : 'var(--text-tertiary, #9CA3AF)',
+              color: isHovered ? config.color : 'var(--text-tertiary, rgba(26,20,16,0.28))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

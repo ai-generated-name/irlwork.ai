@@ -69,20 +69,20 @@ function OverviewPanel({ user, detail, onModerate, actionLoading }) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Left: Profile info */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide">Profile</h4>
+        <h4 className="text-xs font-semibold text-[rgba(26,20,16,0.50)] uppercase tracking-wide">Profile</h4>
         <div className="space-y-1.5 text-sm">
-          {user.headline && <p className="text-[#1A1A1A] italic">&ldquo;{user.headline}&rdquo;</p>}
-          {user.bio && <p className="text-[#6B7280] text-xs line-clamp-3">{user.bio}</p>}
+          {user.headline && <p className="text-[#1A1410] italic">&ldquo;{user.headline}&rdquo;</p>}
+          {user.bio && <p className="text-[rgba(26,20,16,0.50)] text-xs line-clamp-3">{user.bio}</p>}
           {(user.city || user.state) && (
-            <p className="text-[#9CA3AF] flex items-center gap-1">
+            <p className="text-[rgba(26,20,16,0.28)] flex items-center gap-1">
               <MapPin size={12} /> {[user.city, user.state].filter(Boolean).join(', ')}
             </p>
           )}
-          <p className="text-[#9CA3AF] flex items-center gap-1">
+          <p className="text-[rgba(26,20,16,0.28)] flex items-center gap-1">
             <Calendar size={12} /> Joined {new Date(user.created_at).toLocaleDateString()}
           </p>
           {user.last_active_at && (
-            <p className="text-[#9CA3AF] text-xs">Last active: {timeAgo(user.last_active_at)}</p>
+            <p className="text-[rgba(26,20,16,0.28)] text-xs">Last active: {timeAgo(user.last_active_at)}</p>
           )}
         </div>
 
@@ -91,7 +91,7 @@ function OverviewPanel({ user, detail, onModerate, actionLoading }) {
           {user.subscription_tier && user.subscription_tier !== 'free' ? (
             <TierBadge tier={user.subscription_tier} size="xs" />
           ) : (
-            <span className="px-2 py-1 rounded-lg bg-[#F3F4F6] text-[#9CA3AF] text-[10px] font-semibold">Free</span>
+            <span className="px-2 py-1 rounded-lg bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.28)] text-[10px] font-semibold">Free</span>
           )}
           {(Number(user.total_usdc_paid) > 0 || user.wallet_address) && (
             <span className="px-2 py-1 rounded-lg bg-green-50 text-green-700">
@@ -106,17 +106,17 @@ function OverviewPanel({ user, detail, onModerate, actionLoading }) {
           href={`/humans/${user.id}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#FAFAF8] text-[#1A1A1A] hover:bg-[#ECECEC] border border-[#ECECEC] transition-colors"
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#FAFAF8] text-[#1A1410] hover:bg-[rgba(220,200,180,0.35)] border border-[rgba(220,200,180,0.35)] transition-colors"
         >
           View Profile <ExternalLink size={10} />
         </a>
 
         {/* Moderation stats */}
-        <h4 className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide pt-2">Moderation</h4>
-        <div className="flex flex-wrap gap-3 text-xs text-[#6B7280]">
-          <span>Warnings: <strong className="text-[#1A1A1A]">{user.warning_count || 0}</strong></span>
-          <span>Reports upheld: <strong className="text-[#1A1A1A]">{user.total_reports_upheld || 0}</strong></span>
-          <span>Status: <strong className={modStatus === 'good_standing' ? 'text-[#16A34A]' : 'text-orange-600'}>{MODERATION_LABELS[modStatus] || modStatus}</strong></span>
+        <h4 className="text-xs font-semibold text-[rgba(26,20,16,0.50)] uppercase tracking-wide pt-2">Moderation</h4>
+        <div className="flex flex-wrap gap-3 text-xs text-[rgba(26,20,16,0.50)]">
+          <span>Warnings: <strong className="text-[#1A1410]">{user.warning_count || 0}</strong></span>
+          <span>Reports upheld: <strong className="text-[#1A1410]">{user.total_reports_upheld || 0}</strong></span>
+          <span>Status: <strong className={modStatus === 'good_standing' ? 'text-[#1A9E6A]' : 'text-orange-600'}>{MODERATION_LABELS[modStatus] || modStatus}</strong></span>
           {user.suspended_until && (
             <span>Suspended until: <strong className="text-orange-600">{new Date(user.suspended_until).toLocaleDateString()}</strong></span>
           )}
@@ -124,7 +124,7 @@ function OverviewPanel({ user, detail, onModerate, actionLoading }) {
 
         {/* Action buttons */}
         <div className="pt-2">
-          <h4 className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide mb-2">Actions</h4>
+          <h4 className="text-xs font-semibold text-[rgba(26,20,16,0.50)] uppercase tracking-wide mb-2">Actions</h4>
           <div className="flex flex-wrap gap-2">
             {canWarn && (
               <button onClick={e => { e.stopPropagation(); onModerate(user, 'warn') }} disabled={!!actionLoading}
@@ -148,7 +148,7 @@ function OverviewPanel({ user, detail, onModerate, actionLoading }) {
 
       {/* Right: Recent tasks (scrollable) */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide">
+        <h4 className="text-xs font-semibold text-[rgba(26,20,16,0.50)] uppercase tracking-wide">
           Recent Tasks ({user.type === 'agent' ? 'Posted' : 'Assigned'})
         </h4>
         <div className="max-h-60 overflow-y-auto">
@@ -157,36 +157,36 @@ function OverviewPanel({ user, detail, onModerate, actionLoading }) {
               {detail.recent_tasks.map(task => (
                 <a key={task.id} href={`/tasks/${task.id}`} target="_blank" rel="noopener noreferrer"
                   className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white text-sm group">
-                  <span className="truncate text-[#1A1A1A] group-hover:text-orange-600 flex-1 mr-2">{task.title}</span>
+                  <span className="truncate text-[#1A1410] group-hover:text-orange-600 flex-1 mr-2">{task.title}</span>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                       task.status === 'completed' || task.status === 'paid' ? 'bg-green-100 text-green-700'
                       : task.status === 'cancelled' ? 'bg-red-100 text-red-700'
                       : task.status === 'open' ? 'bg-blue-100 text-blue-700'
-                      : 'bg-[#F3F4F6] text-[#6B7280]'
+                      : 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)]'
                     }`}>{task.status}</span>
-                    <ExternalLink size={10} className="text-[#9CA3AF] group-hover:text-orange-400" />
+                    <ExternalLink size={10} className="text-[rgba(26,20,16,0.28)] group-hover:text-orange-400" />
                   </div>
                 </a>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[#9CA3AF] py-2">No tasks found</p>
+            <p className="text-xs text-[rgba(26,20,16,0.28)] py-2">No tasks found</p>
           )}
         </div>
 
         {detail?.recent_ratings?.length > 0 && (
           <>
-            <h4 className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide pt-2">Recent Ratings</h4>
+            <h4 className="text-xs font-semibold text-[rgba(26,20,16,0.50)] uppercase tracking-wide pt-2">Recent Ratings</h4>
             <div className="space-y-1">
               {detail.recent_ratings.slice(0, 5).map(r => (
-                <div key={r.id} className="flex items-center gap-2 text-xs text-[#6B7280] px-2 py-1">
+                <div key={r.id} className="flex items-center gap-2 text-xs text-[rgba(26,20,16,0.50)] px-2 py-1">
                   <span className="flex items-center gap-0.5">
                     <Star size={10} className="text-yellow-400 fill-yellow-400" />
                     {r.rating_score}
                   </span>
-                  {r.comment && <span className="truncate text-[#9CA3AF]">&ldquo;{r.comment}&rdquo;</span>}
-                  <span className="text-[#9CA3AF] flex-shrink-0">{timeAgo(r.created_at)}</span>
+                  {r.comment && <span className="truncate text-[rgba(26,20,16,0.28)]">&ldquo;{r.comment}&rdquo;</span>}
+                  <span className="text-[rgba(26,20,16,0.28)] flex-shrink-0">{timeAgo(r.created_at)}</span>
                 </div>
               ))}
             </div>
@@ -216,22 +216,22 @@ function PaymentsPanel({ user, detail }) {
           </div>
         )}
         <div className="bg-[#FAFAF8] rounded-lg p-3">
-          <p className="text-xs text-[#6B7280] mb-1">Stripe</p>
-          <p className="text-sm font-semibold text-[#1A1A1A]">
+          <p className="text-xs text-[rgba(26,20,16,0.50)] mb-1">Stripe</p>
+          <p className="text-sm font-semibold text-[#1A1410]">
             {user.stripe_account_id || user.stripe_customer_id ? (
               <span className="text-green-600">Connected</span>
             ) : (
-              <span className="text-[#9CA3AF]">Not connected</span>
+              <span className="text-[rgba(26,20,16,0.28)]">Not connected</span>
             )}
           </p>
         </div>
         <div className="bg-[#FAFAF8] rounded-lg p-3">
-          <p className="text-xs text-[#6B7280] mb-1">Plan</p>
+          <p className="text-xs text-[rgba(26,20,16,0.50)] mb-1">Plan</p>
           <div className="mt-0.5">
             {user.subscription_tier && user.subscription_tier !== 'free' ? (
               <TierBadge tier={user.subscription_tier} size="sm" />
             ) : (
-              <span className="text-sm font-semibold text-[#9CA3AF]">Free</span>
+              <span className="text-sm font-semibold text-[rgba(26,20,16,0.28)]">Free</span>
             )}
           </div>
         </div>
@@ -240,7 +240,7 @@ function PaymentsPanel({ user, detail }) {
             <p className="text-xs text-green-600 mb-1">USDC Paid</p>
             <p className="text-sm font-bold text-green-700">${Number(user.total_usdc_paid || 0).toFixed(2)}</p>
             {user.wallet_address && (
-              <p className="text-[10px] text-[#9CA3AF] mt-1 truncate font-mono" title={user.wallet_address}>
+              <p className="text-[10px] text-[rgba(26,20,16,0.28)] mt-1 truncate font-mono" title={user.wallet_address}>
                 {user.wallet_address.slice(0, 6)}...{user.wallet_address.slice(-4)}
               </p>
             )}
@@ -267,11 +267,11 @@ function StatsPanel({ user, detail }) {
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {stats.map(s => (
         <div key={s.label} className="bg-[#FAFAF8] rounded-lg p-3">
-          <div className="flex items-center gap-1.5 text-[#9CA3AF] mb-1">
+          <div className="flex items-center gap-1.5 text-[rgba(26,20,16,0.28)] mb-1">
             {s.icon}
             <span className="text-xs">{s.label}</span>
           </div>
-          <p className="text-lg font-bold text-[#1A1A1A]">{s.value}</p>
+          <p className="text-lg font-bold text-[#1A1410]">{s.value}</p>
         </div>
       ))}
     </div>
@@ -303,11 +303,11 @@ function AuditLogPanel({ userId }) {
     return () => { cancelled = true }
   }, [userId, authenticatedFetch])
 
-  if (loading) return <div className="py-6 text-center text-sm text-[#9CA3AF]">Loading moderation log...</div>
+  if (loading) return <div className="py-6 text-center text-sm text-[rgba(26,20,16,0.28)]">Loading moderation log...</div>
   if (error) return <div className="py-6 text-center text-sm text-red-500">{error}</div>
 
   if (entries.length === 0) {
-    return <div className="py-6 text-center text-sm text-[#9CA3AF]">No moderation history found</div>
+    return <div className="py-6 text-center text-sm text-[rgba(26,20,16,0.28)]">No moderation history found</div>
   }
 
   const ACTION_LABELS = {
@@ -322,19 +322,19 @@ function AuditLogPanel({ userId }) {
     <div className="max-h-60 overflow-y-auto space-y-2">
       {entries.map(entry => (
         <div key={entry.id} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[#FAFAF8] text-xs">
-          <Clock size={12} className="text-[#9CA3AF] mt-0.5 flex-shrink-0" />
+          <Clock size={12} className="text-[rgba(26,20,16,0.28)] mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-[#1A1A1A]">
+              <span className="font-semibold text-[#1A1410]">
                 {ACTION_LABELS[entry.action] || entry.action}
               </span>
-              <span className="text-[#9CA3AF]">{new Date(entry.created_at).toLocaleString()}</span>
+              <span className="text-[rgba(26,20,16,0.28)]">{new Date(entry.created_at).toLocaleString()}</span>
             </div>
             {entry.admin_name && (
-              <p className="text-[#9CA3AF]">by {entry.admin_name}</p>
+              <p className="text-[rgba(26,20,16,0.28)]">by {entry.admin_name}</p>
             )}
             {entry.request_body?.notes && (
-              <p className="text-[#6B7280] mt-0.5">&ldquo;{entry.request_body.notes}&rdquo;</p>
+              <p className="text-[rgba(26,20,16,0.50)] mt-0.5">&ldquo;{entry.request_body.notes}&rdquo;</p>
             )}
           </div>
         </div>
@@ -388,7 +388,7 @@ function UserRow({ user, onModerate, loading: actionLoading }) {
           {user.avatar_url ? (
             <img src={user.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-[#ECECEC] flex items-center justify-center text-xs font-bold text-[#6B7280]">
+            <div className="w-9 h-9 rounded-full bg-[rgba(220,200,180,0.35)] flex items-center justify-center text-xs font-bold text-[rgba(26,20,16,0.50)]">
               {getInitials(user.name)}
             </div>
           )}
@@ -397,24 +397,24 @@ function UserRow({ user, onModerate, loading: actionLoading }) {
         {/* Name + email */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-[#1A1A1A] truncate">{user.name || 'Unnamed'}</span>
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${TYPE_COLORS[user.type] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>
+            <span className="text-sm font-semibold text-[#1A1410] truncate">{user.name || 'Unnamed'}</span>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${TYPE_COLORS[user.type] || 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)]'}`}>
               {user.type || 'unknown'}
             </span>
             {user.subscription_tier && user.subscription_tier !== 'free' && (
               <TierBadge tier={user.subscription_tier} size="xs" />
             )}
             {modStatus !== 'good_standing' && (
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${MODERATION_COLORS[modStatus] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${MODERATION_COLORS[modStatus] || 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)]'}`}>
                 {MODERATION_LABELS[modStatus] || modStatus}
               </span>
             )}
           </div>
-          <p className="text-xs text-[#9CA3AF] truncate">{user.email}</p>
+          <p className="text-xs text-[rgba(26,20,16,0.28)] truncate">{user.email}</p>
         </div>
 
         {/* Stats */}
-        <div className="hidden sm:flex items-center gap-4 text-xs text-[#9CA3AF] flex-shrink-0">
+        <div className="hidden sm:flex items-center gap-4 text-xs text-[rgba(26,20,16,0.28)] flex-shrink-0">
           {user.rating != null && user.rating > 0 && (
             <span className="flex items-center gap-1">
               <Star size={12} className="text-yellow-400 fill-yellow-400" />
@@ -429,20 +429,20 @@ function UserRow({ user, onModerate, loading: actionLoading }) {
         </div>
 
         {/* Chevron */}
-        <div className="flex-shrink-0 text-[#9CA3AF]">
+        <div className="flex-shrink-0 text-[rgba(26,20,16,0.28)]">
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
       </div>
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="px-4 pb-4 border-t border-[#ECECEC]">
+        <div className="px-4 pb-4 border-t border-[rgba(220,200,180,0.35)]">
           {detailLoading ? (
-            <div className="py-6 text-center text-sm text-[#9CA3AF]">Loading user details...</div>
+            <div className="py-6 text-center text-sm text-[rgba(26,20,16,0.28)]">Loading user details...</div>
           ) : (
             <>
               {/* Detail sub-tabs */}
-              <div className="flex gap-1 pt-3 pb-3 border-b border-[#ECECEC] mb-4">
+              <div className="flex gap-1 pt-3 pb-3 border-b border-[rgba(220,200,180,0.35)] mb-4">
                 {DETAIL_TABS.map(tab => (
                   <button
                     key={tab.id}
@@ -450,7 +450,7 @@ function UserRow({ user, onModerate, loading: actionLoading }) {
                     className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                       detailTab === tab.id
                         ? 'bg-orange-500 text-white'
-                        : 'bg-[#F3F4F6] text-[#6B7280] hover:bg-[#ECECEC]'
+                        : 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)] hover:bg-[rgba(220,200,180,0.35)]'
                     }`}
                   >
                     {tab.label}
@@ -504,8 +504,8 @@ function UserModerateModal({ targetUser, action: initialAction, onClose, onConfi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-[#1A1A1A] mb-1">Moderate User</h3>
-        <p className="text-sm text-[#6B7280] mb-4">
+        <h3 className="text-lg font-bold text-[#1A1410] mb-1">Moderate User</h3>
+        <p className="text-sm text-[rgba(26,20,16,0.50)] mb-4">
           Taking action on <strong>{targetUser.name || targetUser.email}</strong> ({targetUser.type})
         </p>
 
@@ -514,13 +514,13 @@ function UserModerateModal({ targetUser, action: initialAction, onClose, onConfi
           {targetUser.avatar_url ? (
             <img src={targetUser.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-[#ECECEC] flex items-center justify-center text-xs font-bold text-[#6B7280]">
+            <div className="w-8 h-8 rounded-full bg-[rgba(220,200,180,0.35)] flex items-center justify-center text-xs font-bold text-[rgba(26,20,16,0.50)]">
               {getInitials(targetUser.name)}
             </div>
           )}
           <div>
-            <p className="text-sm font-semibold text-[#1A1A1A]">{targetUser.name || 'Unnamed'}</p>
-            <p className="text-xs text-[#9CA3AF]">{targetUser.email} · {MODERATION_LABELS[modStatus]} · {targetUser.warning_count || 0} warnings</p>
+            <p className="text-sm font-semibold text-[#1A1410]">{targetUser.name || 'Unnamed'}</p>
+            <p className="text-xs text-[rgba(26,20,16,0.28)]">{targetUser.email} · {MODERATION_LABELS[modStatus]} · {targetUser.warning_count || 0} warnings</p>
           </div>
         </div>
 
@@ -529,13 +529,13 @@ function UserModerateModal({ targetUser, action: initialAction, onClose, onConfi
           {available.map(a => (
             <label key={a.value}
               className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                action === a.value ? `${a.color} ring-2 ${a.ring}` : 'border-[#ECECEC] hover:border-[#ECECEC]'
+                action === a.value ? `${a.color} ring-2 ${a.ring}` : 'border-[rgba(220,200,180,0.35)] hover:border-[rgba(220,200,180,0.35)]'
               }`}>
               <input type="radio" name="mod-action" value={a.value} checked={action === a.value}
                 onChange={() => setAction(a.value)} className="mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-[#1A1A1A]">{a.label}</p>
-                <p className="text-xs text-[#6B7280]">{a.desc}</p>
+                <p className="text-sm font-medium text-[#1A1410]">{a.label}</p>
+                <p className="text-xs text-[rgba(26,20,16,0.50)]">{a.desc}</p>
               </div>
             </label>
           ))}
@@ -543,27 +543,27 @@ function UserModerateModal({ targetUser, action: initialAction, onClose, onConfi
 
         {action === 'suspend' && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-[#1A1A1A] mb-1">Suspension Duration (days)</label>
+            <label className="block text-sm font-medium text-[#1A1410] mb-1">Suspension Duration (days)</label>
             <input type="number" min={1} max={365} value={suspendDays}
               onChange={e => setSuspendDays(parseInt(e.target.value) || 7)}
-              className="w-32 border border-[#ECECEC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300" />
+              className="w-32 border border-[rgba(220,200,180,0.35)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300" />
           </div>
         )}
 
-        <label className="block text-sm font-medium text-[#1A1A1A] mb-1">Notes (optional)</label>
+        <label className="block text-sm font-medium text-[#1A1410] mb-1">Notes (optional)</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Reason for this action..."
-          rows={3} className="w-full border border-[#ECECEC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 resize-none" />
+          rows={3} className="w-full border border-[rgba(220,200,180,0.35)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 resize-none" />
 
         <div className="flex items-center justify-end gap-3 mt-5">
           <button onClick={onClose} disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-[#6B7280] hover:text-[#1A1A1A] disabled:opacity-50">Cancel</button>
+            className="px-4 py-2 text-sm font-medium text-[rgba(26,20,16,0.50)] hover:text-[#1A1410] disabled:opacity-50">Cancel</button>
           <button onClick={() => onConfirm({ action, notes, suspension_days: action === 'suspend' ? suspendDays : undefined })}
             disabled={loading || !action}
             className={`px-5 py-2 text-sm font-semibold text-white rounded-xl transition-colors disabled:opacity-50 ${
               action === 'ban' ? 'bg-red-500 hover:bg-[#DC2626]'
               : action === 'warn' ? 'bg-yellow-500 hover:bg-[#EAB308]'
               : action === 'suspend' ? 'bg-orange-500 hover:bg-orange-600'
-              : action === 'restore' ? 'bg-[#16A34A] hover:bg-green-700'
+              : action === 'restore' ? 'bg-[#1A9E6A] hover:bg-green-700'
               : 'bg-orange-500 hover:bg-orange-600'
             }`}>
             {loading ? 'Processing...' : 'Confirm'}
@@ -664,22 +664,22 @@ export default function UserManagerTab({ user }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-[#1A1A1A]">User Manager</h2>
-          <p className="text-sm text-[#9CA3AF] mt-0.5">Browse, search, and moderate all users and agents.</p>
+          <h2 className="text-lg font-bold text-[#1A1410]">User Manager</h2>
+          <p className="text-sm text-[rgba(26,20,16,0.28)] mt-0.5">Browse, search, and moderate all users and agents.</p>
         </div>
-        <p className="text-sm text-[#9CA3AF]">{total} user{total !== 1 ? 's' : ''} found</p>
+        <p className="text-sm text-[rgba(26,20,16,0.28)]">{total} user{total !== 1 ? 's' : ''} found</p>
       </div>
 
       {/* Search + Filters */}
-      <div className="bg-white rounded-xl border border-[#ECECEC] p-4 space-y-3">
+      <div className="bg-white rounded-xl border border-[rgba(220,200,180,0.35)] p-4 space-y-3">
         <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(26,20,16,0.28)]" />
           <input ref={searchRef} type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name or email..."
-            className="w-full pl-10 pr-10 py-2.5 border border-[#ECECEC] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300" />
+            className="w-full pl-10 pr-10 py-2.5 border border-[rgba(220,200,180,0.35)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300" />
           {search && (
             <button onClick={() => { setSearch(''); searchRef.current?.focus() }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280]">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgba(26,20,16,0.28)] hover:text-[rgba(26,20,16,0.50)]">
               <X size={16} />
             </button>
           )}
@@ -687,7 +687,7 @@ export default function UserManagerTab({ user }) {
 
         <div className="flex flex-wrap gap-3 items-center">
           {/* Type pills */}
-          <div className="flex rounded-lg border border-[#ECECEC] overflow-hidden">
+          <div className="flex rounded-lg border border-[rgba(220,200,180,0.35)] overflow-hidden">
             {[
               { value: 'all', label: 'All' },
               { value: 'human', label: 'Humans', icon: <UserIcon size={12} /> },
@@ -695,7 +695,7 @@ export default function UserManagerTab({ user }) {
             ].map(opt => (
               <button key={opt.value} onClick={() => setTypeFilter(opt.value)}
                 className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1 transition-colors ${
-                  typeFilter === opt.value ? 'bg-orange-500 text-white' : 'bg-white text-[#6B7280] hover:bg-[#FAFAF8]'
+                  typeFilter === opt.value ? 'bg-orange-500 text-white' : 'bg-white text-[rgba(26,20,16,0.50)] hover:bg-[#FAFAF8]'
                 }`}>
                 {opt.icon}{opt.label}
               </button>
@@ -705,25 +705,25 @@ export default function UserManagerTab({ user }) {
           {/* Moderation filter */}
           <div className="relative">
             <select value={moderationFilter} onChange={e => setModerationFilter(e.target.value)}
-              className="appearance-none bg-[#FAFAF8] border border-[#ECECEC] rounded-lg px-3 py-1.5 pr-8 text-sm font-medium text-[#1A1A1A] cursor-pointer hover:border-[#ECECEC] focus:outline-none focus:ring-2 focus:ring-orange-200">
+              className="appearance-none bg-[#FAFAF8] border border-[rgba(220,200,180,0.35)] rounded-lg px-3 py-1.5 pr-8 text-sm font-medium text-[#1A1410] cursor-pointer hover:border-[rgba(220,200,180,0.35)] focus:outline-none focus:ring-2 focus:ring-orange-200">
               <option value="all">All Status</option>
               <option value="good_standing">Good Standing</option>
               <option value="warned">Warned</option>
               <option value="suspended">Suspended</option>
               <option value="banned">Banned</option>
             </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] pointer-events-none" />
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[rgba(26,20,16,0.28)] pointer-events-none" />
           </div>
 
           {/* Sort */}
           <div className="relative ml-auto">
             <select value={sort} onChange={e => setSort(e.target.value)}
-              className="appearance-none bg-[#FAFAF8] border border-[#ECECEC] rounded-lg px-3 py-1.5 pr-8 text-sm font-medium text-[#1A1A1A] cursor-pointer hover:border-[#ECECEC] focus:outline-none focus:ring-2 focus:ring-orange-200">
+              className="appearance-none bg-[#FAFAF8] border border-[rgba(220,200,180,0.35)] rounded-lg px-3 py-1.5 pr-8 text-sm font-medium text-[#1A1410] cursor-pointer hover:border-[rgba(220,200,180,0.35)] focus:outline-none focus:ring-2 focus:ring-orange-200">
               {SORT_OPTIONS.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] pointer-events-none" />
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[rgba(26,20,16,0.28)] pointer-events-none" />
           </div>
         </div>
       </div>
@@ -740,11 +740,11 @@ export default function UserManagerTab({ user }) {
       )}
 
       {/* User list */}
-      <div className="bg-white rounded-xl border border-[#ECECEC] divide-y divide-[#ECECEC]">
+      <div className="bg-white rounded-xl border border-[rgba(220,200,180,0.35)] divide-y divide-[rgba(220,200,180,0.35)]">
         {loading ? (
-          <div className="py-16 text-center text-[#9CA3AF] text-sm">Loading users...</div>
+          <div className="py-16 text-center text-[rgba(26,20,16,0.28)] text-sm">Loading users...</div>
         ) : users.length === 0 ? (
-          <div className="py-16 text-center text-[#9CA3AF] text-sm">No users match your filters</div>
+          <div className="py-16 text-center text-[rgba(26,20,16,0.28)] text-sm">No users match your filters</div>
         ) : (
           users.map(u => (
             <UserRow key={u.id} user={u} onModerate={(targetUser, action) => openModal(targetUser, action)}
@@ -756,17 +756,17 @@ export default function UserManagerTab({ user }) {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[#9CA3AF]">
+          <p className="text-sm text-[rgba(26,20,16,0.28)]">
             Showing {(page - 1) * PAGE_SIZE + 1}&ndash;{Math.min(page * PAGE_SIZE, total)} of {total}
           </p>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#F3F4F6] text-[#6B7280] hover:bg-[#ECECEC] disabled:opacity-50">
+              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)] hover:bg-[rgba(220,200,180,0.35)] disabled:opacity-50">
               Previous
             </button>
-            <span className="text-sm text-[#6B7280]">Page {page} of {totalPages}</span>
+            <span className="text-sm text-[rgba(26,20,16,0.50)]">Page {page} of {totalPages}</span>
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#F3F4F6] text-[#6B7280] hover:bg-[#ECECEC] disabled:opacity-50">
+              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)] hover:bg-[rgba(220,200,180,0.35)] disabled:opacity-50">
               Next
             </button>
           </div>

@@ -52,7 +52,7 @@ export default function WithdrawModal({ isOpen, onClose, onConfirm, taskTitle, h
         )}
 
         <div style={{ padding: '0 4px' }}>
-          <p style={{ fontSize: '14px', color: '#333333', lineHeight: '1.5', margin: '0 0 12px 0' }}>
+          <p style={{ fontSize: '14px', color: 'rgba(26,20,16,0.65)', lineHeight: '1.5', margin: '0 0 12px 0' }}>
             Are you sure you want to withdraw from this task? This will:
           </p>
           <ul style={{ fontSize: '14px', color: '#555555', lineHeight: '1.6', margin: '0 0 16px 0', paddingLeft: '20px' }}>
@@ -60,7 +60,7 @@ export default function WithdrawModal({ isOpen, onClose, onConfirm, taskTitle, h
             <li>Reopen the task for other applicants</li>
             {hasEscrow && <li>Refund the escrow payment to the agent</li>}
           </ul>
-          <p style={{ fontSize: '13px', color: '#888888', margin: '0 0 16px 0' }}>
+          <p style={{ fontSize: '13px', color: 'rgba(26,20,16,0.40)', margin: '0 0 16px 0' }}>
             This action cannot be undone. The agent will be notified.
           </p>
         </div>

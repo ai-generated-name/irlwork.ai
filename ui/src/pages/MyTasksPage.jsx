@@ -28,9 +28,9 @@ function TaskSection({ title, count, tasks, defaultOpen = true, cardProps }) {
       </button>
 
       {open && (
-        <div className="bg-white rounded-xl border border-[#ECECEC] divide-y divide-[#ECECEC]">
+        <div className="bg-white rounded-xl border border-[rgba(220,200,180,0.35)] divide-y divide-[rgba(220,200,180,0.35)]">
           {tasks.length === 0 ? (
-            <div className="text-sm text-[#9CA3AF] text-center py-6">
+            <div className="text-sm text-[rgba(26,20,16,0.28)] text-center py-6">
               Tasks will appear here when they match this status.
             </div>
           ) : (
@@ -177,7 +177,7 @@ export default function MyTasksPage({
           ) : (
             <div className="mytasks-sections">
               {filteredTasks && filteredTasks.length > 0 ? (
-                <div className="bg-white rounded-xl border border-[#ECECEC] divide-y divide-[#ECECEC]">
+                <div className="bg-white rounded-xl border border-[rgba(220,200,180,0.35)] divide-y divide-[rgba(220,200,180,0.35)]">
                   {filteredTasks.map(task => (
                     <TaskRow
                       key={task.id}
@@ -188,7 +188,7 @@ export default function MyTasksPage({
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-[#9CA3AF] text-center py-6">
+                <div className="text-sm text-[rgba(26,20,16,0.28)] text-center py-6">
                   Tasks will appear here when they match this filter.
                 </div>
               )}

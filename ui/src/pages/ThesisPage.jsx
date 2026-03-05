@@ -182,13 +182,13 @@ function BridgeGraphic() {
       <circle cx="75" cy="80" r="38" fill="rgba(244,132,95,0.1)" stroke="rgba(244,132,95,0.5)" strokeWidth="2">
         <animate attributeName="r" values="38;42;38" dur="3s" repeatCount="indefinite" />
       </circle>
-      <text x="75" y="74" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="16" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="700">AI</text>
+      <text x="75" y="74" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="16" fontFamily="Courier Prime, JetBrains Mono, monospace" fontWeight="700">AI</text>
       <text x="75" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="DM Sans, sans-serif">DIGITAL</text>
       {/* Right node — Human */}
       <circle cx="425" cy="80" r="38" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.5)" strokeWidth="2">
         <animate attributeName="r" values="38;42;38" dur="3s" begin="1.5s" repeatCount="indefinite" />
       </circle>
-      <text x="425" y="74" textAnchor="middle" fill="rgba(251,191,36,0.9)" fontSize="16" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="700">IRL</text>
+      <text x="425" y="74" textAnchor="middle" fill="rgba(251,191,36,0.9)" fontSize="16" fontFamily="Courier Prime, JetBrains Mono, monospace" fontWeight="700">IRL</text>
       <text x="425" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="DM Sans, sans-serif">PHYSICAL</text>
       {/* Bridge */}
       <line x1="120" y1="80" x2="380" y2="80" stroke="url(#bridgeGrad)" strokeWidth="1.5" strokeDasharray="8 5">
@@ -202,7 +202,7 @@ function BridgeGraphic() {
       </circle>
       {/* Center label */}
       <rect x="205" y="62" width="90" height="28" rx="14" fill="rgba(244,132,95,0.15)" stroke="rgba(244,132,95,0.3)" strokeWidth="0.75" />
-      <text x="250" y="81" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="11" fontFamily="Courier Prime, DM Mono, monospace">irlwork.ai</text>
+      <text x="250" y="81" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="11" fontFamily="Courier Prime, JetBrains Mono, monospace">irlwork.ai</text>
       <defs>
         <linearGradient id="bridgeGrad" x1="120" y1="0" x2="380" y2="0" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="rgba(244,132,95,0.6)" />
@@ -224,13 +224,13 @@ function ConvergenceGraphic() {
       <path d="M60 130 L220 130" stroke="rgba(251,191,36,0.45)" strokeWidth="2" fill="none">
         <animate attributeName="stroke-dashoffset" values="250;0" dur="3s" begin="0.3s" repeatCount="indefinite" />
       </path>
-      <path d="M60 220 Q220 220 220 130" stroke="rgba(16,185,129,0.45)" strokeWidth="2" fill="none">
+      <path d="M60 220 Q220 220 220 130" stroke="rgba(26,158,106,0.45)" strokeWidth="2" fill="none">
         <animate attributeName="stroke-dashoffset" values="250;0" dur="3s" begin="0.6s" repeatCount="indefinite" />
       </path>
       {/* Labels */}
-      <text x="20" y="45" fill="rgba(244,132,95,0.85)" fontSize="13" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="600">AGENTS</text>
-      <text x="20" y="135" fill="rgba(251,191,36,0.85)" fontSize="13" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="600">PAYMENTS</text>
-      <text x="20" y="225" fill="rgba(16,185,129,0.85)" fontSize="13" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="600">GAP</text>
+      <text x="20" y="45" fill="rgba(244,132,95,0.85)" fontSize="13" fontFamily="Courier Prime, JetBrains Mono, monospace" fontWeight="600">AGENTS</text>
+      <text x="20" y="135" fill="rgba(251,191,36,0.85)" fontSize="13" fontFamily="Courier Prime, JetBrains Mono, monospace" fontWeight="600">PAYMENTS</text>
+      <text x="20" y="225" fill="rgba(26,158,106,0.85)" fontSize="13" fontFamily="Courier Prime, JetBrains Mono, monospace" fontWeight="600">GAP</text>
       {/* Center convergence */}
       <circle cx="220" cy="130" r="28" fill="rgba(244,132,95,0.1)" stroke="rgba(244,132,95,0.5)" strokeWidth="1.5">
         <animate attributeName="r" values="28;33;28" dur="2s" repeatCount="indefinite" />
@@ -238,7 +238,7 @@ function ConvergenceGraphic() {
       {/* Output */}
       <path d="M250 130 L390 130" stroke="rgba(244,132,95,0.5)" strokeWidth="2.5" fill="none" />
       <polygon points="398,130 385,122 385,138" fill="rgba(244,132,95,0.7)" />
-      <text x="320" y="118" fill="rgba(26,26,26,0.5)" fontSize="12" fontFamily="Courier Prime, DM Mono, monospace" fontWeight="600">OPPORTUNITY</text>
+      <text x="320" y="118" fill="rgba(26,26,26,0.5)" fontSize="12" fontFamily="Courier Prime, JetBrains Mono, monospace" fontWeight="600">OPPORTUNITY</text>
     </svg>
   )
 }
@@ -379,7 +379,7 @@ export default function ThesisPage() {
         <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
           <GradientOrb size={600} top="-200px" right="-150px" color1="rgba(244,132,95,0.15)" color2="rgba(244,132,95,0)" delay={0} duration={25} />
           <GradientOrb size={500} top="40%" left="-200px" color1="rgba(251,191,36,0.1)" color2="rgba(251,191,36,0)" delay={3} duration={20} />
-          <GradientOrb size={400} bottom="-100px" right="20%" color1="rgba(16,185,129,0.08)" color2="rgba(16,185,129,0)" delay={6} duration={22} />
+          <GradientOrb size={400} bottom="-100px" right="20%" color1="rgba(26,158,106,0.08)" color2="rgba(26,158,106,0)" delay={6} duration={22} />
         </div>
 
         {/* Navbar provided by shared MarketingNavbar in App.jsx */}
@@ -568,7 +568,7 @@ export default function ThesisPage() {
             {
               num: '03',
               title: 'The gig platforms were built for the wrong era',
-              color: 'rgba(16,185,129,0.5)',
+              color: 'rgba(26,158,106,0.5)',
               body: 'TaskRabbit, Fiverr, Upwork — they all assume a human client browsing profiles and sending messages. None of them have an API an AI agent can call. None of them have escrow designed for autonomous principals. None of them speak the language of agents. The infrastructure for human labour exists. The interface for AI-driven demand does not.',
             },
           ].map((item, i) => (
@@ -756,7 +756,7 @@ export default function ThesisPage() {
             </TimelineItem>
           </Reveal>
           <Reveal delay={0.16}>
-            <TimelineItem label="Long Term" color="rgba(16,185,129,0.9)" isLast>
+            <TimelineItem label="Long Term" color="rgba(26,158,106,0.9)" isLast>
               irlwork.ai becomes infrastructure. Not a gig board — a protocol layer that any AI system can call when it needs something done in the physical world. The tasks get more sophisticated. The payments get larger. Workers build reputations and recurring relationships. The platform disappears into the background the way payment rails or cloud hosting do — invisible, essential, everywhere.
             </TimelineItem>
           </Reveal>

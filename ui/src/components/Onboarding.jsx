@@ -160,7 +160,7 @@ function Onboarding({ onComplete, user }) {
                   </p>
                 ) : nearbyTasks.length > 0 ? (
                   <div>
-                    <p style={{ fontSize: 13, color: '#16A34A', fontWeight: 500, marginBottom: 8 }}>
+                    <p style={{ fontSize: 13, color: '#1A9E6A', fontWeight: 500, marginBottom: 8 }}>
                       {nearbyTasks.length} task{nearbyTasks.length !== 1 ? 's' : ''} near {form.city} — complete setup to apply
                     </p>
                     {nearbyTasks.map((task, i) => (
@@ -170,7 +170,7 @@ function Onboarding({ onComplete, user }) {
                         marginBottom: 4, fontSize: 13
                       }}>
                         <span style={{ color: 'var(--text-primary)' }}>{task.title}</span>
-                        <span style={{ color: '#16A34A', fontWeight: 600 }}>${task.budget}</span>
+                        <span style={{ color: '#1A9E6A', fontWeight: 600 }}>${task.budget}</span>
                       </div>
                     ))}
                   </div>
@@ -210,9 +210,9 @@ function Onboarding({ onComplete, user }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 10,
-                    border: form.selectedCategories.includes(cat.value) ? '2px solid #16A34A' : '2px solid rgba(0,0,0,0.12)',
-                    background: form.selectedCategories.includes(cat.value) ? 'rgba(16,185,129,0.15)' : 'rgba(0,0,0,0.03)',
-                    color: form.selectedCategories.includes(cat.value) ? '#16A34A' : '#3d3d3d',
+                    border: form.selectedCategories.includes(cat.value) ? '2px solid #1A9E6A' : '2px solid rgba(220,200,180,0.40)',
+                    background: form.selectedCategories.includes(cat.value) ? 'rgba(26,158,106,0.15)' : 'rgba(200,150,100,0.06)',
+                    color: form.selectedCategories.includes(cat.value) ? '#1A9E6A' : '#3d3d3d',
                     cursor: 'pointer', fontSize: 14, transition: 'all 0.15s',
                     textAlign: 'left'
                   }}
@@ -303,7 +303,7 @@ function Onboarding({ onComplete, user }) {
               <div style={{
                 display: 'flex', alignItems: 'center',
                 background: 'var(--bg-secondary)',
-                border: '1px solid rgba(0, 0, 0, 0.1)',
+                border: '1px solid rgba(220,200,180,0.35)',
                 borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
                 transition: 'all var(--duration-fast)'
@@ -311,7 +311,7 @@ function Onboarding({ onComplete, user }) {
                 <span style={{
                   padding: '16px 14px', fontSize: 16, fontWeight: 600,
                   color: 'var(--text-tertiary)', background: 'var(--bg-tertiary)',
-                  borderRight: '1px solid rgba(0, 0, 0, 0.08)'
+                  borderRight: '1px solid rgba(220,200,180,0.35)'
                 }}>$</span>
                 <input
                   type="number"

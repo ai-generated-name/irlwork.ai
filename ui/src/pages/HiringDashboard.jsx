@@ -120,16 +120,16 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <button onClick={() => onNavigate?.('payments')} style={{
               display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-              background: hasPaymentMethod ? 'rgba(16,185,129,0.06)' : '#F5F2ED',
+              background: hasPaymentMethod ? 'rgba(26,158,106,0.09)' : 'rgba(220,200,180,0.15)',
               borderRadius: 12, border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%'
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: hasPaymentMethod ? '#10B981' : '#D1D5DB',
+                background: hasPaymentMethod ? '#1A9E6A' : '#D1D5DB',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700
               }}>{hasPaymentMethod ? <Check size={14} /> : '1'}</div>
               <div>
-                <p style={{ fontWeight: 500, fontSize: 14, color: hasPaymentMethod ? '#059669' : 'var(--text-primary)' }}>Add a payment method</p>
+                <p style={{ fontWeight: 500, fontSize: 14, color: hasPaymentMethod ? '#1A9E6A' : 'var(--text-primary)' }}>Add a payment method</p>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Required to fund tasks and pay workers</p>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto', color: 'var(--text-tertiary)' }}>
@@ -138,16 +138,16 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             </button>
             <button onClick={() => onNavigate?.('create')} style={{
               display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-              background: hasPostedTask ? 'rgba(16,185,129,0.06)' : '#F5F2ED',
+              background: hasPostedTask ? 'rgba(26,158,106,0.09)' : 'rgba(220,200,180,0.15)',
               borderRadius: 12, border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%'
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: hasPostedTask ? '#10B981' : '#D1D5DB',
+                background: hasPostedTask ? '#1A9E6A' : '#D1D5DB',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700
               }}>{hasPostedTask ? <Check size={14} /> : '2'}</div>
               <div>
-                <p style={{ fontWeight: 500, fontSize: 14, color: hasPostedTask ? '#059669' : 'var(--text-primary)' }}>Post your first task</p>
+                <p style={{ fontWeight: 500, fontSize: 14, color: hasPostedTask ? '#1A9E6A' : 'var(--text-primary)' }}>Post your first task</p>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Describe what you need done and set a budget</p>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto', color: 'var(--text-tertiary)' }}>
@@ -156,16 +156,16 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             </button>
             <button onClick={() => { onNavigate?.('browse'); localStorage.setItem('irlwork_has_browsed_humans', 'true') }} style={{
               display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-              background: hasBrowsedHumans ? 'rgba(16,185,129,0.06)' : '#F5F2ED',
+              background: hasBrowsedHumans ? 'rgba(26,158,106,0.09)' : 'rgba(220,200,180,0.15)',
               borderRadius: 12, border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%'
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: hasBrowsedHumans ? '#10B981' : '#D1D5DB',
+                background: hasBrowsedHumans ? '#1A9E6A' : '#D1D5DB',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700
               }}>{hasBrowsedHumans ? <Check size={14} /> : '3'}</div>
               <div>
-                <p style={{ fontWeight: 500, fontSize: 14, color: hasBrowsedHumans ? '#059669' : 'var(--text-primary)' }}>Browse available humans</p>
+                <p style={{ fontWeight: 500, fontSize: 14, color: hasBrowsedHumans ? '#1A9E6A' : 'var(--text-primary)' }}>Browse available humans</p>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Find skilled workers near you or worldwide</p>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto', color: 'var(--text-tertiary)' }}>
@@ -329,7 +329,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
               <Card key={task.id} padding="sm" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                  background: task.status === 'open' ? '#F59E0B' : task.status === 'in_progress' ? '#3B82F6' : task.status === 'pending_review' ? '#8B5CF6' : '#10B981'
+                  background: task.status === 'open' ? '#F59E0B' : task.status === 'in_progress' ? '#2563EB' : task.status === 'pending_review' ? '#6D4FC2' : '#1A9E6A'
                 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
@@ -350,36 +350,36 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
         <div className="hiring-dash-quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
           <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('posted')} className="text-left cursor-pointer">
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8703D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>My tasks</p>
-            <p style={{ fontSize: 12, color: '#6B7280' }}>View and manage posted tasks</p>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1410', marginBottom: 4 }}>My tasks</p>
+            <p style={{ fontSize: 12, color: 'rgba(26,20,16,0.50)' }}>View and manage posted tasks</p>
           </Card>
           <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('browse')} className="text-left cursor-pointer">
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8703D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>Browse humans</p>
-            <p style={{ fontSize: 12, color: '#6B7280' }}>Find skilled workers for your tasks</p>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1410', marginBottom: 4 }}>Browse humans</p>
+            <p style={{ fontSize: 12, color: 'rgba(26,20,16,0.50)' }}>Find skilled workers for your tasks</p>
           </Card>
           <Card interactive hoverEffect="shadow" padding="md" onClick={() => onNavigate?.('messages')} className="text-left cursor-pointer">
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8703D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>Messages</p>
-            <p style={{ fontSize: 12, color: '#6B7280' }}>Chat with workers and applicants</p>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1410', marginBottom: 4 }}>Messages</p>
+            <p style={{ fontSize: 12, color: 'rgba(26,20,16,0.50)' }}>Chat with workers and applicants</p>
           </Card>
           <Card interactive hoverEffect="shadow" padding="md" onClick={() => setShowPaymentsExplainer(true)} className="text-left cursor-pointer">
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon stroke uses brand accent */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8853D" strokeWidth="2" style={{ marginBottom: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8703D" strokeWidth="2" style={{ marginBottom: 8 }}>
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 4 }}>How payments work</p>
-            <p style={{ fontSize: 12, color: '#6B7280' }}>Learn about escrow and payouts</p>
+            <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1410', marginBottom: 4 }}>How payments work</p>
+            <p style={{ fontSize: 12, color: 'rgba(26,20,16,0.50)' }}>Learn about escrow and payouts</p>
           </Card>
         </div>
       </div>

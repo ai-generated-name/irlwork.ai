@@ -7,8 +7,8 @@ const cardStyle = {
   style: {
     base: {
       fontSize: '16px',
-      color: '#1a1a2e',
-      '::placeholder': { color: '#9ca3af' },
+      color: '#1A1410',
+      '::placeholder': { color: 'rgba(26,20,16,0.28)' },
     },
     invalid: { color: '#FF5F57' },
   },
