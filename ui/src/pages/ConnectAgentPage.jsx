@@ -8,7 +8,7 @@ import { Logo } from '../components/Logo'
 import { useLanguage } from '../context/LanguageContext'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { Button } from '../components/ui'
-import { supabase } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import API_URL from '../config/api'
 
 const MCP_ENDPOINT = 'https://api.irlwork.ai/api/mcp/sse'
