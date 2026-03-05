@@ -63,9 +63,9 @@ export default function DefaultPaymentMethodToggle({ user }) {
 
   if (loading) {
     return (
-      <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5 animate-pulse">
-        <div className="h-4 bg-gray-100 rounded w-2/3 mb-3" />
-        <div className="h-12 bg-gray-100 rounded" />
+      <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-[20px] p-5 animate-pulse">
+        <div className="h-4 bg-[rgba(220,200,180,0.15)] rounded w-2/3 mb-3" />
+        <div className="h-12 bg-[rgba(220,200,180,0.15)] rounded" />
       </div>
     )
   }
@@ -78,81 +78,81 @@ export default function DefaultPaymentMethodToggle({ user }) {
   if (!hasCard && !hasWallet) return null
   if (hasCard && !hasWallet) {
     return (
-      <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5">
+      <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-[20px] p-5">
         <div className="flex items-center gap-2 text-sm text-[#1A1410]">
-          <CreditCard size={16} className="text-[#E07A5F]" />
+          <CreditCard size={16} className="text-[#E8703D]" />
           <span className="font-medium">Payment Method: Credit Card</span>
           <Check size={14} className="text-green-600" />
         </div>
-        <p className="text-xs text-[#8A8A8A] mt-2">Want to pay with USDC? Generate a deposit address above to get started.</p>
+        <p className="text-xs text-[rgba(26,20,16,0.50)] mt-2">Want to pay with USDC? Generate a deposit address above to get started.</p>
       </div>
     )
   }
   if (!hasCard && hasWallet) {
     return (
-      <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5">
+      <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-[20px] p-5">
         <div className="flex items-center gap-2 text-sm text-[#1A1410]">
           <Wallet size={16} className="text-blue-600" />
           <span className="font-medium">Payment Method: USDC</span>
           <Check size={14} className="text-green-600" />
         </div>
-        <p className="text-xs text-[#8A8A8A] mt-2">Want to pay with card? Add a payment method in the section above.</p>
+        <p className="text-xs text-[rgba(26,20,16,0.50)] mt-2">Want to pay with card? Add a payment method in the section above.</p>
       </div>
     )
   }
 
   // Both methods: show toggle
   return (
-    <div className="bg-white border border-[rgba(26,26,26,0.08)] rounded-xl p-5">
-      <p className="text-xs font-medium text-[#525252] mb-1">Default payment method for new tasks</p>
-      <p className="text-[11px] text-[#8A8A8A] mb-3">You can override this when assigning individual tasks.</p>
+    <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-[20px] p-5">
+      <p className="text-xs font-medium text-[rgba(26,20,16,0.50)] mb-1">Default payment method for new tasks</p>
+      <p className="text-[11px] text-[rgba(26,20,16,0.50)] mb-3">You can override this when assigning individual tasks.</p>
 
       <div className="flex gap-2 mb-3">
         {/* Stripe option */}
         <button
           onClick={() => handleSwitch('stripe')}
           disabled={saving}
-          className={`flex-1 flex items-center gap-2 p-3 rounded-lg border-2 transition-colors text-left ${
+          className={`flex-1 flex items-center gap-2 p-3 rounded-[11px] border-2 transition-colors text-left ${
             defaultMethod === 'stripe'
-              ? 'border-[#E07A5F] bg-orange-50'
-              : 'border-[rgba(26,26,26,0.08)] bg-white hover:bg-gray-50'
+              ? 'border-[#E8703D] bg-[rgba(232,112,61,0.06)]'
+              : 'border-[rgba(220,200,180,0.35)] bg-white hover:bg-[rgba(220,200,180,0.1)]'
           }`}
         >
-          <CreditCard size={16} className={defaultMethod === 'stripe' ? 'text-[#E07A5F]' : 'text-[#8A8A8A]'} />
+          <CreditCard size={16} className={defaultMethod === 'stripe' ? 'text-[#E8703D]' : 'text-[rgba(26,20,16,0.50)]'} />
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium ${defaultMethod === 'stripe' ? 'text-[#1A1410]' : 'text-[#525252]'}`}>
+            <p className={`text-sm font-medium ${defaultMethod === 'stripe' ? 'text-[#1A1410]' : 'text-[rgba(26,20,16,0.50)]'}`}>
               Credit Card
             </p>
           </div>
-          {defaultMethod === 'stripe' && <Check size={14} className="text-[#E07A5F] flex-shrink-0" />}
+          {defaultMethod === 'stripe' && <Check size={14} className="text-[#E8703D] flex-shrink-0" />}
         </button>
 
         {/* USDC option */}
         <button
           onClick={() => handleSwitch('usdc')}
           disabled={saving}
-          className={`flex-1 flex items-center gap-2 p-3 rounded-lg border-2 transition-colors text-left ${
+          className={`flex-1 flex items-center gap-2 p-3 rounded-[11px] border-2 transition-colors text-left ${
             defaultMethod === 'usdc'
-              ? 'border-[#E07A5F] bg-orange-50'
-              : 'border-[rgba(26,26,26,0.08)] bg-white hover:bg-gray-50'
+              ? 'border-[#E8703D] bg-[rgba(232,112,61,0.06)]'
+              : 'border-[rgba(220,200,180,0.35)] bg-white hover:bg-[rgba(220,200,180,0.1)]'
           }`}
         >
-          <Wallet size={16} className={defaultMethod === 'usdc' ? 'text-[#E07A5F]' : 'text-[#8A8A8A]'} />
+          <Wallet size={16} className={defaultMethod === 'usdc' ? 'text-[#E8703D]' : 'text-[rgba(26,20,16,0.50)]'} />
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium ${defaultMethod === 'usdc' ? 'text-[#1A1410]' : 'text-[#525252]'}`}>
+            <p className={`text-sm font-medium ${defaultMethod === 'usdc' ? 'text-[#1A1410]' : 'text-[rgba(26,20,16,0.50)]'}`}>
               USDC on Base
             </p>
           </div>
-          {defaultMethod === 'usdc' && <Check size={14} className="text-[#E07A5F] flex-shrink-0" />}
+          {defaultMethod === 'usdc' && <Check size={14} className="text-[#E8703D] flex-shrink-0" />}
         </button>
       </div>
 
       {/* Context text based on selection */}
       {defaultMethod === 'stripe' && (
-        <p className="text-xs text-[#8A8A8A]">Your card will be charged when you assign workers.</p>
+        <p className="text-xs text-[rgba(26,20,16,0.50)]">Your card will be charged when you assign workers.</p>
       )}
       {defaultMethod === 'usdc' && usdcBalance > 0 && (
-        <p className="text-xs text-[#8A8A8A]">Available: {usdcBalance.toFixed(2)} USDC — funds are locked from your balance when you assign workers.</p>
+        <p className="text-xs text-[rgba(26,20,16,0.50)]">Available: {usdcBalance.toFixed(2)} USDC — funds are locked from your balance when you assign workers.</p>
       )}
       {defaultMethod === 'usdc' && usdcBalance === 0 && (
         <p className="text-xs text-amber-600 font-medium">Balance is $0 — deposit USDC to your address before creating tasks.</p>
@@ -160,7 +160,7 @@ export default function DefaultPaymentMethodToggle({ user }) {
 
       {/* Toast */}
       {toast && (
-        <div className={`mt-3 text-xs px-3 py-2 rounded-lg ${toast.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+        <div className={`mt-3 text-xs px-3 py-2 rounded-[11px] ${toast.type === 'success' ? 'bg-[rgba(26,158,106,0.08)] text-[#1A9E6A]' : 'bg-[rgba(220,38,38,0.06)] text-[#DC2626]'}`}>
           {toast.text}
         </div>
       )}

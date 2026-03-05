@@ -78,7 +78,7 @@ export default function AboutPage() {
           <div style={{
             background: 'white',
             border: '1px solid var(--border-primary)',
-            borderRadius: '16px',
+            borderRadius: '20px',
             padding: 'clamp(32px, 5vw, 56px)',
           }}>
             <h2 style={{
@@ -132,14 +132,14 @@ export default function AboutPage() {
             <div style={{
               background: 'white',
               border: '1px solid var(--border-primary)',
-              borderRadius: '16px',
+              borderRadius: '20px',
               padding: '36px 28px',
             }}>
               <div style={{
                 width: '48px',
                 height: '48px',
                 background: 'rgba(232, 112, 61, 0.1)',
-                borderRadius: '12px',
+                borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -168,14 +168,14 @@ export default function AboutPage() {
             <div style={{
               background: 'white',
               border: '1px solid var(--border-primary)',
-              borderRadius: '16px',
+              borderRadius: '20px',
               padding: '36px 28px',
             }}>
               <div style={{
                 width: '48px',
                 height: '48px',
                 background: 'rgba(232, 112, 61, 0.1)',
-                borderRadius: '12px',
+                borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -204,14 +204,14 @@ export default function AboutPage() {
             <div style={{
               background: 'white',
               border: '1px solid var(--border-primary)',
-              borderRadius: '16px',
+              borderRadius: '20px',
               padding: '36px 28px',
             }}>
               <div style={{
                 width: '48px',
                 height: '48px',
                 background: 'rgba(232, 112, 61, 0.1)',
-                borderRadius: '12px',
+                borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -280,7 +280,7 @@ export default function AboutPage() {
               <div key={item.step} style={{
                 background: 'white',
                 border: '1px solid var(--border-primary)',
-                borderRadius: '12px',
+                borderRadius: '20px',
                 padding: '28px 24px',
               }}>
                 <div style={{
@@ -325,7 +325,7 @@ export default function AboutPage() {
           <div style={{
             background: 'white',
             border: '1px solid var(--border-primary)',
-            borderRadius: '16px',
+            borderRadius: '20px',
             padding: 'clamp(32px, 5vw, 56px)',
           }}>
             <h2 style={{

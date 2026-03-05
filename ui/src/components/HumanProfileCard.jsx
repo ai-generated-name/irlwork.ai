@@ -66,26 +66,26 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
       style={{
         background: 'white',
         borderRadius: 'var(--radius-lg)',
-        border: '1px solid rgba(220,200,180,0.25)',
+        border: '1px solid rgba(220,200,180,0.35)',
         padding: 24,
         transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
         position: 'relative',
-        boxShadow: '0 1px 3px rgba(200,150,100,0.06)',
+        boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
         overflow: 'hidden'
       }}
       onClick={() => onExpand?.(human)}
       onMouseOver={(e) => {
-        e.currentTarget.style.boxShadow = '0 8px 30px rgba(232,112,61,0.12), 0 4px 12px rgba(220,200,180,0.25)'
+        e.currentTarget.style.boxShadow = '0 8px 30px rgba(200,150,100,0.12), 0 1px 0 rgba(255,255,255,0.9) inset'
         e.currentTarget.style.transform = 'translateY(-3px)'
         e.currentTarget.style.borderColor = 'rgba(232,112,61,0.18)'
       }}
       onMouseOut={(e) => {
-        e.currentTarget.style.boxShadow = '0 1px 3px rgba(200,150,100,0.06)'
+        e.currentTarget.style.boxShadow = '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset'
         e.currentTarget.style.transform = 'translateY(0)'
-        e.currentTarget.style.borderColor = 'rgba(220,200,180,0.25)'
+        e.currentTarget.style.borderColor = 'rgba(220,200,180,0.35)'
       }}
     >
       {/* Top accent line */}
@@ -332,7 +332,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
         alignItems: 'center',
         marginTop: 'auto',
         paddingTop: 14,
-        borderTop: '1px solid rgba(220,200,180,0.25)'
+        borderTop: '1px solid rgba(220,200,180,0.35)'
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
           <span style={{

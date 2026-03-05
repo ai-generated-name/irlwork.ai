@@ -128,7 +128,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
 
         {loading ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
-            <Loader2 size={32} style={{ color: '#F4845F', animation: 'spin 1s linear infinite' }} />
+            <Loader2 size={32} style={{ color: '#E8703D', animation: 'spin 1s linear infinite' }} />
             <p style={{ marginTop: 16, color: 'var(--text-tertiary, #8A8A8A)', fontSize: 14 }}>Loading profile...</p>
           </div>
         ) : error ? (
@@ -151,8 +151,8 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
               <div style={{
                 background: 'white',
                 borderRadius: 20,
-                border: '1px solid rgba(26,26,26,0.06)',
-                boxShadow: '0 4px 24px rgba(220,200,180,0.25)',
+                border: '1px solid rgba(220,200,180,0.35)',
+                boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
                 overflow: 'hidden'
               }}>
                 {/* Profile Header */}
@@ -170,7 +170,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                             height: 88,
                             borderRadius: '50%',
                             objectFit: 'cover',
-                            boxShadow: '0 4px 20px rgba(244,132,95,0.3)'
+                            boxShadow: '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset'
                           }}
                           onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
                         />
@@ -179,14 +179,14 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         width: 88,
                         height: 88,
                         borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                        background: 'linear-gradient(135deg, #F0905A, #E8703D)',
                         display: profile.avatar_url ? 'none' : 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'white',
                         fontWeight: 700,
                         fontSize: 34,
-                        boxShadow: '0 4px 20px rgba(244,132,95,0.3)'
+                        boxShadow: '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset'
                       }}>
                         {profile.name?.[0]?.toUpperCase() || '?'}
                       </div>
@@ -278,7 +278,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                           marginBottom: 2,
                           flexWrap: 'wrap'
                         }}>
-                          <MapPin size={14} style={{ color: '#F4845F' }} />
+                          <MapPin size={14} style={{ color: '#E8703D' }} />
                           {profile.city}{profile.state ? `, ${profile.state}` : ''}
                           {profile.timezone && (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 6, color: 'var(--text-tertiary, #8A8A8A)', fontSize: 13 }}>
@@ -339,12 +339,12 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         {skills.map((skill, idx) => (
                           <span key={idx} style={{
                             padding: '6px 14px',
-                            background: 'rgba(244,132,95,0.08)',
-                            borderRadius: 999,
+                            background: 'rgba(232,112,61,0.08)',
+                            borderRadius: 30,
                             fontSize: 13,
-                            color: '#E07A5F',
+                            color: '#E8703D',
                             fontWeight: 500,
-                            border: '1px solid rgba(244,132,95,0.12)'
+                            border: '1px solid rgba(232,112,61,0.12)'
                           }}>
                             {skill.replace(/_/g, ' ')}
                           </span>
@@ -426,16 +426,16 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                 {/* Hire Card */}
                 <div style={{
                   background: 'white',
-                  borderRadius: 16,
-                  border: '1px solid rgba(26,26,26,0.06)',
-                  boxShadow: '0 4px 24px rgba(220,200,180,0.25)',
+                  borderRadius: 20,
+                  border: '1px solid rgba(220,200,180,0.35)',
+                  boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
                   padding: 24,
                 }}>
                   {/* Rate */}
                   <div style={{
                     fontSize: 36,
                     fontWeight: 700,
-                    color: '#F4845F',
+                    color: '#E8703D',
                     marginBottom: 4,
                     lineHeight: 1,
                   }}>
@@ -486,18 +486,18 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                       style={{
                         width: '100%',
                         padding: '14px 20px',
-                        background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                        background: 'linear-gradient(135deg, #F0905A, #E8703D)',
                         color: 'white',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         fontSize: 16,
-                        borderRadius: 12,
+                        borderRadius: 20,
                         border: 'none',
                         cursor: 'pointer',
                         transition: 'all 0.2s',
-                        boxShadow: '0 4px 20px rgba(244,132,95,0.3)',
+                        boxShadow: '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset',
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.boxShadow = '0 6px 28px rgba(244,132,95,0.4)'
+                        e.currentTarget.style.boxShadow = '0 6px 28px rgba(232,112,61,0.4)'
                         e.currentTarget.style.transform = 'translateY(-1px)'
                       }}
                       onMouseOut={(e) => {
@@ -572,14 +572,14 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                     margin: '0 auto',
                     display: 'block',
                     padding: '14px 24px',
-                    background: 'linear-gradient(135deg, #F4845F, #E07A5F)',
+                    background: 'linear-gradient(135deg, #F0905A, #E8703D)',
                     color: 'white',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     fontSize: 16,
-                    borderRadius: 12,
+                    borderRadius: 20,
                     border: 'none',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 20px rgba(244,132,95,0.3)',
+                    boxShadow: '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset',
                   }}
                 >
                   Hire {profile.name?.split(' ')[0] || 'this worker'}

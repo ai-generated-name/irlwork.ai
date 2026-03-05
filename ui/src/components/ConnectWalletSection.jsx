@@ -99,7 +99,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
   if (loading) {
     if (compact) return null;
     return (
-      <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-2xl p-6 md:p-8 animate-pulse">
+      <div className="bg-white border-2 border-[rgba(26,26,26,0.08)] rounded-[20px] p-6 md:p-8 animate-pulse">
         <div className="h-5 bg-[rgba(220,200,180,0.35)] rounded w-1/3 mb-3"></div>
         <div className="h-4 bg-[rgba(220,200,180,0.15)] rounded w-2/3"></div>
       </div>
@@ -134,7 +134,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
             value={walletAddress}
             onChange={(e) => { setWalletAddress(e.target.value); setError(null); }}
             placeholder="0x..."
-            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] rounded-lg font-mono focus:outline-none focus:border-[#6366f1]"
+            className="w-full px-3 py-2 text-sm border border-[rgba(220,200,180,0.35)] rounded-lg font-mono focus:outline-none focus:border-[#6366f1]"
           />
           {error && <p className="text-xs text-red-500">{error}</p>}
           <div className="flex gap-2">
@@ -162,7 +162,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
       /* eslint-disable-next-line irlwork/no-inline-button-pattern -- wallet branding uses indigo */
       <button
         onClick={() => setEditing(true)}
-        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-xl text-sm font-semibold transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-[11px] text-sm font-semibold transition-colors"
       >
         Connect wallet
       </button>
@@ -174,7 +174,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
   // Connected — show address and manage options
   if (savedAddress && !editing) {
     return (
-      <div className="bg-white border-2 border-[#1A9E6A]/20 rounded-2xl p-5 md:p-6">
+      <div className="bg-white border-2 border-[#1A9E6A]/20 rounded-[20px] p-5 md:p-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-[#D1FAE5] rounded-full flex items-center justify-center flex-shrink-0">
             <svg className="w-6 h-6 text-[#1A9E6A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -211,9 +211,9 @@ export default function ConnectWalletSection({ user, compact = false }) {
 
   // Editing or not connected — show input form
   return (
-    <div className="bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] border-2 border-[#6366f1]/15 rounded-2xl p-6 md:p-8">
+    <div className="bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] border-2 border-[#6366f1]/15 rounded-[20px] p-6 md:p-8">
       {error && (
-        <div className="mb-4 p-3 bg-[#FEE2E2] border border-[#DC2626]/20 rounded-xl flex items-start gap-2.5">
+        <div className="mb-4 p-3 bg-[#FEE2E2] border border-[#DC2626]/20 rounded-[11px] flex items-start gap-2.5">
           <p className="text-[#DC2626] text-sm flex-1">{error}</p>
           <button onClick={() => setError(null)} className="text-[#DC2626]/50 hover:text-[#DC2626] flex-shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -224,7 +224,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
       )}
 
       <div className="flex flex-col md:flex-row items-start md:items-center gap-5">
-        <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center flex-shrink-0">
+        <div className="w-14 h-14 bg-white rounded-[20px] shadow-sm flex items-center justify-center flex-shrink-0">
           <svg className="w-7 h-7 text-[#6366f1]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 013 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 013 6v3" />
           </svg>
@@ -246,7 +246,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
               value={walletAddress}
               onChange={(e) => { setWalletAddress(e.target.value); setError(null); }}
               placeholder="0x..."
-              className="w-full px-4 py-3 text-sm border-2 border-[#e5e7eb] rounded-xl font-mono focus:outline-none focus:border-[#6366f1] bg-white"
+              className="w-full px-4 py-3 text-sm border-2 border-[rgba(220,200,180,0.35)] rounded-[11px] font-mono focus:outline-none focus:border-[#6366f1] bg-white"
             />
 
             <div className="flex items-center gap-3">
@@ -254,14 +254,14 @@ export default function ConnectWalletSection({ user, compact = false }) {
               <button
                 onClick={handleSave}
                 disabled={saving || !walletAddress}
-                className="px-6 py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-xl text-sm font-bold transition-all"
+                className="px-6 py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-[11px] text-sm font-bold transition-all"
               >
                 {saving ? 'Saving...' : 'Save wallet address'}
               </button>
               {editing && (
                 <button
                   onClick={() => { setEditing(false); setError(null); setWalletAddress(savedAddress || ''); }}
-                  className="px-4 py-2.5 text-sm text-[#525252] hover:bg-white/50 rounded-xl transition-colors"
+                  className="px-4 py-2.5 text-sm text-[#525252] hover:bg-white/50 rounded-[11px] transition-colors"
                 >
                   Cancel
                 </button>

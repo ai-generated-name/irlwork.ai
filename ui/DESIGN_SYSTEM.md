@@ -138,7 +138,9 @@ Orange (`#E8703D`) is allowed ONLY in:
 - Logo cursor `|`
 - "Open" status pill
 
-Orange is **NOT** allowed in: mode toggle, nav active state, user avatar, attention card borders, worker status badges, activity icons, section headings, non-money stat values.
+Orange is **NOT** allowed in: mode toggle, user avatar, attention card borders, worker status badges, activity icons, section headings, non-money stat values.
+
+**Note**: Sidebar nav and bottom nav active states use orange text + `rgba(232,112,61,0.08)` background.
 
 ### Section labels
 ```css
@@ -153,7 +155,17 @@ color: var(--ink3);
 
 ## Changelog
 
-### 2026-03-05 — v16 design system
+### 2026-03-05 — v16 design system (full migration)
+
+- **Sidebar nav active**: Changed from ink to orange text + `rgba(232,112,61,0.08)` bg
+- **Marketing navbar**: Updated glass to `rgba(251,248,244,0.70)` with `blur(28px)` (was 0.92/blur(16px))
+- **User dropdown menu**: Added glass treatment `rgba(255,255,255,0.92)` + `blur(20px)`
+- **TierBadge**: Remapped to v16 pill style (orange for builder, purple for pro, 30px radius, 5px dot)
+- **V4Layout fonts**: Updated from DM Sans to Sora across all sub-components
+- **All CSS fallbacks**: Replaced remaining `DM Sans` fallbacks with `Sora` in index.css and landing-v4.css
+- **ConfirmationModal**: Added glass background + 20px radius
+
+### 2026-03-05 — v16 design system (initial)
 
 - **Background**: Changed from `#F7F5F2` to `#FAFAF8`
 - **Text colors**: Primary `#1A1410`, secondary `rgba(26,20,16,0.50)`, muted `rgba(26,20,16,0.28)`

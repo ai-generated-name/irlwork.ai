@@ -93,8 +93,8 @@ export default function PaymentMethodList({ user, onUpdate, onMethodsLoaded }) {
             justifyContent: 'space-between',
             padding: '12px 16px',
             background: pm.is_default ? '#f0fdf4' : '#fff',
-            border: pm.is_default ? '1.5px solid #86efac' : '1.5px solid #e5e7eb',
-            borderRadius: '12px',
+            border: pm.is_default ? '1.5px solid #86efac' : '1px solid rgba(220,200,180,0.35)',
+            borderRadius: '11px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

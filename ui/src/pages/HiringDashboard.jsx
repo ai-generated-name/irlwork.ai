@@ -125,7 +125,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: hasPaymentMethod ? '#1A9E6A' : '#D1D5DB',
+                background: hasPaymentMethod ? '#1A9E6A' : 'rgba(220,200,180,0.45)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700
               }}>{hasPaymentMethod ? <Check size={14} /> : '1'}</div>
               <div>
@@ -143,7 +143,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: hasPostedTask ? '#1A9E6A' : '#D1D5DB',
+                background: hasPostedTask ? '#1A9E6A' : 'rgba(220,200,180,0.45)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700
               }}>{hasPostedTask ? <Check size={14} /> : '2'}</div>
               <div>
@@ -161,7 +161,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: hasBrowsedHumans ? '#1A9E6A' : '#D1D5DB',
+                background: hasBrowsedHumans ? '#1A9E6A' : 'rgba(220,200,180,0.45)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700
               }}>{hasBrowsedHumans ? <Check size={14} /> : '3'}</div>
               <div>
@@ -218,7 +218,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 } else if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#B45309'; }
-                else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
+                else { label = `Due in ${diffDays} days`; bg = 'rgba(109,79,194,0.08)'; color = '#6D4FC2'; }
                 deadlineBadge = (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: bg, color, whiteSpace: 'nowrap' }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
@@ -264,7 +264,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
                 if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#FEBC2E'; }
                 else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = 'rgba(254, 188, 46, 0.1)'; color = '#B45309'; }
-                else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
+                else { label = `Due in ${diffDays} days`; bg = 'rgba(109,79,194,0.08)'; color = '#6D4FC2'; }
                 deadlineBadge = (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: bg, color, whiteSpace: 'nowrap' }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
@@ -329,7 +329,7 @@ export default function HiringDashboard({ user, postedTasks, onNavigate }) {
               <Card key={task.id} padding="sm" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                  background: task.status === 'open' ? '#F59E0B' : task.status === 'in_progress' ? '#2563EB' : task.status === 'pending_review' ? '#6D4FC2' : '#1A9E6A'
+                  background: task.status === 'open' ? '#E8703D' : task.status === 'in_progress' ? '#6D4FC2' : task.status === 'pending_review' ? '#6D4FC2' : '#1A9E6A'
                 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>

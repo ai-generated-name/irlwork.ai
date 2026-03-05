@@ -41,24 +41,17 @@ const ITEMS_PER_PAGE = 16;
 function TaskCardSkeleton() {
   return (
     <div className="task-card-skeleton">
-      <div className="skeleton-row">
-        <div className="skeleton-line" style={{ width: 100, height: 20 }} />
-        <div className="skeleton-line" style={{ width: 60, height: 20 }} />
-      </div>
-      <div className="skeleton-line" style={{ width: '80%', height: 24, marginTop: 12 }} />
-      <div className="skeleton-line" style={{ width: '100%', height: 16, marginTop: 8 }} />
-      <div className="skeleton-line" style={{ width: '60%', height: 16, marginTop: 4 }} />
-      <div className="skeleton-row" style={{ marginTop: 16 }}>
-        <div className="skeleton-line" style={{ width: 80, height: 28 }} />
-        <div className="skeleton-line" style={{ width: 80, height: 28 }} />
-      </div>
-      <div className="skeleton-row" style={{ marginTop: 12 }}>
-        <div className="skeleton-line" style={{ width: 120, height: 16 }} />
-        <div className="skeleton-line" style={{ width: 60, height: 16 }} />
-      </div>
-      <div className="skeleton-row" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(220,200,180,0.25)' }}>
-        <div className="skeleton-line" style={{ width: 100, height: 14 }} />
-        <div className="skeleton-line" style={{ width: 90, height: 36, borderRadius: 8 }} />
+      <div className="skeleton-row" style={{ gap: 12, alignItems: 'center' }}>
+        <div className="skeleton-line" style={{ width: 56, height: 56, borderRadius: 11, flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="skeleton-line" style={{ width: '70%', height: 13, marginBottom: 6 }} />
+          <div className="skeleton-line" style={{ width: '100%', height: 10, marginBottom: 4 }} />
+          <div className="skeleton-line" style={{ width: '50%', height: 10 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+          <div className="skeleton-line" style={{ width: 50, height: 15 }} />
+          <div className="skeleton-line" style={{ width: 60, height: 24, borderRadius: 30 }} />
+        </div>
       </div>
     </div>
   );
@@ -572,7 +565,7 @@ export default function BrowseTasksV2({
             ) : (
               <>
                 {/* Result count */}
-                <div style={{ padding: '0 4px 12px', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500 }}>
+                <div style={{ padding: '0 4px 12px', fontSize: 10, color: 'rgba(26,20,16,0.50)', fontWeight: 500, fontFamily: "'Sora', sans-serif" }}>
                   {tasksTotal === 0 ? 'No results' : `Showing ${startItem}\u2013${endItem} of ${tasksTotal} tasks`}
                 </div>
                 {tasks.map(task => (

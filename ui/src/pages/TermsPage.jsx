@@ -6,10 +6,11 @@ export default function TermsPage() {
   usePageTitle('Terms of Service')
   const sectionStyle = {
     background: 'white',
-    border: '1px solid var(--border-primary)',
-    borderRadius: '16px',
+    border: '1px solid rgba(220,200,180,0.35)',
+    borderRadius: '20px',
     padding: 'clamp(28px, 5vw, 48px)',
     marginBottom: '24px',
+    boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
   }
 
   const headingStyle = {
@@ -67,7 +68,7 @@ export default function TermsPage() {
             width: '56px',
             height: '56px',
             background: 'rgba(244, 132, 95, 0.1)',
-            borderRadius: '16px',
+            borderRadius: '20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

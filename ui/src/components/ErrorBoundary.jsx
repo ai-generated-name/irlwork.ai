@@ -37,16 +37,16 @@ export default class ErrorBoundary extends React.Component {
           alignItems: 'center',
           justifyContent: 'center',
           padding: 24,
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontFamily: "'Sora', sans-serif",
         }}>
           <div style={{
             textAlign: 'center',
             maxWidth: 560,
             background: 'white',
-            borderRadius: 16,
+            borderRadius: 20,
             padding: 48,
-            boxShadow: '0 4px 24px rgba(220,200,180,0.35)',
-            border: '1px solid rgba(220,200,180,0.25)',
+            boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
+            border: '1px solid rgba(220,200,180,0.35)',
           }}>
             <div style={{
               width: 64,
@@ -90,10 +90,10 @@ export default class ErrorBoundary extends React.Component {
               </summary>
               <div style={{
                 background: 'rgba(220,200,180,0.15)',
-                borderRadius: 8,
+                borderRadius: 11,
                 padding: 12,
                 fontSize: 12,
-                fontFamily: 'monospace',
+                fontFamily: "'JetBrains Mono', monospace",
                 color: 'rgba(26,20,16,0.65)',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
@@ -110,17 +110,18 @@ export default class ErrorBoundary extends React.Component {
                 onClick={this.handleGoHome}
                 style={{
                   padding: '14px 32px',
-                  background: '#E8703D',
+                  background: 'linear-gradient(135deg, #F0905A 0%, #E8703D 100%)',
                   color: 'white',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   fontSize: 15,
-                  borderRadius: 12,
+                  borderRadius: 20,
                   border: 'none',
                   cursor: 'pointer',
-                  transition: 'background 0.2s',
+                  transition: 'all 0.2s',
+                  fontFamily: "'Sora', sans-serif",
                 }}
-                onMouseOver={(e) => e.currentTarget.style.background = '#D4703A'}
-                onMouseOut={(e) => e.currentTarget.style.background = '#E8703D'}
+                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(200,150,100,0.08)' }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
               >
                 Go to Homepage
               </button>
@@ -132,10 +133,11 @@ export default class ErrorBoundary extends React.Component {
                   color: 'rgba(26,20,16,0.65)',
                   fontWeight: 600,
                   fontSize: 15,
-                  borderRadius: 12,
-                  border: '2px solid rgba(220,200,180,0.40)',
+                  borderRadius: 20,
+                  border: '2px solid rgba(220,200,180,0.35)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
+                  fontFamily: "'Sora', sans-serif",
                 }}
                 onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(220,200,180,0.15)'; e.currentTarget.style.borderColor = 'rgba(220,200,180,0.50)' }}
                 onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(220,200,180,0.40)' }}

@@ -36,7 +36,7 @@ export const v4 = {
     errorBg: 'rgba(255, 95, 87, 0.1)',
   },
   fonts: {
-    display: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    display: "'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     mono: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
   },
   shadows: {
@@ -73,9 +73,10 @@ export function NavbarV4({ user, onLogout }) {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '16px 32px',
-      background: 'rgba(250, 250, 248, 0.9)',
-      backdropFilter: 'blur(8px)',
-      borderBottom: '1px solid rgba(220,200,180,0.25)',
+      background: 'rgba(251,248,244,0.70)',
+      backdropFilter: 'blur(28px)',
+      WebkitBackdropFilter: 'blur(28px)',
+      borderBottom: '1px solid rgba(200,150,100,0.08)',
       fontFamily: v4.fonts.display,
     }}>
       <a href="/" className="logo-v4" style={{ textDecoration: 'none' }}>
@@ -130,7 +131,7 @@ export function NavbarV4({ user, onLogout }) {
                   padding: '10px 20px',
                   background: 'transparent',
                   border: '1px solid rgba(220,200,180,0.35)',
-                  borderRadius: 10,
+                  borderRadius: 20,
                   color: v4.colors.textPrimary,
                   fontWeight: 600,
                   fontSize: 14,
@@ -145,14 +146,14 @@ export function NavbarV4({ user, onLogout }) {
         ) : (
           <a href="/auth" style={{
             padding: '10px 20px',
-            background: v4.colors.coral500,
+            background: 'linear-gradient(135deg, #F0905A 0%, #E8703D 100%)',
             border: 'none',
-            borderRadius: 12,
+            borderRadius: 20,
             color: 'white',
-            fontWeight: 600,
+            fontWeight: 700,
             fontSize: 14,
             textDecoration: 'none',
-            boxShadow: v4.shadows.md,
+            boxShadow: '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset',
           }}>
             {t('nav.joinNow')}
           </a>
@@ -193,8 +194,8 @@ export function ButtonV4({
 }) {
   const baseStyles = {
     fontFamily: v4.fonts.display,
-    fontWeight: 600,
-    borderRadius: 10,
+    fontWeight: 700,
+    borderRadius: 20,
     cursor: disabled ? 'not-allowed' : 'pointer',
     transition: 'all 0.2s ease',
     border: 'none',
@@ -213,9 +214,9 @@ export function ButtonV4({
 
   const variantStyles = {
     primary: {
-      background: v4.colors.coral500,
+      background: 'linear-gradient(135deg, #F0905A 0%, #E8703D 100%)',
       color: 'white',
-      boxShadow: v4.shadows.md,
+      boxShadow: '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset',
     },
     secondary: {
       background: 'transparent',
@@ -279,9 +280,9 @@ export function InputV4({
         padding: '10px 14px',
         background: v4.colors.bgTertiary,
         border: '1px solid rgba(220,200,180,0.35)',
-        borderRadius: 10,
+        borderRadius: 11,
         color: v4.colors.textPrimary,
-        fontSize: 14,
+        fontSize: 13,
         fontFamily: v4.fonts.display,
         outline: 'none',
         transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
@@ -299,10 +300,10 @@ export function CardV4({ children, className = '', style = {}, ...props }) {
     <div
       style={{
         background: v4.colors.bgSecondary,
-        border: '1px solid rgba(220,200,180,0.25)',
-        borderRadius: 14,
+        border: '1px solid rgba(220,200,180,0.35)',
+        borderRadius: 20,
         padding: 16,
-        boxShadow: v4.shadows.sm,
+        boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
         ...style,
       }}
       {...props}
@@ -358,8 +359,8 @@ export function BadgeV4({ children, variant = 'default', style = {} }) {
 
   return (
     <span style={{
-      padding: '3px 8px',
-      borderRadius: 6,
+      padding: '3px 9px',
+      borderRadius: 30,
       fontSize: 11,
       fontWeight: 700,
       fontFamily: v4.fonts.display,

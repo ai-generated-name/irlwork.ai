@@ -33,10 +33,10 @@ function durationLabel(task) {
     const diff = new Date(task.deadline).getTime() - Date.now()
     if (diff < 0) {
       const days = Math.ceil(Math.abs(diff) / (1000 * 60 * 60 * 24))
-      return { text: `Overdue ${days}d`, color: 'text-red-500' }
+      return { text: `Overdue ${days}d`, color: 'text-[#FF5F57]' }
     }
     const hours = Math.floor(diff / (1000 * 60 * 60))
-    if (hours < 24) return { text: `Due ${hours}h`, color: 'text-orange-500' }
+    if (hours < 24) return { text: `Due ${hours}h`, color: 'text-[#E8703D]' }
     const days = Math.floor(hours / 24)
     return { text: `Due ${days}d`, color: 'text-[rgba(26,20,16,0.28)]' }
   }
@@ -137,7 +137,7 @@ export default function TaskRow({
                 {CATEGORY_LABELS[task.category] || task.category || 'General'}
               </span>
               {task.is_remote || (!task.city && !task.location) ? (
-                <span className="flex items-center gap-0.5 text-[11px] text-blue-500">
+                <span className="flex items-center gap-0.5 text-[11px] text-[#6D4FC2]">
                   <Globe size={10} /> Remote
                 </span>
               ) : (
@@ -268,8 +268,8 @@ export default function TaskRow({
 
                 {/* Cancel confirmation */}
                 {cancelConfirmId === task.id && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                    <p className="text-sm text-red-600 font-medium mb-3">Are you sure you want to cancel this task?</p>
+                  <div className="p-4 bg-[rgba(255,95,87,0.06)] border border-[rgba(255,95,87,0.20)] rounded-xl">
+                    <p className="text-sm text-[#FF5F57] font-medium mb-3">Are you sure you want to cancel this task?</p>
                     <div className="flex gap-2">
                       <Button
                         variant="destructive"
@@ -506,7 +506,7 @@ function ApplicantsSection({
                   {/* Stats row */}
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                     <span className="text-[11px] text-[rgba(26,20,16,0.50)]">
-                      <Star size={10} className="inline align-[-1px] text-amber-400" /> {app.applicant?.rating?.toFixed(1) || 'New'}
+                      <Star size={10} className="inline align-[-1px] text-[#FEBC2E]" /> {app.applicant?.rating?.toFixed(1) || 'New'}
                     </span>
                     <span className="text-[11px] text-[rgba(26,20,16,0.50)]">
                       {app.applicant?.jobs_completed || 0} jobs completed
@@ -517,7 +517,7 @@ function ApplicantsSection({
                       </span>
                     )}
                     {app.applicant?.success_rate != null && app.applicant?.success_rate < 70 && (
-                      <span className="text-[11px] text-amber-600">
+                      <span className="text-[11px] text-[#FEBC2E]">
                         <AlertTriangle size={9} className="inline align-[-1px]" /> {app.applicant.success_rate}% success
                       </span>
                     )}
@@ -537,7 +537,7 @@ function ApplicantsSection({
 
               {/* Action buttons — inline */}
               {app.status === 'rejected' ? (
-                <span className="text-xs text-red-600 font-medium shrink-0 mt-1">Declined</span>
+                <span className="text-xs text-[#FF5F57] font-medium shrink-0 mt-1">Declined</span>
               ) : (
                 <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                   <Button
@@ -577,7 +577,7 @@ function ApplicantsSection({
             {/* Counter offer */}
             {app.proposed_rate != null && (
               <div className="mt-1.5 pl-[46px]">
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#E8703D] bg-orange-50 px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#E8703D] bg-[rgba(232,112,61,0.08)] px-2 py-0.5 rounded-full">
                   Counter-offer: ${app.proposed_rate}
                 </span>
               </div>

@@ -5,7 +5,7 @@ const ICON_COLORS = {
   gray:   { text: 'rgba(26,20,16,0.28)', bg: '' },
   orange: { text: '#E8703D', bg: '#FDEEE6' },
   green:  { text: '#1A9E6A', bg: 'rgba(26,158,106,0.09)' },
-  blue:   { text: '#2563EB', bg: '#EFF6FF' },
+  blue:   { text: '#6D4FC2', bg: 'rgba(109,79,194,0.09)' },
   red:    { text: '#c4420a', bg: 'rgba(196,66,10,0.08)' },
   gold:   { text: '#D4A017', bg: 'rgba(212,160,23,0.08)' },
 };

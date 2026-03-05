@@ -301,7 +301,7 @@ function AuthPage({ onLogin, onNavigate }) {
           </p>
 
           {new URLSearchParams(window.location.search).get('reset') === 'success' && (
-            <div style={{ background: '#D1FAE5', color: '#065F46', padding: '12px 16px', borderRadius: 12, marginBottom: 16, fontSize: 14 }}>
+            <div style={{ background: '#D1FAE5', color: '#065F46', padding: '12px 16px', borderRadius: 11, marginBottom: 16, fontSize: 14 }}>
               Password updated successfully. Please sign in with your new password.
             </div>
           )}

@@ -4,7 +4,7 @@ const VARIANT_STYLES = {
   default: {},
   accent:  { background: '#FDEEE6', borderColor: 'rgba(232,112,61,0.18)' },
   success: { background: 'rgba(26,158,106,0.09)', borderColor: 'rgba(26,158,106,0.18)' },
-  info:    { background: '#EFF6FF', borderColor: 'rgba(37,99,235,0.18)' },
+  info:    { background: 'rgba(109,79,194,0.06)', borderColor: 'rgba(109,79,194,0.18)' },
   warning: { background: 'rgba(212,160,23,0.08)', borderColor: 'rgba(212,160,23,0.18)' },
   muted:   { background: 'rgba(220,200,180,0.15)', borderColor: 'rgba(220,200,180,0.25)' },
 };

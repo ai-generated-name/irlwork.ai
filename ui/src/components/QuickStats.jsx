@@ -17,7 +17,7 @@ export default function QuickStats({ totalEarned = 0, tasksCompleted = 0, rating
         value={
           <span className="flex items-center gap-1">
             {rating > 0 ? rating.toFixed(1) : '-'}
-            <Star size={16} className="text-yellow-400" />
+            <Star size={16} style={{ color: '#E8703D' }} />
           </span>
         }
       />

@@ -183,13 +183,13 @@ function BridgeGraphic() {
         <animate attributeName="r" values="38;42;38" dur="3s" repeatCount="indefinite" />
       </circle>
       <text x="75" y="74" textAnchor="middle" fill="rgba(244,132,95,0.9)" fontSize="16" fontFamily="Courier Prime, JetBrains Mono, monospace" fontWeight="700">AI</text>
-      <text x="75" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="DM Sans, sans-serif">DIGITAL</text>
+      <text x="75" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="Sora, sans-serif">DIGITAL</text>
       {/* Right node — Human */}
       <circle cx="425" cy="80" r="38" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.5)" strokeWidth="2">
         <animate attributeName="r" values="38;42;38" dur="3s" begin="1.5s" repeatCount="indefinite" />
       </circle>
       <text x="425" y="74" textAnchor="middle" fill="rgba(251,191,36,0.9)" fontSize="16" fontFamily="Courier Prime, JetBrains Mono, monospace" fontWeight="700">IRL</text>
-      <text x="425" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="DM Sans, sans-serif">PHYSICAL</text>
+      <text x="425" y="93" textAnchor="middle" fill="rgba(26,26,26,0.45)" fontSize="11" fontFamily="Sora, sans-serif">PHYSICAL</text>
       {/* Bridge */}
       <line x1="120" y1="80" x2="380" y2="80" stroke="url(#bridgeGrad)" strokeWidth="1.5" strokeDasharray="8 5">
         <animate attributeName="stroke-dashoffset" values="0;-26" dur="2s" repeatCount="indefinite" />
@@ -518,7 +518,7 @@ export default function ThesisPage() {
           <Reveal>
             <div style={{
               padding: '32px',
-              borderRadius: '16px',
+              borderRadius: '20px',
               background: 'linear-gradient(135deg, rgba(244,132,95,0.08) 0%, rgba(251,191,36,0.04) 100%)',
               border: '1px solid rgba(244,132,95,0.15)',
               marginBottom: '28px',
@@ -576,7 +576,7 @@ export default function ThesisPage() {
               <div className="thesis-card" style={{
                 background: 'white',
                 border: '1px solid var(--border-primary)',
-                borderRadius: '16px',
+                borderRadius: '20px',
                 padding: '32px',
                 marginBottom: '16px',
                 position: 'relative',
@@ -645,7 +645,7 @@ export default function ThesisPage() {
               <div className="thesis-card" style={{
                 background: 'white',
                 border: '1px solid rgba(244,132,95,0.2)',
-                borderRadius: '16px',
+                borderRadius: '20px',
                 padding: '28px',
                 height: '100%',
               }}>
@@ -669,7 +669,7 @@ export default function ThesisPage() {
               <div className="thesis-card" style={{
                 background: 'white',
                 border: '1px solid rgba(251,191,36,0.25)',
-                borderRadius: '16px',
+                borderRadius: '20px',
                 padding: '28px',
                 height: '100%',
               }}>

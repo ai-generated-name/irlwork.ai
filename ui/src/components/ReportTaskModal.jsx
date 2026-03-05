@@ -132,7 +132,7 @@ export default function ReportTaskModal({
                         alignItems: 'center',
                         gap: '8px',
                         padding: '10px 14px',
-                        borderRadius: '10px',
+                        borderRadius: '11px',
                         border: reason === r.value ? '2px solid #FF5F57' : '2px solid rgba(220,200,180,0.35)',
                         background: reason === r.value ? 'rgba(220,38,38,0.05)' : 'rgba(0,0,0,0.02)',
                         cursor: 'pointer',

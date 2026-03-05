@@ -21,8 +21,8 @@ export default function ForAgentsBox({ human, collapsible = false }) {
     return (
       <div style={{
         background: 'var(--bg-tertiary, #F9FAFB)',
-        borderRadius: 12,
-        border: '1px solid rgba(26,26,26,0.06)',
+        borderRadius: 20,
+        border: '1px solid rgba(220,200,180,0.35)',
       }}>
         {/* Collapsed header - always visible */}
         <button
@@ -43,13 +43,13 @@ export default function ForAgentsBox({ human, collapsible = false }) {
             width: 28,
             height: 28,
             borderRadius: 7,
-            background: 'rgba(37,99,235,0.1)',
+            background: 'rgba(232,112,61,0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <Bot size={15} style={{ color: '#2563EB' }} />
+            <Bot size={15} style={{ color: '#E8703D' }} />
           </div>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #1A1410)', flex: 1 }}>
             For Agents
@@ -78,12 +78,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
               gap: 4,
               fontSize: 12,
               fontWeight: 500,
-              color: '#2563EB',
+              color: '#E8703D',
               textDecoration: 'none',
               padding: '4px 10px',
               borderRadius: 6,
-              border: '1px solid rgba(37,99,235,0.2)',
-              background: 'rgba(37,99,235,0.04)',
+              border: '1px solid rgba(232,112,61,0.2)',
+              background: 'rgba(232,112,61,0.04)',
               transition: 'all 0.2s'
             }}
           >
@@ -98,12 +98,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
               gap: 4,
               fontSize: 12,
               fontWeight: 500,
-              color: '#2563EB',
+              color: '#E8703D',
               textDecoration: 'none',
               padding: '4px 10px',
               borderRadius: 6,
-              border: '1px solid rgba(37,99,235,0.2)',
-              background: 'rgba(37,99,235,0.04)',
+              border: '1px solid rgba(232,112,61,0.2)',
+              background: 'rgba(232,112,61,0.04)',
               transition: 'all 0.2s'
             }}
           >
@@ -169,9 +169,9 @@ export default function ForAgentsBox({ human, collapsible = false }) {
   return (
     <div style={{
       background: 'var(--bg-tertiary, #F9FAFB)',
-      borderRadius: 16,
+      borderRadius: 20,
       padding: 24,
-      border: '1px solid rgba(220,200,180,0.25)',
+      border: '1px solid rgba(220,200,180,0.35)',
       marginBottom: 16
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -179,12 +179,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
           width: 32,
           height: 32,
           borderRadius: 8,
-          background: 'rgba(37,99,235,0.1)',
+          background: 'rgba(232,112,61,0.1)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <Bot size={18} style={{ color: '#2563EB' }} />
+          <Bot size={18} style={{ color: '#E8703D' }} />
         </div>
         <h4 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
           For Agents
@@ -244,12 +244,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
             gap: 4,
             fontSize: 13,
             fontWeight: 500,
-            color: '#2563EB',
+            color: '#E8703D',
             textDecoration: 'none',
             padding: '6px 12px',
             borderRadius: 8,
-            border: '1px solid rgba(37,99,235,0.2)',
-            background: 'rgba(37,99,235,0.04)',
+            border: '1px solid rgba(232,112,61,0.2)',
+            background: 'rgba(232,112,61,0.04)',
             transition: 'all 0.2s'
           }}
         >
@@ -264,12 +264,12 @@ export default function ForAgentsBox({ human, collapsible = false }) {
             gap: 4,
             fontSize: 13,
             fontWeight: 500,
-            color: '#2563EB',
+            color: '#E8703D',
             textDecoration: 'none',
             padding: '6px 12px',
             borderRadius: 8,
-            border: '1px solid rgba(37,99,235,0.2)',
-            background: 'rgba(37,99,235,0.04)',
+            border: '1px solid rgba(232,112,61,0.2)',
+            background: 'rgba(232,112,61,0.04)',
             transition: 'all 0.2s'
           }}
         >

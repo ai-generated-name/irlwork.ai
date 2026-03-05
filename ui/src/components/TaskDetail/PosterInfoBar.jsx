@@ -36,7 +36,7 @@ export default function PosterInfoBar({ task }) {
   const isAnonymous = task.is_anonymous || !poster;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-5 mb-6 shadow-sm">
+    <div className="bg-white border border-[rgba(220,200,180,0.35)] p-5 mb-6" style={{ borderRadius: 20, boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset' }}>
       <div className="flex items-center gap-4">
         {/* Avatar */}
         {/* eslint-disable irlwork/no-orange-outside-button -- avatar fallback uses brand color */}
@@ -100,7 +100,7 @@ export default function PosterInfoBar({ task }) {
               return cancelRate > 0.2 ? (
                 <>
                   <span>·</span>
-                  <span className="text-amber-500 inline-flex items-center gap-1" title="This requester cancels tasks frequently">
+                  <span className="text-[#FEBC2E] inline-flex items-center gap-1" title="This requester cancels tasks frequently">
                     <AlertTriangle size={13} /> {Math.round(cancelRate * 100)}% cancellation rate
                   </span>
                 </>

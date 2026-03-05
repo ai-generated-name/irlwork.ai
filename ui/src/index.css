@@ -828,7 +828,7 @@ code, pre {
   color: var(--text-primary, #1A1A1A);
   border: 1px solid rgba(26, 26, 26, 0.12);
   border-radius: 20px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Sora', sans-serif;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -860,7 +860,7 @@ code, pre {
   transform: translateX(-50%);
   background: #1A1A1A;
   color: white;
-  font-family: var(--font-display, 'DM Sans', sans-serif);
+  font-family: var(--font-display, 'Sora', sans-serif);
   font-size: 12px;
   font-weight: 700;
   padding: 3px 8px;
@@ -897,7 +897,7 @@ code, pre {
   padding: 16px;
   transform: translate(-50%, calc(-100% - 16px));
   animation: taskMapPopupIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-family: var(--font-body, 'Sora', sans-serif);
   pointer-events: auto;
 }
 
@@ -975,7 +975,7 @@ code, pre {
 }
 
 .task-map-popup-title {
-  font-family: var(--font-display, 'DM Sans', sans-serif);
+  font-family: var(--font-display, 'Sora', sans-serif);
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary, #1A1A1A);
@@ -1006,7 +1006,7 @@ code, pre {
 }
 
 .task-map-popup-price-amount {
-  font-family: var(--font-display, 'DM Sans', sans-serif);
+  font-family: var(--font-display, 'Sora', sans-serif);
   font-size: 20px;
   font-weight: 700;
   color: var(--orange-600, #E8853D);
@@ -1058,7 +1058,7 @@ code, pre {
   color: white;
   border: none;
   border-radius: var(--radius-md, 10px);
-  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-family: var(--font-body, 'Sora', sans-serif);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1172,7 +1172,7 @@ code, pre {
 
 .task-cluster-marker span {
   color: white;
-  font-family: var(--font-display, 'DM Sans', sans-serif);
+  font-family: var(--font-display, 'Sora', sans-serif);
   font-size: 14px;
   font-weight: 700;
 }
@@ -1563,8 +1563,10 @@ code, pre {
 }
 
 .quick-apply-modal {
-  background: var(--bg-secondary);
-  border-radius: var(--radius-xl);
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
   width: 100%;
   max-width: 480px;
   max-height: calc(100vh - var(--space-8));
@@ -1572,7 +1574,7 @@ code, pre {
   overflow-y: auto;
   padding: var(--space-6);
   position: relative;
-  box-shadow: var(--shadow-xl);
+  box-shadow: 0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
   animation: modal-appear 0.2s ease-out;
   margin: auto;
   flex-shrink: 0;
@@ -1669,8 +1671,8 @@ code, pre {
 .quick-apply-modal-field textarea {
   width: 100%;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: var(--radius-md);
+  border: 1px solid rgba(220,200,180,0.35);
+  border-radius: 11px;
   font-family: var(--font-body);
   font-size: 14px;
   color: var(--text-primary);
@@ -1693,8 +1695,8 @@ code, pre {
 .quick-apply-modal-field input[type="number"] {
   width: 100%;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: var(--radius-md);
+  border: 1px solid rgba(220,200,180,0.35);
+  border-radius: 11px;
   font-family: var(--font-mono);
   font-size: 15px;
   color: var(--text-primary);

@@ -25,7 +25,7 @@ function getUrgencyStyle(diffMs) {
   if (hours < 1) return { bg: 'rgba(255, 95, 87, 0.15)', border: '#FF5F57', text: '#FF5F57', pulse: true };
   if (hours < 6) return { bg: 'rgba(255, 95, 87, 0.10)', border: '#FF5F57', text: '#FF5F57', pulse: false };
   if (hours < 24) return { bg: 'rgba(254, 188, 46, 0.15)', border: '#FEBC2E', text: '#B8860B', pulse: false };
-  return { bg: 'rgba(34, 197, 94, 0.10)', border: '#22C55E', text: '#166534', pulse: false };
+  return { bg: 'rgba(26, 158, 106, 0.10)', border: '#1A9E6A', text: '#1A9E6A', pulse: false };
 }
 
 export default function DeadlineBanner({ task, user }) {
@@ -176,7 +176,7 @@ export default function DeadlineBanner({ task, user }) {
         <div style={{
           position: 'fixed', top: 20, right: 20, zIndex: 9999,
           padding: '12px 20px', borderRadius: 10,
-          background: toast.type === 'error' ? '#FF5F57' : '#22C55E',
+          background: toast.type === 'error' ? '#FF5F57' : '#1A9E6A',
           color: '#fff', fontWeight: 600, fontSize: 14, boxShadow: '0 4px 12px rgba(200,150,100,0.15)'
         }}>
           {toast.msg}
@@ -189,7 +189,7 @@ export default function DeadlineBanner({ task, user }) {
         style={{
           background: urgency.bg,
           borderLeft: `4px solid ${urgency.border}`,
-          borderRadius: 14,
+          borderRadius: 20,
           padding: '16px 20px',
         }}
       >
@@ -216,7 +216,7 @@ export default function DeadlineBanner({ task, user }) {
                 onClick={() => setShowExtensionModal(true)}
                 style={{
                   padding: '8px 16px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
-                  background: '#fff', color: '#333', fontWeight: 600, fontSize: 13,
+                  background: '#fff', color: '#1A1410', fontWeight: 600, fontSize: 13,
                   cursor: 'pointer'
                 }}
               >
@@ -229,7 +229,7 @@ export default function DeadlineBanner({ task, user }) {
                 onClick={() => setShowExtendModal(true)}
                 style={{
                   padding: '8px 16px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
-                  background: '#fff', color: '#333', fontWeight: 600, fontSize: 13,
+                  background: '#fff', color: '#1A1410', fontWeight: 600, fontSize: 13,
                   cursor: 'pointer'
                 }}
               >
@@ -252,7 +252,7 @@ export default function DeadlineBanner({ task, user }) {
           <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(255,95,87,0.1)', borderRadius: 10, fontSize: 13 }}>
             <span style={{ fontWeight: 600, color: '#FF5F57' }}>Extension declined</span>
             {lastDeclined.response_note && <span> — {lastDeclined.response_note}</span>}
-            <span style={{ marginLeft: 8, color: '#888' }}>You can request again.</span>
+            <span style={{ marginLeft: 8, color: 'rgba(26,20,16,0.40)' }}>You can request again.</span>
           </div>
         )}
 
@@ -262,10 +262,10 @@ export default function DeadlineBanner({ task, user }) {
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
               Extension Request from {pendingRequest.requester?.name || 'Worker'}
             </div>
-            <div style={{ fontSize: 13, color: '#333', marginBottom: 6 }}>
+            <div style={{ fontSize: 13, color: '#1A1410', marginBottom: 6 }}>
               <strong>Reason:</strong> {pendingRequest.reason}
             </div>
-            <div style={{ fontSize: 13, color: '#333', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: '#1A1410', marginBottom: 12 }}>
               <strong>Proposed deadline:</strong> {new Date(pendingRequest.proposed_deadline).toLocaleString()}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -274,7 +274,7 @@ export default function DeadlineBanner({ task, user }) {
                 disabled={submitting}
                 style={{
                   padding: '8px 16px', borderRadius: 10, border: 'none',
-                  background: '#22C55E', color: '#fff', fontWeight: 600, fontSize: 13,
+                  background: '#1A9E6A', color: '#fff', fontWeight: 600, fontSize: 13,
                   cursor: 'pointer', opacity: submitting ? 0.6 : 1
                 }}
               >
@@ -306,7 +306,7 @@ export default function DeadlineBanner({ task, user }) {
                   disabled={submitting || !modifyDeadline}
                   style={{
                     padding: '8px 16px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
-                    background: '#fff', color: '#333', fontWeight: 600, fontSize: 13,
+                    background: '#fff', color: '#1A1410', fontWeight: 600, fontSize: 13,
                     cursor: modifyDeadline ? 'pointer' : 'not-allowed', opacity: (submitting || !modifyDeadline) ? 0.5 : 1
                   }}
                 >
@@ -337,11 +337,11 @@ export default function DeadlineBanner({ task, user }) {
           background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setShowExtensionModal(false)}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff', borderRadius: 14, padding: 24, width: '90%', maxWidth: 440,
+            background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: 20, padding: 24, width: '90%', maxWidth: 440,
             boxShadow: '0 20px 60px rgba(200,150,100,0.20)'
           }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1410' }}>Request deadline extension</h3>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1A1410', marginBottom: 4 }}>
               Reason <span style={{ color: '#FF5F57' }}>*</span>
             </label>
             <textarea
@@ -354,7 +354,7 @@ export default function DeadlineBanner({ task, user }) {
                 fontSize: 14, resize: 'vertical', marginBottom: 12, boxSizing: 'border-box'
               }}
             />
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1A1410', marginBottom: 4 }}>
               Proposed new deadline <span style={{ color: '#FF5F57' }}>*</span>
             </label>
             <input
@@ -371,7 +371,7 @@ export default function DeadlineBanner({ task, user }) {
                 onClick={() => setShowExtensionModal(false)}
                 style={{
                   padding: '10px 20px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
-                  background: '#fff', color: '#333', fontWeight: 600, fontSize: 14, cursor: 'pointer'
+                  background: '#fff', color: '#1A1410', fontWeight: 600, fontSize: 14, cursor: 'pointer'
                 }}
               >
                 Cancel
@@ -381,7 +381,7 @@ export default function DeadlineBanner({ task, user }) {
                 disabled={submitting || !extensionReason.trim() || !proposedDeadline}
                 style={{
                   padding: '10px 20px', borderRadius: 10, border: 'none',
-                  background: '#333', color: '#fff', fontWeight: 600, fontSize: 14,
+                  background: '#1A1410', color: '#fff', fontWeight: 600, fontSize: 14,
                   cursor: (submitting || !extensionReason.trim() || !proposedDeadline) ? 'not-allowed' : 'pointer',
                   opacity: (submitting || !extensionReason.trim() || !proposedDeadline) ? 0.5 : 1
                 }}
@@ -400,7 +400,7 @@ export default function DeadlineBanner({ task, user }) {
           background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setShowExtendModal(false)}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff', borderRadius: 14, padding: 24, width: '90%', maxWidth: 440,
+            background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: 20, padding: 24, width: '90%', maxWidth: 440,
             boxShadow: '0 20px 60px rgba(200,150,100,0.20)'
           }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1410' }}>Extend Deadline</h3>
@@ -409,9 +409,9 @@ export default function DeadlineBanner({ task, user }) {
                 onClick={() => setExtendMode('datetime')}
                 style={{
                   padding: '6px 14px', borderRadius: 8, border: '2px solid',
-                  borderColor: extendMode === 'datetime' ? '#333' : 'rgba(220,200,180,0.45)',
-                  background: extendMode === 'datetime' ? '#333' : '#fff',
-                  color: extendMode === 'datetime' ? '#fff' : '#333',
+                  borderColor: extendMode === 'datetime' ? '#1A1410' : 'rgba(220,200,180,0.45)',
+                  background: extendMode === 'datetime' ? '#1A1410' : '#fff',
+                  color: extendMode === 'datetime' ? '#fff' : '#1A1410',
                   fontWeight: 600, fontSize: 13, cursor: 'pointer'
                 }}
               >
@@ -421,9 +421,9 @@ export default function DeadlineBanner({ task, user }) {
                 onClick={() => setExtendMode('hours')}
                 style={{
                   padding: '6px 14px', borderRadius: 8, border: '2px solid',
-                  borderColor: extendMode === 'hours' ? '#333' : 'rgba(220,200,180,0.45)',
-                  background: extendMode === 'hours' ? '#333' : '#fff',
-                  color: extendMode === 'hours' ? '#fff' : '#333',
+                  borderColor: extendMode === 'hours' ? '#1A1410' : 'rgba(220,200,180,0.45)',
+                  background: extendMode === 'hours' ? '#1A1410' : '#fff',
+                  color: extendMode === 'hours' ? '#fff' : '#1A1410',
                   fontWeight: 600, fontSize: 13, cursor: 'pointer'
                 }}
               >
@@ -432,7 +432,7 @@ export default function DeadlineBanner({ task, user }) {
             </div>
             {extendMode === 'datetime' ? (
               <>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>New Deadline</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1A1410', marginBottom: 4 }}>New Deadline</label>
                 <input
                   type="datetime-local"
                   value={extendDatetime}
@@ -445,7 +445,7 @@ export default function DeadlineBanner({ task, user }) {
               </>
             ) : (
               <>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>Extend by (hours)</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1A1410', marginBottom: 4 }}>Extend by (hours)</label>
                 <input
                   type="number"
                   min="1"
@@ -465,7 +465,7 @@ export default function DeadlineBanner({ task, user }) {
                 onClick={() => setShowExtendModal(false)}
                 style={{
                   padding: '10px 20px', borderRadius: 10, border: '2px solid rgba(220,200,180,0.45)',
-                  background: '#fff', color: '#333', fontWeight: 600, fontSize: 14, cursor: 'pointer'
+                  background: '#fff', color: '#1A1410', fontWeight: 600, fontSize: 14, cursor: 'pointer'
                 }}
               >
                 Cancel
@@ -475,7 +475,7 @@ export default function DeadlineBanner({ task, user }) {
                 disabled={submitting || (extendMode === 'datetime' ? !extendDatetime : !extendHours)}
                 style={{
                   padding: '10px 20px', borderRadius: 10, border: 'none',
-                  background: '#333', color: '#fff', fontWeight: 600, fontSize: 14,
+                  background: '#1A1410', color: '#fff', fontWeight: 600, fontSize: 14,
                   cursor: (submitting || (extendMode === 'datetime' ? !extendDatetime : !extendHours)) ? 'not-allowed' : 'pointer',
                   opacity: (submitting || (extendMode === 'datetime' ? !extendDatetime : !extendHours)) ? 0.5 : 1
                 }}

@@ -113,7 +113,7 @@ export default function ConnectBankButton({ user, compact = false }) {
   if (loading) {
     if (compact) return null;
     return (
-      <div className="bg-white border-2 border-[rgba(220,200,180,0.35)] rounded-2xl p-6 md:p-8 animate-pulse">
+      <div className="bg-white border-2 border-[rgba(220,200,180,0.35)] rounded-[20px] p-6 md:p-8 animate-pulse">
         <div className="h-5 bg-[rgba(220,200,180,0.35)] rounded w-1/3 mb-3"></div>
         <div className="h-4 bg-[rgba(220,200,180,0.15)] rounded w-2/3"></div>
       </div>
@@ -158,7 +158,7 @@ export default function ConnectBankButton({ user, compact = false }) {
       <button
         onClick={handleConnect}
         disabled={connecting}
-        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-xl text-sm font-semibold transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-[11px] text-sm font-semibold transition-colors"
       >
         {connecting ? 'Setting up...' : 'Connect bank account'}
       </button>
@@ -170,7 +170,7 @@ export default function ConnectBankButton({ user, compact = false }) {
   // Fully connected — show manage options
   if (status?.connected && status?.payouts_enabled) {
     return (
-      <div className="bg-white border-2 border-[#1A9E6A]/20 rounded-2xl p-5 md:p-6">
+      <div className="bg-white border-2 border-[#1A9E6A]/20 rounded-[20px] p-5 md:p-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-[rgba(26,158,106,0.08)] rounded-full flex items-center justify-center flex-shrink-0">
             <svg className="w-6 h-6 text-[#1A9E6A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -215,7 +215,7 @@ export default function ConnectBankButton({ user, compact = false }) {
   // Connected but onboarding incomplete
   if (status?.connected && !status?.payouts_enabled) {
     return (
-      <div className="bg-white border-2 border-[#FEBC2E]/30 rounded-2xl p-5 md:p-6">
+      <div className="bg-white border-2 border-[#FEBC2E]/30 rounded-[20px] p-5 md:p-6">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-[rgba(254, 188, 46, 0.1)] rounded-full flex items-center justify-center flex-shrink-0">
             <svg className="w-6 h-6 text-[#FEBC2E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -229,7 +229,7 @@ export default function ConnectBankButton({ user, compact = false }) {
             <button
               onClick={handleConnect}
               disabled={connecting}
-              className="mt-4 px-6 py-2.5 bg-[#FEBC2E] hover:bg-[#FEBC2E] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-xl text-sm font-semibold transition-colors"
+              className="mt-4 px-6 py-2.5 bg-[#FEBC2E] hover:bg-[#FEBC2E] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-[11px] text-sm font-semibold transition-colors"
             >
               {connecting ? 'Loading...' : 'Complete bank setup'}
             </button>
@@ -241,9 +241,9 @@ export default function ConnectBankButton({ user, compact = false }) {
 
   // Not connected — big prominent setup card
   return (
-    <div className="bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] border-2 border-[#6366f1]/15 rounded-2xl p-6 md:p-8">
+    <div className="bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] border-2 border-[#6366f1]/15 rounded-[20px] p-6 md:p-8">
       {error && (
-        <div className="mb-4 p-3 bg-[rgba(255, 95, 87, 0.1)] border border-[#FF5F57]/20 rounded-xl flex items-start gap-2.5">
+        <div className="mb-4 p-3 bg-[rgba(255, 95, 87, 0.1)] border border-[#FF5F57]/20 rounded-[11px] flex items-start gap-2.5">
           <svg className="w-5 h-5 text-[#FF5F57] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
           </svg>
@@ -259,7 +259,7 @@ export default function ConnectBankButton({ user, compact = false }) {
         </div>
       )}
       <div className="flex flex-col md:flex-row items-start md:items-center gap-5">
-        <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center flex-shrink-0">
+        <div className="w-14 h-14 bg-white rounded-[20px] shadow-sm flex items-center justify-center flex-shrink-0">
           <svg className="w-7 h-7 text-[#6366f1]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5M3.75 9h16.5M5.25 21V9m13.5 12V9M9 21v-6a.75.75 0 01.75-.75h4.5a.75.75 0 01.75.75v6M12 3.75l8.25 5.25H3.75L12 3.75z" />
           </svg>
@@ -297,7 +297,7 @@ export default function ConnectBankButton({ user, compact = false }) {
         <button
           onClick={handleConnect}
           disabled={connecting}
-          className="w-full md:w-auto px-8 py-3 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-xl text-sm font-bold transition-all hover:shadow-lg hover:shadow-[#6366f1]/25 flex items-center justify-center gap-2 flex-shrink-0"
+          className="w-full md:w-auto px-8 py-3 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-[11px] text-sm font-bold transition-all hover:shadow-lg hover:shadow-[#6366f1]/25 flex items-center justify-center gap-2 flex-shrink-0"
         >
           {connecting ? (
             <>

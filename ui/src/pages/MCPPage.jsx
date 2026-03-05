@@ -356,7 +356,7 @@ export default function MCPPage() {
               borderRadius: 8,
               border: 'none',
               fontSize: 13,
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "'Sora', sans-serif",
               fontWeight: activeSection === s.id ? 600 : 500,
               color: activeSection === s.id ? '#E8703D' : '#999', // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               background: activeSection === s.id ? 'rgba(232,112,61,0.06)' : 'transparent',
@@ -411,7 +411,7 @@ export default function MCPPage() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FAFAF8', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#FAFAF8', fontFamily: "'Sora', sans-serif" }}>
 
       {/* ═══ Sticky Top Nav ═══ */}
       <nav style={{

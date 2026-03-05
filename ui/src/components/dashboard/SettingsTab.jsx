@@ -156,7 +156,7 @@ export default function SettingsTab({
                     </div>
                     <div style={{
                       display: 'flex',
-                      background: 'rgba(26,26,26,0.06)',
+                      background: 'rgba(220,200,180,0.15)',
                       borderRadius: 999,
                       padding: 3,
                       gap: 2

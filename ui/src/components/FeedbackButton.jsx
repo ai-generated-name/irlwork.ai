@@ -28,7 +28,7 @@ const C = {
   successBg: 'rgba(26,158,106,0.08)',
 }
 
-const FONT = "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+const FONT = "'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 
 const TYPES = [
   { id: 'feedback', label: 'Feedback', icon: <MessageCircle size={14} /> },
@@ -284,7 +284,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           borderTop: `1px solid ${C.borderMed}`,
           borderTopLeftRadius: 20,
           boxShadow: isOpen
-            ? '-8px -4px 40px rgba(220,200,180,0.35), 0 4px 12px rgba(200,150,100,0.06)'
+            ? '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset'
             : 'none',
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -455,7 +455,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 10,
+                    borderRadius: 11,
                     border: `1.5px solid ${C.borderMed}`,
                     background: C.white,
                     color: C.textPrimary,
@@ -483,7 +483,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 10,
+                    borderRadius: 11,
                     border: `1.5px solid ${C.borderMed}`,
                     background: C.white,
                     color: C.textPrimary,
@@ -510,7 +510,7 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
                     onClick={() => fileInputRef.current?.click()}
                     style={{
                       border: `2px dashed ${C.borderHover}`,
-                      borderRadius: 10,
+                      borderRadius: 11,
                       padding: '14px',
                       textAlign: 'center',
                       cursor: 'pointer',

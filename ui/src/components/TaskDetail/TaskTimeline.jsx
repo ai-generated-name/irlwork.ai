@@ -48,7 +48,7 @@ export default function TaskTimeline({ task, taskStatus }) {
   const isDisputed = task.status === 'disputed';
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-4 sm:p-6 shadow-sm">
+    <div className="bg-white border border-[rgba(220,200,180,0.35)] p-4 sm:p-6" style={{ borderRadius: 20, boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset' }}>
       <div className="relative flex items-start justify-between">
         {/* Background connecting line */}
         <div

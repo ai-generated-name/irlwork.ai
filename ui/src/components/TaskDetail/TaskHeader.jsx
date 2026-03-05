@@ -72,7 +72,7 @@ export default function TaskHeader({ task }) {
       </div>
 
       {/* Title */}
-      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#1A1410] mb-2 sm:mb-4">
+      <h1 className="text-xl sm:text-2xl lg:text-3xl font-[800] text-[#1A1410] mb-2 sm:mb-4" style={{ fontFamily: "'Sora', sans-serif" }}>
         {task.title}
       </h1>
 
@@ -111,7 +111,7 @@ export default function TaskHeader({ task }) {
       {task.instructions && (
         <div className="mb-3 sm:mb-6">
           <h3 className="text-xs sm:text-sm font-semibold text-[#1A1410] mb-1 sm:mb-2">Instructions</h3>
-          <div className="text-[#525252] text-xs sm:text-sm leading-relaxed prose prose-sm max-w-none">
+          <div className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm leading-relaxed prose prose-sm max-w-none">
             <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{task.instructions}</ReactMarkdown>
           </div>
         </div>
@@ -148,11 +148,11 @@ export default function TaskHeader({ task }) {
 
       {/* Rejection Feedback — shown alongside instructions when agent requests revision */}
       {task.rejection_feedback && (
-        <div className="mb-3 sm:mb-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <h3 className="text-xs sm:text-sm font-semibold text-amber-700 mb-1 sm:mb-2">
+        <div className="mb-3 sm:mb-6 p-3 bg-[rgba(254,188,46,0.08)] border border-[rgba(254,188,46,0.25)] rounded-[11px]">
+          <h3 className="text-xs sm:text-sm font-semibold text-[#B8860B] mb-1 sm:mb-2">
             Revision Requested
           </h3>
-          <p className="text-amber-700 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+          <p className="text-[#B8860B] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
             {task.rejection_feedback}
           </p>
         </div>

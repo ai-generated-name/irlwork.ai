@@ -54,12 +54,12 @@ function SkeletonCard() {
     <div style={{
       background: 'white',
       borderRadius: 'var(--radius-lg)',
-      border: '1px solid rgba(220,200,180,0.25)',
+      border: '1px solid rgba(220,200,180,0.35)',
       padding: 24,
       display: 'flex',
       flexDirection: 'column',
       animation: 'browseShimmer 1.8s ease-in-out infinite',
-      boxShadow: '0 1px 3px rgba(200,150,100,0.06)',
+      boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
       overflow: 'hidden',
       position: 'relative'
     }}>
@@ -90,9 +90,9 @@ function SkeletonCard() {
         <div style={{ height: 28, width: 64, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
       </div>
       {/* Footer */}
-      <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid rgba(220,200,180,0.25)', display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid rgba(220,200,180,0.35)', display: 'flex', justifyContent: 'space-between' }}>
         <div style={{ height: 24, width: 60, background: 'var(--bg-tertiary)', borderRadius: 6 }} />
-        <div style={{ height: 38, width: 72, background: 'var(--bg-tertiary)', borderRadius: 10 }} />
+        <div style={{ height: 38, width: 72, background: 'var(--bg-tertiary)', borderRadius: 11 }} />
       </div>
     </div>
   )
@@ -554,7 +554,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
 
   const inputStyle = {
     padding: '10px 14px',
-    borderRadius: 10,
+    borderRadius: 11,
     border: '1px solid rgba(220,200,180,0.35)',
     fontSize: 14,
     fontFamily: 'inherit',
@@ -659,11 +659,11 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
             {/* Filter Bar */}
             <div style={{
               background: 'white',
-              borderRadius: 14,
-              border: '1px solid rgba(220,200,180,0.25)',
+              borderRadius: 20,
+              border: '1px solid rgba(220,200,180,0.35)',
               padding: '16px 20px',
               marginBottom: 16,
-              boxShadow: '0 1px 3px rgba(200,150,100,0.06)',
+              boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
             }}>
               <div style={{
                 display: 'grid',
@@ -684,7 +684,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     value={nameSearch}
                     onChange={(e) => setNameSearch(e.target.value)}
                     style={inputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(232,112,61,0.08)' }}
+                    onFocus={(e) => { e.target.style.borderColor = '#E8703D'; e.target.style.boxShadow = '0 0 0 3px rgba(232,112,61,0.08)' }}
                     onBlur={(e) => { e.target.style.borderColor = 'rgba(220,200,180,0.35)'; e.target.style.boxShadow = 'none' }}
                   />
                 </div>
@@ -743,7 +743,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     value={maxRate}
                     onChange={(e) => setMaxRate(e.target.value)}
                     style={inputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(232,112,61,0.08)' }}
+                    onFocus={(e) => { e.target.style.borderColor = '#E8703D'; e.target.style.boxShadow = '0 0 0 3px rgba(232,112,61,0.08)' }}
                     onBlur={(e) => { e.target.style.borderColor = 'rgba(220,200,180,0.35)'; e.target.style.boxShadow = 'none' }}
                   />
                 </div>
@@ -788,7 +788,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       borderRadius: 999,
                       fontSize: 13,
                       fontWeight: 500,
-                      color: 'var(--teal)',
+                      color: '#E8703D',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                     }}
@@ -902,7 +902,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     justifyContent: 'center',
                     width: 38,
                     height: 38,
-                    borderRadius: 10,
+                    borderRadius: 11,
                     border: '1px solid rgba(220,200,180,0.35)',
                     background: 'white',
                     cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
@@ -928,7 +928,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       style={{
                         width: 38,
                         height: 38,
-                        borderRadius: 10,
+                        borderRadius: 11,
                         border: page === currentPage ? '1px solid var(--coral-500)' : '1px solid rgba(220,200,180,0.35)',
                         background: page === currentPage ? 'var(--coral-500)' : 'white',
                         color: page === currentPage ? 'white' : 'var(--text-primary)',
@@ -954,7 +954,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     justifyContent: 'center',
                     width: 38,
                     height: 38,
-                    borderRadius: 10,
+                    borderRadius: 11,
                     border: '1px solid rgba(220,200,180,0.35)',
                     background: 'white',
                     cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
@@ -1111,7 +1111,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       style={{
                         background: 'white',
                         borderRadius: 'var(--radius-lg)',
-                        border: '1px solid rgba(220,200,180,0.25)',
+                        border: '1px solid rgba(220,200,180,0.35)',
                         padding: 24,
                         transition: 'all 0.2s',
                         cursor: 'pointer'
@@ -1143,7 +1143,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                           )}
                         </div>
                       </div>
-                      <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8, lineHeight: 1.3 }}>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8, lineHeight: 1.3 }}>
                         {task.title}
                       </h3>
                       {task.description && (
@@ -1201,9 +1201,10 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                           setShowApplyModal(task)
                         }}
                         style={{
-                          width: '100%', padding: '14px', background: 'var(--coral-500)', color: 'white',
-                          fontWeight: 600, fontSize: 15, borderRadius: 'var(--radius-md)', border: 'none',
-                          cursor: 'pointer', transition: 'all 0.2s'
+                          width: '100%', padding: '14px', background: 'linear-gradient(135deg, #F0905A 0%, #E8703D 100%)', color: 'white',
+                          fontWeight: 700, fontSize: 15, borderRadius: 20, border: 'none',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                          boxShadow: '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset'
                         }}
                         onMouseOver={(e) => e.currentTarget.style.background = 'var(--coral-600)'}
                         onMouseOut={(e) => e.currentTarget.style.background = 'var(--coral-500)'}
@@ -1231,7 +1232,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   disabled={taskCurrentPage === 1}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 38, height: 38, borderRadius: 10,
+                    width: 38, height: 38, borderRadius: 11,
                     border: '1px solid rgba(220,200,180,0.35)', background: 'white',
                     cursor: taskCurrentPage === 1 ? 'not-allowed' : 'pointer',
                     opacity: taskCurrentPage === 1 ? 0.4 : 1,
@@ -1252,7 +1253,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       key={page}
                       onClick={() => goToTaskPage(page)}
                       style={{
-                        width: 38, height: 38, borderRadius: 10,
+                        width: 38, height: 38, borderRadius: 11,
                         border: page === taskCurrentPage ? '1px solid var(--coral-500)' : '1px solid rgba(220,200,180,0.35)',
                         background: page === taskCurrentPage ? 'var(--coral-500)' : 'white',
                         color: page === taskCurrentPage ? 'white' : 'var(--text-primary)',
@@ -1271,7 +1272,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   disabled={taskCurrentPage === taskTotalPages}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 38, height: 38, borderRadius: 10,
+                    width: 38, height: 38, borderRadius: 11,
                     border: '1px solid rgba(220,200,180,0.35)', background: 'white',
                     cursor: taskCurrentPage === taskTotalPages ? 'not-allowed' : 'pointer',
                     opacity: taskCurrentPage === taskTotalPages ? 0.4 : 1,
@@ -1291,11 +1292,11 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       {/* Apply Modal */}
       {showApplyModal && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}
           onClick={() => { setShowApplyModal(null); setApplyMessage(''); setApplyError('') }}
         >
           <div
-            style={{ background: 'white', borderRadius: 'var(--radius-xl)', padding: 32, maxWidth: 480, width: '100%', boxShadow: 'var(--shadow-xl)' }}
+            style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: 20, padding: 32, maxWidth: 480, width: '100%', boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset' }}
             onClick={(e) => e.stopPropagation()}
           >
             {applySuccess ? (
@@ -1303,14 +1304,14 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 <div style={{ width: 64, height: 64, background: 'var(--success-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                   <Check size={32} style={{ color: 'var(--success)' }} />
                 </div>
-                <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Application sent</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Application sent</h3>
                 <p style={{ color: 'var(--text-secondary)' }}>The task creator will review your application.</p>
               </div>
             ) : (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
                   <div>
-                    <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Apply to task</h2>
+                    <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Apply to task</h2>
                     <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{showApplyModal.title}</p>
                   </div>
                   <button
@@ -1486,11 +1487,11 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
       {/* Hire Human Modal */}
       {showHireModal && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}
           onClick={resetHireForm}
         >
           <div
-            style={{ background: '#1A1410', borderRadius: 16, padding: 0, maxWidth: 480, width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', maxHeight: '90vh', overflowY: 'auto' }}
+            style={{ background: '#1A1410', borderRadius: 20, padding: 0, maxWidth: 480, width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', maxHeight: '90vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             {hireSuccess ? (
@@ -1498,7 +1499,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                 <div style={{ width: 64, height: 64, background: 'rgba(26,158,106, 0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                   <Check size={32} style={{ color: '#1A9E6A' }} />
                 </div>
-                <h3 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 8 }}>Task created and assigned</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 700, color: 'white', marginBottom: 8 }}>Task created and assigned</h3>
                 <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{showHireModal.name} has been assigned to your task.</p>
               </div>
             ) : (
@@ -1506,7 +1507,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
             <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 4 }}>Hire {showHireModal.name}</h2>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, color: 'white', marginBottom: 4 }}>Hire {showHireModal.name}</h2>
                   <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>How are you hiring this human?</p>
                 </div>
                 <button onClick={resetHireForm} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'rgba(255,255,255,0.5)' }}>
@@ -1523,10 +1524,10 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   width: '100%', padding: 16,
                   background: hireMode === 'agent' ? 'rgba(37,99,235, 0.15)' : 'rgba(255,255,255,0.05)',
                   border: hireMode === 'agent' ? '1px solid rgba(37,99,235, 0.5)' : '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, transition: 'all 0.2s'
+                  borderRadius: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, transition: 'all 0.2s'
                 }}
               >
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Bot size={20} style={{ color: 'white' }} />
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
@@ -1537,7 +1538,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
               </button>
 
               {hireMode === 'agent' && (
-                <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 16, marginBottom: 16, marginTop: 8 }}>
+                <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 20, padding: 16, marginBottom: 16, marginTop: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>copy this and paste it into your AI agent's chat:</span>
                     <button
@@ -1551,7 +1552,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       <Copy size={14} /> copy
                     </button>
                   </div>
-                  <div style={{ background: '#0d0d0d', borderRadius: 8, padding: 16, fontFamily: 'monospace', fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  <div style={{ background: '#0d0d0d', borderRadius: 11, padding: 16, fontFamily: 'monospace', fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
 {`I want to hire a human from irlwork.ai for a task.
 
 Name: ${showHireModal.name}
@@ -1598,10 +1599,10 @@ Use the start_conversation method with human_id "${showHireModal.id}" to message
                   width: '100%', padding: 16,
                   background: hireMode === 'human' ? 'rgba(254, 188, 46, 0.15)' : 'rgba(255,255,255,0.05)',
                   border: hireMode === 'human' ? '1px solid rgba(254, 188, 46, 0.5)' : '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.2s'
+                  borderRadius: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.2s'
                 }}
               >
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #FEBC2E, #FEBC2E)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: 'linear-gradient(135deg, #FEBC2E, #FEBC2E)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <User size={20} style={{ color: 'white' }} />
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
@@ -1612,27 +1613,27 @@ Use the start_conversation method with human_id "${showHireModal.id}" to message
               </button>
 
               {hireMode === 'human' && (
-                <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 20, marginTop: 8 }}>
+                <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 20, padding: 20, marginTop: 8 }}>
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'rgba(255,255,255,0.7)' }}>Task title *</label>
                     <input type="text" placeholder="e.g. Pick up my dry cleaning" value={hireTitle} onChange={(e) => setHireTitle(e.target.value)}
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'rgba(255,255,255,0.7)' }}>Description</label>
                     <textarea placeholder="Describe what you need done..." value={hireDescription} onChange={(e) => setHireDescription(e.target.value)}
-                      style={{ width: '100%', minHeight: 80, padding: '12px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                      style={{ width: '100%', minHeight: 80, padding: '12px 14px', borderRadius: 11, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                   <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'rgba(255,255,255,0.7)' }}>Budget ($) *</label>
                       <input type="number" placeholder="50" min="1" value={hireBudget} onChange={(e) => setHireBudget(e.target.value)}
-                        style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                        style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'rgba(255,255,255,0.7)' }}>Category</label>
                       <select value={hireCategory} onChange={(e) => setHireCategory(e.target.value)}
-                        style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: 'white', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}>
+                        style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: 'white', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}>
                         <option value="" style={{ background: '#1A1410' }}>Select...</option>
                         {categories.slice(1).map(cat => (
                           <option key={cat.value} value={cat.value} style={{ background: '#1A1410' }}>{cat.label}</option>
@@ -1641,10 +1642,10 @@ Use the start_conversation method with human_id "${showHireModal.id}" to message
                     </div>
                   </div>
                   {hireError && (
-                    <div style={{ padding: 12, background: 'rgba(220, 38, 38, 0.15)', borderRadius: 8, color: '#FCA5A5', fontSize: 13, marginBottom: 16, border: '1px solid rgba(220, 38, 38, 0.3)' }}>{hireError}</div>
+                    <div style={{ padding: 12, background: 'rgba(220, 38, 38, 0.15)', borderRadius: 11, color: '#FCA5A5', fontSize: 13, marginBottom: 16, border: '1px solid rgba(220, 38, 38, 0.3)' }}>{hireError}</div>
                   )}
                   <button onClick={handleHire} disabled={hireLoading}
-                    style={{ width: '100%', padding: 14, borderRadius: 8, border: 'none', background: hireLoading ? 'rgba(255,255,255,0.1)' : 'var(--coral-500)', color: 'white', fontWeight: 600, fontSize: 15, cursor: hireLoading ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+                    style={{ width: '100%', padding: 14, borderRadius: 20, border: 'none', background: hireLoading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #F0905A 0%, #E8703D 100%)', color: 'white', fontWeight: 700, fontSize: 15, cursor: hireLoading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: hireLoading ? 'none' : '0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset' }}
                     onMouseOver={(e) => { if (!hireLoading) e.currentTarget.style.background = 'var(--coral-600)' }}
                     onMouseOut={(e) => { if (!hireLoading) e.currentTarget.style.background = 'var(--coral-500)' }}
                   >

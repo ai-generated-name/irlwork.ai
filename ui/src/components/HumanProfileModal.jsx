@@ -52,25 +52,28 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.55)',
+        background: 'rgba(0,0,0,0.45)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 2000,
         padding: 24,
-        backdropFilter: 'blur(4px)'
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)'
       }}
       onClick={onClose}
     >
       <div
         style={{
-          background: 'white',
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
           borderRadius: 20,
           maxWidth: 560,
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
-          boxShadow: '0 25px 60px rgba(220,200,180,0.45), 0 10px 20px rgba(220,200,180,0.35)',
+          boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset',
           position: 'relative'
         }}
         onClick={(e) => e.stopPropagation()}

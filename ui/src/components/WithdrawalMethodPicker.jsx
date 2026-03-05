@@ -72,9 +72,9 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
         <div
           style={{
             padding: '14px 16px',
-            border: '2px solid #6366f1',
-            borderRadius: '12px',
-            background: '#eef2ff',
+            border: '2px solid #6D4FC2',
+            borderRadius: '20px',
+            background: 'rgba(109,79,194,0.06)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -87,7 +87,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               </p>
             </div>
             {stripeReady && (
-              <span style={{ fontSize: '0.675rem', background: '#dcfce7', color: '#1A9E6A', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.675rem', background: 'rgba(26,158,106,0.08)', color: '#1A9E6A', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
                 Connected
               </span>
             )}
@@ -107,7 +107,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
                 background: (loading || stripeAvailable <= 0) ? 'rgba(220,200,180,0.45)' : '#1A9E6A',
                 color: '#fff',
                 border: 'none',
-                borderRadius: '10px',
+                borderRadius: '11px',
                 fontSize: '0.813rem',
                 fontWeight: 600,
                 cursor: (loading || stripeAvailable <= 0) ? 'not-allowed' : 'pointer',
@@ -125,9 +125,9 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
         <div
           style={{
             padding: '14px 16px',
-            border: walletReady ? '2px solid #2563eb' : '2px solid #e5e7eb',
-            borderRadius: '12px',
-            background: walletReady ? '#eff6ff' : '#fafafa',
+            border: walletReady ? '2px solid #6D4FC2' : '2px solid rgba(220,200,180,0.35)',
+            borderRadius: '20px',
+            background: walletReady ? 'rgba(109,79,194,0.06)' : '#FAFAF8',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -140,7 +140,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               </p>
             </div>
             {walletReady && (
-              <span style={{ fontSize: '0.675rem', background: '#dcfce7', color: '#1A9E6A', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.675rem', background: 'rgba(26,158,106,0.08)', color: '#1A9E6A', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
                 Connected
               </span>
             )}
@@ -157,10 +157,10 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               style={{
                 marginTop: '0.75rem',
                 padding: '10px 20px',
-                background: (loading || usdcAvailable <= 0) ? 'rgba(220,200,180,0.45)' : '#2563eb',
+                background: (loading || usdcAvailable <= 0) ? 'rgba(220,200,180,0.45)' : '#6D4FC2',
                 color: '#fff',
                 border: 'none',
-                borderRadius: '10px',
+                borderRadius: '11px',
                 fontSize: '0.813rem',
                 fontWeight: 600,
                 cursor: (loading || usdcAvailable <= 0) ? 'not-allowed' : 'pointer',
@@ -178,9 +178,9 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
         <div
           style={{
             padding: '14px 16px',
-            border: '2px solid #6366f1',
-            borderRadius: '12px',
-            background: '#eef2ff',
+            border: '2px solid #6D4FC2',
+            borderRadius: '20px',
+            background: 'rgba(109,79,194,0.06)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -193,7 +193,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               </p>
             </div>
             {stripeReady && (
-              <span style={{ fontSize: '0.675rem', background: '#dcfce7', color: '#1A9E6A', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.675rem', background: 'rgba(26,158,106,0.08)', color: '#1A9E6A', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
                 Connected
               </span>
             )}
@@ -213,7 +213,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
                 background: (loading || availableBalance <= 0) ? 'rgba(220,200,180,0.45)' : '#1A9E6A',
                 color: '#fff',
                 border: 'none',
-                borderRadius: '10px',
+                borderRadius: '11px',
                 fontSize: '0.813rem',
                 fontWeight: 600,
                 cursor: (loading || availableBalance <= 0) ? 'not-allowed' : 'pointer',

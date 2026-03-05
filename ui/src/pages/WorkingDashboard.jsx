@@ -430,10 +430,10 @@ export default function WorkingDashboard({ user, tasks, notifications, onNavigat
                 const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                 const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
                 let label, bg, color;
-                if (diffHours < 1) { label = 'Due in < 1 hour'; bg = '#FEF3C7'; color = '#D97706'; }
-                else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#D97706'; }
+                if (diffHours < 1) { label = 'Due in < 1 hour'; bg = 'rgba(232,112,61,0.1)'; color = '#E8703D'; }
+                else if (diffHours < 24) { label = `Due in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`; bg = 'rgba(232,112,61,0.1)'; color = '#E8703D'; }
                 else if (diffDays <= 3) { label = `Due in ${diffDays} day${diffDays !== 1 ? 's' : ''}`; bg = '#FEF3C7'; color = '#B45309'; }
-                else { label = `Due in ${diffDays} days`; bg = '#F0F9FF'; color = '#0369A1'; }
+                else { label = `Due in ${diffDays} days`; bg = 'rgba(109,79,194,0.08)'; color = '#6D4FC2'; }
                 deadlineBadge = (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: bg, color, whiteSpace: 'nowrap' }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>

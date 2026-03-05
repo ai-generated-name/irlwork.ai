@@ -1,25 +1,6 @@
 import React from 'react';
-import { Package, Camera, BarChart3, Footprints, Monitor, Globe, CheckCircle, ClipboardList, Sparkles, Truck, Wrench, Search, Languages } from 'lucide-react';
 import { Button } from './ui';
-import { TaskDocket } from './TaskDocket';
 
-const CATEGORY_ICONS = {
-  delivery: <Package size={14} />,
-  photography: <Camera size={14} />,
-  'data-collection': <BarChart3 size={14} />,
-  data_collection: <BarChart3 size={14} />,
-  errands: <Footprints size={14} />,
-  cleaning: <Sparkles size={14} />,
-  moving: <Truck size={14} />,
-  manual_labor: <Wrench size={14} />,
-  inspection: <Search size={14} />,
-  'tech-setup': <Monitor size={14} />,
-  tech: <Monitor size={14} />,
-  translation: <Languages size={14} />,
-  verification: <CheckCircle size={14} />,
-  general: <ClipboardList size={14} />,
-  other: <ClipboardList size={14} />,
-};
 
 function formatTimeAgo(dateString) {
   const date = new Date(dateString);
@@ -73,8 +54,6 @@ export default function TaskCardV2({
   onReport = () => {},
   showReport = false,
 }) {
-  const categoryIcon = CATEGORY_ICONS[task.category] || <ClipboardList size={14} />;
-  const categoryLabel = formatCategory(task.category);
   const isOpen = task.task_type === 'open';
   const quantity = task.quantity || 1;
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
@@ -82,199 +61,136 @@ export default function TaskCardV2({
   const agentName = task.is_anonymous ? 'AI Agent' : (task.agent?.name || task.agent_name || null);
   const durationHours = task.duration_hours || task.duration;
 
+  // Build meta string: dot-separated
+  const metaParts = [];
+  if (task.is_remote) metaParts.push('Remote');
+  else if (task.location || task.city) metaParts.push(task.location || task.city);
+  if (durationHours) metaParts.push(`${durationHours}h`);
+  if (formatTimeAgo(task.created_at)) metaParts.push(formatTimeAgo(task.created_at));
+  if (agentName) metaParts.push(`by ${agentName}`);
+
+  // Category emoji map for thumbnail
+  const CATEGORY_EMOJIS = {
+    delivery: '\uD83D\uDCE6', photography: '\uD83D\uDCF7', 'data-collection': '\uD83D\uDCCA',
+    data_collection: '\uD83D\uDCCA', errands: '\uD83C\uDFC3', cleaning: '\u2728',
+    moving: '\uD83D\uDE9A', manual_labor: '\uD83D\uDD27', inspection: '\uD83D\uDD0D',
+    'tech-setup': '\uD83D\uDCBB', tech: '\uD83D\uDCBB', translation: '\uD83C\uDF10',
+    verification: '\u2705', general: '\uD83D\uDCCB', other: '\uD83D\uDCCB',
+  };
+  const emoji = CATEGORY_EMOJIS[task.category] || '\uD83D\uDCCB';
+
   return (
     <div
       className={`task-card-v2 ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
       onClick={() => onSelect(task.id)}
       onMouseEnter={() => onHover(task.id)}
       onMouseLeave={() => onHover(null)}
+      style={{ padding: '14px 16px' }}
     >
-      {/* Header row: Category + badges */}
-      <div className="task-card-v2-header">
-        <div className="task-card-v2-category">
-          <span className="task-card-v2-category-icon">{categoryIcon}</span>
-          <span className="task-card-v2-category-label">{categoryLabel}</span>
+      {/* 3-column flex row: [thumbnail] [content] [right column] */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        {/* Thumbnail */}
+        <div style={{
+          width: 56, height: 56, borderRadius: 11, flexShrink: 0,
+          background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontSize: 24,
+        }}>
+          {emoji}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {isOpen && (
-            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: 'rgba(109,79,194,0.09)', color: '#6D4FC2', letterSpacing: '0.02em' }}>
-              Open
-            </span>
-          )}
-          {quantity > 1 && (
-            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: spotsFilled >= quantity ? 'rgba(26,158,106,0.09)' : 'rgba(37,99,235,0.09)', color: spotsFilled >= quantity ? '#1A9E6A' : '#2563EB' }}>
-              {spotsFilled}/{quantity} filled
-            </span>
-          )}
-          {task.is_remote ? (
-            <div className="task-card-v2-remote-badge">
-              <Globe size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Remote
-            </div>
-          ) : task.distance_km != null ? (
-            <div className="task-card-v2-distance">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              {task.distance_km.toFixed(1)} km
-            </div>
-          ) : null}
-          {showReport && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); onReport(task); }}
-              title="Report this task"
-              className="!p-1 !min-h-0"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                <line x1="4" y1="22" x2="4" y2="15" />
-              </svg>
-            </Button>
-          )}
-        </div>
-      </div>
 
-      {/* Title */}
-      <h3 className="task-card-v2-title">{task.title}</h3>
-
-      {/* Description */}
-      {task.description && (
-        <p className="task-card-v2-description">{task.description}</p>
-      )}
-
-      {/* Skills pills */}
-      {task.required_skills && task.required_skills.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-          {task.required_skills.slice(0, 3).map((skill, i) => (
-            <span key={i} style={{
-              display: 'inline-block', padding: '2px 8px', borderRadius: 12,
-              fontSize: 11, fontWeight: 500, background: 'rgba(109,79,194,0.08)', color: '#6D4FC2'
-            }}>{skill}</span>
-          ))}
-          {task.required_skills.length > 3 && (
-            <span style={{
-              display: 'inline-block', padding: '2px 8px', borderRadius: 12,
-              fontSize: 11, fontWeight: 500, background: 'rgba(220,200,180,0.15)', color: 'rgba(26,20,16,0.65)'
-            }}>+{task.required_skills.length - 3} more</span>
+        {/* Content column */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Title */}
+          <h3 style={{
+            fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+            margin: 0, lineHeight: 1.3,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            fontFamily: "var(--font-display)",
+          }}>
+            {task.title}
+          </h3>
+          {/* Description */}
+          {task.description && (
+            <p style={{
+              fontSize: 10, color: 'rgba(26,20,16,0.50)', margin: '2px 0 0',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              lineHeight: 1.4,
+            }}>
+              {task.description}
+            </p>
           )}
+          {/* Meta: dot-separated */}
+          <p style={{
+            fontSize: 10, color: 'rgba(26,20,16,0.50)', margin: '3px 0 0',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {metaParts.join(' \u00B7 ')}
+          </p>
         </div>
-      )}
 
-      {/* Budget + Duration + Deadline row */}
-      <div className="task-card-v2-meta-row">
-        <div className="task-card-v2-budget">
-          <span className="task-card-v2-budget-amount" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--orange)', fontWeight: 800, fontSize: '22px', letterSpacing: '-0.04em' }}>${task.budget || 0}</span>
-          <span className="task-card-v2-budget-label">USD</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {durationHours && (
-            <div className="task-card-v2-duration">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              {durationHours}h
-            </div>
-          )}
-          {(() => {
-            const info = getDeadlineInfo(task.deadline);
-            if (!info) return null;
-            const colors = {
-              overdue: { bg: 'rgba(255, 95, 87, 0.1)', color: '#FF5F57' },
-              urgent: { bg: 'rgba(254, 188, 46, 0.1)', color: '#FEBC2E' },
-              soon: { bg: 'rgba(254, 188, 46, 0.1)', color: '#B45309' },
-              normal: { bg: '#F0F9FF', color: '#0369A1' }
-            };
-            const c = colors[info.level];
-            return (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                padding: '3px 8px', borderRadius: 6,
-                fontSize: 12, fontWeight: 600,
-                background: c.bg, color: c.color
-              }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                {info.label}
-              </div>
-            );
-          })()}
-        </div>
-      </div>
-
-      {/* Location row */}
-      <div className="task-card-v2-meta-row">
-        <div className="task-card-v2-location">
-          {task.is_remote ? (
-            <>
-              <Globe size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />
-              {task.location || task.city ? `Remote · ${task.location || task.city}` : 'Remote — work from anywhere'}
-            </>
-          ) : (
-            <>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              {task.location || task.city || 'Location not specified'}
-            </>
-          )}
-        </div>
-        {task.applicant_count > 0 && (
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            {task.applicant_count} applied
+        {/* Right column: price + apply pill */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+          {/* Price */}
+          <span style={{
+            fontSize: 15, fontWeight: 700, color: 'var(--text-primary)',
+            fontFamily: "var(--font-mono)",
+            letterSpacing: '-0.02em',
+          }}>
+            ${task.budget || 0}
           </span>
-        )}
-      </div>
-
-      {/* Footer: Posted time + Agent + Apply */}
-      <div className="task-card-v2-footer">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span className="task-card-v2-posted">
-            Posted {formatTimeAgo(task.created_at)}
-          </span>
-          {agentName && (
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              by {agentName}
-            </span>
-          )}
-        </div>
-        <Button
-          variant={hasApplied ? 'ghost' : (quantity > 1 && spotsRemaining === 0) ? 'ghost' : 'primary'}
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!hasApplied && !(quantity > 1 && spotsRemaining === 0)) onApply(task);
-          }}
-          disabled={hasApplied || (quantity > 1 && spotsRemaining === 0)}
-          aria-label={hasApplied ? 'Already applied' : (quantity > 1 && spotsRemaining === 0) ? 'All spots filled' : `Apply to ${task.title}`}
-          className="gap-1.5"
-        >
+          {/* Apply pill */}
           {hasApplied ? (
-            <>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <span style={{
+              padding: '4px 12px', borderRadius: 30, fontSize: 11, fontWeight: 600,
+              background: 'rgba(26,158,106,0.09)', color: '#1A9E6A',
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
               Applied
-            </>
+            </span>
           ) : (quantity > 1 && spotsRemaining === 0) ? (
-            'Filled'
+            <span style={{
+              padding: '4px 12px', borderRadius: 30, fontSize: 11, fontWeight: 600,
+              background: 'rgba(220,200,180,0.15)', color: 'rgba(26,20,16,0.28)',
+            }}>
+              Filled
+            </span>
           ) : (
-            <>
-              Apply now
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="5" y1="12" x2="19" y2="12" />
-                <polyline points="12 5 19 12 12 19" />
-              </svg>
-            </>
+            <button
+              onClick={(e) => { e.stopPropagation(); onApply(task); }}
+              aria-label={`Apply to ${task.title}`}
+              style={{
+                padding: '4px 12px', borderRadius: 30, fontSize: 11, fontWeight: 600,
+                // eslint-disable-next-line irlwork/no-orange-outside-button -- apply pill uses brand accent
+                background: '#E8703D', color: 'white', border: 'none', cursor: 'pointer',
+                transition: 'opacity 0.15s',
+              }}
+            >
+              Apply
+            </button>
           )}
-        </Button>
+        </div>
       </div>
+
+      {/* Report button - positioned subtly */}
+      {showReport && (
+        <div style={{ position: 'absolute', top: 8, right: 8 }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => { e.stopPropagation(); onReport(task); }}
+            title="Report this task"
+            className="!p-1 !min-h-0"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+              <line x1="4" y1="22" x2="4" y2="15" />
+            </svg>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

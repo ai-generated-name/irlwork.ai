@@ -25,7 +25,7 @@ export default function HiringPaymentsTab({
       <h1 className="dashboard-v4-page-title">Payments</h1>
 
       {/* How Payments Work — Collapsible */}
-      <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-xl overflow-hidden">
+      <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-[20px] overflow-hidden">
         <button
           onClick={() => setHowItWorksOpen(!howItWorksOpen)}
           className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FAFAF8] transition-colors"
@@ -107,7 +107,7 @@ export default function HiringPaymentsTab({
               <div className="space-y-2">
 
                 {/* Credit Card Row */}
-                <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-xl overflow-hidden">
+                <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-[20px] overflow-hidden">
                   <button
                     onClick={() => setCardSectionOpen(!cardSectionOpen)}
                     className="w-full flex items-center justify-between px-4 py-3 md:py-3.5 hover:bg-[#FAFAF8] transition-colors"
@@ -157,7 +157,7 @@ export default function HiringPaymentsTab({
                 </div>
 
                 {/* USDC on Base Row */}
-                <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-xl overflow-hidden">
+                <div className="bg-white border border-[rgba(220,200,180,0.35)] rounded-[20px] overflow-hidden">
                   <button
                     onClick={() => setUsdcSectionOpen(!usdcSectionOpen)}
                     className="w-full flex items-center justify-between px-4 py-3 md:py-3.5 hover:bg-[#FAFAF8] transition-colors"
@@ -276,7 +276,7 @@ export default function HiringPaymentsTab({
                 </div>
               ) : (
                 <Card padding="none" className="p-8 md:p-10 text-center">
-                  <div className="w-10 h-10 bg-[rgba(220,200,180,0.15)] rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <div className="w-10 h-10 bg-[rgba(220,200,180,0.15)] rounded-[20px] flex items-center justify-center mx-auto mb-3">
                     <svg className="w-5 h-5 text-[rgba(26,20,16,0.40)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
                     </svg>

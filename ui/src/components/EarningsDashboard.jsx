@@ -206,7 +206,7 @@ function EarningsDashboard({ user }) {
 
   if (error) {
     return (
-      <div className="bg-[rgba(255,95,87,0.1)] border border-[#FF5F57]/20 rounded-xl p-4">
+      <div className="bg-[rgba(255,95,87,0.1)] border border-[#FF5F57]/20 rounded-[20px] p-4">
         <p className="text-[#FF5F57]">Error: {error}</p>
         <button
           onClick={fetchBalance}
@@ -290,7 +290,7 @@ function EarningsDashboard({ user }) {
                   px-2.5 py-1 text-xs font-semibold rounded-md transition-all
                   ${balanceFilter === opt.key
                     ? 'bg-[#1A1410] text-white'
-                    : 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.40)] hover:bg-[#EDEBE8] hover:text-[#525252]'
+                    : 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.40)] hover:bg-[#EDEBE8] hover:text-[rgba(26,20,16,0.50)]'
                   }
                 `}
               >
@@ -306,7 +306,7 @@ function EarningsDashboard({ user }) {
             <div className="flex items-center justify-between mb-2 md:mb-4">
               <div>
                 <h3 className="text-[rgba(26,20,16,0.40)] text-xs font-medium uppercase tracking-wider">Pending</h3>
-                <p className="text-[10px] md:text-xs text-[#A3A3A3] mt-0.5">48-hour hold</p>
+                <p className="text-[10px] md:text-xs text-[rgba(26,20,16,0.35)] mt-0.5">48-hour hold</p>
               </div>
               <div className="w-8 h-8 md:w-10 md:h-10 bg-[rgba(220,200,180,0.15)] rounded-lg flex items-center justify-center">
                 <Timer size={16} className="text-[rgba(26,20,16,0.40)]" />
@@ -325,22 +325,22 @@ function EarningsDashboard({ user }) {
                       <div className="flex items-center gap-1.5">
                         <p className="text-[rgba(26,20,16,0.65)] truncate">{tx.task_title || `Task #${tx.task_id?.substring(0, 8)}`}</p>
                         {tx.payout_method === 'usdc' && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]">USDC</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[rgba(109,79,194,0.08)] text-[#6D4FC2]">USDC</span>
                         )}
                       </div>
-                      <p className="text-xs text-[#A3A3A3]">{formatDate(tx.clears_at)}</p>
+                      <p className="text-xs text-[rgba(26,20,16,0.35)]">{formatDate(tx.clears_at)}</p>
                     </div>
                     <p className="text-[#1A1410] font-semibold">${(tx.amount_cents / 100).toFixed(2)}</p>
                   </div>
                 ))}
                 {filteredPendingTransactions.length > 3 && (
-                  <p className="text-xs text-[#A3A3A3] text-center pt-1">
+                  <p className="text-xs text-[rgba(26,20,16,0.35)] text-center pt-1">
                     +{filteredPendingTransactions.length - 3} more pending
                   </p>
                 )}
               </div>
             ) : (
-              <p className="text-[#A3A3A3] text-[11px] md:text-sm mt-2 md:mt-4">No pending transactions</p>
+              <p className="text-[rgba(26,20,16,0.35)] text-[11px] md:text-sm mt-2 md:mt-4">No pending transactions</p>
             )}
           </Card>
 
@@ -350,7 +350,7 @@ function EarningsDashboard({ user }) {
             <div className="flex items-center justify-between mb-2 md:mb-4">
               <div>
                 <h3 className="text-teal text-xs font-medium uppercase tracking-wider">Available</h3>
-                <p className="text-[10px] md:text-xs text-[#A3A3A3] mt-0.5">Ready to withdraw</p>
+                <p className="text-[10px] md:text-xs text-[rgba(26,20,16,0.35)] mt-0.5">Ready to withdraw</p>
               </div>
               <div className="w-8 h-8 md:w-10 md:h-10 bg-teal/8 rounded-lg flex items-center justify-center">
                 <CreditCard size={16} className="text-teal" />
@@ -362,7 +362,7 @@ function EarningsDashboard({ user }) {
             </p>
 
             {(!balanceData?.available_cents || balanceData.available_cents <= 0) && (
-              <p className="text-[#A3A3A3] text-[11px] md:text-sm mt-2 md:mt-4">No funds available yet</p>
+              <p className="text-[rgba(26,20,16,0.35)] text-[11px] md:text-sm mt-2 md:mt-4">No funds available yet</p>
             )}
 
             {filteredAvailableTransactions.length > 0 && (
@@ -372,7 +372,7 @@ function EarningsDashboard({ user }) {
                     <div className="flex items-center gap-1.5">
                       <p className="text-[rgba(26,20,16,0.65)] truncate">{tx.task_title || `Task #${tx.task_id?.substring(0, 8)}`}</p>
                       {tx.payout_method === 'usdc' && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]">USDC</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[rgba(109,79,194,0.08)] text-[#6D4FC2]">USDC</span>
                       )}
                     </div>
                     <p className="text-[#1A1410] font-semibold">${(tx.amount_cents / 100).toFixed(2)}</p>
@@ -390,7 +390,7 @@ function EarningsDashboard({ user }) {
             <button
               onClick={() => setShowWithdrawModal(true)}
               disabled={withdrawing}
-              className="w-full py-3 bg-teal hover:bg-[#048A5B] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-teal hover:bg-[#048A5B] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-[11px] text-sm font-bold transition-all flex items-center justify-center gap-2"
             >
               <ArrowDownLeft size={16} />
               {withdrawing ? 'Processing...' : 'Withdraw funds'}
@@ -424,7 +424,7 @@ function EarningsDashboard({ user }) {
         <div className="space-y-2">
           {/* Bank Transfer row — standout design */}
           {/* eslint-disable-next-line irlwork/no-inline-card-pattern -- bank transfer standout uses custom gradient */}
-          <div className={`overflow-hidden rounded-xl border-2 transition-all ${
+          <div className={`overflow-hidden rounded-[20px] border-2 transition-all ${
             expandedPayout === 'bank'
               ? 'border-[#1A9E6A]/25 bg-gradient-to-br from-[#F0FDF4] via-white to-white shadow-sm'
               : 'border-[#1A9E6A]/15 bg-[#FAFFF8] hover:border-[#1A9E6A]/20'
@@ -434,7 +434,7 @@ function EarningsDashboard({ user }) {
               onClick={() => setExpandedPayout(expandedPayout === 'bank' ? null : 'bank')}
               className="w-full flex items-center gap-3 p-4 text-left transition-colors"
             >
-              <div className="w-10 h-10 bg-[#D1FAE5] rounded-xl flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-[#D1FAE5] rounded-[11px] flex items-center justify-center flex-shrink-0">
                 <Landmark size={20} className="text-[#1A9E6A]" />
               </div>
               <div className="flex-1 min-w-0">
@@ -442,7 +442,7 @@ function EarningsDashboard({ user }) {
                   <h4 className="text-[#1A1410] font-bold text-sm">Bank transfer</h4>
                   <span className="px-2 py-0.5 bg-[#1A9E6A] text-white text-[10px] font-bold rounded-full uppercase tracking-wider">Recommended</span>
                 </div>
-                <p className="text-xs text-[#525252] mt-0.5">Direct deposit via Stripe · 2-3 business days</p>
+                <p className="text-xs text-[rgba(26,20,16,0.50)] mt-0.5">Direct deposit via Stripe · 2-3 business days</p>
               </div>
               <ChevronRight
                 size={16}
@@ -465,8 +465,8 @@ function EarningsDashboard({ user }) {
               onClick={() => setExpandedPayout(expandedPayout === 'usdc' ? null : 'usdc')}
               className="w-full flex items-center gap-3 p-4 text-left hover:bg-[#FAFAF9] transition-colors"
             >
-              <div className="w-9 h-9 bg-[#EEF2FF] rounded-lg flex items-center justify-center flex-shrink-0">
-                <Wallet size={18} className="text-[#6366f1]" />
+              <div className="w-9 h-9 bg-[rgba(109,79,194,0.09)] rounded-lg flex items-center justify-center flex-shrink-0">
+                <Wallet size={18} className="text-[#6D4FC2]" />
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="text-[#1A1410] font-semibold text-sm">USDC</h4>
@@ -474,7 +474,7 @@ function EarningsDashboard({ user }) {
               </div>
               <ChevronRight
                 size={16}
-                className={`text-[#A3A3A3] transition-transform duration-200 flex-shrink-0 ${expandedPayout === 'usdc' ? 'rotate-90' : ''}`}
+                className={`text-[rgba(26,20,16,0.35)] transition-transform duration-200 flex-shrink-0 ${expandedPayout === 'usdc' ? 'rotate-90' : ''}`}
               />
             </button>
             {expandedPayout === 'usdc' && (
@@ -510,16 +510,16 @@ function EarningsDashboard({ user }) {
                       <span className={`
                         px-2 py-0.5 rounded text-[11px] font-medium flex-shrink-0
                         ${isAvailable ? 'bg-teal/8 text-teal' : ''}
-                        ${isWithdrawn ? 'bg-[rgba(220,200,180,0.15)] text-[#525252]' : ''}
+                        ${isWithdrawn ? 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)]' : ''}
                       `}>
                         {isAvailable ? 'Ready to withdraw' : 'Withdrawn'}
                       </span>
                       {isUsdc ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB] flex-shrink-0">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[rgba(109,79,194,0.08)] text-[#6D4FC2] flex-shrink-0">
                           USDC
                         </span>
                       ) : (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[rgba(220,200,180,0.15)] text-[#8A8A8A] flex-shrink-0">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.40)] flex-shrink-0">
                           Bank
                         </span>
                       )}
@@ -534,7 +534,7 @@ function EarningsDashboard({ user }) {
                         })}
                       </p>
                       {isWithdrawn && tx.withdrawn_at && (
-                        <p className="text-xs text-[#A3A3A3]">
+                        <p className="text-xs text-[rgba(26,20,16,0.35)]">
                           Paid {new Date(tx.withdrawn_at).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -553,7 +553,7 @@ function EarningsDashboard({ user }) {
                       ${(tx.amount_cents / 100).toFixed(2)}
                     </p>
                     {taskUrl && (
-                      <ChevronRight size={14} className="text-[#A3A3A3]" />
+                      <ChevronRight size={14} className="text-[rgba(26,20,16,0.35)]" />
                     )}
                   </div>
                 </div>
@@ -594,7 +594,7 @@ function EarningsDashboard({ user }) {
           {/* eslint-disable-next-line irlwork/no-inline-card-pattern -- modal overlay needs custom styling */}
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowWithdrawModal(false)} />
-            <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-xl">
+            <div className="relative bg-white rounded-t-[20px] sm:rounded-[20px] w-full sm:max-w-md shadow-xl">
               <div className="flex items-center justify-between p-5 pb-4 border-b border-[rgba(220,200,180,0.25)]">
                 <h3 className="text-lg font-bold text-[#1A1410]">Withdraw funds</h3>
                 {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- modal close button */}
@@ -602,14 +602,14 @@ function EarningsDashboard({ user }) {
                   onClick={() => setShowWithdrawModal(false)}
                   className="w-8 h-8 rounded-lg bg-[rgba(220,200,180,0.15)] hover:bg-[#EDEBE8] flex items-center justify-center transition-colors"
                 >
-                  <X size={16} className="text-[#525252]" />
+                  <X size={16} className="text-[rgba(26,20,16,0.50)]" />
                 </button>
               </div>
 
               <div className="p-5 space-y-3">
                 {/* Bank Transfer option */}
                 {/* eslint-disable-next-line irlwork/no-inline-card-pattern -- modal option card */}
-                <div className={`rounded-xl border-2 p-4 ${
+                <div className={`rounded-[20px] border-2 p-4 ${
                   bankReady
                     ? 'border-[#1A9E6A]/20 bg-[#F0FDF4]/50'
                     : 'border-[rgba(220,200,180,0.35)] bg-[#FAFAF9]'
@@ -633,17 +633,17 @@ function EarningsDashboard({ user }) {
                     <button
                       onClick={() => handleWithdraw('stripe')}
                       disabled={withdrawing}
-                      className="w-full py-2.5 bg-[#1A9E6A] hover:bg-[#047857] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-lg text-sm font-semibold transition-colors"
+                      className="w-full py-2.5 bg-[#1A9E6A] hover:bg-[#047857] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-[11px] text-sm font-semibold transition-colors"
                     >
                       {withdrawing ? 'Processing...' : `Withdraw $${bankWithdrawAmount.toFixed(2)} to bank`}
                     </button>
                   ) : bankReady ? (
-                    <p className="text-xs text-[#A3A3A3] text-center py-1">No bank-eligible funds to withdraw</p>
+                    <p className="text-xs text-[rgba(26,20,16,0.35)] text-center py-1">No bank-eligible funds to withdraw</p>
                   ) : (
                     // eslint-disable-next-line irlwork/no-inline-button-pattern -- setup bank link
                     <button
                       onClick={() => { setShowWithdrawModal(false); setExpandedPayout('bank') }}
-                      className="w-full py-2.5 bg-[rgba(220,200,180,0.15)] hover:bg-[#EDEBE8] text-[#525252] rounded-lg text-sm font-medium transition-colors"
+                      className="w-full py-2.5 bg-[rgba(220,200,180,0.15)] hover:bg-[#EDEBE8] text-[rgba(26,20,16,0.50)] rounded-[11px] text-sm font-medium transition-colors"
                     >
                       Set up bank transfer
                     </button>
@@ -652,14 +652,14 @@ function EarningsDashboard({ user }) {
 
                 {/* USDC option */}
                 {/* eslint-disable-next-line irlwork/no-inline-card-pattern -- modal option card */}
-                <div className={`rounded-xl border-2 p-4 ${
+                <div className={`rounded-[20px] border-2 p-4 ${
                   walletReady
-                    ? 'border-[#6366f1]/20 bg-[#EEF2FF]/50'
+                    ? 'border-[#6D4FC2]/20 bg-[rgba(109,79,194,0.06)]'
                     : 'border-[rgba(220,200,180,0.35)] bg-[#FAFAF9]'
                 }`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-9 h-9 bg-[#EEF2FF] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Wallet size={18} className="text-[#6366f1]" />
+                    <div className="w-9 h-9 bg-[rgba(109,79,194,0.09)] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Wallet size={18} className="text-[#6D4FC2]" />
                     </div>
                     <div className="flex-1">
                       <h4 className="text-[#1A1410] font-semibold text-sm">USDC</h4>
@@ -668,7 +668,7 @@ function EarningsDashboard({ user }) {
                       </p>
                     </div>
                     {walletReady && (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#EEF2FF] text-[#6366f1]">Connected</span>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[rgba(109,79,194,0.08)] text-[#6D4FC2]">Connected</span>
                     )}
                   </div>
                   {walletReady && usdcAvailable > 0 ? (
@@ -676,17 +676,17 @@ function EarningsDashboard({ user }) {
                     <button
                       onClick={() => handleWithdraw('usdc')}
                       disabled={withdrawing}
-                      className="w-full py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-lg text-sm font-semibold transition-colors"
+                      className="w-full py-2.5 bg-[#6D4FC2] hover:bg-[#5A3EAF] disabled:bg-[rgba(26,20,16,0.28)] text-white rounded-[11px] text-sm font-semibold transition-colors"
                     >
                       {withdrawing ? 'Processing...' : `Withdraw ${usdcAvailable.toFixed(2)} USDC`}
                     </button>
                   ) : walletReady ? (
-                    <p className="text-xs text-[#A3A3A3] text-center py-1">No USDC funds to withdraw</p>
+                    <p className="text-xs text-[rgba(26,20,16,0.35)] text-center py-1">No USDC funds to withdraw</p>
                   ) : (
                     // eslint-disable-next-line irlwork/no-inline-button-pattern -- setup wallet link
                     <button
                       onClick={() => { setShowWithdrawModal(false); setExpandedPayout('usdc') }}
-                      className="w-full py-2.5 bg-[rgba(220,200,180,0.15)] hover:bg-[#EDEBE8] text-[#525252] rounded-lg text-sm font-medium transition-colors"
+                      className="w-full py-2.5 bg-[rgba(220,200,180,0.15)] hover:bg-[#EDEBE8] text-[rgba(26,20,16,0.50)] rounded-[11px] text-sm font-medium transition-colors"
                     >
                       Connect USDC wallet
                     </button>

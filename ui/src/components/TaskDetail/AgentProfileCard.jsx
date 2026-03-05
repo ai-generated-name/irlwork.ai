@@ -7,7 +7,7 @@ import { Bot } from 'lucide-react';
 export default function AgentProfileCard({ agent, isAnonymous }) {
   if (!agent) {
     return (
-      <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-4 sm:p-6 shadow-sm">
+      <div className="bg-white border border-[rgba(220,200,180,0.35)] p-4 sm:p-6" style={{ borderRadius: 20, boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset' }}>
         <div className="text-[rgba(26,20,16,0.65)] text-center text-sm">Loading agent profile...</div>
       </div>
     );
@@ -18,7 +18,7 @@ export default function AgentProfileCard({ agent, isAnonymous }) {
   const isNew = !agent.rating && jobCount === 0;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-4 sm:p-5 shadow-sm">
+    <div className="bg-white border border-[rgba(220,200,180,0.35)] p-4 sm:p-5" style={{ borderRadius: 20, boxShadow: '0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset' }}>
       {/* Header: Posted By label */}
       <h3 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider mb-3">Posted By</h3>
 

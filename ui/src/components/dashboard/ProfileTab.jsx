@@ -374,7 +374,7 @@ export default function ProfileTab({
                       style={{
                         display: 'flex',
                         borderRadius: 8,
-                        border: '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))',
+                        border: '1px solid var(--border-secondary, rgba(220,200,180,0.35))',
                         overflow: 'hidden',
                       }}
                     >
@@ -387,7 +387,7 @@ export default function ProfileTab({
                             flex: 1,
                             padding: '8px 16px',
                             border: 'none',
-                            borderRight: idx < 2 ? '1px solid var(--border-secondary, rgba(26, 26, 26, 0.1))' : 'none',
+                            borderRight: idx < 2 ? '1px solid var(--border-secondary, rgba(220,200,180,0.35))' : 'none',
                             background: profileGender === option.toLowerCase()
                               ? 'var(--orange-500, #f4845f)'
                               : 'var(--bg-primary, white)',
@@ -454,7 +454,7 @@ export default function ProfileTab({
                         fontSize: 13,
                         color: 'rgba(26,20,16,0.65)',
                         fontWeight: 500,
-                        border: '1px solid rgba(26,26,26,0.06)',
+                        border: '1px solid rgba(220,200,180,0.25)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6
@@ -554,12 +554,12 @@ export default function ProfileTab({
                     {languagesList.map((lang, idx) => (
                       <span key={idx} style={{
                         padding: '6px 12px',
-                        background: 'rgba(37,99,235,0.08)',
+                        background: 'rgba(109,79,194,0.08)',
                         borderRadius: 999,
                         fontSize: 13,
-                        color: '#2563EB',
+                        color: '#6D4FC2',
                         fontWeight: 500,
-                        border: '1px solid rgba(37,99,235,0.12)',
+                        border: '1px solid rgba(109,79,194,0.12)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6
@@ -568,7 +568,7 @@ export default function ProfileTab({
                         <button
                           type="button"
                           onClick={() => setLanguagesList(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#2563EB', display: 'flex', alignItems: 'center' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#6D4FC2', display: 'flex', alignItems: 'center' }}
                         >
                           <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
                         </button>

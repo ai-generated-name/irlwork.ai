@@ -55,7 +55,15 @@ export default function ConfirmationModal({
       <div
         ref={modalRef}
         tabIndex={-1}
-        className="relative bg-white rounded-[14px] w-full max-w-[420px] p-5 sm:p-6 shadow-lg outline-none"
+        className="relative w-full max-w-[420px] p-5 sm:p-6 outline-none"
+        style={{
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderRadius: 20,
+          border: '1px solid rgba(220,200,180,0.35)',
+          boxShadow: '0 8px 32px rgba(200,150,100,0.12), 0 1px 0 rgba(255,255,255,0.9) inset',
+        }}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
@@ -93,7 +101,7 @@ export default function ConfirmationModal({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`flex-1 px-4 py-2.5 rounded-[10px] text-white text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${confirmColors[variant] || confirmColors.warning}`}
+            className={`flex-1 px-4 py-2.5 rounded-[20px] text-white text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${confirmColors[variant] || confirmColors.warning}`}
           >
             {isLoading && (
               <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

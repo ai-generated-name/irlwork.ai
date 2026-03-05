@@ -72,9 +72,9 @@ export default function PaymentMethodForm({ user, onSaved }) {
     <form onSubmit={handleSubmit} style={{ marginTop: '1rem' }}>
       <div style={{
         padding: '12px 16px',
-        border: '1.5px solid #e5e7eb',
-        borderRadius: '12px',
-        background: '#fafafa',
+        border: '1px solid rgba(220,200,180,0.35)',
+        borderRadius: '11px',
+        background: '#FAFAF8',
       }}>
         <CardElement options={cardStyle} />
       </div>
