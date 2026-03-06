@@ -11,12 +11,12 @@ export default function PageHeader({ title, subtitle, action, dark = false }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{
-            fontSize: 28,
+            fontSize: 48,
             fontWeight: 800,
-            letterSpacing: '-0.05em',
-            lineHeight: 1.08,
-            color: dark ? '#fff' : '#1A1410',
-            fontFamily: "'Sora', sans-serif",
+            letterSpacing: '-0.03em',
+            lineHeight: 1.1,
+            color: dark ? '#fff' : '#1A1A1A',
+            fontFamily: "'Satoshi', system-ui, -apple-system, sans-serif",
           }}>
             {title}
           </h1>
@@ -24,7 +24,7 @@ export default function PageHeader({ title, subtitle, action, dark = false }) {
             <p style={{
               fontSize: 14,
               marginTop: 4,
-              color: dark ? 'rgba(255,255,255,0.60)' : 'rgba(26,20,16,0.50)',
+              color: dark ? 'rgba(255,255,255,0.60)' : '#8C8580',
             }}>{subtitle}</p>
           )}
         </div>

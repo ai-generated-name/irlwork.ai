@@ -258,7 +258,7 @@ module.exports = {
 
             const hasBgWhite = /\bbg-white\b/.test(cls);
             const hasRounded =
-              /\brounded-xl\b/.test(cls) || /\brounded-\[14px\]/.test(cls);
+              /\brounded-xl\b/.test(cls) || /\brounded-\[14px\]/.test(cls) || /\brounded-\[16px\]/.test(cls) || /\brounded-\[20px\]/.test(cls);
             const hasBorderOrShadow =
               /\bborder\b/.test(cls) || /\bshadow/.test(cls);
 
@@ -344,11 +344,11 @@ module.exports = {
         type: 'suggestion',
         docs: {
           description:
-            'Disallow direct use of brand orange (#E8853D / #D4742E) outside Button.jsx.',
+            'Disallow direct use of brand orange (#E8764B / #D4683F) outside Button.jsx.',
         },
         messages: {
           noOrangeOutside:
-            "Orange accent (#E8853D) should only be used via <Button variant='primary'>.",
+            "Orange accent (#E8764B) should only be used via <Button variant='primary'>.",
         },
         schema: [],
       },
@@ -358,7 +358,7 @@ module.exports = {
 
         function checkValue(node, value) {
           if (typeof value !== 'string') return;
-          if (/#E8853D/i.test(value) || /#D4742E/i.test(value)) {
+          if (/#E8764B/i.test(value) || /#D4683F/i.test(value)) {
             context.report({ node, messageId: 'noOrangeOutside' });
           }
         }

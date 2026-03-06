@@ -29,6 +29,6 @@ import { Card, Button, EmptyState, StatusPill, StatCard, PageHeader, ConfirmDial
 - Every page heading uses `<PageHeader>`
 - Sentence case for all text
 - No emoji in UI strings
-- Prices/stats/IDs in DM Mono (`<StatCard>` handles this automatically)
+- Prices/stats/IDs in IBM Plex Mono (`<StatCard>` handles this automatically)
 
 See `DESIGN_SYSTEM.md` for full specifications.

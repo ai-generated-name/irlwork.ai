@@ -5,45 +5,45 @@
  * ═══════════════════════════════════════════
  */
 
-/* ─── DESIGN TOKENS V16 (landing-v4.css override) ─── */
+/* ─── DESIGN TOKENS (landing-v4.css override — Satoshi + warm cream) ─── */
 :root {
-  /* Colors — v16 warm palette */
-  --bg-primary: #FAFAF8;
+  /* Colors — warm cream palette */
+  --bg-primary: #FDF6EE;
   --bg-secondary: #FFFFFF;
-  --bg-tertiary: #F5F3F0;
-  --bg-dark: #1A1410;
+  --bg-tertiary: #F5EFE7;
+  --bg-dark: #1A1A1A;
   --bg-dark-alt: #1A1A1A;
 
-  --text-primary: #1A1410;
-  --text-secondary: rgba(26,20,16,0.50);
-  --text-tertiary: rgba(26,20,16,0.50);
+  --text-primary: #1A1A1A;
+  --text-secondary: #8C8580;
+  --text-tertiary: #A69E98;
 
   /* Orange accent colors */
-  --accent-orange: #E8703D;
-  --accent-orange-light: #FDEEE6;
-  --accent-orange-hover: #D4622E;
+  --accent-orange: #E8764B;
+  --accent-orange-light: #FDEEE7;
+  --accent-orange-hover: #D4683F;
   --orange-900: #7C2D12;
   --orange-800: #9A3412;
-  --orange-700: #D4622E;
-  --orange-600: #E8703D;
-  --orange-500: #E8703D;
-  --orange-400: #F0905A;
+  --orange-700: #D4683F;
+  --orange-600: #E8764B;
+  --orange-500: #E8764B;
+  --orange-400: #D4683F;
   --orange-300: #F5A07A;
   --orange-200: #FBCFBB;
 
   /* Amber for gradients */
-  --amber-500: #D4A017;
-  --amber-400: #D4A017;
+  --amber-500: #D4963F;
+  --amber-400: #D4963F;
   --amber-300: #E8B840;
 
   /* Green for success states */
-  --success: #1A9E6A;
-  --success-bg: rgba(26,158,106,0.09);
+  --success: #2D7A3A;
+  --success-bg: rgba(45,122,58,0.09);
 
   /* Typography */
-  --font-display: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-display: 'Satoshi', system-ui, -apple-system, sans-serif;
+  --font-body: 'Satoshi', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 
   /* Spacing */
   --space-1: 4px;
@@ -57,20 +57,20 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* Border Radius — v16 */
+  /* Border Radius */
   --radius-sm: 6px;
-  --radius-md: 11px;
-  --radius-lg: 20px;
-  --radius-xl: 20px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-full: 9999px;
 
-  /* Shadows — warm */
-  --shadow-sm: 0 1px 3px rgba(200,150,100,0.06);
-  --shadow-md: 0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
-  --shadow-lg: 0 8px 32px rgba(200,150,100,0.12), 0 1px 0 rgba(255,255,255,0.9) inset;
-  --shadow-xl: 0 16px 48px rgba(200,150,100,0.15);
-  --shadow-glow-orange: 0 0 20px rgba(232,112,61,0.15);
-  --shadow-glow-success: 0 0 20px rgba(26,158,106,0.2);
+  /* Shadows — subtle, not warm */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-xl: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-glow-orange: 0 0 20px rgba(232,118,75,0.15);
+  --shadow-glow-success: 0 0 20px rgba(45,122,58,0.2);
 
   /* Transitions */
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
