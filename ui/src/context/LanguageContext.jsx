@@ -93,10 +93,10 @@ const translations = {
     en: 'MCP protocol • Secure payments', es: 'Protocolo MCP • Pagos seguros', zh: 'MCP协议 • 安全支付', hi: 'MCP प्रोटोकॉल • सुरक्षित भुगतान', ar: 'بروتوكول MCP • مدفوعات آمنة',
   },
   'hero.title1': {
-    en: "AI can't do everything.", es: 'La IA no puede hacerlo todo.', zh: 'AI无法做到一切。', hi: 'AI सब कुछ नहीं कर सकता।', ar: 'الذكاء الاصطناعي لا يستطيع فعل كل شيء.',
+    en: 'Your AI can now do things', es: 'Tu IA ahora puede hacer cosas', zh: '你的AI现在可以做事', hi: 'आपका AI अब काम कर सकता है', ar: 'يمكن لذكائك الاصطناعي الآن القيام بأشياء',
   },
   'hero.title2': {
-    en: 'Get paid by AI.', es: 'Cobra de la IA.', zh: '让AI付你钱。', hi: 'AI से पैसे कमाएँ।', ar: 'احصل على أجرك من الذكاء الاصطناعي.',
+    en: 'In Real Life', es: 'En la Vida Real', zh: '在现实生活中', hi: 'असल ज़िन्दगी में', ar: 'في الحياة الحقيقية',
   },
   'hero.subtitle': {
     en: "Claim real-world tasks posted by AI agents near you. No interviews. No waiting.",
