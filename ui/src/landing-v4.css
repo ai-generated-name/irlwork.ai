@@ -94,6 +94,23 @@
   box-sizing: border-box;
 }
 
+.landing-v4 img,
+.landing-v4 svg,
+.landing-v4 video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure nav links have proper touch targets */
+.landing-v4 .nav-link-v4,
+.landing-v4 .footer-v4-link,
+.landing-v4 .footer-v4-legal-link,
+.landing-v4 .footer-v4-social-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
 /* Hide old navbar */
 .landing-v4 .navbar {
   display: none;
@@ -974,7 +991,7 @@
 
 .easy-title {
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: var(--space-2);
@@ -986,7 +1003,7 @@
 }
 
 .easy-subtitle {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text-secondary);
 }
 
@@ -1032,7 +1049,7 @@
 }
 
 .easy-step-content p {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -1053,6 +1070,7 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s var(--ease-smooth);
+  min-height: 48px;
 }
 
 .easy-cta-primary {
@@ -1203,7 +1221,7 @@
 }
 
 .step-description-animated {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -1979,14 +1997,15 @@
 }
 
 .benefits-v4-tab {
-  padding: 8px 20px;
+  padding: 10px 20px;
   border-radius: var(--radius-full);
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--duration-normal);
   border: none;
+  min-height: 44px;
 }
 
 .benefits-v4-tab--inactive {
@@ -2053,7 +2072,7 @@
 }
 
 .benefit-card-v4-description {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -2139,7 +2158,7 @@
 }
 
 .step-description {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -2417,7 +2436,7 @@
 }
 
 .escrow-step-desc {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
@@ -2775,7 +2794,8 @@
     grid-template-columns: 1fr;
     gap: var(--space-5);
     min-height: auto;
-    padding: var(--space-4) 24px 40px;
+    padding-top: var(--space-4);
+    padding-bottom: 40px;
   }
 
   .hero-v4-content {
@@ -2884,7 +2904,8 @@
   .hero-v4 {
     grid-template-columns: 1fr;
     gap: 0;
-    padding: 16px 16px 32px;
+    padding-top: 16px;
+    padding-bottom: 32px;
     min-height: auto;
   }
 
@@ -3011,7 +3032,7 @@
   }
 
   .agent-strip .stat-label {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .agent-strip .stat-divider {
@@ -3230,9 +3251,6 @@
   }
 
   /* ─── HAPPENING RIGHT NOW - Mobile ─── */
-  .happening-now-section {
-    padding: var(--space-8) var(--space-4);
-  }
 
   .happening-now-grid {
     grid-template-columns: 1fr;
@@ -3257,9 +3275,6 @@
   }
 
   /* ─── FEATURE CARDS BAR (2x2 grid) ─── */
-  .features-v4 {
-    padding: var(--space-6) var(--space-4);
-  }
 
   .features-grid {
     grid-template-columns: 1fr 1fr;
@@ -3288,13 +3303,10 @@
   }
 
   .feature-description {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   /* ─── HOW IT WORKS (Horizontal cards) ─── */
-  .how-it-works-v4 {
-    padding: var(--space-8) var(--space-4);
-  }
 
   .section-header {
     margin-bottom: var(--space-6);
@@ -3305,7 +3317,7 @@
   }
 
   .section-subtitle {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .steps-grid-animated {
@@ -3378,9 +3390,6 @@
   }
 
   /* ─── COMBINED BENEFITS SECTION ─── */
-  .combined-benefits-section {
-    padding: var(--space-8) var(--space-4);
-  }
 
   .combined-benefits-grid {
     grid-template-columns: 1fr;
@@ -3442,9 +3451,6 @@
   }
 
   /* ─── CODE SECTION (MCP) ─── */
-  .code-section {
-    padding: var(--space-8) var(--space-4);
-  }
 
   .code-section-inner {
     grid-template-columns: 1fr;
@@ -3464,11 +3470,11 @@
   }
 
   .code-section-subtitle {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .code-features-list li {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .code-block-container {
@@ -3488,9 +3494,6 @@
   }
 
   /* ─── TASKS SECTION (2 column grid) ─── */
-  .tasks-showcase-v4 {
-    padding: var(--space-8) var(--space-4);
-  }
 
   .tasks-grid {
     grid-template-columns: 1fr 1fr;
@@ -3541,7 +3544,7 @@
   /* ─── CTA SECTION ─── */
 
   .cta-v4-subtitle {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .cta-v4-buttons {
@@ -3555,24 +3558,19 @@
   }
 
   /* ─── FAQ ─── */
-  .faq-v4 {
-    padding: var(--space-8) var(--space-4);
-  }
 
   .faq-question {
     padding: var(--space-3) var(--space-4);
-    font-size: 14px;
+    font-size: 15px;
+    min-height: 48px;
   }
 
   .faq-answer-text {
     padding: 0 var(--space-4) var(--space-3);
-    font-size: 13px;
+    font-size: 14px;
   }
 
   /* ─── FOOTER ─── */
-  .footer-v4 {
-    padding: var(--space-8) var(--space-4);
-  }
 
   .footer-v4-grid {
     grid-template-columns: 1fr;
@@ -3588,7 +3586,7 @@
   }
 
   .footer-v4-column-title {
-    font-size: 10px;
+    font-size: 11px;
     margin-bottom: var(--space-3);
   }
 
@@ -3603,7 +3601,7 @@
   }
 
   .footer-v4-copyright {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .footer-v4-legal {
@@ -3611,12 +3609,12 @@
   }
 
   .footer-v4-legal-link {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .footer-v4-social-link {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
   }
 
   /* ─── NAVBAR ─── */
@@ -3646,16 +3644,72 @@
   .easy-column {
     padding: var(--space-4);
   }
+}
 
-  .easy-title {
-    font-size: 22px;
+/* ─── SMALL MOBILE (<640px) — CTA full-width, single-column grids ─── */
+@media (max-width: 640px) {
+  /* CTA buttons full-width */
+  .hero-v4-cta .btn-v4,
+  .easy-cta,
+  .benefits-cta,
+  .cta-v4-buttons .btn-v4 {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* All buttons: minimum height 48px on mobile */
+  .btn-v4,
+  .easy-cta,
+  .benefits-cta,
+  .faq-question {
+    min-height: 48px;
+  }
+
+  /* Feature grid: 1 column on mobile */
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Benefits grid: 1 column */
+  .benefits-v4-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Steps grid: 1 column */
+  .steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .steps-grid::before {
+    display: none;
+  }
+
+  /* Tasks grid: 1 column */
+  .tasks-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Footer grid: 1 column */
+  .footer-v4-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  /* Escrow flow: stack vertically */
+  .escrow-flow-diagram {
+    flex-direction: column;
+  }
+
+  .escrow-arrow {
+    transform: rotate(90deg);
   }
 }
 
 /* ─── EXTRA SMALL SCREENS (iPhone SE, etc.) ─── */
 @media (max-width: 390px) {
   .hero-v4 {
-    padding: 16px 12px 24px;
+    padding-top: 16px;
+    padding-bottom: 24px;
   }
 
   .hero-v4-subtitle {
@@ -4659,10 +4713,6 @@
 }
 
 @media (max-width: 600px) {
-  .combined-benefits-section {
-    padding: var(--space-10) var(--space-4);
-  }
-
   .benefit-item-icon {
     width: 32px;
     height: 32px;
@@ -4673,7 +4723,7 @@
   }
 
   .benefit-item-description {
-    font-size: 12px;
+    font-size: 13px;
   }
 }
 
@@ -12070,6 +12120,257 @@ select.select-v4-dark option:checked,
 
   .working-dash-chart-total {
     font-size: 20px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+ *  RESPONSIVE AUDIT FIXES — Mobile-first
+ *  Workers use this on phones. Mobile is half the product.
+ * ═══════════════════════════════════════════ */
+
+/* ─── DASHBOARD: Stat cards 2x2 grid on mobile ─── */
+@media (max-width: 767px) {
+  .dashboard-v4-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
+  }
+
+  .dashboard-v4-stats--enhanced {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
+  }
+
+  .dashboard-v4-stat-card {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .dashboard-v4-stat-label {
+    font-size: 12px;
+  }
+
+  .dashboard-v4-stat-value {
+    font-size: 18px;
+  }
+}
+
+/* ─── DASHBOARD: Task card actions — full-width stacked on mobile ─── */
+@media (max-width: 767px) {
+  .dashboard-v4-task-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dashboard-v4-task-actions button,
+  .dashboard-v4-task-actions a {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .dashboard-v4-task-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dashboard-v4-task-meta {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dashboard-v4-task-card {
+    padding: var(--space-4);
+  }
+}
+
+/* ─── DASHBOARD: Sub-tabs — scrollable, 44px touch targets ─── */
+@media (max-width: 767px) {
+  .dashboard-v4-sub-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap !important;
+    gap: 0 !important;
+    margin-left: calc(-1 * var(--space-4));
+    margin-right: calc(-1 * var(--space-4));
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .dashboard-v4-sub-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dashboard-v4-sub-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 16px;
+  }
+}
+
+/* ─── DASHBOARD: Bottom tab bar — 44px min touch targets ─── */
+@media (max-width: 900px) {
+  .dashboard-v4-bottom-tab {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .dashboard-v4-bottom-tab-label {
+    font-size: 10px;
+  }
+
+  /* Pad content area above bottom tabs */
+  .dashboard-v4-content {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px);
+  }
+}
+
+/* ─── DASHBOARD: Notification dropdown — full-width on small screens ─── */
+@media (max-width: 480px) {
+  .dashboard-v4-notification-dropdown {
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+}
+
+/* ─── DASHBOARD: No horizontal scroll at 375px ─── */
+@media (max-width: 375px) {
+  .dashboard-v4-content {
+    padding: var(--space-3);
+  }
+
+  .dashboard-v4-topbar {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .dashboard-v4-topbar-right {
+    gap: var(--space-2);
+  }
+
+  .dashboard-v4-stats {
+    gap: 6px;
+  }
+
+  .dashboard-v4-stat-card {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .dashboard-v4-stat-value {
+    font-size: 16px;
+  }
+
+  .dashboard-v4-stat-label {
+    font-size: 11px;
+  }
+
+  .dashboard-v4-page-title {
+    font-size: 20px;
+  }
+}
+
+/* ─── AUTH: Mobile responsive ─── */
+@media (max-width: 480px) {
+  .auth-v4 {
+    padding: 16px 20px;
+    align-items: flex-start;
+    padding-top: 48px;
+  }
+
+  .auth-v4-container {
+    max-width: 100%;
+  }
+
+  .auth-v4-card {
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+  }
+
+  .auth-v4-title {
+    font-size: 24px;
+  }
+
+  .auth-v4-subtitle {
+    font-size: 14px;
+  }
+
+  .auth-v4-input {
+    min-height: 48px;
+    font-size: 16px; /* prevents iOS zoom on focus */
+    padding: 12px 16px;
+  }
+
+  .auth-v4-submit {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .auth-v4-google-btn {
+    min-height: 48px;
+    font-size: 15px;
+  }
+
+  .auth-v4-error {
+    font-size: 14px;
+    padding: var(--space-3);
+  }
+
+  .auth-v4-switch {
+    font-size: 14px;
+  }
+
+  .auth-v4-switch-link {
+    font-size: 14px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .auth-v4-back {
+    font-size: 14px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .auth-v4-error-buttons {
+    flex-direction: column;
+  }
+
+  .auth-v4-error-btn-secondary {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .auth-v4-error-modal .auth-v4-submit {
+    width: 100%;
+  }
+
+  .auth-v4-error-details {
+    font-size: 11px;
+    padding: var(--space-3);
+    max-height: 200px;
+    overflow-y: auto;
+  }
+}
+
+/* ─── AUTH: Ensure no tiny text on any mobile ─── */
+@media (max-width: 767px) {
+  .auth-v4-input {
+    font-size: 16px; /* prevents iOS auto-zoom */
+  }
+
+  .auth-v4-error {
+    font-size: 14px;
+  }
+
+  .auth-v4-divider-text {
+    font-size: 13px;
   }
 }
 
