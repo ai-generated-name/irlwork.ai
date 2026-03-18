@@ -39,7 +39,7 @@ export const styles = {
   btnPrimary: `bg-coral text-white hover:bg-coral-dark shadow-v4-md hover:shadow-v4-lg`,
   btnSecondary: `bg-coral/10 text-coral hover:bg-coral/20`,
   btnSmall: `px-3 py-1.5 text-sm rounded-lg`,
-  input: `w-full px-4 py-2.5 bg-[#F0EDE8] border border-[#E8E0D8] rounded-[10px] text-[#111010] placeholder-[rgba(17,16,16,0.26)] focus:border-[rgba(220,200,180,0.55)] focus:ring-2 focus:ring-[rgba(17,16,16,0.06)] focus:outline-none transition-all`,
+  input: `w-full px-4 py-2.5 bg-[#F0EDE8] border border-[#E8E0D8] rounded-[10px] text-[#111010] placeholder-[rgba(17,16,16,0.26)] focus:border-[#D0C3B5] focus:ring-2 focus:ring-[rgba(17,16,16,0.06)] focus:outline-none transition-all`,
   card: `bg-white border border-[#EBE4DC] rounded-[16px] p-4 shadow-v4-sm hover:shadow-v4-md transition-shadow`,
   container: `max-w-6xl mx-auto px-6`,
   gradient: `bg-bg`,

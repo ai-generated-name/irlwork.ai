@@ -179,15 +179,15 @@ export default function ConnectBankButton({ user, compact = false }) {
           </div>
           <div className="flex-1">
             <h3 className="text-[#1A1A1A] font-bold text-base">Bank account connected</h3>
-            <p className="text-[rgba(26,20,16,0.65)] text-sm mt-0.5">Your earnings will be deposited directly to your bank account</p>
+            <p className="text-[#7B7672] text-sm mt-0.5">Your earnings will be deposited directly to your bank account</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[rgba(220,200,180,0.45)]">
+        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[#D9CEC2]">
           {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- Stripe Connect manage button uses custom gray */}
           <button
             onClick={handleManageBank}
             disabled={connecting}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[rgba(26,20,16,0.65)] hover:text-[#1A1A1A] bg-[#F0EAE2] hover:bg-[#EBEBEB] rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#7B7672] hover:text-[#1A1A1A] bg-[#F0EAE2] hover:bg-[#EBEBEB] rounded-lg transition-colors disabled:opacity-50"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
@@ -224,7 +224,7 @@ export default function ConnectBankButton({ user, compact = false }) {
           </div>
           <div className="flex-1">
             <h3 className="text-[#1A1A1A] font-bold text-base">Finish setting up your bank</h3>
-            <p className="text-[rgba(26,20,16,0.65)] text-sm mt-1">Your bank connection is incomplete. Complete the setup to start receiving payments.</p>
+            <p className="text-[#7B7672] text-sm mt-1">Your bank connection is incomplete. Complete the setup to start receiving payments.</p>
             {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- warning-state button uses yellow for incomplete bank setup */}
             <button
               onClick={handleConnect}
@@ -267,7 +267,7 @@ export default function ConnectBankButton({ user, compact = false }) {
 
         <div className="flex-1">
           <h3 className="text-[#1A1A1A] font-bold text-lg">Set up your payment account</h3>
-          <p className="text-[rgba(26,20,16,0.65)] text-sm mt-1.5 leading-relaxed">
+          <p className="text-[#7B7672] text-sm mt-1.5 leading-relaxed">
             Connect your bank account to receive earnings directly. Takes about 2 minutes to set up through our secure partner, Stripe.
           </p>
 

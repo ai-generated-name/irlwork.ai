@@ -58,7 +58,6 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
         justifyContent: 'center',
         zIndex: 2000,
         padding: 24,
-        backdropFilter: 'blur(4px)'
       }}
       onClick={onClose}
     >
@@ -70,7 +69,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
-          boxShadow: '0 25px 60px rgba(220,200,180,0.45), 0 10px 20px #E8E0D8',
+          boxShadow: '0 25px 60px #D9CEC2, 0 10px 20px #E8E0D8',
           position: 'relative'
         }}
         onClick={(e) => e.stopPropagation()}
@@ -96,7 +95,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             zIndex: 10,
             transition: 'all 0.2s'
           }}
-          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(220,200,180,0.40)' }}
+          onMouseOver={(e) => { e.currentTarget.style.background = '#DDD3C8' }}
           onMouseOut={(e) => { e.currentTarget.style.background = '#EBE4DC' }}
         >
           <X size={18} style={{ color: 'var(--text-secondary)' }} />
@@ -357,7 +356,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                               key={i}
                               size={12}
                               fill={i <= (review.score || review.rating || 0) ? '#FEBC2E' : 'none'}
-                              stroke={i <= (review.score || review.rating || 0) ? '#FEBC2E' : 'rgba(220,200,180,0.45)'}
+                              stroke={i <= (review.score || review.rating || 0) ? '#FEBC2E' : '#D9CEC2'}
                               strokeWidth={1.5}
                             />
                           ))}

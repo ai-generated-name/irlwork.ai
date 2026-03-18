@@ -128,7 +128,7 @@ export default function SettingsTab({
                         cursor: 'pointer',
                         position: 'relative',
                         transition: 'background 0.2s',
-                        background: user?.availability === 'available' ? 'var(--success)' : 'rgba(220,200,180,0.45)',
+                        background: user?.availability === 'available' ? 'var(--success)' : '#D9CEC2',
                         flexShrink: 0
                       }}
                     >
@@ -141,7 +141,7 @@ export default function SettingsTab({
                         top: 3,
                         left: user?.availability === 'available' ? 23 : 3,
                         transition: 'left 0.2s',
-                        boxShadow: '0 1px 3px rgba(220,200,180,0.45)'
+                        boxShadow: '0 1px 3px #D9CEC2'
                       }} />
                     </button>
                   </div>

@@ -187,7 +187,7 @@ export default function ConnectWalletSection({ user, compact = false }) {
             <p className="text-[#8A8A8A] text-xs mt-1">Base network (USDC)</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[rgba(220,200,180,0.45)]">
+        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[#D9CEC2]">
           {/* eslint-disable-next-line irlwork/no-inline-button-pattern -- wallet branding uses indigo */}
           <button
             onClick={() => { setEditing(true); setWalletAddress(savedAddress); }}

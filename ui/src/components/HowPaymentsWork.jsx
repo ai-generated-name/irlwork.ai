@@ -115,8 +115,6 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
         justifyContent: 'center',
         padding: 24,
         background: 'rgba(15, 15, 15, 0.5)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
         opacity: isVisible && !isExiting ? 1 : 0,
         transition: 'opacity 0.25s ease',
       }}
@@ -128,7 +126,7 @@ export default function HowPaymentsWork({ isOpen, onClose, mode = 'working' }) {
           maxWidth: 520,
           background: 'var(--bg-secondary)',
           borderRadius: 'var(--radius-xl)',
-          boxShadow: '0 32px 64px rgba(200,150,100,0.20)',
+          boxShadow: '0 32px 64px rgba(0,0,0,0.06)',
           overflow: 'hidden',
           transform: isVisible && !isExiting ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.97)',
           opacity: isVisible && !isExiting ? 1 : 0,

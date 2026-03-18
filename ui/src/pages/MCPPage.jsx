@@ -190,7 +190,7 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
         <span style={{ fontSize: 14, fontWeight: 650, color: '#1A1A1A', flex: 1 }}>
           {category.label}
         </span>
-        <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: 'rgba(220,200,180,0.55)' }}>
+        <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: '#D0C3B5' }}>
           {category.count}
         </span>
       </button>
@@ -231,7 +231,7 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
                 <div style={{ padding: '0 18px 18px 44px' }}>
                   {/* Parameters table */}
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(220,200,180,0.45)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Parameters</div>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D9CEC2', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Parameters</div>
                     <div style={{ border: '1px solid #EBE4DC', borderRadius: 8, overflow: 'hidden' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
@@ -250,7 +250,7 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
                               <td style={{ padding: '8px 12px' }}>
                                 {p.required
                                   ? <span style={{ color: '#FF5F57', fontWeight: 600 }}>Yes</span>
-                                  : <span style={{ color: 'rgba(220,200,180,0.55)' }}>No</span>}
+                                  : <span style={{ color: '#D0C3B5' }}>No</span>}
                               </td>
                               <td style={{ padding: '8px 12px', color: '#888' }}>{p.desc}</td>
                             </tr>
@@ -262,7 +262,7 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
 
                   {/* Response example */}
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(220,200,180,0.45)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Response</div>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D9CEC2', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Response</div>
                     <div style={{ background: '#1A1A1A', borderRadius: 10, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
                       <pre style={{ fontSize: 12, color: '#8BC78B', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>{LIST_HUMANS_RESPONSE}</pre>
                     </div>
@@ -270,9 +270,9 @@ function CategoryAccordion({ category, isOpen, onToggle }) {
 
                   {/* Request example */}
                   <div>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(220,200,180,0.45)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Request Example</div>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D9CEC2', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>Request Example</div>
                     <div style={{ background: '#1A1A1A', borderRadius: 10, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
-                      <pre style={{ fontSize: 12, color: 'rgba(220,200,180,0.45)', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>{LIST_HUMANS_EXAMPLE}</pre>
+                      <pre style={{ fontSize: 12, color: '#D9CEC2', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>{LIST_HUMANS_EXAMPLE}</pre>
                       <CopyButton text={LIST_HUMANS_EXAMPLE} />
                     </div>
                   </div>
@@ -375,7 +375,7 @@ export default function MCPPage() {
           fontSize: 10.5,
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
-          color: 'rgba(220,200,180,0.45)',
+          color: '#D9CEC2',
           fontFamily: "'JetBrains Mono', monospace",
           padding: '0 14px',
           marginBottom: 8,
@@ -395,13 +395,13 @@ export default function MCPPage() {
               background: 'transparent',
               fontSize: 12.5,
               fontFamily: "'JetBrains Mono', monospace",
-              color: 'rgba(220,200,180,0.55)',
+              color: '#D0C3B5',
               cursor: 'pointer',
               transition: 'color 0.15s',
               lineHeight: 1.8,
             }}
             onMouseEnter={e => e.currentTarget.style.color = '#E8764B'} // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
-            onMouseLeave={e => e.currentTarget.style.color = 'rgba(220,200,180,0.55)'}
+            onMouseLeave={e => e.currentTarget.style.color = '#D0C3B5'}
           >
             {cat.label} ({cat.count})
           </button>
@@ -420,8 +420,6 @@ export default function MCPPage() {
         zIndex: 100,
         height: 52,
         background: 'rgba(250,250,248,0.92)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
         borderBottom: '1px solid #EBE4DC',
         display: 'flex',
         alignItems: 'center',
@@ -485,7 +483,7 @@ export default function MCPPage() {
             position: 'fixed',
             inset: 0,
             zIndex: 90,
-            background: 'rgba(220,200,180,0.55)',
+            background: '#D0C3B5',
           }}
           onClick={() => setMobileMenuOpen(false)}
         >
@@ -570,7 +568,7 @@ export default function MCPPage() {
                     borderRight: i < arr.length - 1 ? '1px solid #EBE4DC' : 'none',
                   }}
                 >
-                  <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(220,200,180,0.45)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 6 }}>
+                  <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D9CEC2', fontFamily: "'JetBrains Mono', monospace", marginBottom: 6 }}>
                     {label}
                   </div>
                   <div style={{ fontSize: 13, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: '#1A1A1A' }}>
@@ -584,12 +582,12 @@ export default function MCPPage() {
             <div style={{ marginTop: 20, background: '#1A1A1A', borderRadius: 12, padding: '18px 20px', position: 'relative', overflowX: 'auto' }}>
               <pre style={{ fontSize: 13, margin: 0, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.6 }}>
                 {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-                <span style={{ color: '#E8764B' }}>curl</span><span style={{ color: 'rgba(220,200,180,0.45)' }}> -X POST https://api.irlwork.ai/api/mcp \</span>{'\n'}
-                <span style={{ color: 'rgba(220,200,180,0.45)' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Authorization: Bearer YOUR_API_KEY'</span><span style={{ color: 'rgba(220,200,180,0.45)' }}> \</span>{'\n'}
-                <span style={{ color: 'rgba(220,200,180,0.45)' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Content-Type: application/json'</span><span style={{ color: 'rgba(220,200,180,0.45)' }}> \</span>{'\n'}
-                <span style={{ color: 'rgba(220,200,180,0.45)' }}>  -d </span><span style={{ color: '#8BC78B' }}>{'\'{'}</span>{'\n'}
-                <span style={{ color: 'rgba(220,200,180,0.45)' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"method": "method_name",'}</span>{'\n'}
-                <span style={{ color: 'rgba(220,200,180,0.45)' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"params": { ... }'}</span>{'\n'}
+                <span style={{ color: '#E8764B' }}>curl</span><span style={{ color: '#D9CEC2' }}> -X POST https://api.irlwork.ai/api/mcp \</span>{'\n'}
+                <span style={{ color: '#D9CEC2' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Authorization: Bearer YOUR_API_KEY'</span><span style={{ color: '#D9CEC2' }}> \</span>{'\n'}
+                <span style={{ color: '#D9CEC2' }}>  -H </span><span style={{ color: '#8BC78B' }}>'Content-Type: application/json'</span><span style={{ color: '#D9CEC2' }}> \</span>{'\n'}
+                <span style={{ color: '#D9CEC2' }}>  -d </span><span style={{ color: '#8BC78B' }}>{'\'{'}</span>{'\n'}
+                <span style={{ color: '#D9CEC2' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"method": "method_name",'}</span>{'\n'}
+                <span style={{ color: '#D9CEC2' }}>{'    '}</span><span style={{ color: '#8BC78B' }}>{'"params": { ... }'}</span>{'\n'}
                 <span style={{ color: '#8BC78B' }}>{"  }'"}</span>
               </pre>
               <CopyButton text={`curl -X POST https://api.irlwork.ai/api/mcp \\\n  -H 'Authorization: Bearer YOUR_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    "method": "method_name",\n    "params": { ... }\n  }'`} />
@@ -635,13 +633,13 @@ export default function MCPPage() {
             {/* Auth header example */}
             <div style={{ background: '#1A1A1A', borderRadius: 10, padding: '16px 20px', marginBottom: 12, overflowX: 'auto' }}>
               <pre style={{ fontSize: 13, margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>
-                <span style={{ color: 'rgba(220,200,180,0.45)' }}>Authorization: Bearer </span>
+                <span style={{ color: '#D9CEC2' }}>Authorization: Bearer </span>
                 {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
                 <span style={{ color: '#E8764B' }}>irl_sk_your_key_here</span>
               </pre>
             </div>
 
-            <p style={{ fontSize: 12.5, color: 'rgba(220,200,180,0.55)', margin: 0 }}>5 registrations/IP/hr · 60 requests/min per key</p>
+            <p style={{ fontSize: 12.5, color: '#D0C3B5', margin: 0 }}>5 registrations/IP/hr · 60 requests/min per key</p>
           </section>
 
           <SectionDivider />
@@ -683,7 +681,7 @@ export default function MCPPage() {
                   }}>
                     {status}
                   </span>
-                  {i < arr.length - 1 && <span style={{ color: 'rgba(220,200,180,0.45)', fontSize: 14 }}>→</span>}
+                  {i < arr.length - 1 && <span style={{ color: '#D9CEC2', fontSize: 14 }}>→</span>}
                 </React.Fragment>
               ))}
             </div>
@@ -834,7 +832,7 @@ export default function MCPPage() {
           {/* ═══ 5. ALL METHODS ═══ */}
           <section id="methods">
             <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1A1A1A', marginBottom: 4 }}>
-              All methods <span style={{ color: 'rgba(220,200,180,0.55)', fontWeight: 400 }}>(26)</span>
+              All methods <span style={{ color: '#D0C3B5', fontWeight: 400 }}>(26)</span>
             </h2>
             <p style={{ fontSize: 14, color: '#999', marginBottom: 20 }}>Click any category to expand methods.</p>
 
@@ -858,7 +856,7 @@ export default function MCPPage() {
 
             {/* Error format */}
             <div style={{ background: '#1A1A1A', borderRadius: 10, padding: '16px 20px', marginBottom: 20, overflowX: 'auto' }}>
-              <pre style={{ fontSize: 12, margin: 0, fontFamily: "'JetBrains Mono', monospace", color: 'rgba(220,200,180,0.45)' }}>
+              <pre style={{ fontSize: 12, margin: 0, fontFamily: "'JetBrains Mono', monospace", color: '#D9CEC2' }}>
                 {'{ '}<span style={{ color: '#f87171' }}>"error"</span>{': '}<span style={{ color: '#8BC78B' }}>"Human not found"</span>{' }'}
               </pre>
             </div>
@@ -962,12 +960,12 @@ export default function MCPPage() {
                     irlwork<span style={{ color: '#E8764B' }}>|</span>
                   </a>
                   <p style={{ fontSize: 13, color: '#aaa', marginTop: 8, lineHeight: 1.5 }}>AI agents create work. Humans get paid.</p>
-                  <a href="mailto:support@irlwork.ai" style={{ fontSize: 12.5, color: 'rgba(220,200,180,0.45)', textDecoration: 'none' }}>support@irlwork.ai</a>
+                  <a href="mailto:support@irlwork.ai" style={{ fontSize: 12.5, color: '#D9CEC2', textDecoration: 'none' }}>support@irlwork.ai</a>
                 </div>
 
                 {/* Platform */}
                 <div>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(220,200,180,0.55)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 12 }}>Platform</div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#D0C3B5', fontFamily: "'JetBrains Mono', monospace", marginBottom: 12 }}>Platform</div>
                   {[
                     ['/auth', 'Sign Up'],
                     ['/browse/tasks', 'Browse Tasks'],
@@ -979,7 +977,7 @@ export default function MCPPage() {
 
                 {/* For Agents */}
                 <div>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(220,200,180,0.55)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 12 }}>For Agents</div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#D0C3B5', fontFamily: "'JetBrains Mono', monospace", marginBottom: 12 }}>For Agents</div>
                   {[
                     ['/connect-agent', 'Connect Agent'],
                     ['/mcp', 'API Reference'],
@@ -991,7 +989,7 @@ export default function MCPPage() {
 
                 {/* Company */}
                 <div>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(220,200,180,0.55)', fontFamily: "'JetBrains Mono', monospace", marginBottom: 12 }}>Company</div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', color: '#D0C3B5', fontFamily: "'JetBrains Mono', monospace", marginBottom: 12 }}>Company</div>
                   {[
                     ['/about', 'About Us'],
                     ['/thesis', 'Thesis'],
@@ -1013,13 +1011,13 @@ export default function MCPPage() {
                 marginTop: 36,
                 paddingTop: 20,
               }}>
-                <span style={{ fontSize: 12, color: 'rgba(220,200,180,0.45)' }}>© 2026 irlwork.ai</span>
+                <span style={{ fontSize: 12, color: '#D9CEC2' }}>© 2026 irlwork.ai</span>
                 <div style={{ display: 'flex', gap: 20 }}>
                   {[
                     ['/privacy', 'Privacy'],
                     ['/terms', 'Terms'],
                   ].map(([href, label]) => (
-                    <a key={href} href={href} style={{ fontSize: 12, color: 'rgba(220,200,180,0.55)', textDecoration: 'none' }}>{label}</a>
+                    <a key={href} href={href} style={{ fontSize: 12, color: '#D0C3B5', textDecoration: 'none' }}>{label}</a>
                   ))}
                 </div>
               </div>

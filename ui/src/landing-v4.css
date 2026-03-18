@@ -137,7 +137,6 @@
   justify-content: space-between;
   padding: var(--space-3) var(--space-6);
   background: rgba(250, 250, 248, 0.92);
-  backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(0,0,0,0.04);
 }
 
@@ -244,7 +243,7 @@
 
 .btn-v4-primary:hover {
   filter: brightness(0.95);
-  box-shadow: 0 8px 32px rgba(232,118,75,0.30), 0 1px 0 rgba(255,255,255,0.25) inset;
+  box-shadow: none;
 }
 
 .btn-v4-secondary {
@@ -1147,7 +1146,7 @@
 .step-card-animated:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
-  border-color: rgba(220,200,180,0.40);
+  border-color: #DDD3C8;
 }
 
 .step-card-animated.step--final {
@@ -4173,7 +4172,6 @@
   z-index: 1000;
   border-bottom: 1px solid rgba(0,0,0,0.04);
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
 }
 
 .mcp-v4-header-inner {
@@ -4715,8 +4713,6 @@
 .dashboard-v4-sidebar {
   width: 260px;
   background: var(--glass-md, rgba(255,255,255,0.80));
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -5003,7 +4999,6 @@
   z-index: 1000;
   border-bottom: 1px solid #E8E0D8;
   background: rgba(250, 250, 248, 0.92);
-  backdrop-filter: blur(12px);
 }
 
 .ca-header-inner {
@@ -6063,8 +6058,6 @@
 /* Top Bar */
 .dashboard-v4-topbar {
   background: rgba(251,248,244,0.70);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
   border-bottom: 1px solid var(--border);
   padding: var(--space-3) var(--space-6);
   display: flex;
@@ -6266,8 +6259,6 @@
   right: 0;
   width: 360px;
   background: var(--glass-hi, rgba(255,255,255,0.92));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: var(--r);
   box-shadow: 0 8px 32px rgba(0,0,0,0.06);
@@ -6448,8 +6439,6 @@
   right: 0;
   width: 240px;
   background: var(--glass-hi, rgba(255,255,255,0.92));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: var(--r);
   box-shadow: 0 8px 32px rgba(0,0,0,0.06);
@@ -8368,7 +8357,6 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9041,8 +9029,6 @@ select.select-v4-dark option:checked,
     bottom: 0;
     z-index: 9998;
     background: rgba(250, 250, 248, 0.98);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     flex-direction: column;
     padding: 16px;
     gap: 4px !important;
@@ -9546,7 +9532,7 @@ select.select-v4-dark option:checked,
   font-size: 12px;
   margin-bottom: var(--space-3, 12px);
   padding: 6px 10px;
-  background: rgba(220,200,180,0.08);
+  background: #F7F3EF;
   border-radius: 8px;
 }
 
@@ -9881,7 +9867,7 @@ select.select-v4-dark option:checked,
 
 .wd-checklist-item:not(.completed) .wd-checklist-item-indicator {
   background: var(--bg-tertiary);
-  border: 1.5px solid rgba(220,200,180,0.40);
+  border: 1.5px solid #DDD3C8;
 }
 
 .wd-checklist-item-number {
@@ -9955,7 +9941,7 @@ select.select-v4-dark option:checked,
   gap: 8px;
   padding: 9px 18px;
   background: transparent;
-  border: 1px solid rgba(220,200,180,0.45);
+  border: 1px solid #D9CEC2;
   border-radius: var(--radius-md);
   font-family: var(--font-body);
   font-size: 14px;
@@ -9970,7 +9956,7 @@ select.select-v4-dark option:checked,
 .wd-browse-btn:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  border-color: rgba(220,200,180,0.55);
+  border-color: #D0C3B5;
 }
 
 /* Shared stat styles for both dashboards */
@@ -9993,7 +9979,7 @@ select.select-v4-dark option:checked,
 .working-dash-stat:hover,
 .hiring-dash-stat:hover {
   box-shadow: 0 2px 8px #E8E0D8;
-  border-color: rgba(220,200,180,0.40);
+  border-color: #DDD3C8;
 }
 
 .working-dash-stat-icon,
@@ -10322,7 +10308,7 @@ select.select-v4-dark option:checked,
 .hiring-dash-action:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  border-color: rgba(220,200,180,0.45);
+  border-color: #D9CEC2;
 }
 
 /* ─── MY TASKS EMPTY STATE ─── */
@@ -10381,7 +10367,7 @@ select.select-v4-dark option:checked,
 
 .mytasks-preview-card {
   background: var(--bg-secondary);
-  border: 1px dashed rgba(220,200,180,0.40);
+  border: 1px dashed #DDD3C8;
   border-radius: var(--radius-md);
   padding: 14px 18px;
   margin-bottom: var(--space-3);
@@ -11252,8 +11238,6 @@ select.select-v4-dark option:checked,
   right: 0;
   z-index: 9980;
   background: rgba(251,248,244,0.82);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
   border-top: 1px solid var(--border);
   box-shadow: none;
   height: 56px;
@@ -11690,7 +11674,6 @@ select.select-v4-dark option:checked,
     right: 0;
     bottom: 0;
     background: rgba(250, 250, 248, 0.98) !important;
-    backdrop-filter: blur(16px) !important;
     flex-direction: column;
     padding: 16px !important;
     gap: 4px !important;

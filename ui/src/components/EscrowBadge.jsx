@@ -7,8 +7,8 @@ import { Card } from './ui';
 const STATUS_CONFIG = {
   pending: {
     label: 'Awaiting Deposit',
-    color: 'bg-[rgba(26,20,16,0.40)]',
-    textColor: 'text-[rgba(26,20,16,0.65)]',
+    color: 'bg-[#B3AFAC]',
+    textColor: 'text-[#7B7672]',
     icon: <Hourglass size={14} />,
     description: 'Waiting for agent to fund escrow'
   },
@@ -108,7 +108,7 @@ export function EscrowStatusCard({
         {amount != null && (
           <div className="text-right">
             <p className="text-2xl font-bold text-[#1A1A1A] font-mono">{Number(amount).toFixed(2)}</p>
-            <p className="text-[rgba(26,20,16,0.40)] text-sm">{currencyLabel}</p>
+            <p className="text-[#B3AFAC] text-sm">{currencyLabel}</p>
           </div>
         )}
       </div>
@@ -117,7 +117,7 @@ export function EscrowStatusCard({
         <div className="space-y-2 pt-3 border-t border-[#E8E0D8]">
           {depositedAt && (
             <div className="flex justify-between text-sm">
-              <span className="text-[rgba(26,20,16,0.40)]">Deposited</span>
+              <span className="text-[#B3AFAC]">Deposited</span>
               <span className="text-[#1A1A1A]">
                 {new Date(depositedAt).toLocaleDateString()} {new Date(depositedAt).toLocaleTimeString()}
               </span>
@@ -125,7 +125,7 @@ export function EscrowStatusCard({
           )}
           {releasedAt && (
             <div className="flex justify-between text-sm">
-              <span className="text-[rgba(26,20,16,0.40)]">Released</span>
+              <span className="text-[#B3AFAC]">Released</span>
               <span className="text-[#1A1A1A]">
                 {new Date(releasedAt).toLocaleDateString()} {new Date(releasedAt).toLocaleTimeString()}
               </span>

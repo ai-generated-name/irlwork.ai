@@ -19,10 +19,10 @@ const C = {
   creamDeep: '#EDE8E1',
   white: '#FFFFFF',
   textPrimary: '#1A1A1A',
-  textSecondary: 'rgba(26,20,16,0.65)',
-  textTertiary: 'rgba(26,20,16,0.40)',
+  textSecondary: '#7B7672',
+  textTertiary: '#B3AFAC',
   border: '#E8E0D8',
-  borderMed: 'rgba(220,200,180,0.40)',
+  borderMed: '#DDD3C8',
   borderHover: 'rgba(0, 0, 0, 0.18)',
   success: '#2D7A3A',
   successBg: 'rgba(26,158,106,0.08)',
@@ -219,9 +219,8 @@ export default function FeedbackButton({ user, variant = 'floating', isOpen: con
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(220,200,180,0.55)',
+            background: '#D0C3B5',
             zIndex: 9998,
-            backdropFilter: 'blur(2px)',
           }}
         />
       )}

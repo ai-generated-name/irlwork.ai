@@ -156,7 +156,7 @@ export default function TaskCardV2({
           {task.required_skills.length > 3 && (
             <span style={{
               display: 'inline-block', padding: '2px 8px', borderRadius: 12,
-              fontSize: 11, fontWeight: 500, background: '#F0EAE2', color: 'rgba(26,20,16,0.65)'
+              fontSize: 11, fontWeight: 500, background: '#F0EAE2', color: '#7B7672'
             }}>+{task.required_skills.length - 3} more</span>
           )}
         </div>

@@ -264,8 +264,6 @@ code, pre {
            focus:border-accent-orange focus:outline-none focus:ring-[3px]
            focus:ring-accent-orange/10;
     background: rgba(255,255,255,0.80);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     border: 1px solid #E8E0D8;
   }
 
@@ -2386,8 +2384,6 @@ body.translated-rtl {
   justify-content: space-between;
   padding: 18px 20px 14px;
   background: rgba(247, 245, 242, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -2588,8 +2584,6 @@ body.translated-rtl {
   left: 0;
   right: 0;
   background: rgba(247, 245, 242, 0.93);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
   display: flex;
   padding: 8px 8px 28px;

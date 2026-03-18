@@ -16,7 +16,7 @@ export default function LocationSection({ task }) {
 
   return (
     <div className="bg-white rounded-2xl border-2 border-[#E8E0D8] p-6 mb-6 shadow-sm">
-      <h3 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider mb-4">
+      <h3 className="text-xs font-bold text-[#B3AFAC] uppercase tracking-wider mb-4">
         Location
       </h3>
       <div className="flex items-center gap-3">
@@ -25,11 +25,11 @@ export default function LocationSection({ task }) {
           <p className="text-[#1A1A1A] font-medium">
             {locationStr || 'Remote'}
             {isRemote && locationStr && (
-              <span className="text-[rgba(26,20,16,0.65)] font-normal"> (Remote OK)</span>
+              <span className="text-[#7B7672] font-normal"> (Remote OK)</span>
             )}
           </p>
           {isRemote && !locationStr && (
-            <p className="text-[rgba(26,20,16,0.65)] text-sm mt-0.5">Work from anywhere</p>
+            <p className="text-[#7B7672] text-sm mt-0.5">Work from anywhere</p>
           )}
         </div>
       </div>

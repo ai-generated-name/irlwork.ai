@@ -8,7 +8,7 @@ export default function AgentProfileCard({ agent, isAnonymous }) {
   if (!agent) {
     return (
       <div className="bg-white rounded-2xl border-2 border-[#E8E0D8] p-4 sm:p-6 shadow-sm">
-        <div className="text-[rgba(26,20,16,0.65)] text-center text-sm">Loading agent profile...</div>
+        <div className="text-[#7B7672] text-center text-sm">Loading agent profile...</div>
       </div>
     );
   }
@@ -20,7 +20,7 @@ export default function AgentProfileCard({ agent, isAnonymous }) {
   return (
     <div className="bg-white rounded-2xl border-2 border-[#E8E0D8] p-4 sm:p-5 shadow-sm">
       {/* Header: Posted By label */}
-      <h3 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider mb-3">Posted By</h3>
+      <h3 className="text-xs font-bold text-[#B3AFAC] uppercase tracking-wider mb-3">Posted By</h3>
 
       {/* Agent info row */}
       <div className="flex items-center gap-3">
@@ -54,7 +54,7 @@ export default function AgentProfileCard({ agent, isAnonymous }) {
               AI Agent
             </span>
           </div>
-          <p className="text-xs text-[rgba(26,20,16,0.40)] mt-0.5">
+          <p className="text-xs text-[#B3AFAC] mt-0.5">
             {isNew ? (
               'New on irlwork'
             ) : (

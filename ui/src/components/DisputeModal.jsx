@@ -65,7 +65,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, taskTitle }) {
                 </svg>
                 <h2>File a dispute</h2>
               </div>
-              <p style={{ fontSize: '14px', color: 'rgba(26,20,16,0.40)', marginTop: '4px' }}>
+              <p style={{ fontSize: '14px', color: '#B3AFAC', marginTop: '4px' }}>
                 Disputes are reviewed by our team. Please provide a clear reason.
               </p>
             </div>
@@ -97,7 +97,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, taskTitle }) {
                     fontFamily: 'inherit',
                   }}
                 />
-                <span style={{ fontSize: '12px', color: 'rgba(26,20,16,0.40)' }}>
+                <span style={{ fontSize: '12px', color: '#B3AFAC' }}>
                   {reason.length}/1000
                 </span>
               </div>

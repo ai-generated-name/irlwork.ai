@@ -41,7 +41,7 @@ function StarRating({ rating, count, showNewBadge = false }) {
             key={i}
             size={13}
             fill={i <= fullStars ? '#FEBC2E' : (i === fullStars + 1 && hasHalf ? '#FEBC2E' : 'none')}
-            stroke={i <= fullStars || (i === fullStars + 1 && hasHalf) ? '#FEBC2E' : 'rgba(220,200,180,0.45)'}
+            stroke={i <= fullStars || (i === fullStars + 1 && hasHalf) ? '#FEBC2E' : '#D9CEC2'}
             strokeWidth={1.5}
             style={{ opacity: i <= fullStars ? 1 : (i === fullStars + 1 && hasHalf ? 0.6 : 0.4) }}
           />
@@ -114,7 +114,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
             cursor: 'pointer',
             padding: 4,
             zIndex: 2,
-            color: isBookmarked ? '#F4845F' : 'rgba(220,200,180,0.45)',
+            color: isBookmarked ? '#F4845F' : '#D9CEC2',
             transition: 'color 0.2s'
           }}
           title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}

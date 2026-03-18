@@ -27,15 +27,15 @@ const STATUS_CONFIG = {
   pending_review: { label: 'Pending Review', color: 'bg-[#FFE4DB] text-[#D4703A]' },
   rejected: { label: 'Rejected', color: 'bg-[rgba(255,95,87,0.1)] text-[#FF5F57]' },
   completed: { label: 'Completed', color: 'bg-[rgba(26,158,106, 0.08)] text-[#2D7A3A]' },
-  paid: { label: 'Paid', color: 'bg-[#F0EAE2] text-[rgba(26,20,16,0.65)]' },
+  paid: { label: 'Paid', color: 'bg-[#F0EAE2] text-[#7B7672]' },
   disputed: { label: 'Disputed', color: 'bg-[rgba(255, 95, 87, 0.1)] text-[#FF5F57]' },
-  cancelled: { label: 'Cancelled', color: 'bg-[#EBE4DC] text-[rgba(26,20,16,0.35)]' },
+  cancelled: { label: 'Cancelled', color: 'bg-[#EBE4DC] text-[#C2BEBC]' },
 };
 
 export default function TaskHeader({ task }) {
   if (!task) return null;
 
-  const statusConfig = STATUS_CONFIG[task.status] || { label: task.status || 'Unknown', color: 'bg-[#EBE4DC] text-[rgba(26,20,16,0.35)]' };
+  const statusConfig = STATUS_CONFIG[task.status] || { label: task.status || 'Unknown', color: 'bg-[#EBE4DC] text-[#C2BEBC]' };
   const isBounty = task.task_type === 'bounty';
   const quantity = task.quantity || 1;
   const spotsFilled = task.spots_filled || (task.human_ids ? task.human_ids.length : (task.human_id ? 1 : 0));
@@ -67,7 +67,7 @@ export default function TaskHeader({ task }) {
         {/* eslint-enable irlwork/no-orange-outside-button */}
         {/* Compact budget shown inline on mobile only */}
         <span className="lg:hidden text-lg font-bold text-[#2D7A3A] font-mono">
-          ${task.budget} <span className="text-xs font-normal text-[rgba(26,20,16,0.40)]">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
+          ${task.budget} <span className="text-xs font-normal text-[#B3AFAC]">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
         </span>
       </div>
 
@@ -78,7 +78,7 @@ export default function TaskHeader({ task }) {
 
       {/* Description */}
       <div className="mb-3 sm:mb-6">
-        <p className="text-[rgba(26,20,16,0.65)] text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+        <p className="text-[#7B7672] text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
           {task.description}
         </p>
       </div>
@@ -87,7 +87,7 @@ export default function TaskHeader({ task }) {
       {task.requirements && (
         <div className="mb-3 sm:mb-6">
           <h3 className="text-xs sm:text-sm font-semibold text-[#1A1A1A] mb-1 sm:mb-2">Requirements</h3>
-          <p className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+          <p className="text-[#7B7672] text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
             {task.requirements}
           </p>
         </div>
@@ -138,7 +138,7 @@ export default function TaskHeader({ task }) {
                 >
                   <Paperclip size={14} />
                   <span className="truncate max-w-[200px]">{att.filename}</span>
-                  {att.size > 0 && <span className="text-[rgba(26,20,16,0.35)]">({(att.size / 1024).toFixed(0)}KB)</span>}
+                  {att.size > 0 && <span className="text-[#C2BEBC]">({(att.size / 1024).toFixed(0)}KB)</span>}
                 </a>
               );
             })}
@@ -159,7 +159,7 @@ export default function TaskHeader({ task }) {
       )}
 
       {/* Metadata Row */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1.5 sm:gap-4 text-xs sm:text-sm text-[rgba(26,20,16,0.65)]">
+      <div className="flex flex-wrap gap-x-3 gap-y-1.5 sm:gap-4 text-xs sm:text-sm text-[#7B7672]">
         {/* Posted Date */}
         <div className="flex items-center gap-1 sm:gap-2">
           <CalendarDays size={14} />
@@ -200,7 +200,7 @@ export default function TaskHeader({ task }) {
       {/* Skills Needed */}
       {task.category && (
         <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[#E8E0D8]">
-          <h3 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider mb-1.5 sm:mb-2">Skills Needed</h3>
+          <h3 className="text-xs font-bold text-[#B3AFAC] uppercase tracking-wider mb-1.5 sm:mb-2">Skills Needed</h3>
           <div className="flex flex-wrap gap-2">
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-xs sm:text-sm font-medium bg-[rgba(232,118,75,0.1)] text-[#E8764B]">

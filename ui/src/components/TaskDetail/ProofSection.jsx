@@ -10,7 +10,7 @@ import ConfirmationModal from '../ConfirmationModal';
 import API_URL from '../../config/api';
 
 const styles = {
-  input: 'w-full bg-white border-2 border-[#E8E0D8] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[rgba(26,20,16,0.40)] focus:outline-none focus:border-[#E8764B] transition-colors'
+  input: 'w-full bg-white border-2 border-[#E8E0D8] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#B3AFAC] focus:outline-none focus:border-[#E8764B] transition-colors'
 };
 
 export default function ProofSection({ task, user, onSubmit }) {
@@ -229,7 +229,7 @@ export default function ProofSection({ task, user, onSubmit }) {
       <div className="space-y-3 sm:space-y-4">
         {/* Proof Text */}
         <div>
-          <label className="block text-[rgba(26,20,16,0.65)] text-xs sm:text-sm mb-1.5 sm:mb-2">Describe your work</label>
+          <label className="block text-[#7B7672] text-xs sm:text-sm mb-1.5 sm:mb-2">Describe your work</label>
           <textarea
             value={proofText}
             onChange={(e) => setProofText(e.target.value.slice(0, PROOF_TEXT_MAX))}
@@ -239,7 +239,7 @@ export default function ProofSection({ task, user, onSubmit }) {
             className={`${styles.input} resize-none text-sm`}
           />
           <div className="flex justify-end mt-1">
-            <span className={`text-xs ${proofText.length > PROOF_TEXT_MAX * 0.9 ? 'text-[#FEBC2E]' : 'text-[rgba(26,20,16,0.40)]'}`}>
+            <span className={`text-xs ${proofText.length > PROOF_TEXT_MAX * 0.9 ? 'text-[#FEBC2E]' : 'text-[#B3AFAC]'}`}>
               {proofText.length} / {PROOF_TEXT_MAX}
             </span>
           </div>
@@ -247,14 +247,14 @@ export default function ProofSection({ task, user, onSubmit }) {
 
         {/* File Upload */}
         <div>
-          <label className="block text-[rgba(26,20,16,0.65)] text-xs sm:text-sm mb-1.5 sm:mb-2">
+          <label className="block text-[#7B7672] text-xs sm:text-sm mb-1.5 sm:mb-2">
             Upload Proof (max 3 files, optional if you provide text)
           </label>
 
           {/* Overall progress */}
           {uploading && (
             <div className="mb-2 px-1">
-              <p className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm font-medium">{uploadProgress}</p>
+              <p className="text-[#7B7672] text-xs sm:text-sm font-medium">{uploadProgress}</p>
             </div>
           )}
 
@@ -287,7 +287,7 @@ export default function ProofSection({ task, user, onSubmit }) {
                       <span className="text-xs text-[#1A1A1A] truncate">
                         {fs.name.length > 30 ? fs.name.slice(0, 27) + '...' : fs.name}
                       </span>
-                      <span className="text-xs text-[rgba(26,20,16,0.40)] flex-shrink-0">{formatFileSize(fs.size)}</span>
+                      <span className="text-xs text-[#B3AFAC] flex-shrink-0">{formatFileSize(fs.size)}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {fs.status === 'failed' && (
@@ -296,7 +296,7 @@ export default function ProofSection({ task, user, onSubmit }) {
                       {fs.status !== 'uploading' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); removeFile(i); }}
-                          className="text-[rgba(26,20,16,0.40)] hover:text-[#FF5F57] text-xs p-0.5"
+                          className="text-[#B3AFAC] hover:text-[#FF5F57] text-xs p-0.5"
                           aria-label={`Remove ${fs.name}`}
                         >
                           <X size={12} />
@@ -326,7 +326,7 @@ export default function ProofSection({ task, user, onSubmit }) {
               className={`border-2 border-dashed rounded-[14px] p-4 sm:p-6 text-center cursor-pointer transition-colors bg-[#FDF6EE] ${
                 isDragging
                   ? 'border-[#E8764B] bg-[#FFF3EB]' // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
-                  : 'border-[rgba(220,200,180,0.45)] hover:border-[#E8764B]' // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                  : 'border-[#D9CEC2] hover:border-[#E8764B]' // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               }`}
               onClick={() => !uploading && fileInputRef.current?.click()}
               onDragOver={handleDragOver}
@@ -342,13 +342,13 @@ export default function ProofSection({ task, user, onSubmit }) {
                 onChange={handleFileSelect}
                 className="hidden"
               />
-              <div className="text-[rgba(26,20,16,0.40)] mb-1 sm:mb-2">
+              <div className="text-[#B3AFAC] mb-1 sm:mb-2">
                 {uploading ? <Hourglass size={24} className="mx-auto" /> : <Upload size={24} className="mx-auto" />}
               </div>
-              <p className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm">
+              <p className="text-[#7B7672] text-xs sm:text-sm">
                 {isDragging ? 'Drop files here' : uploading ? 'Uploading...' : 'Tap or drag files here'}
               </p>
-              <p className="text-[rgba(26,20,16,0.40)] text-xs mt-0.5 sm:mt-1">
+              <p className="text-[#B3AFAC] text-xs mt-0.5 sm:mt-1">
                 PNG, JPG, MP4, MOV · {3 - files.length} slot{3 - files.length !== 1 ? 's' : ''} remaining
               </p>
             </div>
@@ -381,7 +381,7 @@ export default function ProofSection({ task, user, onSubmit }) {
                   ? `${uploadedUrls.length} file${uploadedUrls.length > 1 ? 's' : ''}`
                   : 'Text description only'}
               </p>
-              <p style={{ color: 'rgba(26,20,16,0.40)', fontSize: 12 }}>
+              <p style={{ color: '#B3AFAC', fontSize: 12 }}>
                 The task creator will have 48 hours to review. This cannot be undone.
               </p>
             </div>
@@ -396,7 +396,7 @@ export default function ProofSection({ task, user, onSubmit }) {
         {/* eslint-disable-next-line irlwork/no-orange-outside-button -- border uses brand color */}
         <div className="bg-[rgba(232,118,75,0.08)] border border-[rgba(232,118,75,0.15)] rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-[#E8764B]">
           <p className="font-medium mb-1"><FileText size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Tips:</p>
-          <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-[rgba(26,20,16,0.65)]">
+          <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-[#7B7672]">
             <li>Describe work completed in detail</li>
             <li>Upload clear photos or videos of finished task</li>
             <li>48h review window before auto-release</li>

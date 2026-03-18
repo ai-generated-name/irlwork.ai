@@ -199,7 +199,7 @@ function EarningsDashboard({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-[rgba(26,20,16,0.65)]">Loading balance...</div>
+        <div className="text-[#7B7672]">Loading balance...</div>
       </div>
     )
   }
@@ -290,7 +290,7 @@ function EarningsDashboard({ user }) {
                   px-2.5 py-1 text-xs font-semibold rounded-md transition-all
                   ${balanceFilter === opt.key
                     ? 'bg-[#1A1A1A] text-white'
-                    : 'bg-[#F0EAE2] text-[rgba(26,20,16,0.40)] hover:bg-[#EDEBE8] hover:text-[#525252]'
+                    : 'bg-[#F0EAE2] text-[#B3AFAC] hover:bg-[#EDEBE8] hover:text-[#525252]'
                   }
                 `}
               >
@@ -305,11 +305,11 @@ function EarningsDashboard({ user }) {
           <Card padding="none" className="p-3 md:p-6">
             <div className="flex items-center justify-between mb-2 md:mb-4">
               <div>
-                <h3 className="text-[rgba(26,20,16,0.40)] text-xs font-medium uppercase tracking-wider">Pending</h3>
+                <h3 className="text-[#B3AFAC] text-xs font-medium uppercase tracking-wider">Pending</h3>
                 <p className="text-[10px] md:text-xs text-[#A3A3A3] mt-0.5">48-hour hold</p>
               </div>
               <div className="w-8 h-8 md:w-10 md:h-10 bg-[#F0EAE2] rounded-lg flex items-center justify-center">
-                <Timer size={16} className="text-[rgba(26,20,16,0.40)]" />
+                <Timer size={16} className="text-[#B3AFAC]" />
               </div>
             </div>
 
@@ -334,7 +334,7 @@ function EarningsDashboard({ user }) {
                   <div key={tx.id} className="flex justify-between items-center text-xs py-2 border-t border-[#EBE4DC]">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <p className="text-[rgba(26,20,16,0.65)] truncate">{tx.task_title || `Task #${tx.task_id?.substring(0, 8)}`}</p>
+                        <p className="text-[#7B7672] truncate">{tx.task_title || `Task #${tx.task_id?.substring(0, 8)}`}</p>
                         {tx.payout_method === 'usdc' && (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]">USDC</span>
                         )}
@@ -381,7 +381,7 @@ function EarningsDashboard({ user }) {
                 {filteredAvailableTransactions.slice(0, 2).map(tx => (
                   <div key={tx.id} className="flex justify-between items-center text-xs py-2 border-t border-[#EBE4DC]">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-[rgba(26,20,16,0.65)] truncate">{tx.task_title || `Task #${tx.task_id?.substring(0, 8)}`}</p>
+                      <p className="text-[#7B7672] truncate">{tx.task_title || `Task #${tx.task_id?.substring(0, 8)}`}</p>
                       {tx.payout_method === 'usdc' && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EFF6FF] text-[#2563EB]">USDC</span>
                       )}
@@ -420,7 +420,7 @@ function EarningsDashboard({ user }) {
           </div>
           <div>
             <p className="text-[#1A1A1A] font-semibold text-sm">Withdrawal successful</p>
-            <p className="text-sm text-[rgba(26,20,16,0.65)] mt-0.5">
+            <p className="text-sm text-[#7B7672] mt-0.5">
               {withdrawResult.method === 'usdc'
                 ? `${withdrawResult.amount} USDC sent to your wallet`
                 : `$${withdrawResult.amount || withdrawResult.amount_withdrawn} is being transferred to your bank account`}
@@ -496,7 +496,7 @@ function EarningsDashboard({ user }) {
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="text-[#1A1A1A] font-semibold text-sm">USDC</h4>
-                <p className="text-xs text-[rgba(26,20,16,0.40)]">Base network wallet · Instant</p>
+                <p className="text-xs text-[#B3AFAC]">Base network wallet · Instant</p>
               </div>
               <ChevronRight
                 size={16}
@@ -564,7 +564,7 @@ function EarningsDashboard({ user }) {
                     </div>
 
                     <div className="flex items-center gap-3 mt-1">
-                      <p className="text-xs text-[rgba(26,20,16,0.40)]">
+                      <p className="text-xs text-[#B3AFAC]">
                         Completed {new Date(tx.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -586,7 +586,7 @@ function EarningsDashboard({ user }) {
                     <p className={`
                       text-lg md:text-xl font-bold
                       ${isAvailable ? 'text-teal' : ''}
-                      ${isWithdrawn ? 'text-[rgba(26,20,16,0.40)]' : ''}
+                      ${isWithdrawn ? 'text-[#B3AFAC]' : ''}
                     `}>
                       ${(tx.amount_cents / 100).toFixed(2)}
                     </p>
@@ -658,7 +658,7 @@ function EarningsDashboard({ user }) {
                     </div>
                     <div className="flex-1">
                       <h4 className="text-[#1A1A1A] font-semibold text-sm">Bank transfer</h4>
-                      <p className="text-xs text-[rgba(26,20,16,0.40)]">
+                      <p className="text-xs text-[#B3AFAC]">
                         {bankWithdrawAmount > 0 ? `$${bankWithdrawAmount.toFixed(2)} available` : 'No funds'} · 2-3 business days
                       </p>
                     </div>
@@ -701,7 +701,7 @@ function EarningsDashboard({ user }) {
                     </div>
                     <div className="flex-1">
                       <h4 className="text-[#1A1A1A] font-semibold text-sm">USDC</h4>
-                      <p className="text-xs text-[rgba(26,20,16,0.40)]">
+                      <p className="text-xs text-[#B3AFAC]">
                         {usdcAvailable > 0 ? `${usdcAvailable.toFixed(2)} USDC available` : 'No funds'} · Instant
                       </p>
                     </div>

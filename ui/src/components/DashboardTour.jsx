@@ -190,8 +190,6 @@ export default function DashboardTour({ isOpen, onComplete, hiringMode = false }
         justifyContent: 'center',
         padding: 24,
         background: 'rgba(15, 15, 15, 0.6)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
         opacity: isVisible && !isExiting ? 1 : 0,
         transition: 'opacity 0.3s ease',
       }}
@@ -203,7 +201,7 @@ export default function DashboardTour({ isOpen, onComplete, hiringMode = false }
           maxWidth: 440,
           background: 'var(--bg-secondary)',
           borderRadius: 'var(--radius-xl)',
-          boxShadow: '0 32px 64px rgba(200,150,100,0.25), 0 0 0 1px rgba(255,255,255,0.1)',
+          boxShadow: '0 32px 64px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.1)',
           overflow: 'hidden',
           transform: isVisible && !isExiting ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.96)',
           opacity: isVisible && !isExiting ? 1 : 0,

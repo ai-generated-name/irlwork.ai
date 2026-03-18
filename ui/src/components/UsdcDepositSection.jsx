@@ -130,7 +130,7 @@ export default function UsdcDepositSection({ user }) {
           onClick={handleGenerate}
           disabled={generating}
           className="w-full py-2.5 px-4 rounded-lg font-semibold text-sm text-white transition-colors"
-          style={{ background: generating ? 'rgba(220,200,180,0.45)' : '#E07A5F' }}
+          style={{ background: generating ? '#D9CEC2' : '#E07A5F' }}
         >
           {generating ? 'Generating...' : 'Generate Deposit Address'}
         </button>

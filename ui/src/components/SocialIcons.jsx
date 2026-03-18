@@ -39,7 +39,7 @@ const PLATFORMS = {
   github: {
     label: 'GitHub',
     url: (h) => `https://github.com/${h}`,
-    color: 'rgba(26,20,16,0.65)',
+    color: '#7B7672',
     placeholder: 'username',
     icon: (size) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">

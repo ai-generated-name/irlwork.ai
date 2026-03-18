@@ -104,7 +104,7 @@ export default function DisputePanel({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-[rgba(26,20,16,0.65)]">Loading disputes...</div>
+        <div className="text-[#7B7672]">Loading disputes...</div>
       </div>
     )
   }
@@ -146,7 +146,7 @@ export default function DisputePanel({ user }) {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   filter === tab.value
                     ? 'bg-white text-teal shadow-v4-sm'
-                    : 'text-[rgba(26,20,16,0.40)] hover:text-[rgba(26,20,16,0.65)]'
+                    : 'text-[#B3AFAC] hover:text-[#7B7672]'
                 }`}
               >
                 {tab.label}
@@ -234,11 +234,11 @@ export default function DisputePanel({ user }) {
                         </span>
                       </div>
 
-                      <p className="text-sm text-[rgba(26,20,16,0.65)] line-clamp-1">
+                      <p className="text-sm text-[#7B7672] line-clamp-1">
                         {dispute.reason}
                       </p>
 
-                      <div className="flex items-center gap-3 mt-2 text-xs text-[rgba(26,20,16,0.40)]">
+                      <div className="flex items-center gap-3 mt-2 text-xs text-[#B3AFAC]">
                         <span>
                           Filed by {isFiler ? 'you' : filedByName}
                         </span>
@@ -248,7 +248,7 @@ export default function DisputePanel({ user }) {
                     </div>
 
                     {/* Expand Arrow */}
-                    <div className="text-[rgba(26,20,16,0.40)] flex-shrink-0 pt-1">
+                    <div className="text-[#B3AFAC] flex-shrink-0 pt-1">
                       <svg
                         className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         fill="none"
@@ -268,7 +268,7 @@ export default function DisputePanel({ user }) {
                     {/* Full Reason */}
                     <div>
                       <p className="text-xs font-semibold text-teal tracking-wide mb-1">Reason</p>
-                      <p className="text-sm text-[rgba(26,20,16,0.65)]">{dispute.reason}</p>
+                      <p className="text-sm text-[#7B7672]">{dispute.reason}</p>
                     </div>
 
                     {/* Evidence URLs */}
@@ -301,13 +301,13 @@ export default function DisputePanel({ user }) {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-xs font-semibold text-teal tracking-wide mb-1">Filed by</p>
-                        <p className="text-sm text-[rgba(26,20,16,0.65)]">
+                        <p className="text-sm text-[#7B7672]">
                           {filedByName}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-teal tracking-wide mb-1">Filed against</p>
-                        <p className="text-sm text-[rgba(26,20,16,0.65)]">
+                        <p className="text-sm text-[#7B7672]">
                           {filedAgainstName}
                         </p>
                       </div>
@@ -349,7 +349,7 @@ export default function DisputePanel({ user }) {
 
                         {/* Resolution Type */}
                         <div>
-                          <label className="text-xs font-medium text-[rgba(26,20,16,0.65)] block mb-1.5">
+                          <label className="text-xs font-medium text-[#7B7672] block mb-1.5">
                             Resolution
                           </label>
                           <div className="flex gap-2">
@@ -358,7 +358,7 @@ export default function DisputePanel({ user }) {
                               className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
                                 resolution === 'approved'
                                   ? 'border-[#2D7A3A] bg-[rgba(26,158,106, 0.08)] text-[#2D7A3A]'
-                                  : 'border-[#E8E0D8] bg-white text-[rgba(26,20,16,0.65)] hover:border-[#2D7A3A]/30'
+                                  : 'border-[#E8E0D8] bg-white text-[#7B7672] hover:border-[#2D7A3A]/30'
                               }`}
                             >
                               Approve (Refund)
@@ -368,7 +368,7 @@ export default function DisputePanel({ user }) {
                               className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
                                 resolution === 'rejected'
                                   ? 'border-[#FF5F57] bg-[rgba(255, 95, 87, 0.1)] text-[#FF5F57]'
-                                  : 'border-[#E8E0D8] bg-white text-[rgba(26,20,16,0.65)] hover:border-[#FF5F57]/30'
+                                  : 'border-[#E8E0D8] bg-white text-[#7B7672] hover:border-[#FF5F57]/30'
                               }`}
                             >
                               Reject
@@ -378,7 +378,7 @@ export default function DisputePanel({ user }) {
 
                         {/* Resolution Notes */}
                         <div>
-                          <label className="text-xs font-medium text-[rgba(26,20,16,0.65)] block mb-1.5">
+                          <label className="text-xs font-medium text-[#7B7672] block mb-1.5">
                             Resolution notes
                           </label>
                           <textarea
@@ -386,7 +386,7 @@ export default function DisputePanel({ user }) {
                             onChange={(e) => setResolutionNotes(e.target.value)}
                             placeholder="Explain the resolution decision..."
                             rows={3}
-                            className="w-full px-3 py-2 border-2 border-[#E8E0D8] rounded-xl text-sm text-[#1A1A1A] placeholder-[rgba(26,20,16,0.40)] focus:outline-none focus:border-teal/40 resize-none"
+                            className="w-full px-3 py-2 border-2 border-[#E8E0D8] rounded-xl text-sm text-[#1A1A1A] placeholder-[#B3AFAC] focus:outline-none focus:border-teal/40 resize-none"
                           />
                         </div>
 
@@ -397,7 +397,7 @@ export default function DisputePanel({ user }) {
                             disabled={submitting || !resolutionNotes.trim()}
                             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                               submitting || !resolutionNotes.trim()
-                                ? 'bg-[#F0EAE2] text-[rgba(26,20,16,0.40)] cursor-not-allowed'
+                                ? 'bg-[#F0EAE2] text-[#B3AFAC] cursor-not-allowed'
                                 : 'bg-teal text-white hover:bg-teal-dark shadow-v4-sm hover:shadow-v4-md'
                             }`}
                           >

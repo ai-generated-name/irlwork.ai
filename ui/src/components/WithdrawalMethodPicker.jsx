@@ -104,7 +104,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               style={{
                 marginTop: '0.75rem',
                 padding: '10px 20px',
-                background: (loading || stripeAvailable <= 0) ? 'rgba(220,200,180,0.45)' : '#2D7A3A',
+                background: (loading || stripeAvailable <= 0) ? '#D9CEC2' : '#2D7A3A',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '10px',
@@ -157,7 +157,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               style={{
                 marginTop: '0.75rem',
                 padding: '10px 20px',
-                background: (loading || usdcAvailable <= 0) ? 'rgba(220,200,180,0.45)' : '#2563eb',
+                background: (loading || usdcAvailable <= 0) ? '#D9CEC2' : '#2563eb',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '10px',
@@ -210,7 +210,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               style={{
                 marginTop: '0.75rem',
                 padding: '10px 20px',
-                background: (loading || availableBalance <= 0) ? 'rgba(220,200,180,0.45)' : '#2D7A3A',
+                background: (loading || availableBalance <= 0) ? '#D9CEC2' : '#2D7A3A',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '10px',
@@ -238,7 +238,7 @@ export default function WithdrawalMethodPicker({ user, availableBalance, stripeA
               Withdraw <strong>${confirmWithdraw.amount?.toFixed(2)}</strong> to {confirmWithdraw.label}
               {confirmWithdraw.method === 'usdc' ? ' (instant)' : ''}
             </p>
-            <p style={{ color: 'rgba(26,20,16,0.40)', fontSize: 12 }}>
+            <p style={{ color: '#B3AFAC', fontSize: 12 }}>
               {confirmWithdraw.method === 'stripe'
                 ? 'Withdrawals typically take 2-3 business days and cannot be reversed.'
                 : 'USDC transfers are instant and cannot be reversed.'}

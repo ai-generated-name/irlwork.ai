@@ -7,7 +7,7 @@ import { Button } from '../ui';
 import { useToast } from '../../context/ToastContext';
 
 const styles = {
-  input: 'w-full bg-white border-2 border-[#E8E0D8] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[rgba(26,20,16,0.40)] focus:outline-none focus:border-[#E8764B] transition-colors'
+  input: 'w-full bg-white border-2 border-[#E8E0D8] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[#B3AFAC] focus:outline-none focus:border-[#E8764B] transition-colors'
 };
 
 export default function TaskMessageThread({
@@ -144,7 +144,7 @@ export default function TaskMessageThread({
       <div className="px-3 py-2.5 sm:p-4 border-b border-[#E8E0D8] flex items-center justify-between">
         <div>
           <h3 className="text-[#1A1A1A] font-bold text-sm sm:text-base">Messages</h3>
-          <p className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm">
+          <p className="text-[#7B7672] text-xs sm:text-sm">
             Chat with the {isHiringMode ? 'worker' : 'agent'} about this task
           </p>
         </div>
@@ -157,7 +157,7 @@ export default function TaskMessageThread({
               }`}
               style={pollingStatus === 'active' ? { animation: 'pulse-dot 2s ease-in-out infinite' } : {}}
             />
-            <span className="text-[10px] sm:text-xs text-[rgba(26,20,16,0.40)]" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+            <span className="text-[10px] sm:text-xs text-[#B3AFAC]" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
               {pollingStatus === 'active' ? 'Live' : 'Reconnecting'}
             </span>
           </div>
@@ -167,18 +167,18 @@ export default function TaskMessageThread({
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-[#FDF6EE]">
         {!conversation && isInitialLoad ? (
-          <div className="flex items-center justify-center h-full text-[rgba(26,20,16,0.40)] text-xs sm:text-sm">
+          <div className="flex items-center justify-center h-full text-[#B3AFAC] text-xs sm:text-sm">
             Loading messages...
           </div>
         ) : !conversation ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="w-12 h-12 rounded-full bg-[#F0EAE2] flex items-center justify-center mb-3">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(26,20,16,0.40)" strokeWidth="2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B3AFAC" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
             </div>
-            <p className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
-            <p className="text-[rgba(26,20,16,0.40)] text-xs max-w-[240px]">
+            <p className="text-[#7B7672] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
+            <p className="text-[#B3AFAC] text-xs max-w-[240px]">
               {isHiringMode
                 ? 'Messages from the assigned worker will appear here.'
                 : 'Send a message to start the conversation. The task creator will be notified.'}
@@ -187,12 +187,12 @@ export default function TaskMessageThread({
         ) : sortedMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="w-12 h-12 rounded-full bg-[#F0EAE2] flex items-center justify-center mb-3">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(26,20,16,0.40)" strokeWidth="2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B3AFAC" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
             </div>
-            <p className="text-[rgba(26,20,16,0.65)] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
-            <p className="text-[rgba(26,20,16,0.40)] text-xs">Be the first to send a message</p>
+            <p className="text-[#7B7672] text-xs sm:text-sm font-medium mb-1">No messages yet</p>
+            <p className="text-[#B3AFAC] text-xs">Be the first to send a message</p>
           </div>
         ) : (
           <>
@@ -252,7 +252,7 @@ export default function TaskMessageThread({
                       className={`text-xs mt-1 ${
                         m.sender_id === user.id
                           ? 'text-[rgba(255,255,255,0.7)]'
-                          : 'text-[rgba(26,20,16,0.40)]'
+                          : 'text-[#B3AFAC]'
                       }`}
                     >
                       {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

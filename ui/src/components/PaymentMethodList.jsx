@@ -78,7 +78,7 @@ export default function PaymentMethodList({ user, onUpdate, onMethodsLoaded }) {
 
   if (methods.length === 0) {
     return (
-      <p className="text-sm text-[rgba(26,20,16,0.40)] py-1">No cards saved yet — add one below.</p>
+      <p className="text-sm text-[#B3AFAC] py-1">No cards saved yet — add one below.</p>
     );
   }
 

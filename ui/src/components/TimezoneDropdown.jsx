@@ -54,12 +54,12 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          color: value ? 'var(--text-primary, #1A1A1A)' : 'var(--text-tertiary, rgba(26,20,16,0.40))',
+          color: value ? 'var(--text-primary, #1A1A1A)' : 'var(--text-tertiary, #B3AFAC)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap'
         }}>
-          <Clock size={14} style={{ flexShrink: 0, color: 'var(--text-tertiary, rgba(26,20,16,0.40))' }} />
+          <Clock size={14} style={{ flexShrink: 0, color: 'var(--text-tertiary, #B3AFAC)' }} />
           {value
             ? TIMEZONE_OPTIONS.find(o => o.value === value)?.label || `${value.split('/').pop().replace(/_/g, ' ')} (${displayLabel})`
             : 'Select timezone...'
@@ -69,7 +69,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           size={14}
           style={{
             flexShrink: 0,
-            color: 'var(--text-tertiary, rgba(26,20,16,0.40))',
+            color: 'var(--text-tertiary, #B3AFAC)',
             transition: 'transform 0.2s',
             transform: open ? 'rotate(180deg)' : 'none'
           }}
@@ -85,7 +85,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           background: 'white',
           borderRadius: 12,
           border: '1px solid #E8E0D8',
-          boxShadow: '0 12px 40px rgba(220,200,180,0.40), 0 4px 12px #EBE4DC',
+          boxShadow: '0 12px 40px #DDD3C8, 0 4px 12px #EBE4DC',
           zIndex: 100,
           maxHeight: 280,
           display: 'flex',
@@ -100,7 +100,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
             alignItems: 'center',
             gap: 8
           }}>
-            <Search size={14} style={{ color: 'var(--text-tertiary, rgba(26,20,16,0.40))', flexShrink: 0 }} />
+            <Search size={14} style={{ color: 'var(--text-tertiary, #B3AFAC)', flexShrink: 0 }} />
             <input
               ref={searchRef}
               type="text"
@@ -123,7 +123,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
                 onClick={() => setSearch('')}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
               >
-                <X size={12} style={{ color: 'var(--text-tertiary, rgba(26,20,16,0.40))' }} />
+                <X size={12} style={{ color: 'var(--text-tertiary, #B3AFAC)' }} />
               </button>
             )}
           </div>
@@ -145,7 +145,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
                   background: 'none',
                   cursor: 'pointer',
                   fontSize: 13,
-                  color: 'var(--text-tertiary, rgba(26,20,16,0.40))',
+                  color: 'var(--text-tertiary, #B3AFAC)',
                   textAlign: 'left',
                   fontStyle: 'italic'
                 }}
@@ -184,7 +184,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
               </button>
             ))}
             {filtered.length === 0 && (
-              <div style={{ padding: '16px 14px', fontSize: 13, color: 'var(--text-tertiary, rgba(26,20,16,0.40))', textAlign: 'center' }}>
+              <div style={{ padding: '16px 14px', fontSize: 13, color: 'var(--text-tertiary, #B3AFAC)', textAlign: 'center' }}>
                 No timezones found
               </div>
             )}

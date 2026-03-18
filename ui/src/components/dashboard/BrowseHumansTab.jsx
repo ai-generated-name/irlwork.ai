@@ -171,7 +171,7 @@ export default function BrowseHumansTab({
                       </p>
                       <button
                         onClick={() => { setTasksSubTab('create'); setActiveTab('posted') }}
-                        style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(220,200,180,0.40)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                        style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid #DDD3C8', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
                       >
                         <Plus size={16} /> Post a Task
                       </button>

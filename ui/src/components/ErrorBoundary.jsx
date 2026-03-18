@@ -71,7 +71,7 @@ export default class ErrorBoundary extends React.Component {
             </h2>
             <p style={{
               fontSize: 15,
-              color: 'rgba(26,20,16,0.65)',
+              color: '#7B7672',
               lineHeight: 1.6,
               marginBottom: 16,
             }}>
@@ -83,7 +83,7 @@ export default class ErrorBoundary extends React.Component {
               <summary style={{
                 cursor: 'pointer',
                 fontSize: 13,
-                color: 'rgba(26,20,16,0.40)',
+                color: '#B3AFAC',
                 marginBottom: 8,
               }}>
                 Error details
@@ -94,7 +94,7 @@ export default class ErrorBoundary extends React.Component {
                 padding: 12,
                 fontSize: 12,
                 fontFamily: 'monospace',
-                color: 'rgba(26,20,16,0.65)',
+                color: '#7B7672',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
                 maxHeight: 200,
@@ -129,16 +129,16 @@ export default class ErrorBoundary extends React.Component {
                 style={{
                   padding: '14px 32px',
                   background: 'transparent',
-                  color: 'rgba(26,20,16,0.65)',
+                  color: '#7B7672',
                   fontWeight: 600,
                   fontSize: 15,
                   borderRadius: 12,
-                  border: '2px solid rgba(220,200,180,0.40)',
+                  border: '2px solid #DDD3C8',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
                 onMouseOver={(e) => { e.currentTarget.style.background = '#F0EAE2'; e.currentTarget.style.borderColor = '#DDD5CC' }}
-                onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(220,200,180,0.40)' }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#DDD3C8' }}
               >
                 Refresh Page
               </button>

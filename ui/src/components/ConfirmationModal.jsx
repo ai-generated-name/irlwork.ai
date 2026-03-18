@@ -64,7 +64,7 @@ export default function ConfirmationModal({
         <h3 id="confirm-title" className="text-[15px] sm:text-base font-bold text-[#1A1A1A] mb-2">
           {title}
         </h3>
-        <div id="confirm-desc" className="text-[13px] sm:text-sm text-[rgba(26,20,16,0.65)] mb-5 leading-relaxed">
+        <div id="confirm-desc" className="text-[13px] sm:text-sm text-[#7B7672] mb-5 leading-relaxed">
           {typeof description === 'string' ? <p>{description}</p> : description}
         </div>
 

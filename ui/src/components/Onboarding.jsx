@@ -210,7 +210,7 @@ function Onboarding({ onComplete, user }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 12px', borderRadius: 10,
-                    border: form.selectedCategories.includes(cat.value) ? '2px solid #2D7A3A' : '2px solid rgba(220,200,180,0.40)',
+                    border: form.selectedCategories.includes(cat.value) ? '2px solid #2D7A3A' : '2px solid #DDD3C8',
                     background: form.selectedCategories.includes(cat.value) ? 'rgba(26,158,106,0.15)' : 'rgba(0,0,0,0.04)',
                     color: form.selectedCategories.includes(cat.value) ? '#2D7A3A' : '#3d3d3d',
                     cursor: 'pointer', fontSize: 14, transition: 'all 0.15s',

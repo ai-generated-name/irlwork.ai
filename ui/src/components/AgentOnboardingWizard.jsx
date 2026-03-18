@@ -124,8 +124,6 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
         justifyContent: 'center',
         padding: 24,
         background: 'rgba(15, 15, 15, 0.6)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
         opacity: isVisible && !isExiting ? 1 : 0,
         transition: 'opacity 0.3s ease',
       }}
@@ -137,7 +135,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
           maxWidth: 520,
           background: 'var(--bg-secondary)',
           borderRadius: 'var(--radius-xl)',
-          boxShadow: '0 32px 64px rgba(200,150,100,0.25)',
+          boxShadow: '0 32px 64px rgba(0,0,0,0.06)',
           overflow: 'hidden',
           transform: isVisible && !isExiting ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.96)',
           opacity: isVisible && !isExiting ? 1 : 0,
@@ -382,7 +380,7 @@ export default function AgentOnboardingWizard({ user, onComplete, onNavigate }) 
                       gap: 14,
                       padding: '14px 16px',
                       background: i === 0 ? '#EBE4DC' : 'var(--bg-tertiary)',
-                      border: i === 0 ? '1px solid rgba(220,200,180,0.45)' : '1px solid rgba(0,0,0,0.04)',
+                      border: i === 0 ? '1px solid #D9CEC2' : '1px solid rgba(0,0,0,0.04)',
                       borderRadius: 'var(--radius-md)',
                     }}
                   >

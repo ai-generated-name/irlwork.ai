@@ -29,7 +29,7 @@ export default function CountdownBanner({ disputeWindowInfo }) {
               {totalHours}h {minutes}m {seconds}s
             </div>
           </div>
-          <p className="text-[rgba(26,20,16,0.65)] text-sm">
+          <p className="text-[#7B7672] text-sm">
             Payment will automatically release to you if the agent doesn't respond within the dispute window
           </p>
         </div>

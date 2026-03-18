@@ -598,7 +598,7 @@ function ApplicantsSection({
 
             {/* Row 2: Cover letter / application details — full display */}
             {app.cover_letter && (
-              <div className="mt-2 pl-[46px] text-xs text-[rgba(26,20,16,0.65)] whitespace-pre-line leading-relaxed bg-white rounded-lg border border-[#E8E0D8]/80 px-3 py-2">
+              <div className="mt-2 pl-[46px] text-xs text-[#7B7672] whitespace-pre-line leading-relaxed bg-white rounded-lg border border-[#E8E0D8]/80 px-3 py-2">
                 {app.cover_letter}
               </div>
             )}

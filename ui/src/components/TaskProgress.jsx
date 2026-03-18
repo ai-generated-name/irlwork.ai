@@ -23,7 +23,7 @@ export function TaskProgress({ status }) {
       <div style={{
         position: 'relative',
         height: '3px',
-        background: 'rgba(220,200,180,0.30)',
+        background: '#E5DDD3',
         borderRadius: '3px',
         marginBottom: '8px',
         overflow: 'visible',

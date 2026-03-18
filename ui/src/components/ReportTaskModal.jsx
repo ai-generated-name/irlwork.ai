@@ -104,7 +104,7 @@ export default function ReportTaskModal({
                 </svg>
                 <h2>Report Task</h2>
               </div>
-              <p style={{ fontSize: '14px', color: 'rgba(26,20,16,0.40)', marginTop: '4px' }}>
+              <p style={{ fontSize: '14px', color: '#B3AFAC', marginTop: '4px' }}>
                 Help keep the marketplace safe by reporting suspicious tasks.
               </p>
             </div>
@@ -138,7 +138,7 @@ export default function ReportTaskModal({
                         cursor: 'pointer',
                         fontSize: '13px',
                         fontWeight: reason === r.value ? '600' : '500',
-                        color: reason === r.value ? '#FF5F57' : 'rgba(26,20,16,0.65)',
+                        color: reason === r.value ? '#FF5F57' : '#7B7672',
                         transition: 'all 0.15s ease',
                         textAlign: 'left',
                       }}

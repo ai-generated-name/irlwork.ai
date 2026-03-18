@@ -495,7 +495,7 @@ You can pay with **credit card (Stripe)** or **USDC on Base**. Use \`set_default
             onClick={() => setShowActivateModal(false)}
           >
             <div
-              className="bg-white rounded-[14px] shadow-[0_4px_20px_rgba(220,200,180,0.40)] p-8 w-full max-w-sm mx-4"
+              className="bg-white rounded-[14px] shadow-[0_4px_20px_#DDD3C8] p-8 w-full max-w-sm mx-4"
               onClick={e => e.stopPropagation()}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>

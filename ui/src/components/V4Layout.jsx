@@ -14,10 +14,10 @@ export const v4 = {
     bgSecondary: '#FFFFFF',
     bgTertiary: '#F0EAE2',
     textPrimary: '#1A1A1A',
-    textSecondary: 'rgba(26,20,16,0.65)',
-    textTertiary: 'rgba(26,20,16,0.40)',
+    textSecondary: '#7B7672',
+    textTertiary: '#B3AFAC',
     textMuted: '#AAAAAA',
-    textOnDark: 'rgba(220,200,180,0.40)',
+    textOnDark: '#DDD3C8',
     // Legacy teal names remapped to orange accent
     teal900: '#D4703A',
     teal700: '#E8764B',
@@ -74,7 +74,6 @@ export function NavbarV4({ user, onLogout }) {
       justifyContent: 'space-between',
       padding: '16px 32px',
       background: 'rgba(250, 250, 248, 0.9)',
-      backdropFilter: 'blur(8px)',
       borderBottom: '1px solid #EBE4DC',
       fontFamily: v4.fonts.display,
     }}>

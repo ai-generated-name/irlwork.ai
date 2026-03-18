@@ -452,7 +452,7 @@ export default function ProfileTab({
                         background: '#F0EAE2',
                         borderRadius: 999,
                         fontSize: 13,
-                        color: 'rgba(26,20,16,0.65)',
+                        color: '#7B7672',
                         fontWeight: 500,
                         border: '1px solid rgba(26,26,26,0.06)',
                         display: 'flex',

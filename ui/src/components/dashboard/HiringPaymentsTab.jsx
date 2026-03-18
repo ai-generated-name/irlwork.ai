@@ -39,7 +39,7 @@ export default function HiringPaymentsTab({
             </div>
             <p className="text-sm font-semibold text-[#1A1A1A]">How payments work</p>
           </div>
-          <svg className={`w-4 h-4 text-[rgba(26,20,16,0.40)] transition-transform duration-200 ${howItWorksOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className={`w-4 h-4 text-[#B3AFAC] transition-transform duration-200 ${howItWorksOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
@@ -58,7 +58,7 @@ export default function HiringPaymentsTab({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#1A1A1A]">Credit Card</p>
-                  <p className="text-xs text-[rgba(26,20,16,0.40)] mt-0.5 leading-relaxed">Your card is charged automatically when you assign a worker to a task. Funds are held in escrow until you approve the work.</p>
+                  <p className="text-xs text-[#B3AFAC] mt-0.5 leading-relaxed">Your card is charged automatically when you assign a worker to a task. Funds are held in escrow until you approve the work.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -69,7 +69,7 @@ export default function HiringPaymentsTab({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#1A1A1A]">USDC on Base</p>
-                  <p className="text-xs text-[rgba(26,20,16,0.40)] mt-0.5 leading-relaxed">Deposit USDC to your platform wallet first, then funds are deducted from your balance when you assign a worker.</p>
+                  <p className="text-xs text-[#B3AFAC] mt-0.5 leading-relaxed">Deposit USDC to your platform wallet first, then funds are deducted from your balance when you assign a worker.</p>
                 </div>
               </div>
             </div>
@@ -121,7 +121,7 @@ export default function HiringPaymentsTab({
                       </div>
                       <div className="text-left">
                         <p className="text-sm font-semibold text-[#1A1A1A]">Credit Card</p>
-                        <p className="text-xs text-[rgba(26,20,16,0.40)]">
+                        <p className="text-xs text-[#B3AFAC]">
                           {hasCards ? `${savedCards.length} card${savedCards.length > 1 ? 's' : ''} saved` : 'No cards added'}
                         </p>
                       </div>
@@ -130,7 +130,7 @@ export default function HiringPaymentsTab({
                       {hasCards && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#D1FAE5] text-[#2D7A3A]">Active</span>
                       )}
-                      <svg className={`w-4 h-4 text-[rgba(26,20,16,0.40)] transition-transform duration-200 ${cardSectionOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className={`w-4 h-4 text-[#B3AFAC] transition-transform duration-200 ${cardSectionOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
@@ -141,7 +141,7 @@ export default function HiringPaymentsTab({
                     transition: 'max-height 0.3s ease-in-out',
                   }}>
                     <div className="px-4 pb-4 border-t border-[#EBE4DC]">
-                      <Suspense fallback={<div className="py-4 text-center text-sm text-[rgba(26,20,16,0.40)]">Loading...</div>}>
+                      <Suspense fallback={<div className="py-4 text-center text-sm text-[#B3AFAC]">Loading...</div>}>
                         <StripeProvider>
                           <div className="pt-3">
                             <PaymentMethodList
@@ -171,11 +171,11 @@ export default function HiringPaymentsTab({
                       </div>
                       <div className="text-left">
                         <p className="text-sm font-semibold text-[#1A1A1A]">USDC on Base</p>
-                        <p className="text-xs text-[rgba(26,20,16,0.40)]">Send USDC to fund tasks</p>
+                        <p className="text-xs text-[#B3AFAC]">Send USDC to fund tasks</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <svg className={`w-4 h-4 text-[rgba(26,20,16,0.40)] transition-transform duration-200 ${usdcSectionOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className={`w-4 h-4 text-[#B3AFAC] transition-transform duration-200 ${usdcSectionOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
@@ -187,7 +187,7 @@ export default function HiringPaymentsTab({
                   }}>
                     <div className="px-4 pb-4 border-t border-[#EBE4DC]">
                       <div className="pt-3">
-                        <Suspense fallback={<div className="py-4 text-center text-sm text-[rgba(26,20,16,0.40)]">Loading...</div>}>
+                        <Suspense fallback={<div className="py-4 text-center text-sm text-[#B3AFAC]">Loading...</div>}>
                           <UsdcDepositSection user={user} />
                         </Suspense>
                       </div>
@@ -264,7 +264,7 @@ export default function HiringPaymentsTab({
                                 )}
                               </span>
                               {/* Date/time */}
-                              <span className="text-[11px] text-[rgba(26,20,16,0.40)]">
+                              <span className="text-[11px] text-[#B3AFAC]">
                                 {task.escrow_deposited_at
                                   ? new Date(task.escrow_deposited_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   : 'Pending deposit'}
@@ -290,11 +290,11 @@ export default function HiringPaymentsTab({
               ) : (
                 <Card padding="none" className="p-8 md:p-10 text-center">
                   <div className="w-10 h-10 bg-[#F0EAE2] rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-5 h-5 text-[rgba(26,20,16,0.40)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-5 h-5 text-[#B3AFAC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
                     </svg>
                   </div>
-                  <p className="text-[rgba(26,20,16,0.65)] font-medium text-sm">No transactions yet</p>
+                  <p className="text-[#7B7672] font-medium text-sm">No transactions yet</p>
                   <p className="text-xs text-[#A3A3A3] mt-1">Fund a task to see your payment history</p>
                 </Card>
               )}

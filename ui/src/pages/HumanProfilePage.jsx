@@ -394,7 +394,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                                     key={i}
                                     size={13}
                                     fill={i <= (review.score || review.rating || review.rating_score || 0) ? '#F59E0B' : 'none'}
-                                    stroke={i <= (review.score || review.rating || review.rating_score || 0) ? '#F59E0B' : 'rgba(220,200,180,0.45)'}
+                                    stroke={i <= (review.score || review.rating || review.rating_score || 0) ? '#F59E0B' : '#D9CEC2'}
                                     strokeWidth={1.5}
                                   />
                                 ))}
@@ -556,8 +556,6 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                   padding: '10px 20px',
                   paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
                   background: 'rgba(255,255,255,0.95)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
                   borderTop: '1px solid rgba(26,26,26,0.08)',
                   boxShadow: '0 -4px 20px #E8E0D8',
                   alignItems: 'center',

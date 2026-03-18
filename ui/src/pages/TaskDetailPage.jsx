@@ -362,10 +362,10 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
         <div className="flex flex-col items-center">
           {/* eslint-disable-next-line irlwork/no-orange-outside-button -- border uses brand color */}
           <div className="w-12 h-12 border-4 border-[#F0EAE2] border-t-[#E8764B] rounded-full animate-spin mb-4"></div>
-          <div className="text-[rgba(26,20,16,0.65)] text-lg">Loading task details...</div>
+          <div className="text-[#7B7672] text-lg">Loading task details...</div>
           {loadingTimeout && (
             <div className="mt-4 text-center">
-              <p className="text-[rgba(26,20,16,0.40)] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
+              <p className="text-[#B3AFAC] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
               <button
                 onClick={() => window.location.reload()}
                 className="text-[#E8764B] underline text-sm hover:text-[#D4703A]" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
@@ -435,7 +435,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             {user && task && task.agent_id !== user.id && (
               <button
                 onClick={() => setShowReportModal(true)}
-                className="flex items-center gap-1 sm:gap-1.5 text-[rgba(26,20,16,0.40)] bg-transparent border-none cursor-pointer text-xs"
+                className="flex items-center gap-1 sm:gap-1.5 text-[#B3AFAC] bg-transparent border-none cursor-pointer text-xs"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
@@ -490,7 +490,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             {/* Worker Actions: Dispute + Withdraw */}
             {(canDispute || canWithdraw) && (
               <div className="bg-white rounded-2xl border-2 border-[#E8E0D8] p-4 sm:p-6 shadow-sm space-y-3">
-                <h4 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider">Actions</h4>
+                <h4 className="text-xs font-bold text-[#B3AFAC] uppercase tracking-wider">Actions</h4>
                 {canWithdraw && (
                   <Button
                     variant="secondary"
@@ -580,7 +580,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       {/* Mobile Sticky Apply Bar */}
       {task.status === 'open' && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(220,200,180,0.40)] px-4 pr-20 py-3 shadow-[0_-2px_12px_#E8E0D8]"
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#DDD3C8] px-4 pr-20 py-3 shadow-[0_-2px_12px_#E8E0D8]"
           style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
           <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
@@ -588,8 +588,8 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
               <span className="text-xl font-bold text-[#2D7A3A] font-['JetBrains_Mono']">
                 ${Number(task.budget) || 0}
               </span>
-              {task.budget_type === 'hourly' && <span className="text-sm text-[rgba(26,20,16,0.65)]">/hr</span>}
-              <span className="text-xs text-[rgba(26,20,16,0.40)] ml-1">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
+              {task.budget_type === 'hourly' && <span className="text-sm text-[#7B7672]">/hr</span>}
+              <span className="text-xs text-[#B3AFAC] ml-1">{task.payment_method === 'stripe' ? 'USD' : 'USDC'}</span>
             </div>
             {user && task.agent_id !== user.id && !hasApplied ? (
               <Button

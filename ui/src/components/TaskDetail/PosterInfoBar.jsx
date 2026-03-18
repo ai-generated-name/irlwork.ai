@@ -43,7 +43,7 @@ export default function PosterInfoBar({ task }) {
         <div
           className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
             isAnonymous
-              ? 'bg-[#F0EAE2] text-[rgba(26,20,16,0.40)]'
+              ? 'bg-[#F0EAE2] text-[#B3AFAC]'
               : 'bg-[rgba(232,118,75,0.1)] text-[#E8764B]'
           }`}
         >
@@ -80,7 +80,7 @@ export default function PosterInfoBar({ task }) {
           </div>
 
           {/* Meta row */}
-          <div className="flex items-center gap-3 mt-1 text-sm text-[rgba(26,20,16,0.40)]">
+          <div className="flex items-center gap-3 mt-1 text-sm text-[#B3AFAC]">
             <span>{formatTimeAgo(task.created_at)}</span>
             {!isAnonymous && poster.total_tasks_posted != null && (
               <>

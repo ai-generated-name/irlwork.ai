@@ -51,7 +51,7 @@ const createTaskIcon = (isSelected = false, isHovered = false, budget = null) =>
     ? '0 2px 12px rgba(195, 90, 68, 0.5)'
     : isHovered
       ? '0 2px 10px rgba(232,118,75, 0.4)'
-      : '0 2px 8px rgba(200,150,100,0.3)';
+      : '0 2px 8px rgba(0,0,0,0.08)';
 
   // Show price tooltip on hover
   const tooltipHtml = (isHovered && !isSelected && budget != null) ? `
