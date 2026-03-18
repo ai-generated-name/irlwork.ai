@@ -387,7 +387,7 @@ function AuthPage({ onLogin, onNavigate }) {
             </div>
             {isLogin && (
               <div style={{ textAlign: 'right', marginTop: -4, marginBottom: 8 }}>
-                <a href="/forgot-password" onClick={e => { e.preventDefault(); onNavigate('/forgot-password') }} style={{ fontSize: 13, color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+                <a href="/forgot-password" onClick={e => { e.preventDefault(); onNavigate('/forgot-password') }} style={{ fontSize: 14, color: 'var(--text-tertiary)', textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
                   Forgot your password?
                 </a>
               </div>

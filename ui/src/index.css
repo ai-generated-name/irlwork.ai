@@ -2062,6 +2062,7 @@ code, pre {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
+  min-height: 48px;
   background: var(--orange-500);
   color: white;
   border: none;
@@ -2694,4 +2695,174 @@ body.translated-rtl {
   border-radius: var(--r);
   overflow: hidden;
   margin: 0 20px;
+}
+
+/* ═══════════════════════════════════════════
+ *  BROWSE TASKS V2 — RESPONSIVE FIXES
+ * ═══════════════════════════════════════════ */
+
+/* Search bar: full-width on mobile, min 48px height */
+@media (max-width: 767px) {
+  .browse-tasks-v2-search-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .browse-tasks-v2-search {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .browse-tasks-v2-search input {
+    min-height: 48px;
+    font-size: 16px; /* prevents iOS auto-zoom */
+  }
+
+  .browse-tasks-v2-filters {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .browse-tasks-v2-category-dropdown {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .browse-tasks-v2-header {
+    padding: var(--space-4);
+  }
+
+  .browse-tasks-v2-list {
+    padding: var(--space-3);
+  }
+
+  /* Location bar stacks on mobile */
+  .browse-tasks-v2-location-bar {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .browse-tasks-v2-location-bar > * {
+    width: 100%;
+  }
+
+  .browse-tasks-v2-city-input {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .browse-tasks-v2-radius-dropdown {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .browse-tasks-v2-use-location-btn {
+    margin-left: 0;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .browse-tasks-v2-remote-toggle {
+    justify-content: center;
+    min-height: 44px;
+  }
+}
+
+/* Task card grid: responsive columns */
+.browse-tasks-v2-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* In split mode, always single column (sidebar takes space) */
+.browse-tasks-v2-card-grid--split {
+  grid-template-columns: 1fr;
+}
+
+/* 2 columns from 640px (non-split only) */
+@media (min-width: 640px) {
+  .browse-tasks-v2-card-grid:not(.browse-tasks-v2-card-grid--split) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 3 columns from 1024px (non-split only) */
+@media (min-width: 1024px) {
+  .browse-tasks-v2-card-grid:not(.browse-tasks-v2-card-grid--split) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* No horizontal scroll at 375px */
+@media (max-width: 375px) {
+  .browse-tasks-v2-header {
+    padding: var(--space-3);
+  }
+
+  .browse-tasks-v2-list {
+    padding: var(--space-2);
+  }
+
+  .browse-tasks-v2-title {
+    font-size: 20px;
+  }
+}
+
+/* Hide map in split mode on mobile */
+@media (max-width: 767px) {
+  .browse-tasks-v2-content.split .browse-tasks-v2-list {
+    flex: 1;
+  }
+
+  .browse-tasks-v2-content.split .browse-tasks-v2-map {
+    display: none;
+  }
+}
+
+/* ─── Task card V2: mobile font & touch target fixes ─── */
+@media (max-width: 767px) {
+  .task-card-v2-category-label {
+    font-size: 14px;
+  }
+
+  .task-card-v2-description {
+    font-size: 14px;
+  }
+
+  .task-card-v2-duration {
+    font-size: 14px;
+  }
+
+  .task-card-v2-location {
+    font-size: 14px;
+  }
+
+  .task-card-v2-posted {
+    font-size: 14px;
+  }
+
+  .task-card-v2-budget-label {
+    font-size: 14px;
+  }
+
+  .task-card-v2-apply-btn {
+    font-size: 14px;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .task-card-v2-distance {
+    font-size: 14px;
+  }
+
+  .task-card-v2-remote-badge {
+    font-size: 14px;
+  }
+
+  .task-card-v2-escrow {
+    font-size: 14px;
+  }
 }

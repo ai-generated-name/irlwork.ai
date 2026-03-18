@@ -496,7 +496,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                     variant="secondary"
                     size="md"
                     onClick={() => setShowWithdrawModal(true)}
-                    className="w-full"
+                    className="w-full min-h-[48px]"
                   >
                     Withdraw from task
                   </Button>

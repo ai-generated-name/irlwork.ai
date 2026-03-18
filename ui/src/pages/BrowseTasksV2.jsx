@@ -575,6 +575,7 @@ export default function BrowseTasksV2({
                 <div style={{ padding: '0 4px 12px', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500 }}>
                   {tasksTotal === 0 ? 'No results' : `Showing ${startItem}\u2013${endItem} of ${tasksTotal} tasks`}
                 </div>
+                <div className={`browse-tasks-v2-card-grid ${effectiveViewMode === 'split' ? 'browse-tasks-v2-card-grid--split' : ''}`}>
                 {tasks.map(task => (
                   <div key={task.id} data-task-id={task.id}>
                     <TaskCardV2
@@ -590,6 +591,7 @@ export default function BrowseTasksV2({
                     />
                   </div>
                 ))}
+                </div>
                 {/* Pagination */}
                 {tasksTotal > ITEMS_PER_PAGE && (
                   <div style={{
@@ -604,18 +606,18 @@ export default function BrowseTasksV2({
                       disabled={currentPage === 1}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 36, height: 36, borderRadius: 8,
+                        width: 44, height: 44, borderRadius: 8,
                         border: '1px solid #E8E0D8', background: 'white',
                         cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
                         opacity: currentPage === 1 ? 0.4 : 1,
                         transition: 'all 0.15s', color: 'var(--text-primary)',
                       }}
                     >
-                      <ChevronLeft size={16} />
+                      <ChevronLeft size={18} />
                     </button>
                     {getPageNumbers().map((page, idx) =>
                       page === '...' ? (
-                        <span key={`dots-${idx}`} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                        <span key={`dots-${idx}`} style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
                           ...
                         </span>
                       ) : (
@@ -623,12 +625,12 @@ export default function BrowseTasksV2({
                           key={page}
                           onClick={() => goToPage(page)}
                           style={{
-                            width: 36, height: 36, borderRadius: 8,
+                            width: 44, height: 44, borderRadius: 8,
                             border: page === currentPage ? '1px solid var(--coral-500)' : '1px solid #E8E0D8',
                             background: page === currentPage ? 'var(--coral-500)' : 'white',
                             color: page === currentPage ? 'white' : 'var(--text-primary)',
                             fontWeight: page === currentPage ? 700 : 500,
-                            fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
+                            fontSize: 14, cursor: 'pointer', transition: 'all 0.15s',
                           }}
                         >
                           {page}
@@ -640,14 +642,14 @@ export default function BrowseTasksV2({
                       disabled={currentPage === totalPages}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 36, height: 36, borderRadius: 8,
+                        width: 44, height: 44, borderRadius: 8,
                         border: '1px solid #E8E0D8', background: 'white',
                         cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
                         opacity: currentPage === totalPages ? 0.4 : 1,
                         transition: 'all 0.15s', color: 'var(--text-primary)',
                       }}
                     >
-                      <ChevronRight size={16} />
+                      <ChevronRight size={18} />
                     </button>
                   </div>
                 )}

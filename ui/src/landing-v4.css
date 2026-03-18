@@ -11398,10 +11398,11 @@ select.select-v4-dark option:checked,
     align-items: center;
     gap: 8px;
     padding: 8px 14px;
+    min-height: 44px;
     background: var(--bg-tertiary);
     border: 1px solid #E8E0D8;
     border-radius: var(--radius-md);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--text-secondary);
     cursor: pointer;
@@ -12145,11 +12146,11 @@ select.select-v4-dark option:checked,
   }
 
   .dashboard-v4-stat-label {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .dashboard-v4-stat-value {
-    font-size: 18px;
+    font-size: 20px;
   }
 }
 
@@ -12261,11 +12262,11 @@ select.select-v4-dark option:checked,
   }
 
   .dashboard-v4-stat-value {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .dashboard-v4-stat-label {
-    font-size: 11px;
+    font-size: 14px;
   }
 
   .dashboard-v4-page-title {
@@ -12370,7 +12371,7 @@ select.select-v4-dark option:checked,
   }
 
   .auth-v4-divider-text {
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 
