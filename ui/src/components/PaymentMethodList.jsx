@@ -73,7 +73,7 @@ export default function PaymentMethodList({ user, onUpdate, onMethodsLoaded }) {
   };
 
   if (loading) {
-    return <p style={{ color: 'rgba(26,20,16,0.28)', fontSize: '0.875rem' }}>Loading payment methods...</p>;
+    return <p style={{ color: '#A69E98', fontSize: '0.875rem' }}>Loading payment methods...</p>;
   }
 
   if (methods.length === 0) {
@@ -101,10 +101,10 @@ export default function PaymentMethodList({ user, onUpdate, onMethodsLoaded }) {
             <span style={{ fontSize: '0.875rem' }}>
               <><CreditCard size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> {brandIcons[pm.brand] || pm.brand}</>
             </span>
-            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1A1410', fontFamily: "'JetBrains Mono', monospace" }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1A1A1A', fontFamily: "'JetBrains Mono', monospace" }}>
               •••• {pm.last4}
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'rgba(26,20,16,0.28)' }}>
+            <span style={{ fontSize: '0.75rem', color: '#A69E98' }}>
               {pm.exp_month}/{pm.exp_year}
             </span>
             {(() => {
@@ -131,7 +131,7 @@ export default function PaymentMethodList({ user, onUpdate, onMethodsLoaded }) {
               <span style={{
                 fontSize: '0.6875rem',
                 fontWeight: 600,
-                color: '#1A9E6A',
+                color: '#2D7A3A',
                 background: '#dcfce7',
                 padding: '2px 8px',
                 borderRadius: '6px',

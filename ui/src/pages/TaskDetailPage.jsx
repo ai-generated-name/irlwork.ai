@@ -358,17 +358,17 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FDF6EE] flex items-center justify-center">
         <div className="flex flex-col items-center">
           {/* eslint-disable-next-line irlwork/no-orange-outside-button -- border uses brand color */}
-          <div className="w-12 h-12 border-4 border-[rgba(220,200,180,0.15)] border-t-[#E8703D] rounded-full animate-spin mb-4"></div>
+          <div className="w-12 h-12 border-4 border-[#F0EAE2] border-t-[#E8764B] rounded-full animate-spin mb-4"></div>
           <div className="text-[rgba(26,20,16,0.65)] text-lg">Loading task details...</div>
           {loadingTimeout && (
             <div className="mt-4 text-center">
               <p className="text-[rgba(26,20,16,0.40)] text-sm mb-2">This is taking longer than expected. Check your connection.</p>
               <button
                 onClick={() => window.location.reload()}
-                className="text-[#E8703D] underline text-sm hover:text-[#D4703A]" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                className="text-[#E8764B] underline text-sm hover:text-[#D4703A]" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               >
                 Retry loading
               </button>
@@ -382,7 +382,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FDF6EE] flex items-center justify-center">
         <div className="text-center">
           <div className="text-[#FF5F57] text-xl mb-4">Error: {error}</div>
           <Button variant="primary" size="lg" onClick={() => onNavigate?.('/dashboard')}>
@@ -396,7 +396,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
   // Guard against task being null after loading completes (shouldn't happen, but defensive)
   if (!task) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FDF6EE] flex items-center justify-center">
         <div className="text-center">
           <div className="text-[#FF5F57] text-xl mb-4">Error: Task not found</div>
           <Button variant="primary" size="lg" onClick={() => onNavigate?.('/dashboard')}>
@@ -413,17 +413,17 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       {/* Sub-header with back button */}
       <header style={{
-        borderBottom: '1px solid rgba(220,200,180,0.35)',
+        borderBottom: '1px solid #E8E0D8',
         position: 'sticky',
         top: 56,
         background: 'white',
         zIndex: 10,
-        boxShadow: '0 1px 2px rgba(200,150,100,0.06)'
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
       }}>
         <div className="h-10 sm:h-14" style={{ maxWidth: 1280, margin: '0 auto', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button
             onClick={() => onNavigate?.('/dashboard')}
-            className="flex items-center gap-1.5 sm:gap-2 text-[#E8703D] bg-transparent border-none cursor-pointer text-xs sm:text-sm font-medium" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+            className="flex items-center gap-1.5 sm:gap-2 text-[#E8764B] bg-transparent border-none cursor-pointer text-xs sm:text-sm font-medium" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
           >
             <span>←</span>
             <span>Back</span>
@@ -489,7 +489,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
             {/* Worker Actions: Dispute + Withdraw */}
             {(canDispute || canWithdraw) && (
-              <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-4 sm:p-6 shadow-sm space-y-3">
+              <div className="bg-white rounded-2xl border-2 border-[#E8E0D8] p-4 sm:p-6 shadow-sm space-y-3">
                 <h4 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider">Actions</h4>
                 {canWithdraw && (
                   <Button
@@ -505,7 +505,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                   // eslint-disable-next-line irlwork/no-inline-button-pattern -- outlined orange variant not in Button
                   <button
                     onClick={() => setShowDisputeModal(true)}
-                    className="w-full py-2.5 border-2 border-[#E8703D] text-[#E8703D] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                    className="w-full py-2.5 border-2 border-[#E8764B] text-[#E8764B] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   >
                     File a dispute
                   </button>
@@ -580,12 +580,12 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       {/* Mobile Sticky Apply Bar */}
       {task.status === 'open' && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(220,200,180,0.40)] px-4 pr-20 py-3 shadow-[0_-2px_12px_rgba(220,200,180,0.35)]"
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(220,200,180,0.40)] px-4 pr-20 py-3 shadow-[0_-2px_12px_#E8E0D8]"
           style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
           <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
             <div className="flex items-baseline gap-1 shrink-0">
-              <span className="text-xl font-bold text-[#1A9E6A] font-['JetBrains_Mono']">
+              <span className="text-xl font-bold text-[#2D7A3A] font-['JetBrains_Mono']">
                 ${Number(task.budget) || 0}
               </span>
               {task.budget_type === 'hourly' && <span className="text-sm text-[rgba(26,20,16,0.65)]">/hr</span>}
@@ -601,11 +601,11 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                 Apply for this task
               </Button>
             ) : hasApplied ? (
-              <span className="text-sm font-medium text-[#1A9E6A]">Applied</span>
+              <span className="text-sm font-medium text-[#2D7A3A]">Applied</span>
             ) : !user ? (
               <a
                 href="/auth"
-                className="flex-1 max-w-[200px] py-2.5 bg-[#E8703D] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                className="flex-1 max-w-[200px] py-2.5 bg-[#E8764B] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               >
                 Sign in to apply
               </a>

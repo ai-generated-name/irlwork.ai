@@ -273,7 +273,7 @@ export default function DashboardTour({ isOpen, onComplete, hiringMode = false }
             width: 64,
             height: 64,
             borderRadius: 16,
-            background: 'linear-gradient(135deg, rgba(232,112,61,0.12), rgba(232,112,61,0.06))',
+            background: 'linear-gradient(135deg, rgba(232,118,75,0.12), rgba(232,118,75,0.06))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -312,7 +312,7 @@ export default function DashboardTour({ isOpen, onComplete, hiringMode = false }
                 style={{
                   padding: '12px 20px',
                   background: 'var(--bg-tertiary)',
-                  border: '1px solid rgba(220,200,180,0.35)',
+                  border: '1px solid #E8E0D8',
                   borderRadius: 'var(--radius-md)',
                   fontFamily: 'var(--font-display)',
                   fontSize: 14,

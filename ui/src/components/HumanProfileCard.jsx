@@ -14,7 +14,7 @@ function StarRating({ rating, count, showNewBadge = false }) {
       return (
         <span style={{
           padding: '3px 10px',
-          background: 'linear-gradient(135deg, #1A9E6A, #1A9E6A)',
+          background: 'linear-gradient(135deg, #2D7A3A, #2D7A3A)',
           borderRadius: 999,
           fontSize: 11,
           color: 'white',
@@ -66,26 +66,26 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
       style={{
         background: 'white',
         borderRadius: 'var(--radius-lg)',
-        border: '1px solid rgba(220,200,180,0.25)',
+        border: '1px solid #EBE4DC',
         padding: 24,
         transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
         position: 'relative',
-        boxShadow: '0 1px 3px rgba(200,150,100,0.06)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
         overflow: 'hidden'
       }}
       onClick={() => onExpand?.(human)}
       onMouseOver={(e) => {
-        e.currentTarget.style.boxShadow = '0 8px 30px rgba(232,112,61,0.12), 0 4px 12px rgba(220,200,180,0.25)'
+        e.currentTarget.style.boxShadow = '0 8px 30px rgba(232,118,75,0.12), 0 4px 12px #EBE4DC'
         e.currentTarget.style.transform = 'translateY(-3px)'
-        e.currentTarget.style.borderColor = 'rgba(232,112,61,0.18)'
+        e.currentTarget.style.borderColor = 'rgba(232,118,75,0.18)'
       }}
       onMouseOut={(e) => {
-        e.currentTarget.style.boxShadow = '0 1px 3px rgba(200,150,100,0.06)'
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
         e.currentTarget.style.transform = 'translateY(0)'
-        e.currentTarget.style.borderColor = 'rgba(220,200,180,0.25)'
+        e.currentTarget.style.borderColor = '#EBE4DC'
       }}
     >
       {/* Top accent line */}
@@ -96,7 +96,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
         right: 0,
         height: 3,
         // eslint-disable-next-line irlwork/no-orange-outside-button -- accent line uses brand color
-        background: '#E8703D',
+        background: '#E8764B',
         borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
         opacity: 0.6
       }} />
@@ -137,8 +137,8 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
               style={{
                 width: 56, height: 56, borderRadius: '50%',
                 objectFit: 'cover',
-                border: '2px solid rgba(232,112,61,0.2)',
-                boxShadow: '0 2px 8px rgba(232,112,61,0.15)'
+                border: '2px solid rgba(232,118,75,0.2)',
+                boxShadow: '0 2px 8px rgba(232,118,75,0.15)'
               }}
               onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
             />
@@ -148,15 +148,15 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
             height: 56,
             borderRadius: '50%',
             // eslint-disable-next-line irlwork/no-orange-outside-button -- avatar fallback uses brand color
-            background: '#E8703D',
+            background: '#E8764B',
             display: human.avatar_url ? 'none' : 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
             fontWeight: 700,
             fontSize: 22,
-            border: '2px solid rgba(232,112,61,0.2)',
-            boxShadow: '0 2px 8px rgba(232,112,61,0.15)'
+            border: '2px solid rgba(232,118,75,0.2)',
+            boxShadow: '0 2px 8px rgba(232,118,75,0.15)'
           }}>
             {human.name?.[0]?.toUpperCase() || '?'}
           </div>
@@ -168,7 +168,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
             width: 14,
             height: 14,
             borderRadius: '50%',
-            background: human.availability === 'available' ? '#1A9E6A' : 'rgba(26,20,16,0.28)',
+            background: human.availability === 'available' ? '#2D7A3A' : '#A69E98',
             border: '2px solid white'
           }} />
         </div>
@@ -193,7 +193,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
               <span style={{
                 padding: '2px 8px',
                 background: 'rgba(26,158,106, 0.1)',
-                color: '#1A9E6A',
+                color: '#2D7A3A',
                 fontSize: 11,
                 fontWeight: 600,
                 borderRadius: 999,
@@ -231,7 +231,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
               textOverflow: 'ellipsis'
             }}>
               {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon color uses brand accent */}
-              <MapPin size={12} style={{ color: '#E8703D', flexShrink: 0 }} />
+              <MapPin size={12} style={{ color: '#E8764B', flexShrink: 0 }} />
               {human.city}{human.state ? `, ${human.state}` : ''}
               {human.timezone && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6 }}>
@@ -285,13 +285,13 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
             key={idx}
             style={{
               padding: '5px 12px',
-              background: 'rgba(232,112,61,0.06)',
+              background: 'rgba(232,118,75,0.06)',
               borderRadius: 'var(--radius-full, 999px)',
               fontSize: 12,
               // eslint-disable-next-line irlwork/no-orange-outside-button -- skill tag uses brand color
-              color: '#E8703D',
+              color: '#E8764B',
               fontWeight: 500,
-              border: '1px solid rgba(232,112,61,0.10)',
+              border: '1px solid rgba(232,118,75,0.10)',
               letterSpacing: '0.01em'
             }}
           >
@@ -332,14 +332,14 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
         alignItems: 'center',
         marginTop: 'auto',
         paddingTop: 14,
-        borderTop: '1px solid rgba(220,200,180,0.25)'
+        borderTop: '1px solid #EBE4DC'
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
           <span style={{
             fontSize: 24,
             fontWeight: 700,
             // eslint-disable-next-line irlwork/no-orange-outside-button -- hourly rate uses brand color
-            color: '#E8703D',
+            color: '#E8764B',
             letterSpacing: '-0.02em'
           }}>
             ${human.hourly_rate || 25}
@@ -351,7 +351,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
               color: 'var(--text-tertiary)',
               marginLeft: 10,
               padding: '2px 8px',
-              background: 'rgba(200,150,100,0.06)',
+              background: 'rgba(0,0,0,0.04)',
               borderRadius: 999
             }}>
               {human.jobs_completed || human.total_tasks_completed || 0} jobs
@@ -362,7 +362,7 @@ export default function HumanProfileCard({ human, onHire, onExpand, onBookmark, 
           <span style={{
             padding: '10px 20px',
             background: '#E5E7EB',
-            color: 'rgba(26,20,16,0.28)',
+            color: '#A69E98',
             fontWeight: 600,
             fontSize: 13,
             borderRadius: 'var(--radius-md, 10px)',

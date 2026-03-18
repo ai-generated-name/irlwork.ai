@@ -15,14 +15,14 @@ export default function LocationSection({ task }) {
   const locationStr = locationParts.join(', ') || task.location;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-6 mb-6 shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[#E8E0D8] p-6 mb-6 shadow-sm">
       <h3 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider mb-4">
         Location
       </h3>
       <div className="flex items-center gap-3">
         <MapPin size={18} />
         <div>
-          <p className="text-[#1A1410] font-medium">
+          <p className="text-[#1A1A1A] font-medium">
             {locationStr || 'Remote'}
             {isRemote && locationStr && (
               <span className="text-[rgba(26,20,16,0.65)] font-normal"> (Remote OK)</span>

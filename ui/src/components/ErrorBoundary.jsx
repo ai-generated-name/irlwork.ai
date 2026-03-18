@@ -32,7 +32,7 @@ export default class ErrorBoundary extends React.Component {
       return (
         <div style={{
           minHeight: '100vh',
-          background: '#FAFAF8',
+          background: '#FDF6EE',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -45,8 +45,8 @@ export default class ErrorBoundary extends React.Component {
             background: 'white',
             borderRadius: 16,
             padding: 48,
-            boxShadow: '0 4px 24px rgba(220,200,180,0.35)',
-            border: '1px solid rgba(220,200,180,0.25)',
+            boxShadow: '0 4px 24px #E8E0D8',
+            border: '1px solid #EBE4DC',
           }}>
             <div style={{
               width: 64,
@@ -64,7 +64,7 @@ export default class ErrorBoundary extends React.Component {
             <h2 style={{
               fontSize: 22,
               fontWeight: 700,
-              color: '#1A1410',
+              color: '#1A1A1A',
               marginBottom: 12,
             }}>
               Something went wrong
@@ -89,7 +89,7 @@ export default class ErrorBoundary extends React.Component {
                 Error details
               </summary>
               <div style={{
-                background: 'rgba(220,200,180,0.15)',
+                background: '#F0EAE2',
                 borderRadius: 8,
                 padding: 12,
                 fontSize: 12,
@@ -110,7 +110,7 @@ export default class ErrorBoundary extends React.Component {
                 onClick={this.handleGoHome}
                 style={{
                   padding: '14px 32px',
-                  background: '#E8703D',
+                  background: '#E8764B',
                   color: 'white',
                   fontWeight: 600,
                   fontSize: 15,
@@ -120,7 +120,7 @@ export default class ErrorBoundary extends React.Component {
                   transition: 'background 0.2s',
                 }}
                 onMouseOver={(e) => e.currentTarget.style.background = '#D4703A'}
-                onMouseOut={(e) => e.currentTarget.style.background = '#E8703D'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#E8764B'}
               >
                 Go to Homepage
               </button>
@@ -137,7 +137,7 @@ export default class ErrorBoundary extends React.Component {
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(220,200,180,0.15)'; e.currentTarget.style.borderColor = 'rgba(220,200,180,0.50)' }}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#F0EAE2'; e.currentTarget.style.borderColor = '#DDD5CC' }}
                 onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(220,200,180,0.40)' }}
               >
                 Refresh Page

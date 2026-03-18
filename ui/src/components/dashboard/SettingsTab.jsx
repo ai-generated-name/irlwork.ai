@@ -70,7 +70,7 @@ export default function SettingsTab({
                         width: 9,
                         height: 9,
                         borderRadius: '50%',
-                        background: user?.availability === 'available' ? 'var(--success)' : 'rgba(26,20,16,0.28)',
+                        background: user?.availability === 'available' ? 'var(--success)' : '#A69E98',
                         marginTop: 5,
                         flexShrink: 0
                       }} />
@@ -180,7 +180,7 @@ export default function SettingsTab({
                           transition: 'all 0.2s',
                           background: !hiringMode ? 'white' : 'transparent',
                           color: !hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          boxShadow: !hiringMode ? '0 1px 3px rgba(220,200,180,0.35)' : 'none',
+                          boxShadow: !hiringMode ? '0 1px 3px #E8E0D8' : 'none',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 4
@@ -208,7 +208,7 @@ export default function SettingsTab({
                           transition: 'all 0.2s',
                           background: hiringMode ? 'white' : 'transparent',
                           color: hiringMode ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                          boxShadow: hiringMode ? '0 1px 3px rgba(220,200,180,0.35)' : 'none',
+                          boxShadow: hiringMode ? '0 1px 3px #E8E0D8' : 'none',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 4
@@ -304,7 +304,7 @@ export default function SettingsTab({
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{user?.email}</p>
                       {(emailVerifSuccess || user?.email_verified) ? (
-                        <span style={{ padding: '2px 8px', background: 'rgba(26,158,106, 0.1)', color: '#1A9E6A', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Verified</span>
+                        <span style={{ padding: '2px 8px', background: 'rgba(26,158,106, 0.1)', color: '#2D7A3A', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Verified</span>
                       ) : (
                         <span style={{ padding: '2px 8px', background: 'rgba(251, 191, 36, 0.1)', color: '#D97706', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>Unverified</span>
                       )}
@@ -379,7 +379,7 @@ export default function SettingsTab({
                             style={{
                               width: '100%', textAlign: 'center', fontSize: 20, fontWeight: 600,
                               letterSpacing: 8, fontFamily: 'monospace', padding: '10px 12px',
-                              background: 'var(--bg-secondary)', border: '1px solid rgba(220,200,180,0.35)',
+                              background: 'var(--bg-secondary)', border: '1px solid #E8E0D8',
                               borderRadius: 'var(--radius-md)', color: 'var(--text-primary)',
                               outline: 'none', boxSizing: 'border-box'
                             }}

@@ -21,12 +21,12 @@ export function getTaskStatus(status) {
     in_progress: 'bg-amber-100 text-amber-600',
     pending_review: 'bg-coral/10 text-coral',
     rejected: 'bg-red-100 text-[#DC2626]',
-    completed: 'bg-green-100 text-[#1A9E6A]',
-    paid: 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)]',
+    completed: 'bg-green-100 text-[#2D7A3A]',
+    paid: 'bg-[#F0EAE2] text-[#8C8580]',
     disputed: 'bg-red-100 text-[#DC2626]',
-    cancelled: 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.28)]',
+    cancelled: 'bg-[#F0EAE2] text-[#A69E98]',
   }
-  return colors[status] || 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)]'
+  return colors[status] || 'bg-[#F0EAE2] text-[#8C8580]'
 }
 
 /**

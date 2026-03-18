@@ -127,7 +127,7 @@ export default function LiveFeedTab({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-[rgba(26,20,16,0.28)]">Loading live feed...</div>
+        <div className="text-[#A69E98]">Loading live feed...</div>
       </div>
     )
   }
@@ -149,20 +149,20 @@ export default function LiveFeedTab({ user }) {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-[#1A1410]">Live task feed</h2>
-            <span className="flex items-center gap-1.5 text-xs font-medium text-[#1A9E6A] bg-[#F0FDF4] px-2.5 py-1 rounded-full">
+            <h2 className="text-lg font-bold text-[#1A1A1A]">Live task feed</h2>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-[#2D7A3A] bg-[#F0FDF4] px-2.5 py-1 rounded-full">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               Live
             </span>
           </div>
-          <p className="text-sm text-[rgba(26,20,16,0.28)] mt-0.5">Real-time stream of task activity. New tasks and status changes appear automatically.</p>
+          <p className="text-sm text-[#A69E98] mt-0.5">Real-time stream of task activity. New tasks and status changes appear automatically.</p>
         </div>
         {/* Status filter */}
         <div className="relative">
           <select
             value={filter}
             onChange={e => setFilter(e.target.value)}
-            className="appearance-none bg-white border border-[rgba(220,200,180,0.35)] rounded-lg px-3 py-1.5 pr-8 text-sm font-medium text-[#1A1410] cursor-pointer hover:border-[rgba(220,200,180,0.35)] focus:outline-none focus:ring-2 focus:ring-orange-200"
+            className="appearance-none bg-white border border-[#E8E0D8] rounded-lg px-3 py-1.5 pr-8 text-sm font-medium text-[#1A1A1A] cursor-pointer hover:border-[#E8E0D8] focus:outline-none focus:ring-2 focus:ring-orange-200"
           >
             <option value="all">All Statuses</option>
             <option value="open">Open</option>
@@ -171,7 +171,7 @@ export default function LiveFeedTab({ user }) {
             <option value="pending_review">Pending Review</option>
             <option value="disputed">Disputed</option>
           </select>
-          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[rgba(26,20,16,0.28)] pointer-events-none" />
+          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A69E98] pointer-events-none" />
         </div>
       </div>
 
@@ -189,10 +189,10 @@ export default function LiveFeedTab({ user }) {
       {/* eslint-disable-next-line irlwork/no-inline-card-pattern -- complex admin live-feed wrapper with divide-y and scroll overflow */}
       <div
         ref={feedRef}
-        className="bg-white rounded-xl border border-[rgba(220,200,180,0.35)] divide-y divide-[rgba(220,200,180,0.35)] max-h-[calc(100vh-280px)] overflow-y-auto"
+        className="bg-white rounded-xl border border-[#E8E0D8] divide-y divide-[#E8E0D8] max-h-[calc(100vh-280px)] overflow-y-auto"
       >
         {tasks.length === 0 ? (
-          <div className="py-16 text-center text-[rgba(26,20,16,0.28)] text-sm">
+          <div className="py-16 text-center text-[#A69E98] text-sm">
             No tasks found
           </div>
         ) : (
@@ -206,7 +206,7 @@ export default function LiveFeedTab({ user }) {
         )}
       </div>
 
-      <p className="text-xs text-[rgba(26,20,16,0.28)] text-center">
+      <p className="text-xs text-[#A69E98] text-center">
         Showing {tasks.length} most recent tasks. New tasks appear automatically.
       </p>
     </div>

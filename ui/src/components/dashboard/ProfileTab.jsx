@@ -67,7 +67,7 @@ export default function ProfileTab({
                   {user?.avatar_url ? (
                     <img key={user.avatar_url} src={user.avatar_url} alt={user?.name || ''} style={{
                       width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
-                      boxShadow: '0 2px 8px rgba(232,112,61,0.25)'
+                      boxShadow: '0 2px 8px rgba(232,118,75,0.25)'
                     }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                   ) : null}
                   <div style={{
@@ -75,7 +75,7 @@ export default function ProfileTab({
                     background: 'linear-gradient(135deg, var(--orange-600), var(--orange-500))',
                     display: user?.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                     color: 'white', fontWeight: 700, fontSize: 28,
-                    boxShadow: '0 2px 8px rgba(232,112,61,0.25)'
+                    boxShadow: '0 2px 8px rgba(232,118,75,0.25)'
                   }}>
                     {user?.name?.charAt(0) || '?'}
                   </div>
@@ -449,7 +449,7 @@ export default function ProfileTab({
                     {skillsList.map((skill, idx) => (
                       <span key={idx} style={{
                         padding: '6px 12px',
-                        background: 'rgba(220,200,180,0.15)',
+                        background: '#F0EAE2',
                         borderRadius: 999,
                         fontSize: 13,
                         color: 'rgba(26,20,16,0.65)',
@@ -463,9 +463,9 @@ export default function ProfileTab({
                         <button
                           type="button"
                           onClick={() => setSkillsList(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'rgba(26,20,16,0.50)', display: 'flex', alignItems: 'center' }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = '#1A1410'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(26,20,16,0.50)'}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#8C8580', display: 'flex', alignItems: 'center' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#1A1A1A'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#8C8580'}
                         >
                           <span style={{ fontSize: 16, lineHeight: 1 }}>&times;</span>
                         </button>

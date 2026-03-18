@@ -2,7 +2,7 @@ import React from 'react'
 
 const STATUS_COLORS = {
   open:           'rgba(17,16,16,0.18)',
-  assigned:       '#E8703D',
+  assigned:       '#E8764B',
   in_progress:    '#16A071',
   in_review:      '#6B4FBF',
   pending_review: '#6B4FBF',

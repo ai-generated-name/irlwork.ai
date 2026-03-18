@@ -133,7 +133,7 @@ export default function ReportTaskModal({
                         gap: '8px',
                         padding: '10px 14px',
                         borderRadius: '10px',
-                        border: reason === r.value ? '2px solid #FF5F57' : '2px solid rgba(220,200,180,0.35)',
+                        border: reason === r.value ? '2px solid #FF5F57' : '2px solid #E8E0D8',
                         background: reason === r.value ? 'rgba(220,38,38,0.05)' : 'rgba(0,0,0,0.02)',
                         cursor: 'pointer',
                         fontSize: '13px',

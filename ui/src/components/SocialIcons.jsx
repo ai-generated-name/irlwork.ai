@@ -148,7 +148,7 @@ export function SocialIconsRow({ socialLinks, size = 18, gap = 8, alwaysShow = f
             <span
               key={platform}
               style={{
-                color: 'var(--text-tertiary, rgba(26,20,16,0.28))',
+                color: 'var(--text-tertiary, #A69E98)',
                 opacity: 0.25,
                 display: 'flex',
                 alignItems: 'center',
@@ -181,7 +181,7 @@ export function SocialIconsRow({ socialLinks, size = 18, gap = 8, alwaysShow = f
             onMouseEnter={() => setHoveredPlatform(platform)}
             onMouseLeave={() => setHoveredPlatform(null)}
             style={{
-              color: isHovered ? config.color : 'var(--text-tertiary, rgba(26,20,16,0.28))',
+              color: isHovered ? config.color : 'var(--text-tertiary, #A69E98)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

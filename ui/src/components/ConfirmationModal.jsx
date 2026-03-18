@@ -37,7 +37,7 @@ export default function ConfirmationModal({
   if (!isOpen) return null;
 
   const confirmColors = {
-    warning: 'bg-[#E8703D] hover:bg-[#D4703A]',
+    warning: 'bg-[#E8764B] hover:bg-[#D4703A]',
     danger: 'bg-[#FF5F57] hover:bg-[#E54E47]',
     info: 'bg-[#2563EB] hover:bg-[#2563EB]',
   };
@@ -61,7 +61,7 @@ export default function ConfirmationModal({
         aria-labelledby="confirm-title"
         aria-describedby="confirm-desc"
       >
-        <h3 id="confirm-title" className="text-[15px] sm:text-base font-bold text-[#1A1410] mb-2">
+        <h3 id="confirm-title" className="text-[15px] sm:text-base font-bold text-[#1A1A1A] mb-2">
           {title}
         </h3>
         <div id="confirm-desc" className="text-[13px] sm:text-sm text-[rgba(26,20,16,0.65)] mb-5 leading-relaxed">

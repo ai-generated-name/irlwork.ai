@@ -18,7 +18,7 @@ export default function ModeToggle({ hiringMode, onToggle }) {
             if (wantHiring !== hiringMode) onToggle()
           }}
           style={{
-            fontFamily: "'Sora', sans-serif",
+            fontFamily: "'Satoshi', sans-serif",
             fontSize: '11px',
             fontWeight: 600,
             padding: '5px 13px',

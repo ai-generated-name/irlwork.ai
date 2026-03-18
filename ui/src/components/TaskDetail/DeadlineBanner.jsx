@@ -177,7 +177,7 @@ export default function DeadlineBanner({ task, user }) {
           position: 'fixed', top: 20, right: 20, zIndex: 9999,
           padding: '12px 20px', borderRadius: 10,
           background: toast.type === 'error' ? '#FF5F57' : '#22C55E',
-          color: '#fff', fontWeight: 600, fontSize: 14, boxShadow: '0 4px 12px rgba(200,150,100,0.15)'
+          color: '#fff', fontWeight: 600, fontSize: 14, boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
         }}>
           {toast.msg}
         </div>
@@ -258,7 +258,7 @@ export default function DeadlineBanner({ task, user }) {
 
         {/* Poster: pending extension request to review */}
         {isPoster && pendingRequest && (
-          <div style={{ marginTop: 12, padding: '14px', background: '#fff', borderRadius: 10, border: '1px solid rgba(220,200,180,0.35)' }}>
+          <div style={{ marginTop: 12, padding: '14px', background: '#fff', borderRadius: 10, border: '1px solid #E8E0D8' }}>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
               Extension Request from {pendingRequest.requester?.name || 'Worker'}
             </div>
@@ -340,7 +340,7 @@ export default function DeadlineBanner({ task, user }) {
             background: '#fff', borderRadius: 14, padding: 24, width: '90%', maxWidth: 440,
             boxShadow: '0 20px 60px rgba(200,150,100,0.20)'
           }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1410' }}>Request deadline extension</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1A1A' }}>Request deadline extension</h3>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>
               Reason <span style={{ color: '#FF5F57' }}>*</span>
             </label>
@@ -403,7 +403,7 @@ export default function DeadlineBanner({ task, user }) {
             background: '#fff', borderRadius: 14, padding: 24, width: '90%', maxWidth: 440,
             boxShadow: '0 20px 60px rgba(200,150,100,0.20)'
           }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1410' }}>Extend Deadline</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#1A1A1A' }}>Extend Deadline</h3>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               <button
                 onClick={() => setExtendMode('datetime')}

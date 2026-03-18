@@ -105,21 +105,21 @@ export default function PostedTasksTab({
                   {hireTarget && (
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
-                      background: 'rgba(232,112,61,0.06)', borderRadius: 12,
-                      border: '1px solid rgba(232,112,61,0.15)', marginBottom: 20
+                      background: 'rgba(232,118,75,0.06)', borderRadius: 12,
+                      border: '1px solid rgba(232,118,75,0.15)', marginBottom: 20
                     }}>
                       <div style={{ position: 'relative', flexShrink: 0 }}>
                         {hireTarget.avatar_url ? (
                           <img src={hireTarget.avatar_url} alt="" style={{
                             width: 44, height: 44, borderRadius: '50%', objectFit: 'cover',
-                            border: '2px solid rgba(232,112,61,0.25)'
+                            border: '2px solid rgba(232,118,75,0.25)'
                           }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }} />
                         ) : null}
                         <div style={{
-                          width: 44, height: 44, borderRadius: '50%', background: '#E8703D', // eslint-disable-line irlwork/no-orange-outside-button -- avatar fallback uses brand color
+                          width: 44, height: 44, borderRadius: '50%', background: '#E8764B', // eslint-disable-line irlwork/no-orange-outside-button -- avatar fallback uses brand color
                           display: hireTarget.avatar_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
                           color: 'white', fontWeight: 700, fontSize: 18,
-                          border: '2px solid rgba(232,112,61,0.25)'
+                          border: '2px solid rgba(232,118,75,0.25)'
                         }}>
                           {hireTarget.name?.[0]?.toUpperCase() || '?'}
                         </div>
@@ -349,7 +349,7 @@ export default function PostedTasksTab({
                                 <button key={skill} type="button" onClick={() => {
                                   setTaskForm(prev => ({ ...prev, required_skills: [...prev.required_skills, skill], skillInput: '' }))
                                 }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)' }}
-                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(220,200,180,0.15)'}
+                                onMouseOver={(e) => e.currentTarget.style.background = '#F0EAE2'}
                                 onMouseOut={(e) => e.currentTarget.style.background = 'none'}
                                 >{skill}</button>
                               ))}
@@ -392,14 +392,14 @@ export default function PostedTasksTab({
                     {tasksSubTab === 'tasks' && (
                       <button
                         onClick={() => { setTasksSubTab('create'); window.history.pushState({}, '', '/dashboard/hiring/my-tasks/create'); }}
-                        style={{ margin: '0 auto', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid rgba(220,200,180,0.35)', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                        style={{ margin: '0 auto', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid #E8E0D8', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
                       >
                         <Plus size={16} /> Create Task
                       </button>
                     )}
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl border border-[rgba(220,200,180,0.35)] divide-y divide-[rgba(220,200,180,0.35)]">
+                  <div className="bg-white rounded-xl border border-[#E8E0D8] divide-y divide-[#E8E0D8]">
                     {filteredTasks.map(task => (
                       <TaskRow
                         key={task.id}

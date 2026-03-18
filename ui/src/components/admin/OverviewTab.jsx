@@ -46,7 +46,7 @@ export default function OverviewTab({ user }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-[rgba(26,20,16,0.28)]">Loading overview...</div>
+        <div className="text-[#A69E98]">Loading overview...</div>
       </div>
     )
   }
@@ -67,8 +67,8 @@ export default function OverviewTab({ user }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-[#1A1410]">Platform Overview</h2>
-          <p className="text-sm text-[rgba(26,20,16,0.28)] mt-0.5">Top-level metrics — GMV, escrow balances, signups, and daily activity trends.</p>
+          <h2 className="text-lg font-bold text-[#1A1A1A]">Platform Overview</h2>
+          <p className="text-sm text-[#A69E98] mt-0.5">Top-level metrics — GMV, escrow balances, signups, and daily activity trends.</p>
         </div>
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
@@ -109,7 +109,7 @@ export default function OverviewTab({ user }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tasks created per day */}
         <Card padding="md">
-          <h3 className="font-semibold text-[#1A1410] mb-4 text-sm">Tasks created per day</h3>
+          <h3 className="font-semibold text-[#1A1A1A] mb-4 text-sm">Tasks created per day</h3>
           {(growth?.tasks?.created_by_day || []).length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={growth.tasks.created_by_day}>
@@ -121,13 +121,13 @@ export default function OverviewTab({ user }) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[220px] flex items-center justify-center text-[rgba(26,20,16,0.28)] text-sm">No data</div>
+            <div className="h-[220px] flex items-center justify-center text-[#A69E98] text-sm">No data</div>
           )}
         </Card>
 
         {/* Signups per day */}
         <Card padding="md">
-          <h3 className="font-semibold text-[#1A1410] mb-4 text-sm">Signups per day</h3>
+          <h3 className="font-semibold text-[#1A1A1A] mb-4 text-sm">Signups per day</h3>
           {(growth?.users?.signups_by_day || []).length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={growth.users.signups_by_day}>
@@ -141,7 +141,7 @@ export default function OverviewTab({ user }) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[220px] flex items-center justify-center text-[rgba(26,20,16,0.28)] text-sm">No data</div>
+            <div className="h-[220px] flex items-center justify-center text-[#A69E98] text-sm">No data</div>
           )}
         </Card>
       </div>
@@ -160,19 +160,19 @@ export default function OverviewTab({ user }) {
 
       {/* Active users */}
       <Card padding="md">
-        <h3 className="font-semibold text-[#1A1410] mb-3 text-sm">Active Users</h3>
+        <h3 className="font-semibold text-[#1A1A1A] mb-3 text-sm">Active Users</h3>
         <div className="flex gap-8">
           <div>
-            <p className="text-2xl font-bold text-[#1A1410]">{growth?.active_users?.daily || 0}</p>
-            <p className="text-xs text-[rgba(26,20,16,0.50)]">Daily</p>
+            <p className="text-2xl font-bold text-[#1A1A1A]">{growth?.active_users?.daily || 0}</p>
+            <p className="text-xs text-[#8C8580]">Daily</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#1A1410]">{growth?.active_users?.weekly || 0}</p>
-            <p className="text-xs text-[rgba(26,20,16,0.50)]">Weekly</p>
+            <p className="text-2xl font-bold text-[#1A1A1A]">{growth?.active_users?.weekly || 0}</p>
+            <p className="text-xs text-[#8C8580]">Weekly</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#1A1410]">{growth?.active_users?.monthly || 0}</p>
-            <p className="text-xs text-[rgba(26,20,16,0.50)]">Monthly</p>
+            <p className="text-2xl font-bold text-[#1A1A1A]">{growth?.active_users?.monthly || 0}</p>
+            <p className="text-xs text-[#8C8580]">Monthly</p>
           </div>
         </div>
       </Card>
@@ -182,7 +182,7 @@ export default function OverviewTab({ user }) {
 
 function MetricCard({ label, value, subtitle, icon, color }) {
   const colors = {
-    green: 'bg-[#F0FDF4] border-green-200 text-[#1A9E6A]',
+    green: 'bg-[#F0FDF4] border-green-200 text-[#2D7A3A]',
     orange: 'bg-orange-50 border-orange-200 text-orange-600',
     blue: 'bg-[#EFF6FF] border-blue-200 text-[#2563EB]',
     purple: 'bg-purple-50 border-purple-200 text-purple-600',
@@ -193,9 +193,9 @@ function MetricCard({ label, value, subtitle, icon, color }) {
       <div className="flex items-center justify-between mb-2">
         <span className="opacity-70">{icon}</span>
       </div>
-      <p className="text-2xl font-bold text-[#1A1410]">{value}</p>
+      <p className="text-2xl font-bold text-[#1A1A1A]">{value}</p>
       <p className="text-xs font-medium mt-0.5">{label}</p>
-      <p className="text-xs text-[rgba(26,20,16,0.28)] mt-0.5">{subtitle}</p>
+      <p className="text-xs text-[#A69E98] mt-0.5">{subtitle}</p>
     </div>
   )
 }
@@ -203,9 +203,9 @@ function MetricCard({ label, value, subtitle, icon, color }) {
 function StatBox({ label, value, alert }) {
   return (
     // eslint-disable-next-line irlwork/no-inline-card-pattern -- conditional alert styling with dynamic bg/border colors
-    <div className={`bg-white rounded-xl border p-4 ${alert ? 'border-red-200 bg-[#FEF2F2]' : 'border-[rgba(220,200,180,0.35)]'}`}>
-      <p className={`text-xl font-bold ${alert ? 'text-[#DC2626]' : 'text-[#1A1410]'}`}>{value}</p>
-      <p className="text-xs text-[rgba(26,20,16,0.50)]">{label}</p>
+    <div className={`bg-white rounded-xl border p-4 ${alert ? 'border-red-200 bg-[#FEF2F2]' : 'border-[#E8E0D8]'}`}>
+      <p className={`text-xl font-bold ${alert ? 'text-[#DC2626]' : 'text-[#1A1A1A]'}`}>{value}</p>
+      <p className="text-xs text-[#8C8580]">{label}</p>
     </div>
   )
 }

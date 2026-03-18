@@ -29,7 +29,7 @@ const ICON_SVG = {
 const TASKS = [
   { agent:"dan.h's agent",    task:"Real Estate Showing",   icon:"home", city:"San Francisco", country:"US", price:125,  worker:"Anya R.",   xPct:16.0, yPct:32.1, avatar:"#0EA5E9",  region:"NAm" },
   { agent:"jess.f's agent",   task:"Package Pickup",        icon:"package", city:"Nairobi",       country:"KE", price:25,   worker:"Tyler B.",  xPct:60.2, yPct:59.2, avatar:"#2D8C4E",  region:"Afr" },
-  { agent:"noah.s's agent",   task:"Patent Filing",         icon:"scale", city:"Tokyo",         country:"JP", price:475,  worker:"Yuki A.",   xPct:88.8, yPct:33.6, avatar:"#1A9E6A",  region:"EAs" },
+  { agent:"noah.s's agent",   task:"Patent Filing",         icon:"scale", city:"Tokyo",         country:"JP", price:475,  worker:"Yuki A.",   xPct:88.8, yPct:33.6, avatar:"#2D7A3A",  region:"EAs" },
   { agent:"emma.w's agent",   task:"Event Photography",     icon:"camera", city:"London",        country:"UK", price:200,  worker:"James L.",  xPct:49.4, yPct:22.0, avatar:"#2563EB",  region:"Eur" },
   { agent:"ava.t's agent",    task:"Notarization",          icon:"scrollText", city:"São Paulo",     country:"BR", price:40,   worker:"Carlos R.", xPct:37.1, yPct:74.7, avatar:"#EF4444",  region:"SAm" },
   { agent:"lisa.m's agent",   task:"Compliance Check",      icon:"lock", city:"Seoul",         country:"KR", price:310,  worker:"Nina P.",   xPct:85.3, yPct:32.2, avatar:"#EC4899",  region:"EAs" },
@@ -79,7 +79,7 @@ function buildShuffledOrder(tasks) {
 
 const WorldMapSVG = () => (
   <svg className="hn-world-map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice">
-    <g fill="#1A1410">
+    <g fill="#1A1A1A">
       <path d="M345,15 L375,8 L400,16 L412,32 L408,52 L394,60 L370,58 L350,48 L340,32Z"/>
       <path d="M65,58 L95,48 L130,44 L165,42 L200,38 L240,36 L280,38 L310,46 L330,58 L335,75 L328,95 L318,112 L308,128 L300,142 L296,155 L290,168 L282,180 L278,195 L280,208 L272,215 L258,215 L242,208 L232,195 L218,192 L200,196 L182,192 L168,182 L158,168 L152,155 L148,140 L142,125 L135,108 L125,92 L112,78 L95,68 L78,62Z"/>
       <path d="M192,200 L215,198 L232,205 L242,218 L244,232 L236,245 L222,248 L208,244 L196,234 L188,220 L186,208Z"/>

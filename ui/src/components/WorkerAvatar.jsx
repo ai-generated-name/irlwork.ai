@@ -12,7 +12,7 @@ export function WorkerAvatar({ name, size = 34 }) {
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: size * 0.38,
-      fontFamily: "'Sora', sans-serif",
+      fontFamily: "'Satoshi', sans-serif",
       fontWeight: 700,
       color: 'white',
       flexShrink: 0,

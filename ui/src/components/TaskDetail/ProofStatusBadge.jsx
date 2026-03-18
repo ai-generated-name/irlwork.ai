@@ -8,25 +8,25 @@ const STATUS_CONFIG = {
   pending_review: {
     label: 'Pending agent review',
     icon: <Hourglass size={14} />,
-    color: 'bg-[#FFE4DB] border-[#E8703D] text-[#D4703A]',
+    color: 'bg-[#FFE4DB] border-[#E8764B] text-[#D4703A]',
     description: 'Your proof has been submitted and is awaiting agent review'
   },
   approved: {
     label: 'Approved',
     icon: <Check size={14} />,
-    color: 'bg-[#D1FAE5] border-[#1A9E6A] text-[#1A9E6A]',
+    color: 'bg-[#D1FAE5] border-[#2D7A3A] text-[#2D7A3A]',
     description: 'Your proof has been approved! Payment is being processed.'
   },
   completed: {
     label: 'Approved',
     icon: <Check size={14} />,
-    color: 'bg-[rgba(26,158,106,0.08)] border-[#1A9E6A] text-[#1A9E6A]',
+    color: 'bg-[rgba(26,158,106,0.08)] border-[#2D7A3A] text-[#2D7A3A]',
     description: 'Your proof has been approved by the agent'
   },
   paid: {
     label: 'Paid',
     icon: <Check size={14} />,
-    color: 'bg-[rgba(26,158,106,0.08)] border-[#1A9E6A] text-[#1A9E6A]',
+    color: 'bg-[rgba(26,158,106,0.08)] border-[#2D7A3A] text-[#2D7A3A]',
     description: 'Payment has been released to your bank account'
   },
   disputed: {

@@ -2,12 +2,12 @@ import React from 'react';
 import Card from './Card';
 
 const ICON_COLORS = {
-  gray:   { text: 'rgba(26,20,16,0.28)', bg: '' },
-  orange: { text: '#E8703D', bg: '#FDEEE6' },
-  green:  { text: '#1A9E6A', bg: 'rgba(26,158,106,0.09)' },
+  gray:   { text: '#A69E98', bg: '' },
+  orange: { text: '#E8764B', bg: '#FDEEE7' },
+  green:  { text: '#2D7A3A', bg: 'rgba(45,122,58,0.09)' },
   blue:   { text: '#2563EB', bg: '#EFF6FF' },
-  red:    { text: '#c4420a', bg: 'rgba(196,66,10,0.08)' },
-  gold:   { text: '#D4A017', bg: 'rgba(212,160,23,0.08)' },
+  red:    { text: '#D44B4B', bg: 'rgba(212,75,75,0.08)' },
+  gold:   { text: '#D4963F', bg: 'rgba(212,150,63,0.08)' },
 };
 
 const SIZE_CONFIG = {
@@ -30,7 +30,7 @@ export default function StatCard({ label, value, icon, trend, dark = false, icon
             textTransform: 'uppercase',
             letterSpacing: '0.04em',
             fontWeight: 500,
-            color: dark ? 'rgba(255,255,255,0.60)' : 'rgba(26,20,16,0.28)',
+            color: dark ? 'rgba(255,255,255,0.60)' : '#A69E98',
           }}>
             {label}
           </p>
@@ -39,7 +39,7 @@ export default function StatCard({ label, value, icon, trend, dark = false, icon
             fontFamily: "'JetBrains Mono', monospace",
             fontWeight: 600,
             marginTop: 4,
-            color: dark ? '#fff' : '#1A1410',
+            color: dark ? '#fff' : '#1A1A1A',
             letterSpacing: '-0.02em',
           }}>
             {value}
@@ -69,7 +69,7 @@ export default function StatCard({ label, value, icon, trend, dark = false, icon
 function TrendIndicator({ trend }) {
   if (typeof trend === 'object' && trend !== null && trend.direction) {
     const dir = trend.direction;
-    const trendColor = dir === 'up' ? '#1A9E6A' : dir === 'down' ? '#c4420a' : 'rgba(26,20,16,0.50)';
+    const trendColor = dir === 'up' ? '#2D7A3A' : dir === 'down' ? '#D44B4B' : '#8C8580';
     const arrow = dir === 'up'
       ? <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
       : dir === 'down'
@@ -82,13 +82,13 @@ function TrendIndicator({ trend }) {
           {arrow}
         </svg>
         {trend.value && <span style={{ fontWeight: 500 }}>{trend.value}</span>}
-        {trend.period && <span style={{ color: 'rgba(26,20,16,0.28)', marginLeft: 2 }}>{trend.period}</span>}
+        {trend.period && <span style={{ color: '#A69E98', marginLeft: 2 }}>{trend.period}</span>}
       </span>
     );
   }
 
   const dir = trend;
-  const trendColor = dir === 'up' ? '#1A9E6A' : dir === 'down' ? '#c4420a' : 'rgba(26,20,16,0.50)';
+  const trendColor = dir === 'up' ? '#2D7A3A' : dir === 'down' ? '#D44B4B' : '#8C8580';
   const arrow = dir === 'up'
     ? <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
     : dir === 'down'

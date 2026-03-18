@@ -325,8 +325,8 @@ export default function AdminDashboard({ user, initialAdminTab }) {
       <div className="min-h-[400px] flex items-center justify-center">
         <div className="text-center">
           <div className="mb-4 flex justify-center"><Lock size={48} /></div>
-          <h2 className="text-xl font-bold text-[#1A1410] mb-2">Access Denied</h2>
-          <p className="text-[rgba(26,20,16,0.50)]">You don't have permission to access the admin dashboard.</p>
+          <h2 className="text-xl font-bold text-[#1A1A1A] mb-2">Access Denied</h2>
+          <p className="text-[#8C8580]">You don't have permission to access the admin dashboard.</p>
         </div>
       </div>
     )
@@ -337,8 +337,8 @@ export default function AdminDashboard({ user, initialAdminTab }) {
       <div className="min-h-[400px] flex items-center justify-center">
         <div className="text-center">
           <div className="mb-4"><AlertTriangle size={48} /></div>
-          <h2 className="text-xl font-bold text-[#1A1410] mb-2">Failed to Load Dashboard</h2>
-          <p className="text-[rgba(26,20,16,0.50)] mb-4">{error}</p>
+          <h2 className="text-xl font-bold text-[#1A1A1A] mb-2">Failed to Load Dashboard</h2>
+          <p className="text-[#8C8580] mb-4">{error}</p>
           <button
             onClick={() => { setError(null); fetchDashboard(); }}
             className="px-4 py-2 bg-teal text-white rounded-lg hover:bg-teal-dark transition-colors"
@@ -414,7 +414,7 @@ export default function AdminDashboard({ user, initialAdminTab }) {
       <div className="flex flex-wrap gap-2 items-center">
         {tabGroups.map((group, gi) => (
           <Fragment key={group.label}>
-            {gi > 0 && <div className="w-px h-6 bg-[rgba(220,200,180,0.35)] mx-1" />}
+            {gi > 0 && <div className="w-px h-6 bg-[#E8E0D8] mx-1" />}
             {group.tabs.map(tab => (
               <button
                 key={tab.id}
@@ -424,14 +424,14 @@ export default function AdminDashboard({ user, initialAdminTab }) {
                     ? group.style === 'bi' ? 'bg-orange-500 text-white' : 'bg-teal text-white'
                     : tab.alert
                       ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                      : 'bg-[rgba(220,200,180,0.15)] text-[#1A1410] hover:bg-[rgba(220,200,180,0.35)]'
+                      : 'bg-[#F0EAE2] text-[#1A1A1A] hover:bg-[#E8E0D8]'
                 }`}
               >
                 <span>{tab.icon}</span>
                 <span>{tab.label}</span>
                 {tab.count > 0 && (
                   <span className={`px-2 py-0.5 rounded-[6px] text-xs ${
-                    activeQueue === tab.id ? 'bg-white/20' : 'bg-[rgba(220,200,180,0.35)]'
+                    activeQueue === tab.id ? 'bg-white/20' : 'bg-[#E8E0D8]'
                   }`}>
                     {tab.count}
                   </span>
@@ -465,7 +465,7 @@ export default function AdminDashboard({ user, initialAdminTab }) {
           <TaskManagerTab user={user} />
         </Suspense>
       ) : activeQueue === 'users' ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-[rgba(26,20,16,0.28)]">Loading users...</div></div>}>
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="text-[#A69E98]">Loading users...</div></div>}>
           <UserManagerTab user={user} />
         </Suspense>
       ) : loading && activeQueue === 'dashboard' ? (
@@ -532,15 +532,15 @@ export default function AdminDashboard({ user, initialAdminTab }) {
             color={dashboard?.feedback?.count > 0 ? 'yellow' : 'gray'}
           />
           <Card padding="lg" className="md:col-span-2 lg:col-span-3 border-2">
-            <h3 className="font-bold text-[#1A1410] mb-4">Totals</h3>
+            <h3 className="font-bold text-[#1A1A1A] mb-4">Totals</h3>
             <div className="flex gap-8 flex-wrap">
               <div>
-                <p className="text-sm text-[rgba(26,20,16,0.50)]">Platform fees earned</p>
-                <p className="text-2xl font-bold text-[#1A9E6A]">${dashboard?.totals?.platform_fees_earned?.toFixed(2) || '0.00'}</p>
+                <p className="text-sm text-[#8C8580]">Platform fees earned</p>
+                <p className="text-2xl font-bold text-[#2D7A3A]">${dashboard?.totals?.platform_fees_earned?.toFixed(2) || '0.00'}</p>
               </div>
               <div>
-                <p className="text-sm text-[rgba(26,20,16,0.50)]">Total USD Processed</p>
-                <p className="text-2xl font-bold text-[#1A1410]">${dashboard?.totals?.total_usd_processed?.toFixed(2) || '0.00'}</p>
+                <p className="text-sm text-[#8C8580]">Total USD Processed</p>
+                <p className="text-2xl font-bold text-[#1A1A1A]">${dashboard?.totals?.total_usd_processed?.toFixed(2) || '0.00'}</p>
               </div>
             </div>
           </Card>
@@ -559,7 +559,7 @@ export default function AdminDashboard({ user, initialAdminTab }) {
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                     feedbackFilter === f
                       ? 'bg-teal text-white'
-                      : 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)] hover:bg-[rgba(220,200,180,0.35)]'
+                      : 'bg-[#F0EAE2] text-[#8C8580] hover:bg-[#E8E0D8]'
                   }`}
                 >
                   {f === 'all' ? 'All' : f === 'in_review' ? 'In Review' : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -570,7 +570,7 @@ export default function AdminDashboard({ user, initialAdminTab }) {
             {feedbackData.length === 0 ? (
               <Card padding="none" className="border-2 p-12 text-center">
                 <div className="mb-4"><CheckCircle size={32} /></div>
-                <p className="text-[rgba(26,20,16,0.50)]">No feedback items</p>
+                <p className="text-[#8C8580]">No feedback items</p>
               </Card>
             ) : (
               feedbackData.map(item => (
@@ -600,7 +600,7 @@ export default function AdminDashboard({ user, initialAdminTab }) {
       ) : queueData.length === 0 ? (
         <Card padding="none" className="border-2 p-12 text-center">
           <div className="mb-4"><CheckCircle size={32} /></div>
-          <p className="text-[rgba(26,20,16,0.50)]">No items in this queue</p>
+          <p className="text-[#8C8580]">No items in this queue</p>
         </Card>
       ) : activeQueue === 'reports' ? (
         /* Report Queue Items */
@@ -662,7 +662,7 @@ function StatCard({ title, value, subtitle, icon, color, alert }) {
     purple: 'bg-purple-50 border-purple-200',
     green: 'bg-[#F0FDF4] border-green-200',
     teal: 'bg-teal-50 border-teal-200',
-    gray: 'bg-[#FAFAF8] border-[rgba(220,200,180,0.35)]',
+    gray: 'bg-[#FDF6EE] border-[#E8E0D8]',
   }
 
   return (
@@ -671,9 +671,9 @@ function StatCard({ title, value, subtitle, icon, color, alert }) {
         <span className="text-2xl">{icon}</span>
         {alert && <span className="text-[#DC2626] text-xs font-bold">NEEDS ATTENTION</span>}
       </div>
-      <p className="text-3xl font-bold text-[#1A1410]">{value}</p>
-      <p className="text-sm text-[rgba(26,20,16,0.50)] mt-1">{title}</p>
-      <p className="text-xs text-[rgba(26,20,16,0.28)] mt-0.5">{subtitle}</p>
+      <p className="text-3xl font-bold text-[#1A1A1A]">{value}</p>
+      <p className="text-sm text-[#8C8580] mt-1">{title}</p>
+      <p className="text-xs text-[#A69E98] mt-0.5">{subtitle}</p>
     </div>
   )
 }
@@ -686,7 +686,7 @@ function QueueItem({ item, queue, onReleasePayment, onCancelAssignment, loading 
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-bold text-[#1A1410] truncate">
+            <h3 className="font-bold text-[#1A1A1A] truncate">
               {item.title || item.task?.title || `Task #${item.id?.substring(0, 8)}`}
             </h3>
             {item.hours_pending && (
@@ -698,7 +698,7 @@ function QueueItem({ item, queue, onReleasePayment, onCancelAssignment, loading 
             )}
           </div>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-[rgba(26,20,16,0.50)]">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-[#8C8580]">
             {item.agent && <span>Agent: {item.agent.name || item.agent.email}</span>}
             {item.human && <span>Human: {item.human.name || item.human.email}</span>}
             {item.worker && <span>Human: {item.worker.name || item.worker.email}</span>}
@@ -725,7 +725,7 @@ function QueueItem({ item, queue, onReleasePayment, onCancelAssignment, loading 
             <button
               onClick={onReleasePayment}
               disabled={loading}
-              className="px-3 py-1.5 bg-[#1A9E6A] text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
+              className="px-3 py-1.5 bg-[#2D7A3A] text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
             >
               {loading ? '...' : 'Release payment'}
             </button>
@@ -733,7 +733,7 @@ function QueueItem({ item, queue, onReleasePayment, onCancelAssignment, loading 
 
           <button
             onClick={() => setExpanded(!expanded)}
-            className="px-2 py-1.5 text-[rgba(26,20,16,0.28)] hover:text-[rgba(26,20,16,0.50)]"
+            className="px-2 py-1.5 text-[#A69E98] hover:text-[#8C8580]"
           >
             {expanded ? '▲' : '▼'}
           </button>
@@ -741,8 +741,8 @@ function QueueItem({ item, queue, onReleasePayment, onCancelAssignment, loading 
       </div>
 
       {expanded && (
-        <div className="mt-4 pt-4 border-t border-[rgba(220,200,180,0.35)]">
-          <pre className="text-xs text-[rgba(26,20,16,0.50)] overflow-auto max-h-48 bg-[#FAFAF8] p-3 rounded-lg">
+        <div className="mt-4 pt-4 border-t border-[#E8E0D8]">
+          <pre className="text-xs text-[#8C8580] overflow-auto max-h-48 bg-[#FDF6EE] p-3 rounded-lg">
             {JSON.stringify(item, null, 2)}
           </pre>
         </div>
@@ -776,7 +776,7 @@ function ReportQueueItem({ report, onResolve, loading }) {
             }`}>
               {REASON_LABELS[report.reason] || report.reason}
             </span>
-            <h3 className="font-bold text-[#1A1410] truncate">
+            <h3 className="font-bold text-[#1A1A1A] truncate">
               {report.task?.title || 'Unknown Task'}
             </h3>
             {report.task?.report_count > 1 && (
@@ -791,7 +791,7 @@ function ReportQueueItem({ report, onResolve, loading }) {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-[rgba(26,20,16,0.50)]">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-[#8C8580]">
             <span>Task by: {report.task?.agent?.name || report.task?.agent?.email || 'Unknown'}</span>
             <span>Reporter: {report.reporter?.name || report.reporter?.email || 'Unknown'}</span>
             <span>{new Date(report.created_at).toLocaleDateString()}</span>
@@ -803,8 +803,8 @@ function ReportQueueItem({ report, onResolve, loading }) {
           </div>
 
           {expanded && (
-            <div className="mt-3 p-3 bg-[#FAFAF8] rounded-lg text-sm text-[rgba(26,20,16,0.50)]">
-              <p className="font-medium text-[#1A1410] mb-1">Reporter's description:</p>
+            <div className="mt-3 p-3 bg-[#FDF6EE] rounded-lg text-sm text-[#8C8580]">
+              <p className="font-medium text-[#1A1A1A] mb-1">Reporter's description:</p>
               <p className="whitespace-pre-wrap">{report.description}</p>
               {report.task?.agent?.warning_count > 0 && (
                 <p className="mt-2 text-orange-600 text-xs font-medium">
@@ -825,7 +825,7 @@ function ReportQueueItem({ report, onResolve, loading }) {
           </button>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="px-2 py-1.5 text-[rgba(26,20,16,0.28)] hover:text-[rgba(26,20,16,0.50)]"
+            className="px-2 py-1.5 text-[#A69E98] hover:text-[#8C8580]"
           >
             {expanded ? '\u25B2' : '\u25BC'}
           </button>
@@ -862,11 +862,11 @@ function ReportResolveModal({ report, onClose, onConfirm, loading }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold text-[#1A1410] mb-2">Resolve Report</h2>
-        <p className="text-sm text-[rgba(26,20,16,0.50)] mb-4">Task: {report.task?.title}</p>
+        <h2 className="text-xl font-bold text-[#1A1A1A] mb-2">Resolve Report</h2>
+        <p className="text-sm text-[#8C8580] mb-4">Task: {report.task?.title}</p>
 
         {/* Report details */}
-        <div className="bg-[#FAFAF8] rounded-lg p-3 mb-4">
+        <div className="bg-[#FDF6EE] rounded-lg p-3 mb-4">
           <div className="flex items-center gap-2 mb-2">
             <span className={`px-2 py-0.5 rounded-[6px] text-xs font-medium ${
               ['scam_fraud', 'illegal'].includes(report.reason) ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
@@ -874,8 +874,8 @@ function ReportResolveModal({ report, onClose, onConfirm, loading }) {
               {REASON_LABELS[report.reason] || report.reason}
             </span>
           </div>
-          <p className="text-sm text-[#1A1410] whitespace-pre-wrap">{report.description}</p>
-          <div className="flex flex-wrap gap-x-4 mt-2 text-xs text-[rgba(26,20,16,0.28)]">
+          <p className="text-sm text-[#1A1A1A] whitespace-pre-wrap">{report.description}</p>
+          <div className="flex flex-wrap gap-x-4 mt-2 text-xs text-[#A69E98]">
             <span>{report.task?.report_count || 1} total report(s) on this task</span>
             <span>Creator: {report.task?.agent?.name || report.task?.agent?.email}</span>
             {report.task?.agent?.total_reports_received > 0 && (
@@ -897,12 +897,12 @@ function ReportResolveModal({ report, onClose, onConfirm, loading }) {
         <form onSubmit={handleSubmit}>
           {/* Action selection */}
           <div className="space-y-2 mb-4">
-            <label className="block text-sm font-medium text-[#1A1410]">Action</label>
+            <label className="block text-sm font-medium text-[#1A1A1A]">Action</label>
             {RESOLVE_ACTIONS.map(a => (
               <label
                 key={a.value}
                 className={`flex items-center gap-3 p-2.5 rounded-lg border-2 cursor-pointer transition-all ${
-                  action === a.value ? 'border-teal bg-teal/5' : 'border-[rgba(220,200,180,0.35)] hover:border-[rgba(220,200,180,0.35)]'
+                  action === a.value ? 'border-teal bg-teal/5' : 'border-[#E8E0D8] hover:border-[#E8E0D8]'
                 }`}
               >
                 <input
@@ -913,32 +913,32 @@ function ReportResolveModal({ report, onClose, onConfirm, loading }) {
                   onChange={() => setAction(a.value)}
                   className="sr-only"
                 />
-                <span className="text-sm font-medium text-[#1A1410]">{a.label}</span>
+                <span className="text-sm font-medium text-[#1A1A1A]">{a.label}</span>
               </label>
             ))}
           </div>
 
           {action === 'user_suspended' && (
             <div className="mb-4">
-              <label className="block text-sm font-medium text-[#1A1410] mb-1">Suspension Duration (days)</label>
+              <label className="block text-sm font-medium text-[#1A1A1A] mb-1">Suspension Duration (days)</label>
               <input
                 type="number"
                 min={1}
                 max={365}
                 value={suspendDays}
                 onChange={e => setSuspendDays(parseInt(e.target.value) || 7)}
-                className="w-full px-4 py-2 border border-[rgba(220,200,180,0.35)] rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none"
+                className="w-full px-4 py-2 border border-[#E8E0D8] rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none"
               />
             </div>
           )}
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-[#1A1410] mb-1">Admin Notes</label>
+            <label className="block text-sm font-medium text-[#1A1A1A] mb-1">Admin Notes</label>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2 border border-[rgba(220,200,180,0.35)] rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none resize-none"
+              className="w-full px-4 py-2 border border-[#E8E0D8] rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none resize-none"
               placeholder="Internal notes about this resolution..."
             />
           </div>
@@ -975,14 +975,14 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
     critical: 'bg-red-100 text-red-700',
     high: 'bg-yellow-100 text-yellow-700',
     normal: 'bg-teal/10 text-teal',
-    low: 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)]',
+    low: 'bg-[#F0EAE2] text-[#8C8580]',
   }
 
   const statusStyles = {
     new: 'bg-blue-100 text-blue-700',
     in_review: 'bg-yellow-100 text-yellow-700',
     resolved: 'bg-green-100 text-green-700',
-    dismissed: 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)]',
+    dismissed: 'bg-[#F0EAE2] text-[#8C8580]',
   }
 
   const typeLabels = {
@@ -1006,7 +1006,7 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
   return (
     // eslint-disable-next-line irlwork/no-inline-card-pattern -- conditional urgency-based border color
     <div className={`bg-white rounded-xl border-2 p-4 transition-shadow hover:shadow-md ${
-      item.urgency === 'critical' ? 'border-red-200' : 'border-[rgba(220,200,180,0.35)]'
+      item.urgency === 'critical' ? 'border-red-200' : 'border-[#E8E0D8]'
     }`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -1017,20 +1017,20 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
             <span className={`px-2 py-0.5 rounded-[6px] text-xs font-medium ${statusStyles[item.status]}`}>
               {item.status === 'in_review' ? 'In Review' : item.status.charAt(0).toUpperCase() + item.status.slice(1)}
             </span>
-            <span className="px-2 py-0.5 rounded-[6px] text-xs bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.50)]">
+            <span className="px-2 py-0.5 rounded-[6px] text-xs bg-[#F0EAE2] text-[#8C8580]">
               {typeLabels[item.type] || item.type}
             </span>
-            <span className="text-xs text-[rgba(26,20,16,0.28)]">{timeAgo(item.created_at)}</span>
+            <span className="text-xs text-[#A69E98]">{timeAgo(item.created_at)}</span>
           </div>
 
           {item.subject && (
-            <h3 className="font-bold text-[#1A1410] mb-1">{item.subject}</h3>
+            <h3 className="font-bold text-[#1A1A1A] mb-1">{item.subject}</h3>
           )}
-          <p className="text-sm text-[#1A1410] line-clamp-2">{item.message}</p>
+          <p className="text-sm text-[#1A1A1A] line-clamp-2">{item.message}</p>
 
-          <div className="flex items-center gap-3 mt-2 text-xs text-[rgba(26,20,16,0.50)]">
+          <div className="flex items-center gap-3 mt-2 text-xs text-[#8C8580]">
             <span>{item.user_name || 'Unknown'}</span>
-            <span className="px-1.5 py-0.5 rounded bg-[rgba(220,200,180,0.15)]">{item.user_type || 'user'}</span>
+            <span className="px-1.5 py-0.5 rounded bg-[#F0EAE2]">{item.user_type || 'user'}</span>
             {item.user_email && <span>{item.user_email}</span>}
           </div>
         </div>
@@ -1067,7 +1067,7 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
           )}
           <button
             onClick={() => setExpanded(!expanded)}
-            className="px-2 py-1.5 text-[rgba(26,20,16,0.28)] hover:text-[rgba(26,20,16,0.50)]"
+            className="px-2 py-1.5 text-[#A69E98] hover:text-[#8C8580]"
           >
             {expanded ? '\u25B2' : '\u25BC'}
           </button>
@@ -1075,24 +1075,24 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
       </div>
 
       {expanded && (
-        <div className="mt-4 pt-4 border-t border-[rgba(220,200,180,0.35)] space-y-3">
+        <div className="mt-4 pt-4 border-t border-[#E8E0D8] space-y-3">
           {/* Full message */}
           <div>
-            <p className="text-xs font-semibold text-[rgba(26,20,16,0.50)] mb-1">Full Message</p>
-            <p className="text-sm text-[#1A1410] whitespace-pre-wrap">{item.message}</p>
+            <p className="text-xs font-semibold text-[#8C8580] mb-1">Full Message</p>
+            <p className="text-sm text-[#1A1A1A] whitespace-pre-wrap">{item.message}</p>
           </div>
 
           {/* Images */}
           {item.image_urls && item.image_urls.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-[rgba(26,20,16,0.50)] mb-2">Screenshots</p>
+              <p className="text-xs font-semibold text-[#8C8580] mb-2">Screenshots</p>
               <div className="flex gap-2 flex-wrap">
                 {item.image_urls.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer">
                     <img
                       src={url}
                       alt={`Screenshot ${i + 1}`}
-                      className="w-24 h-24 object-cover rounded-lg border border-[rgba(220,200,180,0.35)] hover:shadow-md transition-shadow"
+                      className="w-24 h-24 object-cover rounded-lg border border-[#E8E0D8] hover:shadow-md transition-shadow"
                     />
                   </a>
                 ))}
@@ -1103,31 +1103,31 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
           {/* Page URL */}
           {item.page_url && (
             <div>
-              <p className="text-xs font-semibold text-[rgba(26,20,16,0.50)] mb-1">Page</p>
-              <p className="text-xs text-[rgba(26,20,16,0.28)] font-mono break-all">{item.page_url}</p>
+              <p className="text-xs font-semibold text-[#8C8580] mb-1">Page</p>
+              <p className="text-xs text-[#A69E98] font-mono break-all">{item.page_url}</p>
             </div>
           )}
 
           {/* Agent Error Metadata */}
           {item.metadata && item.type === 'agent_error' && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-[rgba(26,20,16,0.50)]">Error Details</p>
+              <p className="text-xs font-semibold text-[#8C8580]">Error Details</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {item.metadata.action && (
                   <div>
-                    <span className="text-[rgba(26,20,16,0.28)]">Action:</span>{' '}
-                    <span className="font-mono text-[#1A1410]">{item.metadata.action}</span>
+                    <span className="text-[#A69E98]">Action:</span>{' '}
+                    <span className="font-mono text-[#1A1A1A]">{item.metadata.action}</span>
                   </div>
                 )}
                 {item.metadata.error_code && (
                   <div>
-                    <span className="text-[rgba(26,20,16,0.28)]">Error Code:</span>{' '}
+                    <span className="text-[#A69E98]">Error Code:</span>{' '}
                     <span className="font-mono text-[#DC2626]">{item.metadata.error_code}</span>
                   </div>
                 )}
                 {item.metadata.task_id && (
                   <div>
-                    <span className="text-[rgba(26,20,16,0.28)]">Task:</span>{' '}
+                    <span className="text-[#A69E98]">Task:</span>{' '}
                     <a href={`/tasks/${item.metadata.task_id}`} className="font-mono text-teal hover:underline">
                       {item.metadata.task_id.slice(0, 8)}...
                     </a>
@@ -1136,16 +1136,16 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
               </div>
               {item.metadata.error_log && (
                 <div>
-                  <p className="text-xs font-semibold text-[rgba(26,20,16,0.50)] mb-1">Error Log</p>
-                  <pre className="text-xs text-[rgba(26,20,16,0.50)] bg-[#FAFAF8] rounded-lg p-3 overflow-x-auto max-h-48 overflow-y-auto font-mono whitespace-pre-wrap break-all">
+                  <p className="text-xs font-semibold text-[#8C8580] mb-1">Error Log</p>
+                  <pre className="text-xs text-[#8C8580] bg-[#FDF6EE] rounded-lg p-3 overflow-x-auto max-h-48 overflow-y-auto font-mono whitespace-pre-wrap break-all">
                     {item.metadata.error_log}
                   </pre>
                 </div>
               )}
               {item.metadata.context && (
                 <div>
-                  <p className="text-xs font-semibold text-[rgba(26,20,16,0.50)] mb-1">Context</p>
-                  <pre className="text-xs text-[rgba(26,20,16,0.50)] bg-[#FAFAF8] rounded-lg p-3 overflow-x-auto max-h-32 overflow-y-auto font-mono whitespace-pre-wrap break-all">
+                  <p className="text-xs font-semibold text-[#8C8580] mb-1">Context</p>
+                  <pre className="text-xs text-[#8C8580] bg-[#FDF6EE] rounded-lg p-3 overflow-x-auto max-h-32 overflow-y-auto font-mono whitespace-pre-wrap break-all">
                     {JSON.stringify(item.metadata.context, null, 2)}
                   </pre>
                 </div>
@@ -1155,13 +1155,13 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
 
           {/* Admin Notes */}
           <div>
-            <p className="text-xs font-semibold text-[rgba(26,20,16,0.50)] mb-1">Admin Notes</p>
+            <p className="text-xs font-semibold text-[#8C8580] mb-1">Admin Notes</p>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add notes..."
               rows={2}
-              className="w-full px-3 py-2 text-sm border border-[rgba(220,200,180,0.35)] rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none resize-none"
+              className="w-full px-3 py-2 text-sm border border-[#E8E0D8] rounded-lg focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none resize-none"
             />
             {notes !== (item.admin_notes || '') && (
               <button
@@ -1176,7 +1176,7 @@ function FeedbackItem({ item, onUpdateStatus, loading }) {
 
           {/* Metadata */}
           {item.resolved_at && (
-            <p className="text-xs text-[rgba(26,20,16,0.28)]">
+            <p className="text-xs text-[#A69E98]">
               Resolved: {new Date(item.resolved_at).toLocaleString()}
             </p>
           )}

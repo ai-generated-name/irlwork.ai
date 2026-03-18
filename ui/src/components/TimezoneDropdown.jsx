@@ -54,7 +54,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          color: value ? 'var(--text-primary, #1A1410)' : 'var(--text-tertiary, rgba(26,20,16,0.40))',
+          color: value ? 'var(--text-primary, #1A1A1A)' : 'var(--text-tertiary, rgba(26,20,16,0.40))',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap'
@@ -84,8 +84,8 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           right: 0,
           background: 'white',
           borderRadius: 12,
-          border: '1px solid rgba(220,200,180,0.35)',
-          boxShadow: '0 12px 40px rgba(220,200,180,0.40), 0 4px 12px rgba(220,200,180,0.25)',
+          border: '1px solid #E8E0D8',
+          boxShadow: '0 12px 40px rgba(220,200,180,0.40), 0 4px 12px #EBE4DC',
           zIndex: 100,
           maxHeight: 280,
           display: 'flex',
@@ -95,7 +95,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
           {/* Search */}
           <div style={{
             padding: '8px 12px',
-            borderBottom: '1px solid rgba(220,200,180,0.25)',
+            borderBottom: '1px solid #EBE4DC',
             display: 'flex',
             alignItems: 'center',
             gap: 8
@@ -112,7 +112,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
                 outline: 'none',
                 flex: 1,
                 fontSize: 13,
-                color: 'var(--text-primary, #1A1410)',
+                color: 'var(--text-primary, #1A1A1A)',
                 background: 'transparent',
                 padding: '4px 0'
               }}
@@ -149,7 +149,7 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
                   textAlign: 'left',
                   fontStyle: 'italic'
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(232,112,61,0.04)' }}
+                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(232,118,75,0.04)' }}
                 onMouseOut={(e) => { e.currentTarget.style.background = 'none' }}
               >
                 Clear selection
@@ -168,17 +168,17 @@ export default function TimezoneDropdown({ value, onChange, className, name }) {
                   width: '100%',
                   padding: '8px 14px',
                   border: 'none',
-                  background: opt.value === value ? 'rgba(232,112,61,0.06)' : 'none',
+                  background: opt.value === value ? 'rgba(232,118,75,0.06)' : 'none',
                   cursor: 'pointer',
                   fontSize: 13,
                   // eslint-disable-next-line irlwork/no-orange-outside-button -- selected item uses brand color
-                  color: opt.value === value ? '#E8703D' : 'var(--text-primary, #1A1410)',
+                  color: opt.value === value ? '#E8764B' : 'var(--text-primary, #1A1A1A)',
                   fontWeight: opt.value === value ? 500 : 400,
                   textAlign: 'left',
                   transition: 'background 0.15s'
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(232,112,61,0.06)' }}
-                onMouseOut={(e) => { e.currentTarget.style.background = opt.value === value ? 'rgba(232,112,61,0.06)' : 'none' }}
+                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(232,118,75,0.06)' }}
+                onMouseOut={(e) => { e.currentTarget.style.background = opt.value === value ? 'rgba(232,118,75,0.06)' : 'none' }}
               >
                 {opt.label}
               </button>

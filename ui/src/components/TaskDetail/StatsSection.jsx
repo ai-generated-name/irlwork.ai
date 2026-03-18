@@ -21,14 +21,14 @@ export default function StatsSection({ taskId }) {
         Stats
       </h3>
       <div className="grid grid-cols-2 gap-2 sm:gap-4">
-        <div className="text-center py-2 sm:py-3 bg-[#FAFAF8] rounded-xl">
+        <div className="text-center py-2 sm:py-3 bg-[#FDF6EE] rounded-xl">
           {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
-          <div className="text-xl sm:text-2xl font-bold text-[#E8703D] font-mono">{stats.applications}</div>
+          <div className="text-xl sm:text-2xl font-bold text-[#E8764B] font-mono">{stats.applications}</div>
           <div className="text-xs sm:text-sm text-[rgba(26,20,16,0.65)] mt-0.5 sm:mt-1">Applications</div>
         </div>
-        <div className="text-center py-2 sm:py-3 bg-[#FAFAF8] rounded-xl">
+        <div className="text-center py-2 sm:py-3 bg-[#FDF6EE] rounded-xl">
           {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
-          <div className="text-xl sm:text-2xl font-bold text-[#E8703D] font-mono">{stats.views}</div>
+          <div className="text-xl sm:text-2xl font-bold text-[#E8764B] font-mono">{stats.views}</div>
           <div className="text-xs sm:text-sm text-[rgba(26,20,16,0.65)] mt-0.5 sm:mt-1">Views</div>
         </div>
       </div>

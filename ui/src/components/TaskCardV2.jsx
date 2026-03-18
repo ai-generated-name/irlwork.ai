@@ -102,7 +102,7 @@ export default function TaskCardV2({
             </span>
           )}
           {quantity > 1 && (
-            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: spotsFilled >= quantity ? 'rgba(26,158,106,0.09)' : 'rgba(37,99,235,0.09)', color: spotsFilled >= quantity ? '#1A9E6A' : '#2563EB' }}>
+            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, background: spotsFilled >= quantity ? 'rgba(45,122,58,0.09)' : 'rgba(37,99,235,0.09)', color: spotsFilled >= quantity ? '#2D7A3A' : '#2563EB' }}>
               {spotsFilled}/{quantity} filled
             </span>
           )}
@@ -156,7 +156,7 @@ export default function TaskCardV2({
           {task.required_skills.length > 3 && (
             <span style={{
               display: 'inline-block', padding: '2px 8px', borderRadius: 12,
-              fontSize: 11, fontWeight: 500, background: 'rgba(220,200,180,0.15)', color: 'rgba(26,20,16,0.65)'
+              fontSize: 11, fontWeight: 500, background: '#F0EAE2', color: 'rgba(26,20,16,0.65)'
             }}>+{task.required_skills.length - 3} more</span>
           )}
         </div>

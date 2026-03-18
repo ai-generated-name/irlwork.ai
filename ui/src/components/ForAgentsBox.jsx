@@ -51,7 +51,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
           }}>
             <Bot size={15} style={{ color: '#2563EB' }} />
           </div>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #1A1410)', flex: 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #1A1A1A)', flex: 1 }}>
             For Agents
           </span>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary, #8A8A8A)' }}>
@@ -134,7 +134,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
                   borderRadius: 6,
                   cursor: 'pointer',
                   fontSize: 11,
-                  color: copied ? '#34D399' : 'rgba(26,20,16,0.28)',
+                  color: copied ? '#34D399' : '#A69E98',
                   transition: 'all 0.2s',
                   zIndex: 1,
                 }}
@@ -143,7 +143,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
                 {copied ? 'Copied' : 'Copy'}
               </button>
               <pre style={{
-                background: '#1A1410',
+                background: '#1A1A1A',
                 color: '#e0e0e0',
                 padding: 14,
                 borderRadius: 10,
@@ -171,7 +171,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
       background: 'var(--bg-tertiary, #F9FAFB)',
       borderRadius: 16,
       padding: 24,
-      border: '1px solid rgba(220,200,180,0.25)',
+      border: '1px solid #EBE4DC',
       marginBottom: 16
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -205,11 +205,11 @@ export default function ForAgentsBox({ human, collapsible = false }) {
               gap: 4,
               padding: '4px 8px',
               background: 'none',
-              border: '1px solid rgba(220,200,180,0.35)',
+              border: '1px solid #E8E0D8',
               borderRadius: 6,
               cursor: 'pointer',
               fontSize: 12,
-              color: copied ? '#1A9E6A' : 'var(--text-tertiary)',
+              color: copied ? '#2D7A3A' : 'var(--text-tertiary)',
               transition: 'all 0.2s'
             }}
           >
@@ -218,7 +218,7 @@ export default function ForAgentsBox({ human, collapsible = false }) {
           </button>
         </div>
         <pre style={{
-          background: '#1A1410',
+          background: '#1A1A1A',
           color: '#e0e0e0',
           padding: 16,
           borderRadius: 10,

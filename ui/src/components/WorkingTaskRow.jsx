@@ -21,7 +21,7 @@ export function WorkingTaskRow({ task, onClick }) {
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: "'Sora', sans-serif",
+          fontFamily: "'Satoshi', sans-serif",
           fontSize: '15px',
           fontWeight: 600,
           color: 'var(--ink)',
@@ -37,7 +37,7 @@ export function WorkingTaskRow({ task, onClick }) {
           <StatusPill status={task.status} />
           {task.location && (
             <span style={{
-              fontFamily: "'Sora', sans-serif",
+              fontFamily: "'Satoshi', sans-serif",
               fontSize: '11px',
               color: 'var(--ink3)',
               overflow: 'hidden',
@@ -50,7 +50,7 @@ export function WorkingTaskRow({ task, onClick }) {
         </div>
       </div>
       <div style={{
-        fontFamily: "'Sora', sans-serif",
+        fontFamily: "'Satoshi', sans-serif",
         fontSize: '20px',
         fontWeight: 800,
         color: 'var(--orange)',

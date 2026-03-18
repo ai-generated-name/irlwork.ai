@@ -7,7 +7,7 @@ export default function RequirementsSection({ task }) {
   const isList = lines.length > 1;
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-6 mb-6 shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[#E8E0D8] p-6 mb-6 shadow-sm">
       <h3 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider mb-4">
         Requirements
       </h3>
@@ -16,7 +16,7 @@ export default function RequirementsSection({ task }) {
           {lines.map((line, i) => (
             <li key={i} className="flex items-start gap-2">
               {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
-              <span className="text-[#E8703D] mt-0.5">•</span>
+              <span className="text-[#E8764B] mt-0.5">•</span>
               <span>{line.replace(/^[-•*]\s*/, '')}</span>
             </li>
           ))}

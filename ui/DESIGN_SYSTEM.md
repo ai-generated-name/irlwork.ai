@@ -14,9 +14,9 @@ These rules are enforced via ESLint (`eslint-plugin-irlwork`):
 
 | Rule | What it catches | Severity |
 |------|----------------|----------|
-| `no-inline-card-pattern` | `<div>` with Card-like Tailwind classes (`bg-white` + `rounded-xl`/`rounded-[20px]` + `border`/`shadow`) | warn |
+| `no-inline-card-pattern` | `<div>` with Card-like Tailwind classes (`bg-white` + `rounded-xl`/`rounded-[16px]` + `border`/`shadow`) | warn |
 | `no-inline-button-pattern` | `<button>` with inline background color, text color, and border-radius styling | warn |
-| `no-orange-outside-button` | `#E8703D` or `#E8853D` used outside the `Button` component and shared UI components | warn |
+| `no-orange-outside-button` | `#E8764B` or `#E8853D` used outside the `Button` component and shared UI components | warn |
 | `no-title-case-ui-strings` | "Browse All Tasks" instead of "Browse all tasks" (3+ consecutive Title Case words) | warn |
 | `no-exclamation-in-ui` | "Success!" in UI text (exclamation marks in rendered JSX) | warn |
 | `no-emoji-in-ui` | Emoji Unicode characters in JSX text (use lucide-react icons instead) | warn |
@@ -37,7 +37,7 @@ If a violation is intentional, add an inline disable comment with an explanation
 
 ```jsx
 {/* eslint-disable-next-line irlwork/no-orange-outside-button -- accent line uses brand color intentionally */}
-<div className="h-1 bg-[#E8703D]" />
+<div className="h-1 bg-[#E8764B]" />
 ```
 
 ### Copy and tone
@@ -52,85 +52,92 @@ If a violation is intentional, add an inline disable comment with an explanation
 
 ---
 
-## v16 Token Reference (2026-03-05)
+## v17 Token Reference (2026-03-06)
 
 ### Fonts
-| Token | Family | Usage |
-|-------|--------|-------|
-| `--font-sans` / `font-sans` | Sora (300-800) | All UI text, headings, buttons, labels |
-| `--font-mono-v9` / `font-mono` | JetBrains Mono (400, 500) | Task IDs, timestamps, prices, code |
-| `--font-courier` / `font-courier` | Courier Prime Bold | `irlwork` wordmark ONLY — never elsewhere |
+| Token | Family | Weights | Usage |
+|-------|--------|---------|-------|
+| `--font-sans` / `font-sans` | Satoshi | 300-900 | All UI text, headings, buttons, labels |
+| `--font-mono-v9` / `font-mono` | JetBrains Mono | 400, 500 | Task IDs, timestamps, prices, code |
+
+**Typography weight mapping:**
+| Weight | Usage |
+|--------|-------|
+| 800 | Page titles (letter-spacing: -0.03em) |
+| 700 | Section headings (letter-spacing: -0.02em) |
+| 600 | Card titles, button labels (letter-spacing: -0.01em) |
+| 500 | Body emphasis, nav tabs |
+| 400 | Body text, descriptions |
+| 300 | Captions, light text |
+
+**Font fallback stack:** `'Satoshi', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`
 
 ### Colors
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--bg` | `#FAFAF8` | Page background |
+| `--bg` | `#FDF6EE` | Page background (warm cream) |
 | `--surface` | `#FFFFFF` | Card/panel background |
-| `--ink` | `#1A1410` | Primary text |
-| `--ink2` | `rgba(26,20,16,0.50)` | Secondary text |
-| `--ink3` | `rgba(26,20,16,0.28)` | Muted text, labels, light elements |
-| `--orange` | `#E8703D` | Pay amounts, primary CTA, open status |
-| `--orange-bg` | `#FDEEE6` | Orange pill/accent backgrounds |
-| `--orange-soft` | `#F0905A` | Gradient start for CTA buttons |
-| `--orange-glo` | `rgba(232,112,61,0.18)` | Orange glow shadow |
-| `--green` | `#1A9E6A` | Assigned, in-progress, completed, paid status |
-| `--green-bg` | `rgba(26,158,106,0.09)` | Green pill backgrounds |
-| `--green-border` | `rgba(26,158,106,0.18)` | Green pill/card borders |
+| `--ink` | `#1A1A1A` | Primary text |
+| `--ink2` | `#8C8580` | Secondary text |
+| `--ink3` | `#A69E98` | Muted text, labels, light elements |
+| `--orange` | `#E8764B` | Pay amounts, primary CTA, open status |
+| `--orange-bg` | `#FDEEE7` | Orange pill/accent backgrounds |
+| `--orange-glo` | `rgba(232,118,75,0.18)` | Orange glow (subtle) |
+| `--green` | `#2D7A3A` | Assigned, in-progress, completed, paid status |
+| `--green-bg` | `rgba(45,122,58,0.09)` | Green pill backgrounds |
+| `--green-border` | `rgba(45,122,58,0.18)` | Green pill/card borders |
 | `--purple` | `#6D4FC2` | In-review, submitted status |
 | `--purple-bg` | `rgba(109,79,194,0.09)` | Purple pill backgrounds |
 | `--purple-border` | `rgba(109,79,194,0.18)` | Purple pill/card borders |
-| `--red` | `#c4420a` | Error, disputed status |
-| `--red-bg` | `rgba(196,66,10,0.08)` | Red pill backgrounds |
-| `--gold` | `#D4A017` | Ratings, premium, warnings |
-| `--gold-bg` | `rgba(212,160,23,0.08)` | Gold pill backgrounds |
-| `--border` | `rgba(220,200,180,0.35)` | Default warm border |
-| `--border-md` | `rgba(220,200,180,0.50)` | Medium-emphasis border |
+| `--red` | `#D44B4B` | Error, disputed status |
+| `--red-bg` | `rgba(212,75,75,0.08)` | Red pill backgrounds |
+| `--gold` | `#D4963F` | Ratings, premium, warnings |
+| `--gold-bg` | `rgba(212,150,63,0.08)` | Gold pill backgrounds |
+| `--border` | `#E8E0D8` | Default border (solid hex) |
+| `--border-md` | `#DDD5CC` | Medium-emphasis border |
+| `--border-light` | `#F0EAE2` | Light/subtle border |
 
 ### Border Radius
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--r` | `20px` | Cards, large containers |
-| `--r-sm` | `11px` | Inputs, small elements |
-| `--r-pill` | `30px` | Pills, tags, status badges |
+| `--r` | `16px` | Cards, large containers |
+| `--r-sm` | `12px` | Inputs, buttons, small elements |
+| `--r-pill` | `9999px` | Pills, tags, status badges |
 
-### Shadows (warm tone)
+### Shadows (minimal, flat)
 | Token | Value |
 |-------|-------|
-| `--shadow-card` | `0 4px 24px rgba(200,150,100,0.08), 0 1px 0 rgba(255,255,255,0.9) inset` |
-| `--shadow-cta` | `0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset` |
+| `--shadow-sm` | `0 1px 3px rgba(0,0,0,0.04)` |
+| `--shadow-card` | `0 1px 3px rgba(0,0,0,0.04)` |
+| `--shadow-lg` | `0 4px 12px rgba(0,0,0,0.06)` |
+| `--shadow-cta` | `none` (flat button, no glow) |
 
-### Glass effects
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--glass` | `rgba(255,255,255,0.65)` | Light glass |
-| `--glass-md` | `rgba(255,255,255,0.80)` | Medium glass (inputs) |
-| `--glass-hi` | `rgba(255,255,255,0.92)` | High glass (sheets, modals) |
-| `--blur` | `blur(20px)` | Backdrop blur for all glass |
+**No glass effects.** No backdrop-filter, no translucent backgrounds. Use solid `#FFFFFF` or `#FDF6EE`.
 
 ### CTA Button
 ```css
-background: linear-gradient(135deg, #F0905A 0%, #E8703D 100%);
-box-shadow: 0 8px 32px rgba(232,112,61,0.22), 0 1px 0 rgba(255,255,255,0.25) inset;
-border-radius: 20px;
-font-weight: 700;
+background: #E8764B;
+border-radius: 12px;
+font-weight: 600;
+/* No gradient. No shadow. Flat solid color. */
 ```
 **Rule**: ONE orange CTA per screen maximum.
 
 ### Status Badge (pill style)
 ```css
-border-radius: 30px;
+border-radius: 9999px;
 padding: 3px 9px;
 font-size: 10px;
 font-weight: 600;
 /* 5px colored dot before label */
 ```
 Three-color system:
-- **Orange** (`#E8703D` / `#FDEEE6`): open, awaiting_worker
-- **Green** (`#1A9E6A` / green-bg): assigned, in_progress, completed, paid
+- **Orange** (`#E8764B` / `#FDEEE7`): open, awaiting_worker
+- **Green** (`#2D7A3A` / green-bg): assigned, in_progress, completed, paid
 - **Purple** (`#6D4FC2` / purple-bg): in_review, submitted
 
 ### Orange usage rules
-Orange (`#E8703D`) is allowed ONLY in:
+Orange (`#E8764B`) is allowed ONLY in:
 - Pay/budget amounts (`$15`, `$32`)
 - Primary CTA button (one per screen)
 - Urgent action buttons (Approve, Review)
@@ -152,6 +159,23 @@ color: var(--ink3);
 ---
 
 ## Changelog
+
+### 2026-03-06 — v17 design system
+
+- **Font**: Migrated from Sora to Satoshi (300-900) loaded from Fontshare CDN. System font fallback stack added for resilience.
+- **Courier Prime**: Removed. Wordmark no longer uses a separate font.
+- **Background**: Changed from `#FAFAF8` to `#FDF6EE` (warmer cream)
+- **Text colors**: Primary `#1A1A1A` (was `#1A1410`), secondary `#8C8580` (was rgba), muted `#A69E98` (was rgba)
+- **Borders**: Solid hex `#E8E0D8` replacing warm translucent `rgba(220,200,180,0.35)`
+- **Border radius**: Cards 16px (was 20px), buttons 12px (was 11px), pills 9999px (was 30px)
+- **Shadows**: Minimal flat `rgba(0,0,0,0.04)` replacing warm `rgba(200,150,100,...)` with inset white highlights
+- **Glass effects**: Removed entirely. No backdrop-filter, no translucent backgrounds.
+- **CTA buttons**: Flat solid `#E8764B` (was gradient). No box-shadow (was orange glow + inset white).
+- **Orange**: `#E8764B` (was `#E8703D`), hover `#D4683F` (was `#D4622E`)
+- **Status green**: `#2D7A3A` (was `#1A9E6A`)
+- **Status red**: `#D44B4B` (was `#c4420a`)
+- **Gold/warning**: `#D4963F` (was `#D4A017`)
+- **Typography weights**: 800 for page titles (-0.03em), 700 for section headings (-0.02em), 600 for card titles (-0.01em)
 
 ### 2026-03-05 — v16 design system
 

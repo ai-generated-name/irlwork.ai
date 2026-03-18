@@ -119,7 +119,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
             variant="secondary"
             size="md"
             onClick={handleShare}
-            style={copied ? { color: '#1A9E6A', borderColor: '#1A9E6A' } : {}}
+            style={copied ? { color: '#2D7A3A', borderColor: '#2D7A3A' } : {}}
           >
             {copied ? <Check size={16} style={{ marginRight: 6 }} /> : <Share2 size={16} style={{ marginRight: 6 }} />}
             {copied ? 'Link copied' : 'Share profile'}
@@ -150,9 +150,9 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
               {/* ==================== LEFT COLUMN ==================== */}
               <div style={{
                 background: 'white',
-                borderRadius: 20,
+                borderRadius: 16,
                 border: '1px solid rgba(26,26,26,0.06)',
-                boxShadow: '0 4px 24px rgba(220,200,180,0.25)',
+                boxShadow: '0 4px 24px #EBE4DC',
                 overflow: 'hidden'
               }}>
                 {/* Profile Header */}
@@ -198,7 +198,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         <h1 style={{
                           fontSize: 26,
                           fontWeight: 700,
-                          color: 'var(--text-primary, #1A1410)',
+                          color: 'var(--text-primary, #1A1A1A)',
                           margin: 0,
                           lineHeight: 1.2
                         }}>
@@ -209,7 +209,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                             width: 22,
                             height: 22,
                             borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #1A9E6A, #1A9E6A)',
+                            background: 'linear-gradient(135deg, #2D7A3A, #2D7A3A)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -221,7 +221,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                         {numRating === 0 && numCount === 0 && (
                           <span style={{
                             padding: '2px 8px',
-                            background: 'linear-gradient(135deg, #1A9E6A, #1A9E6A)',
+                            background: 'linear-gradient(135deg, #2D7A3A, #2D7A3A)',
                             borderRadius: 999,
                             fontSize: 10,
                             color: 'white',
@@ -428,7 +428,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                   background: 'white',
                   borderRadius: 16,
                   border: '1px solid rgba(26,26,26,0.06)',
-                  boxShadow: '0 4px 24px rgba(220,200,180,0.25)',
+                  boxShadow: '0 4px 24px #EBE4DC',
                   padding: 24,
                 }}>
                   {/* Rate */}
@@ -452,14 +452,14 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                     background: isAvailable ? 'rgba(26,158,106,0.08)' : 'rgba(156,163,175,0.1)',
                     fontSize: 13,
                     fontWeight: 500,
-                    color: isAvailable ? '#1A9E6A' : 'rgba(26,20,16,0.28)',
+                    color: isAvailable ? '#2D7A3A' : '#A69E98',
                     marginBottom: 20,
                   }}>
                     <span style={{
                       width: 7,
                       height: 7,
                       borderRadius: '50%',
-                      background: isAvailable ? 'var(--success)' : 'rgba(26,20,16,0.28)',
+                      background: isAvailable ? 'var(--success)' : '#A69E98',
                       display: 'inline-block',
                     }} />
                     {isAvailable ? 'Available' : 'Unavailable'}
@@ -471,7 +471,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                       width: '100%',
                       padding: '14px 20px',
                       background: '#E5E7EB',
-                      color: 'rgba(26,20,16,0.28)',
+                      color: '#A69E98',
                       fontWeight: 600,
                       fontSize: 16,
                       borderRadius: 12,
@@ -559,7 +559,7 @@ export default function HumanProfilePage({ humanId, user, onLogout, onNavigate }
                   backdropFilter: 'blur(12px)',
                   WebkitBackdropFilter: 'blur(12px)',
                   borderTop: '1px solid rgba(26,26,26,0.08)',
-                  boxShadow: '0 -4px 20px rgba(220,200,180,0.35)',
+                  boxShadow: '0 -4px 20px #E8E0D8',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}

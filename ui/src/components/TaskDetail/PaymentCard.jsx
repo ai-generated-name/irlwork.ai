@@ -38,9 +38,9 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
   const getStatusMessage = () => {
     switch (escrowStatus) {
       case 'deposited':
-        return { icon: <Check size={18} />, text: 'Funds secured in escrow. Work can begin safely.', color: 'text-[#1A9E6A]' };
+        return { icon: <Check size={18} />, text: 'Funds secured in escrow. Work can begin safely.', color: 'text-[#2D7A3A]' };
       case 'released':
-        return { icon: <Check size={18} />, text: 'Payment has been released to you.', color: 'text-[#1A9E6A]' };
+        return { icon: <Check size={18} />, text: 'Payment has been released to you.', color: 'text-[#2D7A3A]' };
       case 'unfunded':
         return { icon: <Clock size={18} />, text: 'Card will be charged when you accept. No charge until then.', color: 'text-[#FEBC2E]' };
       case 'pending':
@@ -59,7 +59,7 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
       {/* Budget amount */}
       <div className="text-center mb-3 sm:mb-4">
         <div className="flex items-baseline justify-center gap-1">
-          <span className="text-3xl sm:text-4xl font-bold text-[#1A9E6A] font-mono">
+          <span className="text-3xl sm:text-4xl font-bold text-[#2D7A3A] font-mono">
             ${budget}
           </span>
           {isHourly && <span className="text-base sm:text-lg text-[rgba(26,20,16,0.65)]">/hr</span>}
@@ -71,20 +71,20 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
 
       {/* Slots info for multi-person tasks */}
       {quantity > 1 && (
-        <div className="border-t border-[rgba(220,200,180,0.35)] pt-2 sm:pt-3 mt-2 sm:mt-3">
+        <div className="border-t border-[#E8E0D8] pt-2 sm:pt-3 mt-2 sm:mt-3">
           <div className="flex items-center justify-between text-xs sm:text-sm">
             <span className="text-[rgba(26,20,16,0.65)] flex items-center gap-1.5">
               <Users size={14} />
               Spots
             </span>
-            <span className="font-semibold" style={{ color: spotsFilled >= quantity ? '#1A9E6A' : '#2563EB' }}>
+            <span className="font-semibold" style={{ color: spotsFilled >= quantity ? '#2D7A3A' : '#2563EB' }}>
               {spotsFilled}/{quantity} filled
             </span>
           </div>
           {budget > 0 && (
             <div className="flex items-center justify-between text-xs sm:text-sm mt-1.5">
               <span className="text-[rgba(26,20,16,0.65)]">Per person</span>
-              <span className="text-[#1A1410] font-medium">${budget} {currencyLabel}</span>
+              <span className="text-[#1A1A1A] font-medium">${budget} {currencyLabel}</span>
             </div>
           )}
         </div>
@@ -92,15 +92,15 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
 
       {/* Estimated hours and total for hourly tasks */}
       {isHourly && durationHours > 0 && (
-        <div className="border-t border-[rgba(220,200,180,0.35)] pt-2 sm:pt-3 mt-2 sm:mt-3 space-y-1.5 sm:space-y-2">
+        <div className="border-t border-[#E8E0D8] pt-2 sm:pt-3 mt-2 sm:mt-3 space-y-1.5 sm:space-y-2">
           <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-[rgba(26,20,16,0.65)]">Estimated hours</span>
-            <span className="text-[#1A1410] font-medium">~{durationHours}h</span>
+            <span className="text-[#1A1A1A] font-medium">~{durationHours}h</span>
           </div>
           {estimatedTotal && (
             <div className="flex justify-between text-xs sm:text-sm">
               <span className="text-[rgba(26,20,16,0.65)]">Est. total</span>
-              <span className="text-[#1A1410] font-medium">${estimatedTotal.toLocaleString()}</span>
+              <span className="text-[#1A1A1A] font-medium">${estimatedTotal.toLocaleString()}</span>
             </div>
           )}
         </div>
@@ -144,7 +144,7 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
 
       {/* Payment Status — participant only */}
       {isParticipant && (
-        <div className="border-t border-[rgba(220,200,180,0.35)] mt-3 sm:mt-4 pt-3 sm:pt-4">
+        <div className="border-t border-[#E8E0D8] mt-3 sm:mt-4 pt-3 sm:pt-4">
           <h4 className="text-xs font-bold text-[rgba(26,20,16,0.40)] uppercase tracking-wider mb-2.5 sm:mb-3">
             Payment Status
           </h4>
@@ -181,7 +181,7 @@ export default function PaymentCard({ task, user, isParticipant, onApply, taskId
 
           {/* Security Note */}
           {escrowStatus === 'deposited' && (
-            <div className="mt-3 pt-3 border-t border-[rgba(220,200,180,0.35)]">
+            <div className="mt-3 pt-3 border-t border-[#E8E0D8]">
               <div className="text-xs text-[rgba(26,20,16,0.40)]">
                 Payment protected. Funds released on proof approval or after the dispute window.
               </div>

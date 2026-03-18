@@ -28,15 +28,15 @@ const STATUS_CONFIG = {
   },
   deposited: {
     label: 'In Escrow',
-    color: 'bg-[#E8703D]',
-    textColor: 'text-[#E8703D]',
+    color: 'bg-[#E8764B]',
+    textColor: 'text-[#E8764B]',
     icon: <Lock size={14} />,
     description: 'Funds secured, work can begin'
   },
   released: {
     label: 'Paid',
-    color: 'bg-[#1A9E6A]',
-    textColor: 'text-[#1A9E6A]',
+    color: 'bg-[#2D7A3A]',
+    textColor: 'text-[#2D7A3A]',
     icon: <Check size={14} />,
     description: 'Payment released to human'
   },
@@ -63,7 +63,7 @@ export default function EscrowBadge({
     <div
       onClick={onClick}
       className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-[6px] cursor-pointer transition-all hover:scale-105 ${
-        showDetails ? 'bg-[rgba(220,200,180,0.15)] border border-[rgba(220,200,180,0.35)]' : ''
+        showDetails ? 'bg-[#F0EAE2] border border-[#E8E0D8]' : ''
       }`}
     >
       <span className={`w-2 h-2 rounded-full ${config.color} ${!showDetails ? 'animate-pulse' : ''}`}></span>
@@ -72,7 +72,7 @@ export default function EscrowBadge({
       </span>
 
       {showDetails && amount != null && (
-        <span className="text-[#1A1410] font-mono ml-2">
+        <span className="text-[#1A1A1A] font-mono ml-2">
           {Number(amount).toFixed(2)} {currencyLabel}
         </span>
       )}
@@ -100,25 +100,25 @@ export function EscrowStatusCard({
             {config.icon}
           </div>
           <div>
-            <h4 className="text-[#1A1410] font-bold">{config.label}</h4>
+            <h4 className="text-[#1A1A1A] font-bold">{config.label}</h4>
             <p className={`text-sm ${config.textColor}`}>{config.description}</p>
           </div>
         </div>
 
         {amount != null && (
           <div className="text-right">
-            <p className="text-2xl font-bold text-[#1A1410] font-mono">{Number(amount).toFixed(2)}</p>
+            <p className="text-2xl font-bold text-[#1A1A1A] font-mono">{Number(amount).toFixed(2)}</p>
             <p className="text-[rgba(26,20,16,0.40)] text-sm">{currencyLabel}</p>
           </div>
         )}
       </div>
 
       {showDetails && (
-        <div className="space-y-2 pt-3 border-t border-[rgba(220,200,180,0.35)]">
+        <div className="space-y-2 pt-3 border-t border-[#E8E0D8]">
           {depositedAt && (
             <div className="flex justify-between text-sm">
               <span className="text-[rgba(26,20,16,0.40)]">Deposited</span>
-              <span className="text-[#1A1410]">
+              <span className="text-[#1A1A1A]">
                 {new Date(depositedAt).toLocaleDateString()} {new Date(depositedAt).toLocaleTimeString()}
               </span>
             </div>
@@ -126,7 +126,7 @@ export function EscrowStatusCard({
           {releasedAt && (
             <div className="flex justify-between text-sm">
               <span className="text-[rgba(26,20,16,0.40)]">Released</span>
-              <span className="text-[#1A1410]">
+              <span className="text-[#1A1A1A]">
                 {new Date(releasedAt).toLocaleDateString()} {new Date(releasedAt).toLocaleTimeString()}
               </span>
             </div>

@@ -65,12 +65,12 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
       <div
         style={{
           background: 'white',
-          borderRadius: 20,
+          borderRadius: 16,
           maxWidth: 560,
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
-          boxShadow: '0 25px 60px rgba(220,200,180,0.45), 0 10px 20px rgba(220,200,180,0.35)',
+          boxShadow: '0 25px 60px rgba(220,200,180,0.45), 0 10px 20px #E8E0D8',
           position: 'relative'
         }}
         onClick={(e) => e.stopPropagation()}
@@ -88,7 +88,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             height: 36,
             borderRadius: '50%',
             border: 'none',
-            background: 'rgba(220,200,180,0.25)',
+            background: '#EBE4DC',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -97,7 +97,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
             transition: 'all 0.2s'
           }}
           onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(220,200,180,0.40)' }}
-          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(220,200,180,0.25)' }}
+          onMouseOut={(e) => { e.currentTarget.style.background = '#EBE4DC' }}
         >
           <X size={18} style={{ color: 'var(--text-secondary)' }} />
         </button>
@@ -105,7 +105,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
         {loading ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-            <Loader2 size={32} style={{ color: '#E8703D', animation: 'spin 1s linear infinite' }} />
+            <Loader2 size={32} style={{ color: '#E8764B', animation: 'spin 1s linear infinite' }} />
             <p style={{ marginTop: 16, color: 'var(--text-tertiary)', fontSize: 14 }}>Loading profile...</p>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
@@ -126,7 +126,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   style={{
                     width: 80, height: 80, borderRadius: '50%',
                     objectFit: 'cover', flexShrink: 0,
-                    boxShadow: '0 4px 16px rgba(232,112,61,0.3)'
+                    boxShadow: '0 4px 16px rgba(232,118,75,0.3)'
                   }}
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex') }}
                 />
@@ -136,7 +136,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                 height: 80,
                 borderRadius: '50%',
                 // eslint-disable-next-line irlwork/no-orange-outside-button -- avatar fallback uses brand color
-                background: '#E8703D',
+                background: '#E8764B',
                 display: profile.avatar_url ? 'none' : 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -144,7 +144,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                 fontWeight: 700,
                 fontSize: 32,
                 flexShrink: 0,
-                boxShadow: '0 4px 16px rgba(232,112,61,0.3)'
+                boxShadow: '0 4px 16px rgba(232,118,75,0.3)'
               }}>
                 {profile.name?.[0]?.toUpperCase() || '?'}
               </div>
@@ -167,7 +167,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                       width: 22,
                       height: 22,
                       borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #1A9E6A, #1A9E6A)',
+                      background: 'linear-gradient(135deg, #2D7A3A, #2D7A3A)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -196,7 +196,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                     marginBottom: 4
                   }}>
                     {/* eslint-disable-next-line irlwork/no-orange-outside-button -- icon color uses brand accent */}
-                    <MapPin size={14} style={{ color: '#E8703D' }} />
+                    <MapPin size={14} style={{ color: '#E8764B' }} />
                     {profile.city}{profile.state ? `, ${profile.state}` : ''}
                     {profile.timezone && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 8, color: 'var(--text-tertiary)', fontSize: 13 }}>
@@ -245,7 +245,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                 fontSize: 28,
                 fontWeight: 700,
                 // eslint-disable-next-line irlwork/no-orange-outside-button -- hourly rate uses brand color
-                color: '#E8703D'
+                color: '#E8764B'
               }}>
                 ${profile.hourly_rate || 25}<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>/hr</span>
               </span>
@@ -274,13 +274,13 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                   {skills.map((skill, idx) => (
                     <span key={idx} style={{
                       padding: '6px 14px',
-                      background: 'rgba(232,112,61,0.08)',
+                      background: 'rgba(232,118,75,0.08)',
                       borderRadius: 999,
                       fontSize: 13,
                       // eslint-disable-next-line irlwork/no-orange-outside-button -- skill tag uses brand color
-                      color: '#E8703D',
+                      color: '#E8764B',
                       fontWeight: 500,
-                      border: '1px solid rgba(232,112,61,0.12)'
+                      border: '1px solid rgba(232,118,75,0.12)'
                     }}>
                       {skill.replace(/_/g, ' ')}
                     </span>
@@ -348,7 +348,7 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
                       padding: 16,
                       background: 'var(--bg-tertiary, #F9FAFB)',
                       borderRadius: 12,
-                      border: '1px solid rgba(200,150,100,0.06)'
+                      border: '1px solid rgba(0,0,0,0.04)'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                         <div style={{ display: 'flex', gap: 2 }}>
@@ -425,17 +425,17 @@ export default function HumanProfileModal({ humanId, onClose, onHire, user }) {
 }
 
 function StatBox({ icon, value, label, highlight }) {
-  const valueColor = highlight === 'green' ? '#1A9E6A' : highlight === 'gray' ? 'rgba(26,20,16,0.28)' : 'var(--text-primary)'
+  const valueColor = highlight === 'green' ? '#2D7A3A' : highlight === 'gray' ? '#A69E98' : 'var(--text-primary)'
   return (
     <div style={{
       padding: 14,
       background: 'var(--bg-tertiary, #F9FAFB)',
       borderRadius: 12,
       textAlign: 'center',
-      border: '1px solid rgba(200,150,100,0.06)'
+      border: '1px solid rgba(0,0,0,0.04)'
     }}>
       {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: '#E8703D' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: '#E8764B' }}>
         {icon}
       </div>
       <div style={{ fontSize: 18, fontWeight: 700, color: valueColor, marginBottom: 2 }}>

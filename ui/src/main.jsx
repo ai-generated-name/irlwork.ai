@@ -27,7 +27,7 @@ function SentryFallback({ error, resetError }) {
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       minHeight: '100vh', fontFamily: 'Inter, system-ui, sans-serif',
-      backgroundColor: '#FAFAF8', padding: '2rem'
+      backgroundColor: '#FDF6EE', padding: '2rem'
     }}>
       <div style={{ textAlign: 'center', maxWidth: 480 }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>Something went wrong</div>
@@ -37,7 +37,7 @@ function SentryFallback({ error, resetError }) {
         <button
           onClick={resetError}
           style={{
-            padding: '10px 24px', backgroundColor: '#E8703D', color: 'white',
+            padding: '10px 24px', backgroundColor: '#E8764B', color: 'white',
             border: 'none', borderRadius: 14, cursor: 'pointer', fontWeight: 600,
             fontSize: 14
           }}

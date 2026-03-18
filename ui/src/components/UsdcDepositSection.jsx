@@ -120,7 +120,7 @@ export default function UsdcDepositSection({ user }) {
             <Wallet className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-[#1A1410]">Pay with USDC on Base</p>
+            <p className="text-sm font-semibold text-[#1A1A1A]">Pay with USDC on Base</p>
             <p className="text-xs text-[#525252] mt-1">
               Generate a unique deposit address to fund your account with USDC. Deposits are detected automatically.
             </p>
@@ -151,7 +151,7 @@ export default function UsdcDepositSection({ user }) {
           <Check className="w-5 h-5 text-green-600" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-semibold text-[#1A1410]">USDC Wallet Active</p>
+          <p className="text-sm font-semibold text-[#1A1A1A]">USDC Wallet Active</p>
           <p className="text-xs text-[#525252] mt-1">
             Send USDC on Base to your deposit address below. Deposits are confirmed automatically.
           </p>
@@ -159,10 +159,10 @@ export default function UsdcDepositSection({ user }) {
       </div>
 
       {/* Deposit address */}
-      <div className="bg-[rgba(220,200,180,0.15)] rounded-lg p-3 mb-3">
+      <div className="bg-[#F0EAE2] rounded-lg p-3 mb-3">
         <p className="text-xs text-[#8A8A8A] mb-1">Your Deposit Address (Base)</p>
         <div className="flex items-center gap-2">
-          <p className="text-sm font-mono text-[#1A1410] break-all select-all flex-1">{addr}</p>
+          <p className="text-sm font-mono text-[#1A1A1A] break-all select-all flex-1">{addr}</p>
           <button onClick={handleCopy} className="p-1.5 rounded hover:bg-[#e8e4de] transition-colors flex-shrink-0" title="Copy address">
             {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} className="text-[#8A8A8A]" />}
           </button>
@@ -173,11 +173,11 @@ export default function UsdcDepositSection({ user }) {
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="bg-[#f8f8f6] rounded-lg p-3">
           <p className="text-xs text-[#8A8A8A] mb-0.5">Available</p>
-          <p className="text-base font-semibold text-[#1A1410]">{parseFloat(usdcAvailable).toFixed(2)} <span className="text-xs font-normal text-[#8A8A8A]">USDC</span></p>
+          <p className="text-base font-semibold text-[#1A1A1A]">{parseFloat(usdcAvailable).toFixed(2)} <span className="text-xs font-normal text-[#8A8A8A]">USDC</span></p>
         </div>
         <div className="bg-[#f8f8f6] rounded-lg p-3">
           <p className="text-xs text-[#8A8A8A] mb-0.5">In Escrow</p>
-          <p className="text-base font-semibold text-[#1A1410]">{parseFloat(usdcEscrow).toFixed(2)} <span className="text-xs font-normal text-[#8A8A8A]">USDC</span></p>
+          <p className="text-base font-semibold text-[#1A1A1A]">{parseFloat(usdcEscrow).toFixed(2)} <span className="text-xs font-normal text-[#8A8A8A]">USDC</span></p>
         </div>
       </div>
 
@@ -190,7 +190,7 @@ export default function UsdcDepositSection({ user }) {
         <button
           onClick={handleSync}
           disabled={syncing}
-          className="flex items-center gap-1.5 text-xs font-medium text-[#525252] hover:text-[#1A1410] transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 text-xs font-medium text-[#525252] hover:text-[#1A1A1A] transition-colors disabled:opacity-50"
           title="Sync balance from blockchain"
         >
           <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />

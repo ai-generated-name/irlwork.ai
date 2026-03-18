@@ -54,12 +54,12 @@ function SkeletonCard() {
     <div style={{
       background: 'white',
       borderRadius: 'var(--radius-lg)',
-      border: '1px solid rgba(220,200,180,0.25)',
+      border: '1px solid #EBE4DC',
       padding: 24,
       display: 'flex',
       flexDirection: 'column',
       animation: 'browseShimmer 1.8s ease-in-out infinite',
-      boxShadow: '0 1px 3px rgba(200,150,100,0.06)',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
       overflow: 'hidden',
       position: 'relative'
     }}>
@@ -90,7 +90,7 @@ function SkeletonCard() {
         <div style={{ height: 28, width: 64, background: 'var(--bg-tertiary)', borderRadius: 999 }} />
       </div>
       {/* Footer */}
-      <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid rgba(220,200,180,0.25)', display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid #EBE4DC', display: 'flex', justifyContent: 'space-between' }}>
         <div style={{ height: 24, width: 60, background: 'var(--bg-tertiary)', borderRadius: 6 }} />
         <div style={{ height: 38, width: 72, background: 'var(--bg-tertiary)', borderRadius: 10 }} />
       </div>
@@ -555,7 +555,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
   const inputStyle = {
     padding: '10px 14px',
     borderRadius: 10,
-    border: '1px solid rgba(220,200,180,0.35)',
+    border: '1px solid #E8E0D8',
     fontSize: 14,
     fontFamily: 'inherit',
     background: 'white',
@@ -660,10 +660,10 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
             <div style={{
               background: 'white',
               borderRadius: 14,
-              border: '1px solid rgba(220,200,180,0.25)',
+              border: '1px solid #EBE4DC',
               padding: '16px 20px',
               marginBottom: 16,
-              boxShadow: '0 1px 3px rgba(200,150,100,0.06)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             }}>
               <div style={{
                 display: 'grid',
@@ -684,8 +684,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     value={nameSearch}
                     onChange={(e) => setNameSearch(e.target.value)}
                     style={inputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(232,112,61,0.08)' }}
-                    onBlur={(e) => { e.target.style.borderColor = 'rgba(220,200,180,0.35)'; e.target.style.boxShadow = 'none' }}
+                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(232,118,75,0.08)' }}
+                    onBlur={(e) => { e.target.style.borderColor = '#E8E0D8'; e.target.style.boxShadow = 'none' }}
                   />
                 </div>
 
@@ -743,8 +743,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     value={maxRate}
                     onChange={(e) => setMaxRate(e.target.value)}
                     style={inputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(232,112,61,0.08)' }}
-                    onBlur={(e) => { e.target.style.borderColor = 'rgba(220,200,180,0.35)'; e.target.style.boxShadow = 'none' }}
+                    onFocus={(e) => { e.target.style.borderColor = 'var(--teal)'; e.target.style.boxShadow = '0 0 0 3px rgba(232,118,75,0.08)' }}
+                    onBlur={(e) => { e.target.style.borderColor = '#E8E0D8'; e.target.style.boxShadow = 'none' }}
                   />
                 </div>
 
@@ -783,8 +783,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       alignItems: 'center',
                       gap: 6,
                       padding: '5px 12px',
-                      background: 'rgba(232,112,61,0.08)',
-                      border: '1px solid rgba(232,112,61,0.12)',
+                      background: 'rgba(232,118,75,0.08)',
+                      border: '1px solid rgba(232,118,75,0.12)',
                       borderRadius: 999,
                       fontSize: 13,
                       fontWeight: 500,
@@ -792,8 +792,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                     }}
-                    onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(232,112,61,0.14)' }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(232,112,61,0.08)' }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(232,118,75,0.14)' }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(232,118,75,0.08)' }}
                   >
                     {f.label}
                     <X size={13} style={{ opacity: 0.6 }} />
@@ -903,7 +903,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     width: 38,
                     height: 38,
                     borderRadius: 10,
-                    border: '1px solid rgba(220,200,180,0.35)',
+                    border: '1px solid #E8E0D8',
                     background: 'white',
                     cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
                     opacity: currentPage === 1 ? 0.4 : 1,
@@ -929,7 +929,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                         width: 38,
                         height: 38,
                         borderRadius: 10,
-                        border: page === currentPage ? '1px solid var(--coral-500)' : '1px solid rgba(220,200,180,0.35)',
+                        border: page === currentPage ? '1px solid var(--coral-500)' : '1px solid #E8E0D8',
                         background: page === currentPage ? 'var(--coral-500)' : 'white',
                         color: page === currentPage ? 'white' : 'var(--text-primary)',
                         fontWeight: page === currentPage ? 700 : 500,
@@ -955,7 +955,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                     width: 38,
                     height: 38,
                     borderRadius: 10,
-                    border: '1px solid rgba(220,200,180,0.35)',
+                    border: '1px solid #E8E0D8',
                     background: 'white',
                     cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
                     opacity: currentPage === totalPages ? 0.4 : 1,
@@ -1026,8 +1026,8 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   gap: 6,
                   padding: '8px 16px',
                   borderRadius: 'var(--radius-md)',
-                  border: nearMeActive ? '2px solid var(--coral-500)' : '1px solid rgba(220,200,180,0.35)',
-                  background: nearMeActive ? 'rgba(232, 112, 61, 0.08)' : 'white',
+                  border: nearMeActive ? '2px solid var(--coral-500)' : '1px solid #E8E0D8',
+                  background: nearMeActive ? 'rgba(232,118,75, 0.08)' : 'white',
                   color: nearMeActive ? 'var(--coral-600)' : 'var(--text-secondary)',
                   fontSize: 14,
                   fontWeight: nearMeActive ? 600 : 400,
@@ -1111,7 +1111,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       style={{
                         background: 'white',
                         borderRadius: 'var(--radius-lg)',
-                        border: '1px solid rgba(220,200,180,0.25)',
+                        border: '1px solid #EBE4DC',
                         padding: 24,
                         transition: 'all 0.2s',
                         cursor: 'pointer'
@@ -1191,7 +1191,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                           );
                         })()}
                       </div>
-                      <div style={{ paddingTop: 16, borderTop: '1px solid rgba(220,200,180,0.25)', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
+                      <div style={{ paddingTop: 16, borderTop: '1px solid #EBE4DC', marginBottom: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
                         Posted by <strong style={{ color: 'var(--text-secondary)' }}>{task.is_anonymous ? 'Anon AI Agent' : (task.agent?.name || task.agent?.organization || 'Anonymous')}</strong>
                       </div>
                       <button
@@ -1232,7 +1232,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: 38, height: 38, borderRadius: 10,
-                    border: '1px solid rgba(220,200,180,0.35)', background: 'white',
+                    border: '1px solid #E8E0D8', background: 'white',
                     cursor: taskCurrentPage === 1 ? 'not-allowed' : 'pointer',
                     opacity: taskCurrentPage === 1 ? 0.4 : 1,
                     transition: 'all 0.15s', color: 'var(--text-primary)',
@@ -1253,7 +1253,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       onClick={() => goToTaskPage(page)}
                       style={{
                         width: 38, height: 38, borderRadius: 10,
-                        border: page === taskCurrentPage ? '1px solid var(--coral-500)' : '1px solid rgba(220,200,180,0.35)',
+                        border: page === taskCurrentPage ? '1px solid var(--coral-500)' : '1px solid #E8E0D8',
                         background: page === taskCurrentPage ? 'var(--coral-500)' : 'white',
                         color: page === taskCurrentPage ? 'white' : 'var(--text-primary)',
                         fontWeight: page === taskCurrentPage ? 700 : 500,
@@ -1272,7 +1272,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     width: 38, height: 38, borderRadius: 10,
-                    border: '1px solid rgba(220,200,180,0.35)', background: 'white',
+                    border: '1px solid #E8E0D8', background: 'white',
                     cursor: taskCurrentPage === taskTotalPages ? 'not-allowed' : 'pointer',
                     opacity: taskCurrentPage === taskTotalPages ? 0.4 : 1,
                     transition: 'all 0.15s', color: 'var(--text-primary)',
@@ -1347,7 +1347,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       minHeight: 80,
                       padding: 12,
                       borderRadius: 'var(--radius-md)',
-                      border: '1px solid rgba(220,200,180,0.35)',
+                      border: '1px solid #E8E0D8',
                       fontSize: 14,
                       resize: 'vertical',
                       fontFamily: 'inherit'
@@ -1376,7 +1376,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       minHeight: 56,
                       padding: 12,
                       borderRadius: 'var(--radius-md)',
-                      border: '1px solid rgba(220,200,180,0.35)',
+                      border: '1px solid #E8E0D8',
                       fontSize: 14,
                       resize: 'vertical',
                       fontFamily: 'inherit'
@@ -1405,7 +1405,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                       minHeight: 56,
                       padding: 12,
                       borderRadius: 'var(--radius-md)',
-                      border: '1px solid rgba(220,200,180,0.35)',
+                      border: '1px solid #E8E0D8',
                       fontSize: 14,
                       resize: 'vertical',
                       fontFamily: 'inherit'
@@ -1427,7 +1427,7 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    border: '1px solid rgba(220,200,180,0.35)',
+                    border: '1px solid #E8E0D8',
                     borderRadius: 'var(--radius-md)',
                     overflow: 'hidden'
                   }}>
@@ -1490,13 +1490,13 @@ export default function BrowsePage({ user, navigate: navigateProp }) {
           onClick={resetHireForm}
         >
           <div
-            style={{ background: '#1A1410', borderRadius: 16, padding: 0, maxWidth: 480, width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', maxHeight: '90vh', overflowY: 'auto' }}
+            style={{ background: '#1A1A1A', borderRadius: 16, padding: 0, maxWidth: 480, width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', maxHeight: '90vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             {hireSuccess ? (
               <div style={{ padding: 48, textAlign: 'center' }}>
                 <div style={{ width: 64, height: 64, background: 'rgba(26,158,106, 0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                  <Check size={32} style={{ color: '#1A9E6A' }} />
+                  <Check size={32} style={{ color: '#2D7A3A' }} />
                 </div>
                 <h3 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 8 }}>Task created and assigned</h3>
                 <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{showHireModal.name} has been assigned to your task.</p>
@@ -1577,7 +1577,7 @@ Content-Type: application/json
 Use the start_conversation method with human_id "${showHireModal.id}" to message them.`}
                   </div>
                   <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ fontSize: 14, color: '#1A9E6A', fontWeight: 500, marginBottom: 12 }}>How to use this</div>
+                    <div style={{ fontSize: 14, color: '#2D7A3A', fontWeight: 500, marginBottom: 12 }}>How to use this</div>
                     <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.8 }}>
                       <li>Copy the snippet above</li>
                       <li>Paste it into your AI agent's chat (Claude, ChatGPT, etc.)</li>
@@ -1633,9 +1633,9 @@ Use the start_conversation method with human_id "${showHireModal.id}" to message
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'rgba(255,255,255,0.7)' }}>Category</label>
                       <select value={hireCategory} onChange={(e) => setHireCategory(e.target.value)}
                         style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: 'white', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}>
-                        <option value="" style={{ background: '#1A1410' }}>Select...</option>
+                        <option value="" style={{ background: '#1A1A1A' }}>Select...</option>
                         {categories.slice(1).map(cat => (
-                          <option key={cat.value} value={cat.value} style={{ background: '#1A1410' }}>{cat.label}</option>
+                          <option key={cat.value} value={cat.value} style={{ background: '#1A1A1A' }}>{cat.label}</option>
                         ))}
                       </select>
                     </div>

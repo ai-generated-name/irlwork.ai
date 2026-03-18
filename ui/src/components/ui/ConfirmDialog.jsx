@@ -96,12 +96,10 @@ export default function ConfirmDialog({
           width: '100%',
           margin: '0 16px',
           padding: 24,
-          borderRadius: 20,
-          background: dark ? '#1A1410' : 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(220,200,180,0.35)',
-          boxShadow: '0 8px 32px rgba(200,150,100,0.12)',
+          borderRadius: 16,
+          background: dark ? '#1A1A1A' : '#FFFFFF',
+          border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #E8E0D8',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -110,7 +108,7 @@ export default function ConfirmDialog({
           style={{
             fontSize: 18,
             fontWeight: 600,
-            color: dark ? '#fff' : '#1A1410',
+            color: dark ? '#fff' : '#1A1A1A',
           }}
         >
           {title}
@@ -119,7 +117,7 @@ export default function ConfirmDialog({
           <p style={{
             fontSize: 14,
             marginTop: 8,
-            color: dark ? 'rgba(255,255,255,0.60)' : 'rgba(26,20,16,0.50)',
+            color: dark ? 'rgba(255,255,255,0.60)' : '#8C8580',
           }}>{description}</p>
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>

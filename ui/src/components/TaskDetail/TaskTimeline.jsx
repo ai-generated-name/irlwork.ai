@@ -48,17 +48,17 @@ export default function TaskTimeline({ task, taskStatus }) {
   const isDisputed = task.status === 'disputed';
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-[rgba(220,200,180,0.35)] p-4 sm:p-6 shadow-sm">
+    <div className="bg-white rounded-2xl border-2 border-[#E8E0D8] p-4 sm:p-6 shadow-sm">
       <div className="relative flex items-start justify-between">
         {/* Background connecting line */}
         <div
-          className="absolute h-0.5 bg-[rgba(220,200,180,0.35)]"
+          className="absolute h-0.5 bg-[#E8E0D8]"
           style={{ top: 12, left: '10%', right: '10%' }}
         />
         {/* Completed portion of connecting line */}
         {activeIndex > 0 && (
           <div
-            className="absolute h-0.5 bg-[#1A9E6A] transition-all duration-500"
+            className="absolute h-0.5 bg-[#2D7A3A] transition-all duration-500"
             style={{
               top: 12,
               left: '10%',
@@ -73,21 +73,21 @@ export default function TaskTimeline({ task, taskStatus }) {
 
           let circleClasses;
           if (isCompleted) {
-            circleClasses = 'bg-[#1A9E6A] text-white';
+            circleClasses = 'bg-[#2D7A3A] text-white';
           } else if (isActive) {
             circleClasses = isDisputed
               ? 'bg-[#FF5F57] text-white ring-4 ring-[rgba(220,38,38,0.15)]'
               // eslint-disable-next-line irlwork/no-orange-outside-button -- active timeline step uses brand color
-              : 'bg-[#E8703D] text-white ring-4 ring-[rgba(232,112,61,0.15)]';
+              : 'bg-[#E8764B] text-white ring-4 ring-[rgba(232,118,75,0.15)]';
           } else {
-            circleClasses = 'bg-[rgba(220,200,180,0.15)] text-[rgba(26,20,16,0.40)]';
+            circleClasses = 'bg-[#F0EAE2] text-[rgba(26,20,16,0.40)]';
           }
 
           let labelClasses;
           if (isCompleted) {
-            labelClasses = 'text-[#1A9E6A]';
+            labelClasses = 'text-[#2D7A3A]';
           } else if (isActive) {
-            labelClasses = isDisputed ? 'text-[#FF5F57]' : 'text-[#E8703D]'; // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+            labelClasses = isDisputed ? 'text-[#FF5F57]' : 'text-[#E8764B]'; // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
           } else {
             labelClasses = 'text-[rgba(26,20,16,0.40)]';
           }

@@ -395,7 +395,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 transition: 'all 0.15s',
                 background: billingInterval === 'monthly' ? 'var(--bg-primary)' : 'transparent',
                 color: billingInterval === 'monthly' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                boxShadow: billingInterval === 'monthly' ? '0 1px 3px rgba(220,200,180,0.35)' : 'none',
+                boxShadow: billingInterval === 'monthly' ? '0 1px 3px #E8E0D8' : 'none',
               }}
             >
               Monthly
@@ -412,7 +412,7 @@ export default function MembershipBilling({ user, toast, onUserUpdate }) {
                 transition: 'all 0.15s',
                 background: billingInterval === 'annual' ? 'var(--bg-primary)' : 'transparent',
                 color: billingInterval === 'annual' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                boxShadow: billingInterval === 'annual' ? '0 1px 3px rgba(220,200,180,0.35)' : 'none',
+                boxShadow: billingInterval === 'annual' ? '0 1px 3px #E8E0D8' : 'none',
               }}
             >
               Annual

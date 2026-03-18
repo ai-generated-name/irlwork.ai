@@ -71,7 +71,7 @@ export default function BrowseHumansTab({
                       const el = document.querySelector('.browse-extra-filters')
                       if (el) el.classList.toggle('browse-extra-filters-hidden')
                     }}
-                    style={{ display: 'none', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid rgba(220,200,180,0.35)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ display: 'none', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
                     <ChevronDown size={16} /> Filters
                   </button>
@@ -138,7 +138,7 @@ export default function BrowseHumansTab({
                         {/* eslint-disable irlwork/no-orange-outside-button -- retry button uses brand color */}
                         <button
                           onClick={fetchHumans}
-                          style={{ background: 'var(--coral-500, #E8703D)', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                          style={{ background: 'var(--coral-500, #E8764B)', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                         >
                           Try Again
                         </button>

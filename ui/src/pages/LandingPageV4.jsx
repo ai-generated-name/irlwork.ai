@@ -268,9 +268,9 @@ function HeroAnimation() {
         <defs>
           <linearGradient id="pathGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-            <stop offset="0%" stopColor="#E8703D" stopOpacity="0.6" />
+            <stop offset="0%" stopColor="#E8764B" stopOpacity="0.6" />
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-            <stop offset="100%" stopColor="#E8703D" stopOpacity="1" />
+            <stop offset="100%" stopColor="#E8764B" stopOpacity="1" />
           </linearGradient>
         </defs>
         <path
@@ -287,8 +287,8 @@ function HeroAnimation() {
         <defs>
           <linearGradient id="pathGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
             {/* eslint-disable-next-line irlwork/no-orange-outside-button -- text/icon color uses brand accent */}
-            <stop offset="0%" stopColor="#E8703D" stopOpacity="1" />
-            <stop offset="100%" stopColor="#1A9E6A" stopOpacity="0.8" />
+            <stop offset="0%" stopColor="#E8764B" stopOpacity="1" />
+            <stop offset="100%" stopColor="#2D7A3A" stopOpacity="0.8" />
           </linearGradient>
         </defs>
         <path

@@ -10,7 +10,7 @@ import ConfirmationModal from '../ConfirmationModal';
 import API_URL from '../../config/api';
 
 const styles = {
-  input: 'w-full bg-white border-2 border-[rgba(220,200,180,0.35)] rounded-xl px-4 py-3 text-[#1A1410] placeholder-[rgba(26,20,16,0.40)] focus:outline-none focus:border-[#E8703D] transition-colors'
+  input: 'w-full bg-white border-2 border-[#E8E0D8] rounded-xl px-4 py-3 text-[#1A1A1A] placeholder-[rgba(26,20,16,0.40)] focus:outline-none focus:border-[#E8764B] transition-colors'
 };
 
 export default function ProofSection({ task, user, onSubmit }) {
@@ -224,7 +224,7 @@ export default function ProofSection({ task, user, onSubmit }) {
 
   return (
     <Card className="p-4 sm:p-6">
-      <h2 className="text-base sm:text-xl font-bold text-[#1A1410] mb-3 sm:mb-4">Submit Proof of Work</h2>
+      <h2 className="text-base sm:text-xl font-bold text-[#1A1A1A] mb-3 sm:mb-4">Submit Proof of Work</h2>
 
       <div className="space-y-3 sm:space-y-4">
         {/* Proof Text */}
@@ -262,11 +262,11 @@ export default function ProofSection({ task, user, onSubmit }) {
           {fileStates.length > 0 && (
             <div className="space-y-2 mb-3">
               {fileStates.map((fs, i) => (
-                <div key={i} className="bg-[rgba(220,200,180,0.15)] rounded-[10px] p-2.5 sm:p-3">
+                <div key={i} className="bg-[#F0EAE2] rounded-[10px] p-2.5 sm:p-3">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2 min-w-0">
                       {fs.status === 'complete' && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A9E6A" strokeWidth="2.5" className="flex-shrink-0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2D7A3A" strokeWidth="2.5" className="flex-shrink-0">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       )}
@@ -278,13 +278,13 @@ export default function ProofSection({ task, user, onSubmit }) {
                       )}
                       {/* eslint-disable irlwork/no-orange-outside-button -- spinner border uses brand color */}
                       {fs.status === 'uploading' && (
-                        <span className="inline-block w-3.5 h-3.5 border-2 border-[rgba(220,200,180,0.15)] border-t-[#E8703D] rounded-full animate-spin flex-shrink-0" />
+                        <span className="inline-block w-3.5 h-3.5 border-2 border-[#F0EAE2] border-t-[#E8764B] rounded-full animate-spin flex-shrink-0" />
                       )}
                       {/* eslint-enable irlwork/no-orange-outside-button */}
                       {fs.status === 'pending' && (
-                        <span className="inline-block w-3.5 h-3.5 rounded-full bg-[rgba(220,200,180,0.35)] flex-shrink-0" />
+                        <span className="inline-block w-3.5 h-3.5 rounded-full bg-[#E8E0D8] flex-shrink-0" />
                       )}
-                      <span className="text-xs text-[#1A1410] truncate">
+                      <span className="text-xs text-[#1A1A1A] truncate">
                         {fs.name.length > 30 ? fs.name.slice(0, 27) + '...' : fs.name}
                       </span>
                       <span className="text-xs text-[rgba(26,20,16,0.40)] flex-shrink-0">{formatFileSize(fs.size)}</span>
@@ -305,14 +305,14 @@ export default function ProofSection({ task, user, onSubmit }) {
                     </div>
                   </div>
                   {fs.status === 'uploading' && (
-                    <div className="w-full h-1.5 bg-[rgba(220,200,180,0.25)] rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-[#EBE4DC] rounded-full overflow-hidden">
                       {/* eslint-disable-next-line irlwork/no-orange-outside-button -- brand accent color */}
-                      <div className="h-full bg-[#E8703D] rounded-full animate-pulse" style={{ width: '60%' }} />
+                      <div className="h-full bg-[#E8764B] rounded-full animate-pulse" style={{ width: '60%' }} />
                     </div>
                   )}
                   {fs.status === 'complete' && (
-                    <div className="w-full h-1.5 bg-[rgba(220,200,180,0.25)] rounded-full overflow-hidden">
-                      <div className="h-full bg-[#1A9E6A] rounded-full" style={{ width: '100%' }} />
+                    <div className="w-full h-1.5 bg-[#EBE4DC] rounded-full overflow-hidden">
+                      <div className="h-full bg-[#2D7A3A] rounded-full" style={{ width: '100%' }} />
                     </div>
                   )}
                 </div>
@@ -323,10 +323,10 @@ export default function ProofSection({ task, user, onSubmit }) {
           {/* Drop zone */}
           {files.length < 3 && (
             <div
-              className={`border-2 border-dashed rounded-[14px] p-4 sm:p-6 text-center cursor-pointer transition-colors bg-[#FAFAF8] ${
+              className={`border-2 border-dashed rounded-[14px] p-4 sm:p-6 text-center cursor-pointer transition-colors bg-[#FDF6EE] ${
                 isDragging
-                  ? 'border-[#E8703D] bg-[#FFF3EB]' // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
-                  : 'border-[rgba(220,200,180,0.45)] hover:border-[#E8703D]' // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                  ? 'border-[#E8764B] bg-[#FFF3EB]' // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                  : 'border-[rgba(220,200,180,0.45)] hover:border-[#E8764B]' // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               }`}
               onClick={() => !uploading && fileInputRef.current?.click()}
               onDragOver={handleDragOver}
@@ -394,7 +394,7 @@ export default function ProofSection({ task, user, onSubmit }) {
 
         {/* Instructions */}
         {/* eslint-disable-next-line irlwork/no-orange-outside-button -- border uses brand color */}
-        <div className="bg-[rgba(232,112,61,0.08)] border border-[rgba(232,112,61,0.15)] rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-[#E8703D]">
+        <div className="bg-[rgba(232,118,75,0.08)] border border-[rgba(232,118,75,0.15)] rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-[#E8764B]">
           <p className="font-medium mb-1"><FileText size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Tips:</p>
           <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-[rgba(26,20,16,0.65)]">
             <li>Describe work completed in detail</li>
