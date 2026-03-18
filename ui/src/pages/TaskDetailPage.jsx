@@ -505,7 +505,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
                   // eslint-disable-next-line irlwork/no-inline-button-pattern -- outlined orange variant not in Button
                   <button
                     onClick={() => setShowDisputeModal(true)}
-                    className="w-full py-2.5 border-2 border-[#E8764B] text-[#E8764B] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                    className="w-full py-2.5 min-h-[48px] border-2 border-[#E8764B] text-[#E8764B] font-semibold rounded-xl hover:bg-[#FFF8F0] transition-colors text-sm" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
                   >
                     File a dispute
                   </button>
@@ -580,7 +580,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
 
       {/* Mobile Sticky Apply Bar */}
       {task.status === 'open' && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#DDD3C8] px-4 pr-20 py-3 shadow-[0_-2px_12px_#E8E0D8]"
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#DDD3C8] px-4 py-3 shadow-[0_-2px_12px_#E8E0D8]"
           style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
           <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
@@ -605,7 +605,7 @@ export default function TaskDetailPage({ user, taskId, onNavigate }) {
             ) : !user ? (
               <a
                 href="/auth"
-                className="flex-1 max-w-[200px] py-2.5 bg-[#E8764B] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
+                className="flex-1 max-w-[200px] py-2.5 min-h-[48px] bg-[#E8764B] hover:bg-[#D4703A] text-white font-bold rounded-xl transition-colors text-sm shadow-md text-center no-underline block flex items-center justify-center" // eslint-disable-line irlwork/no-orange-outside-button -- brand accent color
               >
                 Sign in to apply
               </a>
