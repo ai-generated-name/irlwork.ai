@@ -233,6 +233,7 @@
   transition: all var(--duration-normal) var(--ease-smooth);
   white-space: nowrap;
   text-decoration: none;
+  min-height: 44px;
 }
 
 .btn-v4-primary {
@@ -258,13 +259,15 @@
 }
 
 .btn-v4-sm {
-  padding: 8px 16px;
+  padding: 10px 16px;
   font-size: 13px;
+  min-height: 44px;
 }
 
 .btn-v4-lg {
   padding: 14px 28px;
   font-size: 15px;
+  min-height: 48px;
 }
 
 /* ─── HERO SECTION ─── */
@@ -274,7 +277,7 @@
   grid-template-columns: 1fr 1.2fr;
   gap: var(--space-6);
   align-items: center;
-  padding: var(--space-3) var(--space-6) 80px;
+  padding: var(--space-3) clamp(20px, 4vw, 48px) 80px;
   max-width: 1300px;
   margin: 0 auto;
   position: relative;
@@ -358,7 +361,7 @@
 
 .hero-v4-title {
   font-family: var(--font-display);
-  font-size: clamp(40px, 5vw, 60px);
+  font-size: clamp(1.75rem, 5vw + 0.5rem, 4rem);
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.04em;
@@ -382,7 +385,7 @@
 }
 
 .hero-v4-subtitle {
-  font-size: 16px;
+  font-size: clamp(1rem, 2vw + 0.25rem, 1.5rem);
   line-height: 1.7;
   color: var(--text-secondary);
   max-width: 480px;
@@ -930,7 +933,7 @@
 /* ─── EASY FOR EVERYONE SECTION ─── */
 .easy-section {
   background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%);
-  padding: var(--space-12) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   border-top: 1px solid #E8E0D8;
   border-bottom: 1px solid #E8E0D8;
 }
@@ -1339,7 +1342,7 @@
 
 /* ─── HAPPENING RIGHT NOW ─── */
 .happening-now-section {
-  padding: var(--space-12) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   max-width: 1300px;
   margin: 0 auto;
   background: var(--bg-primary);
@@ -1684,7 +1687,7 @@
 
 /* ─── FEATURES BAR ─── */
 .features-v4 {
-  padding: var(--space-5) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   max-width: 1300px;
   margin: 0 auto;
   background: transparent;
@@ -1734,7 +1737,7 @@
 }
 
 .feature-description {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-tertiary);
   line-height: 1.4;
 }
@@ -1742,7 +1745,7 @@
 /* ─── CODE SECTION ─── */
 .code-section {
   background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-dark-alt) 100%);
-  padding: var(--space-12) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   position: relative;
   overflow: hidden;
 }
@@ -1914,7 +1917,7 @@
 
 .section-title {
   font-family: var(--font-display);
-  font-size: clamp(28px, 4vw, 42px);
+  font-size: clamp(1.25rem, 3vw, 2rem);
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.03em;
@@ -1923,14 +1926,14 @@
 }
 
 .section-subtitle {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.7;
   color: var(--text-secondary);
 }
 
 /* ─── BENEFITS SECTION ─── */
 .benefits-v4 {
-  padding: var(--space-12) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   max-width: 1100px;
   margin: 0 auto;
 }
@@ -1956,7 +1959,7 @@
 
 .benefits-v4-title {
   font-family: var(--font-display);
-  font-size: clamp(26px, 3.5vw, 36px);
+  font-size: clamp(1.25rem, 3vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
@@ -1964,7 +1967,7 @@
 }
 
 .benefits-v4-subtitle {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-secondary);
 }
 
@@ -2057,7 +2060,7 @@
 
 /* ─── HOW IT WORKS ─── */
 .how-it-works-v4 {
-  padding: var(--space-12) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   max-width: 1200px;
   margin: 0 auto;
   background: var(--bg-secondary);
@@ -2143,7 +2146,7 @@
 
 /* ─── TASKS SHOWCASE ─── */
 .tasks-showcase-v4 {
-  padding: var(--space-12) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -2310,7 +2313,7 @@
 
 /* ─── SOCIAL PROOF ─── */
 .social-proof-v4 {
-  padding: var(--space-10) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   background: var(--bg-tertiary);
 }
 
@@ -2360,7 +2363,7 @@
 
 /* ─── ESCROW FLOW SECTION ─── */
 .escrow-flow-v4 {
-  padding: var(--space-12) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%);
 }
 
@@ -2431,7 +2434,7 @@
 
 /* ─── CTA SECTION ─── */
 .cta-v4 {
-  padding: var(--space-12) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   max-width: 800px;
   margin: 0 auto;
 }
@@ -2463,7 +2466,7 @@
 
 .cta-v4-title {
   font-family: var(--font-display);
-  font-size: clamp(26px, 3.5vw, 36px);
+  font-size: clamp(1.25rem, 3vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   margin-bottom: var(--space-3);
@@ -2471,7 +2474,7 @@
 }
 
 .cta-v4-subtitle {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.6;
   opacity: 0.9;
   margin-bottom: var(--space-6);
@@ -2509,7 +2512,7 @@
 
 /* ─── FAQ ─── */
 .faq-v4 {
-  padding: var(--space-12) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   max-width: 800px;
   margin: 0 auto;
 }
@@ -2594,7 +2597,7 @@
 .footer-v4 {
   background: var(--bg-dark);
   color: white;
-  padding: var(--space-10) var(--space-6) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px) clamp(20px, 4vw, 48px);
 }
 
 .footer-v4-inner {
@@ -2910,7 +2913,6 @@
   }
 
   .hero-v4-title {
-    font-size: 32px;
     line-height: 1.15;
     margin-bottom: 12px;
     text-align: center;
@@ -3302,10 +3304,6 @@
     font-size: 10px;
   }
 
-  .section-title {
-    font-size: 24px;
-  }
-
   .section-subtitle {
     font-size: 14px;
   }
@@ -3382,10 +3380,6 @@
   /* ─── COMBINED BENEFITS SECTION ─── */
   .combined-benefits-section {
     padding: var(--space-8) var(--space-4);
-  }
-
-  .combined-benefits-header .section-title {
-    font-size: 22px;
   }
 
   .combined-benefits-grid {
@@ -3469,10 +3463,6 @@
     font-size: 10px;
   }
 
-  .code-section-title {
-    font-size: 22px;
-  }
-
   .code-section-subtitle {
     font-size: 14px;
   }
@@ -3549,13 +3539,6 @@
   }
 
   /* ─── CTA SECTION ─── */
-  .cta-v4 {
-    padding: var(--space-8) var(--space-4);
-  }
-
-  .cta-v4-title {
-    font-size: 24px;
-  }
 
   .cta-v4-subtitle {
     font-size: 14px;
@@ -3673,10 +3656,6 @@
 @media (max-width: 390px) {
   .hero-v4 {
     padding: 16px 12px 24px;
-  }
-
-  .hero-v4-title {
-    font-size: 28px;
   }
 
   .hero-v4-subtitle {
@@ -4494,7 +4473,7 @@
 
 /* ─── COMBINED BENEFITS SECTION ─── */
 .combined-benefits-section {
-  padding: var(--space-16) var(--space-6);
+  padding: clamp(2.5rem, 6vw, 7.5rem) clamp(20px, 4vw, 48px);
   max-width: 1200px;
   margin: 0 auto;
 }
