@@ -5,7 +5,7 @@
  * Tiers:
  *   free     — 5 posts/mo, 15% worker fee, no direct hiring
  *   builder  — $10/mo ($90/yr), unlimited posts, 12.5% worker fee, direct hiring, blue badge
- *   pro      — $25/mo ($225/yr), unlimited posts, 10% worker fee, direct hiring, gold badge, top priority
+ *   pro      — $30/mo ($270/yr), unlimited posts, 10% worker fee, direct hiring, gold badge, top priority
  */
 
 const TIERS = {
