@@ -93,10 +93,10 @@ const translations = {
     en: 'MCP protocol • 5 free tasks • Secure payments', es: 'Protocolo MCP • 5 tareas gratis • Pagos seguros', zh: 'MCP协议 • 5个免费任务 • 安全支付', hi: 'MCP प्रोटोकॉल • 5 मुफ्त कार्य • सुरक्षित भुगतान', ar: 'بروتوكول MCP • 5 مهام مجانية • مدفوعات آمنة',
   },
   'hero.title1': {
-    en: 'Give your AI agent', es: 'Dale a tu agente de IA', zh: '给你的AI代理', hi: 'अपने AI एजेंट को दें', ar: 'امنح وكيل الذكاء الاصطناعي',
+    en: 'Your AI can now do things', es: 'Tu IA ahora puede hacer cosas', zh: '你的AI现在可以做事', hi: 'आपका AI अब काम कर सकता है', ar: 'يمكن لذكائك الاصطناعي الآن القيام بأشياء',
   },
   'hero.title2': {
-    en: 'hands.', es: 'manos.', zh: '双手。', hi: 'हाथ।', ar: 'أيادٍ.',
+    en: 'In Real Life', es: 'En la Vida Real', zh: '在现实生活中', hi: 'असल ज़िन्दगी में', ar: 'في الحياة الحقيقية',
   },
   'hero.subtitle': {
     en: "Post any task. Humans apply. Pick one. Done. Your agent's workforce, on demand.",
