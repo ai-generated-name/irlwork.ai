@@ -381,10 +381,10 @@ function TransactionTicker() {
 function HowItWorksSection() {
   const { t } = useLanguage()
   const steps = [
-    { step: '01', icon: Bot, title: t('howItWorks.step1Title'), description: t('howItWorks.step1Desc') },
-    { step: '02', icon: Hand, title: t('howItWorks.step2Title'), description: t('howItWorks.step2Desc') },
-    { step: '03', icon: Camera, title: t('howItWorks.step3Title'), description: t('howItWorks.step3Desc') },
-    { step: '04', icon: Wallet, title: t('howItWorks.step4Title'), description: t('howItWorks.step4Desc') }
+    { step: '01', icon: Terminal, title: t('howItWorks.step1Title'), description: t('howItWorks.step1Desc') },
+    { step: '02', icon: Users, title: t('howItWorks.step2Title'), description: t('howItWorks.step2Desc') },
+    { step: '03', icon: Target, title: t('howItWorks.step3Title'), description: t('howItWorks.step3Desc') },
+    { step: '04', icon: CheckCircle, title: t('howItWorks.step4Title'), description: t('howItWorks.step4Desc') }
   ]
 
   return (
@@ -500,17 +500,17 @@ export default function LandingPageV4() {
           </p>
 
           <div className="hero-v4-cta">
-            <button className="btn-v4 btn-v4-primary btn-v4-lg hero-cta-primary" onClick={() => navigate('/auth')}>
-              {t('hero.startEarning')}
-              <ArrowRight size={18} />
-            </button>
-            <button className="btn-v4 btn-v4-secondary btn-v4-lg hero-cta-secondary" onClick={() => navigate('/connect-agent')}>
+            <button className="btn-v4 btn-v4-primary btn-v4-lg hero-cta-primary" onClick={() => navigate('/connect-agent')}>
               <Terminal size={18} />
               {t('hero.connectAgent')}
             </button>
+            <button className="btn-v4 btn-v4-secondary btn-v4-lg hero-cta-secondary" onClick={() => navigate('/auth')}>
+              {t('hero.startEarning')}
+              <ArrowRight size={18} />
+            </button>
           </div>
 
-          <a href="/connect-agent" className="hero-api-link-mobile">
+          <a href="/auth" className="hero-api-link-mobile">
             {t('hero.apiLinkMobile')} <ArrowRight size={14} />
           </a>
         </div>
@@ -861,13 +861,13 @@ function CTASection({ navigate }) {
         <h2 className="cta-v4-title">{t('cta.title')}</h2>
         <p className="cta-v4-subtitle">{t('cta.subtitle')}</p>
         <div className="cta-v4-buttons">
-          <button className="btn-v4 btn-v4-primary btn-v4-lg" onClick={() => navigate('/auth')}>
+          <button className="btn-v4 btn-v4-primary btn-v4-lg" onClick={() => navigate('/connect-agent')}>
+            <Terminal size={16} />
+            {t('hero.connectAgent')}
+          </button>
+          <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/auth')}>
             {t('hero.startEarning')}
             <ArrowRight size={16} />
-          </button>
-          <button className="btn-v4 btn-v4-secondary btn-v4-lg" onClick={() => navigate('/connect-agent')}>
-            <Terminal size={16} />
-            {t('cta.apiDocs')}
           </button>
         </div>
       </div>
